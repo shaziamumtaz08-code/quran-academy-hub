@@ -27,12 +27,15 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'teacher', 'student', 'parent'] },
+  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'teacher', 'student', 'parent', 'examiner'] },
   { label: 'Teachers', href: '/teachers', icon: Users, roles: ['admin'] },
   { label: 'Students', href: '/students', icon: GraduationCap, roles: ['admin'] },
   { label: 'Schedules', href: '/schedules', icon: Calendar, roles: ['admin', 'teacher', 'student', 'parent'] },
   { label: 'Attendance', href: '/attendance', icon: ClipboardCheck, roles: ['admin', 'teacher'] },
   { label: 'Lessons', href: '/lessons', icon: BookOpen, roles: ['admin', 'teacher', 'student', 'parent'] },
+  { label: 'Exam Templates', href: '/exam-templates', icon: FileText, roles: ['admin'] },
+  { label: 'Submit Exam', href: '/exam-submission', icon: ClipboardCheck, roles: ['admin', 'examiner'] },
+  { label: 'Exam Results', href: '/exam-results', icon: BarChart3, roles: ['admin', 'examiner', 'teacher', 'student', 'parent'] },
   { label: 'Reports', href: '/reports', icon: FileText, roles: ['admin', 'teacher', 'student', 'parent'] },
   { label: 'Payments', href: '/payments', icon: DollarSign, roles: ['admin'] },
   { label: 'KPI', href: '/kpi', icon: BarChart3, roles: ['admin'] },

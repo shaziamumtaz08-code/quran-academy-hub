@@ -14,6 +14,9 @@ import Lessons from "./pages/Lessons";
 import Reports from "./pages/Reports";
 import Payments from "./pages/Payments";
 import KPI from "./pages/KPI";
+import ExamTemplates from "./pages/ExamTemplates";
+import ExamSubmission from "./pages/ExamSubmission";
+import ExamResults from "./pages/ExamResults";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -55,6 +58,9 @@ function AppRoutes() {
       <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
       <Route path="/payments" element={<ProtectedRoute><Payments /></ProtectedRoute>} />
       <Route path="/kpi" element={<ProtectedRoute><KPI /></ProtectedRoute>} />
+      <Route path="/exam-templates" element={<ProtectedRoute><ExamTemplates /></ProtectedRoute>} />
+      <Route path="/exam-submission" element={<ProtectedRoute><ExamSubmission /></ProtectedRoute>} />
+      <Route path="/exam-results" element={<ProtectedRoute><ExamResults /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
