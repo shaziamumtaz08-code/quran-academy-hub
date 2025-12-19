@@ -1,30 +1,67 @@
 import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { Eye, Filter, Calendar, BookOpen, User, FileText } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Eye, Filter, Calendar, BookOpen, User, FileText, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { 
-  mockSubjects, 
-  mockExamTemplates, 
-  mockTemplateFields,
-  mockExamSubmissions, 
-  mockSubmissionValues,
-  mockStudents,
-  getSubmissionWithValues 
-} from '@/lib/mockExamData';
-import { ExamSubmission, ExamTenure } from '@/types/exam';
+import { supabase } from '@/integrations/supabase/client';
+
+interface ExamResult {
+  id: string;
+  template_id: string;
+  student_id: string;
+  examiner_id: string | null;
+  total_marks: number;
+  max_total_marks: number;
+  percentage: number;
+  examiner_remarks: string | null;
+  public_remarks: string | null;
+  exam_date: string;
+  created_at: string;
+  student: { id: string; full_name: string } | null;
+  template: {
+    id: string;
+    name: string;
+    tenure: string;
+    subject: { id: string; name: string } | null;
+  } | null;
+}
+
+interface ExamFieldResult {
+  id: string;
+  exam_id: string;
+  field_id: string;
+  marks: number;
+  field: {
+    id: string;
+    label: string;
+    max_marks: number;
+    is_public: boolean;
+    sort_order: number;
+  } | null;
+}
+
+interface Subject {
+  id: string;
+  name: string;
+}
+
+interface Profile {
+  id: string;
+  full_name: string;
+}
 
 export default function ExamResults() {
   const { user } = useAuth();
-  const [selectedSubmission, setSelectedSubmission] = useState<ExamSubmission | null>(null);
+  const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
   
   // Filters
   const [studentFilter, setStudentFilter] = useState('');
@@ -36,62 +73,147 @@ export default function ExamResults() {
   const isTeacher = user?.role === 'teacher';
   const isStudentOrParent = user?.role === 'student' || user?.role === 'parent';
 
-  // Enrich submissions with template and student data
-  const enrichedSubmissions = useMemo(() => {
-    return mockExamSubmissions.map(sub => {
-      const template = mockExamTemplates.find(t => t.id === sub.template_id);
-      const student = mockStudents.find(s => s.id === sub.student_id);
-      return {
-        ...sub,
-        template: template ? { ...template, subject: mockSubjects.find(s => s.id === template.subject_id) } : undefined,
-        student_name: student?.name || 'Unknown',
-      };
-    });
-  }, []);
+  // Fetch exam results - RLS handles access control
+  const { data: examResults, isLoading: isLoadingExams, error: examsError } = useQuery({
+    queryKey: ['exam-results'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('exams')
+        .select(`
+          id,
+          template_id,
+          student_id,
+          examiner_id,
+          total_marks,
+          max_total_marks,
+          percentage,
+          examiner_remarks,
+          public_remarks,
+          exam_date,
+          created_at,
+          student:profiles!exams_student_id_fkey(id, full_name),
+          template:exam_templates!exams_template_id_fkey(
+            id,
+            name,
+            tenure,
+            subject:subjects(id, name)
+          )
+        `)
+        .order('exam_date', { ascending: false });
+
+      if (error) throw error;
+      return data as ExamResult[];
+    },
+  });
+
+  // Fetch subjects for filter dropdown
+  const { data: subjects } = useQuery({
+    queryKey: ['subjects'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('subjects')
+        .select('id, name')
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+      return data as Subject[];
+    },
+  });
+
+  // Fetch students for filter dropdown (only for admin/teacher/examiner)
+  const { data: students } = useQuery({
+    queryKey: ['students-for-filter'],
+    queryFn: async () => {
+      if (isStudentOrParent) return [];
+      
+      // Get unique student IDs from exam results
+      const studentIds = [...new Set(examResults?.map(e => e.student_id) || [])];
+      if (studentIds.length === 0) return [];
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', studentIds)
+        .order('full_name');
+
+      if (error) throw error;
+      return data as Profile[];
+    },
+    enabled: !isStudentOrParent && !!examResults,
+  });
+
+  // Fetch field results for selected exam
+  const { data: fieldResults, isLoading: isLoadingFields } = useQuery({
+    queryKey: ['exam-field-results', selectedExamId],
+    queryFn: async () => {
+      if (!selectedExamId) return [];
+
+      const { data, error } = await supabase
+        .from('exam_field_results')
+        .select(`
+          id,
+          exam_id,
+          field_id,
+          marks,
+          field:exam_template_fields(
+            id,
+            label,
+            max_marks,
+            is_public,
+            sort_order
+          )
+        `)
+        .eq('exam_id', selectedExamId)
+        .order('field(sort_order)');
+
+      if (error) throw error;
+      return data as ExamFieldResult[];
+    },
+    enabled: !!selectedExamId,
+  });
+
+  // Get selected exam details
+  const selectedExam = useMemo(() => {
+    return examResults?.find(e => e.id === selectedExamId) || null;
+  }, [examResults, selectedExamId]);
 
   // Apply filters
-  const filteredSubmissions = useMemo(() => {
-    return enrichedSubmissions.filter(sub => {
-      if (studentFilter && sub.student_id !== studentFilter) return false;
-      if (subjectFilter && sub.template?.subject_id !== subjectFilter) return false;
-      if (tenureFilter && sub.template?.tenure !== tenureFilter) return false;
+  const filteredResults = useMemo(() => {
+    if (!examResults) return [];
+    
+    return examResults.filter(exam => {
+      if (studentFilter && exam.student_id !== studentFilter) return false;
+      if (subjectFilter && exam.template?.subject?.id !== subjectFilter) return false;
+      if (tenureFilter && exam.template?.tenure !== tenureFilter) return false;
       if (monthFilter) {
-        const subMonth = new Date(sub.exam_date).getMonth() + 1;
-        if (subMonth !== parseInt(monthFilter)) return false;
+        const examMonth = new Date(exam.exam_date).getMonth() + 1;
+        if (examMonth !== parseInt(monthFilter)) return false;
       }
-      
-      // Role-based filtering
-      if (isStudentOrParent && sub.student_id !== user?.id) {
-        // In real implementation, parents would see children's results
-        return false;
-      }
-      
       return true;
     });
-  }, [enrichedSubmissions, studentFilter, subjectFilter, tenureFilter, monthFilter, isStudentOrParent, user?.id]);
+  }, [examResults, studentFilter, subjectFilter, tenureFilter, monthFilter]);
 
-  const handleViewDetails = (submission: ExamSubmission) => {
-    const fullSubmission = getSubmissionWithValues(submission.id);
-    if (fullSubmission) {
-      setSelectedSubmission(fullSubmission);
-    }
-  };
-
-  // Get visible fields for current user role
-  const getVisibleValues = () => {
-    if (!selectedSubmission?.values) return [];
+  // Filter field results based on user role (RLS handles DB-level, this is for UI)
+  const visibleFieldResults = useMemo(() => {
+    if (!fieldResults) return [];
     
-    if (isAdminOrExaminer) {
-      // Admin/Examiner sees all fields
-      return selectedSubmission.values;
+    // Admin/Examiner/Teacher see all fields (RLS already filters for teacher)
+    if (!isStudentOrParent) {
+      return fieldResults.filter(r => r.field).sort((a, b) => 
+        (a.field?.sort_order || 0) - (b.field?.sort_order || 0)
+      );
     }
     
-    // Teacher sees all fields for assigned students, but not internal remarks
-    // Student/Parent only sees public fields
-    return selectedSubmission.values.filter(v => v.field?.is_public);
-  };
+    // Student/Parent see only public fields
+    return fieldResults
+      .filter(r => r.field?.is_public === true)
+      .sort((a, b) => (a.field?.sort_order || 0) - (b.field?.sort_order || 0));
+  }, [fieldResults, isStudentOrParent]);
 
-  const visibleValues = getVisibleValues();
+  const handleViewDetails = (examId: string) => {
+    setSelectedExamId(examId);
+  };
 
   const getPercentageBadge = (percentage: number) => {
     if (percentage >= 80) return <Badge className="bg-primary">Excellent</Badge>;
@@ -114,6 +236,18 @@ export default function ExamResults() {
     { value: '11', label: 'November' },
     { value: '12', label: 'December' },
   ];
+
+  if (examsError) {
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+          <AlertCircle className="h-12 w-12 mb-4 text-destructive" />
+          <p className="text-lg font-medium">Failed to load exam results</p>
+          <p className="text-sm">{(examsError as Error).message}</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -144,8 +278,8 @@ export default function ExamResults() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">All students</SelectItem>
-                      {mockStudents.map((student) => (
-                        <SelectItem key={student.id} value={student.id}>{student.name}</SelectItem>
+                      {students?.map((student) => (
+                        <SelectItem key={student.id} value={student.id}>{student.full_name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -160,7 +294,7 @@ export default function ExamResults() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">All subjects</SelectItem>
-                    {mockSubjects.map((subject) => (
+                    {subjects?.map((subject) => (
                       <SelectItem key={subject.id} value={subject.id}>{subject.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -203,7 +337,13 @@ export default function ExamResults() {
         {/* Results Table */}
         <Card>
           <CardContent className="pt-6">
-            {filteredSubmissions.length === 0 ? (
+            {isLoadingExams ? (
+              <div className="space-y-4">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
+              </div>
+            ) : filteredResults.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>No exam results found</p>
@@ -223,28 +363,32 @@ export default function ExamResults() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredSubmissions.map((submission) => (
-                    <TableRow key={submission.id}>
+                  {filteredResults.map((exam) => (
+                    <TableRow key={exam.id}>
                       {!isStudentOrParent && (
-                        <TableCell className="font-medium">{submission.student_name}</TableCell>
+                        <TableCell className="font-medium">
+                          {exam.student?.full_name || 'Unknown'}
+                        </TableCell>
                       )}
-                      <TableCell>{submission.template?.name}</TableCell>
-                      <TableCell>{submission.template?.subject?.name}</TableCell>
+                      <TableCell>{exam.template?.name || 'Unknown'}</TableCell>
+                      <TableCell>{exam.template?.subject?.name || '-'}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="capitalize">{submission.template?.tenure}</Badge>
+                        <Badge variant="outline" className="capitalize">
+                          {exam.template?.tenure || '-'}
+                        </Badge>
                       </TableCell>
-                      <TableCell>{new Date(submission.exam_date).toLocaleDateString()}</TableCell>
+                      <TableCell>{new Date(exam.exam_date).toLocaleDateString()}</TableCell>
                       <TableCell className="text-center font-medium">
-                        {submission.total_marks} / {submission.max_total_marks}
+                        {exam.total_marks} / {exam.max_total_marks}
                       </TableCell>
                       <TableCell className="text-center">
-                        {getPercentageBadge(submission.percentage)}
+                        {getPercentageBadge(Number(exam.percentage))}
                       </TableCell>
                       <TableCell>
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleViewDetails(submission)}
+                          onClick={() => handleViewDetails(exam.id)}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -258,13 +402,13 @@ export default function ExamResults() {
         </Card>
 
         {/* Details Dialog */}
-        <Dialog open={!!selectedSubmission} onOpenChange={() => setSelectedSubmission(null)}>
+        <Dialog open={!!selectedExamId} onOpenChange={() => setSelectedExamId(null)}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Exam Result Details</DialogTitle>
             </DialogHeader>
             
-            {selectedSubmission && (
+            {selectedExam && (
               <div className="space-y-6 pt-4">
                 {/* Header Info */}
                 <div className="grid gap-4 md:grid-cols-2">
@@ -272,23 +416,23 @@ export default function ExamResults() {
                     <p className="text-sm text-muted-foreground flex items-center gap-2">
                       <User className="h-4 w-4" /> Student
                     </p>
-                    <p className="font-medium">{selectedSubmission.student_name}</p>
+                    <p className="font-medium">{selectedExam.student?.full_name || 'Unknown'}</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm text-muted-foreground flex items-center gap-2">
                       <Calendar className="h-4 w-4" /> Date
                     </p>
-                    <p className="font-medium">{new Date(selectedSubmission.exam_date).toLocaleDateString()}</p>
+                    <p className="font-medium">{new Date(selectedExam.exam_date).toLocaleDateString()}</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm text-muted-foreground flex items-center gap-2">
                       <BookOpen className="h-4 w-4" /> Exam
                     </p>
-                    <p className="font-medium">{selectedSubmission.template?.name}</p>
+                    <p className="font-medium">{selectedExam.template?.name || 'Unknown'}</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm text-muted-foreground">Subject</p>
-                    <Badge variant="outline">{selectedSubmission.template?.subject?.name}</Badge>
+                    <Badge variant="outline">{selectedExam.template?.subject?.name || '-'}</Badge>
                   </div>
                 </div>
 
@@ -297,16 +441,28 @@ export default function ExamResults() {
                 {/* Score Breakdown */}
                 <div>
                   <h3 className="font-semibold mb-4">Score Breakdown</h3>
-                  <div className="space-y-3">
-                    {visibleValues.filter(v => v.field && v.field.max_marks > 0).map((value) => (
-                      <div key={value.id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
-                        <span>{value.field?.label}</span>
-                        <span className="font-medium">
-                          {value.marks} / {value.field?.max_marks}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                  {isLoadingFields ? (
+                    <div className="space-y-3">
+                      {[...Array(3)].map((_, i) => (
+                        <Skeleton key={i} className="h-12 w-full" />
+                      ))}
+                    </div>
+                  ) : visibleFieldResults.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">No field results available</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {visibleFieldResults
+                        .filter(r => r.field && r.field.max_marks > 0)
+                        .map((result) => (
+                          <div key={result.id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                            <span>{result.field?.label}</span>
+                            <span className="font-medium">
+                              {result.marks} / {result.field?.max_marks}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Total Score */}
@@ -315,38 +471,38 @@ export default function ExamResults() {
                     <span className="font-semibold">Total Score</span>
                     <div className="text-right">
                       <span className="text-2xl font-bold text-primary">
-                        {selectedSubmission.total_marks}
+                        {selectedExam.total_marks}
                       </span>
-                      <span className="text-muted-foreground"> / {selectedSubmission.max_total_marks}</span>
+                      <span className="text-muted-foreground"> / {selectedExam.max_total_marks}</span>
                       <div className="mt-1">
-                        {getPercentageBadge(selectedSubmission.percentage)}
+                        {getPercentageBadge(Number(selectedExam.percentage))}
                         <span className="ml-2 text-sm text-muted-foreground">
-                          ({selectedSubmission.percentage}%)
+                          ({selectedExam.percentage}%)
                         </span>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Remarks */}
-                {selectedSubmission.public_remarks && (
+                {/* Public Remarks */}
+                {selectedExam.public_remarks && (
                   <div>
                     <h3 className="font-semibold mb-2">Feedback</h3>
                     <p className="p-3 bg-secondary/50 rounded-lg text-sm">
-                      {selectedSubmission.public_remarks}
+                      {selectedExam.public_remarks}
                     </p>
                   </div>
                 )}
 
                 {/* Internal remarks - only for admin/examiner */}
-                {isAdminOrExaminer && selectedSubmission.examiner_remarks && (
+                {isAdminOrExaminer && selectedExam.examiner_remarks && (
                   <div>
                     <h3 className="font-semibold mb-2 flex items-center gap-2">
                       Examiner Notes
                       <Badge variant="secondary" className="text-xs">Internal</Badge>
                     </h3>
                     <p className="p-3 bg-muted rounded-lg text-sm">
-                      {selectedSubmission.examiner_remarks}
+                      {selectedExam.examiner_remarks}
                     </p>
                   </div>
                 )}
