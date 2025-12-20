@@ -46,7 +46,7 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
@@ -59,6 +59,65 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     logout();
     navigate('/login');
   };
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background islamic-pattern flex items-center justify-center">
+        <div className="text-center">
+          <BookOpen className="h-12 w-12 text-primary mx-auto mb-4 animate-pulse" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show unauthenticated state with visible layout
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background islamic-pattern">
+        {/* Header */}
+        <header className="fixed top-0 left-0 right-0 z-50 h-16 bg-card border-b border-border flex items-center justify-between px-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
+              <BookOpen className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="font-serif text-lg font-bold text-foreground">Quran Academy</h1>
+              <p className="text-xs text-muted-foreground">Learning Management</p>
+            </div>
+          </div>
+          <Link to="/login">
+            <Button variant="outline" size="sm">
+              Sign In
+            </Button>
+          </Link>
+        </header>
+
+        {/* Main Content with Sign In Message */}
+        <main className="min-h-screen pt-16">
+          <div className="p-6 lg:p-8 flex items-center justify-center min-h-[calc(100vh-4rem)]">
+            <div className="text-center max-w-md">
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
+                <User className="h-8 w-8 text-primary" />
+              </div>
+              <h2 className="text-2xl font-serif font-bold text-foreground mb-2">
+                Welcome to Quran Academy LMS
+              </h2>
+              <p className="text-muted-foreground mb-6">
+                Please sign in to access the Quran Academy LMS.
+              </p>
+              <Link to="/login">
+                <Button className="w-full sm:w-auto">
+                  Sign In to Continue
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background islamic-pattern">
@@ -120,8 +179,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 <User className="h-5 w-5 text-secondary-foreground" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{user?.name}</p>
-                <p className="text-xs text-muted-foreground capitalize">{user?.role}</p>
+                <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
+                <p className="text-xs text-muted-foreground capitalize">{user.role}</p>
               </div>
             </div>
             <Button
