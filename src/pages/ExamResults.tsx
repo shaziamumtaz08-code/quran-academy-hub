@@ -69,9 +69,11 @@ export default function ExamResults() {
   const [tenureFilter, setTenureFilter] = useState('');
   const [monthFilter, setMonthFilter] = useState('');
 
-  const isAdminOrExaminer = user?.role === 'admin' || user?.role === 'examiner';
-  const isTeacher = user?.role === 'teacher';
-  const isStudentOrParent = user?.role === 'student' || user?.role === 'parent';
+  // Safe role checks with null handling
+  const userRole = user?.role ?? null;
+  const isAdminOrExaminer = userRole === 'admin' || userRole === 'examiner';
+  const isTeacher = userRole === 'teacher';
+  const isStudentOrParent = userRole === 'student' || userRole === 'parent';
 
   // Fetch exam results - RLS handles access control
   const { data: examResults, isLoading: isLoadingExams, error: examsError } = useQuery({
@@ -102,7 +104,7 @@ export default function ExamResults() {
         .order('exam_date', { ascending: false });
 
       if (error) throw error;
-      return data as ExamResult[];
+      return (data ?? []) as ExamResult[];
     },
   });
 
@@ -117,18 +119,18 @@ export default function ExamResults() {
         .order('name');
 
       if (error) throw error;
-      return data as Subject[];
+      return (data ?? []) as Subject[];
     },
   });
 
   // Fetch students for filter dropdown (only for admin/teacher/examiner)
   const { data: students } = useQuery({
-    queryKey: ['students-for-filter'],
+    queryKey: ['students-for-filter', examResults?.length],
     queryFn: async () => {
       if (isStudentOrParent) return [];
       
       // Get unique student IDs from exam results
-      const studentIds = [...new Set(examResults?.map(e => e.student_id) || [])];
+      const studentIds = [...new Set((examResults ?? []).map(e => e.student_id).filter(Boolean))];
       if (studentIds.length === 0) return [];
 
       const { data, error } = await supabase
@@ -138,13 +140,13 @@ export default function ExamResults() {
         .order('full_name');
 
       if (error) throw error;
-      return data as Profile[];
+      return (data ?? []) as Profile[];
     },
-    enabled: !isStudentOrParent && !!examResults,
+    enabled: !isStudentOrParent && Array.isArray(examResults),
   });
 
   // Fetch field results for selected exam
-  const { data: fieldResults, isLoading: isLoadingFields } = useQuery({
+  const { data: fieldResults, isLoading: isLoadingFields, error: fieldsError } = useQuery({
     queryKey: ['exam-field-results', selectedExamId],
     queryFn: async () => {
       if (!selectedExamId) return [];
@@ -164,62 +166,83 @@ export default function ExamResults() {
             sort_order
           )
         `)
-        .eq('exam_id', selectedExamId)
-        .order('field(sort_order)');
+        .eq('exam_id', selectedExamId);
 
       if (error) throw error;
-      return data as ExamFieldResult[];
+      return (data ?? []) as ExamFieldResult[];
     },
     enabled: !!selectedExamId,
   });
 
-  // Get selected exam details
+  // Get selected exam details - safe access
   const selectedExam = useMemo(() => {
-    return examResults?.find(e => e.id === selectedExamId) || null;
+    if (!examResults || !selectedExamId) return null;
+    return examResults.find(e => e.id === selectedExamId) ?? null;
   }, [examResults, selectedExamId]);
 
-  // Apply filters
+  // Apply filters with safe access
   const filteredResults = useMemo(() => {
-    if (!examResults) return [];
+    if (!Array.isArray(examResults)) return [];
     
     return examResults.filter(exam => {
+      if (!exam) return false;
       if (studentFilter && exam.student_id !== studentFilter) return false;
       if (subjectFilter && exam.template?.subject?.id !== subjectFilter) return false;
       if (tenureFilter && exam.template?.tenure !== tenureFilter) return false;
       if (monthFilter) {
-        const examMonth = new Date(exam.exam_date).getMonth() + 1;
-        if (examMonth !== parseInt(monthFilter)) return false;
+        try {
+          const examMonth = new Date(exam.exam_date).getMonth() + 1;
+          if (examMonth !== parseInt(monthFilter, 10)) return false;
+        } catch {
+          return false;
+        }
       }
       return true;
     });
   }, [examResults, studentFilter, subjectFilter, tenureFilter, monthFilter]);
 
-  // Filter field results based on user role (RLS handles DB-level, this is for UI)
+  // Filter field results based on user role with safe access
   const visibleFieldResults = useMemo(() => {
-    if (!fieldResults) return [];
+    if (!Array.isArray(fieldResults)) return [];
+    
+    const validResults = fieldResults.filter(r => r && r.field);
     
     // Admin/Examiner/Teacher see all fields (RLS already filters for teacher)
     if (!isStudentOrParent) {
-      return fieldResults.filter(r => r.field).sort((a, b) => 
-        (a.field?.sort_order || 0) - (b.field?.sort_order || 0)
+      return validResults.sort((a, b) => 
+        (a.field?.sort_order ?? 0) - (b.field?.sort_order ?? 0)
       );
     }
     
     // Student/Parent see only public fields
-    return fieldResults
+    return validResults
       .filter(r => r.field?.is_public === true)
-      .sort((a, b) => (a.field?.sort_order || 0) - (b.field?.sort_order || 0));
+      .sort((a, b) => (a.field?.sort_order ?? 0) - (b.field?.sort_order ?? 0));
   }, [fieldResults, isStudentOrParent]);
 
   const handleViewDetails = (examId: string) => {
     setSelectedExamId(examId);
   };
 
+  const handleCloseDialog = () => {
+    setSelectedExamId(null);
+  };
+
   const getPercentageBadge = (percentage: number) => {
+    if (isNaN(percentage)) return <Badge variant="secondary">N/A</Badge>;
     if (percentage >= 80) return <Badge className="bg-primary">Excellent</Badge>;
     if (percentage >= 70) return <Badge variant="default">Good</Badge>;
     if (percentage >= 50) return <Badge variant="secondary">Satisfactory</Badge>;
     return <Badge variant="destructive">Needs Improvement</Badge>;
+  };
+
+  const formatDate = (dateString: string | null | undefined): string => {
+    if (!dateString) return '-';
+    try {
+      return new Date(dateString).toLocaleDateString();
+    } catch {
+      return '-';
+    }
   };
 
   const months = [
@@ -237,13 +260,14 @@ export default function ExamResults() {
     { value: '12', label: 'December' },
   ];
 
+  // Error state
   if (examsError) {
     return (
       <DashboardLayout>
         <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
           <AlertCircle className="h-12 w-12 mb-4 text-destructive" />
           <p className="text-lg font-medium">Failed to load exam results</p>
-          <p className="text-sm">{(examsError as Error).message}</p>
+          <p className="text-sm">{examsError instanceof Error ? examsError.message : 'Unknown error'}</p>
         </div>
       </DashboardLayout>
     );
@@ -278,7 +302,7 @@ export default function ExamResults() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">All students</SelectItem>
-                      {students?.map((student) => (
+                      {(students ?? []).map((student) => (
                         <SelectItem key={student.id} value={student.id}>{student.full_name}</SelectItem>
                       ))}
                     </SelectContent>
@@ -294,7 +318,7 @@ export default function ExamResults() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">All subjects</SelectItem>
-                    {subjects?.map((subject) => (
+                    {(subjects ?? []).map((subject) => (
                       <SelectItem key={subject.id} value={subject.id}>{subject.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -346,7 +370,12 @@ export default function ExamResults() {
             ) : filteredResults.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No exam results found</p>
+                <p className="text-lg font-medium">No exam results found</p>
+                <p className="text-sm mt-1">
+                  {(examResults ?? []).length === 0 
+                    ? 'There are no exam results in the system yet.' 
+                    : 'Try adjusting your filters to see results.'}
+                </p>
               </div>
             ) : (
               <Table>
@@ -367,22 +396,22 @@ export default function ExamResults() {
                     <TableRow key={exam.id}>
                       {!isStudentOrParent && (
                         <TableCell className="font-medium">
-                          {exam.student?.full_name || 'Unknown'}
+                          {exam.student?.full_name ?? 'Unknown'}
                         </TableCell>
                       )}
-                      <TableCell>{exam.template?.name || 'Unknown'}</TableCell>
-                      <TableCell>{exam.template?.subject?.name || '-'}</TableCell>
+                      <TableCell>{exam.template?.name ?? 'Unknown'}</TableCell>
+                      <TableCell>{exam.template?.subject?.name ?? '-'}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="capitalize">
-                          {exam.template?.tenure || '-'}
+                          {exam.template?.tenure ?? '-'}
                         </Badge>
                       </TableCell>
-                      <TableCell>{new Date(exam.exam_date).toLocaleDateString()}</TableCell>
+                      <TableCell>{formatDate(exam.exam_date)}</TableCell>
                       <TableCell className="text-center font-medium">
-                        {exam.total_marks} / {exam.max_total_marks}
+                        {exam.total_marks ?? 0} / {exam.max_total_marks ?? 0}
                       </TableCell>
                       <TableCell className="text-center">
-                        {getPercentageBadge(Number(exam.percentage))}
+                        {getPercentageBadge(Number(exam.percentage ?? 0))}
                       </TableCell>
                       <TableCell>
                         <Button
@@ -402,13 +431,13 @@ export default function ExamResults() {
         </Card>
 
         {/* Details Dialog */}
-        <Dialog open={!!selectedExamId} onOpenChange={() => setSelectedExamId(null)}>
+        <Dialog open={!!selectedExamId} onOpenChange={handleCloseDialog}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Exam Result Details</DialogTitle>
             </DialogHeader>
             
-            {selectedExam && (
+            {selectedExam ? (
               <div className="space-y-6 pt-4">
                 {/* Header Info */}
                 <div className="grid gap-4 md:grid-cols-2">
@@ -416,23 +445,23 @@ export default function ExamResults() {
                     <p className="text-sm text-muted-foreground flex items-center gap-2">
                       <User className="h-4 w-4" /> Student
                     </p>
-                    <p className="font-medium">{selectedExam.student?.full_name || 'Unknown'}</p>
+                    <p className="font-medium">{selectedExam.student?.full_name ?? 'Unknown'}</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm text-muted-foreground flex items-center gap-2">
                       <Calendar className="h-4 w-4" /> Date
                     </p>
-                    <p className="font-medium">{new Date(selectedExam.exam_date).toLocaleDateString()}</p>
+                    <p className="font-medium">{formatDate(selectedExam.exam_date)}</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm text-muted-foreground flex items-center gap-2">
                       <BookOpen className="h-4 w-4" /> Exam
                     </p>
-                    <p className="font-medium">{selectedExam.template?.name || 'Unknown'}</p>
+                    <p className="font-medium">{selectedExam.template?.name ?? 'Unknown'}</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm text-muted-foreground">Subject</p>
-                    <Badge variant="outline">{selectedExam.template?.subject?.name || '-'}</Badge>
+                    <Badge variant="outline">{selectedExam.template?.subject?.name ?? '-'}</Badge>
                   </div>
                 </div>
 
@@ -447,17 +476,24 @@ export default function ExamResults() {
                         <Skeleton key={i} className="h-12 w-full" />
                       ))}
                     </div>
+                  ) : fieldsError ? (
+                    <div className="text-center py-6 text-muted-foreground">
+                      <AlertCircle className="h-8 w-8 mx-auto mb-2 text-destructive" />
+                      <p className="text-sm">Failed to load field results</p>
+                    </div>
                   ) : visibleFieldResults.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">No field results available</p>
+                    <p className="text-muted-foreground text-sm py-4 text-center">
+                      No field results available
+                    </p>
                   ) : (
                     <div className="space-y-3">
                       {visibleFieldResults
-                        .filter(r => r.field && r.field.max_marks > 0)
+                        .filter(r => r.field && (r.field.max_marks ?? 0) > 0)
                         .map((result) => (
                           <div key={result.id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
-                            <span>{result.field?.label}</span>
+                            <span>{result.field?.label ?? 'Unknown Field'}</span>
                             <span className="font-medium">
-                              {result.marks} / {result.field?.max_marks}
+                              {result.marks ?? 0} / {result.field?.max_marks ?? 0}
                             </span>
                           </div>
                         ))}
@@ -471,13 +507,13 @@ export default function ExamResults() {
                     <span className="font-semibold">Total Score</span>
                     <div className="text-right">
                       <span className="text-2xl font-bold text-primary">
-                        {selectedExam.total_marks}
+                        {selectedExam.total_marks ?? 0}
                       </span>
-                      <span className="text-muted-foreground"> / {selectedExam.max_total_marks}</span>
+                      <span className="text-muted-foreground"> / {selectedExam.max_total_marks ?? 0}</span>
                       <div className="mt-1">
-                        {getPercentageBadge(Number(selectedExam.percentage))}
+                        {getPercentageBadge(Number(selectedExam.percentage ?? 0))}
                         <span className="ml-2 text-sm text-muted-foreground">
-                          ({selectedExam.percentage}%)
+                          ({selectedExam.percentage ?? 0}%)
                         </span>
                       </div>
                     </div>
@@ -506,6 +542,10 @@ export default function ExamResults() {
                     </p>
                   </div>
                 )}
+              </div>
+            ) : (
+              <div className="py-8 text-center text-muted-foreground">
+                <p>No exam selected</p>
               </div>
             )}
           </DialogContent>
