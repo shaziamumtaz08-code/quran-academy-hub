@@ -77,7 +77,7 @@ export default function ExamResults() {
 
   // Fetch exam results - RLS handles access control
   const { data: examResults, isLoading: isLoadingExams, error: examsError } = useQuery({
-    queryKey: ['exam-results'],
+    queryKey: ['exam-results', user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('exams')
@@ -106,6 +106,7 @@ export default function ExamResults() {
       if (error) throw error;
       return (data ?? []) as ExamResult[];
     },
+    enabled: !!user?.id,
   });
 
   // Fetch subjects for filter dropdown
@@ -260,14 +261,47 @@ export default function ExamResults() {
     { value: '12', label: 'December' },
   ];
 
+  // Not authenticated state
+  if (!user) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Exam Results</h1>
+            <p className="text-muted-foreground mt-1">View exam results and progress</p>
+          </div>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <AlertCircle className="h-12 w-12 mb-4 opacity-50" />
+                <p className="text-lg font-medium">No exam results available for your account.</p>
+                <p className="text-sm mt-1">Please sign in to view your exam results.</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   // Error state
   if (examsError) {
     return (
       <DashboardLayout>
-        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-          <AlertCircle className="h-12 w-12 mb-4 text-destructive" />
-          <p className="text-lg font-medium">Failed to load exam results</p>
-          <p className="text-sm">{examsError instanceof Error ? examsError.message : 'Unknown error'}</p>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Exam Results</h1>
+            <p className="text-muted-foreground mt-1">View exam results and progress</p>
+          </div>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <AlertCircle className="h-12 w-12 mb-4 text-destructive" />
+                <p className="text-lg font-medium">Failed to load exam results</p>
+                <p className="text-sm">{examsError instanceof Error ? examsError.message : 'Unknown error'}</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </DashboardLayout>
     );
@@ -370,10 +404,16 @@ export default function ExamResults() {
             ) : filteredResults.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="text-lg font-medium">No exam results found</p>
+                <p className="text-lg font-medium">
+                  {(examResults ?? []).length === 0 
+                    ? 'No exam results available.' 
+                    : 'No exam results match your filters.'}
+                </p>
                 <p className="text-sm mt-1">
                   {(examResults ?? []).length === 0 
-                    ? 'There are no exam results in the system yet.' 
+                    ? (isStudentOrParent 
+                        ? 'No exam results are available for your account yet.' 
+                        : 'There are no exam results in the system yet.')
                     : 'Try adjusting your filters to see results.'}
                 </p>
               </div>
