@@ -2,6 +2,7 @@ import React, { ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { PageBreadcrumb } from '@/components/layout/PageBreadcrumb';
 import {
   LayoutDashboard,
   Users,
@@ -234,6 +235,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Main Content */}
       <main className="lg:ml-64 min-h-screen pt-16 lg:pt-0">
         <div className="p-6 lg:p-8">
+          <PageBreadcrumb />
           {children}
         </div>
       </main>

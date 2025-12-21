@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -95,13 +96,17 @@ const getTypeLabel = (type: ResourceType): string => {
 export default function Resources() {
   const { user, isSuperAdmin } = useAuth();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Get filter values from URL params
+  const urlFolder = searchParams.get('folder') || 'all';
+  const urlSubFolder = searchParams.get('subfolder') || '';
   
   // View and sort state
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [sortBy, setSortBy] = useState<SortOption>("date");
   const [sortAsc, setSortAsc] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterFolder, setFilterFolder] = useState<string>("all");
 
   // Upload dialog state
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
@@ -121,11 +126,34 @@ export default function Resources() {
   // Access check - Super Admin only for now
   const canManage = isSuperAdmin;
 
-  // Get available sub-folders
+  // Update URL params when folder changes
+  const setFilterFolder = (value: string) => {
+    if (value === 'all') {
+      setSearchParams({});
+    } else {
+      setSearchParams({ folder: value });
+    }
+  };
+
+  const setFilterSubFolder = (value: string) => {
+    if (value && urlFolder !== 'all') {
+      setSearchParams({ folder: urlFolder, subfolder: value });
+    } else if (urlFolder !== 'all') {
+      setSearchParams({ folder: urlFolder });
+    }
+  };
+
+  // Get available sub-folders for upload form
   const availableSubFolders = useMemo(() => {
     if (!folder) return [];
     return FOLDER_STRUCTURE[folder] || [];
   }, [folder]);
+
+  // Get available sub-folders for current filter
+  const filterSubFolders = useMemo(() => {
+    if (urlFolder === 'all') return [];
+    return FOLDER_STRUCTURE[urlFolder] || [];
+  }, [urlFolder]);
 
   // Fetch resources
   const { data: resources = [], isLoading } = useQuery({
@@ -146,8 +174,13 @@ export default function Resources() {
     let result = [...resources];
 
     // Filter by folder
-    if (filterFolder !== "all") {
-      result = result.filter(r => r.folder === filterFolder);
+    if (urlFolder !== "all") {
+      result = result.filter(r => r.folder === urlFolder);
+    }
+
+    // Filter by sub-folder
+    if (urlSubFolder) {
+      result = result.filter(r => r.sub_folder === urlSubFolder);
     }
 
     // Filter by search
@@ -179,7 +212,7 @@ export default function Resources() {
     });
 
     return result;
-  }, [resources, filterFolder, searchQuery, sortBy, sortAsc]);
+  }, [resources, urlFolder, urlSubFolder, searchQuery, sortBy, sortAsc]);
 
   // Delete mutation
   const deleteMutation = useMutation({
@@ -506,7 +539,7 @@ export default function Resources() {
         </div>
 
         {/* Folder filter */}
-        <Select value={filterFolder} onValueChange={setFilterFolder}>
+        <Select value={urlFolder} onValueChange={setFilterFolder}>
           <SelectTrigger className="w-[140px] bg-background">
             <FolderOpen className="h-4 w-4 mr-2 text-muted-foreground" />
             <SelectValue placeholder="Folder" />
@@ -518,6 +551,21 @@ export default function Resources() {
             ))}
           </SelectContent>
         </Select>
+
+        {/* Sub-folder filter */}
+        {urlFolder !== 'all' && filterSubFolders.length > 0 && (
+          <Select value={urlSubFolder || 'all'} onValueChange={(v) => setFilterSubFolder(v === 'all' ? '' : v)}>
+            <SelectTrigger className="w-[140px] bg-background">
+              <SelectValue placeholder="Sub-folder" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sub-folders</SelectItem>
+              {filterSubFolders.map((sf) => (
+                <SelectItem key={sf} value={sf}>{sf}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
         {/* Sort options */}
         <DropdownMenu>
@@ -576,7 +624,7 @@ export default function Resources() {
             <FolderOpen className="h-16 w-16 mx-auto mb-4 opacity-30" />
             <p className="font-medium text-lg">No resources found</p>
             <p className="text-sm mt-1">
-              {searchQuery || filterFolder !== "all" 
+              {searchQuery || urlFolder !== "all" 
                 ? "Try adjusting your search or filters" 
                 : "Click 'New' to add your first resource"}
             </p>
