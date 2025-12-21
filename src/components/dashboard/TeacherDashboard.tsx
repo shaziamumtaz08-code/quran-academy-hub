@@ -1,181 +1,160 @@
 import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { StatCard } from './StatCard';
-import { TodayClasses } from './TodayClasses';
-import { Users, Calendar, CheckCircle, BookOpen } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Users, Calendar, CheckCircle, BookOpen, Clock, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-
-const mockStats = {
-  assignedStudents: 8,
-  classesToday: 6,
-  classesThisMonth: 120,
-  attendanceRate: 94,
-};
-
-type ClassStatus = 'pending' | 'present' | 'absent' | 'late';
-
-interface ClassItem {
-  id: string;
-  studentName: string;
-  time: string;
-  duration: number;
-  status: ClassStatus;
-}
-
-const initialClasses: ClassItem[] = [
-  { id: '1', studentName: 'Muhammad Ali', time: '09:00 AM', duration: 30, status: 'present' },
-  { id: '2', studentName: 'Sara Ahmed', time: '10:00 AM', duration: 45, status: 'pending' },
-  { id: '3', studentName: 'Yusuf Khan', time: '11:30 AM', duration: 30, status: 'pending' },
-  { id: '4', studentName: 'Fatima Hassan', time: '02:00 PM', duration: 30, status: 'pending' },
-  { id: '5', studentName: 'Ibrahim Omar', time: '03:30 PM', duration: 30, status: 'pending' },
-  { id: '6', studentName: 'Aisha Malik', time: '05:00 PM', duration: 45, status: 'pending' },
-];
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { Skeleton } from '@/components/ui/skeleton';
+import { format } from 'date-fns';
 
 export function TeacherDashboard() {
-  const [classes, setClasses] = useState(initialClasses);
-  const [lessonDialogOpen, setLessonDialogOpen] = useState(false);
-  const [selectedClass, setSelectedClass] = useState<string | null>(null);
-  const [lessonCovered, setLessonCovered] = useState('');
-  const [homework, setHomework] = useState('');
+  const { profile, user } = useAuth();
   const { toast } = useToast();
 
-  const handleMarkAttendance = (classId: string, status: 'present' | 'absent' | 'late') => {
-    setClasses(prev => prev.map(c => 
-      c.id === classId ? { ...c, status } : c
-    ));
-    
-    if (status === 'present' || status === 'late') {
-      setSelectedClass(classId);
-      setLessonDialogOpen(true);
-    } else {
-      toast({
-        title: "Attendance Marked",
-        description: `Student marked as ${status}`,
-      });
-    }
-  };
+  // Fetch teacher stats
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ['teacher-stats', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
 
-  const handleSaveLesson = () => {
-    toast({
-      title: "Lesson Saved",
-      description: "Attendance and lesson details have been recorded.",
-    });
-    setLessonDialogOpen(false);
-    setLessonCovered('');
-    setHomework('');
-    setSelectedClass(null);
-  };
+      const [assignmentsRes, attendanceRes] = await Promise.all([
+        supabase.from('student_teacher_assignments').select('student_id').eq('teacher_id', user.id),
+        supabase.from('attendance').select('status, class_date').eq('teacher_id', user.id),
+      ]);
 
-  const classForDialog = classes.find(c => c.id === selectedClass);
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const attendance = attendanceRes.data || [];
+      const todayClasses = attendance.filter(a => a.class_date === today);
+
+      return {
+        assignedStudents: assignmentsRes.data?.length || 0,
+        classesToday: todayClasses.length,
+        classesThisMonth: attendance.length,
+        attendanceRate: attendance.length > 0
+          ? Math.round((attendance.filter(a => a.status === 'present').length / attendance.length) * 100)
+          : 0,
+        presentToday: todayClasses.filter(a => a.status === 'present').length,
+        absentToday: todayClasses.filter(a => a.status === 'absent').length,
+        lateToday: todayClasses.filter(a => a.status === 'late').length,
+      };
+    },
+    enabled: !!user?.id,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-8 animate-fade-in">
+        <div>
+          <h1 className="font-serif text-3xl font-bold text-foreground">Welcome, Teacher</h1>
+          <p className="text-muted-foreground mt-1">Loading your dashboard...</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-32 rounded-xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Header */}
       <div>
-        <h1 className="font-serif text-3xl font-bold text-foreground">Welcome, Sheikh Ahmad</h1>
-        <p className="text-muted-foreground mt-1">Here's your teaching schedule for today</p>
+        <h1 className="font-serif text-3xl font-bold text-foreground">
+          Welcome, {profile?.full_name || 'Teacher'}
+        </h1>
+        <p className="text-muted-foreground mt-1">Here's your teaching overview</p>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Assigned Students"
-          value={mockStats.assignedStudents}
+          value={stats?.assignedStudents || 0}
           icon={Users}
           variant="primary"
         />
         <StatCard
           title="Classes Today"
-          value={mockStats.classesToday}
+          value={stats?.classesToday || 0}
           icon={Calendar}
         />
         <StatCard
           title="Classes This Month"
-          value={mockStats.classesThisMonth}
+          value={stats?.classesThisMonth || 0}
           icon={BookOpen}
         />
         <StatCard
           title="Attendance Rate"
-          value={`${mockStats.attendanceRate}%`}
+          value={`${stats?.attendanceRate || 0}%`}
           icon={CheckCircle}
           variant="gold"
         />
       </div>
 
-      {/* Today's Classes */}
-      <TodayClasses 
-        classes={classes} 
-        onMarkAttendance={handleMarkAttendance}
-        isTeacher={true}
-      />
+      {/* Today's Summary */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-serif flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Today's Summary
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {stats?.classesToday === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <AlertCircle className="h-12 w-12 mx-auto mb-3 opacity-30" />
+              <p className="text-lg font-medium">No classes recorded today</p>
+              <p className="text-sm mt-1">Go to Attendance to mark today's classes</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-6">
+              <div className="text-center p-4 bg-emerald-light/10 rounded-lg">
+                <p className="text-3xl font-serif font-bold text-emerald-light">{stats?.presentToday || 0}</p>
+                <p className="text-sm text-emerald-light/80 mt-1">Present</p>
+              </div>
+              <div className="text-center p-4 bg-accent/10 rounded-lg">
+                <p className="text-3xl font-serif font-bold text-accent">{stats?.lateToday || 0}</p>
+                <p className="text-sm text-accent/80 mt-1">Late</p>
+              </div>
+              <div className="text-center p-4 bg-destructive/10 rounded-lg">
+                <p className="text-3xl font-serif font-bold text-destructive">{stats?.absentToday || 0}</p>
+                <p className="text-sm text-destructive/80 mt-1">Absent</p>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Monthly Summary */}
-      <div className="bg-card rounded-xl border border-border p-6">
-        <h3 className="font-serif text-xl font-bold text-foreground mb-4">This Month's Summary</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          <div>
-            <p className="text-2xl font-serif font-bold text-primary">120</p>
-            <p className="text-sm text-muted-foreground">Total Classes</p>
-          </div>
-          <div>
-            <p className="text-2xl font-serif font-bold text-emerald-light">113</p>
-            <p className="text-sm text-muted-foreground">Attended</p>
-          </div>
-          <div>
-            <p className="text-2xl font-serif font-bold text-accent">5</p>
-            <p className="text-sm text-muted-foreground">Late</p>
-          </div>
-          <div>
-            <p className="text-2xl font-serif font-bold text-destructive">2</p>
-            <p className="text-sm text-muted-foreground">Absent</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Lesson Entry Dialog */}
-      <Dialog open={lessonDialogOpen} onOpenChange={setLessonDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="font-serif">Record Lesson Details</DialogTitle>
-            <DialogDescription>
-              {classForDialog && `Enter the lesson details for ${classForDialog.studentName}`}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="lesson">Lesson Covered</Label>
-              <Input
-                id="lesson"
-                placeholder="e.g., Surah Al-Baqarah, Ayat 1-5"
-                value={lessonCovered}
-                onChange={(e) => setLessonCovered(e.target.value)}
-              />
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-serif">This Month's Overview</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div>
+              <p className="text-2xl font-serif font-bold text-primary">{stats?.classesThisMonth || 0}</p>
+              <p className="text-sm text-muted-foreground">Total Classes</p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="homework">Homework / Notes</Label>
-              <Textarea
-                id="homework"
-                placeholder="Enter homework or notes for the student..."
-                value={homework}
-                onChange={(e) => setHomework(e.target.value)}
-                rows={3}
-              />
+            <div>
+              <p className="text-2xl font-serif font-bold text-emerald-light">{stats?.attendanceRate || 0}%</p>
+              <p className="text-sm text-muted-foreground">Attendance Rate</p>
+            </div>
+            <div>
+              <p className="text-2xl font-serif font-bold text-accent">{stats?.assignedStudents || 0}</p>
+              <p className="text-sm text-muted-foreground">Students</p>
+            </div>
+            <div>
+              <p className="text-2xl font-serif font-bold text-foreground">-</p>
+              <p className="text-sm text-muted-foreground">Avg. Score</p>
             </div>
           </div>
-          <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setLessonDialogOpen(false)}>
-              Skip
-            </Button>
-            <Button onClick={handleSaveLesson}>
-              Save Lesson
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+        </CardContent>
+      </Card>
     </div>
   );
 }

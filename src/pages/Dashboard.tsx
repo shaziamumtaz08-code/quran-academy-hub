@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { SuperAdminDashboard } from '@/components/dashboard/SuperAdminDashboard';
 import { AdminDashboard } from '@/components/dashboard/AdminDashboard';
 import { TeacherDashboard } from '@/components/dashboard/TeacherDashboard';
 import { StudentDashboard } from '@/components/dashboard/StudentDashboard';
@@ -34,6 +35,7 @@ export default function Dashboard() {
 
     switch (profile.role) {
       case 'super_admin':
+        return <SuperAdminDashboard />;
       case 'admin':
       case 'admin_admissions':
       case 'admin_fees':
