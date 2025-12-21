@@ -20,6 +20,7 @@ import ExamTemplates from "./pages/ExamTemplates";
 import ExamSubmission from "./pages/ExamSubmission";
 import ExamResults from "./pages/ExamResults";
 import UserManagement from "./pages/UserManagement";
+import Resources from "./pages/Resources";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -65,6 +66,7 @@ function AppRoutes() {
       <Route path="/exam-templates" element={<ProtectedRoute><ExamTemplates /></ProtectedRoute>} />
       <Route path="/exam-submission" element={<ProtectedRoute><ExamSubmission /></ProtectedRoute>} />
       <Route path="/exam-results" element={<ProtectedRoute><ExamResults /></ProtectedRoute>} />
+      <Route path="/resources" element={<ProtectedRoute><Resources /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
