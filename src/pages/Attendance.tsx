@@ -36,6 +36,11 @@ interface AttendanceRecord {
   reason_text: string | null;
   reschedule_date: string | null;
   reschedule_time: string | null;
+  lines_completed: number | null;
+  surah_name: string | null;
+  ayah_from: number | null;
+  ayah_to: number | null;
+  variance_reason: string | null;
   student?: { full_name: string };
   teacher?: { full_name: string };
 }
@@ -43,6 +48,8 @@ interface AttendanceRecord {
 interface Profile {
   id: string;
   full_name: string;
+  mushaf_type: string;
+  daily_target_lines: number;
 }
 
 const STATUS_OPTIONS: { value: AttendanceStatus; label: string }[] = [
