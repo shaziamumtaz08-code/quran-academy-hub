@@ -2,15 +2,20 @@ import { useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { FileText, Music, Video, Image, Archive, Link, ExternalLink, Download, FolderOpen, Upload, Plus, Trash2, Loader2, Search, Filter, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { 
+  FileText, Music, Video, Image, Archive, Link, ExternalLink, Download, 
+  FolderOpen, Upload, Trash2, Loader2, Search, MoreVertical, Pencil,
+  Grid3X3, List, ArrowUpDown, Calendar, Type, File, Plus
+} from "lucide-react";
 import { toast } from "sonner";
+import { format } from "date-fns";
 
 type ResourceType = "pdf" | "audio" | "video" | "image" | "zip" | "link";
 
@@ -26,6 +31,9 @@ type Resource = {
   created_at: string;
 };
 
+type SortOption = "name" | "date" | "type";
+type ViewMode = "grid" | "list";
+
 // Folder structure with sub-folders
 const FOLDER_STRUCTURE: Record<string, string[]> = {
   "Hifz": ["Juz 1-10", "Juz 11-20", "Juz 21-30", "Revision", "Practice"],
@@ -38,75 +46,83 @@ const FOLDER_STRUCTURE: Record<string, string[]> = {
 
 const FOLDERS = Object.keys(FOLDER_STRUCTURE);
 
-const RESOURCE_TYPES: { value: ResourceType; label: string }[] = [
-  { value: "pdf", label: "PDF Document" },
-  { value: "audio", label: "Audio" },
-  { value: "video", label: "Video" },
-  { value: "image", label: "Image" },
-  { value: "zip", label: "Archive (ZIP)" },
-  { value: "link", label: "Link" },
-];
-
-const FILE_TYPE_EXTENSIONS: Record<Exclude<ResourceType, "link">, string[]> = {
-  pdf: [".pdf"],
-  audio: [".mp3", ".wav", ".m4a", ".ogg"],
-  video: [".mp4", ".webm", ".mov", ".avi"],
-  image: [".jpg", ".jpeg", ".png", ".gif", ".webp"],
-  zip: [".zip", ".rar", ".7z"],
+// File extension to type mapping for auto-detection
+const EXTENSION_TO_TYPE: Record<string, ResourceType> = {
+  ".pdf": "pdf",
+  ".mp3": "audio", ".wav": "audio", ".m4a": "audio", ".ogg": "audio",
+  ".mp4": "video", ".webm": "video", ".mov": "video", ".avi": "video",
+  ".jpg": "image", ".jpeg": "image", ".png": "image", ".gif": "image", ".webp": "image",
+  ".zip": "zip", ".rar": "zip", ".7z": "zip",
 };
 
-const getTypeIcon = (type: ResourceType, className = "h-5 w-5") => {
+const getFileType = (filename: string): Exclude<ResourceType, "link"> => {
+  const ext = "." + filename.split(".").pop()?.toLowerCase();
+  return (EXTENSION_TO_TYPE[ext] as Exclude<ResourceType, "link">) || "pdf";
+};
+
+const getTypeIcon = (type: ResourceType, size = "h-8 w-8") => {
+  const iconClass = size;
   switch (type) {
     case "pdf":
-      return <FileText className={`${className} text-destructive`} />;
+      return <FileText className={`${iconClass} text-red-500`} />;
     case "audio":
-      return <Music className={`${className} text-primary`} />;
+      return <Music className={`${iconClass} text-purple-500`} />;
     case "video":
-      return <Video className={`${className} text-chart-1`} />;
+      return <Video className={`${iconClass} text-blue-500`} />;
     case "image":
-      return <Image className={`${className} text-chart-2`} />;
+      return <Image className={`${iconClass} text-green-500`} />;
     case "zip":
-      return <Archive className={`${className} text-chart-3`} />;
+      return <Archive className={`${iconClass} text-amber-500`} />;
     case "link":
-      return <Link className={`${className} text-chart-4`} />;
+      return <Link className={`${iconClass} text-cyan-500`} />;
     default:
-      return <FileText className={className} />;
+      return <File className={iconClass} />;
   }
 };
 
+const getTypeLabel = (type: ResourceType): string => {
+  const labels: Record<ResourceType, string> = {
+    pdf: "PDF",
+    audio: "Audio",
+    video: "Video",
+    image: "Image",
+    zip: "Archive",
+    link: "Link",
+  };
+  return labels[type] || "File";
+};
+
 export default function Resources() {
-  const { profile, isSuperAdmin, user } = useAuth();
+  const { user, isSuperAdmin } = useAuth();
   const queryClient = useQueryClient();
   
+  // View and sort state
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [sortBy, setSortBy] = useState<SortOption>("date");
+  const [sortAsc, setSortAsc] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterFolder, setFilterFolder] = useState<string>("all");
+
   // Upload dialog state
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [uploadType, setUploadType] = useState<"file" | "link">("file");
-  const [title, setTitle] = useState("");
   const [folder, setFolder] = useState("");
   const [subFolder, setSubFolder] = useState("");
-  const [fileType, setFileType] = useState<Exclude<ResourceType, "link">>("pdf");
-  const [tags, setTags] = useState("");
+  const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [linkUrl, setLinkUrl] = useState("");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [linkTitle, setLinkTitle] = useState("");
   const [uploading, setUploading] = useState(false);
 
-  // Filter state
-  const [filterFolder, setFilterFolder] = useState<string>("all");
-  const [filterSubFolder, setFilterSubFolder] = useState<string>("all");
-  const [filterType, setFilterType] = useState<string>("all");
-  const [searchQuery, setSearchQuery] = useState("");
+  // Rename dialog state
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [renameResource, setRenameResource] = useState<Resource | null>(null);
+  const [newTitle, setNewTitle] = useState("");
 
-  // Check if user can upload (admin, super_admin, or teacher)
-  const canUpload = isSuperAdmin || profile?.id;
+  // Access check - Super Admin only for now
+  const canManage = isSuperAdmin;
 
-  // Get available sub-folders based on selected filter folder
+  // Get available sub-folders
   const availableSubFolders = useMemo(() => {
-    if (filterFolder === "all") return [];
-    return FOLDER_STRUCTURE[filterFolder] || [];
-  }, [filterFolder]);
-
-  // Get available sub-folders for upload based on selected folder
-  const uploadSubFolders = useMemo(() => {
     if (!folder) return [];
     return FOLDER_STRUCTURE[folder] || [];
   }, [folder]);
@@ -125,40 +141,45 @@ export default function Resources() {
     },
   });
 
-  // Filter resources based on all criteria
-  const filteredResources = useMemo(() => {
-    return resources.filter((res) => {
-      // Folder filter
-      if (filterFolder !== "all" && res.folder !== filterFolder) return false;
-      
-      // Sub-folder filter
-      if (filterSubFolder !== "all" && res.sub_folder !== filterSubFolder) return false;
-      
-      // Type filter
-      if (filterType !== "all" && res.type !== filterType) return false;
-      
-      // Search filter (title and tags)
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
-        const matchesTitle = res.title.toLowerCase().includes(query);
-        const matchesTags = res.tags?.toLowerCase().includes(query) || false;
-        if (!matchesTitle && !matchesTags) return false;
+  // Filter and sort resources
+  const displayedResources = useMemo(() => {
+    let result = [...resources];
+
+    // Filter by folder
+    if (filterFolder !== "all") {
+      result = result.filter(r => r.folder === filterFolder);
+    }
+
+    // Filter by search
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(r => 
+        r.title.toLowerCase().includes(query) ||
+        r.folder.toLowerCase().includes(query) ||
+        r.sub_folder?.toLowerCase().includes(query) ||
+        r.tags?.toLowerCase().includes(query)
+      );
+    }
+
+    // Sort
+    result.sort((a, b) => {
+      let comparison = 0;
+      switch (sortBy) {
+        case "name":
+          comparison = a.title.localeCompare(b.title);
+          break;
+        case "date":
+          comparison = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          break;
+        case "type":
+          comparison = a.type.localeCompare(b.type);
+          break;
       }
-      
-      return true;
+      return sortAsc ? -comparison : comparison;
     });
-  }, [resources, filterFolder, filterSubFolder, filterType, searchQuery]);
 
-  // Check if any filters are active
-  const hasActiveFilters = filterFolder !== "all" || filterSubFolder !== "all" || filterType !== "all" || searchQuery.trim() !== "";
-
-  // Clear all filters
-  const clearFilters = () => {
-    setFilterFolder("all");
-    setFilterSubFolder("all");
-    setFilterType("all");
-    setSearchQuery("");
-  };
+    return result;
+  }, [resources, filterFolder, searchQuery, sortBy, sortAsc]);
 
   // Delete mutation
   const deleteMutation = useMutation({
@@ -175,167 +196,216 @@ export default function Resources() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["resources"] });
-      toast.success("Resource deleted successfully");
+      toast.success("Resource deleted");
     },
     onError: (error) => {
-      toast.error("Failed to delete resource: " + error.message);
+      toast.error("Failed to delete: " + error.message);
     },
   });
 
-  const resetForm = () => {
-    setTitle("");
+  // Rename mutation
+  const renameMutation = useMutation({
+    mutationFn: async ({ id, title }: { id: string; title: string }) => {
+      const { error } = await supabase
+        .from("resources")
+        .update({ title })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["resources"] });
+      toast.success("Resource renamed");
+      setRenameDialogOpen(false);
+      setRenameResource(null);
+    },
+    onError: (error) => {
+      toast.error("Failed to rename: " + error.message);
+    },
+  });
+
+  const resetUploadForm = () => {
     setFolder("");
     setSubFolder("");
-    setFileType("pdf");
-    setTags("");
+    setSelectedFiles(null);
     setLinkUrl("");
-    setSelectedFile(null);
+    setLinkTitle("");
     setUploadType("file");
   };
 
   const handleUpload = async () => {
-    if (!title.trim() || !folder) {
-      toast.error("Please fill in title and folder");
+    if (!folder) {
+      toast.error("Please select a folder");
       return;
     }
 
-    if (uploadType === "link" && !linkUrl.trim()) {
-      toast.error("Please enter a URL");
-      return;
-    }
-
-    if (uploadType === "file" && !selectedFile) {
-      toast.error("Please select a file");
-      return;
+    if (uploadType === "link") {
+      if (!linkUrl.trim() || !linkTitle.trim()) {
+        toast.error("Please enter both title and URL");
+        return;
+      }
+    } else {
+      if (!selectedFiles || selectedFiles.length === 0) {
+        toast.error("Please select files to upload");
+        return;
+      }
     }
 
     setUploading(true);
 
     try {
-      let resourceUrl = linkUrl;
-      let resourceType: ResourceType = "link";
+      if (uploadType === "link") {
+        // Add link
+        const { error } = await supabase.from("resources").insert({
+          title: linkTitle.trim(),
+          type: "link",
+          url: linkUrl.trim(),
+          folder,
+          sub_folder: subFolder || null,
+          uploaded_by: user?.id,
+        });
+        if (error) throw error;
+        toast.success("Link added successfully");
+      } else {
+        // Upload multiple files
+        const uploadPromises = Array.from(selectedFiles!).map(async (file) => {
+          const fileType = getFileType(file.name);
+          const fileExt = file.name.split(".").pop();
+          const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+          const filePath = `${folder}/${subFolder || "root"}/${fileName}`;
 
-      if (uploadType === "file" && selectedFile) {
-        resourceType = fileType;
-        const fileExt = selectedFile.name.split(".").pop();
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-        const filePath = `${folder}/${subFolder || "root"}/${fileName}`;
+          const { error: uploadError } = await supabase.storage
+            .from("resources")
+            .upload(filePath, file);
 
-        const { error: uploadError } = await supabase.storage
+          if (uploadError) throw uploadError;
+
+          const { data: urlData } = supabase.storage
+            .from("resources")
+            .getPublicUrl(filePath);
+
+          return {
+            title: file.name.replace(/\.[^/.]+$/, ""), // Remove extension for title
+            type: fileType,
+            url: urlData.publicUrl,
+            folder,
+            sub_folder: subFolder || null,
+            uploaded_by: user?.id,
+          };
+        });
+
+        const uploadedResources = await Promise.all(uploadPromises);
+        
+        const { error: insertError } = await supabase
           .from("resources")
-          .upload(filePath, selectedFile);
+          .insert(uploadedResources);
 
-        if (uploadError) throw uploadError;
-
-        const { data: urlData } = supabase.storage
-          .from("resources")
-          .getPublicUrl(filePath);
-
-        resourceUrl = urlData.publicUrl;
+        if (insertError) throw insertError;
+        toast.success(`${uploadedResources.length} file(s) uploaded successfully`);
       }
 
-      const { error: insertError } = await supabase.from("resources").insert({
-        title: title.trim(),
-        type: resourceType,
-        url: resourceUrl,
-        folder,
-        sub_folder: subFolder || null,
-        tags: tags.trim() || null,
-        uploaded_by: user?.id,
-      });
-
-      if (insertError) throw insertError;
-
       queryClient.invalidateQueries({ queryKey: ["resources"] });
-      toast.success("Resource uploaded successfully");
-      setDialogOpen(false);
-      resetForm();
+      setUploadDialogOpen(false);
+      resetUploadForm();
     } catch (error: any) {
-      toast.error("Failed to upload: " + error.message);
+      toast.error("Upload failed: " + error.message);
     } finally {
       setUploading(false);
     }
   };
 
-  const getAcceptedExtensions = () => {
-    return FILE_TYPE_EXTENSIONS[fileType].join(",");
+  const handleRename = () => {
+    if (!renameResource || !newTitle.trim()) return;
+    renameMutation.mutate({ id: renameResource.id, title: newTitle.trim() });
   };
 
-  // Reset sub-folder when folder changes in filters
-  const handleFilterFolderChange = (value: string) => {
-    setFilterFolder(value);
-    setFilterSubFolder("all");
+  const openRenameDialog = (resource: Resource) => {
+    setRenameResource(resource);
+    setNewTitle(resource.title);
+    setRenameDialogOpen(true);
   };
 
-  // Reset sub-folder when folder changes in upload
-  const handleUploadFolderChange = (value: string) => {
-    setFolder(value);
-    setSubFolder("");
+  const toggleSort = (option: SortOption) => {
+    if (sortBy === option) {
+      setSortAsc(!sortAsc);
+    } else {
+      setSortBy(option);
+      setSortAsc(false);
+    }
   };
 
   if (isLoading) {
     return (
-      <div className="container mx-auto py-6 flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
+  // Super Admin access check
+  if (!isSuperAdmin) {
+    return (
+      <div className="container mx-auto py-6">
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            <FolderOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p className="font-medium">Access Restricted</p>
+            <p className="text-sm mt-1">Resources are currently available for Super Admins only.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <h1 className="text-3xl font-bold">Resource Library</h1>
-        {canUpload && (
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+    <div className="container mx-auto py-6 space-y-4">
+      {/* Header with actions */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <h1 className="text-2xl font-semibold">Resources</h1>
+        
+        {canManage && (
+          <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
-                Upload Resource
+                New
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[450px]">
               <DialogHeader>
-                <DialogTitle>Upload Resource</DialogTitle>
+                <DialogTitle>Add Resources</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4 pt-4">
+              <div className="space-y-4 pt-2">
+                {/* Upload type toggle */}
                 <div className="flex gap-2">
                   <Button
                     type="button"
                     variant={uploadType === "file" ? "default" : "outline"}
                     onClick={() => setUploadType("file")}
                     className="flex-1"
+                    size="sm"
                   >
                     <Upload className="h-4 w-4 mr-2" />
-                    Upload File
+                    Files
                   </Button>
                   <Button
                     type="button"
                     variant={uploadType === "link" ? "default" : "outline"}
                     onClick={() => setUploadType("link")}
                     className="flex-1"
+                    size="sm"
                   >
                     <Link className="h-4 w-4 mr-2" />
-                    Add Link
+                    Link
                   </Button>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="title">Title *</Label>
-                  <Input
-                    id="title"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Enter resource title"
-                  />
-                </div>
-
+                {/* Folder selection */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="folder">Folder *</Label>
-                    <Select value={folder} onValueChange={handleUploadFolderChange}>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Folder *</Label>
+                    <Select value={folder} onValueChange={(v) => { setFolder(v); setSubFolder(""); }}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select folder" />
+                        <SelectValue placeholder="Select" />
                       </SelectTrigger>
                       <SelectContent>
                         {FOLDERS.map((f) => (
@@ -344,19 +414,18 @@ export default function Resources() {
                       </SelectContent>
                     </Select>
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="subFolder">Sub-folder</Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Sub-folder</Label>
                     <Select 
                       value={subFolder} 
                       onValueChange={setSubFolder}
-                      disabled={!folder || uploadSubFolders.length === 0}
+                      disabled={!folder || availableSubFolders.length === 0}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder={uploadSubFolders.length === 0 ? "None available" : "Select sub-folder"} />
+                        <SelectValue placeholder={availableSubFolders.length === 0 ? "None" : "Optional"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {uploadSubFolders.map((sf) => (
+                        {availableSubFolders.map((sf) => (
                           <SelectItem key={sf} value={sf}>{sf}</SelectItem>
                         ))}
                       </SelectContent>
@@ -365,64 +434,46 @@ export default function Resources() {
                 </div>
 
                 {uploadType === "file" ? (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="fileType">File Type *</Label>
-                      <Select value={fileType} onValueChange={(v) => {
-                        setFileType(v as Exclude<ResourceType, "link">);
-                        setSelectedFile(null);
-                      }}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {RESOURCE_TYPES.filter(t => t.value !== "link").map((t) => (
-                            <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="file">File *</Label>
-                      <Input
-                        id="file"
-                        type="file"
-                        accept={getAcceptedExtensions()}
-                        onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Accepted: {getAcceptedExtensions()}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Files *</Label>
+                    <Input
+                      type="file"
+                      multiple
+                      onChange={(e) => setSelectedFiles(e.target.files)}
+                      className="cursor-pointer"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      PDF, Audio, Video, Images, or Archives • Multiple files allowed
+                    </p>
+                    {selectedFiles && selectedFiles.length > 0 && (
+                      <p className="text-xs text-primary font-medium">
+                        {selectedFiles.length} file(s) selected
                       </p>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Title *</Label>
+                      <Input
+                        value={linkTitle}
+                        onChange={(e) => setLinkTitle(e.target.value)}
+                        placeholder="Link name"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">URL *</Label>
+                      <Input
+                        value={linkUrl}
+                        onChange={(e) => setLinkUrl(e.target.value)}
+                        placeholder="https://..."
+                      />
                     </div>
                   </>
-                ) : (
-                  <div className="space-y-2">
-                    <Label htmlFor="linkUrl">URL *</Label>
-                    <Input
-                      id="linkUrl"
-                      value={linkUrl}
-                      onChange={(e) => setLinkUrl(e.target.value)}
-                      placeholder="https://..."
-                    />
-                  </div>
                 )}
-
-                <div className="space-y-2">
-                  <Label htmlFor="tags">Tags (comma-separated)</Label>
-                  <Input
-                    id="tags"
-                    value={tags}
-                    onChange={(e) => setTags(e.target.value)}
-                    placeholder="e.g. syllabus, level-1, practice"
-                  />
-                </div>
-
-                <Button 
-                  onClick={handleUpload} 
-                  disabled={uploading}
-                  className="w-full"
-                >
+              </div>
+              <DialogFooter className="mt-4">
+                <Button onClick={handleUpload} disabled={uploading} className="w-full">
                   {uploading ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -435,197 +486,262 @@ export default function Resources() {
                     </>
                   )}
                 </Button>
-              </div>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
         )}
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <span className="font-medium text-sm">Filters</span>
-            {hasActiveFilters && (
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="ml-auto h-8">
-                <X className="h-3 w-3 mr-1" />
-                Clear all
-              </Button>
-            )}
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Folder Filter */}
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Folder</Label>
-              <Select value={filterFolder} onValueChange={handleFilterFolderChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All folders" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Folders</SelectItem>
-                  {FOLDERS.map((f) => (
-                    <SelectItem key={f} value={f}>{f}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+      {/* Toolbar */}
+      <div className="flex items-center gap-3 flex-wrap bg-muted/50 rounded-lg p-3">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search resources..."
+            className="pl-9 bg-background"
+          />
+        </div>
 
-            {/* Sub-folder Filter */}
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Sub-folder</Label>
-              <Select 
-                value={filterSubFolder} 
-                onValueChange={setFilterSubFolder}
-                disabled={filterFolder === "all" || availableSubFolders.length === 0}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={filterFolder === "all" ? "Select folder first" : "All sub-folders"} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Sub-folders</SelectItem>
-                  {availableSubFolders.map((sf) => (
-                    <SelectItem key={sf} value={sf}>{sf}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        {/* Folder filter */}
+        <Select value={filterFolder} onValueChange={setFilterFolder}>
+          <SelectTrigger className="w-[140px] bg-background">
+            <FolderOpen className="h-4 w-4 mr-2 text-muted-foreground" />
+            <SelectValue placeholder="Folder" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Folders</SelectItem>
+            {FOLDERS.map((f) => (
+              <SelectItem key={f} value={f}>{f}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-            {/* Type Filter */}
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Resource Type</Label>
-              <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  {RESOURCE_TYPES.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>
-                      <div className="flex items-center gap-2">
-                        {getTypeIcon(t.value, "h-4 w-4")}
-                        {t.label}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        {/* Sort options */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="bg-background">
+              <ArrowUpDown className="h-4 w-4 mr-2" />
+              Sort
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => toggleSort("name")}>
+              <Type className="h-4 w-4 mr-2" />
+              Name {sortBy === "name" && (sortAsc ? "↑" : "↓")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => toggleSort("date")}>
+              <Calendar className="h-4 w-4 mr-2" />
+              Date {sortBy === "date" && (sortAsc ? "↑" : "↓")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => toggleSort("type")}>
+              <File className="h-4 w-4 mr-2" />
+              Type {sortBy === "type" && (sortAsc ? "↑" : "↓")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
-            {/* Search */}
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Search</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Title or tags..."
-                  className="pl-9"
-                />
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Results count */}
-      <div className="text-sm text-muted-foreground">
-        {filteredResources.length} {filteredResources.length === 1 ? "resource" : "resources"} found
-        {hasActiveFilters && ` (filtered from ${resources.length})`}
+        {/* View toggle */}
+        <div className="flex border rounded-md bg-background">
+          <Button
+            variant={viewMode === "grid" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("grid")}
+            className="rounded-r-none"
+          >
+            <Grid3X3 className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={viewMode === "list" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("list")}
+            className="rounded-l-none"
+          >
+            <List className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
-      {/* Resource Grid */}
-      {filteredResources.length === 0 ? (
+      {/* Resource count */}
+      <p className="text-sm text-muted-foreground">
+        {displayedResources.length} item{displayedResources.length !== 1 ? "s" : ""}
+      </p>
+
+      {/* Empty state */}
+      {displayedResources.length === 0 ? (
         <Card>
-          <CardContent className="py-12 text-center text-muted-foreground">
-            <FolderOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p className="font-medium">No resources found</p>
+          <CardContent className="py-16 text-center text-muted-foreground">
+            <FolderOpen className="h-16 w-16 mx-auto mb-4 opacity-30" />
+            <p className="font-medium text-lg">No resources found</p>
             <p className="text-sm mt-1">
-              {hasActiveFilters 
-                ? "Try adjusting your filters" 
-                : "Upload a resource to get started"}
+              {searchQuery || filterFolder !== "all" 
+                ? "Try adjusting your search or filters" 
+                : "Click 'New' to add your first resource"}
             </p>
           </CardContent>
         </Card>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredResources.map((res) => (
-            <Card key={res.id} className="hover:shadow-md transition-shadow group">
-              <CardHeader className="pb-3">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-muted">
-                    {getTypeIcon(res.type as ResourceType)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <CardTitle className="text-base truncate" title={res.title}>
-                      {res.title}
-                    </CardTitle>
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
-                      <FolderOpen className="h-3 w-3 flex-shrink-0" />
-                      <span className="truncate">
-                        {res.folder}
-                        {res.sub_folder && ` / ${res.sub_folder}`}
-                      </span>
-                    </div>
-                  </div>
+      ) : viewMode === "grid" ? (
+        /* Grid View */
+        <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+          {displayedResources.map((res) => (
+            <Card 
+              key={res.id} 
+              className="group hover:shadow-lg transition-all cursor-pointer border-transparent hover:border-primary/20"
+              onClick={() => window.open(res.url, "_blank")}
+            >
+              <CardContent className="p-4 flex flex-col items-center text-center">
+                <div className="mb-3 p-4 rounded-xl bg-muted/50 group-hover:bg-muted transition-colors">
+                  {getTypeIcon(res.type as ResourceType, "h-10 w-10")}
                 </div>
-              </CardHeader>
-              <CardContent className="pt-0">
-                {res.tags && (
-                  <div className="flex flex-wrap gap-1 mb-4">
-                    {res.tags.split(",").slice(0, 4).map((tag) => (
-                      <Badge key={tag} variant="secondary" className="text-xs">
-                        {tag.trim()}
-                      </Badge>
-                    ))}
-                    {res.tags.split(",").length > 4 && (
-                      <Badge variant="outline" className="text-xs">
-                        +{res.tags.split(",").length - 4}
-                      </Badge>
+                <p className="font-medium text-sm truncate w-full" title={res.title}>
+                  {res.title}
+                </p>
+                <p className="text-xs text-muted-foreground truncate w-full mt-1">
+                  {res.folder}{res.sub_folder && ` / ${res.sub_folder}`}
+                </p>
+                
+                {/* Actions menu */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="mt-2 opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7 p-0"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenuItem onClick={() => window.open(res.url, "_blank")}>
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Open
+                    </DropdownMenuItem>
+                    {res.type !== "link" && (
+                      <DropdownMenuItem asChild>
+                        <a href={res.url} download onClick={(e) => e.stopPropagation()}>
+                          <Download className="h-4 w-4 mr-2" />
+                          Download
+                        </a>
+                      </DropdownMenuItem>
                     )}
-                  </div>
-                )}
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => window.open(res.url, "_blank")}
-                  >
-                    <ExternalLink className="h-4 w-4 mr-1" />
-                    Open
-                  </Button>
-                  {res.type !== "link" && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="flex-1"
-                      asChild
-                    >
-                      <a href={res.url} download>
-                        <Download className="h-4 w-4 mr-1" />
-                        Download
-                      </a>
-                    </Button>
-                  )}
-                  {(isSuperAdmin || res.uploaded_by === user?.id) && (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => deleteMutation.mutate(res)}
-                      disabled={deleteMutation.isPending}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
+                    {canManage && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => openRenameDialog(res)}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Rename
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => deleteMutation.mutate(res)}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </CardContent>
             </Card>
           ))}
         </div>
+      ) : (
+        /* List View */
+        <div className="border rounded-lg overflow-hidden bg-background">
+          {displayedResources.map((res, index) => (
+            <div 
+              key={res.id}
+              className={`flex items-center gap-4 p-3 hover:bg-muted/50 cursor-pointer transition-colors group ${
+                index !== displayedResources.length - 1 ? "border-b" : ""
+              }`}
+              onClick={() => window.open(res.url, "_blank")}
+            >
+              <div className="p-2 rounded-lg bg-muted/50">
+                {getTypeIcon(res.type as ResourceType, "h-6 w-6")}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm truncate">{res.title}</p>
+                <p className="text-xs text-muted-foreground">
+                  {res.folder}{res.sub_folder && ` / ${res.sub_folder}`}
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground hidden sm:block">
+                {getTypeLabel(res.type as ResourceType)}
+              </p>
+              <p className="text-xs text-muted-foreground hidden md:block w-24 text-right">
+                {format(new Date(res.created_at), "MMM d, yyyy")}
+              </p>
+              
+              {/* Actions */}
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => window.open(res.url, "_blank")}>
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+                {res.type !== "link" && (
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
+                    <a href={res.url} download>
+                      <Download className="h-4 w-4" />
+                    </a>
+                  </Button>
+                )}
+                {canManage && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => openRenameDialog(res)}>
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Rename
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => deleteMutation.mutate(res)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       )}
+
+      {/* Rename Dialog */}
+      <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Rename Resource</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">New name</Label>
+              <Input
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder="Enter new name"
+                onKeyDown={(e) => e.key === "Enter" && handleRename()}
+              />
+            </div>
+          </div>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setRenameDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleRename} disabled={renameMutation.isPending || !newTitle.trim()}>
+              {renameMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Rename"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
