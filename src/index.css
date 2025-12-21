@@ -6,106 +6,117 @@
 
 @layer base {
   :root {
-    /* Islamic-inspired warm emerald theme */
-    --background: 40 33% 98%;
-    --foreground: 160 30% 15%;
+    /* Al-Quran Time Academy Theme - Navy Blue & Sky Blue */
+    --background: 210 25% 97%;
+    --foreground: 220 40% 13%;
 
     --card: 0 0% 100%;
-    --card-foreground: 160 30% 15%;
+    --card-foreground: 220 40% 13%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 160 30% 15%;
+    --popover-foreground: 220 40% 13%;
 
-    /* Deep emerald green - Islamic significance */
-    --primary: 158 64% 32%;
-    --primary-foreground: 40 33% 98%;
+    /* Deep Navy Blue - Brand Primary */
+    --primary: 220 60% 20%;
+    --primary-foreground: 0 0% 100%;
 
-    /* Warm cream secondary */
-    --secondary: 40 30% 94%;
-    --secondary-foreground: 160 30% 20%;
+    /* Light cream secondary */
+    --secondary: 210 20% 94%;
+    --secondary-foreground: 220 40% 20%;
 
-    --muted: 40 20% 92%;
-    --muted-foreground: 160 15% 45%;
+    --muted: 210 15% 92%;
+    --muted-foreground: 220 15% 45%;
 
-    /* Gold accent */
-    --accent: 38 92% 50%;
-    --accent-foreground: 160 30% 15%;
+    /* Sky Blue accent from logo */
+    --accent: 200 85% 55%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 40 20% 88%;
-    --input: 40 20% 88%;
-    --ring: 158 64% 32%;
+    --border: 210 20% 88%;
+    --input: 210 20% 88%;
+    --ring: 200 85% 55%;
 
     --radius: 0.75rem;
 
-    /* Custom colors */
-    --gold: 38 92% 50%;
-    --gold-light: 43 96% 65%;
-    --emerald-light: 158 50% 45%;
-    --emerald-dark: 158 70% 22%;
-    --teal: 174 60% 40%;
+    /* Custom brand colors */
+    --navy: 220 60% 20%;
+    --navy-dark: 220 65% 12%;
+    --navy-light: 220 50% 30%;
+    --sky: 200 85% 55%;
+    --sky-light: 200 90% 70%;
+    --sky-dark: 200 80% 40%;
     --cream: 40 33% 96%;
     --cream-dark: 40 25% 90%;
 
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(158 64% 32%), hsl(158 70% 22%));
-    --gradient-gold: linear-gradient(135deg, hsl(38 92% 50%), hsl(43 96% 65%));
-    --gradient-soft: linear-gradient(180deg, hsl(40 33% 98%), hsl(40 30% 94%));
+    --gradient-primary: linear-gradient(135deg, hsl(220 60% 20%), hsl(220 65% 12%));
+    --gradient-accent: linear-gradient(135deg, hsl(200 85% 55%), hsl(200 90% 70%));
+    --gradient-soft: linear-gradient(180deg, hsl(210 25% 97%), hsl(210 20% 94%));
+    --gradient-hero: linear-gradient(135deg, hsl(220 65% 12%) 0%, hsl(220 60% 20%) 50%, hsl(200 80% 35%) 100%);
 
     /* Shadows */
-    --shadow-soft: 0 4px 20px -4px hsl(160 30% 15% / 0.08);
-    --shadow-card: 0 2px 12px -2px hsl(160 30% 15% / 0.06);
-    --shadow-glow: 0 0 30px hsl(158 64% 32% / 0.15);
+    --shadow-soft: 0 4px 20px -4px hsl(220 40% 13% / 0.08);
+    --shadow-card: 0 2px 12px -2px hsl(220 40% 13% / 0.06);
+    --shadow-glow: 0 0 30px hsl(200 85% 55% / 0.2);
+    --shadow-navy: 0 4px 20px -4px hsl(220 60% 20% / 0.3);
 
-    --sidebar-background: 40 30% 97%;
-    --sidebar-foreground: 160 30% 20%;
-    --sidebar-primary: 158 64% 32%;
-    --sidebar-primary-foreground: 40 33% 98%;
-    --sidebar-accent: 40 25% 92%;
-    --sidebar-accent-foreground: 160 30% 20%;
-    --sidebar-border: 40 20% 88%;
-    --sidebar-ring: 158 64% 32%;
+    --sidebar-background: 220 60% 20%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 200 85% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 50% 28%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 220 50% 25%;
+    --sidebar-ring: 200 85% 55%;
+
+    /* Status colors */
+    --success: 160 60% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 220 40% 13%;
+    --info: 200 85% 55%;
+    --info-foreground: 0 0% 100%;
   }
 
   .dark {
-    --background: 160 30% 8%;
-    --foreground: 40 33% 96%;
+    --background: 220 40% 8%;
+    --foreground: 210 25% 95%;
 
-    --card: 160 25% 12%;
-    --card-foreground: 40 33% 96%;
+    --card: 220 35% 12%;
+    --card-foreground: 210 25% 95%;
 
-    --popover: 160 25% 12%;
-    --popover-foreground: 40 33% 96%;
+    --popover: 220 35% 12%;
+    --popover-foreground: 210 25% 95%;
 
-    --primary: 158 55% 45%;
-    --primary-foreground: 160 30% 8%;
+    --primary: 200 85% 55%;
+    --primary-foreground: 220 40% 8%;
 
-    --secondary: 160 20% 18%;
-    --secondary-foreground: 40 33% 96%;
+    --secondary: 220 30% 18%;
+    --secondary-foreground: 210 25% 95%;
 
-    --muted: 160 20% 18%;
-    --muted-foreground: 40 15% 60%;
+    --muted: 220 30% 18%;
+    --muted-foreground: 210 15% 60%;
 
-    --accent: 38 80% 55%;
-    --accent-foreground: 160 30% 8%;
+    --accent: 200 80% 60%;
+    --accent-foreground: 220 40% 8%;
 
     --destructive: 0 62% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 160 20% 20%;
-    --input: 160 20% 20%;
-    --ring: 158 55% 45%;
+    --border: 220 30% 20%;
+    --input: 220 30% 20%;
+    --ring: 200 85% 55%;
 
-    --sidebar-background: 160 25% 10%;
-    --sidebar-foreground: 40 33% 96%;
-    --sidebar-primary: 158 55% 45%;
-    --sidebar-primary-foreground: 160 30% 8%;
-    --sidebar-accent: 160 20% 16%;
-    --sidebar-accent-foreground: 40 33% 96%;
-    --sidebar-border: 160 20% 18%;
-    --sidebar-ring: 158 55% 45%;
+    --sidebar-background: 220 40% 10%;
+    --sidebar-foreground: 210 25% 95%;
+    --sidebar-primary: 200 85% 55%;
+    --sidebar-primary-foreground: 220 40% 8%;
+    --sidebar-accent: 220 35% 16%;
+    --sidebar-accent-foreground: 210 25% 95%;
+    --sidebar-border: 220 30% 18%;
+    --sidebar-ring: 200 85% 55%;
   }
 }
 
@@ -126,7 +137,7 @@
 
 @layer components {
   .islamic-pattern {
-    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23158a63' fill-opacity='0.04'%3E%3Cpath d='M30 0L60 30L30 60L0 30z M30 10L50 30L30 50L10 30z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%231e3a5f' fill-opacity='0.04'%3E%3Cpath d='M30 0L60 30L30 60L0 30z M30 10L50 30L30 50L10 30z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
   }
 
   .glass-card {
@@ -138,12 +149,31 @@
     background-image: var(--gradient-primary);
   }
 
-  .btn-primary-glow {
-    box-shadow: 0 4px 20px -4px hsl(158 64% 32% / 0.4);
+  .gradient-text-accent {
+    @apply bg-clip-text text-transparent;
+    background-image: var(--gradient-accent);
   }
 
-  .btn-gold-glow {
-    box-shadow: 0 4px 20px -4px hsl(38 92% 50% / 0.4);
+  .btn-primary-glow {
+    box-shadow: var(--shadow-navy);
+  }
+
+  .btn-accent-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  /* Card variants */
+  .card-elevated {
+    @apply bg-card shadow-card border border-border/50 rounded-lg;
+  }
+
+  .card-interactive {
+    @apply card-elevated transition-all duration-200 hover:shadow-soft hover:border-accent/30;
+  }
+
+  /* Navy header style */
+  .header-navy {
+    background: var(--gradient-hero);
   }
 }
 

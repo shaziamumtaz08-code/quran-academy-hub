@@ -51,18 +51,31 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        gold: {
-          DEFAULT: "hsl(var(--gold))",
-          light: "hsl(var(--gold-light))",
+        navy: {
+          DEFAULT: "hsl(var(--navy))",
+          dark: "hsl(var(--navy-dark))",
+          light: "hsl(var(--navy-light))",
         },
-        emerald: {
-          light: "hsl(var(--emerald-light))",
-          dark: "hsl(var(--emerald-dark))",
+        sky: {
+          DEFAULT: "hsl(var(--sky))",
+          light: "hsl(var(--sky-light))",
+          dark: "hsl(var(--sky-dark))",
         },
-        teal: "hsl(var(--teal))",
         cream: {
           DEFAULT: "hsl(var(--cream))",
           dark: "hsl(var(--cream-dark))",
+        },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
+        info: {
+          DEFAULT: "hsl(var(--info))",
+          foreground: "hsl(var(--info-foreground))",
         },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
@@ -84,6 +97,7 @@ export default {
         soft: "var(--shadow-soft)",
         card: "var(--shadow-card)",
         glow: "var(--shadow-glow)",
+        navy: "var(--shadow-navy)",
       },
       keyframes: {
         "accordion-down": {
