@@ -21,7 +21,7 @@ interface FieldValue {
 
 export default function ExamSubmission() {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const [selectedStudent, setSelectedStudent] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [examDate, setExamDate] = useState(new Date().toISOString().split('T')[0]);
@@ -81,7 +81,7 @@ export default function ExamSubmission() {
     const submission = {
       template_id: selectedTemplate,
       student_id: selectedStudent,
-      examiner_id: user?.id,
+      examiner_id: profile?.id,
       exam_date: examDate,
       total_marks: totalMarks,
       max_total_marks: maxTotalMarks,

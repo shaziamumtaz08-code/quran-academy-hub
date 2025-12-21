@@ -12,33 +12,37 @@ import {
   DollarSign,
   BarChart3,
   LogOut,
-  BookOpen,
   User,
   Menu,
   X,
+  Shield,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import logoLight from '@/assets/logo-light.png';
+import logoDark from '@/assets/logo-dark.jpg';
 
 interface NavItem {
   label: string;
   href: string;
   icon: React.ElementType;
-  roles: string[];
+  permission?: string;
+  roles?: string[];
 }
 
 const navItems: NavItem[] = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'teacher', 'student', 'parent', 'examiner'] },
-  { label: 'Teachers', href: '/teachers', icon: Users, roles: ['admin'] },
-  { label: 'Students', href: '/students', icon: GraduationCap, roles: ['admin'] },
-  { label: 'Schedules', href: '/schedules', icon: Calendar, roles: ['admin', 'teacher', 'student', 'parent'] },
-  { label: 'Attendance', href: '/attendance', icon: ClipboardCheck, roles: ['admin', 'teacher'] },
-  { label: 'Lessons', href: '/lessons', icon: BookOpen, roles: ['admin', 'teacher', 'student', 'parent'] },
-  { label: 'Exam Templates', href: '/exam-templates', icon: FileText, roles: ['admin'] },
-  { label: 'Submit Exam', href: '/exam-submission', icon: ClipboardCheck, roles: ['admin', 'examiner'] },
-  { label: 'Exam Results', href: '/exam-results', icon: BarChart3, roles: ['admin', 'examiner', 'teacher', 'student', 'parent'] },
-  { label: 'Reports', href: '/reports', icon: FileText, roles: ['admin', 'teacher', 'student', 'parent'] },
-  { label: 'Payments', href: '/payments', icon: DollarSign, roles: ['admin'] },
-  { label: 'KPI', href: '/kpi', icon: BarChart3, roles: ['admin'] },
+  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: 'dashboard.admin' },
+  { label: 'User Management', href: '/user-management', icon: Shield, roles: ['super_admin', 'admin'] },
+  { label: 'Teachers', href: '/teachers', icon: Users, permission: 'teachers.view' },
+  { label: 'Students', href: '/students', icon: GraduationCap, permission: 'students.view' },
+  { label: 'Schedules', href: '/schedules', icon: Calendar, permission: 'schedules.view' },
+  { label: 'Attendance', href: '/attendance', icon: ClipboardCheck, permission: 'attendance.view' },
+  { label: 'Exam Templates', href: '/exam-templates', icon: FileText, permission: 'exams.view' },
+  { label: 'Submit Exam', href: '/exam-submission', icon: ClipboardCheck, permission: 'exams.grade' },
+  { label: 'Exam Results', href: '/exam-results', icon: BarChart3, permission: 'exams.view' },
+  { label: 'Reports', href: '/reports', icon: FileText, permission: 'reports.view' },
+  { label: 'Payments', href: '/payments', icon: DollarSign, permission: 'payments.view' },
+  { label: 'KPI', href: '/kpi', icon: BarChart3, roles: ['super_admin', 'admin'] },
 ];
 
 interface DashboardLayoutProps {
@@ -46,17 +50,23 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
-  const { user, logout, isLoading } = useAuth();
+  const { profile, logout, isLoading, hasPermission, isSuperAdmin } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
 
-  const filteredNavItems = navItems.filter(item => 
-    user && item.roles.includes(user.role)
-  );
+  // Filter nav items based on permissions
+  const filteredNavItems = navItems.filter(item => {
+    if (isSuperAdmin) return true;
+    if (item.roles && profile?.role && item.roles.includes(profile.role)) return true;
+    if (item.permission && hasPermission(item.permission)) return true;
+    // Allow dashboard access for all authenticated users
+    if (item.href === '/dashboard') return true;
+    return false;
+  });
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 
@@ -65,7 +75,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     return (
       <div className="min-h-screen bg-background islamic-pattern flex items-center justify-center">
         <div className="text-center">
-          <BookOpen className="h-12 w-12 text-primary mx-auto mb-4 animate-pulse" />
+          <img 
+            src={logoLight} 
+            alt="Al-Quran Time Academy" 
+            className="h-24 w-24 object-contain mx-auto mb-4 animate-pulse"
+          />
           <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
@@ -73,17 +87,19 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   // Show unauthenticated state with visible layout
-  if (!user) {
+  if (!profile) {
     return (
       <div className="min-h-screen bg-background islamic-pattern">
         {/* Header */}
         <header className="fixed top-0 left-0 right-0 z-50 h-16 bg-card border-b border-border flex items-center justify-between px-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-              <BookOpen className="h-5 w-5 text-primary-foreground" />
-            </div>
+            <img 
+              src={logoLight} 
+              alt="Al-Quran Time Academy" 
+              className="h-10 w-10 object-contain"
+            />
             <div>
-              <h1 className="font-serif text-lg font-bold text-foreground">Quran Academy</h1>
+              <h1 className="font-serif text-lg font-bold text-foreground">Al-Quran Time Academy</h1>
               <p className="text-xs text-muted-foreground">Learning Management</p>
             </div>
           </div>
@@ -98,17 +114,19 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <main className="min-h-screen pt-16">
           <div className="p-6 lg:p-8 flex items-center justify-center min-h-[calc(100vh-4rem)]">
             <div className="text-center max-w-md">
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
-                <User className="h-8 w-8 text-primary" />
-              </div>
+              <img 
+                src={logoLight} 
+                alt="Al-Quran Time Academy" 
+                className="w-32 h-32 object-contain mx-auto mb-6"
+              />
               <h2 className="text-2xl font-serif font-bold text-foreground mb-2">
-                Welcome to Quran Academy LMS
+                Welcome to Al-Quran Time Academy
               </h2>
               <p className="text-muted-foreground mb-6">
-                Please sign in to access the Quran Academy LMS.
+                Please sign in to access the Learning Management System.
               </p>
               <Link to="/login">
-                <Button className="w-full sm:w-auto">
+                <Button className="w-full sm:w-auto btn-primary-glow">
                   Sign In to Continue
                 </Button>
               </Link>
@@ -124,33 +142,39 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Mobile Header */}
       <header className="lg:hidden fixed top-0 left-0 right-0 z-50 h-16 bg-card border-b border-border flex items-center justify-between px-4">
         <div className="flex items-center gap-3">
-          <BookOpen className="h-6 w-6 text-primary" />
-          <span className="font-serif text-lg font-bold text-foreground">Quran Academy</span>
+          <img 
+            src={logoLight} 
+            alt="Al-Quran Time Academy" 
+            className="h-8 w-8 object-contain"
+          />
+          <span className="font-serif text-lg font-bold text-foreground">Al-Quran Time</span>
         </div>
         <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(!sidebarOpen)}>
           {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </Button>
       </header>
 
-      {/* Sidebar */}
+      {/* Sidebar with Dark Theme */}
       <aside className={cn(
-        "fixed top-0 left-0 z-40 h-full w-64 bg-card border-r border-border transition-transform duration-300 lg:translate-x-0",
+        "fixed top-0 left-0 z-40 h-full w-64 bg-sidebar transition-transform duration-300 lg:translate-x-0",
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="hidden lg:flex items-center gap-3 p-6 border-b border-border">
-            <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-              <BookOpen className="h-5 w-5 text-primary-foreground" />
-            </div>
+          {/* Logo Section */}
+          <div className="hidden lg:flex items-center gap-3 p-4 border-b border-sidebar-border">
+            <img 
+              src={logoDark} 
+              alt="Al-Quran Time Academy" 
+              className="h-12 w-12 object-contain rounded-lg"
+            />
             <div>
-              <h1 className="font-serif text-lg font-bold text-foreground">Quran Academy</h1>
-              <p className="text-xs text-muted-foreground">Learning Management</p>
+              <h1 className="font-serif text-sm font-bold text-sidebar-foreground">Al-Quran Time</h1>
+              <p className="text-xs text-sidebar-foreground/70">Academy LMS</p>
             </div>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-1 mt-16 lg:mt-0 overflow-y-auto">
+          <nav className="flex-1 p-3 space-y-1 mt-16 lg:mt-0 overflow-y-auto">
             {filteredNavItems.map((item) => {
               const isActive = location.pathname === item.href;
               return (
@@ -159,10 +183,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   to={item.href}
                   onClick={() => setSidebarOpen(false)}
                   className={cn(
-                    "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200",
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
                     isActive
-                      ? "bg-primary text-primary-foreground shadow-soft"
-                      : "text-muted-foreground hover:bg-secondary hover:text-secondary-foreground"
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-glow"
+                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   )}
                 >
                   <item.icon className="h-5 w-5" />
@@ -173,23 +197,25 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </nav>
 
           {/* User Section */}
-          <div className="p-4 border-t border-border">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
-                <User className="h-5 w-5 text-secondary-foreground" />
+          <div className="p-3 border-t border-sidebar-border">
+            <div className="flex items-center gap-3 mb-3 px-2">
+              <div className="w-9 h-9 rounded-full bg-sidebar-accent flex items-center justify-center">
+                <User className="h-4 w-4 text-sidebar-accent-foreground" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
-                <p className="text-xs text-muted-foreground capitalize">{user.role}</p>
+                <p className="text-sm font-medium text-sidebar-foreground truncate">{profile.full_name}</p>
+                <p className="text-xs text-sidebar-foreground/60 capitalize">
+                  {profile.role?.replace('_', ' ') || 'User'}
+                </p>
               </div>
             </div>
             <Button
-              variant="outline"
-              className="w-full justify-start gap-2"
+              variant="ghost"
+              className="w-full justify-start gap-2 text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent"
               onClick={handleLogout}
             >
               <LogOut className="h-4 w-4" />
-              Logout
+              Sign Out
             </Button>
           </div>
         </div>

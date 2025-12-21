@@ -60,7 +60,7 @@ interface Profile {
 }
 
 export default function ExamResults() {
-  const { user } = useAuth();
+  const { profile, user } = useAuth();
   const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
   
   // Filters
@@ -70,8 +70,9 @@ export default function ExamResults() {
   const [monthFilter, setMonthFilter] = useState('');
 
   // Safe role checks with null handling
-  const userRole = user?.role ?? null;
-  const isAdminOrExaminer = userRole === 'admin' || userRole === 'examiner';
+  const userRole = profile?.role ?? null;
+  const isAdminOrExaminer = userRole === 'admin' || userRole === 'examiner' || userRole === 'super_admin' || 
+    userRole === 'admin_admissions' || userRole === 'admin_fees' || userRole === 'admin_academic';
   const isTeacher = userRole === 'teacher';
   const isStudentOrParent = userRole === 'student' || userRole === 'parent';
 
@@ -262,7 +263,7 @@ export default function ExamResults() {
   ];
 
   // Not authenticated state
-  if (!user) {
+  if (!profile) {
     return (
       <DashboardLayout>
         <div className="space-y-6">

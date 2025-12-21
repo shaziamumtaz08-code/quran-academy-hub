@@ -1,17 +1,30 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { BookOpen, Mail, Lock, Loader2 } from 'lucide-react';
+import { Mail, Lock, Loader2, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { z } from 'zod';
+import logoDark from '@/assets/logo-dark.jpg';
+
+const loginSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+});
+
+const signUpSchema = loginSchema.extend({
+  fullName: z.string().min(2, 'Name must be at least 2 characters'),
+});
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const [isSignUp, setIsSignUp] = useState(false);
+  const { login, signUp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -20,16 +33,44 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      await login(email, password);
-      toast({
-        title: "Welcome back!",
-        description: "You have successfully logged in.",
-      });
-      navigate('/dashboard');
+      // Validate input
+      if (isSignUp) {
+        signUpSchema.parse({ email, password, fullName });
+      } else {
+        loginSchema.parse({ email, password });
+      }
+
+      if (isSignUp) {
+        const { error } = await signUp(email, password, fullName);
+        if (error) {
+          throw error;
+        }
+        toast({
+          title: "Account created!",
+          description: "Please check your email to confirm your account, or sign in if auto-confirm is enabled.",
+        });
+        setIsSignUp(false);
+      } else {
+        const { error } = await login(email, password);
+        if (error) {
+          throw error;
+        }
+        toast({
+          title: "Welcome back!",
+          description: "You have successfully logged in.",
+        });
+        navigate('/dashboard');
+      }
     } catch (error) {
+      const message = error instanceof z.ZodError 
+        ? error.errors[0].message 
+        : error instanceof Error 
+          ? error.message 
+          : 'An error occurred';
+      
       toast({
-        title: "Login failed",
-        description: "Invalid email or password. Please try again.",
+        title: isSignUp ? "Sign up failed" : "Login failed",
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -37,17 +78,10 @@ export default function Login() {
     }
   };
 
-  const demoAccounts = [
-    { email: 'admin@quran.academy', password: 'admin123', role: 'Admin' },
-    { email: 'teacher@quran.academy', password: 'teacher123', role: 'Teacher' },
-    { email: 'student@quran.academy', password: 'student123', role: 'Student' },
-    { email: 'parent@quran.academy', password: 'parent123', role: 'Parent' },
-  ];
-
   return (
     <div className="min-h-screen flex islamic-pattern">
-      {/* Left Panel - Decorative */}
-      <div className="hidden lg:flex lg:w-1/2 bg-primary relative overflow-hidden">
+      {/* Left Panel - Decorative with Logo */}
+      <div className="hidden lg:flex lg:w-1/2 header-navy relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <svg className="w-full h-full" viewBox="0 0 400 400" fill="none">
             <pattern id="islamic-geo" width="100" height="100" patternUnits="userSpaceOnUse">
@@ -57,28 +91,19 @@ export default function Login() {
             <rect width="400" height="400" fill="url(#islamic-geo)" />
           </svg>
         </div>
-        <div className="relative z-10 flex flex-col justify-center px-12 text-primary-foreground">
-          <div className="w-20 h-20 rounded-2xl bg-primary-foreground/10 flex items-center justify-center mb-8">
-            <BookOpen className="h-10 w-10" />
-          </div>
-          <h1 className="font-serif text-5xl font-bold leading-tight mb-6">
+        <div className="relative z-10 flex flex-col justify-center items-center px-12 text-primary-foreground w-full">
+          <img 
+            src={logoDark} 
+            alt="Al-Quran Time Academy" 
+            className="w-64 h-64 object-contain mb-8"
+          />
+          <h1 className="font-serif text-4xl font-bold leading-tight mb-6 text-center">
             Illuminate Your Path<br />Through Knowledge
           </h1>
-          <p className="text-lg opacity-80 max-w-md">
-            Welcome to our online Quran Academy. A dedicated platform for one-to-one Quranic education, 
+          <p className="text-lg opacity-80 max-w-md text-center">
+            Welcome to Al-Quran Time Academy. A dedicated platform for one-to-one Quranic education, 
             connecting teachers and students in their journey of learning.
           </p>
-          <div className="mt-12 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-primary-foreground/10 flex items-center justify-center">
-              <span className="font-serif text-xl">۱</span>
-            </div>
-            <div className="w-12 h-12 rounded-full bg-primary-foreground/10 flex items-center justify-center">
-              <span className="font-serif text-xl">۲</span>
-            </div>
-            <div className="w-12 h-12 rounded-full bg-primary-foreground/10 flex items-center justify-center">
-              <span className="font-serif text-xl">۳</span>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -86,22 +111,42 @@ export default function Login() {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           {/* Mobile Logo */}
-          <div className="lg:hidden flex items-center gap-3 mb-8">
-            <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
-              <BookOpen className="h-6 w-6 text-primary-foreground" />
-            </div>
-            <div>
-              <h1 className="font-serif text-xl font-bold text-foreground">Quran Academy</h1>
-              <p className="text-xs text-muted-foreground">Learning Management</p>
-            </div>
+          <div className="lg:hidden flex flex-col items-center mb-8">
+            <img 
+              src={logoDark} 
+              alt="Al-Quran Time Academy" 
+              className="w-32 h-32 object-contain mb-4"
+            />
           </div>
 
-          <div className="mb-8">
-            <h2 className="font-serif text-3xl font-bold text-foreground">Welcome Back</h2>
-            <p className="text-muted-foreground mt-2">Sign in to continue your learning journey</p>
+          <div className="mb-8 text-center lg:text-left">
+            <h2 className="font-serif text-3xl font-bold text-foreground">
+              {isSignUp ? 'Create Account' : 'Welcome Back'}
+            </h2>
+            <p className="text-muted-foreground mt-2">
+              {isSignUp ? 'Start your learning journey today' : 'Sign in to continue your learning journey'}
+            </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {isSignUp && (
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Full Name</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    id="fullName"
+                    type="text"
+                    placeholder="Enter your full name"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="pl-10 h-12"
+                    required
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
               <div className="relative">
@@ -134,36 +179,29 @@ export default function Login() {
               </div>
             </div>
 
-            <Button type="submit" variant="hero" size="lg" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full h-12 btn-primary-glow" disabled={isLoading}>
               {isLoading ? (
                 <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Signing in...
+                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                  {isSignUp ? 'Creating account...' : 'Signing in...'}
                 </>
               ) : (
-                'Sign In'
+                isSignUp ? 'Create Account' : 'Sign In'
               )}
             </Button>
           </form>
 
-          {/* Demo Accounts */}
-          <div className="mt-8 pt-8 border-t border-border">
-            <p className="text-sm text-muted-foreground mb-4">Demo accounts for testing:</p>
-            <div className="grid grid-cols-2 gap-2">
-              {demoAccounts.map((account) => (
-                <button
-                  key={account.email}
-                  onClick={() => {
-                    setEmail(account.email);
-                    setPassword(account.password);
-                  }}
-                  className="text-left p-3 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
-                >
-                  <p className="text-xs font-medium text-foreground">{account.role}</p>
-                  <p className="text-xs text-muted-foreground truncate">{account.email}</p>
-                </button>
-              ))}
-            </div>
+          <div className="mt-6 text-center">
+            <p className="text-sm text-muted-foreground">
+              {isSignUp ? 'Already have an account?' : "Don't have an account?"}
+              <button
+                type="button"
+                onClick={() => setIsSignUp(!isSignUp)}
+                className="ml-1 text-accent hover:underline font-medium"
+              >
+                {isSignUp ? 'Sign In' : 'Sign Up'}
+              </button>
+            </p>
           </div>
         </div>
       </div>
