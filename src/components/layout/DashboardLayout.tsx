@@ -17,6 +17,7 @@ import {
   X,
   Shield,
   Settings,
+  FolderOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import logoLight from '@/assets/logo-light.png';
@@ -43,6 +44,7 @@ const navItems: NavItem[] = [
   { label: 'Reports', href: '/reports', icon: FileText, permission: 'reports.view' },
   { label: 'Payments', href: '/payments', icon: DollarSign, permission: 'payments.view' },
   { label: 'KPI', href: '/kpi', icon: BarChart3, roles: ['super_admin', 'admin'] },
+  { label: 'Resources', href: '/resources', icon: FolderOpen },
 ];
 
 interface DashboardLayoutProps {
