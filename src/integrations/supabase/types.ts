@@ -344,6 +344,42 @@ export type Database = {
         }
         Relationships: []
       }
+      resources: {
+        Row: {
+          created_at: string
+          folder: string
+          id: string
+          tags: string | null
+          title: string
+          type: string
+          updated_at: string
+          uploaded_by: string | null
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          folder: string
+          id?: string
+          tags?: string | null
+          title: string
+          type: string
+          updated_at?: string
+          uploaded_by?: string | null
+          url: string
+        }
+        Update: {
+          created_at?: string
+          folder?: string
+          id?: string
+          tags?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+          uploaded_by?: string | null
+          url?: string
+        }
+        Relationships: []
+      }
       role_templates: {
         Row: {
           created_at: string
