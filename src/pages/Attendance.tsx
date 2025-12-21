@@ -10,24 +10,32 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar, CheckCircle, XCircle, AlertCircle, User, Plus, Clock } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, AlertCircle, User, Plus, Clock, CalendarClock, UserX, Palmtree } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 
+type AttendanceStatus = 'present' | 'student_absent' | 'teacher_absent' | 'teacher_leave' | 'rescheduled' | 'holiday';
+type ReasonCategory = 'sick' | 'personal' | 'emergency' | 'internet_issue' | 'other';
+
 interface AttendanceRecord {
   id: string;
   class_date: string;
   class_time: string;
   duration_minutes: number;
-  status: 'present' | 'absent' | 'late';
+  status: AttendanceStatus;
   reason: string | null;
   lesson_covered: string | null;
   homework: string | null;
   student_id: string;
   teacher_id: string;
+  absence_type: string | null;
+  reason_category: ReasonCategory | null;
+  reason_text: string | null;
+  reschedule_date: string | null;
+  reschedule_time: string | null;
   student?: { full_name: string };
   teacher?: { full_name: string };
 }
@@ -36,6 +44,23 @@ interface Profile {
   id: string;
   full_name: string;
 }
+
+const STATUS_OPTIONS: { value: AttendanceStatus; label: string }[] = [
+  { value: 'present', label: 'Present' },
+  { value: 'student_absent', label: 'Student Absent' },
+  { value: 'teacher_absent', label: 'Teacher Absent' },
+  { value: 'teacher_leave', label: 'Teacher Leave' },
+  { value: 'rescheduled', label: 'Rescheduled' },
+  { value: 'holiday', label: 'Holiday' },
+];
+
+const REASON_CATEGORIES: { value: ReasonCategory; label: string }[] = [
+  { value: 'sick', label: 'Sick' },
+  { value: 'personal', label: 'Personal' },
+  { value: 'emergency', label: 'Emergency' },
+  { value: 'internet_issue', label: 'Internet Issue' },
+  { value: 'other', label: 'Other' },
+];
 
 export default function Attendance() {
   const { profile, user } = useAuth();
@@ -48,18 +73,52 @@ export default function Attendance() {
   
   // Form state for marking attendance
   const [selectedStudent, setSelectedStudent] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<'present' | 'absent' | 'late'>('present');
+  const [selectedStatus, setSelectedStatus] = useState<AttendanceStatus>('present');
   const [classTime, setClassTime] = useState('09:00');
+  const [classDate, setClassDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [duration, setDuration] = useState('30');
   const [reason, setReason] = useState('');
   const [lessonCovered, setLessonCovered] = useState('');
   const [homework, setHomework] = useState('');
+  
+  // New form state for enhanced attendance
+  const [reasonCategory, setReasonCategory] = useState<ReasonCategory | ''>('');
+  const [reasonText, setReasonText] = useState('');
+  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleTime, setRescheduleTime] = useState('');
 
   const userRole = profile?.role;
   const isAdmin = userRole === 'super_admin' || userRole === 'admin' || 
     userRole === 'admin_admissions' || userRole === 'admin_fees' || userRole === 'admin_academic';
   const isTeacher = userRole === 'teacher' || userRole === 'examiner';
   const isStudent = userRole === 'student';
+
+  // Statuses that require reason
+  const requiresReason = (status: AttendanceStatus) => 
+    ['student_absent', 'teacher_absent', 'teacher_leave'].includes(status);
+  
+  // Status requires reschedule info
+  const requiresReschedule = (status: AttendanceStatus) => status === 'rescheduled';
+
+  // Validation
+  const isFormValid = useMemo(() => {
+    // For teacher leave/absent statuses, don't require student selection
+    const isTeacherStatus = ['teacher_absent', 'teacher_leave', 'holiday'].includes(selectedStatus);
+    
+    if (!isTeacherStatus && !selectedStudent) return false;
+    if (!classTime) return false;
+    
+    if (requiresReason(selectedStatus)) {
+      if (!reasonCategory) return false;
+      if (reasonCategory === 'other' && !reasonText.trim()) return false;
+    }
+    
+    if (requiresReschedule(selectedStatus)) {
+      if (!rescheduleDate || !rescheduleTime) return false;
+    }
+    
+    return true;
+  }, [selectedStudent, selectedStatus, classTime, reasonCategory, reasonText, rescheduleDate, rescheduleTime]);
 
   // Fetch assigned students (for teacher)
   const { data: assignedStudents } = useQuery({
@@ -100,6 +159,11 @@ export default function Attendance() {
           homework,
           student_id,
           teacher_id,
+          absence_type,
+          reason_category,
+          reason_text,
+          reschedule_date,
+          reschedule_time,
           student:profiles!attendance_student_id_fkey(full_name),
           teacher:profiles!attendance_teacher_id_fkey(full_name)
         `)
@@ -117,18 +181,40 @@ export default function Attendance() {
   // Mark attendance mutation
   const markAttendance = useMutation({
     mutationFn: async () => {
-      if (!user?.id || !selectedStudent) throw new Error('Missing required data');
+      if (!user?.id) throw new Error('Missing user');
+      
+      const isTeacherStatus = ['teacher_absent', 'teacher_leave', 'holiday'].includes(selectedStatus);
+      
+      // For teacher statuses, we still need a student_id - use first assigned student or throw error
+      let studentId = selectedStudent;
+      if (isTeacherStatus && !studentId && assignedStudents && assignedStudents.length > 0) {
+        studentId = assignedStudents[0].id;
+      }
+      
+      if (!studentId && !isTeacherStatus) {
+        throw new Error('Please select a student');
+      }
+
+      // Build the auto-generated note for rescheduled
+      let finalReason = reason;
+      if (selectedStatus === 'rescheduled' && rescheduleDate && rescheduleTime) {
+        finalReason = `Class rescheduled from ${classDate} ${classTime} to ${rescheduleDate} ${rescheduleTime}`;
+      }
 
       const { error } = await supabase.from('attendance').insert({
-        student_id: selectedStudent,
+        student_id: studentId || user.id,
         teacher_id: user.id,
-        class_date: format(new Date(), 'yyyy-MM-dd'),
+        class_date: classDate,
         class_time: classTime,
         duration_minutes: parseInt(duration),
         status: selectedStatus,
-        reason: reason || null,
+        reason: finalReason || null,
         lesson_covered: lessonCovered || null,
         homework: homework || null,
+        reason_category: reasonCategory || null,
+        reason_text: reasonCategory === 'other' ? reasonText : null,
+        reschedule_date: rescheduleDate || null,
+        reschedule_time: rescheduleTime || null,
       });
 
       if (error) throw error;
@@ -152,10 +238,15 @@ export default function Attendance() {
     setSelectedStudent('');
     setSelectedStatus('present');
     setClassTime('09:00');
+    setClassDate(format(new Date(), 'yyyy-MM-dd'));
     setDuration('30');
     setReason('');
     setLessonCovered('');
     setHomework('');
+    setReasonCategory('');
+    setReasonText('');
+    setRescheduleDate('');
+    setRescheduleTime('');
   };
 
   const filteredRecords = useMemo(() => {
@@ -169,8 +260,10 @@ export default function Attendance() {
     return {
       total: records.length,
       present: records.filter(r => r.status === 'present').length,
-      absent: records.filter(r => r.status === 'absent').length,
-      late: records.filter(r => r.status === 'late').length,
+      studentAbsent: records.filter(r => r.status === 'student_absent').length,
+      teacherOff: records.filter(r => ['teacher_absent', 'teacher_leave'].includes(r.status)).length,
+      rescheduled: records.filter(r => r.status === 'rescheduled').length,
+      holiday: records.filter(r => r.status === 'holiday').length,
     };
   }, [attendanceRecords]);
 
@@ -178,11 +271,23 @@ export default function Attendance() {
     switch (status) {
       case 'present':
         return <CheckCircle className="h-4 w-4 text-emerald-light" />;
-      case 'absent':
+      case 'student_absent':
         return <XCircle className="h-4 w-4 text-destructive" />;
-      case 'late':
-        return <AlertCircle className="h-4 w-4 text-accent" />;
+      case 'teacher_absent':
+      case 'teacher_leave':
+        return <UserX className="h-4 w-4 text-accent" />;
+      case 'rescheduled':
+        return <CalendarClock className="h-4 w-4 text-primary" />;
+      case 'holiday':
+        return <Palmtree className="h-4 w-4 text-muted-foreground" />;
+      default:
+        return <AlertCircle className="h-4 w-4 text-muted-foreground" />;
     }
+  };
+
+  const getStatusLabel = (status: string) => {
+    const option = STATUS_OPTIONS.find(o => o.value === status);
+    return option?.label || status;
   };
 
   const months = [
@@ -221,8 +326,8 @@ export default function Attendance() {
           )}
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Stats - Enhanced for Admin */}
+        <div className={cn("grid gap-4", isAdmin ? "grid-cols-2 md:grid-cols-6" : "grid-cols-2 md:grid-cols-4")}>
           <Card className="text-center">
             <CardContent className="pt-6">
               <p className="text-2xl font-serif font-bold text-foreground">{stats.total}</p>
@@ -235,31 +340,55 @@ export default function Attendance() {
               <p className="text-sm text-emerald-light/80">Present</p>
             </CardContent>
           </Card>
-          <Card className="bg-accent/10 border-accent/20 text-center">
-            <CardContent className="pt-6">
-              <p className="text-2xl font-serif font-bold text-accent">{stats.late}</p>
-              <p className="text-sm text-accent/80">Late</p>
-            </CardContent>
-          </Card>
           <Card className="bg-destructive/10 border-destructive/20 text-center">
             <CardContent className="pt-6">
-              <p className="text-2xl font-serif font-bold text-destructive">{stats.absent}</p>
-              <p className="text-sm text-destructive/80">Absent</p>
+              <p className="text-2xl font-serif font-bold text-destructive">{stats.studentAbsent}</p>
+              <p className="text-sm text-destructive/80">Student Absent</p>
             </CardContent>
           </Card>
+          {isAdmin && (
+            <>
+              <Card className="bg-accent/10 border-accent/20 text-center">
+                <CardContent className="pt-6">
+                  <p className="text-2xl font-serif font-bold text-accent">{stats.teacherOff}</p>
+                  <p className="text-sm text-accent/80">Teacher Off</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-primary/10 border-primary/20 text-center">
+                <CardContent className="pt-6">
+                  <p className="text-2xl font-serif font-bold text-primary">{stats.rescheduled}</p>
+                  <p className="text-sm text-primary/80">Rescheduled</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-muted text-center">
+                <CardContent className="pt-6">
+                  <p className="text-2xl font-serif font-bold text-muted-foreground">{stats.holiday}</p>
+                  <p className="text-sm text-muted-foreground">Holidays</p>
+                </CardContent>
+              </Card>
+            </>
+          )}
+          {!isAdmin && (
+            <Card className="bg-accent/10 border-accent/20 text-center">
+              <CardContent className="pt-6">
+                <p className="text-2xl font-serif font-bold text-accent">{stats.rescheduled}</p>
+                <p className="text-sm text-accent/80">Rescheduled</p>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4">
           <Select value={filter} onValueChange={setFilter}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="present">Present</SelectItem>
-              <SelectItem value="absent">Absent</SelectItem>
-              <SelectItem value="late">Late</SelectItem>
+              {STATUS_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Select value={monthFilter} onValueChange={setMonthFilter}>
@@ -303,6 +432,7 @@ export default function Attendance() {
                     <TableHead>Status</TableHead>
                     <TableHead>Lesson Covered</TableHead>
                     {(isTeacher || isAdmin) && <TableHead>Reason</TableHead>}
+                    {isAdmin && <TableHead>Reschedule Info</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -328,21 +458,38 @@ export default function Attendance() {
                       <TableCell>{record.class_time?.substring(0, 5) || '-'}</TableCell>
                       <TableCell>
                         <span className={cn(
-                          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium capitalize",
+                          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
                           record.status === 'present' && "bg-emerald-light/10 text-emerald-light",
-                          record.status === 'absent' && "bg-destructive/10 text-destructive",
-                          record.status === 'late' && "bg-accent/10 text-accent"
+                          record.status === 'student_absent' && "bg-destructive/10 text-destructive",
+                          ['teacher_absent', 'teacher_leave'].includes(record.status) && "bg-accent/10 text-accent",
+                          record.status === 'rescheduled' && "bg-primary/10 text-primary",
+                          record.status === 'holiday' && "bg-muted text-muted-foreground"
                         )}>
                           {getStatusIcon(record.status)}
-                          {record.status}
+                          {getStatusLabel(record.status)}
                         </span>
                       </TableCell>
                       <TableCell className="text-muted-foreground max-w-[200px] truncate">
                         {record.lesson_covered || '-'}
                       </TableCell>
                       {(isTeacher || isAdmin) && (
-                        <TableCell className="text-muted-foreground max-w-[150px] truncate">
-                          {record.reason || '-'}
+                        <TableCell className="text-muted-foreground max-w-[150px]">
+                          {record.reason_category ? (
+                            <span className="capitalize">
+                              {record.reason_category === 'other' 
+                                ? record.reason_text 
+                                : record.reason_category.replace('_', ' ')}
+                            </span>
+                          ) : record.reason || '-'}
+                        </TableCell>
+                      )}
+                      {isAdmin && (
+                        <TableCell className="text-muted-foreground">
+                          {record.reschedule_date ? (
+                            <span className="text-xs">
+                              {format(parseISO(record.reschedule_date), 'MMM dd')} {record.reschedule_time?.substring(0, 5)}
+                            </span>
+                          ) : '-'}
                         </TableCell>
                       )}
                     </TableRow>
@@ -355,47 +502,64 @@ export default function Attendance() {
 
         {/* Mark Attendance Dialog */}
         <Dialog open={markDialogOpen} onOpenChange={setMarkDialogOpen}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="font-serif">Mark Attendance</DialogTitle>
               <DialogDescription>
-                Record attendance for today's class
+                Record attendance for a class
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
+              {/* Status Selection */}
               <div className="space-y-2">
-                <Label>Student</Label>
-                <Select value={selectedStudent} onValueChange={setSelectedStudent}>
+                <Label>Status <span className="text-destructive">*</span></Label>
+                <Select value={selectedStatus} onValueChange={(v) => {
+                  setSelectedStatus(v as AttendanceStatus);
+                  // Reset conditional fields when status changes
+                  setReasonCategory('');
+                  setReasonText('');
+                  setRescheduleDate('');
+                  setRescheduleTime('');
+                }}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a student" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {(assignedStudents || []).map((student) => (
-                      <SelectItem key={student.id} value={student.id}>{student.full_name}</SelectItem>
+                    {STATUS_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {assignedStudents?.length === 0 && (
-                  <p className="text-sm text-muted-foreground">No students assigned to you yet.</p>
-                )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              {/* Student Selection - Only show for non-teacher statuses */}
+              {!['teacher_absent', 'teacher_leave', 'holiday'].includes(selectedStatus) && (
                 <div className="space-y-2">
-                  <Label>Status</Label>
-                  <Select value={selectedStatus} onValueChange={(v) => setSelectedStatus(v as 'present' | 'absent' | 'late')}>
+                  <Label>Student <span className="text-destructive">*</span></Label>
+                  <Select value={selectedStudent} onValueChange={setSelectedStudent}>
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Select a student" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="present">Present</SelectItem>
-                      <SelectItem value="absent">Absent</SelectItem>
-                      <SelectItem value="late">Late</SelectItem>
+                      {(assignedStudents || []).map((student) => (
+                        <SelectItem key={student.id} value={student.id}>{student.full_name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
+                  {assignedStudents?.length === 0 && (
+                    <p className="text-sm text-muted-foreground">No students assigned to you yet.</p>
+                  )}
+                </div>
+              )}
+
+              {/* Date and Time */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Class Date <span className="text-destructive">*</span></Label>
+                  <Input type="date" value={classDate} onChange={(e) => setClassDate(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Class Time</Label>
+                  <Label>Class Time <span className="text-destructive">*</span></Label>
                   <Input type="time" value={classTime} onChange={(e) => setClassTime(e.target.value)} />
                 </div>
               </div>
@@ -405,19 +569,71 @@ export default function Attendance() {
                 <Input type="number" value={duration} onChange={(e) => setDuration(e.target.value)} />
               </div>
 
-              {selectedStatus !== 'present' && (
-                <div className="space-y-2">
-                  <Label>Reason</Label>
-                  <Textarea
-                    placeholder="Enter reason for absence or being late..."
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    rows={2}
-                  />
+              {/* Reason Category - Required for absence statuses */}
+              {requiresReason(selectedStatus) && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Reason <span className="text-destructive">*</span></Label>
+                    <Select value={reasonCategory} onValueChange={(v) => setReasonCategory(v as ReasonCategory)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a reason" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {REASON_CATEGORIES.map((cat) => (
+                          <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Text reason for "Other" */}
+                  {reasonCategory === 'other' && (
+                    <div className="space-y-2">
+                      <Label>Specify Reason <span className="text-destructive">*</span></Label>
+                      <Textarea
+                        placeholder="Please specify the reason..."
+                        value={reasonText}
+                        onChange={(e) => setReasonText(e.target.value)}
+                        rows={2}
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Reschedule Fields */}
+              {requiresReschedule(selectedStatus) && (
+                <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+                  <p className="text-sm font-medium text-foreground">Reschedule Details</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>New Date <span className="text-destructive">*</span></Label>
+                      <Input 
+                        type="date" 
+                        value={rescheduleDate} 
+                        onChange={(e) => setRescheduleDate(e.target.value)}
+                        min={format(new Date(), 'yyyy-MM-dd')}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>New Time <span className="text-destructive">*</span></Label>
+                      <Input 
+                        type="time" 
+                        value={rescheduleTime} 
+                        onChange={(e) => setRescheduleTime(e.target.value)} 
+                      />
+                    </div>
+                  </div>
+                  {rescheduleDate && rescheduleTime && (
+                    <p className="text-xs text-muted-foreground italic">
+                      Auto-note: Class rescheduled from {classDate} {classTime} to {rescheduleDate} {rescheduleTime}
+                    </p>
+                  )}
                 </div>
               )}
 
-              {selectedStatus !== 'absent' && (
+              {/* Lesson & Homework - Only for present/rescheduled */}
+              {['present', 'rescheduled'].includes(selectedStatus) && (
                 <>
                   <div className="space-y-2">
                     <Label>Lesson Covered</Label>
@@ -438,14 +654,27 @@ export default function Attendance() {
                   </div>
                 </>
               )}
+
+              {/* Optional free-text reason for non-required statuses */}
+              {!requiresReason(selectedStatus) && !requiresReschedule(selectedStatus) && selectedStatus !== 'present' && (
+                <div className="space-y-2">
+                  <Label>Notes</Label>
+                  <Textarea
+                    placeholder="Optional notes..."
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    rows={2}
+                  />
+                </div>
+              )}
             </div>
             <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setMarkDialogOpen(false)}>
+              <Button variant="outline" onClick={() => { resetForm(); setMarkDialogOpen(false); }}>
                 Cancel
               </Button>
               <Button 
                 onClick={() => markAttendance.mutate()} 
-                disabled={!selectedStudent || markAttendance.isPending}
+                disabled={!isFormValid || markAttendance.isPending}
               >
                 {markAttendance.isPending ? 'Saving...' : 'Save Attendance'}
               </Button>

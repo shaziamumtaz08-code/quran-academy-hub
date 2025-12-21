@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       attendance: {
         Row: {
+          absence_type: string | null
           class_date: string
           class_time: string
           created_at: string
@@ -24,12 +25,17 @@ export type Database = {
           id: string
           lesson_covered: string | null
           reason: string | null
+          reason_category: string | null
+          reason_text: string | null
+          reschedule_date: string | null
+          reschedule_time: string | null
           status: string
           student_id: string
           teacher_id: string
           updated_at: string
         }
         Insert: {
+          absence_type?: string | null
           class_date?: string
           class_time: string
           created_at?: string
@@ -38,12 +44,17 @@ export type Database = {
           id?: string
           lesson_covered?: string | null
           reason?: string | null
+          reason_category?: string | null
+          reason_text?: string | null
+          reschedule_date?: string | null
+          reschedule_time?: string | null
           status: string
           student_id: string
           teacher_id: string
           updated_at?: string
         }
         Update: {
+          absence_type?: string | null
           class_date?: string
           class_time?: string
           created_at?: string
@@ -52,6 +63,10 @@ export type Database = {
           id?: string
           lesson_covered?: string | null
           reason?: string | null
+          reason_category?: string | null
+          reason_text?: string | null
+          reschedule_date?: string | null
+          reschedule_time?: string | null
           status?: string
           student_id?: string
           teacher_id?: string
