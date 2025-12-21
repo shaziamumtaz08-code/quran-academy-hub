@@ -17,7 +17,8 @@ interface StudentFee {
   id: string;
   studentName: string;
   monthlyFee: number;
-  month: string;
+  month: string; // 01-12
+  year: string;  // YYYY
   status: PaymentStatus;
   paymentMethod?: PaymentMethod;
   amountPaid?: number;
@@ -26,13 +27,42 @@ interface StudentFee {
   receiptName?: string;
 }
 
+const MONTHS = [
+  { value: '01', label: 'January' },
+  { value: '02', label: 'February' },
+  { value: '03', label: 'March' },
+  { value: '04', label: 'April' },
+  { value: '05', label: 'May' },
+  { value: '06', label: 'June' },
+  { value: '07', label: 'July' },
+  { value: '08', label: 'August' },
+  { value: '09', label: 'September' },
+  { value: '10', label: 'October' },
+  { value: '11', label: 'November' },
+  { value: '12', label: 'December' },
+];
+
+const currentYear = new Date().getFullYear();
+const YEARS = [
+  (currentYear - 2).toString(),
+  (currentYear - 1).toString(),
+  currentYear.toString(),
+  (currentYear + 1).toString(),
+  (currentYear + 2).toString(),
+];
+
+const formatFeePeriod = (month: string, year: string) => {
+  const monthLabel = MONTHS.find(m => m.value === month)?.label || month;
+  return `${monthLabel.substring(0, 3)} ${year}`;
+};
+
 // Mock data - replace with Supabase query
 const mockStudentFees: StudentFee[] = [
-  { id: '1', studentName: 'Ahmed Hassan', monthlyFee: 100, month: 'December 2024', status: 'paid', paymentMethod: 'bank', amountPaid: 100 },
-  { id: '2', studentName: 'Fatima Ali', monthlyFee: 100, month: 'December 2024', status: 'unpaid' },
-  { id: '3', studentName: 'Omar Khan', monthlyFee: 150, month: 'December 2024', status: 'paid', paymentMethod: 'easypaisa', amountPaid: 150 },
-  { id: '4', studentName: 'Aisha Mahmood', monthlyFee: 100, month: 'December 2024', status: 'partial', paymentMethod: 'cash', amountPaid: 50 },
-  { id: '5', studentName: 'Yusuf Ibrahim', monthlyFee: 120, month: 'December 2024', status: 'unpaid' },
+  { id: '1', studentName: 'Ahmed Hassan', monthlyFee: 100, month: '12', year: '2024', status: 'paid', paymentMethod: 'bank', amountPaid: 100 },
+  { id: '2', studentName: 'Fatima Ali', monthlyFee: 100, month: '12', year: '2024', status: 'unpaid' },
+  { id: '3', studentName: 'Omar Khan', monthlyFee: 150, month: '01', year: '2025', status: 'paid', paymentMethod: 'easypaisa', amountPaid: 150 },
+  { id: '4', studentName: 'Aisha Mahmood', monthlyFee: 100, month: '01', year: '2025', status: 'partial', paymentMethod: 'cash', amountPaid: 50 },
+  { id: '5', studentName: 'Yusuf Ibrahim', monthlyFee: 120, month: '12', year: '2024', status: 'unpaid' },
 ];
 
 const PAYMENT_METHODS = [
@@ -45,7 +75,9 @@ const PAYMENT_METHODS = [
 
 export default function Payments() {
   const [fees, setFees] = useState(mockStudentFees);
-  const [filter, setFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [monthFilter, setMonthFilter] = useState('all');
+  const [yearFilter, setYearFilter] = useState('all');
   const { toast } = useToast();
 
   // Dialog state
@@ -59,8 +91,10 @@ export default function Payments() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filteredFees = fees.filter(fee => {
-    if (filter === 'all') return true;
-    return fee.status === filter;
+    if (statusFilter !== 'all' && fee.status !== statusFilter) return false;
+    if (monthFilter !== 'all' && fee.month !== monthFilter) return false;
+    if (yearFilter !== 'all' && fee.year !== yearFilter) return false;
+    return true;
   });
 
   const totalFees = fees.reduce((sum, f) => sum + f.monthlyFee, 0);
@@ -225,14 +259,36 @@ export default function Payments() {
           </div>
         </div>
 
-        {/* Filter */}
-        <div className="flex items-center gap-4">
-          <Select value={filter} onValueChange={setFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filter by status" />
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-4">
+          <Select value={monthFilter} onValueChange={setMonthFilter}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Month" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Students</SelectItem>
+              <SelectItem value="all">All Months</SelectItem>
+              {MONTHS.map((m) => (
+                <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={yearFilter} onValueChange={setYearFilter}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Year" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Years</SelectItem>
+              {YEARS.map((y) => (
+                <SelectItem key={y} value={y}>{y}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
               <SelectItem value="paid">Paid</SelectItem>
               <SelectItem value="partial">Partial</SelectItem>
               <SelectItem value="unpaid">Unpaid</SelectItem>
@@ -252,7 +308,7 @@ export default function Payments() {
                 <TableHead>Student</TableHead>
                 <TableHead className="text-right">Monthly Fee</TableHead>
                 <TableHead className="text-right">Paid</TableHead>
-                <TableHead>Month</TableHead>
+                <TableHead>Fee Period</TableHead>
                 <TableHead>Payment Method</TableHead>
                 <TableHead className="text-center">Status</TableHead>
                 <TableHead className="text-center">Action</TableHead>
@@ -277,7 +333,7 @@ export default function Payments() {
                       <span className="text-muted-foreground">-</span>
                     )}
                   </TableCell>
-                  <TableCell>{fee.month}</TableCell>
+                  <TableCell>{formatFeePeriod(fee.month, fee.year)}</TableCell>
                   <TableCell>
                     {fee.paymentMethod ? (
                       <span className="capitalize text-muted-foreground">
