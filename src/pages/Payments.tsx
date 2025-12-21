@@ -7,24 +7,42 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { DollarSign, CheckCircle, XCircle, User, Upload, X, GraduationCap } from 'lucide-react';
+import { DollarSign, CheckCircle, XCircle, User, Upload, X, GraduationCap, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 type PaymentStatus = 'paid' | 'unpaid' | 'partial';
 type PaymentMethod = 'bank' | 'easypaisa' | 'jazzcash' | 'cash' | 'other' | '';
 
+interface StudentFeeRow {
+  id: string;
+  student_id: string;
+  monthly_fee: number;
+  month: string;
+  year: string;
+  status: string;
+  payment_method: string | null;
+  amount_paid: number | null;
+  remark: string | null;
+  receipt_url: string | null;
+  profiles: {
+    full_name: string;
+  } | null;
+}
+
 interface StudentFee {
   id: string;
+  studentId: string;
   studentName: string;
   monthlyFee: number;
-  month: string; // 01-12
-  year: string;  // YYYY
+  month: string;
+  year: string;
   status: PaymentStatus;
   paymentMethod?: PaymentMethod;
   amountPaid?: number;
   remark?: string;
   receiptUrl?: string;
-  receiptName?: string;
 }
 
 const MONTHS = [
@@ -56,15 +74,6 @@ const formatFeePeriod = (month: string, year: string) => {
   return `${monthLabel.substring(0, 3)} ${year}`;
 };
 
-// Mock data - replace with Supabase query
-const mockStudentFees: StudentFee[] = [
-  { id: '1', studentName: 'Ahmed Hassan', monthlyFee: 100, month: '12', year: '2024', status: 'paid', paymentMethod: 'bank', amountPaid: 100 },
-  { id: '2', studentName: 'Fatima Ali', monthlyFee: 100, month: '12', year: '2024', status: 'unpaid' },
-  { id: '3', studentName: 'Omar Khan', monthlyFee: 150, month: '01', year: '2025', status: 'paid', paymentMethod: 'easypaisa', amountPaid: 150 },
-  { id: '4', studentName: 'Aisha Mahmood', monthlyFee: 100, month: '01', year: '2025', status: 'partial', paymentMethod: 'cash', amountPaid: 50 },
-  { id: '5', studentName: 'Yusuf Ibrahim', monthlyFee: 120, month: '12', year: '2024', status: 'unpaid' },
-];
-
 const PAYMENT_METHODS = [
   { value: 'bank', label: 'Bank' },
   { value: 'easypaisa', label: 'Easypaisa' },
@@ -74,11 +83,11 @@ const PAYMENT_METHODS = [
 ];
 
 export default function Payments() {
-  const [fees, setFees] = useState(mockStudentFees);
   const [statusFilter, setStatusFilter] = useState('all');
   const [monthFilter, setMonthFilter] = useState('all');
   const [yearFilter, setYearFilter] = useState('all');
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -90,11 +99,96 @@ export default function Payments() {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const filteredFees = fees.filter(fee => {
-    if (statusFilter !== 'all' && fee.status !== statusFilter) return false;
-    if (monthFilter !== 'all' && fee.month !== monthFilter) return false;
-    if (yearFilter !== 'all' && fee.year !== yearFilter) return false;
-    return true;
+  // Fetch fees from Supabase
+  const { data: fees = [], isLoading } = useQuery({
+    queryKey: ['student-fees', statusFilter, monthFilter, yearFilter],
+    queryFn: async () => {
+      let query = supabase
+        .from('student_fees')
+        .select(`
+          id,
+          student_id,
+          monthly_fee,
+          month,
+          year,
+          status,
+          payment_method,
+          amount_paid,
+          remark,
+          receipt_url,
+          profiles!student_fees_student_id_fkey(full_name)
+        `)
+        .order('year', { ascending: false })
+        .order('month', { ascending: false });
+
+      if (statusFilter !== 'all') {
+        query = query.eq('status', statusFilter);
+      }
+      if (monthFilter !== 'all') {
+        query = query.eq('month', monthFilter);
+      }
+      if (yearFilter !== 'all') {
+        query = query.eq('year', yearFilter);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      return (data as unknown as StudentFeeRow[]).map((row): StudentFee => ({
+        id: row.id,
+        studentId: row.student_id,
+        studentName: row.profiles?.full_name || 'Unknown Student',
+        monthlyFee: Number(row.monthly_fee),
+        month: row.month,
+        year: row.year,
+        status: row.status as PaymentStatus,
+        paymentMethod: (row.payment_method as PaymentMethod) || undefined,
+        amountPaid: row.amount_paid ? Number(row.amount_paid) : undefined,
+        remark: row.remark || undefined,
+        receiptUrl: row.receipt_url || undefined,
+      }));
+    },
+  });
+
+  // Update fee mutation
+  const updateFeeMutation = useMutation({
+    mutationFn: async (data: {
+      id: string;
+      status: PaymentStatus;
+      paymentMethod?: string;
+      amountPaid?: number;
+      remark?: string;
+      receiptUrl?: string;
+    }) => {
+      const { error } = await supabase
+        .from('student_fees')
+        .update({
+          status: data.status,
+          payment_method: data.paymentMethod || null,
+          amount_paid: data.amountPaid || null,
+          remark: data.remark || null,
+          receipt_url: data.receiptUrl || null,
+        })
+        .eq('id', data.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['student-fees'] });
+      toast({
+        title: 'Fee Updated',
+        description: `${selectedFee?.studentName}'s fee has been updated successfully.`,
+      });
+      setDialogOpen(false);
+      resetDialogState();
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update fee',
+        variant: 'destructive',
+      });
+    },
   });
 
   const totalFees = fees.reduce((sum, f) => sum + f.monthlyFee, 0);
@@ -128,7 +222,7 @@ export default function Payments() {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!selectedFee) return;
 
     // Validate payment method is required for paid/partial
@@ -155,28 +249,40 @@ export default function Payments() {
       }
     }
 
-    setFees(fees.map(f => {
-      if (f.id === selectedFee.id) {
-        return {
-          ...f,
-          status: finalStatus,
-          paymentMethod: (finalStatus === 'paid' || finalStatus === 'partial') ? paymentMethod : undefined,
-          amountPaid: finalStatus === 'unpaid' ? undefined : paidAmount,
-          remark: remark || undefined,
-          receiptUrl: receiptFile ? URL.createObjectURL(receiptFile) : f.receiptUrl,
-          receiptName: receiptFile ? receiptFile.name : f.receiptName,
-        };
+    // Handle receipt upload if present
+    let receiptUrl = selectedFee.receiptUrl;
+    if (receiptFile) {
+      const fileExt = receiptFile.name.split('.').pop();
+      const fileName = `${selectedFee.id}-${Date.now()}.${fileExt}`;
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('resources')
+        .upload(`receipts/${fileName}`, receiptFile);
+
+      if (uploadError) {
+        toast({
+          title: 'Upload failed',
+          description: uploadError.message,
+          variant: 'destructive',
+        });
+        return;
       }
-      return f;
-    }));
 
-    toast({
-      title: 'Fee Updated',
-      description: `${selectedFee.studentName}'s fee marked as ${finalStatus}`,
+      const { data: urlData } = supabase.storage
+        .from('resources')
+        .getPublicUrl(`receipts/${fileName}`);
+      
+      receiptUrl = urlData.publicUrl;
+    }
+
+    updateFeeMutation.mutate({
+      id: selectedFee.id,
+      status: finalStatus,
+      paymentMethod: (finalStatus === 'paid' || finalStatus === 'partial') ? paymentMethod : undefined,
+      amountPaid: finalStatus === 'unpaid' ? undefined : paidAmount,
+      remark: remark || undefined,
+      receiptUrl,
     });
-
-    setDialogOpen(false);
-    resetDialogState();
   };
 
   const resetDialogState = () => {
@@ -296,69 +402,81 @@ export default function Payments() {
           </Select>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <GraduationCap className="h-4 w-4" />
-            <span>{filteredFees.length} students</span>
+            <span>{fees.length} records</span>
           </div>
         </div>
 
         {/* Table */}
         <div className="bg-card rounded-xl border border-border overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Student</TableHead>
-                <TableHead className="text-right">Monthly Fee</TableHead>
-                <TableHead className="text-right">Paid</TableHead>
-                <TableHead>Fee Period</TableHead>
-                <TableHead>Payment Method</TableHead>
-                <TableHead className="text-center">Status</TableHead>
-                <TableHead className="text-center">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredFees.map((fee) => (
-                <TableRow key={fee.id}>
-                  <TableCell>
-                    <span className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
-                        <User className="h-5 w-5 text-secondary-foreground" />
-                      </div>
-                      <span className="font-medium">{fee.studentName}</span>
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right font-medium">${fee.monthlyFee}</TableCell>
-                  <TableCell className="text-right">
-                    {fee.amountPaid ? (
-                      <span className="text-emerald-light font-medium">${fee.amountPaid}</span>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>{formatFeePeriod(fee.month, fee.year)}</TableCell>
-                  <TableCell>
-                    {fee.paymentMethod ? (
-                      <span className="capitalize text-muted-foreground">
-                        {PAYMENT_METHODS.find(m => m.value === fee.paymentMethod)?.label || '-'}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {getStatusBadge(fee.status)}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Button
-                      size="sm"
-                      variant={fee.status === 'paid' ? 'outline' : 'default'}
-                      onClick={() => openPaymentDialog(fee)}
-                    >
-                      Update
-                    </Button>
-                  </TableCell>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : fees.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <GraduationCap className="h-12 w-12 mb-4 opacity-50" />
+              <p>No fee records found</p>
+              <p className="text-sm">Fee records will appear here once created</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Student</TableHead>
+                  <TableHead className="text-right">Monthly Fee</TableHead>
+                  <TableHead className="text-right">Paid</TableHead>
+                  <TableHead>Fee Period</TableHead>
+                  <TableHead>Payment Method</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
+                  <TableHead className="text-center">Action</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {fees.map((fee) => (
+                  <TableRow key={fee.id}>
+                    <TableCell>
+                      <span className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
+                          <User className="h-5 w-5 text-secondary-foreground" />
+                        </div>
+                        <span className="font-medium">{fee.studentName}</span>
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right font-medium">${fee.monthlyFee}</TableCell>
+                    <TableCell className="text-right">
+                      {fee.amountPaid ? (
+                        <span className="text-emerald-light font-medium">${fee.amountPaid}</span>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>{formatFeePeriod(fee.month, fee.year)}</TableCell>
+                    <TableCell>
+                      {fee.paymentMethod ? (
+                        <span className="capitalize text-muted-foreground">
+                          {PAYMENT_METHODS.find(m => m.value === fee.paymentMethod)?.label || '-'}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {getStatusBadge(fee.status)}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Button
+                        size="sm"
+                        variant={fee.status === 'paid' ? 'outline' : 'default'}
+                        onClick={() => openPaymentDialog(fee)}
+                      >
+                        Update
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </div>
       </div>
 
@@ -379,6 +497,9 @@ export default function Payments() {
                 <p className="font-medium text-foreground">{selectedFee.studentName}</p>
                 <p className="text-sm text-muted-foreground mt-1">
                   Monthly Fee: <span className="text-foreground font-medium">${selectedFee.monthlyFee}</span>
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Period: <span className="text-foreground">{formatFeePeriod(selectedFee.month, selectedFee.year)}</span>
                 </p>
               </div>
             )}
@@ -482,7 +603,8 @@ export default function Payments() {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit}>
+            <Button onClick={handleSubmit} disabled={updateFeeMutation.isPending}>
+              {updateFeeMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Save
             </Button>
           </DialogFooter>

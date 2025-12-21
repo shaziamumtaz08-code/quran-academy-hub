@@ -483,6 +483,59 @@ export type Database = {
         }
         Relationships: []
       }
+      student_fees: {
+        Row: {
+          amount_paid: number | null
+          created_at: string
+          id: string
+          month: string
+          monthly_fee: number
+          payment_method: string | null
+          receipt_url: string | null
+          remark: string | null
+          status: string
+          student_id: string
+          updated_at: string
+          year: string
+        }
+        Insert: {
+          amount_paid?: number | null
+          created_at?: string
+          id?: string
+          month: string
+          monthly_fee?: number
+          payment_method?: string | null
+          receipt_url?: string | null
+          remark?: string | null
+          status?: string
+          student_id: string
+          updated_at?: string
+          year: string
+        }
+        Update: {
+          amount_paid?: number | null
+          created_at?: string
+          id?: string
+          month?: string
+          monthly_fee?: number
+          payment_method?: string | null
+          receipt_url?: string | null
+          remark?: string | null
+          status?: string
+          student_id?: string
+          updated_at?: string
+          year?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_fees_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_parent_links: {
         Row: {
           created_at: string
