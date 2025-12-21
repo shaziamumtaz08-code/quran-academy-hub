@@ -212,6 +212,39 @@ export type Database = {
           },
         ]
       }
+      permission_exceptions: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          granted_by: string | null
+          id: string
+          is_granted: boolean
+          permission: string
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          granted_by?: string | null
+          id?: string
+          is_granted?: boolean
+          permission: string
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          granted_by?: string | null
+          id?: string
+          is_granted?: boolean
+          permission?: string
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -232,6 +265,39 @@ export type Database = {
           email?: string | null
           full_name?: string
           id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      role_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_system: boolean
+          name: string
+          permissions: string[]
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          name: string
+          permissions?: string[]
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          name?: string
+          permissions?: string[]
+          role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string
         }
         Relationships: []
@@ -370,6 +436,10 @@ export type Database = {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      has_permission: {
+        Args: { _permission: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -378,6 +448,7 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role:
@@ -391,6 +462,43 @@ export type Database = {
         | "admin_fees"
         | "admin_academic"
       exam_tenure: "weekly" | "monthly" | "quarterly"
+      permission_type:
+        | "users.view"
+        | "users.create"
+        | "users.edit"
+        | "users.delete"
+        | "users.assign_roles"
+        | "students.view"
+        | "students.create"
+        | "students.edit"
+        | "students.delete"
+        | "teachers.view"
+        | "teachers.create"
+        | "teachers.edit"
+        | "teachers.delete"
+        | "exams.view"
+        | "exams.create"
+        | "exams.edit"
+        | "exams.delete"
+        | "exams.grade"
+        | "attendance.view"
+        | "attendance.mark"
+        | "attendance.edit"
+        | "schedules.view"
+        | "schedules.create"
+        | "schedules.edit"
+        | "schedules.delete"
+        | "reports.view"
+        | "reports.generate"
+        | "payments.view"
+        | "payments.create"
+        | "payments.edit"
+        | "settings.view"
+        | "settings.edit"
+        | "dashboard.admin"
+        | "dashboard.teacher"
+        | "dashboard.student"
+        | "dashboard.parent"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -530,6 +638,44 @@ export const Constants = {
         "admin_academic",
       ],
       exam_tenure: ["weekly", "monthly", "quarterly"],
+      permission_type: [
+        "users.view",
+        "users.create",
+        "users.edit",
+        "users.delete",
+        "users.assign_roles",
+        "students.view",
+        "students.create",
+        "students.edit",
+        "students.delete",
+        "teachers.view",
+        "teachers.create",
+        "teachers.edit",
+        "teachers.delete",
+        "exams.view",
+        "exams.create",
+        "exams.edit",
+        "exams.delete",
+        "exams.grade",
+        "attendance.view",
+        "attendance.mark",
+        "attendance.edit",
+        "schedules.view",
+        "schedules.create",
+        "schedules.edit",
+        "schedules.delete",
+        "reports.view",
+        "reports.generate",
+        "payments.view",
+        "payments.create",
+        "payments.edit",
+        "settings.view",
+        "settings.edit",
+        "dashboard.admin",
+        "dashboard.teacher",
+        "dashboard.student",
+        "dashboard.parent",
+      ],
     },
   },
 } as const
