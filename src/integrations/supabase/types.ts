@@ -17,6 +17,8 @@ export type Database = {
       attendance: {
         Row: {
           absence_type: string | null
+          ayah_from: number | null
+          ayah_to: number | null
           class_date: string
           class_time: string
           created_at: string
@@ -24,6 +26,7 @@ export type Database = {
           homework: string | null
           id: string
           lesson_covered: string | null
+          lines_completed: number | null
           reason: string | null
           reason_category: string | null
           reason_text: string | null
@@ -31,11 +34,15 @@ export type Database = {
           reschedule_time: string | null
           status: string
           student_id: string
+          surah_name: string | null
           teacher_id: string
           updated_at: string
+          variance_reason: string | null
         }
         Insert: {
           absence_type?: string | null
+          ayah_from?: number | null
+          ayah_to?: number | null
           class_date?: string
           class_time: string
           created_at?: string
@@ -43,6 +50,7 @@ export type Database = {
           homework?: string | null
           id?: string
           lesson_covered?: string | null
+          lines_completed?: number | null
           reason?: string | null
           reason_category?: string | null
           reason_text?: string | null
@@ -50,11 +58,15 @@ export type Database = {
           reschedule_time?: string | null
           status: string
           student_id: string
+          surah_name?: string | null
           teacher_id: string
           updated_at?: string
+          variance_reason?: string | null
         }
         Update: {
           absence_type?: string | null
+          ayah_from?: number | null
+          ayah_to?: number | null
           class_date?: string
           class_time?: string
           created_at?: string
@@ -62,6 +74,7 @@ export type Database = {
           homework?: string | null
           id?: string
           lesson_covered?: string | null
+          lines_completed?: number | null
           reason?: string | null
           reason_category?: string | null
           reason_text?: string | null
@@ -69,8 +82,10 @@ export type Database = {
           reschedule_time?: string | null
           status?: string
           student_id?: string
+          surah_name?: string | null
           teacher_id?: string
           updated_at?: string
+          variance_reason?: string | null
         }
         Relationships: [
           {
@@ -358,23 +373,29 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          daily_target_lines: number
           email: string | null
           full_name: string
           id: string
+          mushaf_type: string
           updated_at: string
         }
         Insert: {
           created_at?: string
+          daily_target_lines?: number
           email?: string | null
           full_name: string
           id: string
+          mushaf_type?: string
           updated_at?: string
         }
         Update: {
           created_at?: string
+          daily_target_lines?: number
           email?: string | null
           full_name?: string
           id?: string
+          mushaf_type?: string
           updated_at?: string
         }
         Relationships: []
