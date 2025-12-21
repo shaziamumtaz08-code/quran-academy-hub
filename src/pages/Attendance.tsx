@@ -19,6 +19,15 @@ import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 
 type AttendanceStatus = 'present' | 'student_absent' | 'teacher_absent' | 'teacher_leave' | 'rescheduled' | 'holiday';
 type ReasonCategory = 'sick' | 'personal' | 'emergency' | 'internet_issue' | 'other';
+type VarianceReason = 'slow_pace' | 'lack_of_revision' | 'technical_issues' | 'student_late' | 'short_verses';
+
+const VARIANCE_REASONS: { value: VarianceReason; label: string }[] = [
+  { value: 'slow_pace', label: 'Slow Pace' },
+  { value: 'lack_of_revision', label: 'Lack of Revision' },
+  { value: 'technical_issues', label: 'Technical Issues' },
+  { value: 'student_late', label: 'Student Late' },
+  { value: 'short_verses', label: 'Short Verses' },
+];
 
 interface AttendanceRecord {
   id: string;
@@ -93,6 +102,13 @@ export default function Attendance() {
   const [reasonText, setReasonText] = useState('');
   const [rescheduleDate, setRescheduleDate] = useState('');
   const [rescheduleTime, setRescheduleTime] = useState('');
+  
+  // Quran tracking fields
+  const [surahName, setSurahName] = useState('');
+  const [ayahFrom, setAyahFrom] = useState('');
+  const [ayahTo, setAyahTo] = useState('');
+  const [linesCompleted, setLinesCompleted] = useState('');
+  const [varianceReason, setVarianceReason] = useState<VarianceReason | ''>('');
 
   const userRole = profile?.role;
   const isAdmin = userRole === 'super_admin' || userRole === 'admin' || 
@@ -106,6 +122,33 @@ export default function Attendance() {
   
   // Status requires reschedule info
   const requiresReschedule = (status: AttendanceStatus) => status === 'rescheduled';
+
+  // Fetch assigned students (for teacher) with daily_target_lines
+  const { data: assignedStudents } = useQuery({
+    queryKey: ['assigned-students', user?.id],
+    queryFn: async () => {
+      if (!user?.id || !isTeacher) return [];
+      
+      const { data, error } = await supabase
+        .from('student_teacher_assignments')
+        .select('student_id, student:profiles!student_teacher_assignments_student_id_fkey(id, full_name, mushaf_type, daily_target_lines)')
+        .eq('teacher_id', user.id);
+
+      if (error) throw error;
+      return (data || []).map(d => d.student).filter(Boolean) as Profile[];
+    },
+    enabled: !!user?.id && isTeacher,
+  });
+
+  // Get selected student's daily target
+  const selectedStudentProfile = useMemo(() => {
+    if (!selectedStudent || !assignedStudents) return null;
+    return assignedStudents.find(s => s.id === selectedStudent) || null;
+  }, [selectedStudent, assignedStudents]);
+
+  const dailyTarget = selectedStudentProfile?.daily_target_lines || 10;
+  const linesNum = parseInt(linesCompleted) || 0;
+  const needsVarianceReason = linesNum > 0 && linesNum < dailyTarget;
 
   // Validation
   const isFormValid = useMemo(() => {
@@ -124,25 +167,11 @@ export default function Attendance() {
       if (!rescheduleDate || !rescheduleTime) return false;
     }
     
+    // Variance reason required when lines below target
+    if (needsVarianceReason && !varianceReason) return false;
+    
     return true;
-  }, [selectedStudent, selectedStatus, classTime, reasonCategory, reasonText, rescheduleDate, rescheduleTime]);
-
-  // Fetch assigned students (for teacher)
-  const { data: assignedStudents } = useQuery({
-    queryKey: ['assigned-students', user?.id],
-    queryFn: async () => {
-      if (!user?.id || !isTeacher) return [];
-      
-      const { data, error } = await supabase
-        .from('student_teacher_assignments')
-        .select('student_id, student:profiles!student_teacher_assignments_student_id_fkey(id, full_name)')
-        .eq('teacher_id', user.id);
-
-      if (error) throw error;
-      return (data || []).map(d => d.student).filter(Boolean) as Profile[];
-    },
-    enabled: !!user?.id && isTeacher,
-  });
+  }, [selectedStudent, selectedStatus, classTime, reasonCategory, reasonText, rescheduleDate, rescheduleTime, needsVarianceReason, varianceReason]);
 
   // Fetch attendance records
   const { data: attendanceRecords, isLoading } = useQuery({
@@ -208,6 +237,16 @@ export default function Attendance() {
         finalReason = `Class rescheduled from ${classDate} ${classTime} to ${rescheduleDate} ${rescheduleTime}`;
       }
 
+      // Build lesson_covered from structured fields for backward compatibility
+      let lessonCoveredText = '';
+      if (surahName && ayahFrom && ayahTo) {
+        lessonCoveredText = `${surahName}, Ayah ${ayahFrom}-${ayahTo}`;
+      } else if (surahName && ayahFrom) {
+        lessonCoveredText = `${surahName}, Ayah ${ayahFrom}`;
+      } else if (surahName) {
+        lessonCoveredText = surahName;
+      }
+
       const { error } = await supabase.from('attendance').insert({
         student_id: studentId || user.id,
         teacher_id: user.id,
@@ -216,12 +255,17 @@ export default function Attendance() {
         duration_minutes: parseInt(duration),
         status: selectedStatus,
         reason: finalReason || null,
-        lesson_covered: lessonCovered || null,
+        lesson_covered: lessonCoveredText || null,
         homework: homework || null,
         reason_category: reasonCategory || null,
         reason_text: reasonCategory === 'other' ? reasonText : null,
         reschedule_date: rescheduleDate || null,
         reschedule_time: rescheduleTime || null,
+        surah_name: surahName || null,
+        ayah_from: ayahFrom ? parseInt(ayahFrom) : null,
+        ayah_to: ayahTo ? parseInt(ayahTo) : null,
+        lines_completed: linesCompleted ? parseInt(linesCompleted) : null,
+        variance_reason: needsVarianceReason ? varianceReason : null,
       });
 
       if (error) throw error;
@@ -254,6 +298,11 @@ export default function Attendance() {
     setReasonText('');
     setRescheduleDate('');
     setRescheduleTime('');
+    setSurahName('');
+    setAyahFrom('');
+    setAyahTo('');
+    setLinesCompleted('');
+    setVarianceReason('');
   };
 
   const filteredRecords = useMemo(() => {
@@ -639,17 +688,81 @@ export default function Attendance() {
                 </div>
               )}
 
-              {/* Lesson & Homework - Only for present/rescheduled */}
+              {/* Quran Progress Section - Only for present/rescheduled */}
               {['present', 'rescheduled'].includes(selectedStatus) && (
                 <>
-                  <div className="space-y-2">
-                    <Label>Lesson Covered</Label>
-                    <Input
-                      placeholder="e.g., Surah Al-Baqarah, Ayat 1-5"
-                      value={lessonCovered}
-                      onChange={(e) => setLessonCovered(e.target.value)}
-                    />
+                  <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+                    <p className="text-sm font-medium text-foreground">Quran Progress</p>
+                    
+                    <div className="space-y-2">
+                      <Label>Surah Name</Label>
+                      <Input
+                        placeholder="e.g., Al-Baqarah"
+                        value={surahName}
+                        onChange={(e) => setSurahName(e.target.value)}
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Ayah From</Label>
+                        <Input
+                          type="number"
+                          placeholder="1"
+                          min="1"
+                          value={ayahFrom}
+                          onChange={(e) => setAyahFrom(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Ayah To</Label>
+                        <Input
+                          type="number"
+                          placeholder="5"
+                          min="1"
+                          value={ayahTo}
+                          onChange={(e) => setAyahTo(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Lines Completed</Label>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        min="0"
+                        value={linesCompleted}
+                        onChange={(e) => setLinesCompleted(e.target.value)}
+                      />
+                      {selectedStudentProfile && (
+                        <p className="text-xs text-muted-foreground">
+                          Daily target: {dailyTarget} lines ({selectedStudentProfile.mushaf_type || '15-line'} mushaf)
+                        </p>
+                      )}
+                    </div>
+                    
+                    {/* Variance Reason - Required when lines < target */}
+                    {needsVarianceReason && (
+                      <div className="space-y-2">
+                        <Label>Variance Reason <span className="text-destructive">*</span></Label>
+                        <Select value={varianceReason} onValueChange={(v) => setVarianceReason(v as VarianceReason)}>
+                          <SelectTrigger className="border-destructive/50">
+                            <SelectValue placeholder="Why below target?" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {VARIANCE_REASONS.map((r) => (
+                              <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-destructive">
+                          Lines completed ({linesNum}) is below the daily target ({dailyTarget})
+                        </p>
+                      </div>
+                    )}
                   </div>
+                  
                   <div className="space-y-2">
                     <Label>Homework</Label>
                     <Textarea
