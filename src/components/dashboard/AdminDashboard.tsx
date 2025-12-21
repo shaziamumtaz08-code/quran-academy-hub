@@ -1,31 +1,73 @@
 import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { StatCard } from './StatCard';
 import { RecentActivity } from './RecentActivity';
 import { TodayClasses } from './TodayClasses';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, GraduationCap, Calendar, DollarSign, TrendingUp } from 'lucide-react';
-
-const mockStats = {
-  teachers: 12,
-  students: 48,
-  classesToday: 24,
-  monthlyRevenue: 4800,
-};
-
-const mockActivities = [
-  { id: '1', type: 'attendance' as const, title: 'Attendance Marked', description: 'Sheikh Ahmad marked attendance for Muhammad Ali', time: '10 min ago' },
-  { id: '2', type: 'lesson' as const, title: 'Lesson Completed', description: 'Surah Al-Fatiha revision completed by Sara', time: '25 min ago' },
-  { id: '3', type: 'payment' as const, title: 'Payment Received', description: 'Monthly fee received from Ahmed Hassan', time: '1 hour ago' },
-  { id: '4', type: 'schedule' as const, title: 'Schedule Updated', description: 'New class scheduled for Yusuf Khan', time: '2 hours ago' },
-];
-
-const mockTodayClasses = [
-  { id: '1', studentName: 'Muhammad Ali', time: '09:00 AM', duration: 30, status: 'present' as const },
-  { id: '2', studentName: 'Sara Ahmed', time: '10:00 AM', duration: 45, status: 'present' as const },
-  { id: '3', studentName: 'Yusuf Khan', time: '11:30 AM', duration: 30, status: 'pending' as const },
-  { id: '4', studentName: 'Fatima Hassan', time: '02:00 PM', duration: 30, status: 'pending' as const },
-];
+import { supabase } from '@/integrations/supabase/client';
+import { Skeleton } from '@/components/ui/skeleton';
+import { format } from 'date-fns';
 
 export function AdminDashboard() {
+  const today = format(new Date(), 'yyyy-MM-dd');
+
+  // Fetch stats from database
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ['admin-stats'],
+    queryFn: async () => {
+      const [rolesRes, attendanceRes] = await Promise.all([
+        supabase.from('user_roles').select('role'),
+        supabase.from('attendance').select('status, class_date'),
+      ]);
+
+      const roleCounts = (rolesRes.data || []).reduce((acc, r) => {
+        acc[r.role] = (acc[r.role] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const todayAttendance = (attendanceRes.data || []).filter(a => a.class_date === today);
+      const monthAttendance = attendanceRes.data || [];
+
+      return {
+        teachers: roleCounts['teacher'] || 0,
+        students: roleCounts['student'] || 0,
+        classesToday: todayAttendance.length,
+        presentToday: todayAttendance.filter(a => a.status === 'present').length,
+        totalMonthClasses: monthAttendance.length,
+        monthlyAttendanceRate: monthAttendance.length > 0 
+          ? Math.round((monthAttendance.filter(a => a.status === 'present').length / monthAttendance.length) * 100)
+          : 0,
+      };
+    },
+  });
+
+  const mockActivities = [
+    { id: '1', type: 'attendance' as const, title: 'Attendance System', description: 'Ready for marking', time: 'Active' },
+    { id: '2', type: 'lesson' as const, title: 'Lessons Module', description: 'Track student progress', time: 'Active' },
+    { id: '3', type: 'payment' as const, title: 'Fee Management', description: 'Coming soon', time: 'Pending' },
+  ];
+
+  const mockTodayClasses = [
+    { id: '1', studentName: 'No classes loaded', time: '-', duration: 0, status: 'pending' as const },
+  ];
+
+  if (isLoading) {
+    return (
+      <div className="space-y-8 animate-fade-in">
+        <div>
+          <h1 className="font-serif text-3xl font-bold text-foreground">Admin Dashboard</h1>
+          <p className="text-muted-foreground mt-1">Overview of your academy's performance</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-32 rounded-xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Header */}
@@ -38,27 +80,24 @@ export function AdminDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Total Teachers"
-          value={mockStats.teachers}
+          value={stats?.teachers || 0}
           icon={Users}
-          trend={{ value: 8, isPositive: true }}
           variant="primary"
         />
         <StatCard
           title="Total Students"
-          value={mockStats.students}
+          value={stats?.students || 0}
           icon={GraduationCap}
-          trend={{ value: 12, isPositive: true }}
         />
         <StatCard
           title="Classes Today"
-          value={mockStats.classesToday}
+          value={stats?.classesToday || 0}
           icon={Calendar}
         />
         <StatCard
-          title="Monthly Revenue"
-          value={`$${mockStats.monthlyRevenue.toLocaleString()}`}
-          icon={DollarSign}
-          trend={{ value: 5, isPositive: true }}
+          title="Attendance Rate"
+          value={`${stats?.monthlyAttendanceRate || 0}%`}
+          icon={TrendingUp}
           variant="gold"
         />
       </div>
@@ -70,27 +109,31 @@ export function AdminDashboard() {
       </div>
 
       {/* Quick Stats */}
-      <div className="bg-card rounded-xl border border-border p-6">
-        <h3 className="font-serif text-xl font-bold text-foreground mb-6">Monthly Overview</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          <div className="text-center">
-            <p className="text-3xl font-serif font-bold text-primary">96%</p>
-            <p className="text-sm text-muted-foreground mt-1">Attendance Rate</p>
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-serif">Monthly Overview</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="text-center">
+              <p className="text-3xl font-serif font-bold text-primary">{stats?.monthlyAttendanceRate || 0}%</p>
+              <p className="text-sm text-muted-foreground mt-1">Attendance Rate</p>
+            </div>
+            <div className="text-center">
+              <p className="text-3xl font-serif font-bold text-emerald-light">{stats?.totalMonthClasses || 0}</p>
+              <p className="text-sm text-muted-foreground mt-1">Classes Recorded</p>
+            </div>
+            <div className="text-center">
+              <p className="text-3xl font-serif font-bold text-teal">{stats?.presentToday || 0}</p>
+              <p className="text-sm text-muted-foreground mt-1">Present Today</p>
+            </div>
+            <div className="text-center">
+              <p className="text-3xl font-serif font-bold text-accent">{stats?.students || 0}</p>
+              <p className="text-sm text-muted-foreground mt-1">Active Students</p>
+            </div>
           </div>
-          <div className="text-center">
-            <p className="text-3xl font-serif font-bold text-emerald-light">720</p>
-            <p className="text-sm text-muted-foreground mt-1">Classes Delivered</p>
-          </div>
-          <div className="text-center">
-            <p className="text-3xl font-serif font-bold text-teal">85%</p>
-            <p className="text-sm text-muted-foreground mt-1">Fee Collection</p>
-          </div>
-          <div className="text-center">
-            <p className="text-3xl font-serif font-bold text-accent">4.8</p>
-            <p className="text-sm text-muted-foreground mt-1">Avg KPI Score</p>
-          </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

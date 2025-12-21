@@ -14,6 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
+      attendance: {
+        Row: {
+          class_date: string
+          class_time: string
+          created_at: string
+          duration_minutes: number
+          homework: string | null
+          id: string
+          lesson_covered: string | null
+          reason: string | null
+          status: string
+          student_id: string
+          teacher_id: string
+          updated_at: string
+        }
+        Insert: {
+          class_date?: string
+          class_time: string
+          created_at?: string
+          duration_minutes?: number
+          homework?: string | null
+          id?: string
+          lesson_covered?: string | null
+          reason?: string | null
+          status: string
+          student_id: string
+          teacher_id: string
+          updated_at?: string
+        }
+        Update: {
+          class_date?: string
+          class_time?: string
+          created_at?: string
+          duration_minutes?: number
+          homework?: string | null
+          id?: string
+          lesson_covered?: string | null
+          reason?: string | null
+          status?: string
+          student_id?: string
+          teacher_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exam_field_results: {
         Row: {
           created_at: string
