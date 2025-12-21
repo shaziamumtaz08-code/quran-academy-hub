@@ -356,6 +356,94 @@ export default function Resources() {
     },
   });
 
+  // Move folder mutation
+  const moveFolderMutation = useMutation({
+    mutationFn: async ({ folderId, newParentId }: { folderId: string; newParentId: string | null }) => {
+      const { error } = await supabase
+        .from("folders")
+        .update({ parent_id: newParentId })
+        .eq("id", folderId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["folders"] });
+      toast.success("Folder moved");
+    },
+    onError: (error: Error) => {
+      toast.error("Failed to move folder: " + error.message);
+    },
+  });
+
+  // Move file mutation
+  const moveFileMutation = useMutation({
+    mutationFn: async ({ fileId, newFolderId }: { fileId: string; newFolderId: string | null }) => {
+      const { error } = await supabase
+        .from("resources")
+        .update({ folder_id: newFolderId })
+        .eq("id", fileId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["resources"] });
+      toast.success("File moved");
+    },
+    onError: (error: Error) => {
+      toast.error("Failed to move file: " + error.message);
+    },
+  });
+
+  // Handle drop on folder
+  const handleDropOnFolder = useCallback(
+    (itemId: string, itemType: "folder" | "file", targetFolderId: string) => {
+      if (itemType === "folder") {
+        // Prevent dropping folder into itself or its children
+        const isDescendant = (parentId: string, childId: string): boolean => {
+          const folder = folders.find((f) => f.id === childId);
+          if (!folder) return false;
+          if (folder.parent_id === parentId) return true;
+          if (folder.parent_id) return isDescendant(parentId, folder.parent_id);
+          return false;
+        };
+        
+        if (itemId === targetFolderId || isDescendant(itemId, targetFolderId)) {
+          toast.error("Cannot move folder into itself or its subfolder");
+          return;
+        }
+        moveFolderMutation.mutate({ folderId: itemId, newParentId: targetFolderId });
+      } else {
+        moveFileMutation.mutate({ fileId: itemId, newFolderId: targetFolderId });
+      }
+    },
+    [folders, moveFolderMutation, moveFileMutation]
+  );
+
+  // Handle drop on breadcrumb (move to folder in path or root)
+  const handleDropOnBreadcrumb = useCallback(
+    (itemId: string, itemType: "folder" | "file", targetFolderId: string | null) => {
+      if (itemType === "folder") {
+        // Prevent dropping folder into itself or its children
+        if (targetFolderId) {
+          const isDescendant = (parentId: string, childId: string): boolean => {
+            const folder = folders.find((f) => f.id === childId);
+            if (!folder) return false;
+            if (folder.parent_id === parentId) return true;
+            if (folder.parent_id) return isDescendant(parentId, folder.parent_id);
+            return false;
+          };
+          
+          if (itemId === targetFolderId || isDescendant(itemId, targetFolderId)) {
+            toast.error("Cannot move folder into itself or its subfolder");
+            return;
+          }
+        }
+        moveFolderMutation.mutate({ folderId: itemId, newParentId: targetFolderId });
+      } else {
+        moveFileMutation.mutate({ fileId: itemId, newFolderId: targetFolderId });
+      }
+    },
+    [folders, moveFolderMutation, moveFileMutation]
+  );
+
   // Handle rename
   const handleRename = async (newName: string) => {
     if (!renameItem) return;
@@ -430,6 +518,7 @@ export default function Resources() {
           <ResourcesBreadcrumb
             folderPath={folderPath}
             onNavigate={navigateToFolder}
+            onDrop={handleDropOnBreadcrumb}
           />
         </div>
 
@@ -505,6 +594,7 @@ export default function Resources() {
               onOpen={navigateToFolder}
               onRename={openRenameFolder}
               onDelete={openDeleteFolder}
+              onDrop={handleDropOnFolder}
             />
           ))}
           {currentFiles.map((file) => (
@@ -529,6 +619,7 @@ export default function Resources() {
               onOpen={navigateToFolder}
               onRename={openRenameFolder}
               onDelete={openDeleteFolder}
+              onDrop={handleDropOnFolder}
             />
           ))}
           {currentFiles.map((file) => (

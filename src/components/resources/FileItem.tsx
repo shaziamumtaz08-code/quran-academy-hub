@@ -11,6 +11,7 @@ import {
   Trash2,
   Download,
   ExternalLink,
+  GripVertical,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -20,8 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
-
-type ResourceType = "pdf" | "audio" | "video" | "image" | "zip" | "link" | "file";
+import { useState } from "react";
 
 type Resource = {
   id: string;
@@ -68,6 +68,8 @@ export function FileItem({
   onRename,
   onDelete,
 }: FileItemProps) {
+  const [isDragging, setIsDragging] = useState(false);
+
   const handleOpen = () => {
     window.open(resource.url, "_blank");
   };
@@ -82,12 +84,35 @@ export function FileItem({
     document.body.removeChild(link);
   };
 
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData("application/json", JSON.stringify({
+      id: resource.id,
+      type: "file",
+    }));
+    e.dataTransfer.effectAllowed = "move";
+    setIsDragging(true);
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+  };
+
   if (viewMode === "grid") {
     return (
       <div
-        className="group relative flex flex-col items-center p-4 rounded-lg border bg-card hover:bg-muted/50 cursor-pointer transition-colors"
+        className={`group relative flex flex-col items-center p-4 rounded-lg border bg-card hover:bg-muted/50 cursor-pointer transition-all ${
+          isDragging ? "opacity-50" : ""
+        }`}
         onClick={handleOpen}
+        draggable={canManage}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
       >
+        {canManage && (
+          <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing">
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+          </div>
+        )}
         {getTypeIcon(resource.type, "h-12 w-12")}
         <span className="text-sm font-medium text-center line-clamp-2 mt-2">
           {resource.title}
@@ -141,9 +166,19 @@ export function FileItem({
   // List view
   return (
     <div
-      className="group flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+      className={`group flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 cursor-pointer transition-all ${
+        isDragging ? "opacity-50" : ""
+      }`}
       onClick={handleOpen}
+      draggable={canManage}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
     >
+      {canManage && (
+        <div className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing">
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        </div>
+      )}
       {getTypeIcon(resource.type, "h-6 w-6")}
       <span className="flex-1 font-medium truncate">{resource.title}</span>
       <span className="text-sm text-muted-foreground whitespace-nowrap">
