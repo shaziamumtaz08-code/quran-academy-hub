@@ -331,12 +331,12 @@ export default function ExamResults() {
               {!isStudentOrParent && (
                 <div className="space-y-2">
                   <Label>Student</Label>
-                  <Select value={studentFilter} onValueChange={setStudentFilter}>
+                  <Select value={studentFilter || "all"} onValueChange={(val) => setStudentFilter(val === "all" ? "" : val)}>
                     <SelectTrigger>
                       <SelectValue placeholder="All students" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All students</SelectItem>
+                      <SelectItem value="all">All students</SelectItem>
                       {(students ?? []).map((student) => (
                         <SelectItem key={student.id} value={student.id}>{student.full_name}</SelectItem>
                       ))}
@@ -347,12 +347,12 @@ export default function ExamResults() {
               
               <div className="space-y-2">
                 <Label>Subject</Label>
-                <Select value={subjectFilter} onValueChange={setSubjectFilter}>
+                <Select value={subjectFilter || "all"} onValueChange={(val) => setSubjectFilter(val === "all" ? "" : val)}>
                   <SelectTrigger>
                     <SelectValue placeholder="All subjects" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All subjects</SelectItem>
+                    <SelectItem value="all">All subjects</SelectItem>
                     {(subjects ?? []).map((subject) => (
                       <SelectItem key={subject.id} value={subject.id}>{subject.name}</SelectItem>
                     ))}
@@ -362,12 +362,12 @@ export default function ExamResults() {
               
               <div className="space-y-2">
                 <Label>Tenure</Label>
-                <Select value={tenureFilter} onValueChange={setTenureFilter}>
+                <Select value={tenureFilter || "all"} onValueChange={(val) => setTenureFilter(val === "all" ? "" : val)}>
                   <SelectTrigger>
                     <SelectValue placeholder="All tenures" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All tenures</SelectItem>
+                    <SelectItem value="all">All tenures</SelectItem>
                     <SelectItem value="weekly">Weekly</SelectItem>
                     <SelectItem value="monthly">Monthly</SelectItem>
                     <SelectItem value="quarterly">Quarterly</SelectItem>
@@ -377,12 +377,12 @@ export default function ExamResults() {
               
               <div className="space-y-2">
                 <Label>Month</Label>
-                <Select value={monthFilter} onValueChange={setMonthFilter}>
+                <Select value={monthFilter || "all"} onValueChange={(val) => setMonthFilter(val === "all" ? "" : val)}>
                   <SelectTrigger>
                     <SelectValue placeholder="All months" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All months</SelectItem>
+                    <SelectItem value="all">All months</SelectItem>
                     {months.map((month) => (
                       <SelectItem key={month.value} value={month.value}>{month.label}</SelectItem>
                     ))}
