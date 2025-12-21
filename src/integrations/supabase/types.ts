@@ -287,6 +287,41 @@ export type Database = {
           },
         ]
       }
+      folders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          parent_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          parent_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          parent_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       permission_exceptions: {
         Row: {
           created_at: string
@@ -348,6 +383,7 @@ export type Database = {
         Row: {
           created_at: string
           folder: string
+          folder_id: string | null
           id: string
           sub_folder: string | null
           tags: string | null
@@ -360,6 +396,7 @@ export type Database = {
         Insert: {
           created_at?: string
           folder: string
+          folder_id?: string | null
           id?: string
           sub_folder?: string | null
           tags?: string | null
@@ -372,6 +409,7 @@ export type Database = {
         Update: {
           created_at?: string
           folder?: string
+          folder_id?: string | null
           id?: string
           sub_folder?: string | null
           tags?: string | null
@@ -381,7 +419,15 @@ export type Database = {
           uploaded_by?: string | null
           url?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "resources_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       role_templates: {
         Row: {
