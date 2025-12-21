@@ -272,7 +272,13 @@ export default function Attendance() {
     },
     onSuccess: () => {
       toast({ title: 'Attendance Marked', description: 'Attendance has been recorded successfully.' });
+      // Invalidate all relevant queries for immediate UI updates
       queryClient.invalidateQueries({ queryKey: ['attendance'] });
+      queryClient.invalidateQueries({ queryKey: ['teacher-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['student-progress'] });
+      queryClient.invalidateQueries({ queryKey: ['detailed-progress'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
       resetForm();
       setMarkDialogOpen(false);
     },

@@ -49,7 +49,7 @@ export function AdminDashboard() {
   ];
 
   const mockTodayClasses = [
-    { id: '1', studentName: 'No classes loaded', time: '-', duration: 0, status: 'pending' as const },
+    { id: '1', studentId: '', studentName: 'No classes loaded', time: '-', duration: 0, status: 'pending' as const },
   ];
 
   if (isLoading) {
