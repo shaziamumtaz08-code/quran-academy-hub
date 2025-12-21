@@ -29,7 +29,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Checkbox } from '@/components/ui/checkbox';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -45,6 +54,8 @@ import {
   Loader2,
   CheckCircle2,
   XCircle,
+  AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
 
 const ALL_PERMISSIONS = [
@@ -72,14 +83,24 @@ const ROLE_LABELS: Record<AppRole, string> = {
   parent: 'Parent',
 };
 
+interface UserWithRole {
+  id: string;
+  full_name: string;
+  email: string | null;
+  created_at: string;
+  role: AppRole | null;
+  exceptions: Array<{ permission: string; is_granted: boolean }>;
+}
+
 export default function UserManagement() {
-  const { isSuperAdmin, hasPermission } = useAuth();
+  const { isSuperAdmin, hasPermission, user: currentUser } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [deleteConfirmUser, setDeleteConfirmUser] = useState<UserWithRole | null>(null);
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserName, setNewUserName] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
@@ -101,7 +122,7 @@ export default function UserManagement() {
   }
 
   // Fetch users with profiles and roles
-  const { data: users, isLoading: usersLoading } = useQuery({
+  const { data: users, isLoading: usersLoading, error: usersError, refetch } = useQuery({
     queryKey: ['users-with-roles'],
     queryFn: async () => {
       const { data: profiles, error: profilesError } = await supabase
@@ -112,22 +133,25 @@ export default function UserManagement() {
       if (profilesError) throw profilesError;
 
       // Get roles for each user
-      const usersWithRoles = await Promise.all(
+      const usersWithRoles: UserWithRole[] = await Promise.all(
         (profiles || []).map(async (profile) => {
           const { data: roleData } = await supabase
             .from('user_roles')
             .select('role')
             .eq('user_id', profile.id)
-            .single();
+            .maybeSingle();
 
           const { data: exceptions } = await supabase
             .from('permission_exceptions')
-            .select('*')
+            .select('permission, is_granted')
             .eq('user_id', profile.id);
 
           return {
-            ...profile,
-            role: roleData?.role || null,
+            id: profile.id,
+            full_name: profile.full_name,
+            email: profile.email,
+            created_at: profile.created_at,
+            role: (roleData?.role as AppRole) || null,
             exceptions: exceptions || [],
           };
         })
@@ -195,7 +219,6 @@ export default function UserManagement() {
       isGranted: boolean | null;
     }) => {
       if (isGranted === null) {
-        // Remove exception
         const { error } = await supabase
           .from('permission_exceptions')
           .delete()
@@ -203,7 +226,6 @@ export default function UserManagement() {
           .eq('permission', permission);
         if (error) throw error;
       } else {
-        // Upsert exception
         const { error } = await supabase
           .from('permission_exceptions')
           .upsert({
@@ -232,7 +254,7 @@ export default function UserManagement() {
     },
   });
 
-  // Create user mutation (super admin only)
+  // Create user mutation
   const createUserMutation = useMutation({
     mutationFn: async ({
       email,
@@ -248,7 +270,8 @@ export default function UserManagement() {
       const { data, error } = await supabase.functions.invoke('admin-create-user', {
         body: { email, password, fullName, role },
       });
-      if (error) throw error;
+      if (error) throw new Error(error.message || 'Failed to create user');
+      if (data?.error) throw new Error(data.error);
       return data as { userId: string };
     },
     onSuccess: () => {
@@ -272,6 +295,33 @@ export default function UserManagement() {
     },
   });
 
+  // Delete user mutation
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const { data, error } = await supabase.functions.invoke('admin-delete-user', {
+        body: { userId },
+      });
+      if (error) throw new Error(error.message || 'Failed to delete user');
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users-with-roles'] });
+      toast({
+        title: 'User deleted',
+        description: 'User was deleted successfully.',
+      });
+      setDeleteConfirmUser(null);
+    },
+    onError: (error) => {
+      toast({
+        title: 'Failed to delete user',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+      });
+    },
+  });
+
   const filteredUsers = users?.filter(user => 
     user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -286,8 +336,8 @@ export default function UserManagement() {
     return template?.permissions?.includes(permission) || false;
   };
 
-  const getEffectivePermission = (user: any, permission: string): boolean | 'inherited' => {
-    const exception = user.exceptions?.find((e: any) => e.permission === permission);
+  const getEffectivePermission = (user: UserWithRole, permission: string): boolean | 'inherited' => {
+    const exception = user.exceptions?.find((e) => e.permission === permission);
     if (exception) {
       return exception.is_granted;
     }
@@ -303,109 +353,138 @@ export default function UserManagement() {
             <h1 className="text-2xl font-serif font-bold text-foreground">User Management</h1>
             <p className="text-muted-foreground">Manage users, roles, and permissions</p>
           </div>
-          {isSuperAdmin && (
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="btn-primary-glow">
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Add User
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create New User</DialogTitle>
-                  <DialogDescription>
-                    Add a new user to the system. They will receive login credentials.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 pt-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Full Name</Label>
-                    <Input
-                      id="name"
-                      value={newUserName}
-                      onChange={(e) => setNewUserName(e.target.value)}
-                      placeholder="Enter full name"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={newUserEmail}
-                      onChange={(e) => setNewUserEmail(e.target.value)}
-                      placeholder="Enter email address"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={newUserPassword}
-                      onChange={(e) => setNewUserPassword(e.target.value)}
-                      placeholder="Enter password"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="role">Role</Label>
-                    <Select value={newUserRole} onValueChange={(v) => setNewUserRole(v as AppRole)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(ROLE_LABELS).map(([role, label]) => (
-                          <SelectItem key={role} value={role}>{label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button 
-                    className="w-full" 
-                    disabled={createUserMutation.isPending}
-                    onClick={async () => {
-                      const email = newUserEmail.trim();
-                      const fullName = newUserName.trim();
-                      const password = newUserPassword;
-
-                      if (!fullName || !email || !password) {
-                        toast({
-                          title: 'Missing fields',
-                          description: 'Please enter name, email, and password.',
-                          variant: 'destructive',
-                        });
-                        return;
-                      }
-
-                      createUserMutation.mutate({
-                        email,
-                        password,
-                        fullName,
-                        role: newUserRole,
-                      });
-                    }}
-                  >
-                    {createUserMutation.isPending ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Creating...
-                      </>
-                    ) : (
-                      'Create User'
-                    )}
+          <div className="flex gap-2">
+            <Button variant="outline" size="icon" onClick={() => refetch()} title="Refresh">
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+            {isSuperAdmin && (
+              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="btn-primary-glow">
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Add User
                   </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          )}
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create New User</DialogTitle>
+                    <DialogDescription>
+                      Add a new user to the system. They will be able to login immediately.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 pt-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Full Name</Label>
+                      <Input
+                        id="name"
+                        value={newUserName}
+                        onChange={(e) => setNewUserName(e.target.value)}
+                        placeholder="Enter full name"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={newUserEmail}
+                        onChange={(e) => setNewUserEmail(e.target.value)}
+                        placeholder="Enter email address"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="password">Password</Label>
+                      <Input
+                        id="password"
+                        type="password"
+                        value={newUserPassword}
+                        onChange={(e) => setNewUserPassword(e.target.value)}
+                        placeholder="Enter password (min 6 characters)"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="role">Role</Label>
+                      <Select value={newUserRole} onValueChange={(v) => setNewUserRole(v as AppRole)}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(ROLE_LABELS).map(([role, label]) => (
+                            <SelectItem key={role} value={role}>{label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button 
+                      className="w-full" 
+                      disabled={createUserMutation.isPending}
+                      onClick={() => {
+                        const email = newUserEmail.trim();
+                        const fullName = newUserName.trim();
+                        const password = newUserPassword;
+
+                        if (!fullName || !email || !password) {
+                          toast({
+                            title: 'Missing fields',
+                            description: 'Please enter name, email, and password.',
+                            variant: 'destructive',
+                          });
+                          return;
+                        }
+
+                        if (password.length < 6) {
+                          toast({
+                            title: 'Password too short',
+                            description: 'Password must be at least 6 characters.',
+                            variant: 'destructive',
+                          });
+                          return;
+                        }
+
+                        createUserMutation.mutate({
+                          email,
+                          password,
+                          fullName,
+                          role: newUserRole,
+                        });
+                      }}
+                    >
+                      {createUserMutation.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Creating...
+                        </>
+                      ) : (
+                        'Create User'
+                      )}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
         </div>
+
+        {/* Error state */}
+        {usersError && (
+          <Card className="border-destructive">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3 text-destructive">
+                <AlertCircle className="h-5 w-5" />
+                <p>Failed to load users: {usersError instanceof Error ? usersError.message : 'Unknown error'}</p>
+                <Button variant="outline" size="sm" onClick={() => refetch()}>
+                  Retry
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Tabs defaultValue="users" className="space-y-6">
           <TabsList>
             <TabsTrigger value="users" className="gap-2">
               <Users className="h-4 w-4" />
-              Users
+              Users ({filteredUsers?.length ?? 0})
             </TabsTrigger>
             <TabsTrigger value="roles" className="gap-2">
               <Shield className="h-4 w-4" />
@@ -457,15 +536,18 @@ export default function UserManagement() {
                           <TableCell>
                             {isSuperAdmin ? (
                               <Select
-                                value={user.role || ''}
+                                value={user.role || "unassigned"}
                                 onValueChange={(role) => {
-                                  updateRoleMutation.mutate({ userId: user.id, role: role as AppRole });
+                                  if (role !== "unassigned") {
+                                    updateRoleMutation.mutate({ userId: user.id, role: role as AppRole });
+                                  }
                                 }}
                               >
-                                <SelectTrigger className="w-40">
+                                <SelectTrigger className="w-44">
                                   <SelectValue placeholder="Select role" />
                                 </SelectTrigger>
                                 <SelectContent>
+                                  <SelectItem value="unassigned" disabled>No role assigned</SelectItem>
                                   {Object.entries(ROLE_LABELS).map(([role, label]) => (
                                     <SelectItem key={role} value={role}>{label}</SelectItem>
                                   ))}
@@ -473,7 +555,7 @@ export default function UserManagement() {
                               </Select>
                             ) : (
                               <Badge variant="secondary">
-                                {user.role ? ROLE_LABELS[user.role as AppRole] : 'No role'}
+                                {user.role ? ROLE_LABELS[user.role] : 'No role'}
                               </Badge>
                             )}
                           </TableCell>
@@ -488,18 +570,34 @@ export default function UserManagement() {
                             )}
                           </TableCell>
                           <TableCell className="text-right">
-                            {isSuperAdmin && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedUser(user);
-                                  setIsEditDialogOpen(true);
-                                }}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                            )}
+                            <div className="flex justify-end gap-1">
+                              {isSuperAdmin && (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedUser(user);
+                                      setIsEditDialogOpen(true);
+                                    }}
+                                    title="Edit permissions"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  {user.id !== currentUser?.id && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => setDeleteConfirmUser(user)}
+                                      className="text-destructive hover:text-destructive"
+                                      title="Delete user"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -528,7 +626,7 @@ export default function UserManagement() {
                     <div className="space-y-2">
                       <p className="text-sm font-medium text-foreground">Permissions:</p>
                       <div className="flex flex-wrap gap-1">
-                        {(template.permissions || []).slice(0, 5).map((perm) => (
+                        {(template.permissions || []).slice(0, 5).map((perm: string) => (
                           <Badge key={perm} variant="secondary" className="text-xs">
                             {perm}
                           </Badge>
@@ -564,7 +662,7 @@ export default function UserManagement() {
                     <p className="text-sm text-muted-foreground">{selectedUser.email}</p>
                   </div>
                   <Badge className="ml-auto">
-                    {selectedUser.role ? ROLE_LABELS[selectedUser.role as AppRole] : 'No role'}
+                    {selectedUser.role ? ROLE_LABELS[selectedUser.role] : 'No role'}
                   </Badge>
                 </div>
 
@@ -594,7 +692,7 @@ export default function UserManagement() {
                             </div>
                             <div className="flex items-center gap-2">
                               {finalValue ? (
-                                <CheckCircle2 className="h-4 w-4 text-success" />
+                                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                               ) : (
                                 <XCircle className="h-4 w-4 text-destructive" />
                               )}
@@ -635,6 +733,40 @@ export default function UserManagement() {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={!!deleteConfirmUser} onOpenChange={() => setDeleteConfirmUser(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete User</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete <strong>{deleteConfirmUser?.full_name}</strong>? 
+                This action cannot be undone and will remove all their data.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => {
+                  if (deleteConfirmUser) {
+                    deleteUserMutation.mutate(deleteConfirmUser.id);
+                  }
+                }}
+                disabled={deleteUserMutation.isPending}
+              >
+                {deleteUserMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete'
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DashboardLayout>
   );
