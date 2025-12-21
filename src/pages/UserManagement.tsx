@@ -232,6 +232,46 @@ export default function UserManagement() {
     },
   });
 
+  // Create user mutation (super admin only)
+  const createUserMutation = useMutation({
+    mutationFn: async ({
+      email,
+      password,
+      fullName,
+      role,
+    }: {
+      email: string;
+      password: string;
+      fullName: string;
+      role: AppRole;
+    }) => {
+      const { data, error } = await supabase.functions.invoke('admin-create-user', {
+        body: { email, password, fullName, role },
+      });
+      if (error) throw error;
+      return data as { userId: string };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users-with-roles'] });
+      toast({
+        title: 'User created',
+        description: 'New user was created successfully.',
+      });
+      setNewUserEmail('');
+      setNewUserName('');
+      setNewUserPassword('');
+      setNewUserRole('student');
+      setIsCreateDialogOpen(false);
+    },
+    onError: (error) => {
+      toast({
+        title: 'Failed to create user',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+      });
+    },
+  });
+
   const filteredUsers = users?.filter(user => 
     user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -323,16 +363,37 @@ export default function UserManagement() {
                   </div>
                   <Button 
                     className="w-full" 
+                    disabled={createUserMutation.isPending}
                     onClick={async () => {
-                      // This would need admin API to create users
-                      toast({
-                        title: 'Feature coming soon',
-                        description: 'User creation via admin panel requires additional setup.',
+                      const email = newUserEmail.trim();
+                      const fullName = newUserName.trim();
+                      const password = newUserPassword;
+
+                      if (!fullName || !email || !password) {
+                        toast({
+                          title: 'Missing fields',
+                          description: 'Please enter name, email, and password.',
+                          variant: 'destructive',
+                        });
+                        return;
+                      }
+
+                      createUserMutation.mutate({
+                        email,
+                        password,
+                        fullName,
+                        role: newUserRole,
                       });
-                      setIsCreateDialogOpen(false);
                     }}
                   >
-                    Create User
+                    {createUserMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      'Create User'
+                    )}
                   </Button>
                 </div>
               </DialogContent>
