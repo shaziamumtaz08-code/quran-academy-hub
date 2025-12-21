@@ -1,5 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { StatCard } from './StatCard';
 import { RecentActivity } from './RecentActivity';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -125,22 +126,22 @@ export function SuperAdminDashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <a href="/user-management" className="p-4 bg-secondary/50 rounded-lg text-center hover:bg-secondary transition-colors">
+            <Link to="/user-management" className="p-4 bg-secondary/50 rounded-lg text-center hover:bg-secondary transition-colors">
               <Users className="h-8 w-8 mx-auto text-primary mb-2" />
               <p className="font-medium text-foreground">User Management</p>
-            </a>
-            <a href="/attendance" className="p-4 bg-secondary/50 rounded-lg text-center hover:bg-secondary transition-colors">
+            </Link>
+            <Link to="/attendance" className="p-4 bg-secondary/50 rounded-lg text-center hover:bg-secondary transition-colors">
               <Calendar className="h-8 w-8 mx-auto text-primary mb-2" />
               <p className="font-medium text-foreground">Attendance</p>
-            </a>
-            <a href="/exam-results" className="p-4 bg-secondary/50 rounded-lg text-center hover:bg-secondary transition-colors">
+            </Link>
+            <Link to="/exam-results" className="p-4 bg-secondary/50 rounded-lg text-center hover:bg-secondary transition-colors">
               <BookOpen className="h-8 w-8 mx-auto text-primary mb-2" />
               <p className="font-medium text-foreground">Exam Results</p>
-            </a>
-            <a href="/teachers" className="p-4 bg-secondary/50 rounded-lg text-center hover:bg-secondary transition-colors">
+            </Link>
+            <Link to="/teachers" className="p-4 bg-secondary/50 rounded-lg text-center hover:bg-secondary transition-colors">
               <UserCheck className="h-8 w-8 mx-auto text-primary mb-2" />
               <p className="font-medium text-foreground">Teachers</p>
-            </a>
+            </Link>
           </div>
         </CardContent>
       </Card>
