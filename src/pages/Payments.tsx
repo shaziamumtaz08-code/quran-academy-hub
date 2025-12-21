@@ -7,30 +7,32 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { DollarSign, Users, CheckCircle, XCircle, User, Upload, X } from 'lucide-react';
+import { DollarSign, CheckCircle, XCircle, User, Upload, X, GraduationCap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 type PaymentStatus = 'paid' | 'unpaid' | 'partial';
 type PaymentMethod = 'bank' | 'easypaisa' | 'jazzcash' | 'cash' | 'other' | '';
 
-interface TeacherPayment {
+interface StudentFee {
   id: string;
-  teacherName: string;
-  studentsCount: number;
-  monthlyRate: number;
+  studentName: string;
+  monthlyFee: number;
   month: string;
   status: PaymentStatus;
   paymentMethod?: PaymentMethod;
+  amountPaid?: number;
   remark?: string;
   receiptUrl?: string;
   receiptName?: string;
 }
 
-const mockPayments: TeacherPayment[] = [
-  { id: '1', teacherName: 'Sheikh Ahmad Hassan', studentsCount: 8, monthlyRate: 800, month: 'December 2024', status: 'paid', paymentMethod: 'bank' },
-  { id: '2', teacherName: 'Ustadh Ibrahim Ali', studentsCount: 6, monthlyRate: 600, month: 'December 2024', status: 'unpaid' },
-  { id: '3', teacherName: 'Sheikh Muhammad Omar', studentsCount: 10, monthlyRate: 1000, month: 'December 2024', status: 'paid', paymentMethod: 'easypaisa' },
-  { id: '4', teacherName: 'Ustadha Fatima Khan', studentsCount: 5, monthlyRate: 500, month: 'December 2024', status: 'unpaid' },
+// Mock data - replace with Supabase query
+const mockStudentFees: StudentFee[] = [
+  { id: '1', studentName: 'Ahmed Hassan', monthlyFee: 100, month: 'December 2024', status: 'paid', paymentMethod: 'bank', amountPaid: 100 },
+  { id: '2', studentName: 'Fatima Ali', monthlyFee: 100, month: 'December 2024', status: 'unpaid' },
+  { id: '3', studentName: 'Omar Khan', monthlyFee: 150, month: 'December 2024', status: 'paid', paymentMethod: 'easypaisa', amountPaid: 150 },
+  { id: '4', studentName: 'Aisha Mahmood', monthlyFee: 100, month: 'December 2024', status: 'partial', paymentMethod: 'cash', amountPaid: 50 },
+  { id: '5', studentName: 'Yusuf Ibrahim', monthlyFee: 120, month: 'December 2024', status: 'unpaid' },
 ];
 
 const PAYMENT_METHODS = [
@@ -42,34 +44,36 @@ const PAYMENT_METHODS = [
 ];
 
 export default function Payments() {
-  const [payments, setPayments] = useState(mockPayments);
+  const [fees, setFees] = useState(mockStudentFees);
   const [filter, setFilter] = useState('all');
   const { toast } = useToast();
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState<TeacherPayment | null>(null);
+  const [selectedFee, setSelectedFee] = useState<StudentFee | null>(null);
   const [newStatus, setNewStatus] = useState<PaymentStatus>('paid');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('');
+  const [amountPaid, setAmountPaid] = useState('');
   const [remark, setRemark] = useState('');
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const filteredPayments = payments.filter(payment => {
+  const filteredFees = fees.filter(fee => {
     if (filter === 'all') return true;
-    return payment.status === filter;
+    return fee.status === filter;
   });
 
-  const totalAmount = payments.reduce((sum, p) => sum + p.monthlyRate, 0);
-  const paidAmount = payments.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.monthlyRate, 0);
-  const unpaidAmount = payments.filter(p => p.status === 'unpaid' || p.status === 'partial').reduce((sum, p) => sum + p.monthlyRate, 0);
+  const totalFees = fees.reduce((sum, f) => sum + f.monthlyFee, 0);
+  const collectedAmount = fees.reduce((sum, f) => sum + (f.amountPaid || 0), 0);
+  const pendingAmount = totalFees - collectedAmount;
 
-  const openPaymentDialog = (payment: TeacherPayment) => {
-    setSelectedPayment(payment);
-    const nextStatus: PaymentStatus = payment.status === 'paid' ? 'unpaid' : 'paid';
+  const openPaymentDialog = (fee: StudentFee) => {
+    setSelectedFee(fee);
+    const nextStatus: PaymentStatus = fee.status === 'paid' ? 'unpaid' : 'paid';
     setNewStatus(nextStatus);
-    setPaymentMethod(payment.paymentMethod || '');
-    setRemark(payment.remark || '');
+    setPaymentMethod(fee.paymentMethod || '');
+    setAmountPaid(fee.amountPaid?.toString() || fee.monthlyFee.toString());
+    setRemark(fee.remark || '');
     setReceiptFile(null);
     setDialogOpen(true);
   };
@@ -91,7 +95,7 @@ export default function Payments() {
   };
 
   const handleSubmit = () => {
-    if (!selectedPayment) return;
+    if (!selectedFee) return;
 
     // Validate payment method is required for paid/partial
     if ((newStatus === 'paid' || newStatus === 'partial') && !paymentMethod) {
@@ -103,23 +107,38 @@ export default function Payments() {
       return;
     }
 
-    setPayments(payments.map(p => {
-      if (p.id === selectedPayment.id) {
+    const paidAmount = parseFloat(amountPaid) || 0;
+    
+    // Determine actual status based on amount
+    let finalStatus = newStatus;
+    if (newStatus !== 'unpaid') {
+      if (paidAmount >= selectedFee.monthlyFee) {
+        finalStatus = 'paid';
+      } else if (paidAmount > 0) {
+        finalStatus = 'partial';
+      } else {
+        finalStatus = 'unpaid';
+      }
+    }
+
+    setFees(fees.map(f => {
+      if (f.id === selectedFee.id) {
         return {
-          ...p,
-          status: newStatus,
-          paymentMethod: (newStatus === 'paid' || newStatus === 'partial') ? paymentMethod : undefined,
+          ...f,
+          status: finalStatus,
+          paymentMethod: (finalStatus === 'paid' || finalStatus === 'partial') ? paymentMethod : undefined,
+          amountPaid: finalStatus === 'unpaid' ? undefined : paidAmount,
           remark: remark || undefined,
-          receiptUrl: receiptFile ? URL.createObjectURL(receiptFile) : p.receiptUrl,
-          receiptName: receiptFile ? receiptFile.name : p.receiptName,
+          receiptUrl: receiptFile ? URL.createObjectURL(receiptFile) : f.receiptUrl,
+          receiptName: receiptFile ? receiptFile.name : f.receiptName,
         };
       }
-      return p;
+      return f;
     }));
 
     toast({
-      title: 'Payment Updated',
-      description: `${selectedPayment.teacherName}'s payment marked as ${newStatus}`,
+      title: 'Fee Updated',
+      description: `${selectedFee.studentName}'s fee marked as ${finalStatus}`,
     });
 
     setDialogOpen(false);
@@ -127,8 +146,9 @@ export default function Payments() {
   };
 
   const resetDialogState = () => {
-    setSelectedPayment(null);
+    setSelectedFee(null);
     setPaymentMethod('');
+    setAmountPaid('');
     setRemark('');
     setReceiptFile(null);
   };
@@ -164,8 +184,8 @@ export default function Payments() {
       <div className="space-y-6 animate-fade-in">
         {/* Header */}
         <div>
-          <h1 className="font-serif text-3xl font-bold text-foreground">Teacher Payments</h1>
-          <p className="text-muted-foreground mt-1">Manage teacher payment status</p>
+          <h1 className="font-serif text-3xl font-bold text-foreground">Student Fees</h1>
+          <p className="text-muted-foreground mt-1">Manage student fee collection</p>
         </div>
 
         {/* Summary Cards */}
@@ -176,8 +196,8 @@ export default function Payments() {
                 <DollarSign className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Total Payable</p>
-                <p className="text-2xl font-serif font-bold text-foreground">${totalAmount.toLocaleString()}</p>
+                <p className="text-sm text-muted-foreground">Total Fees</p>
+                <p className="text-2xl font-serif font-bold text-foreground">${totalFees.toLocaleString()}</p>
               </div>
             </div>
           </div>
@@ -187,8 +207,8 @@ export default function Payments() {
                 <CheckCircle className="h-6 w-6 text-emerald-light" />
               </div>
               <div>
-                <p className="text-sm text-emerald-light/80">Paid</p>
-                <p className="text-2xl font-serif font-bold text-emerald-light">${paidAmount.toLocaleString()}</p>
+                <p className="text-sm text-emerald-light/80">Collected</p>
+                <p className="text-2xl font-serif font-bold text-emerald-light">${collectedAmount.toLocaleString()}</p>
               </div>
             </div>
           </div>
@@ -198,26 +218,30 @@ export default function Payments() {
                 <XCircle className="h-6 w-6 text-destructive" />
               </div>
               <div>
-                <p className="text-sm text-destructive/80">Unpaid</p>
-                <p className="text-2xl font-serif font-bold text-destructive">${unpaidAmount.toLocaleString()}</p>
+                <p className="text-sm text-destructive/80">Pending</p>
+                <p className="text-2xl font-serif font-bold text-destructive">${pendingAmount.toLocaleString()}</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Filter */}
-        <div>
+        <div className="flex items-center gap-4">
           <Select value={filter} onValueChange={setFilter}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Payments</SelectItem>
+              <SelectItem value="all">All Students</SelectItem>
               <SelectItem value="paid">Paid</SelectItem>
               <SelectItem value="partial">Partial</SelectItem>
               <SelectItem value="unpaid">Unpaid</SelectItem>
             </SelectContent>
           </Select>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <GraduationCap className="h-4 w-4" />
+            <span>{filteredFees.length} students</span>
+          </div>
         </div>
 
         {/* Table */}
@@ -225,9 +249,9 @@ export default function Payments() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Teacher</TableHead>
-                <TableHead className="text-center">Students</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
+                <TableHead>Student</TableHead>
+                <TableHead className="text-right">Monthly Fee</TableHead>
+                <TableHead className="text-right">Paid</TableHead>
                 <TableHead>Month</TableHead>
                 <TableHead>Payment Method</TableHead>
                 <TableHead className="text-center">Status</TableHead>
@@ -235,43 +259,44 @@ export default function Payments() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredPayments.map((payment) => (
-                <TableRow key={payment.id}>
+              {filteredFees.map((fee) => (
+                <TableRow key={fee.id}>
                   <TableCell>
                     <span className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
                         <User className="h-5 w-5 text-secondary-foreground" />
                       </div>
-                      <span className="font-medium">{payment.teacherName}</span>
+                      <span className="font-medium">{fee.studentName}</span>
                     </span>
                   </TableCell>
-                  <TableCell className="text-center">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary text-secondary-foreground text-sm">
-                      <Users className="h-3 w-3" />
-                      {payment.studentsCount}
-                    </span>
+                  <TableCell className="text-right font-medium">${fee.monthlyFee}</TableCell>
+                  <TableCell className="text-right">
+                    {fee.amountPaid ? (
+                      <span className="text-emerald-light font-medium">${fee.amountPaid}</span>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
                   </TableCell>
-                  <TableCell className="text-right font-medium text-lg">${payment.monthlyRate}</TableCell>
-                  <TableCell>{payment.month}</TableCell>
+                  <TableCell>{fee.month}</TableCell>
                   <TableCell>
-                    {payment.paymentMethod ? (
+                    {fee.paymentMethod ? (
                       <span className="capitalize text-muted-foreground">
-                        {PAYMENT_METHODS.find(m => m.value === payment.paymentMethod)?.label || '-'}
+                        {PAYMENT_METHODS.find(m => m.value === fee.paymentMethod)?.label || '-'}
                       </span>
                     ) : (
                       <span className="text-muted-foreground">-</span>
                     )}
                   </TableCell>
                   <TableCell className="text-center">
-                    {getStatusBadge(payment.status)}
+                    {getStatusBadge(fee.status)}
                   </TableCell>
                   <TableCell className="text-center">
                     <Button
                       size="sm"
-                      variant={payment.status === 'paid' ? 'outline' : 'default'}
-                      onClick={() => openPaymentDialog(payment)}
+                      variant={fee.status === 'paid' ? 'outline' : 'default'}
+                      onClick={() => openPaymentDialog(fee)}
                     >
-                      {payment.status === 'paid' ? 'Mark Unpaid' : 'Mark Paid'}
+                      Update
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -288,13 +313,17 @@ export default function Payments() {
       }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Update Payment Status</DialogTitle>
+            <DialogTitle>Update Fee Status</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            {selectedPayment && (
-              <div className="text-sm text-muted-foreground">
-                Updating payment for <span className="font-medium text-foreground">{selectedPayment.teacherName}</span>
+            {selectedFee && (
+              <div className="p-3 bg-secondary/50 rounded-lg">
+                <p className="text-sm text-muted-foreground">Student</p>
+                <p className="font-medium text-foreground">{selectedFee.studentName}</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Monthly Fee: <span className="text-foreground font-medium">${selectedFee.monthlyFee}</span>
+                </p>
               </div>
             )}
 
@@ -312,6 +341,20 @@ export default function Payments() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Amount Paid - for paid/partial */}
+            {(newStatus === 'paid' || newStatus === 'partial') && (
+              <div className="space-y-2">
+                <Label>Amount Paid</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={amountPaid}
+                  onChange={(e) => setAmountPaid(e.target.value)}
+                  placeholder={`Max: $${selectedFee?.monthlyFee || 0}`}
+                />
+              </div>
+            )}
 
             {/* Payment Method - Required for paid/partial */}
             {(newStatus === 'paid' || newStatus === 'partial') && (
@@ -363,7 +406,7 @@ export default function Payments() {
                   className="w-full"
                 >
                   <Upload className="h-4 w-4 mr-2" />
-                  {receiptFile ? receiptFile.name : 'Upload Receipt (Image/PDF)'}
+                  {receiptFile ? receiptFile.name : 'Upload Receipt'}
                 </Button>
                 {receiptFile && (
                   <Button
@@ -384,7 +427,7 @@ export default function Payments() {
               Cancel
             </Button>
             <Button onClick={handleSubmit}>
-              Update Payment
+              Save
             </Button>
           </DialogFooter>
         </DialogContent>
