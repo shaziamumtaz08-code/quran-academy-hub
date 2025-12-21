@@ -1,22 +1,25 @@
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function Dashboard() {
-  const { profile } = useAuth();
+  const { profile, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <div className="p-6">Loading...</div>;
+  }
+
+  if (!profile) {
+    return <div className="p-6">Please login again</div>;
+  }
 
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold">Dashboard</h1>
-
-      <div className="mt-4 space-y-2">
-        <p>
-          <strong>Logged in as:</strong> {profile?.full_name}
-        </p>
-        <p>
-          <strong>Role:</strong> {profile?.role}
-        </p>
-      </div>
-
-      <div className="mt-6 rounded-md bg-green-50 p-4 text-green-700">Dashboard restored successfully ✅</div>
+      <p className="mt-2">
+        Logged in as: <b>{profile.full_name}</b>
+      </p>
+      <p>
+        Role: <b>{profile.role || "NOT ASSIGNED"}</b>
+      </p>
     </div>
   );
 }
