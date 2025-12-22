@@ -22,6 +22,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
 import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 type Resource = {
   id: string;
@@ -70,13 +72,37 @@ export function FileItem({
 }: FileItemProps) {
   const [isDragging, setIsDragging] = useState(false);
 
-  const handleOpen = () => {
-    window.open(resource.url, "_blank");
+  const getSignedUrl = async (): Promise<string | null> => {
+    // If it's a link type, just return the URL directly
+    if (resource.type === "link") {
+      return resource.url;
+    }
+    
+    // For storage files, generate a signed URL
+    const { data, error } = await supabase.storage
+      .from("resources")
+      .createSignedUrl(resource.url, 3600); // 1 hour expiry
+    
+    if (error) {
+      toast.error("Failed to access file");
+      return null;
+    }
+    return data.signedUrl;
   };
 
-  const handleDownload = () => {
+  const handleOpen = async () => {
+    const url = await getSignedUrl();
+    if (url) {
+      window.open(url, "_blank");
+    }
+  };
+
+  const handleDownload = async () => {
+    const url = await getSignedUrl();
+    if (!url) return;
+    
     const link = document.createElement("a");
-    link.href = resource.url;
+    link.href = url;
     link.download = resource.title;
     link.target = "_blank";
     document.body.appendChild(link);
