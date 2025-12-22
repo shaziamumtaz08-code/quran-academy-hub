@@ -28,6 +28,7 @@ export type Database = {
           input_unit: string | null
           lesson_covered: string | null
           lines_completed: number | null
+          progress_marker: string | null
           raw_input_amount: number | null
           reason: string | null
           reason_category: string | null
@@ -54,6 +55,7 @@ export type Database = {
           input_unit?: string | null
           lesson_covered?: string | null
           lines_completed?: number | null
+          progress_marker?: string | null
           raw_input_amount?: number | null
           reason?: string | null
           reason_category?: string | null
@@ -80,6 +82,7 @@ export type Database = {
           input_unit?: string | null
           lesson_covered?: string | null
           lines_completed?: number | null
+          progress_marker?: string | null
           raw_input_amount?: number | null
           reason?: string | null
           reason_category?: string | null
@@ -548,6 +551,79 @@ export type Database = {
           },
         ]
       }
+      student_monthly_plans: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          daily_target: number
+          id: string
+          month: string
+          monthly_target: number
+          notes: string | null
+          primary_marker: Database["public"]["Enums"]["primary_marker"]
+          status: Database["public"]["Enums"]["plan_status"]
+          student_id: string
+          teacher_id: string
+          updated_at: string
+          year: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          daily_target?: number
+          id?: string
+          month: string
+          monthly_target?: number
+          notes?: string | null
+          primary_marker?: Database["public"]["Enums"]["primary_marker"]
+          status?: Database["public"]["Enums"]["plan_status"]
+          student_id: string
+          teacher_id: string
+          updated_at?: string
+          year: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          daily_target?: number
+          id?: string
+          month?: string
+          monthly_target?: number
+          notes?: string | null
+          primary_marker?: Database["public"]["Enums"]["primary_marker"]
+          status?: Database["public"]["Enums"]["plan_status"]
+          student_id?: string
+          teacher_id?: string
+          updated_at?: string
+          year?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_monthly_plans_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_monthly_plans_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_monthly_plans_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_parent_links: {
         Row: {
           created_at: string
@@ -745,6 +821,8 @@ export type Database = {
         | "dashboard.teacher"
         | "dashboard.student"
         | "dashboard.parent"
+      plan_status: "pending" | "approved"
+      primary_marker: "rukus" | "pages" | "lines"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -922,6 +1000,8 @@ export const Constants = {
         "dashboard.student",
         "dashboard.parent",
       ],
+      plan_status: ["pending", "approved"],
+      primary_marker: ["rukus", "pages", "lines"],
     },
   },
 } as const
