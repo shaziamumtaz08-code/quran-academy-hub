@@ -21,6 +21,7 @@ import ExamSubmission from "./pages/ExamSubmission";
 import ExamResults from "./pages/ExamResults";
 import UserManagement from "./pages/UserManagement";
 import Resources from "./pages/Resources";
+import Assignments from "./pages/Assignments";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -55,6 +56,7 @@ function AppRoutes() {
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout><ErrorBoundary><Dashboard /></ErrorBoundary></DashboardLayout></ProtectedRoute>} />
       <Route path="/user-management" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
+      <Route path="/assignments" element={<ProtectedRoute><Assignments /></ProtectedRoute>} />
       <Route path="/teachers" element={<ProtectedRoute><Teachers /></ProtectedRoute>} />
       <Route path="/students" element={<ProtectedRoute><Students /></ProtectedRoute>} />
       <Route path="/schedules" element={<ProtectedRoute><Schedules /></ProtectedRoute>} />
