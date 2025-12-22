@@ -227,14 +227,11 @@ export default function Resources() {
 
         if (uploadError) throw uploadError;
 
-        const { data: urlData } = supabase.storage
-          .from("resources")
-          .getPublicUrl(filePath);
-
+        // Store the file path as the URL (we'll generate signed URLs when accessing)
         return {
           title: file.name.replace(/\.[^/.]+$/, ""),
           type: fileType,
-          url: urlData.publicUrl,
+          url: filePath, // Store path, not public URL
           folder_id: currentFolderId,
           folder: "Uploads",
           uploaded_by: user?.id,
@@ -336,10 +333,8 @@ export default function Resources() {
   const deleteResourceMutation = useMutation({
     mutationFn: async (resource: Resource) => {
       if (resource.type !== "link") {
-        const filePath = resource.url.split("/resources/")[1];
-        if (filePath) {
-          await supabase.storage.from("resources").remove([filePath]);
-        }
+        // resource.url now stores the file path directly
+        await supabase.storage.from("resources").remove([resource.url]);
       }
       const { error } = await supabase
         .from("resources")
