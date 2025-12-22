@@ -35,16 +35,25 @@ export default function Assignments() {
   const { data: teachers = [], isLoading: loadingTeachers } = useQuery({
     queryKey: ['teachers-list'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: roleRows, error: roleError } = await supabase
         .from('user_roles')
-        .select('user_id, profiles!inner(id, full_name)')
+        .select('user_id')
         .eq('role', 'teacher');
 
-      if (error) throw error;
-      return (data || []).map((row: any) => ({
-        id: row.profiles.id,
-        full_name: row.profiles.full_name,
-      })) as Profile[];
+      if (roleError) throw roleError;
+
+      const teacherIds = (roleRows ?? []).map((r: any) => r.user_id).filter(Boolean);
+      if (teacherIds.length === 0) return [];
+
+      const { data: profiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', teacherIds)
+        .order('full_name', { ascending: true });
+
+      if (profileError) throw profileError;
+
+      return (profiles ?? []) as Profile[];
     },
   });
 
@@ -52,16 +61,25 @@ export default function Assignments() {
   const { data: students = [], isLoading: loadingStudents } = useQuery({
     queryKey: ['students-list'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: roleRows, error: roleError } = await supabase
         .from('user_roles')
-        .select('user_id, profiles!inner(id, full_name)')
+        .select('user_id')
         .eq('role', 'student');
 
-      if (error) throw error;
-      return (data || []).map((row: any) => ({
-        id: row.profiles.id,
-        full_name: row.profiles.full_name,
-      })) as Profile[];
+      if (roleError) throw roleError;
+
+      const studentIds = (roleRows ?? []).map((r: any) => r.user_id).filter(Boolean);
+      if (studentIds.length === 0) return [];
+
+      const { data: profiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', studentIds)
+        .order('full_name', { ascending: true });
+
+      if (profileError) throw profileError;
+
+      return (profiles ?? []) as Profile[];
     },
   });
 
@@ -110,9 +128,9 @@ export default function Assignments() {
     onSuccess: () => {
       // Invalidate all related queries for immediate UI sync
       queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['teachers-list'] });
+      queryClient.invalidateQueries({ queryKey: ['students-list'] });
       queryClient.invalidateQueries({ queryKey: ['assigned-students'] });
-      queryClient.invalidateQueries({ queryKey: ['teacher-stats'] });
-      queryClient.invalidateQueries({ queryKey: ['student-stats'] });
       toast({ title: 'Success', description: 'Assignments created successfully' });
       setSelectedTeacher('');
       setSelectedStudents([]);
@@ -135,9 +153,9 @@ export default function Assignments() {
     onSuccess: () => {
       // Invalidate all related queries for immediate UI sync
       queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['teachers-list'] });
+      queryClient.invalidateQueries({ queryKey: ['students-list'] });
       queryClient.invalidateQueries({ queryKey: ['assigned-students'] });
-      queryClient.invalidateQueries({ queryKey: ['teacher-stats'] });
-      queryClient.invalidateQueries({ queryKey: ['student-stats'] });
       toast({ title: 'Deleted', description: 'Assignment removed' });
     },
     onError: (error: any) => {
