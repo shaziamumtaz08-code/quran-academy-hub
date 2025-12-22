@@ -25,8 +25,10 @@ export type Database = {
           duration_minutes: number
           homework: string | null
           id: string
+          input_unit: string | null
           lesson_covered: string | null
           lines_completed: number | null
+          raw_input_amount: number | null
           reason: string | null
           reason_category: string | null
           reason_text: string | null
@@ -49,8 +51,10 @@ export type Database = {
           duration_minutes?: number
           homework?: string | null
           id?: string
+          input_unit?: string | null
           lesson_covered?: string | null
           lines_completed?: number | null
+          raw_input_amount?: number | null
           reason?: string | null
           reason_category?: string | null
           reason_text?: string | null
@@ -73,8 +77,10 @@ export type Database = {
           duration_minutes?: number
           homework?: string | null
           id?: string
+          input_unit?: string | null
           lesson_covered?: string | null
           lines_completed?: number | null
+          raw_input_amount?: number | null
           reason?: string | null
           reason_category?: string | null
           reason_text?: string | null
@@ -373,29 +379,35 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          daily_target_amount: number
           daily_target_lines: number
           email: string | null
           full_name: string
           id: string
           mushaf_type: string
+          preferred_unit: string
           updated_at: string
         }
         Insert: {
           created_at?: string
+          daily_target_amount?: number
           daily_target_lines?: number
           email?: string | null
           full_name: string
           id: string
           mushaf_type?: string
+          preferred_unit?: string
           updated_at?: string
         }
         Update: {
           created_at?: string
+          daily_target_amount?: number
           daily_target_lines?: number
           email?: string | null
           full_name?: string
           id?: string
           mushaf_type?: string
+          preferred_unit?: string
           updated_at?: string
         }
         Relationships: []

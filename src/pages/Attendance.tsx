@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
+import { SurahSearchSelect } from '@/components/attendance/SurahSearchSelect';
+import { UnitInputSelector } from '@/components/attendance/UnitInputSelector';
+import { type LearningUnit, type MushafType, convertToLines, LEARNING_UNITS } from '@/lib/quranData';
 
 type AttendanceStatus = 'present' | 'student_absent' | 'teacher_absent' | 'teacher_leave' | 'rescheduled' | 'holiday';
 type ReasonCategory = 'sick' | 'personal' | 'emergency' | 'internet_issue' | 'other';
@@ -59,6 +62,8 @@ interface Profile {
   full_name: string;
   mushaf_type: string;
   daily_target_lines: number;
+  preferred_unit?: string;
+  daily_target_amount?: number;
 }
 
 const STATUS_OPTIONS: { value: AttendanceStatus; label: string }[] = [
@@ -109,6 +114,10 @@ export default function Attendance() {
   const [ayahTo, setAyahTo] = useState('');
   const [linesCompleted, setLinesCompleted] = useState('');
   const [varianceReason, setVarianceReason] = useState<VarianceReason | ''>('');
+  
+  // Multi-unit input fields
+  const [inputUnit, setInputUnit] = useState<LearningUnit>('lines');
+  const [rawInputAmount, setRawInputAmount] = useState('');
 
   const userRole = profile?.role;
   const isAdmin = userRole === 'super_admin' || userRole === 'admin' || 
@@ -123,7 +132,7 @@ export default function Attendance() {
   // Status requires reschedule info
   const requiresReschedule = (status: AttendanceStatus) => status === 'rescheduled';
 
-  // Fetch assigned students (for teacher) with daily_target_lines
+  // Fetch assigned students (for teacher) with daily_target_lines and preferred_unit
   const { data: assignedStudents } = useQuery({
     queryKey: ['assigned-students', user?.id],
     queryFn: async () => {
@@ -131,7 +140,7 @@ export default function Attendance() {
       
       const { data, error } = await supabase
         .from('student_teacher_assignments')
-        .select('student_id, student:profiles!student_teacher_assignments_student_id_fkey(id, full_name, mushaf_type, daily_target_lines)')
+        .select('student_id, student:profiles!student_teacher_assignments_student_id_fkey(id, full_name, mushaf_type, daily_target_lines, preferred_unit, daily_target_amount)')
         .eq('teacher_id', user.id);
 
       if (error) throw error;
@@ -140,15 +149,29 @@ export default function Attendance() {
     enabled: !!user?.id && isTeacher,
   });
 
-  // Get selected student's daily target
+  // Get selected student's profile and settings
   const selectedStudentProfile = useMemo(() => {
     if (!selectedStudent || !assignedStudents) return null;
     return assignedStudents.find(s => s.id === selectedStudent) || null;
   }, [selectedStudent, assignedStudents]);
 
+  // Set input unit to student's preferred unit when student changes
+  useEffect(() => {
+    if (selectedStudentProfile?.preferred_unit) {
+      setInputUnit(selectedStudentProfile.preferred_unit as LearningUnit);
+    }
+  }, [selectedStudentProfile]);
+
+  const mushafType = (selectedStudentProfile?.mushaf_type || '15-line') as MushafType;
   const dailyTarget = selectedStudentProfile?.daily_target_lines || 10;
-  const linesNum = parseInt(linesCompleted) || 0;
-  const needsVarianceReason = linesNum > 0 && linesNum < dailyTarget;
+  
+  // Calculate line equivalent from the raw input
+  const rawInputNum = parseFloat(rawInputAmount) || 0;
+  const lineEquivalent = useMemo(() => {
+    return convertToLines(rawInputNum, inputUnit, mushafType);
+  }, [rawInputNum, inputUnit, mushafType]);
+  
+  const needsVarianceReason = lineEquivalent > 0 && lineEquivalent < dailyTarget;
 
   // Validation
   const isFormValid = useMemo(() => {
@@ -170,8 +193,11 @@ export default function Attendance() {
     // Variance reason required when lines below target
     if (needsVarianceReason && !varianceReason) return false;
     
+    // Surah name must be selected from the list for data integrity
+    if (selectedStatus === 'present' && surahName && !surahName.trim()) return false;
+    
     return true;
-  }, [selectedStudent, selectedStatus, classTime, reasonCategory, reasonText, rescheduleDate, rescheduleTime, needsVarianceReason, varianceReason]);
+  }, [selectedStudent, selectedStatus, classTime, reasonCategory, reasonText, rescheduleDate, rescheduleTime, needsVarianceReason, varianceReason, surahName]);
 
   // Fetch attendance records
   const { data: attendanceRecords, isLoading } = useQuery({
@@ -247,6 +273,9 @@ export default function Attendance() {
         lessonCoveredText = surahName;
       }
 
+      // Calculate final lines completed from the unit input
+      const finalLinesCompleted = lineEquivalent > 0 ? Math.round(lineEquivalent) : null;
+
       const { error } = await supabase.from('attendance').insert({
         student_id: studentId || user.id,
         teacher_id: user.id,
@@ -264,8 +293,10 @@ export default function Attendance() {
         surah_name: surahName || null,
         ayah_from: ayahFrom ? parseInt(ayahFrom) : null,
         ayah_to: ayahTo ? parseInt(ayahTo) : null,
-        lines_completed: linesCompleted ? parseInt(linesCompleted) : null,
+        lines_completed: finalLinesCompleted,
         variance_reason: needsVarianceReason ? varianceReason : null,
+        input_unit: inputUnit,
+        raw_input_amount: rawInputNum > 0 ? rawInputNum : null,
       });
 
       if (error) throw error;
@@ -309,6 +340,8 @@ export default function Attendance() {
     setAyahTo('');
     setLinesCompleted('');
     setVarianceReason('');
+    setInputUnit('lines');
+    setRawInputAmount('');
   };
 
   const filteredRecords = useMemo(() => {
@@ -710,15 +743,17 @@ export default function Attendance() {
                   <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
                     <p className="text-sm font-medium text-foreground">Quran Progress</p>
                     
+                    {/* Searchable Surah Dropdown */}
                     <div className="space-y-2">
                       <Label>Surah Name</Label>
-                      <Input
-                        placeholder="e.g., Al-Baqarah"
+                      <SurahSearchSelect
                         value={surahName}
-                        onChange={(e) => setSurahName(e.target.value)}
+                        onChange={setSurahName}
+                        placeholder="Search and select a Surah..."
                       />
                     </div>
                     
+                    {/* Ayah Range */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Ayah From</Label>
@@ -742,21 +777,17 @@ export default function Attendance() {
                       </div>
                     </div>
                     
-                    <div className="space-y-2">
-                      <Label>Lines Completed</Label>
-                      <Input
-                        type="number"
-                        placeholder="0"
-                        min="0"
-                        value={linesCompleted}
-                        onChange={(e) => setLinesCompleted(e.target.value)}
-                      />
-                      {selectedStudentProfile && (
-                        <p className="text-xs text-muted-foreground">
-                          Daily target: {dailyTarget} lines ({selectedStudentProfile.mushaf_type || '15-line'} mushaf)
-                        </p>
-                      )}
-                    </div>
+                    {/* Multi-Unit Input Selector */}
+                    <UnitInputSelector
+                      inputUnit={inputUnit}
+                      onInputUnitChange={setInputUnit}
+                      inputAmount={rawInputAmount}
+                      onInputAmountChange={setRawInputAmount}
+                      mushafType={mushafType}
+                      dailyTargetLines={dailyTarget}
+                      preferredUnit={(selectedStudentProfile?.preferred_unit as LearningUnit) || 'lines'}
+                      showConversion={true}
+                    />
                     
                     {/* Variance Reason - Required when lines < target */}
                     {needsVarianceReason && (
@@ -773,7 +804,7 @@ export default function Attendance() {
                           </SelectContent>
                         </Select>
                         <p className="text-xs text-destructive">
-                          Lines completed ({linesNum}) is below the daily target ({dailyTarget})
+                          Lines completed ({Math.round(lineEquivalent)}) is below the daily target ({dailyTarget})
                         </p>
                       </div>
                     )}

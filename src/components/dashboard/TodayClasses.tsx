@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Clock, User, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -12,6 +12,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
+import { SurahSearchSelect } from '@/components/attendance/SurahSearchSelect';
+import { UnitInputSelector } from '@/components/attendance/UnitInputSelector';
+import { type LearningUnit, type MushafType, convertToLines } from '@/lib/quranData';
 
 type AttendanceStatus = 'present' | 'late' | 'student_absent';
 type VarianceReason = 'slow_pace' | 'lack_of_revision' | 'technical_issues' | 'student_late' | 'short_verses';
@@ -32,6 +35,8 @@ interface ClassItem {
   duration: number;
   status?: 'pending' | 'present' | 'absent' | 'late';
   dailyTargetLines?: number;
+  mushafType?: string;
+  preferredUnit?: string;
 }
 
 interface TodayClassesProps {
@@ -55,12 +60,30 @@ export function TodayClasses({ classes, onMarkAttendance, isTeacher = false }: T
   const [surahName, setSurahName] = useState('');
   const [ayahFrom, setAyahFrom] = useState('');
   const [ayahTo, setAyahTo] = useState('');
-  const [linesCompleted, setLinesCompleted] = useState('');
   const [varianceReason, setVarianceReason] = useState<VarianceReason | ''>('');
+  
+  // Multi-unit input fields
+  const [inputUnit, setInputUnit] = useState<LearningUnit>('lines');
+  const [rawInputAmount, setRawInputAmount] = useState('');
 
+  const mushafType = (selectedClass?.mushafType || '15-line') as MushafType;
   const dailyTarget = selectedClass?.dailyTargetLines || 10;
-  const linesNum = parseInt(linesCompleted) || 0;
-  const needsVarianceReason = linesNum > 0 && linesNum < dailyTarget;
+  const preferredUnit = (selectedClass?.preferredUnit || 'lines') as LearningUnit;
+  
+  // Calculate line equivalent
+  const rawInputNum = parseFloat(rawInputAmount) || 0;
+  const lineEquivalent = useMemo(() => {
+    return convertToLines(rawInputNum, inputUnit, mushafType);
+  }, [rawInputNum, inputUnit, mushafType]);
+  
+  const needsVarianceReason = lineEquivalent > 0 && lineEquivalent < dailyTarget;
+
+  // Set input unit to student's preferred unit when class changes
+  useEffect(() => {
+    if (selectedClass?.preferredUnit) {
+      setInputUnit(selectedClass.preferredUnit as LearningUnit);
+    }
+  }, [selectedClass]);
 
   const isFormValid = useMemo(() => {
     if (needsVarianceReason && !varianceReason) return false;
@@ -73,8 +96,9 @@ export function TodayClasses({ classes, onMarkAttendance, isTeacher = false }: T
     setSurahName('');
     setAyahFrom('');
     setAyahTo('');
-    setLinesCompleted('');
     setVarianceReason('');
+    setInputUnit('lines');
+    setRawInputAmount('');
   };
 
   const handleOpenDialog = (classItem: ClassItem, status: AttendanceStatus) => {
@@ -104,6 +128,9 @@ export function TodayClasses({ classes, onMarkAttendance, isTeacher = false }: T
         lessonCoveredText = lessonCovered;
       }
 
+      // Calculate final lines completed from the unit input
+      const finalLinesCompleted = lineEquivalent > 0 ? Math.round(lineEquivalent) : null;
+
       const { error } = await supabase.from('attendance').insert({
         student_id: selectedClass.studentId,
         teacher_id: user.id,
@@ -116,9 +143,11 @@ export function TodayClasses({ classes, onMarkAttendance, isTeacher = false }: T
         surah_name: surahName || null,
         ayah_from: ayahFrom ? parseInt(ayahFrom) : null,
         ayah_to: ayahTo ? parseInt(ayahTo) : null,
-        lines_completed: linesCompleted ? parseInt(linesCompleted) : null,
+        lines_completed: finalLinesCompleted,
         variance_reason: needsVarianceReason ? varianceReason : null,
         reason: selectedStatus === 'late' ? 'Student arrived late' : null,
+        input_unit: inputUnit,
+        raw_input_amount: rawInputNum > 0 ? rawInputNum : null,
       });
 
       if (error) throw error;
@@ -244,13 +273,13 @@ export function TodayClasses({ classes, onMarkAttendance, isTeacher = false }: T
                 <div className="p-4 bg-secondary/30 rounded-lg space-y-4">
                   <h4 className="font-medium text-sm text-foreground">Quran Progress</h4>
                   
+                  {/* Searchable Surah Dropdown */}
                   <div className="space-y-2">
                     <Label htmlFor="surahName">Surah Name</Label>
-                    <Input
-                      id="surahName"
-                      placeholder="e.g., Al-Baqarah"
+                    <SurahSearchSelect
                       value={surahName}
-                      onChange={(e) => setSurahName(e.target.value)}
+                      onChange={setSurahName}
+                      placeholder="Search and select a Surah..."
                     />
                   </div>
 
@@ -279,22 +308,17 @@ export function TodayClasses({ classes, onMarkAttendance, isTeacher = false }: T
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="linesCompleted">
-                      Lines Completed
-                      <span className="text-muted-foreground ml-2 text-xs">
-                        (Target: {dailyTarget} lines)
-                      </span>
-                    </Label>
-                    <Input
-                      id="linesCompleted"
-                      type="number"
-                      min="0"
-                      placeholder="0"
-                      value={linesCompleted}
-                      onChange={(e) => setLinesCompleted(e.target.value)}
-                    />
-                  </div>
+                  {/* Multi-Unit Input Selector */}
+                  <UnitInputSelector
+                    inputUnit={inputUnit}
+                    onInputUnitChange={setInputUnit}
+                    inputAmount={rawInputAmount}
+                    onInputAmountChange={setRawInputAmount}
+                    mushafType={mushafType}
+                    dailyTargetLines={dailyTarget}
+                    preferredUnit={preferredUnit}
+                    showConversion={true}
+                  />
 
                   {/* Variance Reason - only show if below target */}
                   {needsVarianceReason && (
@@ -304,7 +328,7 @@ export function TodayClasses({ classes, onMarkAttendance, isTeacher = false }: T
                         Variance Reason (Required)
                       </Label>
                       <p className="text-xs text-muted-foreground">
-                        Lines completed ({linesNum}) is below target ({dailyTarget}). Please select a reason.
+                        Lines completed ({Math.round(lineEquivalent)}) is below target ({dailyTarget}). Please select a reason.
                       </p>
                       <Select value={varianceReason} onValueChange={(v) => setVarianceReason(v as VarianceReason)}>
                         <SelectTrigger>
