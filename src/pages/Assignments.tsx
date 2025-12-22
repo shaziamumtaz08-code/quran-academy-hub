@@ -108,7 +108,11 @@ export default function Assignments() {
       if (error) throw error;
     },
     onSuccess: () => {
+      // Invalidate all related queries for immediate UI sync
       queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['assigned-students'] });
+      queryClient.invalidateQueries({ queryKey: ['teacher-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['student-stats'] });
       toast({ title: 'Success', description: 'Assignments created successfully' });
       setSelectedTeacher('');
       setSelectedStudents([]);
@@ -129,7 +133,11 @@ export default function Assignments() {
       if (error) throw error;
     },
     onSuccess: () => {
+      // Invalidate all related queries for immediate UI sync
       queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['assigned-students'] });
+      queryClient.invalidateQueries({ queryKey: ['teacher-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['student-stats'] });
       toast({ title: 'Deleted', description: 'Assignment removed' });
     },
     onError: (error: any) => {
