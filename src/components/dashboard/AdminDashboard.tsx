@@ -42,15 +42,11 @@ export function AdminDashboard() {
     },
   });
 
-  const mockActivities = [
-    { id: '1', type: 'attendance' as const, title: 'Attendance System', description: 'Ready for marking', time: 'Active' },
-    { id: '2', type: 'lesson' as const, title: 'Lessons Module', description: 'Track student progress', time: 'Active' },
-    { id: '3', type: 'payment' as const, title: 'Fee Management', description: 'Coming soon', time: 'Pending' },
-  ];
+  // Real activities - empty for now, would come from database
+  const activities: { id: string; type: 'attendance' | 'lesson' | 'schedule' | 'payment'; title: string; description: string; time: string }[] = [];
 
-  const mockTodayClasses = [
-    { id: '1', studentId: '', studentName: 'No classes loaded', time: '-', duration: 0, status: 'pending' as const },
-  ];
+  // Real today classes - empty for now, would come from database
+  const todayClasses: { id: string; studentId: string; studentName: string; time: string; duration: number; status: 'pending' | 'present' | 'absent' | 'late' }[] = [];
 
   if (isLoading) {
     return (
@@ -104,8 +100,8 @@ export function AdminDashboard() {
 
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <TodayClasses classes={mockTodayClasses} />
-        <RecentActivity activities={mockActivities} />
+        <TodayClasses classes={todayClasses} />
+        <RecentActivity activities={activities} />
       </div>
 
       {/* Quick Stats */}

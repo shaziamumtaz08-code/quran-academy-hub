@@ -5,65 +5,178 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Search, Mail, Phone, Users, DollarSign, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Search, Mail, Users, MoreHorizontal, Pencil, Trash2, Loader2, AlertCircle } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Teacher {
   id: string;
-  name: string;
-  email: string;
-  phone: string;
-  students: number;
-  monthlyRate: number;
-  paymentStatus: 'paid' | 'unpaid';
+  full_name: string;
+  email: string | null;
+  student_count: number;
 }
 
-const mockTeachers: Teacher[] = [
-  { id: '1', name: 'Sheikh Ahmad Hassan', email: 'ahmad@quran.academy', phone: '+1 234 567 890', students: 8, monthlyRate: 800, paymentStatus: 'paid' },
-  { id: '2', name: 'Ustadh Ibrahim Ali', email: 'ibrahim@quran.academy', phone: '+1 234 567 891', students: 6, monthlyRate: 600, paymentStatus: 'unpaid' },
-  { id: '3', name: 'Sheikh Muhammad Omar', email: 'muhammad@quran.academy', phone: '+1 234 567 892', students: 10, monthlyRate: 1000, paymentStatus: 'paid' },
-  { id: '4', name: 'Ustadha Fatima Khan', email: 'fatima@quran.academy', phone: '+1 234 567 893', students: 5, monthlyRate: 500, paymentStatus: 'paid' },
-];
-
 export default function Teachers() {
-  const [teachers, setTeachers] = useState(mockTeachers);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [newTeacher, setNewTeacher] = useState({ name: '', email: '', phone: '', monthlyRate: '' });
-  const { toast } = useToast();
+  const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
+  const [formData, setFormData] = useState({ name: '', email: '' });
+
+  // Fetch teachers from Supabase
+  const { data: teachers = [], isLoading } = useQuery({
+    queryKey: ['teachers-list-full'],
+    queryFn: async () => {
+      // Get all users with teacher role
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'teacher');
+
+      if (roleError) throw roleError;
+
+      const teacherIds = roleData?.map(r => r.user_id) || [];
+      if (teacherIds.length === 0) return [];
+
+      // Get profiles for those teachers
+      const { data: profiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', teacherIds);
+
+      if (profileError) throw profileError;
+
+      // Get student counts per teacher
+      const { data: assignments, error: assignError } = await supabase
+        .from('student_teacher_assignments')
+        .select('teacher_id')
+        .in('teacher_id', teacherIds);
+
+      if (assignError) throw assignError;
+
+      // Count students per teacher
+      const countMap = new Map<string, number>();
+      assignments?.forEach(a => {
+        countMap.set(a.teacher_id, (countMap.get(a.teacher_id) || 0) + 1);
+      });
+
+      return (profiles || []).map(p => ({
+        id: p.id,
+        full_name: p.full_name,
+        email: p.email,
+        student_count: countMap.get(p.id) || 0,
+      })) as Teacher[];
+    },
+  });
 
   const filteredTeachers = teachers.filter(teacher =>
-    teacher.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    teacher.email.toLowerCase().includes(searchTerm.toLowerCase())
+    teacher.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (teacher.email?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
   );
 
-  const handleAddTeacher = () => {
-    if (!newTeacher.name || !newTeacher.email) {
+  // Add teacher mutation (creates profile + role via edge function)
+  const addMutation = useMutation({
+    mutationFn: async (data: { name: string; email: string }) => {
+      const { data: result, error } = await supabase.functions.invoke('admin-create-user', {
+        body: {
+          email: data.email,
+          full_name: data.name,
+          role: 'teacher',
+          password: 'TempPassword123!',
+        },
+      });
+
+      if (error) throw error;
+      if (result?.error) throw new Error(result.error);
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teachers-list-full'] });
+      queryClient.invalidateQueries({ queryKey: ['teachers-list'] });
+      toast({ title: 'Success', description: 'Teacher added successfully' });
+      resetForm();
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // Update teacher mutation
+  const updateMutation = useMutation({
+    mutationFn: async (data: { id: string; name: string; email: string }) => {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ full_name: data.name, email: data.email })
+        .eq('id', data.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teachers-list-full'] });
+      queryClient.invalidateQueries({ queryKey: ['teachers-list'] });
+      toast({ title: 'Success', description: 'Teacher updated successfully' });
+      resetForm();
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // Delete teacher mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await supabase.functions.invoke('admin-delete-user', {
+        body: { userId: id },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teachers-list-full'] });
+      queryClient.invalidateQueries({ queryKey: ['teachers-list'] });
+      toast({ title: 'Deleted', description: 'Teacher removed successfully' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const resetForm = () => {
+    setFormData({ name: '', email: '' });
+    setEditingTeacher(null);
+    setIsDialogOpen(false);
+  };
+
+  const handleSubmit = () => {
+    if (!formData.name || !formData.email) {
       toast({ title: 'Error', description: 'Please fill in all required fields', variant: 'destructive' });
       return;
     }
-    
-    const teacher: Teacher = {
-      id: Date.now().toString(),
-      name: newTeacher.name,
-      email: newTeacher.email,
-      phone: newTeacher.phone,
-      students: 0,
-      monthlyRate: Number(newTeacher.monthlyRate) || 0,
-      paymentStatus: 'unpaid',
-    };
-    
-    setTeachers([...teachers, teacher]);
-    setNewTeacher({ name: '', email: '', phone: '', monthlyRate: '' });
-    setIsDialogOpen(false);
-    toast({ title: 'Success', description: 'Teacher added successfully' });
+
+    if (editingTeacher) {
+      updateMutation.mutate({ id: editingTeacher.id, ...formData });
+    } else {
+      addMutation.mutate(formData);
+    }
   };
 
-  const handleDeleteTeacher = (id: string) => {
-    setTeachers(teachers.filter(t => t.id !== id));
-    toast({ title: 'Deleted', description: 'Teacher removed successfully' });
+  const handleEdit = (teacher: Teacher) => {
+    setEditingTeacher(teacher);
+    setFormData({ name: teacher.full_name, email: teacher.email || '' });
+    setIsDialogOpen(true);
   };
+
+  const handleDelete = (id: string) => {
+    if (confirm('Are you sure you want to delete this teacher?')) {
+      deleteMutation.mutate(id);
+    }
+  };
+
+  const isPending = addMutation.isPending || updateMutation.isPending;
 
   return (
     <DashboardLayout>
@@ -74,7 +187,7 @@ export default function Teachers() {
             <h1 className="font-serif text-3xl font-bold text-foreground">Teachers</h1>
             <p className="text-muted-foreground mt-1">Manage your academy's teachers</p>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) resetForm(); else setIsDialogOpen(true); }}>
             <DialogTrigger asChild>
               <Button variant="hero">
                 <Plus className="h-4 w-4" />
@@ -83,7 +196,9 @@ export default function Teachers() {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle className="font-serif">Add New Teacher</DialogTitle>
+                <DialogTitle className="font-serif">
+                  {editingTeacher ? 'Edit Teacher' : 'Add New Teacher'}
+                </DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
@@ -91,8 +206,8 @@ export default function Teachers() {
                   <Input
                     id="name"
                     placeholder="Enter teacher's name"
-                    value={newTeacher.name}
-                    onChange={(e) => setNewTeacher({ ...newTeacher, name: e.target.value })}
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
@@ -101,33 +216,17 @@ export default function Teachers() {
                     id="email"
                     type="email"
                     placeholder="teacher@quran.academy"
-                    value={newTeacher.email}
-                    onChange={(e) => setNewTeacher({ ...newTeacher, email: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input
-                    id="phone"
-                    placeholder="+1 234 567 890"
-                    value={newTeacher.phone}
-                    onChange={(e) => setNewTeacher({ ...newTeacher, phone: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="rate">Monthly Rate ($)</Label>
-                  <Input
-                    id="rate"
-                    type="number"
-                    placeholder="0"
-                    value={newTeacher.monthlyRate}
-                    onChange={(e) => setNewTeacher({ ...newTeacher, monthlyRate: e.target.value })}
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   />
                 </div>
               </div>
               <div className="flex justify-end gap-3">
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleAddTeacher}>Add Teacher</Button>
+                <Button variant="outline" onClick={resetForm}>Cancel</Button>
+                <Button onClick={handleSubmit} disabled={isPending}>
+                  {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  {editingTeacher ? 'Update' : 'Add'} Teacher
+                </Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -146,75 +245,73 @@ export default function Teachers() {
 
         {/* Table */}
         <div className="bg-card rounded-xl border border-border overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead className="text-center">Students</TableHead>
-                <TableHead className="text-right">Monthly Rate</TableHead>
-                <TableHead className="text-center">Payment</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredTeachers.map((teacher) => (
-                <TableRow key={teacher.id}>
-                  <TableCell className="font-medium">{teacher.name}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-col gap-1">
-                      <span className="flex items-center gap-2 text-sm">
-                        <Mail className="h-3 w-3 text-muted-foreground" />
-                        {teacher.email}
-                      </span>
-                      <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Phone className="h-3 w-3" />
-                        {teacher.phone}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary text-secondary-foreground text-sm">
-                      <Users className="h-3 w-3" />
-                      {teacher.students}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right font-medium">${teacher.monthlyRate}</TableCell>
-                  <TableCell className="text-center">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                      teacher.paymentStatus === 'paid' 
-                        ? 'bg-emerald-light/10 text-emerald-light' 
-                        : 'bg-destructive/10 text-destructive'
-                    }`}>
-                      {teacher.paymentStatus === 'paid' ? 'Paid' : 'Unpaid'}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          className="text-destructive"
-                          onClick={() => handleDeleteTeacher(teacher.id)}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : filteredTeachers.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p className="text-lg font-medium">No teachers found</p>
+              <p className="text-sm mt-1">Add a teacher to get started</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead className="text-center">Assigned Students</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredTeachers.map((teacher) => (
+                  <TableRow key={teacher.id}>
+                    <TableCell className="font-medium">{teacher.full_name}</TableCell>
+                    <TableCell>
+                      {teacher.email ? (
+                        <span className="flex items-center gap-2 text-sm">
+                          <Mail className="h-3 w-3 text-muted-foreground" />
+                          {teacher.email}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">No email</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary text-secondary-foreground text-sm">
+                        <Users className="h-3 w-3" />
+                        {teacher.student_count}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleEdit(teacher)}>
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="text-destructive"
+                            onClick={() => handleDelete(teacher.id)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </div>
       </div>
     </DashboardLayout>

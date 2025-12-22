@@ -38,10 +38,8 @@ export function SuperAdminDashboard() {
     },
   });
 
-  const mockActivities = [
-    { id: '1', type: 'attendance' as const, title: 'System Active', description: 'All systems operational', time: 'Now' },
-    { id: '2', type: 'lesson' as const, title: 'Ready', description: 'Database connected and ready', time: 'Now' },
-  ];
+  // Real activity would come from database - showing empty for now
+  const activities: { id: string; type: 'attendance' | 'lesson' | 'schedule' | 'payment'; title: string; description: string; time: string }[] = [];
 
   if (isLoading) {
     return (
@@ -116,7 +114,7 @@ export function SuperAdminDashboard() {
           </CardContent>
         </Card>
 
-        <RecentActivity activities={mockActivities} />
+        <RecentActivity activities={activities} />
       </div>
 
       {/* Quick Access */}
