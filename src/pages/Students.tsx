@@ -87,7 +87,7 @@ export default function Students() {
       const { data: result, error } = await supabase.functions.invoke('admin-create-user', {
         body: {
           email: data.email,
-          full_name: data.name,
+          fullName: data.name,
           role: 'student',
           password: 'TempPassword123!', // Temporary password
         },
