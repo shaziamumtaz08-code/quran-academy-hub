@@ -268,11 +268,9 @@ export default function Payments() {
         return;
       }
 
-      const { data: urlData } = supabase.storage
-        .from('resources')
-        .getPublicUrl(`receipts/${fileName}`);
-      
-      receiptUrl = urlData.publicUrl;
+      // Store the file path (not public URL) since bucket is private
+      // Signed URLs will be generated when viewing the receipt
+      receiptUrl = `receipts/${fileName}`;
     }
 
     updateFeeMutation.mutate({
