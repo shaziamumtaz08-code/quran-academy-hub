@@ -2,14 +2,17 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { StatCard } from './StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, CheckCircle, BookOpen, DollarSign, User, AlertCircle } from 'lucide-react';
+import { Calendar, CheckCircle, BookOpen, User, AlertCircle, Target, MessageSquare } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { WeeklyProgressChart } from '@/components/progress/WeeklyProgressChart';
+import { ProgressRing } from '@/components/progress/ProgressRing';
 
 export function StudentDashboard() {
   const { profile, user } = useAuth();
+  const currentMonth = new Date();
 
   // Fetch student stats
   const { data: stats, isLoading } = useQuery({
@@ -17,20 +20,64 @@ export function StudentDashboard() {
     queryFn: async () => {
       if (!user?.id) return null;
 
-      const [attendanceRes, teacherRes] = await Promise.all([
-        supabase.from('attendance').select('status, class_date, lesson_covered, homework').eq('student_id', user.id).order('class_date', { ascending: false }),
-        supabase.from('student_teacher_assignments').select('teacher_id, teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name)').eq('student_id', user.id).limit(1),
+      const [attendanceRes, teacherRes, planRes] = await Promise.all([
+        supabase.from('attendance')
+          .select('status, class_date, lesson_covered, homework, surah_name, ayah_from, ayah_to, raw_input_amount, lines_completed')
+          .eq('student_id', user.id)
+          .order('class_date', { ascending: false }),
+        supabase.from('student_teacher_assignments')
+          .select('teacher_id, teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name)')
+          .eq('student_id', user.id)
+          .limit(1),
+        supabase.from('student_monthly_plans')
+          .select('*')
+          .eq('student_id', user.id)
+          .eq('month', format(currentMonth, 'MM'))
+          .eq('year', format(currentMonth, 'yyyy'))
+          .eq('status', 'approved')
+          .limit(1),
       ]);
 
       const attendance = attendanceRes.data || [];
       const teacher = teacherRes.data?.[0]?.teacher;
+      const activePlan = planRes.data?.[0];
       const present = attendance.filter(a => a.status === 'present').length;
+      
+      // Get latest lesson details
+      const latestPresent = attendance.find(a => a.status === 'present');
+      const currentLesson = latestPresent 
+        ? `${latestPresent.surah_name || 'N/A'}${latestPresent.ayah_from ? `, Ayah ${latestPresent.ayah_from}` : ''}${latestPresent.ayah_to ? `-${latestPresent.ayah_to}` : ''}`
+        : 'No lessons recorded';
+      const currentHomework = latestPresent?.homework || 'No homework assigned';
+
+      // Calculate monthly progress
+      const startDate = startOfMonth(currentMonth);
+      const endDate = endOfMonth(currentMonth);
+      const monthlyAttendance = attendance.filter(a => {
+        const date = new Date(a.class_date);
+        return date >= startDate && date <= endDate && a.status === 'present';
+      });
+      
+      const totalAchieved = monthlyAttendance.reduce((sum, a) => {
+        return sum + (Number(a.raw_input_amount) || Number(a.lines_completed) || 0);
+      }, 0);
+      
+      const monthlyTarget = activePlan?.monthly_target || 30;
+      const monthlyProgress = Math.min(100, Math.round((totalAchieved / monthlyTarget) * 100));
 
       return {
         totalClasses: attendance.length,
         attended: present,
         attendanceRate: attendance.length > 0 ? Math.round((present / attendance.length) * 100) : 0,
         teacher: teacher?.full_name || 'Not assigned',
+        currentLesson,
+        currentHomework,
+        activePlan,
+        monthlyProgress,
+        monthlyTarget,
+        totalAchieved,
+        dailyTarget: activePlan?.daily_target || 1,
+        markerLabel: activePlan?.primary_marker === 'rukus' ? 'Rukus' : activePlan?.primary_marker === 'pages' ? 'Pages' : 'Lines',
         recentLessons: attendance.slice(0, 3).map(a => ({
           date: format(new Date(a.class_date), 'MMM dd'),
           lesson: a.lesson_covered || 'No lesson recorded',
@@ -67,44 +114,111 @@ export function StudentDashboard() {
         <p className="text-muted-foreground mt-1">Track your Quran learning progress</p>
       </div>
 
-      {/* Teacher Info */}
-      <div className="bg-primary/5 rounded-xl p-6 border border-primary/20">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-            <User className="h-8 w-8 text-primary" />
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Your Teacher</p>
-            <p className="text-xl font-serif font-bold text-foreground">{stats?.teacher}</p>
-          </div>
-        </div>
+      {/* Current Lesson & Homework Card - Prominently displayed */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-primary/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="font-serif flex items-center gap-2 text-primary">
+              <BookOpen className="h-5 w-5" />
+              Current Lesson
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-serif font-bold text-foreground">
+              {stats?.currentLesson || 'No lesson recorded'}
+            </p>
+            <p className="text-sm text-muted-foreground mt-2">Last recorded lesson position</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-accent/10 via-accent/5 to-transparent border-accent/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="font-serif flex items-center gap-2 text-accent">
+              <MessageSquare className="h-5 w-5" />
+              Teacher's Homework
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-lg font-medium text-foreground">
+              {stats?.currentHomework || 'No homework assigned'}
+            </p>
+            <p className="text-sm text-muted-foreground mt-2">Complete before next class</p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Classes"
-          value={stats?.totalClasses || 0}
-          icon={Calendar}
-        />
-        <StatCard
-          title="Attended"
-          value={stats?.attended || 0}
-          icon={CheckCircle}
-          variant="primary"
-        />
-        <StatCard
-          title="Attendance Rate"
-          value={`${stats?.attendanceRate || 0}%`}
-          icon={BookOpen}
-        />
-        <StatCard
-          title="Fee Status"
-          value="Pending"
-          icon={DollarSign}
-          variant="gold"
-        />
+      {/* Progress Ring & Teacher Info */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Monthly Progress Ring */}
+        <Card className="lg:col-span-1">
+          <CardHeader>
+            <CardTitle className="font-serif flex items-center gap-2">
+              <Target className="h-5 w-5" />
+              Monthly Goal
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center">
+            <ProgressRing percentage={stats?.monthlyProgress || 0} size={140} />
+            <div className="text-center mt-4">
+              <p className="text-sm text-muted-foreground">
+                {stats?.totalAchieved || 0} of {stats?.monthlyTarget || 30} {stats?.markerLabel}
+              </p>
+              {stats?.activePlan ? (
+                <p className="text-xs text-primary mt-1">
+                  Daily target: {stats.dailyTarget} {stats.markerLabel}/day
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground mt-1">
+                  No active plan for this month
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Teacher Info */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="font-serif">Your Teacher</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                <User className="h-8 w-8 text-primary" />
+              </div>
+              <div>
+                <p className="text-xl font-serif font-bold text-foreground">{stats?.teacher}</p>
+                <p className="text-sm text-muted-foreground">Assigned Teacher</p>
+              </div>
+            </div>
+
+            {/* Stats Row */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center p-3 bg-secondary/50 rounded-lg">
+                <p className="text-2xl font-bold text-foreground">{stats?.totalClasses || 0}</p>
+                <p className="text-xs text-muted-foreground">Total Classes</p>
+              </div>
+              <div className="text-center p-3 bg-emerald-light/10 rounded-lg">
+                <p className="text-2xl font-bold text-emerald-light">{stats?.attended || 0}</p>
+                <p className="text-xs text-muted-foreground">Attended</p>
+              </div>
+              <div className="text-center p-3 bg-primary/10 rounded-lg">
+                <p className="text-2xl font-bold text-primary">{stats?.attendanceRate || 0}%</p>
+                <p className="text-xs text-muted-foreground">Attendance</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Weekly Progress Chart */}
+      {user?.id && (
+        <WeeklyProgressChart 
+          studentId={user.id} 
+          dailyTarget={stats?.dailyTarget || 1}
+          markerLabel={stats?.markerLabel}
+        />
+      )}
 
       {/* Recent Lessons */}
       <Card>
@@ -133,35 +247,6 @@ export function StudentDashboard() {
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Attendance Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-serif">Attendance Summary</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-8">
-            <div className="flex-1">
-              <div className="h-3 bg-secondary rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-primary rounded-full transition-all duration-500"
-                  style={{ width: `${stats?.attendanceRate || 0}%` }}
-                />
-              </div>
-              <div className="flex justify-between mt-2 text-sm">
-                <span className="text-muted-foreground">Attendance Rate</span>
-                <span className="font-medium text-foreground">
-                  {stats?.attendanceRate || 0}%
-                </span>
-              </div>
-            </div>
-            <div className="text-center">
-              <p className="text-3xl font-serif font-bold text-primary">{stats?.attended || 0}</p>
-              <p className="text-sm text-muted-foreground">of {stats?.totalClasses || 0} classes</p>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>

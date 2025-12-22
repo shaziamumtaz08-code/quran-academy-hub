@@ -19,6 +19,7 @@ import {
   Shield,
   Settings,
   FolderOpen,
+  Target,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import logoLight from '@/assets/logo-light.png';
@@ -36,6 +37,7 @@ const navItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: 'dashboard.admin' },
   { label: 'User Management', href: '/user-management', icon: Shield, roles: ['super_admin', 'admin'] },
   { label: 'Assignments', href: '/assignments', icon: Users, roles: ['super_admin', 'admin'] },
+  { label: 'Monthly Planning', href: '/monthly-planning', icon: Target, roles: ['super_admin', 'admin', 'teacher'] },
   { label: 'Teachers', href: '/teachers', icon: Users, permission: 'teachers.view' },
   { label: 'Students', href: '/students', icon: GraduationCap, permission: 'students.view' },
   { label: 'Schedules', href: '/schedules', icon: Calendar, permission: 'schedules.view' },

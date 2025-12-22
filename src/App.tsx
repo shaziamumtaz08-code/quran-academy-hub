@@ -22,6 +22,7 @@ import ExamResults from "./pages/ExamResults";
 import UserManagement from "./pages/UserManagement";
 import Resources from "./pages/Resources";
 import Assignments from "./pages/Assignments";
+import MonthlyPlanning from "./pages/MonthlyPlanning";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -69,6 +70,7 @@ function AppRoutes() {
       <Route path="/exam-submission" element={<ProtectedRoute><ExamSubmission /></ProtectedRoute>} />
       <Route path="/exam-results" element={<ProtectedRoute><ExamResults /></ProtectedRoute>} />
       <Route path="/resources" element={<ProtectedRoute><Resources /></ProtectedRoute>} />
+      <Route path="/monthly-planning" element={<ProtectedRoute><MonthlyPlanning /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
