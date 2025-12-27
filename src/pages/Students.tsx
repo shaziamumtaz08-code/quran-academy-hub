@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Mail, User, Loader2, AlertCircle, BookOpen, Clock, Target, FileText } from 'lucide-react';
+import { Search, Mail, User, Loader2, AlertCircle, BookOpen, Clock, Target, FileText, CheckSquare } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { QuickAttendanceDialog } from '@/components/students/QuickAttendanceDialog';
 
 interface Student {
   id: string;
@@ -30,6 +32,7 @@ interface TeacherStudent {
 
 export default function Students() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [quickAttendanceStudent, setQuickAttendanceStudent] = useState<TeacherStudent | null>(null);
   const { user, activeRole } = useAuth();
 
   // Determine role-based behavior
@@ -269,6 +272,7 @@ export default function Students() {
                     <TableHead>Daily Target</TableHead>
                     <TableHead>Last Lesson</TableHead>
                     <TableHead>Homework</TableHead>
+                    <TableHead className="w-[100px]">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -330,6 +334,17 @@ export default function Students() {
                           <span className="text-muted-foreground text-sm">-</span>
                         )}
                       </TableCell>
+                      <TableCell>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setQuickAttendanceStudent(student)}
+                          className="gap-1"
+                        >
+                          <CheckSquare className="h-3 w-3" />
+                          Mark
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -384,6 +399,16 @@ export default function Students() {
             )
           )}
         </div>
+
+        {/* Quick Attendance Dialog */}
+        {isTeacher && user?.id && (
+          <QuickAttendanceDialog
+            open={!!quickAttendanceStudent}
+            onOpenChange={(open) => !open && setQuickAttendanceStudent(null)}
+            student={quickAttendanceStudent}
+            teacherId={user.id}
+          />
+        )}
       </div>
     </DashboardLayout>
   );
