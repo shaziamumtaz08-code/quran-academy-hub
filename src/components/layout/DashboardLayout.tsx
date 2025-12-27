@@ -39,14 +39,15 @@ const navItems: NavItem[] = [
   { label: 'User Management', href: '/user-management', icon: Shield, roles: ['super_admin', 'admin'] },
   { label: 'Subjects', href: '/subjects', icon: BookOpen, roles: ['super_admin', 'admin'] },
   { label: 'Assignments', href: '/assignments', icon: Users, roles: ['super_admin', 'admin'] },
-  { label: 'Monthly Planning', href: '/monthly-planning', icon: Target, roles: ['super_admin', 'admin', 'teacher'] },
+  // Admin-only scheduling & planning pages
+  { label: 'Monthly Planning', href: '/monthly-planning', icon: Target, roles: ['super_admin', 'admin'] },
+  { label: 'Schedules', href: '/schedules', icon: Calendar, roles: ['super_admin', 'admin'] },
   { label: 'Teachers', href: '/teachers', icon: Users, permission: 'teachers.view' },
   { label: 'Students', href: '/students', icon: GraduationCap, permission: 'students.view' },
-  { label: 'Schedules', href: '/schedules', icon: Calendar, permission: 'schedules.view' },
   { label: 'Attendance', href: '/attendance', icon: ClipboardCheck, permission: 'attendance.view' },
-  // Exam Templates & Results hidden from students/teachers - only for admins/examiners
+  // Exam pages - admin/examiner only
   { label: 'Exam Templates', href: '/exam-templates', icon: FileText, roles: ['super_admin', 'admin', 'examiner'] },
-  { label: 'Submit Exam', href: '/exam-submission', icon: ClipboardCheck, permission: 'exams.grade' },
+  { label: 'Submit Exam', href: '/exam-submission', icon: ClipboardCheck, roles: ['super_admin', 'admin', 'examiner'] },
   { label: 'Exam Results', href: '/exam-results', icon: BarChart3, roles: ['super_admin', 'admin', 'examiner'] },
   { label: 'Reports', href: '/reports', icon: FileText, permission: 'reports.view' },
   { label: 'Payments', href: '/payments', icon: DollarSign, permission: 'payments.view' },

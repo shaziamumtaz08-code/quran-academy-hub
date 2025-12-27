@@ -413,21 +413,15 @@ export default function Attendance() {
                'View attendance across the academy'}
             </p>
           </div>
-          {isTeacher && (
+          {/* Admin-only: global Mark Attendance – teachers use 'Log Lesson' per student in /teacher */}
+          {isAdmin && (
             <Button 
               onClick={() => setMarkDialogOpen(true)}
-              disabled={!assignedStudents || assignedStudents.length === 0}
-              title={!assignedStudents || assignedStudents.length === 0 ? 'No students assigned - create assignments first' : 'Mark attendance'}
+              title="Mark attendance as admin"
             >
               <Plus className="h-4 w-4 mr-2" />
               Mark Attendance
             </Button>
-          )}
-          {isTeacher && (!assignedStudents || assignedStudents.length === 0) && (
-            <div className="bg-accent/10 border border-accent/20 rounded-lg p-4 mt-4 sm:mt-0">
-              <p className="text-sm text-accent font-medium">No students assigned</p>
-              <p className="text-xs text-muted-foreground">Go to Assignments to assign students to yourself first.</p>
-            </div>
           )}
         </div>
 
