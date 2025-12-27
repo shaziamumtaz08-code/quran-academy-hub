@@ -9,17 +9,18 @@ import { FileText, User, Calendar, AlertCircle } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 
 export default function Reports() {
-  const { user, profile, isSuperAdmin, hasPermission } = useAuth();
+  const { user, activeRole } = useAuth();
   const [selectedMonth, setSelectedMonth] = React.useState(format(new Date(), 'yyyy-MM'));
 
-  const isAdmin = isSuperAdmin || profile?.role === 'admin';
-  const isTeacher = profile?.role === 'teacher';
-  const isStudent = profile?.role === 'student';
-  const isParent = profile?.role === 'parent';
+  // Role checks based on activeRole
+  const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_');
+  const isTeacher = activeRole === 'teacher';
+  const isStudent = activeRole === 'student';
+  const isParent = activeRole === 'parent';
 
   // Fetch real data from attendance table
   const { data: reports, isLoading } = useQuery({
-    queryKey: ['monthly-reports', selectedMonth, user?.id, profile?.role],
+    queryKey: ['monthly-reports', selectedMonth, user?.id, activeRole],
     queryFn: async () => {
       if (!user?.id) return [];
 

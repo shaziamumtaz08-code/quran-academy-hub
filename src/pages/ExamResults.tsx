@@ -60,7 +60,7 @@ interface Profile {
 }
 
 export default function ExamResults() {
-  const { profile, user } = useAuth();
+  const { profile, user, activeRole } = useAuth();
   const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
   
   // Filters
@@ -69,16 +69,15 @@ export default function ExamResults() {
   const [tenureFilter, setTenureFilter] = useState('');
   const [monthFilter, setMonthFilter] = useState('');
 
-  // Safe role checks with null handling
-  const userRole = profile?.role ?? null;
-  const isAdminOrExaminer = userRole === 'admin' || userRole === 'examiner' || userRole === 'super_admin' || 
-    userRole === 'admin_admissions' || userRole === 'admin_fees' || userRole === 'admin_academic';
-  const isTeacher = userRole === 'teacher';
-  const isStudentOrParent = userRole === 'student' || userRole === 'parent';
+  // Role checks based on activeRole (not profile.role)
+  const isAdminOrExaminer = activeRole === 'admin' || activeRole === 'examiner' || activeRole === 'super_admin' || 
+    activeRole === 'admin_admissions' || activeRole === 'admin_fees' || activeRole === 'admin_academic';
+  const isTeacher = activeRole === 'teacher';
+  const isStudentOrParent = activeRole === 'student' || activeRole === 'parent';
 
-  // Fetch exam results - RLS handles access control
+  // Fetch exam results - RLS handles access control, but add activeRole to queryKey for refetch on role switch
   const { data: examResults, isLoading: isLoadingExams, error: examsError } = useQuery({
-    queryKey: ['exam-results', user?.id],
+    queryKey: ['exam-results', user?.id, activeRole],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('exams')
