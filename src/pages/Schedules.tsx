@@ -421,6 +421,18 @@ export default function Schedules() {
       return;
     }
 
+    // Validate timezones are set
+    const assignment = assignments.find(a => a.id === newSchedule.assignmentId);
+    if (!assignment?.student_timezone || !assignment?.teacher_timezone) {
+      toast({
+        title: 'Missing Timezone',
+        description: 'Please configure student and teacher timezones in the assignment before creating a schedule.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    }
+
     // Check for conflicts
     const conflict = detectScheduleConflict(
       {
@@ -460,6 +472,17 @@ export default function Schedules() {
   const handleSubmitBulkSchedule = () => {
     if (!bulkSchedule.assignmentId || bulkSchedule.selectedDays.length === 0 || !bulkSchedule.studentTime) {
       toast({ title: 'Error', description: 'Please select assignment, at least one day, and time', variant: 'destructive' });
+      return;
+    }
+
+    // Validate timezones are set
+    const assignment = assignments.find(a => a.id === bulkSchedule.assignmentId);
+    if (!assignment?.student_timezone || !assignment?.teacher_timezone) {
+      toast({
+        title: 'Missing Timezone',
+        description: 'Please configure student and teacher timezones in the assignment before creating schedules.',
+        variant: 'destructive',
+      });
       return;
     }
 
