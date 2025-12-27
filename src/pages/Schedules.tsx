@@ -92,6 +92,89 @@ function formatTime12h(time: string): string {
   return `${hour12}:${minutes.toString().padStart(2, '0')} ${ampm}`;
 }
 
+// Convert time string to minutes from midnight for comparison
+function timeToMinutes(time: string): number {
+  const [hours, minutes] = time.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+// Check if two time ranges overlap
+function timesOverlap(
+  start1: string, duration1: number,
+  start2: string, duration2: number
+): boolean {
+  const t1Start = timeToMinutes(start1);
+  const t1End = t1Start + duration1;
+  const t2Start = timeToMinutes(start2);
+  const t2End = t2Start + duration2;
+  return t1Start < t2End && t2Start < t1End;
+}
+
+interface ConflictResult {
+  hasConflict: boolean;
+  conflictType: 'student' | 'teacher' | null;
+  conflictDetails: string;
+}
+
+// Detect schedule conflicts
+function detectScheduleConflict(
+  newSchedule: {
+    day: string;
+    studentTime: string;
+    duration: number;
+    assignmentId: string;
+  },
+  assignments: Assignment[],
+  schedules: Schedule[],
+  editingScheduleId?: string
+): ConflictResult {
+  const assignment = assignments.find(a => a.id === newSchedule.assignmentId);
+  if (!assignment) return { hasConflict: false, conflictType: null, conflictDetails: '' };
+
+  const studentId = assignment.student_id;
+  const teacherId = assignment.teacher_id;
+
+  // Get all schedules for the same day, excluding the one being edited
+  const sameDaySchedules = schedules.filter(
+    s => s.day_of_week === newSchedule.day && s.id !== editingScheduleId
+  );
+
+  for (const existingSchedule of sameDaySchedules) {
+    const existingAssignment = assignments.find(a => a.id === existingSchedule.assignment_id);
+    if (!existingAssignment) continue;
+
+    // Check for time overlap
+    const hasOverlap = timesOverlap(
+      newSchedule.studentTime,
+      newSchedule.duration,
+      existingSchedule.student_local_time,
+      existingSchedule.duration_minutes
+    );
+
+    if (!hasOverlap) continue;
+
+    // Check if same student
+    if (existingAssignment.student_id === studentId) {
+      return {
+        hasConflict: true,
+        conflictType: 'student',
+        conflictDetails: `${assignment.student_name} already has a class with ${existingAssignment.teacher_name} at ${formatTime12h(existingSchedule.student_local_time)} on ${DAYS_LABELS[newSchedule.day]}`,
+      };
+    }
+
+    // Check if same teacher
+    if (existingAssignment.teacher_id === teacherId) {
+      return {
+        hasConflict: true,
+        conflictType: 'teacher',
+        conflictDetails: `${assignment.teacher_name} already has a class with ${existingAssignment.student_name} at ${formatTime12h(existingSchedule.student_local_time)} on ${DAYS_LABELS[newSchedule.day]}`,
+      };
+    }
+  }
+
+  return { hasConflict: false, conflictType: null, conflictDetails: '' };
+}
+
 export default function Schedules() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false);
@@ -338,6 +421,28 @@ export default function Schedules() {
       return;
     }
 
+    // Check for conflicts
+    const conflict = detectScheduleConflict(
+      {
+        day: newSchedule.day,
+        studentTime: newSchedule.studentTime,
+        duration: parseInt(newSchedule.duration),
+        assignmentId: newSchedule.assignmentId,
+      },
+      assignments,
+      schedules,
+      editingSchedule?.id
+    );
+
+    if (conflict.hasConflict) {
+      toast({
+        title: `⚠️ ${conflict.conflictType === 'student' ? 'Student' : 'Teacher'} Conflict`,
+        description: conflict.conflictDetails,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const scheduleData = {
       day_of_week: newSchedule.day,
       student_local_time: newSchedule.studentTime,
@@ -355,6 +460,33 @@ export default function Schedules() {
   const handleSubmitBulkSchedule = () => {
     if (!bulkSchedule.assignmentId || bulkSchedule.selectedDays.length === 0 || !bulkSchedule.studentTime) {
       toast({ title: 'Error', description: 'Please select assignment, at least one day, and time', variant: 'destructive' });
+      return;
+    }
+
+    // Check for conflicts on each selected day
+    const conflicts: string[] = [];
+    for (const day of bulkSchedule.selectedDays) {
+      const conflict = detectScheduleConflict(
+        {
+          day,
+          studentTime: bulkSchedule.studentTime,
+          duration: parseInt(bulkSchedule.duration),
+          assignmentId: bulkSchedule.assignmentId,
+        },
+        assignments,
+        schedules
+      );
+      if (conflict.hasConflict) {
+        conflicts.push(`${DAYS_LABELS[day]}: ${conflict.conflictDetails}`);
+      }
+    }
+
+    if (conflicts.length > 0) {
+      toast({
+        title: '⚠️ Schedule Conflicts Detected',
+        description: conflicts.join('\n'),
+        variant: 'destructive',
+      });
       return;
     }
 
