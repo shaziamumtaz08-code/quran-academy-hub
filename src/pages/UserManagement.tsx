@@ -105,6 +105,9 @@ export default function UserManagement() {
   const [newUserName, setNewUserName] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserRole, setNewUserRole] = useState<AppRole>('student');
+  const [newUserWhatsapp, setNewUserWhatsapp] = useState('');
+  const [newUserGender, setNewUserGender] = useState<'male' | 'female' | ''>('');
+  const [newUserAge, setNewUserAge] = useState('');
 
   // Check access
   if (!isSuperAdmin && !hasPermission('users.view')) {
@@ -261,14 +264,20 @@ export default function UserManagement() {
       password,
       fullName,
       role,
+      whatsapp,
+      gender,
+      age,
     }: {
       email: string;
       password: string;
       fullName: string;
       role: AppRole;
+      whatsapp?: string;
+      gender?: 'male' | 'female';
+      age?: number;
     }) => {
       const { data, error } = await supabase.functions.invoke('admin-create-user', {
-        body: { email, password, fullName, role },
+        body: { email, password, fullName, role, whatsapp, gender, age },
       });
       if (error) throw new Error(error.message || 'Failed to create user');
       if (data?.error) throw new Error(data.error);
@@ -284,6 +293,9 @@ export default function UserManagement() {
       setNewUserName('');
       setNewUserPassword('');
       setNewUserRole('student');
+      setNewUserWhatsapp('');
+      setNewUserGender('');
+      setNewUserAge('');
       setIsCreateDialogOpen(false);
     },
     onError: (error) => {
@@ -415,6 +427,39 @@ export default function UserManagement() {
                         </SelectContent>
                       </Select>
                     </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="gender">Gender</Label>
+                      <Select value={newUserGender} onValueChange={(v) => setNewUserGender(v as 'male' | 'female' | '')}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select gender" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="male">Male</SelectItem>
+                          <SelectItem value="female">Female</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="age">Age</Label>
+                      <Input
+                        id="age"
+                        type="number"
+                        min="1"
+                        max="120"
+                        value={newUserAge}
+                        onChange={(e) => setNewUserAge(e.target.value)}
+                        placeholder="Enter age"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="whatsapp">WhatsApp Number</Label>
+                      <Input
+                        id="whatsapp"
+                        value={newUserWhatsapp}
+                        onChange={(e) => setNewUserWhatsapp(e.target.value)}
+                        placeholder="e.g. +1234567890"
+                      />
+                    </div>
                     <Button 
                       className="w-full" 
                       disabled={createUserMutation.isPending}
@@ -446,6 +491,9 @@ export default function UserManagement() {
                           password,
                           fullName,
                           role: newUserRole,
+                          whatsapp: newUserWhatsapp.trim() || undefined,
+                          gender: newUserGender || undefined,
+                          age: newUserAge ? parseInt(newUserAge) : undefined,
                         });
                       }}
                     >
