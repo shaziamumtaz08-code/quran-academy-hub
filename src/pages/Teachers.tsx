@@ -5,17 +5,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Search, Mail, Users, MoreHorizontal, Pencil, Trash2, Loader2, AlertCircle } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Plus, Search, Mail, Users, MoreHorizontal, Pencil, Trash2, Loader2, AlertCircle, ChevronDown, ChevronRight, User } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
 
 interface Teacher {
   id: string;
   full_name: string;
   email: string | null;
   student_count: number;
+  students?: { id: string; full_name: string; gender: string | null; age: number | null }[];
 }
 
 export default function Teachers() {
@@ -25,8 +28,9 @@ export default function Teachers() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [formData, setFormData] = useState({ name: '', email: '' });
+  const [expandedTeachers, setExpandedTeachers] = useState<Set<string>>(new Set());
 
-  // Fetch teachers from Supabase
+  // Fetch teachers from Supabase with assigned students
   const { data: teachers = [], isLoading } = useQuery({
     queryKey: ['teachers-list-full'],
     queryFn: async () => {
@@ -49,25 +53,38 @@ export default function Teachers() {
 
       if (profileError) throw profileError;
 
-      // Get student counts per teacher
+      // Get all student assignments with student details
       const { data: assignments, error: assignError } = await supabase
         .from('student_teacher_assignments')
-        .select('teacher_id')
+        .select(`
+          teacher_id,
+          student:profiles!student_teacher_assignments_student_id_fkey(id, full_name, gender, age)
+        `)
         .in('teacher_id', teacherIds);
 
       if (assignError) throw assignError;
 
-      // Count students per teacher
-      const countMap = new Map<string, number>();
+      // Group students by teacher
+      const studentsByTeacher = new Map<string, { id: string; full_name: string; gender: string | null; age: number | null }[]>();
       assignments?.forEach(a => {
-        countMap.set(a.teacher_id, (countMap.get(a.teacher_id) || 0) + 1);
+        const student = a.student as any;
+        if (!studentsByTeacher.has(a.teacher_id)) {
+          studentsByTeacher.set(a.teacher_id, []);
+        }
+        studentsByTeacher.get(a.teacher_id)?.push({
+          id: student.id,
+          full_name: student.full_name,
+          gender: student.gender,
+          age: student.age,
+        });
       });
 
       return (profiles || []).map(p => ({
         id: p.id,
         full_name: p.full_name,
         email: p.email,
-        student_count: countMap.get(p.id) || 0,
+        student_count: studentsByTeacher.get(p.id)?.length || 0,
+        students: studentsByTeacher.get(p.id) || [],
       })) as Teacher[];
     },
   });
@@ -77,7 +94,7 @@ export default function Teachers() {
     (teacher.email?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
   );
 
-  // Add teacher mutation (creates profile + role via edge function)
+  // Add teacher mutation
   const addMutation = useMutation({
     mutationFn: async (data: { name: string; email: string }) => {
       const { data: result, error } = await supabase.functions.invoke('admin-create-user', {
@@ -176,6 +193,18 @@ export default function Teachers() {
     }
   };
 
+  const toggleExpanded = (teacherId: string) => {
+    setExpandedTeachers(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(teacherId)) {
+        newSet.delete(teacherId);
+      } else {
+        newSet.add(teacherId);
+      }
+      return newSet;
+    });
+  };
+
   const isPending = addMutation.isPending || updateMutation.isPending;
 
   return (
@@ -259,6 +288,7 @@ export default function Teachers() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[40px]"></TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead className="text-center">Assigned Students</TableHead>
@@ -267,47 +297,96 @@ export default function Teachers() {
               </TableHeader>
               <TableBody>
                 {filteredTeachers.map((teacher) => (
-                  <TableRow key={teacher.id}>
-                    <TableCell className="font-medium">{teacher.full_name}</TableCell>
-                    <TableCell>
-                      {teacher.email ? (
-                        <span className="flex items-center gap-2 text-sm">
-                          <Mail className="h-3 w-3 text-muted-foreground" />
-                          {teacher.email}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">No email</span>
+                  <React.Fragment key={teacher.id}>
+                    <TableRow 
+                      className={cn(
+                        "cursor-pointer transition-colors",
+                        expandedTeachers.has(teacher.id) && "bg-muted/50"
                       )}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary text-secondary-foreground text-sm">
-                        <Users className="h-3 w-3" />
-                        {teacher.student_count}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
+                      onClick={() => teacher.student_count > 0 && toggleExpanded(teacher.id)}
+                    >
+                      <TableCell>
+                        {teacher.student_count > 0 && (
+                          <Button variant="ghost" size="icon" className="h-6 w-6">
+                            {expandedTeachers.has(teacher.id) ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
+                            )}
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEdit(teacher)}>
-                            <Pencil className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            className="text-destructive"
-                            onClick={() => handleDelete(teacher.id)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-medium">{teacher.full_name}</TableCell>
+                      <TableCell>
+                        {teacher.email ? (
+                          <span className="flex items-center gap-2 text-sm">
+                            <Mail className="h-3 w-3 text-muted-foreground" />
+                            {teacher.email}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">No email</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary text-secondary-foreground text-sm">
+                          <Users className="h-3 w-3" />
+                          {teacher.student_count}
+                        </span>
+                      </TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEdit(teacher)}>
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="text-destructive"
+                              onClick={() => handleDelete(teacher.id)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                    {/* Expanded Students List */}
+                    {expandedTeachers.has(teacher.id) && teacher.students && teacher.students.length > 0 && (
+                      <TableRow className="bg-muted/30 hover:bg-muted/30">
+                        <TableCell colSpan={5} className="p-0">
+                          <div className="px-8 py-4 border-l-4 border-primary/30">
+                            <p className="text-sm font-medium text-muted-foreground mb-3">Assigned Students:</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                              {teacher.students.map((student) => (
+                                <div 
+                                  key={student.id}
+                                  className="flex items-center gap-3 p-3 bg-card rounded-lg border border-border"
+                                >
+                                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                    <User className="h-4 w-4 text-primary" />
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-sm">{student.full_name}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {student.age && `Age ${student.age}`}
+                                      {student.age && student.gender && ' • '}
+                                      {student.gender && <span className="capitalize">{student.gender}</span>}
+                                    </p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </React.Fragment>
                 ))}
               </TableBody>
             </Table>

@@ -25,6 +25,7 @@ import Assignments from "./pages/Assignments";
 import MonthlyPlanning from "./pages/MonthlyPlanning";
 import AdminCommandCenter from "./pages/AdminCommandCenter";
 import TeacherNazraDashboard from "./pages/TeacherNazraDashboard";
+import Subjects from "./pages/Subjects";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -125,6 +126,7 @@ function AppRoutes() {
       <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout><ErrorBoundary><Dashboard /></ErrorBoundary></DashboardLayout></ProtectedRoute>} />
       <Route path="/user-management" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
       <Route path="/assignments" element={<ProtectedRoute><Assignments /></ProtectedRoute>} />
+      <Route path="/subjects" element={<ProtectedRoute><Subjects /></ProtectedRoute>} />
       <Route path="/teachers" element={<ProtectedRoute><Teachers /></ProtectedRoute>} />
       <Route path="/students" element={<ProtectedRoute><Students /></ProtectedRoute>} />
       <Route path="/schedules" element={<ProtectedRoute><Schedules /></ProtectedRoute>} />

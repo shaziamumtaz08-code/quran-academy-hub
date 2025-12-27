@@ -20,6 +20,7 @@ import {
   Settings,
   FolderOpen,
   Target,
+  BookOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import logoLight from '@/assets/logo-light.png';
@@ -36,15 +37,17 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: 'dashboard.admin' },
   { label: 'User Management', href: '/user-management', icon: Shield, roles: ['super_admin', 'admin'] },
+  { label: 'Subjects', href: '/subjects', icon: BookOpen, roles: ['super_admin', 'admin'] },
   { label: 'Assignments', href: '/assignments', icon: Users, roles: ['super_admin', 'admin'] },
   { label: 'Monthly Planning', href: '/monthly-planning', icon: Target, roles: ['super_admin', 'admin', 'teacher'] },
   { label: 'Teachers', href: '/teachers', icon: Users, permission: 'teachers.view' },
   { label: 'Students', href: '/students', icon: GraduationCap, permission: 'students.view' },
   { label: 'Schedules', href: '/schedules', icon: Calendar, permission: 'schedules.view' },
   { label: 'Attendance', href: '/attendance', icon: ClipboardCheck, permission: 'attendance.view' },
-  { label: 'Exam Templates', href: '/exam-templates', icon: FileText, permission: 'exams.view' },
+  // Exam Templates & Results hidden from students/teachers - only for admins/examiners
+  { label: 'Exam Templates', href: '/exam-templates', icon: FileText, roles: ['super_admin', 'admin', 'examiner'] },
   { label: 'Submit Exam', href: '/exam-submission', icon: ClipboardCheck, permission: 'exams.grade' },
-  { label: 'Exam Results', href: '/exam-results', icon: BarChart3, permission: 'exams.view' },
+  { label: 'Exam Results', href: '/exam-results', icon: BarChart3, roles: ['super_admin', 'admin', 'examiner'] },
   { label: 'Reports', href: '/reports', icon: FileText, permission: 'reports.view' },
   { label: 'Payments', href: '/payments', icon: DollarSign, permission: 'payments.view' },
   { label: 'KPI', href: '/kpi', icon: BarChart3, roles: ['super_admin', 'admin'] },
