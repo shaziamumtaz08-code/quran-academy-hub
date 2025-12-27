@@ -4,11 +4,25 @@ import { supabase } from '@/integrations/supabase/client';
 
 export type AppRole = 'super_admin' | 'admin' | 'admin_admissions' | 'admin_fees' | 'admin_academic' | 'teacher' | 'student' | 'parent' | 'examiner';
 
+// Role priority for determining primary role (lower = higher priority)
+const ROLE_PRIORITY: Record<AppRole, number> = {
+  super_admin: 1,
+  admin: 2,
+  admin_admissions: 3,
+  admin_fees: 4,
+  admin_academic: 5,
+  examiner: 6,
+  teacher: 7,
+  parent: 8,
+  student: 9,
+};
+
 export interface UserProfile {
   id: string;
   email: string | null;
   full_name: string;
-  role: AppRole | null;
+  roles: AppRole[];
+  role: AppRole | null; // Primary role (for backward compatibility)
 }
 
 interface AuthContextType {
@@ -22,18 +36,27 @@ interface AuthContextType {
   isAuthenticated: boolean;
   hasPermission: (permission: string) => boolean;
   isSuperAdmin: boolean;
+  hasRole: (role: AppRole) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Get primary role from array of roles
+function getPrimaryRole(roles: AppRole[]): AppRole | null {
+  if (roles.length === 0) return null;
+  return roles.reduce((primary, current) => {
+    return ROLE_PRIORITY[current] < ROLE_PRIORITY[primary] ? current : primary;
+  });
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [permissions, setPermissions] = useState<string[]>([]);
+  const [allPermissions, setAllPermissions] = useState<string[]>([]);
 
-  // Fetch user profile and role
+  // Fetch user profile and ALL roles
   const fetchProfile = async (userId: string) => {
     try {
       // Get profile
@@ -47,37 +70,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('Error fetching profile:', profileError);
       }
 
-      // Get user role
-      const { data: roleData, error: roleError } = await supabase
+      // Get ALL user roles (not just one)
+      const { data: rolesData, error: rolesError } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', userId)
-        .single();
+        .eq('user_id', userId);
 
-      if (roleError && roleError.code !== 'PGRST116') {
-        console.error('Error fetching role:', roleError);
+      if (rolesError && rolesError.code !== 'PGRST116') {
+        console.error('Error fetching roles:', rolesError);
       }
 
-      const role = roleData?.role as AppRole | null;
+      const roles: AppRole[] = (rolesData || []).map(r => r.role as AppRole);
+      const primaryRole = getPrimaryRole(roles);
 
-      // Get role permissions from template
-      if (role) {
-        const { data: templateData } = await supabase
+      // Get permissions from ALL role templates
+      const combinedPermissions: Set<string> = new Set();
+      
+      if (roles.length > 0) {
+        const { data: templatesData } = await supabase
           .from('role_templates')
           .select('permissions')
-          .eq('role', role)
-          .single();
+          .in('role', roles);
 
-        if (templateData?.permissions) {
-          setPermissions(templateData.permissions);
+        if (templatesData) {
+          templatesData.forEach(template => {
+            if (template.permissions) {
+              template.permissions.forEach((perm: string) => combinedPermissions.add(perm));
+            }
+          });
         }
       }
+
+      setAllPermissions(Array.from(combinedPermissions));
 
       setProfile({
         id: userId,
         email: profileData?.email || null,
         full_name: profileData?.full_name || 'User',
-        role: role,
+        roles,
+        role: primaryRole,
       });
     } catch (error) {
       console.error('Error in fetchProfile:', error);
@@ -98,7 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }, 0);
         } else {
           setProfile(null);
-          setPermissions([]);
+          setAllPermissions([]);
         }
         
         if (event === 'SIGNED_OUT') {
@@ -193,18 +224,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSession(null);
     setProfile(null);
-    setPermissions([]);
+    setAllPermissions([]);
   };
 
   const hasPermission = (permission: string): boolean => {
     // Super admin has all permissions
-    if (profile?.role === 'super_admin') {
+    if (profile?.roles.includes('super_admin')) {
       return true;
     }
-    return permissions.includes(permission);
+    return allPermissions.includes(permission);
   };
 
-  const isSuperAdmin = profile?.role === 'super_admin';
+  const hasRole = (role: AppRole): boolean => {
+    return profile?.roles.includes(role) || false;
+  };
+
+  const isSuperAdmin = profile?.roles.includes('super_admin') || false;
 
   return (
     <AuthContext.Provider value={{ 
@@ -218,6 +253,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: !!user,
       hasPermission,
       isSuperAdmin,
+      hasRole,
     }}>
       {children}
     </AuthContext.Provider>

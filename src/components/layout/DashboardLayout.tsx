@@ -65,10 +65,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
 
-  // Filter nav items based on permissions
+  // Filter nav items based on permissions (now supports multiple roles)
   const filteredNavItems = navItems.filter(item => {
     if (isSuperAdmin) return true;
-    if (item.roles && profile?.role && item.roles.includes(profile.role)) return true;
+    // Check if user has any of the required roles
+    if (item.roles && profile?.roles) {
+      const hasRequiredRole = item.roles.some(role => profile.roles.includes(role as any));
+      if (hasRequiredRole) return true;
+    }
     if (item.permission && hasPermission(item.permission)) return true;
     // Allow dashboard access for all authenticated users
     if (item.href === '/dashboard') return true;
@@ -215,7 +219,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-sidebar-foreground truncate">{profile.full_name}</p>
                 <p className="text-xs text-sidebar-foreground/60 capitalize">
-                  {profile.role?.replace('_', ' ') || 'User'}
+                  {profile.roles?.map(r => r.replace('_', ' ')).join(', ') || 'User'}
                 </p>
               </div>
             </div>

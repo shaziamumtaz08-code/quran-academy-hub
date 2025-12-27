@@ -65,6 +65,8 @@ import {
   Lock,
   Save,
   X,
+  Plus,
+  Minus,
 } from 'lucide-react';
 
 const ALL_PERMISSIONS = [
@@ -92,7 +94,19 @@ const ROLE_LABELS: Record<AppRole, string> = {
   parent: 'Parent',
 };
 
-interface UserWithRole {
+const ROLE_COLORS: Record<AppRole, string> = {
+  super_admin: 'bg-red-500/10 text-red-700 border-red-200',
+  admin: 'bg-purple-500/10 text-purple-700 border-purple-200',
+  admin_admissions: 'bg-blue-500/10 text-blue-700 border-blue-200',
+  admin_fees: 'bg-green-500/10 text-green-700 border-green-200',
+  admin_academic: 'bg-orange-500/10 text-orange-700 border-orange-200',
+  teacher: 'bg-teal-500/10 text-teal-700 border-teal-200',
+  examiner: 'bg-indigo-500/10 text-indigo-700 border-indigo-200',
+  student: 'bg-sky-500/10 text-sky-700 border-sky-200',
+  parent: 'bg-pink-500/10 text-pink-700 border-pink-200',
+};
+
+interface UserWithRoles {
   id: string;
   full_name: string;
   email: string | null;
@@ -100,7 +114,7 @@ interface UserWithRole {
   gender: string | null;
   age: number | null;
   created_at: string;
-  role: AppRole | null;
+  roles: AppRole[];
   exceptions: Array<{ permission: string; is_granted: boolean }>;
 }
 
@@ -109,12 +123,14 @@ export default function UserManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserWithRoles | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-  const [viewingUser, setViewingUser] = useState<UserWithRole | null>(null);
-  const [deleteConfirmUser, setDeleteConfirmUser] = useState<UserWithRole | null>(null);
+  const [isAddRoleDialogOpen, setIsAddRoleDialogOpen] = useState(false);
+  const [viewingUser, setViewingUser] = useState<UserWithRoles | null>(null);
+  const [deleteConfirmUser, setDeleteConfirmUser] = useState<UserWithRoles | null>(null);
+  const [removeRoleConfirm, setRemoveRoleConfirm] = useState<{ user: UserWithRoles; role: AppRole } | null>(null);
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserName, setNewUserName] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
@@ -123,6 +139,7 @@ export default function UserManagement() {
   const [newUserGender, setNewUserGender] = useState<'male' | 'female' | ''>('');
   const [newUserAge, setNewUserAge] = useState('');
   const [showNewUserPassword, setShowNewUserPassword] = useState(false);
+  const [addRoleSelection, setAddRoleSelection] = useState<AppRole>('student');
 
   // View/Edit dialog states
   const [isEditMode, setIsEditMode] = useState(false);
@@ -149,7 +166,7 @@ export default function UserManagement() {
     );
   }
 
-  // Fetch users with profiles and roles
+  // Fetch users with profiles and ALL roles
   const { data: users, isLoading: usersLoading, error: usersError, refetch } = useQuery({
     queryKey: ['users-with-roles'],
     queryFn: async () => {
@@ -160,14 +177,13 @@ export default function UserManagement() {
 
       if (profilesError) throw profilesError;
 
-      // Get roles for each user
-      const usersWithRoles: UserWithRole[] = await Promise.all(
+      // Get ALL roles for each user
+      const usersWithRoles: UserWithRoles[] = await Promise.all(
         (profiles || []).map(async (profile) => {
-          const { data: roleData } = await supabase
+          const { data: rolesData } = await supabase
             .from('user_roles')
             .select('role')
-            .eq('user_id', profile.id)
-            .maybeSingle();
+            .eq('user_id', profile.id);
 
           const { data: exceptions } = await supabase
             .from('permission_exceptions')
@@ -182,7 +198,7 @@ export default function UserManagement() {
             gender: profile.gender,
             age: profile.age,
             created_at: profile.created_at,
-            role: (roleData?.role as AppRole) || null,
+            roles: (rolesData || []).map(r => r.role as AppRole),
             exceptions: exceptions || [],
           };
         })
@@ -206,33 +222,57 @@ export default function UserManagement() {
     },
   });
 
-  // Update user role mutation
-  const updateRoleMutation = useMutation({
-    mutationFn: async ({ userId, role }: { userId: string; role: AppRole }) => {
-      // First, delete existing role
-      await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', userId);
+  // Add role to user mutation
+  const addRoleMutation = useMutation({
+    mutationFn: async ({ userId, role, email }: { userId: string; role: AppRole; email: string }) => {
+      // Use admin-create-user which now handles adding roles to existing users
+      const { data, error } = await supabase.functions.invoke('admin-create-user', {
+        body: { email, fullName: '', role },
+      });
+      if (error) throw new Error(error.message || 'Failed to add role');
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['users-with-roles'] });
+      toast({
+        title: 'Role added',
+        description: data?.message || 'Role has been added successfully.',
+      });
+      setIsAddRoleDialogOpen(false);
+    },
+    onError: (error) => {
+      toast({
+        title: 'Failed to add role',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+      });
+    },
+  });
 
-      // Then insert new role
+  // Remove role mutation
+  const removeRoleMutation = useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: AppRole }) => {
       const { error } = await supabase
         .from('user_roles')
-        .insert({ user_id: userId, role });
+        .delete()
+        .eq('user_id', userId)
+        .eq('role', role);
 
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users-with-roles'] });
       toast({
-        title: 'Role updated',
-        description: 'User role has been updated successfully.',
+        title: 'Role removed',
+        description: 'Role has been removed successfully.',
       });
+      setRemoveRoleConfirm(null);
     },
     onError: (error) => {
       toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to update role',
+        title: 'Failed to remove role',
+        description: error instanceof Error ? error.message : 'Please try again.',
         variant: 'destructive',
       });
     },
@@ -311,11 +351,11 @@ export default function UserManagement() {
       if (data?.error) throw new Error(data.error);
       return data as { userId: string };
     },
-    onSuccess: () => {
+    onSuccess: (data: { userId: string; roleAdded?: boolean; message?: string }) => {
       queryClient.invalidateQueries({ queryKey: ['users-with-roles'] });
       toast({
-        title: 'User created',
-        description: 'New user was created successfully.',
+        title: data?.roleAdded ? 'Role added' : 'User created',
+        description: data?.message || 'Operation completed successfully.',
       });
       setNewUserEmail('');
       setNewUserName('');
@@ -415,17 +455,24 @@ export default function UserManagement() {
     return roleTemplates?.find(t => t.role === role);
   };
 
-  const hasRolePermission = (role: AppRole | null, permission: string) => {
-    const template = getRoleTemplate(role);
-    return template?.permissions?.includes(permission) || false;
+  const hasRolePermission = (roles: AppRole[], permission: string) => {
+    return roles.some(role => {
+      const template = getRoleTemplate(role);
+      return template?.permissions?.includes(permission) || false;
+    });
   };
 
-  const getEffectivePermission = (user: UserWithRole, permission: string): boolean | 'inherited' => {
+  const getEffectivePermission = (user: UserWithRoles, permission: string): boolean | 'inherited' => {
     const exception = user.exceptions?.find((e) => e.permission === permission);
     if (exception) {
       return exception.is_granted;
     }
     return 'inherited';
+  };
+
+  const getAvailableRoles = (user: UserWithRoles): AppRole[] => {
+    const allRoles = Object.keys(ROLE_LABELS) as AppRole[];
+    return allRoles.filter(role => !user.roles.includes(role));
   };
 
   return (
@@ -453,7 +500,7 @@ export default function UserManagement() {
                   <DialogHeader>
                     <DialogTitle>Create New User</DialogTitle>
                     <DialogDescription>
-                      Add a new user to the system. They will be able to login immediately.
+                      Add a new user or assign a role to an existing user by email.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 pt-4">
@@ -463,7 +510,7 @@ export default function UserManagement() {
                         id="name"
                         value={newUserName}
                         onChange={(e) => setNewUserName(e.target.value)}
-                        placeholder="Enter full name"
+                        placeholder="Enter full name (for new users)"
                       />
                     </div>
                     <div className="space-y-2">
@@ -477,7 +524,7 @@ export default function UserManagement() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="password">Password</Label>
+                      <Label htmlFor="password">Password (for new users)</Label>
                       <div className="relative">
                         <Input
                           id="password"
@@ -501,6 +548,7 @@ export default function UserManagement() {
                           )}
                         </Button>
                       </div>
+                      <p className="text-xs text-muted-foreground">Leave blank if user already exists</p>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="role">Role</Label>
@@ -556,19 +604,10 @@ export default function UserManagement() {
                         const fullName = newUserName.trim();
                         const password = newUserPassword;
 
-                        if (!fullName || !email || !password) {
+                        if (!email) {
                           toast({
-                            title: 'Missing fields',
-                            description: 'Please enter name, email, and password.',
-                            variant: 'destructive',
-                          });
-                          return;
-                        }
-
-                        if (password.length < 6) {
-                          toast({
-                            title: 'Password too short',
-                            description: 'Password must be at least 6 characters.',
+                            title: 'Email required',
+                            description: 'Please enter an email address.',
                             variant: 'destructive',
                           });
                           return;
@@ -588,10 +627,10 @@ export default function UserManagement() {
                       {createUserMutation.isPending ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Creating...
+                          Processing...
                         </>
                       ) : (
-                        'Create User'
+                        'Create User / Add Role'
                       )}
                     </Button>
                   </div>
@@ -659,7 +698,7 @@ export default function UserManagement() {
                       <TableRow>
                         <TableHead>Name</TableHead>
                         <TableHead>Email</TableHead>
-                        <TableHead>Role</TableHead>
+                        <TableHead>Roles</TableHead>
                         <TableHead>Exceptions</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
@@ -670,30 +709,49 @@ export default function UserManagement() {
                           <TableCell className="font-medium">{user.full_name}</TableCell>
                           <TableCell>{user.email}</TableCell>
                           <TableCell>
-                            {isSuperAdmin ? (
-                              <Select
-                                value={user.role || "unassigned"}
-                                onValueChange={(role) => {
-                                  if (role !== "unassigned") {
-                                    updateRoleMutation.mutate({ userId: user.id, role: role as AppRole });
-                                  }
-                                }}
-                              >
-                                <SelectTrigger className="w-44">
-                                  <SelectValue placeholder="Select role" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="unassigned" disabled>No role assigned</SelectItem>
-                                  {Object.entries(ROLE_LABELS).map(([role, label]) => (
-                                    <SelectItem key={role} value={role}>{label}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <Badge variant="secondary">
-                                {user.role ? ROLE_LABELS[user.role] : 'No role'}
-                              </Badge>
-                            )}
+                            <div className="flex flex-wrap gap-1">
+                              {user.roles.length > 0 ? (
+                                user.roles.map((role) => (
+                                  <Badge 
+                                    key={role} 
+                                    variant="outline" 
+                                    className={`text-xs ${ROLE_COLORS[role]}`}
+                                  >
+                                    {ROLE_LABELS[role]}
+                                    {isSuperAdmin && user.roles.length > 1 && (
+                                      <button
+                                        className="ml-1 hover:text-destructive"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setRemoveRoleConfirm({ user, role });
+                                        }}
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </button>
+                                    )}
+                                  </Badge>
+                                ))
+                              ) : (
+                                <Badge variant="outline" className="text-xs text-muted-foreground">
+                                  No role
+                                </Badge>
+                              )}
+                              {isSuperAdmin && getAvailableRoles(user).length > 0 && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                  onClick={() => {
+                                    setViewingUser(user);
+                                    setAddRoleSelection(getAvailableRoles(user)[0]);
+                                    setIsAddRoleDialogOpen(true);
+                                  }}
+                                  title="Add role"
+                                >
+                                  <Plus className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell>
                             {user.exceptions?.length > 0 ? (
@@ -792,6 +850,106 @@ export default function UserManagement() {
           </TabsContent>
         </Tabs>
 
+        {/* Add Role Dialog */}
+        <Dialog open={isAddRoleDialogOpen} onOpenChange={setIsAddRoleDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add Role to {viewingUser?.full_name}</DialogTitle>
+              <DialogDescription>
+                Select a role to add to this user.
+              </DialogDescription>
+            </DialogHeader>
+            {viewingUser && (
+              <div className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <Label>Current Roles</Label>
+                  <div className="flex flex-wrap gap-1">
+                    {viewingUser.roles.map((role) => (
+                      <Badge key={role} variant="outline" className={ROLE_COLORS[role]}>
+                        {ROLE_LABELS[role]}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Add New Role</Label>
+                  <Select value={addRoleSelection} onValueChange={(v) => setAddRoleSelection(v as AppRole)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getAvailableRoles(viewingUser).map((role) => (
+                        <SelectItem key={role} value={role}>{ROLE_LABELS[role]}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  className="w-full"
+                  disabled={addRoleMutation.isPending}
+                  onClick={() => {
+                    if (viewingUser.email) {
+                      addRoleMutation.mutate({
+                        userId: viewingUser.id,
+                        role: addRoleSelection,
+                        email: viewingUser.email,
+                      });
+                    }
+                  }}
+                >
+                  {addRoleMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Adding...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Role
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Remove Role Confirmation */}
+        <AlertDialog open={!!removeRoleConfirm} onOpenChange={() => setRemoveRoleConfirm(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove Role</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to remove the <strong>{removeRoleConfirm?.role ? ROLE_LABELS[removeRoleConfirm.role] : ''}</strong> role 
+                from <strong>{removeRoleConfirm?.user.full_name}</strong>?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (removeRoleConfirm) {
+                    removeRoleMutation.mutate({
+                      userId: removeRoleConfirm.user.id,
+                      role: removeRoleConfirm.role,
+                    });
+                  }
+                }}
+                disabled={removeRoleMutation.isPending}
+              >
+                {removeRoleMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Removing...
+                  </>
+                ) : (
+                  'Remove'
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         {/* Edit User Permissions Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -808,9 +966,13 @@ export default function UserManagement() {
                     <p className="font-medium">{selectedUser.full_name}</p>
                     <p className="text-sm text-muted-foreground">{selectedUser.email}</p>
                   </div>
-                  <Badge className="ml-auto">
-                    {selectedUser.role ? ROLE_LABELS[selectedUser.role] : 'No role'}
-                  </Badge>
+                  <div className="ml-auto flex flex-wrap gap-1">
+                    {selectedUser.roles.map((role) => (
+                      <Badge key={role} className={ROLE_COLORS[role]}>
+                        {ROLE_LABELS[role]}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
 
                 {ALL_PERMISSIONS.map((group) => (
@@ -818,7 +980,7 @@ export default function UserManagement() {
                     <h4 className="font-medium text-foreground">{group.group}</h4>
                     <div className="grid gap-2">
                       {group.permissions.map((permission) => {
-                        const roleHasIt = hasRolePermission(selectedUser.role, permission);
+                        const roleHasIt = hasRolePermission(selectedUser.roles, permission);
                         const effective = getEffectivePermission(selectedUser, permission);
                         const isOverridden = effective !== 'inherited';
                         const finalValue = effective === 'inherited' ? roleHasIt : effective;
@@ -926,11 +1088,18 @@ export default function UserManagement() {
                       <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
                         <User className="h-6 w-6 text-primary" />
                       </div>
-                      <div>
+                      <div className="flex-1">
                         <p className="font-semibold text-lg">{viewingUser.full_name}</p>
-                        <Badge variant="outline">
-                          {viewingUser.role ? ROLE_LABELS[viewingUser.role] : 'No role'}
-                        </Badge>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {viewingUser.roles.map((role) => (
+                            <Badge key={role} variant="outline" className={`text-xs ${ROLE_COLORS[role]}`}>
+                              {ROLE_LABELS[role]}
+                            </Badge>
+                          ))}
+                          {viewingUser.roles.length === 0 && (
+                            <Badge variant="outline" className="text-xs">No role</Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className="grid gap-3">
