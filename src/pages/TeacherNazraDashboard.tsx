@@ -60,29 +60,34 @@ export default function TeacherNazraDashboard() {
   const [classDate, setClassDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [classTime, setClassTime] = useState(format(new Date(), 'HH:mm'));
 
-  // Fetch assigned students with their details and last lesson
+  // Fetch assigned students with their details and last lesson – filtered by teacher_id
   const { data: students, isLoading } = useQuery({
     queryKey: ['teacher-students', user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
 
-      // Get all enrollments for this teacher
-      const { data: enrollments, error: enrollError } = await supabase
+      // Only get students assigned specifically to this teacher via student_teacher_assignments
+      const { data: assignments, error: assignError } = await supabase
         .from('student_teacher_assignments')
-        .select(`
-          student_id,
-          student:profiles!student_teacher_assignments_student_id_fkey(id, full_name, gender, age)
-        `)
+        .select('student_id')
         .eq('teacher_id', user.id);
 
-      if (enrollError) throw enrollError;
+      if (assignError) throw assignError;
+      if (!assignments || assignments.length === 0) return [];
+
+      const studentIds = assignments.map(a => a.student_id);
+
+      // Fetch profiles for those students
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, full_name, gender, age')
+        .in('id', studentIds);
+
+      if (profilesError) throw profilesError;
 
       // Get last lesson for each student
       const studentsWithDetails: StudentWithDetails[] = await Promise.all(
-        (enrollments || []).map(async (e) => {
-          const student = e.student as any;
-          
-          // Get last attendance record
+        (profilesData || []).map(async (student) => {
           const { data: lastLesson } = await supabase
             .from('attendance')
             .select('sabaq, lesson_covered, homework, class_date')
@@ -251,9 +256,9 @@ export default function TeacherNazraDashboard() {
                         )}
                       </div>
                     </div>
-                    <Badge variant="outline" className="hidden sm:flex">
+                    <Badge variant="default" className="flex">
                       <BookOpen className="h-3 w-3 mr-1" />
-                      Mark
+                      Log Lesson
                     </Badge>
                   </button>
                 ))}

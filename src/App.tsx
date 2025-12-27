@@ -73,6 +73,28 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Admin or Examiner route (for exam pages)
+function AdminOrExaminerRoute({ children }: { children: React.ReactNode }) {
+  const { profile, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+      </div>
+    );
+  }
+  
+  const role = profile?.role;
+  const allowed = role === 'super_admin' || role === 'admin' || role?.startsWith('admin_') || role === 'examiner';
+  
+  if (!allowed) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return <>{children}</>;
+}
+
 // Teacher only route
 function TeacherRoute({ children }: { children: React.ReactNode }) {
   const { profile, isLoading } = useAuth();
@@ -129,17 +151,19 @@ function AppRoutes() {
       <Route path="/subjects" element={<ProtectedRoute><Subjects /></ProtectedRoute>} />
       <Route path="/teachers" element={<ProtectedRoute><Teachers /></ProtectedRoute>} />
       <Route path="/students" element={<ProtectedRoute><Students /></ProtectedRoute>} />
-      <Route path="/schedules" element={<ProtectedRoute><Schedules /></ProtectedRoute>} />
       <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
       <Route path="/lessons" element={<ProtectedRoute><Lessons /></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
       <Route path="/payments" element={<ProtectedRoute><Payments /></ProtectedRoute>} />
       <Route path="/kpi" element={<ProtectedRoute><KPI /></ProtectedRoute>} />
-      <Route path="/exam-templates" element={<ProtectedRoute><ExamTemplates /></ProtectedRoute>} />
-      <Route path="/exam-submission" element={<ProtectedRoute><ExamSubmission /></ProtectedRoute>} />
-      <Route path="/exam-results" element={<ProtectedRoute><ExamResults /></ProtectedRoute>} />
+      {/* Admin-only routes */}
+      <Route path="/schedules" element={<ProtectedRoute><AdminRoute><Schedules /></AdminRoute></ProtectedRoute>} />
+      <Route path="/monthly-planning" element={<ProtectedRoute><AdminRoute><MonthlyPlanning /></AdminRoute></ProtectedRoute>} />
+      {/* Admin/Examiner exam pages */}
+      <Route path="/exam-templates" element={<ProtectedRoute><AdminOrExaminerRoute><ExamTemplates /></AdminOrExaminerRoute></ProtectedRoute>} />
+      <Route path="/exam-submission" element={<ProtectedRoute><AdminOrExaminerRoute><ExamSubmission /></AdminOrExaminerRoute></ProtectedRoute>} />
+      <Route path="/exam-results" element={<ProtectedRoute><AdminOrExaminerRoute><ExamResults /></AdminOrExaminerRoute></ProtectedRoute>} />
       <Route path="/resources" element={<ProtectedRoute><Resources /></ProtectedRoute>} />
-      <Route path="/monthly-planning" element={<ProtectedRoute><MonthlyPlanning /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
