@@ -472,7 +472,8 @@ export default function UserManagement() {
 
   const getAvailableRoles = (user: UserWithRoles): AppRole[] => {
     const allRoles = Object.keys(ROLE_LABELS) as AppRole[];
-    return allRoles.filter(role => !user.roles.includes(role));
+    const userRoles = user.roles || [];
+    return allRoles.filter(role => !userRoles.includes(role));
   };
 
   return (
@@ -710,7 +711,7 @@ export default function UserManagement() {
                           <TableCell>{user.email}</TableCell>
                           <TableCell>
                             <div className="flex flex-wrap gap-1">
-                              {user.roles.length > 0 ? (
+                              {(user.roles?.length ?? 0) > 0 ? (
                                 user.roles.map((role) => (
                                   <Badge 
                                     key={role} 
@@ -718,7 +719,7 @@ export default function UserManagement() {
                                     className={`text-xs ${ROLE_COLORS[role]}`}
                                   >
                                     {ROLE_LABELS[role]}
-                                    {isSuperAdmin && user.roles.length > 1 && (
+                                    {isSuperAdmin && (user.roles?.length ?? 0) > 1 && (
                                       <button
                                         className="ml-1 hover:text-destructive"
                                         onClick={(e) => {
@@ -754,7 +755,7 @@ export default function UserManagement() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            {user.exceptions?.length > 0 ? (
+                            {(user.exceptions?.length ?? 0) > 0 ? (
                               <Badge variant="outline" className="gap-1">
                                 <Settings className="h-3 w-3" />
                                 {user.exceptions.length} override{user.exceptions.length > 1 ? 's' : ''}
@@ -1096,7 +1097,7 @@ export default function UserManagement() {
                               {ROLE_LABELS[role]}
                             </Badge>
                           ))}
-                          {viewingUser.roles.length === 0 && (
+                          {(viewingUser.roles?.length ?? 0) === 0 && (
                             <Badge variant="outline" className="text-xs">No role</Badge>
                           )}
                         </div>
