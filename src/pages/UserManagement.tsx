@@ -57,10 +57,14 @@ import {
   AlertCircle,
   RefreshCw,
   Eye,
+  EyeOff,
   Phone,
   Mail,
   Calendar,
   User,
+  Lock,
+  Save,
+  X,
 } from 'lucide-react';
 
 const ALL_PERMISSIONS = [
@@ -118,6 +122,17 @@ export default function UserManagement() {
   const [newUserWhatsapp, setNewUserWhatsapp] = useState('');
   const [newUserGender, setNewUserGender] = useState<'male' | 'female' | ''>('');
   const [newUserAge, setNewUserAge] = useState('');
+  const [showNewUserPassword, setShowNewUserPassword] = useState(false);
+
+  // View/Edit dialog states
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editFullName, setEditFullName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editWhatsapp, setEditWhatsapp] = useState('');
+  const [editGender, setEditGender] = useState<'male' | 'female' | ''>('');
+  const [editAge, setEditAge] = useState('');
+  const [editPassword, setEditPassword] = useState('');
+  const [showEditPassword, setShowEditPassword] = useState(false);
 
   // Check access
   if (!isSuperAdmin && !hasPermission('users.view')) {
@@ -347,6 +362,50 @@ export default function UserManagement() {
     },
   });
 
+  // Update user mutation
+  const updateUserMutation = useMutation({
+    mutationFn: async ({
+      userId,
+      fullName,
+      email,
+      whatsapp,
+      gender,
+      age,
+      password,
+    }: {
+      userId: string;
+      fullName?: string;
+      email?: string;
+      whatsapp?: string | null;
+      gender?: 'male' | 'female' | null;
+      age?: number | null;
+      password?: string;
+    }) => {
+      const { data, error } = await supabase.functions.invoke('admin-update-user', {
+        body: { userId, fullName, email, whatsapp, gender, age, password },
+      });
+      if (error) throw new Error(error.message || 'Failed to update user');
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users-with-roles'] });
+      toast({
+        title: 'User updated',
+        description: 'User details have been updated successfully.',
+      });
+      setIsEditMode(false);
+      setEditPassword('');
+    },
+    onError: (error) => {
+      toast({
+        title: 'Failed to update user',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+      });
+    },
+  });
+
   const filteredUsers = users?.filter(user => 
     user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -419,13 +478,29 @@ export default function UserManagement() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="password">Password</Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        value={newUserPassword}
-                        onChange={(e) => setNewUserPassword(e.target.value)}
-                        placeholder="Enter password (min 6 characters)"
-                      />
+                      <div className="relative">
+                        <Input
+                          id="password"
+                          type={showNewUserPassword ? "text" : "password"}
+                          value={newUserPassword}
+                          onChange={(e) => setNewUserPassword(e.target.value)}
+                          placeholder="Enter password (min 6 characters)"
+                          className="pr-10"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          onClick={() => setShowNewUserPassword(!showNewUserPassword)}
+                        >
+                          {showNewUserPassword ? (
+                            <EyeOff className="h-4 w-4 text-muted-foreground" />
+                          ) : (
+                            <Eye className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </Button>
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="role">Role</Label>
@@ -807,65 +882,246 @@ export default function UserManagement() {
         </Dialog>
 
         {/* View User Details Dialog */}
-        <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-          <DialogContent>
+        <Dialog 
+          open={isViewDialogOpen} 
+          onOpenChange={(open) => {
+            setIsViewDialogOpen(open);
+            if (!open) {
+              setIsEditMode(false);
+              setEditPassword('');
+              setShowEditPassword(false);
+            }
+          }}
+        >
+          <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>User Details</DialogTitle>
+              <div className="flex items-center justify-between">
+                <DialogTitle>{isEditMode ? 'Edit User' : 'User Details'}</DialogTitle>
+                {viewingUser && isSuperAdmin && !isEditMode && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setEditFullName(viewingUser.full_name || '');
+                      setEditEmail(viewingUser.email || '');
+                      setEditWhatsapp(viewingUser.whatsapp_number || '');
+                      setEditGender((viewingUser.gender as 'male' | 'female') || '');
+                      setEditAge(viewingUser.age?.toString() || '');
+                      setEditPassword('');
+                      setIsEditMode(true);
+                    }}
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                )}
+              </div>
             </DialogHeader>
             {viewingUser && (
               <div className="space-y-4 pt-4">
-                <div className="flex items-center gap-4 p-4 bg-secondary rounded-lg">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <User className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-lg">{viewingUser.full_name}</p>
-                    <Badge variant="outline">
-                      {viewingUser.role ? ROLE_LABELS[viewingUser.role] : 'No role'}
-                    </Badge>
-                  </div>
-                </div>
-                <div className="grid gap-3">
-                  <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">Email</p>
-                      <p className="text-sm font-medium">{viewingUser.email || '—'}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">WhatsApp</p>
-                      <p className="text-sm font-medium">{viewingUser.whatsapp_number || '—'}</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                      <User className="h-4 w-4 text-muted-foreground" />
+                {!isEditMode ? (
+                  <>
+                    {/* View Mode */}
+                    <div className="flex items-center gap-4 p-4 bg-secondary rounded-lg">
+                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                        <User className="h-6 w-6 text-primary" />
+                      </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Gender</p>
-                        <p className="text-sm font-medium capitalize">{viewingUser.gender || '—'}</p>
+                        <p className="font-semibold text-lg">{viewingUser.full_name}</p>
+                        <Badge variant="outline">
+                          {viewingUser.role ? ROLE_LABELS[viewingUser.role] : 'No role'}
+                        </Badge>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Age</p>
-                        <p className="text-sm font-medium">{viewingUser.age || '—'}</p>
+                    <div className="grid gap-3">
+                      <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Email</p>
+                          <p className="text-sm font-medium">{viewingUser.email || '—'}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                        <Phone className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">WhatsApp</p>
+                          <p className="text-sm font-medium">{viewingUser.whatsapp_number || '—'}</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <p className="text-xs text-muted-foreground">Gender</p>
+                            <p className="text-sm font-medium capitalize">{viewingUser.gender || '—'}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <p className="text-xs text-muted-foreground">Age</p>
+                            <p className="text-sm font-medium">{viewingUser.age || '—'}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Created</p>
+                          <p className="text-sm font-medium">
+                            {new Date(viewingUser.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">Created</p>
-                      <p className="text-sm font-medium">
-                        {new Date(viewingUser.created_at).toLocaleDateString()}
-                      </p>
+                  </>
+                ) : (
+                  <>
+                    {/* Edit Mode */}
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-name">Full Name</Label>
+                        <Input
+                          id="edit-name"
+                          value={editFullName}
+                          onChange={(e) => setEditFullName(e.target.value)}
+                          placeholder="Enter full name"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-email">Email</Label>
+                        <Input
+                          id="edit-email"
+                          type="email"
+                          value={editEmail}
+                          onChange={(e) => setEditEmail(e.target.value)}
+                          placeholder="Enter email address"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-whatsapp">WhatsApp Number</Label>
+                        <Input
+                          id="edit-whatsapp"
+                          value={editWhatsapp}
+                          onChange={(e) => setEditWhatsapp(e.target.value)}
+                          placeholder="e.g. +1234567890"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="edit-gender">Gender</Label>
+                          <Select value={editGender} onValueChange={(v) => setEditGender(v as 'male' | 'female' | '')}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select gender" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="male">Male</SelectItem>
+                              <SelectItem value="female">Female</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="edit-age">Age</Label>
+                          <Input
+                            id="edit-age"
+                            type="number"
+                            min="1"
+                            max="120"
+                            value={editAge}
+                            onChange={(e) => setEditAge(e.target.value)}
+                            placeholder="Age"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-password" className="flex items-center gap-2">
+                          <Lock className="h-4 w-4" />
+                          New Password (leave blank to keep current)
+                        </Label>
+                        <div className="relative">
+                          <Input
+                            id="edit-password"
+                            type={showEditPassword ? "text" : "password"}
+                            value={editPassword}
+                            onChange={(e) => setEditPassword(e.target.value)}
+                            placeholder="Enter new password (min 6 characters)"
+                            className="pr-10"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            onClick={() => setShowEditPassword(!showEditPassword)}
+                          >
+                            {showEditPassword ? (
+                              <EyeOff className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <Eye className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                    <div className="flex gap-2 pt-2">
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => {
+                          setIsEditMode(false);
+                          setEditPassword('');
+                          setShowEditPassword(false);
+                        }}
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        Cancel
+                      </Button>
+                      <Button
+                        className="flex-1"
+                        disabled={updateUserMutation.isPending}
+                        onClick={() => {
+                          if (!editFullName.trim()) {
+                            toast({
+                              title: 'Name required',
+                              description: 'Please enter a full name.',
+                              variant: 'destructive',
+                            });
+                            return;
+                          }
+                          if (editPassword && editPassword.length < 6) {
+                            toast({
+                              title: 'Password too short',
+                              description: 'Password must be at least 6 characters.',
+                              variant: 'destructive',
+                            });
+                            return;
+                          }
+                          updateUserMutation.mutate({
+                            userId: viewingUser.id,
+                            fullName: editFullName.trim(),
+                            email: editEmail.trim() || undefined,
+                            whatsapp: editWhatsapp.trim() || null,
+                            gender: editGender || null,
+                            age: editAge ? parseInt(editAge) : null,
+                            password: editPassword || undefined,
+                          });
+                        }}
+                      >
+                        {updateUserMutation.isPending ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="h-4 w-4 mr-2" />
+                            Save Changes
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </DialogContent>
