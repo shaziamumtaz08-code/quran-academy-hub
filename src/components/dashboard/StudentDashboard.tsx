@@ -20,14 +20,21 @@ export function StudentDashboard() {
     queryFn: async () => {
       if (!user?.id) return null;
 
-      const [attendanceRes, teacherRes, planRes] = await Promise.all([
+      const [attendanceRes, enrollmentRes, planRes] = await Promise.all([
         supabase.from('attendance')
           .select('status, class_date, lesson_covered, homework, surah_name, ayah_from, ayah_to, raw_input_amount, lines_completed')
           .eq('student_id', user.id)
           .order('class_date', { ascending: false }),
-        supabase.from('student_teacher_assignments')
-          .select('teacher_id, teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name)')
+        // Fetch from enrollments table for teacher and subject info
+        supabase.from('enrollments')
+          .select(`
+            teacher_id,
+            subject_id,
+            teacher:profiles!enrollments_teacher_id_fkey(id, full_name, email),
+            subject:subjects!enrollments_subject_id_fkey(name)
+          `)
           .eq('student_id', user.id)
+          .eq('status', 'active')
           .limit(1),
         supabase.from('student_monthly_plans')
           .select('*')
@@ -39,7 +46,9 @@ export function StudentDashboard() {
       ]);
 
       const attendance = attendanceRes.data || [];
-      const teacher = teacherRes.data?.[0]?.teacher;
+      const enrollment = enrollmentRes.data?.[0];
+      const teacher = enrollment?.teacher as { id: string; full_name: string; email: string } | null;
+      const subject = enrollment?.subject as { name: string } | null;
       const activePlan = planRes.data?.[0];
       const present = attendance.filter(a => a.status === 'present').length;
       
@@ -70,6 +79,8 @@ export function StudentDashboard() {
         attended: present,
         attendanceRate: attendance.length > 0 ? Math.round((present / attendance.length) * 100) : 0,
         teacher: teacher?.full_name || 'Not assigned',
+        teacherEmail: teacher?.email || null,
+        subject: subject?.name || 'Quran',
         currentLesson,
         currentHomework,
         activePlan,
@@ -188,7 +199,10 @@ export function StudentDashboard() {
               </div>
               <div>
                 <p className="text-xl font-serif font-bold text-foreground">{stats?.teacher}</p>
-                <p className="text-sm text-muted-foreground">Assigned Teacher</p>
+                <p className="text-sm text-muted-foreground">{stats?.subject}</p>
+                {stats?.teacherEmail && (
+                  <p className="text-xs text-primary mt-1">{stats.teacherEmail}</p>
+                )}
               </div>
             </div>
 
