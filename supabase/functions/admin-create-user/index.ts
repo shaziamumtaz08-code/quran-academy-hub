@@ -73,14 +73,16 @@ serve(async (req) => {
     const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     // Authorization: only super_admin can create users
-    const { data: callerRoleRow, error: callerRoleErr } = await adminClient
+    // NOTE: user_roles can contain multiple rows per user (multi-role). We must not use maybeSingle() without filtering.
+    const { data: superAdminRoleRow, error: callerRoleErr } = await adminClient
       .from("user_roles")
       .select("role")
       .eq("user_id", caller.id)
+      .eq("role", "super_admin")
       .maybeSingle();
 
     if (callerRoleErr) return json(500, { error: callerRoleErr.message });
-    if (callerRoleRow?.role !== "super_admin") {
+    if (!superAdminRoleRow) {
       return json(403, { error: "Forbidden" });
     }
 
