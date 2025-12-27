@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Calendar, Clock, User, ChevronDown, ChevronRight, Loader2, AlertCircle, Globe } from 'lucide-react';
+import { Plus, Calendar, Clock, User, ChevronDown, ChevronRight, Loader2, AlertCircle, Globe, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,16 +26,20 @@ const DAYS_LABELS: Record<string, string> = {
 };
 
 const TIMEZONES = [
-  { value: 'America/Toronto', label: 'Canada (Toronto) EST/EDT', offset: -5 },
-  { value: 'America/New_York', label: 'USA (New York) EST/EDT', offset: -5 },
-  { value: 'America/Los_Angeles', label: 'USA (Los Angeles) PST/PDT', offset: -8 },
-  { value: 'Europe/London', label: 'UK (London) GMT/BST', offset: 0 },
-  { value: 'Asia/Karachi', label: 'Pakistan (Karachi) PKT', offset: 5 },
-  { value: 'Asia/Dubai', label: 'UAE (Dubai) GST', offset: 4 },
-  { value: 'Asia/Riyadh', label: 'Saudi Arabia (Riyadh) AST', offset: 3 },
-  { value: 'Asia/Kolkata', label: 'India (Mumbai) IST', offset: 5.5 },
-  { value: 'Australia/Sydney', label: 'Australia (Sydney) AEST', offset: 10 },
+  { value: 'America/Toronto', label: 'Canada (Toronto) EST/EDT', offset: -5, abbr: 'CA' },
+  { value: 'America/New_York', label: 'USA (New York) EST/EDT', offset: -5, abbr: 'NY' },
+  { value: 'America/Los_Angeles', label: 'USA (Los Angeles) PST/PDT', offset: -8, abbr: 'LA' },
+  { value: 'Europe/London', label: 'UK (London) GMT/BST', offset: 0, abbr: 'UK' },
+  { value: 'Asia/Karachi', label: 'Pakistan (Karachi) PKT', offset: 5, abbr: 'PK' },
+  { value: 'Asia/Dubai', label: 'UAE (Dubai) GST', offset: 4, abbr: 'AE' },
+  { value: 'Asia/Riyadh', label: 'Saudi Arabia (Riyadh) AST', offset: 3, abbr: 'SA' },
+  { value: 'Asia/Kolkata', label: 'India (Mumbai) IST', offset: 5.5, abbr: 'IN' },
+  { value: 'Australia/Sydney', label: 'Australia (Sydney) AEST', offset: 10, abbr: 'AU' },
 ];
+
+const getTzAbbr = (tzValue: string | null) => {
+  return TIMEZONES.find(tz => tz.value === tzValue)?.abbr || '??';
+};
 
 interface Assignment {
   id: string;
@@ -91,6 +95,8 @@ function formatTime12h(time: string): string {
 export default function Schedules() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [expandedAssignments, setExpandedAssignments] = useState<Set<string>>(new Set());
+  const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
+  const [calendarTimeView, setCalendarTimeView] = useState<Record<string, 'student' | 'teacher'>>({});
   const [newSchedule, setNewSchedule] = useState({
     assignmentId: '',
     day: '',
@@ -168,15 +174,33 @@ export default function Schedules() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['class-schedules'] });
       toast({ title: 'Success', description: 'Schedule created successfully' });
-      setIsDialogOpen(false);
-      setNewSchedule({
-        assignmentId: '',
-        day: '',
-        studentTime: '',
-        studentTimezone: 'America/Toronto',
-        teacherTimezone: 'Asia/Karachi',
-        duration: '30',
-      });
+      handleCloseDialog();
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // Update schedule mutation
+  const updateScheduleMutation = useMutation({
+    mutationFn: async ({ id, ...scheduleData }: {
+      id: string;
+      day_of_week: string;
+      student_local_time: string;
+      teacher_local_time: string;
+      duration_minutes: number;
+    }) => {
+      const { error } = await supabase
+        .from('schedules')
+        .update(scheduleData)
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['class-schedules'] });
+      toast({ title: 'Success', description: 'Schedule updated successfully' });
+      handleCloseDialog();
     },
     onError: (error: any) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -186,16 +210,6 @@ export default function Schedules() {
   // Get schedules for an assignment
   const getSchedulesForAssignment = (assignmentId: string) => {
     return schedules.filter(s => s.assignment_id === assignmentId);
-  };
-
-  // Check if student has class today
-  const hasClassToday = (assignmentId: string) => {
-    return schedules.some(s => s.assignment_id === assignmentId && s.day_of_week === todayDayName);
-  };
-
-  // Get today's class time for assignment
-  const getTodaysClass = (assignmentId: string) => {
-    return schedules.find(s => s.assignment_id === assignmentId && s.day_of_week === todayDayName);
   };
 
   // Toggle expanded row
@@ -209,6 +223,14 @@ export default function Schedules() {
       }
       return newSet;
     });
+  };
+
+  // Toggle calendar time view
+  const toggleCalendarTimeView = (assignmentId: string) => {
+    setCalendarTimeView(prev => ({
+      ...prev,
+      [assignmentId]: prev[assignmentId] === 'teacher' ? 'student' : 'teacher'
+    }));
   };
 
   // Calculate teacher time when student time changes
@@ -232,23 +254,55 @@ export default function Schedules() {
     }));
   };
 
-  const handleAddSchedule = () => {
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setEditingSchedule(null);
+    setNewSchedule({
+      assignmentId: '',
+      day: '',
+      studentTime: '',
+      studentTimezone: 'America/Toronto',
+      teacherTimezone: 'Asia/Karachi',
+      duration: '30',
+    });
+  };
+
+  const handleEditSchedule = (schedule: Schedule, assignment: Assignment) => {
+    setEditingSchedule(schedule);
+    setNewSchedule({
+      assignmentId: schedule.assignment_id,
+      day: schedule.day_of_week,
+      studentTime: schedule.student_local_time,
+      studentTimezone: assignment.student_timezone || 'America/Toronto',
+      teacherTimezone: assignment.teacher_timezone || 'Asia/Karachi',
+      duration: schedule.duration_minutes.toString(),
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleSubmitSchedule = () => {
     if (!newSchedule.assignmentId || !newSchedule.day || !newSchedule.studentTime) {
       toast({ title: 'Error', description: 'Please fill in all required fields', variant: 'destructive' });
       return;
     }
 
-    createScheduleMutation.mutate({
-      assignment_id: newSchedule.assignmentId,
+    const scheduleData = {
       day_of_week: newSchedule.day,
       student_local_time: newSchedule.studentTime,
       teacher_local_time: calculatedTeacherTime,
       duration_minutes: parseInt(newSchedule.duration),
-    });
+    };
+
+    if (editingSchedule) {
+      updateScheduleMutation.mutate({ id: editingSchedule.id, ...scheduleData });
+    } else {
+      createScheduleMutation.mutate({ assignment_id: newSchedule.assignmentId, ...scheduleData });
+    }
   };
 
   const isLoading = loadingAssignments || loadingSchedules;
   const hasAssignments = assignments.length > 0;
+  const isPending = createScheduleMutation.isPending || updateScheduleMutation.isPending;
 
   return (
     <DashboardLayout>
@@ -259,138 +313,134 @@ export default function Schedules() {
             <h1 className="font-serif text-3xl font-bold text-foreground">Class Schedules</h1>
             <p className="text-muted-foreground mt-1">Manage class schedules with timezone support</p>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => open ? setIsDialogOpen(true) : handleCloseDialog()}>
             <DialogTrigger asChild>
               <Button variant="hero" disabled={!hasAssignments}>
                 <Plus className="h-4 w-4" />
                 Add Schedule
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-2xl">
               <DialogHeader>
-                <DialogTitle className="font-serif">Add New Schedule</DialogTitle>
+                <DialogTitle className="font-serif">
+                  {editingSchedule ? 'Edit Schedule' : 'Add New Schedule'}
+                </DialogTitle>
               </DialogHeader>
-              <div className="space-y-4 py-4">
-                {/* Assignment Selection */}
-                <div className="space-y-2">
-                  <Label>Student–Teacher Assignment *</Label>
-                  <Select value={newSchedule.assignmentId} onValueChange={handleAssignmentSelect}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select assignment" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {assignments.map((assignment) => (
-                        <SelectItem key={assignment.id} value={assignment.id}>
-                          {assignment.student_name} → {assignment.teacher_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              {/* Compact 3-column form with light blue background */}
+              <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {/* Row 1 */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Assignment *</Label>
+                    <Select 
+                      value={newSchedule.assignmentId} 
+                      onValueChange={handleAssignmentSelect}
+                      disabled={!!editingSchedule}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {assignments.map((assignment) => (
+                          <SelectItem key={assignment.id} value={assignment.id}>
+                            {assignment.student_name} → {assignment.teacher_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Day *</Label>
+                    <Select value={newSchedule.day} onValueChange={(value) => setNewSchedule(prev => ({ ...prev, day: value }))}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DAYS_OF_WEEK.map((day) => (
+                          <SelectItem key={day} value={day}>{DAYS_LABELS[day]}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Duration</Label>
+                    <Select value={newSchedule.duration} onValueChange={(value) => setNewSchedule(prev => ({ ...prev, duration: value }))}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="30">30 min</SelectItem>
+                        <SelectItem value="45">45 min</SelectItem>
+                        <SelectItem value="60">60 min</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                {/* Day Selection */}
-                <div className="space-y-2">
-                  <Label>Day of Week *</Label>
-                  <Select value={newSchedule.day} onValueChange={(value) => setNewSchedule(prev => ({ ...prev, day: value }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select day" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DAYS_OF_WEEK.map((day) => (
-                        <SelectItem key={day} value={day}>{DAYS_LABELS[day]}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                  {/* Row 2 */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Student TZ</Label>
+                    <Select 
+                      value={newSchedule.studentTimezone} 
+                      onValueChange={(value) => setNewSchedule(prev => ({ ...prev, studentTimezone: value }))}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TIMEZONES.map((tz) => (
+                          <SelectItem key={tz.value} value={tz.value}>{tz.abbr} - {tz.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Student Time *</Label>
+                    <Input
+                      type="time"
+                      value={newSchedule.studentTime}
+                      onChange={(e) => setNewSchedule(prev => ({ ...prev, studentTime: e.target.value }))}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Teacher TZ</Label>
+                    <Select 
+                      value={newSchedule.teacherTimezone} 
+                      onValueChange={(value) => setNewSchedule(prev => ({ ...prev, teacherTimezone: value }))}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TIMEZONES.map((tz) => (
+                          <SelectItem key={tz.value} value={tz.value}>{tz.abbr} - {tz.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                {/* Timezone Section */}
-                <Card className="bg-secondary/30">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <Globe className="h-4 w-4" />
-                      Timezone Configuration
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Student Timezone */}
-                    <div className="space-y-2">
-                      <Label className="text-xs text-muted-foreground">Student Time Zone</Label>
-                      <Select 
-                        value={newSchedule.studentTimezone} 
-                        onValueChange={(value) => setNewSchedule(prev => ({ ...prev, studentTimezone: value }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {TIMEZONES.map((tz) => (
-                            <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Student Time Input */}
-                    <div className="space-y-2">
-                      <Label className="text-xs text-muted-foreground">Student Local Time *</Label>
-                      <Input
-                        type="time"
-                        value={newSchedule.studentTime}
-                        onChange={(e) => setNewSchedule(prev => ({ ...prev, studentTime: e.target.value }))}
-                      />
-                    </div>
-
-                    {/* Teacher Timezone */}
-                    <div className="space-y-2">
-                      <Label className="text-xs text-muted-foreground">Teacher Time Zone</Label>
-                      <Select 
-                        value={newSchedule.teacherTimezone} 
-                        onValueChange={(value) => setNewSchedule(prev => ({ ...prev, teacherTimezone: value }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {TIMEZONES.map((tz) => (
-                            <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Auto-calculated Teacher Time */}
-                    {calculatedTeacherTime && (
-                      <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
-                        <p className="text-xs text-muted-foreground mb-1">Teacher's Local Time (Auto-calculated)</p>
-                        <p className="text-lg font-bold text-primary">
-                          {formatTime12h(calculatedTeacherTime)}
-                        </p>
+                  {/* Row 3 - Calculated Time Display */}
+                  {calculatedTeacherTime && (
+                    <div className="sm:col-span-2 lg:col-span-3 p-2 bg-primary/10 rounded-md border border-primary/20 flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Teacher's Local Time (Auto)</p>
+                        <p className="text-sm font-bold text-primary">{formatTime12h(calculatedTeacherTime)}</p>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Duration */}
-                <div className="space-y-2">
-                  <Label>Duration</Label>
-                  <Select value={newSchedule.duration} onValueChange={(value) => setNewSchedule(prev => ({ ...prev, duration: value }))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="30">30 minutes</SelectItem>
-                      <SelectItem value="45">45 minutes</SelectItem>
-                      <SelectItem value="60">60 minutes</SelectItem>
-                    </SelectContent>
-                  </Select>
+                      <Badge variant="outline" className="text-xs">
+                        {getTzAbbr(newSchedule.teacherTimezone)}
+                      </Badge>
+                    </div>
+                  )}
                 </div>
-              </div>
-              <div className="flex justify-end gap-3">
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleAddSchedule} disabled={createScheduleMutation.isPending}>
-                  {createScheduleMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Add Schedule
-                </Button>
+
+                {/* Actions */}
+                <div className="flex justify-end gap-2 pt-3 border-t border-blue-200 dark:border-blue-800 mt-3">
+                  <Button variant="outline" size="sm" onClick={handleCloseDialog}>Cancel</Button>
+                  <Button size="sm" onClick={handleSubmitSchedule} disabled={isPending}>
+                    {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    {editingSchedule ? 'Update Schedule' : 'Add Schedule'}
+                  </Button>
+                </div>
               </div>
             </DialogContent>
           </Dialog>
@@ -433,16 +483,18 @@ export default function Schedules() {
                   <TableHead>Student</TableHead>
                   <TableHead>Teacher</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Time</TableHead>
-                  <TableHead className="text-center">Scheduled Today?</TableHead>
+                  <TableHead>Time (Student / Teacher)</TableHead>
+                  <TableHead className="w-12">Edit</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {assignments.map((assignment) => {
                   const isExpanded = expandedAssignments.has(assignment.id);
                   const assignmentSchedules = getSchedulesForAssignment(assignment.id);
-                  const scheduledToday = hasClassToday(assignment.id);
-                  const todaysClass = getTodaysClass(assignment.id);
+                  const todaysClass = assignmentSchedules.find(s => s.day_of_week === todayDayName);
+                  const studentTzAbbr = getTzAbbr(assignment.student_timezone);
+                  const teacherTzAbbr = getTzAbbr(assignment.teacher_timezone);
+                  const timeViewMode = calendarTimeView[assignment.id] || 'student';
 
                   return (
                     <React.Fragment key={assignment.id}>
@@ -479,19 +531,27 @@ export default function Schedules() {
                         </TableCell>
                         <TableCell>
                           {todaysClass ? (
-                            <span className="flex items-center gap-1.5 text-sm font-medium text-primary">
-                              <Clock className="h-3.5 w-3.5" />
-                              {formatTime12h(todaysClass.student_local_time)}
+                            <span className="text-sm font-medium">
+                              <span className="text-primary">{formatTime12h(todaysClass.student_local_time)}</span>
+                              <span className="text-muted-foreground text-xs ml-1">({studentTzAbbr})</span>
+                              <span className="text-muted-foreground mx-1">/</span>
+                              <span className="text-foreground">{formatTime12h(todaysClass.teacher_local_time)}</span>
+                              <span className="text-muted-foreground text-xs ml-1">({teacherTzAbbr})</span>
                             </span>
                           ) : (
-                            <span className="text-muted-foreground text-sm">—</span>
+                            <span className="text-muted-foreground text-sm">No class today</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-center">
-                          {scheduledToday ? (
-                            <Badge className="bg-emerald-light text-white">Yes</Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-muted-foreground">No</Badge>
+                        <TableCell>
+                          {todaysClass && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => handleEditSchedule(todaysClass, assignment)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
                           )}
                         </TableCell>
                       </TableRow>
@@ -501,11 +561,35 @@ export default function Schedules() {
                         <TableRow className="bg-secondary/20">
                           <TableCell colSpan={6} className="p-4">
                             <div className="space-y-3">
-                              <h4 className="font-medium text-sm text-muted-foreground">Weekly Schedule</h4>
+                              <div className="flex items-center justify-between">
+                                <h4 className="font-medium text-sm text-muted-foreground">Weekly Schedule</h4>
+                                <div className="flex gap-1">
+                                  <Button
+                                    variant={timeViewMode === 'student' ? 'default' : 'outline'}
+                                    size="sm"
+                                    className="h-7 text-xs px-2"
+                                    onClick={() => setCalendarTimeView(prev => ({ ...prev, [assignment.id]: 'student' }))}
+                                  >
+                                    Show {studentTzAbbr} Time
+                                  </Button>
+                                  <Button
+                                    variant={timeViewMode === 'teacher' ? 'default' : 'outline'}
+                                    size="sm"
+                                    className="h-7 text-xs px-2"
+                                    onClick={() => setCalendarTimeView(prev => ({ ...prev, [assignment.id]: 'teacher' }))}
+                                  >
+                                    Show {teacherTzAbbr} Time
+                                  </Button>
+                                </div>
+                              </div>
                               <div className="grid grid-cols-7 gap-2">
                                 {DAYS_OF_WEEK.map((day) => {
                                   const daySchedule = assignmentSchedules.find(s => s.day_of_week === day);
                                   const isToday = day === todayDayName;
+                                  const displayTime = daySchedule 
+                                    ? (timeViewMode === 'teacher' ? daySchedule.teacher_local_time : daySchedule.student_local_time)
+                                    : null;
+                                  const displayTzAbbr = timeViewMode === 'teacher' ? teacherTzAbbr : studentTzAbbr;
 
                                   return (
                                     <Card 
@@ -516,13 +600,21 @@ export default function Schedules() {
                                         {DAYS_LABELS[day].slice(0, 3)}
                                       </p>
                                       {daySchedule ? (
-                                        <div>
+                                        <div className="space-y-1">
                                           <p className="text-sm font-bold text-foreground">
-                                            {formatTime12h(daySchedule.student_local_time)}
+                                            {formatTime12h(displayTime!)}
                                           </p>
                                           <p className="text-xs text-muted-foreground">
-                                            {daySchedule.duration_minutes}min
+                                            {daySchedule.duration_minutes}min ({displayTzAbbr})
                                           </p>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 w-6 p-0 mt-1"
+                                            onClick={() => handleEditSchedule(daySchedule, assignment)}
+                                          >
+                                            <Pencil className="h-3 w-3" />
+                                          </Button>
                                         </div>
                                       ) : (
                                         <p className="text-xs text-muted-foreground">—</p>
@@ -531,12 +623,6 @@ export default function Schedules() {
                                   );
                                 })}
                               </div>
-                              {assignment.student_timezone && assignment.teacher_timezone && (
-                                <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
-                                  <span><Globe className="h-3 w-3 inline mr-1" />Student: {assignment.student_timezone}</span>
-                                  <span><Globe className="h-3 w-3 inline mr-1" />Teacher: {assignment.teacher_timezone}</span>
-                                </div>
-                              )}
                             </div>
                           </TableCell>
                         </TableRow>
