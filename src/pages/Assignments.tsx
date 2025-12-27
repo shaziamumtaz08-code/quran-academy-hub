@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Users, GraduationCap, Trash2, Loader2, UserPlus } from 'lucide-react';
+import { Users, GraduationCap, Trash2, Loader2, UserPlus, BookOpen, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,20 +16,49 @@ interface Profile {
   full_name: string;
 }
 
+interface Subject {
+  id: string;
+  name: string;
+}
+
 interface Assignment {
   id: string;
   teacher_id: string;
   student_id: string;
   teacher_name: string;
   student_name: string;
+  subject_name: string | null;
+  schedule_day: string | null;
+  schedule_time: string | null;
   created_at: string;
 }
+
+const DAYS_OF_WEEK = [
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
+];
+
+const TIME_SLOTS = [
+  '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
+  '11:00', '11:30', '12:00', '12:30', '13:00', '13:30',
+  '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
+  '17:00', '17:30', '18:00', '18:30', '19:00', '19:30',
+  '20:00', '20:30', '21:00',
+];
 
 export default function Assignments() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedTeacher, setSelectedTeacher] = useState<string>('');
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
+  const [selectedSubject, setSelectedSubject] = useState<string>('');
+  const [selectedDay, setSelectedDay] = useState<string>('');
+  const [selectedTime, setSelectedTime] = useState<string>('');
 
   // Fetch teachers
   const { data: teachers = [], isLoading: loadingTeachers } = useQuery({
@@ -83,6 +112,21 @@ export default function Assignments() {
     },
   });
 
+  // Fetch subjects
+  const { data: subjects = [] } = useQuery({
+    queryKey: ['subjects-list'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('subjects')
+        .select('id, name')
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+      return (data ?? []) as Subject[];
+    },
+  });
+
   // Fetch existing assignments
   const { data: assignments = [], isLoading: loadingAssignments } = useQuery({
     queryKey: ['student-teacher-assignments'],
@@ -93,9 +137,13 @@ export default function Assignments() {
           id,
           teacher_id,
           student_id,
+          subject_id,
+          schedule_day,
+          schedule_time,
           created_at,
           teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name),
-          student:profiles!student_teacher_assignments_student_id_fkey(full_name)
+          student:profiles!student_teacher_assignments_student_id_fkey(full_name),
+          subject:subjects(name)
         `)
         .order('created_at', { ascending: false });
 
@@ -106,6 +154,9 @@ export default function Assignments() {
         student_id: row.student_id,
         teacher_name: row.teacher?.full_name || 'Unknown',
         student_name: row.student?.full_name || 'Unknown',
+        subject_name: row.subject?.name || null,
+        schedule_day: row.schedule_day,
+        schedule_time: row.schedule_time,
         created_at: row.created_at,
       })) as Assignment[];
     },
@@ -113,27 +164,45 @@ export default function Assignments() {
 
   // Create assignments mutation
   const createMutation = useMutation({
-    mutationFn: async ({ teacherId, studentIds }: { teacherId: string; studentIds: string[] }) => {
+    mutationFn: async ({ 
+      teacherId, 
+      studentIds, 
+      subjectId, 
+      scheduleDay, 
+      scheduleTime 
+    }: { 
+      teacherId: string; 
+      studentIds: string[]; 
+      subjectId?: string; 
+      scheduleDay?: string; 
+      scheduleTime?: string;
+    }) => {
       const records = studentIds.map(studentId => ({
         teacher_id: teacherId,
         student_id: studentId,
+        subject_id: subjectId || null,
+        schedule_day: scheduleDay || null,
+        schedule_time: scheduleTime || null,
       }));
 
       const { error } = await supabase
         .from('student_teacher_assignments')
-        .upsert(records, { onConflict: 'teacher_id,student_id', ignoreDuplicates: true });
+        .upsert(records, { onConflict: 'teacher_id,student_id', ignoreDuplicates: false });
 
       if (error) throw error;
     },
     onSuccess: () => {
-      // Invalidate all related queries for immediate UI sync
       queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
       queryClient.invalidateQueries({ queryKey: ['teachers-list'] });
+      queryClient.invalidateQueries({ queryKey: ['teachers-list-full'] });
       queryClient.invalidateQueries({ queryKey: ['students-list'] });
       queryClient.invalidateQueries({ queryKey: ['assigned-students'] });
       toast({ title: 'Success', description: 'Assignments created successfully' });
       setSelectedTeacher('');
       setSelectedStudents([]);
+      setSelectedSubject('');
+      setSelectedDay('');
+      setSelectedTime('');
     },
     onError: (error: any) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -151,9 +220,9 @@ export default function Assignments() {
       if (error) throw error;
     },
     onSuccess: () => {
-      // Invalidate all related queries for immediate UI sync
       queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
       queryClient.invalidateQueries({ queryKey: ['teachers-list'] });
+      queryClient.invalidateQueries({ queryKey: ['teachers-list-full'] });
       queryClient.invalidateQueries({ queryKey: ['students-list'] });
       queryClient.invalidateQueries({ queryKey: ['assigned-students'] });
       toast({ title: 'Deleted', description: 'Assignment removed' });
@@ -176,10 +245,25 @@ export default function Assignments() {
       toast({ title: 'Error', description: 'Select a teacher and at least one student', variant: 'destructive' });
       return;
     }
-    createMutation.mutate({ teacherId: selectedTeacher, studentIds: selectedStudents });
+    createMutation.mutate({ 
+      teacherId: selectedTeacher, 
+      studentIds: selectedStudents,
+      subjectId: selectedSubject || undefined,
+      scheduleDay: selectedDay || undefined,
+      scheduleTime: selectedTime || undefined,
+    });
   };
 
   const isLoading = loadingTeachers || loadingStudents || loadingAssignments;
+
+  const formatTime = (time: string | null) => {
+    if (!time) return null;
+    const [hours, minutes] = time.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+  };
 
   return (
     <DashboardLayout>
@@ -187,7 +271,7 @@ export default function Assignments() {
         {/* Header */}
         <div>
           <h1 className="font-serif text-3xl font-bold text-foreground">Student–Teacher Assignment</h1>
-          <p className="text-muted-foreground mt-1">Assign students to teachers for attendance and dashboard access</p>
+          <p className="text-muted-foreground mt-1">Assign students to teachers with subject and schedule</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -202,7 +286,7 @@ export default function Assignments() {
             <CardContent className="space-y-4">
               {/* Teacher Selection */}
               <div className="space-y-2">
-                <Label>Select Teacher</Label>
+                <Label>Select Teacher *</Label>
                 <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
                   <SelectTrigger>
                     <SelectValue placeholder="Choose a teacher..." />
@@ -217,10 +301,61 @@ export default function Assignments() {
                 </Select>
               </div>
 
+              {/* Subject Selection */}
+              <div className="space-y-2">
+                <Label>Subject</Label>
+                <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a subject..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {subjects.map((subject) => (
+                      <SelectItem key={subject.id} value={subject.id}>
+                        {subject.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Schedule - Day and Time */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Class Day</Label>
+                  <Select value={selectedDay} onValueChange={setSelectedDay}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select day..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DAYS_OF_WEEK.map((day) => (
+                        <SelectItem key={day} value={day}>
+                          {day}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Class Time</Label>
+                  <Select value={selectedTime} onValueChange={setSelectedTime}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select time..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TIME_SLOTS.map((time) => (
+                        <SelectItem key={time} value={time}>
+                          {formatTime(time)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               {/* Student Selection */}
               <div className="space-y-2">
-                <Label>Select Students</Label>
-                <div className="border border-border rounded-lg max-h-64 overflow-y-auto">
+                <Label>Select Students *</Label>
+                <div className="border border-border rounded-lg max-h-48 overflow-y-auto">
                   {students.length === 0 ? (
                     <p className="p-4 text-sm text-muted-foreground text-center">No students found</p>
                   ) : (
@@ -322,6 +457,8 @@ export default function Assignments() {
                   <TableRow>
                     <TableHead>Teacher</TableHead>
                     <TableHead>Student</TableHead>
+                    <TableHead>Subject</TableHead>
+                    <TableHead>Schedule</TableHead>
                     <TableHead className="text-center">Action</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -330,6 +467,28 @@ export default function Assignments() {
                     <TableRow key={assignment.id}>
                       <TableCell className="font-medium">{assignment.teacher_name}</TableCell>
                       <TableCell>{assignment.student_name}</TableCell>
+                      <TableCell>
+                        {assignment.subject_name ? (
+                          <span className="flex items-center gap-1.5">
+                            <BookOpen className="h-3 w-3 text-muted-foreground" />
+                            {assignment.subject_name}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {assignment.schedule_day || assignment.schedule_time ? (
+                          <span className="flex items-center gap-1.5 text-sm">
+                            <Clock className="h-3 w-3 text-muted-foreground" />
+                            {assignment.schedule_day && <span>{assignment.schedule_day}</span>}
+                            {assignment.schedule_day && assignment.schedule_time && <span>•</span>}
+                            {assignment.schedule_time && <span>{formatTime(assignment.schedule_time)}</span>}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">—</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-center">
                         <Button
                           variant="ghost"

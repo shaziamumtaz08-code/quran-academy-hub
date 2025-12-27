@@ -740,19 +740,28 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          schedule_day: string | null
+          schedule_time: string | null
           student_id: string
+          subject_id: string | null
           teacher_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          schedule_day?: string | null
+          schedule_time?: string | null
           student_id: string
+          subject_id?: string | null
           teacher_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          schedule_day?: string | null
+          schedule_time?: string | null
           student_id?: string
+          subject_id?: string | null
           teacher_id?: string
         }
         Relationships: [
@@ -761,6 +770,13 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_teacher_assignments_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
             referencedColumns: ["id"]
           },
           {
