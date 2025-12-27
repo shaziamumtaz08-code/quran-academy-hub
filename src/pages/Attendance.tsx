@@ -201,9 +201,24 @@ export default function Attendance() {
     return true;
   }, [selectedStudent, selectedStatus, classTime, reasonCategory, reasonText, rescheduleDate, rescheduleTime, needsVarianceReason, varianceReason, surahName]);
 
-  // Fetch attendance records
+  // Fetch parent's children IDs (for parent role)
+  const { data: childrenIds } = useQuery({
+    queryKey: ['parent-children-ids', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from('student_parent_links')
+        .select('student_id')
+        .eq('parent_id', user.id);
+      if (error) throw error;
+      return (data || []).map(d => d.student_id);
+    },
+    enabled: !!user?.id && activeRole === 'parent',
+  });
+
+  // Fetch attendance records with explicit role-based filters
   const { data: attendanceRecords, isLoading } = useQuery({
-    queryKey: ['attendance', user?.id, monthFilter],
+    queryKey: ['attendance', user?.id, monthFilter, activeRole],
     queryFn: async () => {
       if (!user?.id) return [];
 
@@ -235,11 +250,21 @@ export default function Attendance() {
         .lte('class_date', format(endDate, 'yyyy-MM-dd'))
         .order('class_date', { ascending: false });
 
+      // Apply explicit role-based filters (not relying on RLS for multi-role users)
+      if (isTeacher) {
+        query = query.eq('teacher_id', user.id);
+      } else if (isStudent) {
+        query = query.eq('student_id', user.id);
+      } else if (activeRole === 'parent' && childrenIds && childrenIds.length > 0) {
+        query = query.in('student_id', childrenIds);
+      }
+      // Admins see all - no additional filter
+
       const { data, error } = await query;
       if (error) throw error;
       return (data || []) as AttendanceRecord[];
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && (activeRole !== 'parent' || (childrenIds !== undefined)),
   });
 
   // Mark attendance mutation

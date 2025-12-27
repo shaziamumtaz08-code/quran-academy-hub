@@ -75,11 +75,41 @@ export default function ExamResults() {
   const isTeacher = activeRole === 'teacher';
   const isStudentOrParent = activeRole === 'student' || activeRole === 'parent';
 
-  // Fetch exam results - RLS handles access control, but add activeRole to queryKey for refetch on role switch
+  // Fetch teacher's assigned student IDs (for teacher role)
+  const { data: teacherStudentIds } = useQuery({
+    queryKey: ['teacher-student-ids', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from('student_teacher_assignments')
+        .select('student_id')
+        .eq('teacher_id', user.id);
+      if (error) throw error;
+      return (data || []).map(d => d.student_id);
+    },
+    enabled: !!user?.id && isTeacher,
+  });
+
+  // Fetch parent's children IDs (for parent role)
+  const { data: parentChildrenIds } = useQuery({
+    queryKey: ['parent-children-ids', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from('student_parent_links')
+        .select('student_id')
+        .eq('parent_id', user.id);
+      if (error) throw error;
+      return (data || []).map(d => d.student_id);
+    },
+    enabled: !!user?.id && activeRole === 'parent',
+  });
+
+  // Fetch exam results with explicit role-based filters
   const { data: examResults, isLoading: isLoadingExams, error: examsError } = useQuery({
     queryKey: ['exam-results', user?.id, activeRole],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('exams')
         .select(`
           id,
@@ -103,10 +133,29 @@ export default function ExamResults() {
         `)
         .order('exam_date', { ascending: false });
 
+      // Apply explicit role-based filters
+      if (isTeacher && teacherStudentIds && teacherStudentIds.length > 0) {
+        query = query.in('student_id', teacherStudentIds);
+      } else if (isTeacher && (!teacherStudentIds || teacherStudentIds.length === 0)) {
+        // Teacher with no students - return empty
+        return [];
+      } else if (activeRole === 'student') {
+        query = query.eq('student_id', user?.id);
+      } else if (activeRole === 'parent' && parentChildrenIds && parentChildrenIds.length > 0) {
+        query = query.in('student_id', parentChildrenIds);
+      } else if (activeRole === 'parent' && (!parentChildrenIds || parentChildrenIds.length === 0)) {
+        return [];
+      }
+      // Admins/Examiners see all
+
+      const { data, error } = await query;
       if (error) throw error;
       return (data ?? []) as ExamResult[];
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && (
+      (!isTeacher || teacherStudentIds !== undefined) &&
+      (activeRole !== 'parent' || parentChildrenIds !== undefined)
+    ),
   });
 
   // Fetch subjects for filter dropdown
