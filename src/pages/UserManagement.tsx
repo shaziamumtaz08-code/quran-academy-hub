@@ -497,143 +497,152 @@ export default function UserManagement() {
                     Add User
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="max-w-2xl">
                   <DialogHeader>
                     <DialogTitle>Create New User</DialogTitle>
                     <DialogDescription>
                       Add a new user or assign a role to an existing user by email.
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-4 pt-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Full Name</Label>
-                      <Input
-                        id="name"
-                        value={newUserName}
-                        onChange={(e) => setNewUserName(e.target.value)}
-                        placeholder="Enter full name (for new users)"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={newUserEmail}
-                        onChange={(e) => setNewUserEmail(e.target.value)}
-                        placeholder="Enter email address"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="password">Password (for new users)</Label>
-                      <div className="relative">
+                  <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {/* Row 1 */}
+                      <div className="space-y-1.5">
+                        <Label htmlFor="name" className="text-xs">Full Name</Label>
                         <Input
-                          id="password"
-                          type={showNewUserPassword ? "text" : "password"}
-                          value={newUserPassword}
-                          onChange={(e) => setNewUserPassword(e.target.value)}
-                          placeholder="Enter password (min 6 characters)"
-                          className="pr-10"
+                          id="name"
+                          value={newUserName}
+                          onChange={(e) => setNewUserName(e.target.value)}
+                          placeholder="Enter full name"
+                          className="h-9"
                         />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                          onClick={() => setShowNewUserPassword(!showNewUserPassword)}
-                        >
-                          {showNewUserPassword ? (
-                            <EyeOff className="h-4 w-4 text-muted-foreground" />
-                          ) : (
-                            <Eye className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </Button>
                       </div>
-                      <p className="text-xs text-muted-foreground">Leave blank if user already exists</p>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="email" className="text-xs">Email *</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={newUserEmail}
+                          onChange={(e) => setNewUserEmail(e.target.value)}
+                          placeholder="Enter email"
+                          className="h-9"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="password" className="text-xs">Password</Label>
+                        <div className="relative">
+                          <Input
+                            id="password"
+                            type={showNewUserPassword ? "text" : "password"}
+                            value={newUserPassword}
+                            onChange={(e) => setNewUserPassword(e.target.value)}
+                            placeholder="Min 6 chars"
+                            className="h-9 pr-9"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-2 hover:bg-transparent"
+                            onClick={() => setShowNewUserPassword(!showNewUserPassword)}
+                          >
+                            {showNewUserPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          </Button>
+                        </div>
+                      </div>
+                      {/* Row 2 */}
+                      <div className="space-y-1.5">
+                        <Label htmlFor="role" className="text-xs">Role *</Label>
+                        <Select value={newUserRole} onValueChange={(v) => setNewUserRole(v as AppRole)}>
+                          <SelectTrigger className="h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(ROLE_LABELS).map(([role, label]) => (
+                              <SelectItem key={role} value={role}>{label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="gender" className="text-xs">Gender</Label>
+                        <Select value={newUserGender} onValueChange={(v) => setNewUserGender(v as 'male' | 'female' | '')}>
+                          <SelectTrigger className="h-9">
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="male">Male</SelectItem>
+                            <SelectItem value="female">Female</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="age" className="text-xs">Age</Label>
+                        <Input
+                          id="age"
+                          type="number"
+                          min="1"
+                          max="120"
+                          value={newUserAge}
+                          onChange={(e) => setNewUserAge(e.target.value)}
+                          placeholder="Age"
+                          className="h-9"
+                        />
+                      </div>
+                      {/* Row 3 */}
+                      <div className="space-y-1.5">
+                        <Label htmlFor="whatsapp" className="text-xs">WhatsApp</Label>
+                        <Input
+                          id="whatsapp"
+                          value={newUserWhatsapp}
+                          onChange={(e) => setNewUserWhatsapp(e.target.value)}
+                          placeholder="+1234567890"
+                          className="h-9"
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="role">Role</Label>
-                      <Select value={newUserRole} onValueChange={(v) => setNewUserRole(v as AppRole)}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(ROLE_LABELS).map(([role, label]) => (
-                            <SelectItem key={role} value={role}>{label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="gender">Gender</Label>
-                      <Select value={newUserGender} onValueChange={(v) => setNewUserGender(v as 'male' | 'female' | '')}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select gender" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="male">Male</SelectItem>
-                          <SelectItem value="female">Female</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="age">Age</Label>
-                      <Input
-                        id="age"
-                        type="number"
-                        min="1"
-                        max="120"
-                        value={newUserAge}
-                        onChange={(e) => setNewUserAge(e.target.value)}
-                        placeholder="Enter age"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="whatsapp">WhatsApp Number</Label>
-                      <Input
-                        id="whatsapp"
-                        value={newUserWhatsapp}
-                        onChange={(e) => setNewUserWhatsapp(e.target.value)}
-                        placeholder="e.g. +1234567890"
-                      />
-                    </div>
-                    <Button 
-                      className="w-full" 
-                      disabled={createUserMutation.isPending}
-                      onClick={() => {
-                        const email = newUserEmail.trim();
-                        const fullName = newUserName.trim();
-                        const password = newUserPassword;
+                    <div className="flex justify-end gap-2 pt-3 border-t border-blue-200 dark:border-blue-800 mt-3">
+                      <Button variant="outline" size="sm" onClick={() => setIsCreateDialogOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button 
+                        size="sm"
+                        disabled={createUserMutation.isPending}
+                        onClick={() => {
+                          const email = newUserEmail.trim();
+                          const fullName = newUserName.trim();
+                          const password = newUserPassword;
 
-                        if (!email) {
-                          toast({
-                            title: 'Email required',
-                            description: 'Please enter an email address.',
-                            variant: 'destructive',
+                          if (!email) {
+                            toast({
+                              title: 'Email required',
+                              description: 'Please enter an email address.',
+                              variant: 'destructive',
+                            });
+                            return;
+                          }
+
+                          createUserMutation.mutate({
+                            email,
+                            password,
+                            fullName,
+                            role: newUserRole,
+                            whatsapp: newUserWhatsapp.trim() || undefined,
+                            gender: newUserGender || undefined,
+                            age: newUserAge ? parseInt(newUserAge) : undefined,
                           });
-                          return;
-                        }
-
-                        createUserMutation.mutate({
-                          email,
-                          password,
-                          fullName,
-                          role: newUserRole,
-                          whatsapp: newUserWhatsapp.trim() || undefined,
-                          gender: newUserGender || undefined,
-                          age: newUserAge ? parseInt(newUserAge) : undefined,
-                        });
-                      }}
-                    >
-                      {createUserMutation.isPending ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        'Create User / Add Role'
-                      )}
-                    </Button>
+                        }}
+                      >
+                        {createUserMutation.isPending ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          'Create User / Add Role'
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </DialogContent>
               </Dialog>
