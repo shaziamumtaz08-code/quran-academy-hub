@@ -5,20 +5,29 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Plus, Search, Mail, Users, MoreHorizontal, Pencil, Trash2, Loader2, AlertCircle, ChevronDown, ChevronRight, User } from 'lucide-react';
+import { Plus, Search, Mail, Users, MoreHorizontal, Pencil, Trash2, Loader2, AlertCircle, ChevronDown, ChevronRight, User, Clock, BookOpen } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
+interface StudentWithSchedule {
+  id: string;
+  full_name: string;
+  gender: string | null;
+  age: number | null;
+  subject_name: string | null;
+  schedule_day: string | null;
+  schedule_time: string | null;
+}
+
 interface Teacher {
   id: string;
   full_name: string;
   email: string | null;
   student_count: number;
-  students?: { id: string; full_name: string; gender: string | null; age: number | null }[];
+  students?: StudentWithSchedule[];
 }
 
 export default function Teachers() {
@@ -30,7 +39,7 @@ export default function Teachers() {
   const [formData, setFormData] = useState({ name: '', email: '' });
   const [expandedTeachers, setExpandedTeachers] = useState<Set<string>>(new Set());
 
-  // Fetch teachers from Supabase with assigned students
+  // Fetch teachers from Supabase with assigned students and schedules
   const { data: teachers = [], isLoading } = useQuery({
     queryKey: ['teachers-list-full'],
     queryFn: async () => {
@@ -53,21 +62,25 @@ export default function Teachers() {
 
       if (profileError) throw profileError;
 
-      // Get all student assignments with student details
+      // Get all student assignments with student details and schedule
       const { data: assignments, error: assignError } = await supabase
         .from('student_teacher_assignments')
         .select(`
           teacher_id,
-          student:profiles!student_teacher_assignments_student_id_fkey(id, full_name, gender, age)
+          schedule_day,
+          schedule_time,
+          student:profiles!student_teacher_assignments_student_id_fkey(id, full_name, gender, age),
+          subject:subjects(name)
         `)
         .in('teacher_id', teacherIds);
 
       if (assignError) throw assignError;
 
       // Group students by teacher
-      const studentsByTeacher = new Map<string, { id: string; full_name: string; gender: string | null; age: number | null }[]>();
+      const studentsByTeacher = new Map<string, StudentWithSchedule[]>();
       assignments?.forEach(a => {
         const student = a.student as any;
+        const subject = a.subject as any;
         if (!studentsByTeacher.has(a.teacher_id)) {
           studentsByTeacher.set(a.teacher_id, []);
         }
@@ -76,6 +89,9 @@ export default function Teachers() {
           full_name: student.full_name,
           gender: student.gender,
           age: student.age,
+          subject_name: subject?.name || null,
+          schedule_day: a.schedule_day,
+          schedule_time: a.schedule_time,
         });
       });
 
@@ -203,6 +219,15 @@ export default function Teachers() {
       }
       return newSet;
     });
+  };
+
+  const formatTime = (time: string | null) => {
+    if (!time) return null;
+    const [hours, minutes] = time.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
   };
 
   const isPending = addMutation.isPending || updateMutation.isPending;
@@ -356,7 +381,7 @@ export default function Teachers() {
                         </DropdownMenu>
                       </TableCell>
                     </TableRow>
-                    {/* Expanded Students List */}
+                    {/* Expanded Students List with Schedule */}
                     {expandedTeachers.has(teacher.id) && teacher.students && teacher.students.length > 0 && (
                       <TableRow className="bg-muted/30 hover:bg-muted/30">
                         <TableCell colSpan={5} className="p-0">
@@ -366,18 +391,34 @@ export default function Teachers() {
                               {teacher.students.map((student) => (
                                 <div 
                                   key={student.id}
-                                  className="flex items-center gap-3 p-3 bg-card rounded-lg border border-border"
+                                  className="flex items-start gap-3 p-3 bg-card rounded-lg border border-border"
                                 >
-                                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                                     <User className="h-4 w-4 text-primary" />
                                   </div>
-                                  <div>
+                                  <div className="min-w-0 flex-1">
                                     <p className="font-medium text-sm">{student.full_name}</p>
                                     <p className="text-xs text-muted-foreground">
                                       {student.age && `Age ${student.age}`}
                                       {student.age && student.gender && ' • '}
                                       {student.gender && <span className="capitalize">{student.gender}</span>}
                                     </p>
+                                    {/* Subject */}
+                                    {student.subject_name && (
+                                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                                        <BookOpen className="h-3 w-3" />
+                                        {student.subject_name}
+                                      </p>
+                                    )}
+                                    {/* Schedule */}
+                                    {(student.schedule_day || student.schedule_time) && (
+                                      <p className="text-xs text-primary flex items-center gap-1 mt-1">
+                                        <Clock className="h-3 w-3" />
+                                        {student.schedule_day}
+                                        {student.schedule_day && student.schedule_time && ' • '}
+                                        {student.schedule_time && formatTime(student.schedule_time)}
+                                      </p>
+                                    )}
                                   </div>
                                 </div>
                               ))}

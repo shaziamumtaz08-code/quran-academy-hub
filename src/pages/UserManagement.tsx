@@ -56,6 +56,11 @@ import {
   XCircle,
   AlertCircle,
   RefreshCw,
+  Eye,
+  Phone,
+  Mail,
+  Calendar,
+  User,
 } from 'lucide-react';
 
 const ALL_PERMISSIONS = [
@@ -87,6 +92,9 @@ interface UserWithRole {
   id: string;
   full_name: string;
   email: string | null;
+  whatsapp_number: string | null;
+  gender: string | null;
+  age: number | null;
   created_at: string;
   role: AppRole | null;
   exceptions: Array<{ permission: string; is_granted: boolean }>;
@@ -100,6 +108,8 @@ export default function UserManagement() {
   const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [viewingUser, setViewingUser] = useState<UserWithRole | null>(null);
   const [deleteConfirmUser, setDeleteConfirmUser] = useState<UserWithRole | null>(null);
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserName, setNewUserName] = useState('');
@@ -153,6 +163,9 @@ export default function UserManagement() {
             id: profile.id,
             full_name: profile.full_name,
             email: profile.email,
+            whatsapp_number: profile.whatsapp_number,
+            gender: profile.gender,
+            age: profile.age,
             created_at: profile.created_at,
             role: (roleData?.role as AppRole) || null,
             exceptions: exceptions || [],
@@ -619,6 +632,17 @@ export default function UserManagement() {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setViewingUser(user);
+                                  setIsViewDialogOpen(true);
+                                }}
+                                title="View details"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
                               {isSuperAdmin && (
                                 <>
                                   <Button
@@ -777,6 +801,71 @@ export default function UserManagement() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* View User Details Dialog */}
+        <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>User Details</DialogTitle>
+            </DialogHeader>
+            {viewingUser && (
+              <div className="space-y-4 pt-4">
+                <div className="flex items-center gap-4 p-4 bg-secondary rounded-lg">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                    <User className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-lg">{viewingUser.full_name}</p>
+                    <Badge variant="outline">
+                      {viewingUser.role ? ROLE_LABELS[viewingUser.role] : 'No role'}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="grid gap-3">
+                  <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Email</p>
+                      <p className="text-sm font-medium">{viewingUser.email || '—'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">WhatsApp</p>
+                      <p className="text-sm font-medium">{viewingUser.whatsapp_number || '—'}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Gender</p>
+                        <p className="text-sm font-medium capitalize">{viewingUser.gender || '—'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Age</p>
+                        <p className="text-sm font-medium">{viewingUser.age || '—'}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Created</p>
+                      <p className="text-sm font-medium">
+                        {new Date(viewingUser.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </DialogContent>
