@@ -89,6 +89,9 @@ serve(async (req) => {
     const password = String(body?.password ?? "");
     const fullName = String(body?.fullName ?? "").trim();
     const role = String(body?.role ?? "student") as AppRole;
+    const whatsapp = body?.whatsapp ? String(body.whatsapp).trim() : null;
+    const gender = body?.gender && ['male', 'female'].includes(body.gender) ? body.gender : null;
+    const age = body?.age && typeof body.age === 'number' ? body.age : null;
 
     if (!email || !password || !fullName) {
       return json(400, { error: "Missing required fields" });
@@ -111,12 +114,15 @@ serve(async (req) => {
 
     const newUserId = created.user.id;
 
-    // Create/Update profile
+    // Create/Update profile with additional fields
     const { error: profileErr } = await adminClient.from("profiles").upsert(
       {
         id: newUserId,
         email,
         full_name: fullName,
+        whatsapp_number: whatsapp,
+        gender,
+        age,
       },
       { onConflict: "id" },
     );
@@ -138,6 +144,9 @@ serve(async (req) => {
       email,
       full_name: fullName,
       role,
+      whatsapp_number: whatsapp,
+      gender,
+      age,
     });
   } catch (e) {
     return json(500, {

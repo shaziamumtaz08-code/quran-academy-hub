@@ -35,6 +35,9 @@ export type Database = {
           reason_text: string | null
           reschedule_date: string | null
           reschedule_time: string | null
+          revision_done: boolean | null
+          revision_notes: string | null
+          sabaq: string | null
           status: string
           student_id: string
           surah_name: string | null
@@ -62,6 +65,9 @@ export type Database = {
           reason_text?: string | null
           reschedule_date?: string | null
           reschedule_time?: string | null
+          revision_done?: boolean | null
+          revision_notes?: string | null
+          sabaq?: string | null
           status: string
           student_id: string
           surah_name?: string | null
@@ -89,6 +95,9 @@ export type Database = {
           reason_text?: string | null
           reschedule_date?: string | null
           reschedule_time?: string | null
+          revision_done?: boolean | null
+          revision_notes?: string | null
+          sabaq?: string | null
           status?: string
           student_id?: string
           surah_name?: string | null
@@ -106,6 +115,61 @@ export type Database = {
           },
           {
             foreignKeyName: "attendance_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      enrollments: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          status: string
+          student_id: string
+          subject_id: string | null
+          teacher_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          student_id: string
+          subject_id?: string | null
+          teacher_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          student_id?: string
+          subject_id?: string | null
+          teacher_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrollments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_teacher_id_fkey"
             columns: ["teacher_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -381,37 +445,49 @@ export type Database = {
       }
       profiles: {
         Row: {
+          age: number | null
           created_at: string
           daily_target_amount: number
           daily_target_lines: number
           email: string | null
           full_name: string
+          gender: string | null
           id: string
           mushaf_type: string
+          preferred_language: string | null
           preferred_unit: string
           updated_at: string
+          whatsapp_number: string | null
         }
         Insert: {
+          age?: number | null
           created_at?: string
           daily_target_amount?: number
           daily_target_lines?: number
           email?: string | null
           full_name: string
+          gender?: string | null
           id: string
           mushaf_type?: string
+          preferred_language?: string | null
           preferred_unit?: string
           updated_at?: string
+          whatsapp_number?: string | null
         }
         Update: {
+          age?: number | null
           created_at?: string
           daily_target_amount?: number
           daily_target_lines?: number
           email?: string | null
           full_name?: string
+          gender?: string | null
           id?: string
           mushaf_type?: string
+          preferred_language?: string | null
           preferred_unit?: string
           updated_at?: string
+          whatsapp_number?: string | null
         }
         Relationships: []
       }
