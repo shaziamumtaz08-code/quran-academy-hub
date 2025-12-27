@@ -246,27 +246,34 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-sidebar-foreground truncate">{profile.full_name}</p>
-                {/* Role Switcher */}
-                {profile.roles && profile.roles.length > 1 ? (
-                  <Select value={currentActiveRole || ''} onValueChange={(v) => setActiveRole(v as AppRole)}>
-                    <SelectTrigger className="h-6 text-xs bg-transparent border-none p-0 text-sidebar-foreground/60 hover:text-sidebar-foreground">
-                      <SelectValue placeholder="Select role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {profile.roles.map((role) => (
-                        <SelectItem key={role} value={role} className="text-xs">
-                          {ROLE_LABELS[role] || role.replace('_', ' ')}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <p className="text-xs text-sidebar-foreground/60 capitalize">
-                    {currentActiveRole ? ROLE_LABELS[currentActiveRole] : 'User'}
-                  </p>
-                )}
+                <p className="text-xs text-sidebar-foreground/60 capitalize">
+                  {currentActiveRole ? ROLE_LABELS[currentActiveRole] : 'User'}
+                </p>
               </div>
             </div>
+            
+            {/* Role Switcher - Only for users with multiple roles */}
+            {profile.roles && profile.roles.length > 1 && (
+              <div className="mb-3 px-2">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <RefreshCw className="h-3 w-3 text-sidebar-foreground/60" />
+                  <span className="text-xs text-sidebar-foreground/60">Switch Role</span>
+                </div>
+                <Select value={currentActiveRole || ''} onValueChange={(v) => setActiveRole(v as AppRole)}>
+                  <SelectTrigger className="h-8 text-xs bg-sidebar-accent/50 border-sidebar-border text-sidebar-foreground">
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {profile.roles.map((role) => (
+                      <SelectItem key={role} value={role} className="text-xs">
+                        {ROLE_LABELS[role] || role.replace('_', ' ')}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            
             <Button
               variant="ghost"
               className="w-full justify-start gap-2 text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent"
