@@ -4,11 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Calendar, Clock, User, ChevronDown, ChevronRight, Loader2, AlertCircle, Globe, Pencil } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Plus, Calendar, Clock, User, ChevronDown, ChevronRight, Loader2, AlertCircle, Globe, Pencil, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -70,11 +72,9 @@ function calculateTeacherTime(studentTime: string, studentTz: string, teacherTz:
   const [hours, minutes] = studentTime.split(':').map(Number);
   const studentMinutesFromMidnight = hours * 60 + minutes;
   
-  // Convert student time to UTC, then to teacher time
   const offsetDiffMinutes = (teacherOffset - studentOffset) * 60;
   let teacherMinutesFromMidnight = studentMinutesFromMidnight + offsetDiffMinutes;
   
-  // Handle day wrap
   if (teacherMinutesFromMidnight < 0) teacherMinutesFromMidnight += 24 * 60;
   if (teacherMinutesFromMidnight >= 24 * 60) teacherMinutesFromMidnight -= 24 * 60;
   
@@ -94,8 +94,10 @@ function formatTime12h(time: string): string {
 
 export default function Schedules() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false);
   const [expandedAssignments, setExpandedAssignments] = useState<Set<string>>(new Set());
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
+  const [deleteSchedule, setDeleteSchedule] = useState<Schedule | null>(null);
   const [calendarTimeView, setCalendarTimeView] = useState<Record<string, 'student' | 'teacher'>>({});
   const [newSchedule, setNewSchedule] = useState({
     assignmentId: '',
@@ -105,10 +107,18 @@ export default function Schedules() {
     teacherTimezone: 'Asia/Karachi',
     duration: '30',
   });
+  // Bulk schedule state
+  const [bulkSchedule, setBulkSchedule] = useState({
+    assignmentId: '',
+    selectedDays: [] as string[],
+    studentTime: '',
+    studentTimezone: 'America/Toronto',
+    teacherTimezone: 'Asia/Karachi',
+    duration: '30',
+  });
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Get current day of week
   const todayDayName = format(new Date(), 'EEEE').toLowerCase();
 
   // Fetch assignments with timezone info
@@ -165,16 +175,35 @@ export default function Schedules() {
       teacher_local_time: string;
       duration_minutes: number;
     }) => {
-      const { error } = await supabase
-        .from('schedules')
-        .insert(scheduleData);
-
+      const { error } = await supabase.from('schedules').insert(scheduleData);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['class-schedules'] });
       toast({ title: 'Success', description: 'Schedule created successfully' });
       handleCloseDialog();
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // Bulk create schedule mutation
+  const bulkCreateScheduleMutation = useMutation({
+    mutationFn: async (schedulesData: Array<{
+      assignment_id: string;
+      day_of_week: string;
+      student_local_time: string;
+      teacher_local_time: string;
+      duration_minutes: number;
+    }>) => {
+      const { error } = await supabase.from('schedules').insert(schedulesData);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['class-schedules'] });
+      toast({ title: 'Success', description: 'Schedules created successfully' });
+      handleCloseBulkDialog();
     },
     onError: (error: any) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -190,11 +219,7 @@ export default function Schedules() {
       teacher_local_time: string;
       duration_minutes: number;
     }) => {
-      const { error } = await supabase
-        .from('schedules')
-        .update(scheduleData)
-        .eq('id', id);
-
+      const { error } = await supabase.from('schedules').update(scheduleData).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -207,12 +232,26 @@ export default function Schedules() {
     },
   });
 
-  // Get schedules for an assignment
+  // Delete schedule mutation
+  const deleteScheduleMutation = useMutation({
+    mutationFn: async (scheduleId: string) => {
+      const { error } = await supabase.from('schedules').delete().eq('id', scheduleId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['class-schedules'] });
+      toast({ title: 'Deleted', description: 'Schedule deleted successfully' });
+      setDeleteSchedule(null);
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
   const getSchedulesForAssignment = (assignmentId: string) => {
     return schedules.filter(s => s.assignment_id === assignmentId);
   };
 
-  // Toggle expanded row
   const toggleExpanded = (assignmentId: string) => {
     setExpandedAssignments(prev => {
       const newSet = new Set(prev);
@@ -225,28 +264,29 @@ export default function Schedules() {
     });
   };
 
-  // Toggle calendar time view
-  const toggleCalendarTimeView = (assignmentId: string) => {
-    setCalendarTimeView(prev => ({
-      ...prev,
-      [assignmentId]: prev[assignmentId] === 'teacher' ? 'student' : 'teacher'
-    }));
-  };
-
-  // Calculate teacher time when student time changes
   const calculatedTeacherTime = useMemo(() => {
     if (!newSchedule.studentTime) return '';
-    return calculateTeacherTime(
-      newSchedule.studentTime,
-      newSchedule.studentTimezone,
-      newSchedule.teacherTimezone
-    );
+    return calculateTeacherTime(newSchedule.studentTime, newSchedule.studentTimezone, newSchedule.teacherTimezone);
   }, [newSchedule.studentTime, newSchedule.studentTimezone, newSchedule.teacherTimezone]);
 
-  // When assignment is selected, pre-fill timezones
+  const bulkCalculatedTeacherTime = useMemo(() => {
+    if (!bulkSchedule.studentTime) return '';
+    return calculateTeacherTime(bulkSchedule.studentTime, bulkSchedule.studentTimezone, bulkSchedule.teacherTimezone);
+  }, [bulkSchedule.studentTime, bulkSchedule.studentTimezone, bulkSchedule.teacherTimezone]);
+
   const handleAssignmentSelect = (assignmentId: string) => {
     const assignment = assignments.find(a => a.id === assignmentId);
     setNewSchedule(prev => ({
+      ...prev,
+      assignmentId,
+      studentTimezone: assignment?.student_timezone || 'America/Toronto',
+      teacherTimezone: assignment?.teacher_timezone || 'Asia/Karachi',
+    }));
+  };
+
+  const handleBulkAssignmentSelect = (assignmentId: string) => {
+    const assignment = assignments.find(a => a.id === assignmentId);
+    setBulkSchedule(prev => ({
       ...prev,
       assignmentId,
       studentTimezone: assignment?.student_timezone || 'America/Toronto',
@@ -260,6 +300,18 @@ export default function Schedules() {
     setNewSchedule({
       assignmentId: '',
       day: '',
+      studentTime: '',
+      studentTimezone: 'America/Toronto',
+      teacherTimezone: 'Asia/Karachi',
+      duration: '30',
+    });
+  };
+
+  const handleCloseBulkDialog = () => {
+    setIsBulkDialogOpen(false);
+    setBulkSchedule({
+      assignmentId: '',
+      selectedDays: [],
       studentTime: '',
       studentTimezone: 'America/Toronto',
       teacherTimezone: 'Asia/Karachi',
@@ -300,6 +352,32 @@ export default function Schedules() {
     }
   };
 
+  const handleSubmitBulkSchedule = () => {
+    if (!bulkSchedule.assignmentId || bulkSchedule.selectedDays.length === 0 || !bulkSchedule.studentTime) {
+      toast({ title: 'Error', description: 'Please select assignment, at least one day, and time', variant: 'destructive' });
+      return;
+    }
+
+    const schedulesData = bulkSchedule.selectedDays.map(day => ({
+      assignment_id: bulkSchedule.assignmentId,
+      day_of_week: day,
+      student_local_time: bulkSchedule.studentTime,
+      teacher_local_time: bulkCalculatedTeacherTime,
+      duration_minutes: parseInt(bulkSchedule.duration),
+    }));
+
+    bulkCreateScheduleMutation.mutate(schedulesData);
+  };
+
+  const toggleBulkDay = (day: string) => {
+    setBulkSchedule(prev => ({
+      ...prev,
+      selectedDays: prev.selectedDays.includes(day)
+        ? prev.selectedDays.filter(d => d !== day)
+        : [...prev.selectedDays, day],
+    }));
+  };
+
   const isLoading = loadingAssignments || loadingSchedules;
   const hasAssignments = assignments.length > 0;
   const isPending = createScheduleMutation.isPending || updateScheduleMutation.isPending;
@@ -313,137 +391,198 @@ export default function Schedules() {
             <h1 className="font-serif text-3xl font-bold text-foreground">Class Schedules</h1>
             <p className="text-muted-foreground mt-1">Manage class schedules with timezone support</p>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={(open) => open ? setIsDialogOpen(true) : handleCloseDialog()}>
-            <DialogTrigger asChild>
-              <Button variant="hero" disabled={!hasAssignments}>
-                <Plus className="h-4 w-4" />
-                Add Schedule
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle className="font-serif">
-                  {editingSchedule ? 'Edit Schedule' : 'Add New Schedule'}
-                </DialogTitle>
-              </DialogHeader>
-              {/* Compact 3-column form with light blue background */}
-              <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {/* Row 1 */}
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Assignment *</Label>
-                    <Select 
-                      value={newSchedule.assignmentId} 
-                      onValueChange={handleAssignmentSelect}
-                      disabled={!!editingSchedule}
-                    >
-                      <SelectTrigger className="h-9">
-                        <SelectValue placeholder="Select" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {assignments.map((assignment) => (
-                          <SelectItem key={assignment.id} value={assignment.id}>
-                            {assignment.student_name} → {assignment.teacher_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Day *</Label>
-                    <Select value={newSchedule.day} onValueChange={(value) => setNewSchedule(prev => ({ ...prev, day: value }))}>
-                      <SelectTrigger className="h-9">
-                        <SelectValue placeholder="Select" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {DAYS_OF_WEEK.map((day) => (
-                          <SelectItem key={day} value={day}>{DAYS_LABELS[day]}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Duration</Label>
-                    <Select value={newSchedule.duration} onValueChange={(value) => setNewSchedule(prev => ({ ...prev, duration: value }))}>
-                      <SelectTrigger className="h-9">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="30">30 min</SelectItem>
-                        <SelectItem value="45">45 min</SelectItem>
-                        <SelectItem value="60">60 min</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Row 2 */}
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Student TZ</Label>
-                    <Select 
-                      value={newSchedule.studentTimezone} 
-                      onValueChange={(value) => setNewSchedule(prev => ({ ...prev, studentTimezone: value }))}
-                    >
-                      <SelectTrigger className="h-9">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {TIMEZONES.map((tz) => (
-                          <SelectItem key={tz.value} value={tz.value}>{tz.abbr} - {tz.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Student Time *</Label>
-                    <Input
-                      type="time"
-                      value={newSchedule.studentTime}
-                      onChange={(e) => setNewSchedule(prev => ({ ...prev, studentTime: e.target.value }))}
-                      className="h-9"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Teacher TZ</Label>
-                    <Select 
-                      value={newSchedule.teacherTimezone} 
-                      onValueChange={(value) => setNewSchedule(prev => ({ ...prev, teacherTimezone: value }))}
-                    >
-                      <SelectTrigger className="h-9">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {TIMEZONES.map((tz) => (
-                          <SelectItem key={tz.value} value={tz.value}>{tz.abbr} - {tz.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Row 3 - Calculated Time Display */}
-                  {calculatedTeacherTime && (
-                    <div className="sm:col-span-2 lg:col-span-3 p-2 bg-primary/10 rounded-md border border-primary/20 flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-muted-foreground">Teacher's Local Time (Auto)</p>
-                        <p className="text-sm font-bold text-primary">{formatTime12h(calculatedTeacherTime)}</p>
-                      </div>
-                      <Badge variant="outline" className="text-xs">
-                        {getTzAbbr(newSchedule.teacherTimezone)}
-                      </Badge>
+          <div className="flex gap-2">
+            {/* Bulk Add Button */}
+            <Dialog open={isBulkDialogOpen} onOpenChange={setIsBulkDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" disabled={!hasAssignments}>
+                  <Calendar className="h-4 w-4 mr-1" />
+                  Bulk Add
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle className="font-serif">Bulk Add Schedules</DialogTitle>
+                </DialogHeader>
+                <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
+                      <Label className="text-xs">Assignment *</Label>
+                      <Select value={bulkSchedule.assignmentId} onValueChange={handleBulkAssignmentSelect}>
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {assignments.map((assignment) => (
+                            <SelectItem key={assignment.id} value={assignment.id}>
+                              {assignment.student_name} → {assignment.teacher_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                  )}
+                    <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
+                      <Label className="text-xs">Select Days *</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {DAYS_OF_WEEK.map((day) => (
+                          <label key={day} className="flex items-center gap-1.5 cursor-pointer">
+                            <Checkbox
+                              checked={bulkSchedule.selectedDays.includes(day)}
+                              onCheckedChange={() => toggleBulkDay(day)}
+                            />
+                            <span className="text-sm">{DAYS_LABELS[day].slice(0, 3)}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Student TZ</Label>
+                      <Select value={bulkSchedule.studentTimezone} onValueChange={(v) => setBulkSchedule(prev => ({ ...prev, studentTimezone: v }))}>
+                        <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {TIMEZONES.map((tz) => (
+                            <SelectItem key={tz.value} value={tz.value}>{tz.abbr} - {tz.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Student Time *</Label>
+                      <Input
+                        type="time"
+                        value={bulkSchedule.studentTime}
+                        onChange={(e) => setBulkSchedule(prev => ({ ...prev, studentTime: e.target.value }))}
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Duration</Label>
+                      <Select value={bulkSchedule.duration} onValueChange={(v) => setBulkSchedule(prev => ({ ...prev, duration: v }))}>
+                        <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="30">30 min</SelectItem>
+                          <SelectItem value="45">45 min</SelectItem>
+                          <SelectItem value="60">60 min</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {bulkCalculatedTeacherTime && (
+                      <div className="sm:col-span-2 lg:col-span-3 p-2 bg-primary/10 rounded-md border border-primary/20 flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Teacher's Local Time</p>
+                          <p className="text-sm font-bold text-primary">{formatTime12h(bulkCalculatedTeacherTime)}</p>
+                        </div>
+                        <Badge variant="outline" className="text-xs">{getTzAbbr(bulkSchedule.teacherTimezone)}</Badge>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex justify-end gap-2 pt-3 border-t border-blue-200 dark:border-blue-800 mt-3">
+                    <Button variant="outline" size="sm" onClick={handleCloseBulkDialog}>Cancel</Button>
+                    <Button size="sm" onClick={handleSubmitBulkSchedule} disabled={bulkCreateScheduleMutation.isPending}>
+                      {bulkCreateScheduleMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      Create {bulkSchedule.selectedDays.length} Schedule{bulkSchedule.selectedDays.length !== 1 ? 's' : ''}
+                    </Button>
+                  </div>
                 </div>
+              </DialogContent>
+            </Dialog>
 
-                {/* Actions */}
-                <div className="flex justify-end gap-2 pt-3 border-t border-blue-200 dark:border-blue-800 mt-3">
-                  <Button variant="outline" size="sm" onClick={handleCloseDialog}>Cancel</Button>
-                  <Button size="sm" onClick={handleSubmitSchedule} disabled={isPending}>
-                    {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                    {editingSchedule ? 'Update Schedule' : 'Add Schedule'}
-                  </Button>
+            {/* Single Add Button */}
+            <Dialog open={isDialogOpen} onOpenChange={(open) => open ? setIsDialogOpen(true) : handleCloseDialog()}>
+              <DialogTrigger asChild>
+                <Button variant="hero" disabled={!hasAssignments}>
+                  <Plus className="h-4 w-4" />
+                  Add Schedule
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle className="font-serif">{editingSchedule ? 'Edit Schedule' : 'Add New Schedule'}</DialogTitle>
+                </DialogHeader>
+                <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Assignment *</Label>
+                      <Select value={newSchedule.assignmentId} onValueChange={handleAssignmentSelect} disabled={!!editingSchedule}>
+                        <SelectTrigger className="h-9"><SelectValue placeholder="Select" /></SelectTrigger>
+                        <SelectContent>
+                          {assignments.map((assignment) => (
+                            <SelectItem key={assignment.id} value={assignment.id}>
+                              {assignment.student_name} → {assignment.teacher_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Day *</Label>
+                      <Select value={newSchedule.day} onValueChange={(v) => setNewSchedule(prev => ({ ...prev, day: v }))}>
+                        <SelectTrigger className="h-9"><SelectValue placeholder="Select" /></SelectTrigger>
+                        <SelectContent>
+                          {DAYS_OF_WEEK.map((day) => (
+                            <SelectItem key={day} value={day}>{DAYS_LABELS[day]}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Duration</Label>
+                      <Select value={newSchedule.duration} onValueChange={(v) => setNewSchedule(prev => ({ ...prev, duration: v }))}>
+                        <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="30">30 min</SelectItem>
+                          <SelectItem value="45">45 min</SelectItem>
+                          <SelectItem value="60">60 min</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Student TZ</Label>
+                      <Select value={newSchedule.studentTimezone} onValueChange={(v) => setNewSchedule(prev => ({ ...prev, studentTimezone: v }))}>
+                        <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {TIMEZONES.map((tz) => (
+                            <SelectItem key={tz.value} value={tz.value}>{tz.abbr} - {tz.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Student Time *</Label>
+                      <Input type="time" value={newSchedule.studentTime} onChange={(e) => setNewSchedule(prev => ({ ...prev, studentTime: e.target.value }))} className="h-9" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Teacher TZ</Label>
+                      <Select value={newSchedule.teacherTimezone} onValueChange={(v) => setNewSchedule(prev => ({ ...prev, teacherTimezone: v }))}>
+                        <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {TIMEZONES.map((tz) => (
+                            <SelectItem key={tz.value} value={tz.value}>{tz.abbr} - {tz.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {calculatedTeacherTime && (
+                      <div className="sm:col-span-2 lg:col-span-3 p-2 bg-primary/10 rounded-md border border-primary/20 flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Teacher's Local Time (Auto)</p>
+                          <p className="text-sm font-bold text-primary">{formatTime12h(calculatedTeacherTime)}</p>
+                        </div>
+                        <Badge variant="outline" className="text-xs">{getTzAbbr(newSchedule.teacherTimezone)}</Badge>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex justify-end gap-2 pt-3 border-t border-blue-200 dark:border-blue-800 mt-3">
+                    <Button variant="outline" size="sm" onClick={handleCloseDialog}>Cancel</Button>
+                    <Button size="sm" onClick={handleSubmitSchedule} disabled={isPending}>
+                      {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      {editingSchedule ? 'Update Schedule' : 'Add Schedule'}
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         {/* No Assignments Warning */}
@@ -454,9 +593,7 @@ export default function Schedules() {
                 <AlertCircle className="h-8 w-8 text-accent" />
                 <div>
                   <p className="font-medium text-foreground">No Student–Teacher Assignments</p>
-                  <p className="text-sm text-muted-foreground">
-                    Create assignments in the Assignments module before scheduling classes.
-                  </p>
+                  <p className="text-sm text-muted-foreground">Create assignments in the Assignments module before scheduling classes.</p>
                 </div>
               </div>
             </CardContent>
@@ -484,7 +621,7 @@ export default function Schedules() {
                   <TableHead>Teacher</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Time (Student / Teacher)</TableHead>
-                  <TableHead className="w-12">Edit</TableHead>
+                  <TableHead className="w-20">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -500,17 +637,8 @@ export default function Schedules() {
                     <React.Fragment key={assignment.id}>
                       <TableRow className="hover:bg-secondary/30">
                         <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            onClick={() => toggleExpanded(assignment.id)}
-                          >
-                            {isExpanded ? (
-                              <ChevronDown className="h-4 w-4" />
-                            ) : (
-                              <ChevronRight className="h-4 w-4" />
-                            )}
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => toggleExpanded(assignment.id)}>
+                            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                           </Button>
                         </TableCell>
                         <TableCell>
@@ -544,14 +672,14 @@ export default function Schedules() {
                         </TableCell>
                         <TableCell>
                           {todaysClass && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                              onClick={() => handleEditSchedule(todaysClass, assignment)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleEditSchedule(todaysClass, assignment)}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => setDeleteSchedule(todaysClass)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           )}
                         </TableCell>
                       </TableRow>
@@ -586,14 +714,14 @@ export default function Schedules() {
                                 {DAYS_OF_WEEK.map((day) => {
                                   const daySchedule = assignmentSchedules.find(s => s.day_of_week === day);
                                   const isToday = day === todayDayName;
-                                  const displayTime = daySchedule 
+                                  const displayTime = daySchedule
                                     ? (timeViewMode === 'teacher' ? daySchedule.teacher_local_time : daySchedule.student_local_time)
                                     : null;
                                   const displayTzAbbr = timeViewMode === 'teacher' ? teacherTzAbbr : studentTzAbbr;
 
                                   return (
-                                    <Card 
-                                      key={day} 
+                                    <Card
+                                      key={day}
                                       className={`p-3 text-center ${isToday ? 'ring-2 ring-primary' : ''} ${daySchedule ? 'bg-primary/10 border-primary/30' : 'bg-muted/30'}`}
                                     >
                                       <p className={`text-xs font-medium mb-1 ${isToday ? 'text-primary' : 'text-muted-foreground'}`}>
@@ -601,20 +729,16 @@ export default function Schedules() {
                                       </p>
                                       {daySchedule ? (
                                         <div className="space-y-1">
-                                          <p className="text-sm font-bold text-foreground">
-                                            {formatTime12h(displayTime!)}
-                                          </p>
-                                          <p className="text-xs text-muted-foreground">
-                                            {daySchedule.duration_minutes}min ({displayTzAbbr})
-                                          </p>
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-6 w-6 p-0 mt-1"
-                                            onClick={() => handleEditSchedule(daySchedule, assignment)}
-                                          >
-                                            <Pencil className="h-3 w-3" />
-                                          </Button>
+                                          <p className="text-sm font-bold text-foreground">{formatTime12h(displayTime!)}</p>
+                                          <p className="text-xs text-muted-foreground">{daySchedule.duration_minutes}min ({displayTzAbbr})</p>
+                                          <div className="flex justify-center gap-1 mt-1">
+                                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => handleEditSchedule(daySchedule, assignment)}>
+                                              <Pencil className="h-3 w-3" />
+                                            </Button>
+                                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive hover:text-destructive" onClick={() => setDeleteSchedule(daySchedule)}>
+                                              <Trash2 className="h-3 w-3" />
+                                            </Button>
+                                          </div>
                                         </div>
                                       ) : (
                                         <p className="text-xs text-muted-foreground">—</p>
@@ -634,6 +758,28 @@ export default function Schedules() {
             </Table>
           )}
         </div>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={!!deleteSchedule} onOpenChange={() => setDeleteSchedule(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Schedule?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete the schedule for {deleteSchedule && DAYS_LABELS[deleteSchedule.day_of_week]}.
+                This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => deleteSchedule && deleteScheduleMutation.mutate(deleteSchedule.id)}
+              >
+                {deleteScheduleMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Delete'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DashboardLayout>
   );
