@@ -431,7 +431,6 @@ export default function Schedules() {
       });
       return;
     }
-    }
 
     // Check for conflicts
     const conflict = detectScheduleConflict(
