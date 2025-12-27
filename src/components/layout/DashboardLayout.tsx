@@ -1,8 +1,15 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth, AppRole } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { PageBreadcrumb } from '@/components/layout/PageBreadcrumb';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   LayoutDashboard,
   Users,
@@ -21,10 +28,23 @@ import {
   FolderOpen,
   Target,
   BookOpen,
+  RefreshCw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import logoLight from '@/assets/logo-light.png';
 import logoDark from '@/assets/logo-dark.jpg';
+
+const ROLE_LABELS: Record<AppRole, string> = {
+  super_admin: 'Super Admin',
+  admin: 'Admin',
+  admin_admissions: 'Admissions',
+  admin_fees: 'Fees Admin',
+  admin_academic: 'Academic',
+  teacher: 'Teacher',
+  examiner: 'Examiner',
+  student: 'Student',
+  parent: 'Parent',
+};
 
 interface NavItem {
   label: string;
@@ -39,13 +59,11 @@ const navItems: NavItem[] = [
   { label: 'User Management', href: '/user-management', icon: Shield, roles: ['super_admin', 'admin'] },
   { label: 'Subjects', href: '/subjects', icon: BookOpen, roles: ['super_admin', 'admin'] },
   { label: 'Assignments', href: '/assignments', icon: Users, roles: ['super_admin', 'admin'] },
-  // Admin-only scheduling & planning pages
   { label: 'Monthly Planning', href: '/monthly-planning', icon: Target, roles: ['super_admin', 'admin'] },
   { label: 'Schedules', href: '/schedules', icon: Calendar, roles: ['super_admin', 'admin'] },
   { label: 'Teachers', href: '/teachers', icon: Users, permission: 'teachers.view' },
   { label: 'Students', href: '/students', icon: GraduationCap, permission: 'students.view' },
   { label: 'Attendance', href: '/attendance', icon: ClipboardCheck, permission: 'attendance.view' },
-  // Exam pages - admin/examiner only
   { label: 'Exam Templates', href: '/exam-templates', icon: FileText, roles: ['super_admin', 'admin', 'examiner'] },
   { label: 'Submit Exam', href: '/exam-submission', icon: ClipboardCheck, roles: ['super_admin', 'admin', 'examiner'] },
   { label: 'Exam Results', href: '/exam-results', icon: BarChart3, roles: ['super_admin', 'admin', 'examiner', 'teacher'] },
@@ -64,6 +82,16 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  const [activeRole, setActiveRole] = useState<AppRole | null>(null);
+
+  // Set initial active role when profile loads
+  React.useEffect(() => {
+    if (profile?.roles && profile.roles.length > 0 && !activeRole) {
+      setActiveRole(profile.role || profile.roles[0]);
+    }
+  }, [profile, activeRole]);
+
+  const currentActiveRole = activeRole || profile?.role;
 
   // Filter nav items based on permissions (now supports multiple roles)
   const filteredNavItems = navItems.filter(item => {
@@ -218,9 +246,25 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-sidebar-foreground truncate">{profile.full_name}</p>
-                <p className="text-xs text-sidebar-foreground/60 capitalize">
-                  {profile.roles?.map(r => r.replace('_', ' ')).join(', ') || 'User'}
-                </p>
+                {/* Role Switcher */}
+                {profile.roles && profile.roles.length > 1 ? (
+                  <Select value={currentActiveRole || ''} onValueChange={(v) => setActiveRole(v as AppRole)}>
+                    <SelectTrigger className="h-6 text-xs bg-transparent border-none p-0 text-sidebar-foreground/60 hover:text-sidebar-foreground">
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {profile.roles.map((role) => (
+                        <SelectItem key={role} value={role} className="text-xs">
+                          {ROLE_LABELS[role] || role.replace('_', ' ')}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-xs text-sidebar-foreground/60 capitalize">
+                    {currentActiveRole ? ROLE_LABELS[currentActiveRole] : 'User'}
+                  </p>
+                )}
               </div>
             </div>
             <Button

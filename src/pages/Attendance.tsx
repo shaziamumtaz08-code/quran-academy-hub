@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar, CheckCircle, XCircle, AlertCircle, User, Plus, Clock, CalendarClock, UserX, Palmtree } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, AlertCircle, User, Plus, Clock, CalendarClock, UserX, Palmtree, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -91,6 +91,8 @@ export default function Attendance() {
   const [filter, setFilter] = useState('all');
   const [monthFilter, setMonthFilter] = useState(format(new Date(), 'yyyy-MM'));
   const [markDialogOpen, setMarkDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
   
   // Form state for marking attendance
   const [selectedStudent, setSelectedStudent] = useState('');
@@ -322,6 +324,37 @@ export default function Attendance() {
     },
   });
 
+  // Update attendance mutation (admin only)
+  const updateAttendance = useMutation({
+    mutationFn: async (record: AttendanceRecord) => {
+      const { error } = await supabase.from('attendance').update({
+        status: record.status,
+        class_date: record.class_date,
+        class_time: record.class_time,
+        duration_minutes: record.duration_minutes,
+        lesson_covered: record.lesson_covered,
+        homework: record.homework,
+        reason_category: record.reason_category,
+        reason_text: record.reason_text,
+        surah_name: record.surah_name,
+        ayah_from: record.ayah_from,
+        ayah_to: record.ayah_to,
+        lines_completed: record.lines_completed,
+        variance_reason: record.variance_reason,
+      }).eq('id', record.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: 'Updated', description: 'Attendance record updated successfully.' });
+      queryClient.invalidateQueries({ queryKey: ['attendance'] });
+      setEditDialogOpen(false);
+      setEditingRecord(null);
+    },
+    onError: (error) => {
+      toast({ title: 'Error', description: error instanceof Error ? error.message : 'Failed to update', variant: 'destructive' });
+    },
+  });
+
   const resetForm = () => {
     setSelectedStudent('');
     setSelectedStatus('present');
@@ -532,6 +565,7 @@ export default function Attendance() {
                     <TableHead>Lesson Covered</TableHead>
                     {(isTeacher || isAdmin) && <TableHead>Reason</TableHead>}
                     {isAdmin && <TableHead>Reschedule Info</TableHead>}
+                    {isAdmin && <TableHead className="w-12">Edit</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -589,6 +623,21 @@ export default function Attendance() {
                               {format(parseISO(record.reschedule_date), 'MMM dd')} {record.reschedule_time?.substring(0, 5)}
                             </span>
                           ) : '-'}
+                        </TableCell>
+                      )}
+                      {isAdmin && (
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => {
+                              setEditingRecord(record);
+                              setEditDialogOpen(true);
+                            }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       )}
                     </TableRow>
@@ -838,6 +887,76 @@ export default function Attendance() {
                 disabled={!isFormValid || markAttendance.isPending}
               >
                 {markAttendance.isPending ? 'Saving...' : 'Save Attendance'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Admin Edit Attendance Dialog */}
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="font-serif">Edit Attendance</DialogTitle>
+              <DialogDescription>Update attendance record details</DialogDescription>
+            </DialogHeader>
+            {editingRecord && (
+              <div className="space-y-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Status</Label>
+                    <Select 
+                      value={editingRecord.status} 
+                      onValueChange={(v) => setEditingRecord({...editingRecord, status: v as AttendanceStatus})}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {STATUS_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Duration (min)</Label>
+                    <Input 
+                      type="number" 
+                      value={editingRecord.duration_minutes} 
+                      onChange={(e) => setEditingRecord({...editingRecord, duration_minutes: parseInt(e.target.value) || 30})}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Lesson Covered</Label>
+                  <Input 
+                    value={editingRecord.lesson_covered || ''} 
+                    onChange={(e) => setEditingRecord({...editingRecord, lesson_covered: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Homework</Label>
+                  <Textarea 
+                    value={editingRecord.homework || ''} 
+                    onChange={(e) => setEditingRecord({...editingRecord, homework: e.target.value})}
+                    rows={2}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Lines Completed</Label>
+                  <Input 
+                    type="number" 
+                    value={editingRecord.lines_completed || ''} 
+                    onChange={(e) => setEditingRecord({...editingRecord, lines_completed: parseInt(e.target.value) || null})}
+                  />
+                </div>
+              </div>
+            )}
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => { setEditDialogOpen(false); setEditingRecord(null); }}>Cancel</Button>
+              <Button 
+                onClick={() => editingRecord && updateAttendance.mutate(editingRecord)} 
+                disabled={updateAttendance.isPending}
+              >
+                {updateAttendance.isPending ? 'Saving...' : 'Update'}
               </Button>
             </div>
           </DialogContent>
