@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Users, GraduationCap, Trash2, Loader2, UserPlus, BookOpen } from 'lucide-react';
+import { Users, GraduationCap, Trash2, Loader2, UserPlus, BookOpen, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,6 +25,7 @@ interface Assignment {
   id: string;
   teacher_id: string;
   student_id: string;
+  subject_id: string | null;
   teacher_name: string;
   student_name: string;
   subject_name: string | null;
@@ -37,6 +38,7 @@ export default function Assignments() {
   const [selectedTeacher, setSelectedTeacher] = useState<string>('');
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<string>('');
+  const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
 
   // Fetch teachers
   const { data: teachers = [], isLoading: loadingTeachers } = useQuery({
@@ -128,6 +130,7 @@ export default function Assignments() {
         id: row.id,
         teacher_id: row.teacher_id,
         student_id: row.student_id,
+        subject_id: row.subject_id,
         teacher_name: row.teacher?.full_name || 'Unknown',
         student_name: row.student?.full_name || 'Unknown',
         subject_name: row.subject?.name || null,
@@ -198,6 +201,47 @@ export default function Assignments() {
     },
   });
 
+  // Update assignment mutation
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, teacherId, subjectId }: { id: string; teacherId: string; subjectId?: string }) => {
+      const { error } = await supabase
+        .from('student_teacher_assignments')
+        .update({
+          teacher_id: teacherId,
+          subject_id: subjectId || null,
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['teachers-list'] });
+      queryClient.invalidateQueries({ queryKey: ['teachers-list-full'] });
+      queryClient.invalidateQueries({ queryKey: ['students-list'] });
+      queryClient.invalidateQueries({ queryKey: ['assigned-students'] });
+      toast({ title: 'Updated', description: 'Assignment updated successfully' });
+      handleCancelEdit();
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const handleEditAssignment = (assignment: Assignment) => {
+    setEditingAssignment(assignment);
+    setSelectedTeacher(assignment.teacher_id);
+    setSelectedSubject(assignment.subject_id || '');
+    setSelectedStudents([assignment.student_id]);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingAssignment(null);
+    setSelectedTeacher('');
+    setSelectedSubject('');
+    setSelectedStudents([]);
+  };
+
   const handleStudentToggle = (studentId: string) => {
     setSelectedStudents(prev =>
       prev.includes(studentId)
@@ -211,12 +255,23 @@ export default function Assignments() {
       toast({ title: 'Error', description: 'Select a teacher and at least one student', variant: 'destructive' });
       return;
     }
-    createMutation.mutate({ 
-      teacherId: selectedTeacher, 
-      studentIds: selectedStudents,
-      subjectId: selectedSubject || undefined,
-    });
+
+    if (editingAssignment) {
+      updateMutation.mutate({
+        id: editingAssignment.id,
+        teacherId: selectedTeacher,
+        subjectId: selectedSubject || undefined,
+      });
+    } else {
+      createMutation.mutate({ 
+        teacherId: selectedTeacher, 
+        studentIds: selectedStudents,
+        subjectId: selectedSubject || undefined,
+      });
+    }
   };
+
+  const isPending = createMutation.isPending || updateMutation.isPending;
 
   const isLoading = loadingTeachers || loadingStudents || loadingAssignments;
 
@@ -236,7 +291,7 @@ export default function Assignments() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <UserPlus className="h-5 w-5" />
-                Create Assignment
+                {editingAssignment ? 'Edit Assignment' : 'Create Assignment'}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -274,10 +329,10 @@ export default function Assignments() {
                 </Select>
               </div>
 
-              {/* Student Selection */}
+              {/* Student Selection - disabled when editing */}
               <div className="space-y-2">
-                <Label>Select Students *</Label>
-                <div className="border border-border rounded-lg max-h-48 overflow-y-auto">
+                <Label>Select Students * {editingAssignment && <span className="text-xs text-muted-foreground">(Cannot change student when editing)</span>}</Label>
+                <div className={`border border-border rounded-lg max-h-48 overflow-y-auto ${editingAssignment ? 'opacity-60 pointer-events-none' : ''}`}>
                   {students.length === 0 ? (
                     <p className="p-4 text-sm text-muted-foreground text-center">No students found</p>
                   ) : (
@@ -289,7 +344,8 @@ export default function Assignments() {
                         >
                           <Checkbox
                             checked={selectedStudents.includes(student.id)}
-                            onCheckedChange={() => handleStudentToggle(student.id)}
+                            onCheckedChange={() => !editingAssignment && handleStudentToggle(student.id)}
+                            disabled={!!editingAssignment}
                           />
                           <span className="text-sm">{student.full_name}</span>
                         </label>
@@ -302,14 +358,21 @@ export default function Assignments() {
                 )}
               </div>
 
-              <Button
-                onClick={handleSubmit}
-                disabled={!selectedTeacher || selectedStudents.length === 0 || createMutation.isPending}
-                className="w-full"
-              >
-                {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Save Assignment
-              </Button>
+              <div className="flex gap-2">
+                {editingAssignment && (
+                  <Button variant="outline" onClick={handleCancelEdit} className="flex-1">
+                    Cancel
+                  </Button>
+                )}
+                <Button
+                  onClick={handleSubmit}
+                  disabled={!selectedTeacher || selectedStudents.length === 0 || isPending}
+                  className="flex-1"
+                >
+                  {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  {editingAssignment ? 'Update Assignment' : 'Save Assignment'}
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
@@ -399,14 +462,24 @@ export default function Assignments() {
                         )}
                       </TableCell>
                       <TableCell className="text-center">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteMutation.mutate(assignment.id)}
-                          disabled={deleteMutation.isPending}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        <div className="flex items-center justify-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditAssignment(assignment)}
+                            disabled={updateMutation.isPending}
+                          >
+                            <Pencil className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteMutation.mutate(assignment.id)}
+                            disabled={deleteMutation.isPending}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
