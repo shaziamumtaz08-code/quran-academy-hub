@@ -224,10 +224,10 @@ export default function UserManagement() {
 
   // Add role to user mutation
   const addRoleMutation = useMutation({
-    mutationFn: async ({ userId, role, email }: { userId: string; role: AppRole; email: string }) => {
+    mutationFn: async ({ userId, role, email, fullName }: { userId: string; role: AppRole; email: string; fullName: string }) => {
       // Use admin-create-user which now handles adding roles to existing users
       const { data, error } = await supabase.functions.invoke('admin-create-user', {
-        body: { email, fullName: '', role },
+        body: { email, fullName, role },
       });
       if (error) throw new Error(error.message || 'Failed to add role');
       if (data?.error) throw new Error(data.error);
@@ -903,6 +903,7 @@ export default function UserManagement() {
                         userId: viewingUser.id,
                         role: addRoleSelection,
                         email: viewingUser.email,
+                        fullName: viewingUser.full_name,
                       });
                     }
                   }}
