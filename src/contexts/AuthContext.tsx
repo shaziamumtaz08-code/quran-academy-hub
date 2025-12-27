@@ -37,6 +37,8 @@ interface AuthContextType {
   hasPermission: (permission: string) => boolean;
   isSuperAdmin: boolean;
   hasRole: (role: AppRole) => boolean;
+  activeRole: AppRole | null;
+  setActiveRole: (role: AppRole) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -55,6 +57,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [allPermissions, setAllPermissions] = useState<string[]>([]);
+  const [activeRole, setActiveRoleState] = useState<AppRole | null>(null);
+
+  // Set initial active role when profile loads
+  useEffect(() => {
+    if (profile?.roles && profile.roles.length > 0 && !activeRole) {
+      setActiveRoleState(profile.role || profile.roles[0]);
+    }
+  }, [profile, activeRole]);
+
+  const setActiveRole = (role: AppRole) => {
+    setActiveRoleState(role);
+  };
 
   // Fetch user profile and ALL roles
   const fetchProfile = async (userId: string) => {
@@ -254,6 +268,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       hasPermission,
       isSuperAdmin,
       hasRole,
+      activeRole,
+      setActiveRole,
     }}>
       {children}
     </AuthContext.Provider>

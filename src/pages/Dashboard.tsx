@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle } from "lucide-react";
 
 export default function Dashboard() {
-  const { profile, isLoading } = useAuth();
+  const { profile, isLoading, activeRole } = useAuth();
 
   if (isLoading) {
     return (
@@ -40,8 +40,11 @@ export default function Dashboard() {
     );
   }
 
-  // Route to role-specific dashboard
-  switch (profile.role) {
+  // Use activeRole from context (which reacts to role switcher)
+  const displayRole = activeRole || profile.role;
+
+  // Route to role-specific dashboard based on ACTIVE role
+  switch (displayRole) {
     case 'super_admin':
       return <SuperAdminDashboard />;
     
