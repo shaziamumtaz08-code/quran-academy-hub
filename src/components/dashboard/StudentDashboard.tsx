@@ -26,15 +26,10 @@ export function StudentDashboard() {
         .eq('student_id', user.id)
         .order('class_date', { ascending: false });
 
-      // Fetch enrollment and join profile/subject
-      const enrollmentRes = await supabase.from('enrollments')
-        .select(`
-          teacher_id,
-          subject_id,
-          subject:subjects!enrollments_subject_id_fkey(name)
-        `)
+      // Fetch teacher assignment from student_teacher_assignments
+      const assignmentRes = await supabase.from('student_teacher_assignments')
+        .select('teacher_id')
         .eq('student_id', user.id)
-        .eq('status', 'active')
         .limit(1);
 
       // Fetch monthly plan
@@ -47,17 +42,16 @@ export function StudentDashboard() {
         .limit(1);
 
       // Fetch teacher profile separately (RLS allows student -> assigned teacher)
-      const enrollment = enrollmentRes.data?.[0];
+      const assignment = assignmentRes.data?.[0];
       let teacher: { id: string; full_name: string; email: string | null } | null = null;
-      if (enrollment?.teacher_id) {
+      if (assignment?.teacher_id) {
         const { data: teacherData } = await supabase
           .from('profiles')
           .select('id, full_name, email')
-          .eq('id', enrollment.teacher_id)
-          .single();
+          .eq('id', assignment.teacher_id)
+          .maybeSingle();
         teacher = teacherData || null;
       }
-      const subject = enrollment?.subject as { name: string } | null;
 
       const attendance = attendanceRes.data || [];
       const activePlan = planRes.data?.[0];
@@ -91,7 +85,7 @@ export function StudentDashboard() {
         attendanceRate: attendance.length > 0 ? Math.round((present / attendance.length) * 100) : 0,
         teacher: teacher?.full_name || 'Not assigned',
         teacherEmail: teacher?.email || null,
-        subject: subject?.name || 'Quran',
+        subject: 'Quran', // Default subject since we're using simple assignments
         currentLesson,
         currentHomework,
         activePlan,
