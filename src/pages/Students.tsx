@@ -3,8 +3,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Mail, User, Loader2, AlertCircle, BookOpen, Clock, Target, FileText, CheckSquare } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Search, Mail, User, Loader2, AlertCircle, BookOpen, Clock, Target, CheckSquare } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -266,48 +265,34 @@ export default function Students() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Student</TableHead>
-                    <TableHead>Subject</TableHead>
-                    <TableHead>Schedule</TableHead>
-                    <TableHead>Daily Target</TableHead>
-                    <TableHead>Last Lesson</TableHead>
-                    <TableHead>Homework</TableHead>
-                    <TableHead className="w-[100px]">Action</TableHead>
+                    <TableHead className="min-w-[180px]">Student</TableHead>
+                    <TableHead className="min-w-[100px]">Target</TableHead>
+                    <TableHead className="min-w-[140px]">Last Lesson</TableHead>
+                    <TableHead className="min-w-[120px]">Homework</TableHead>
+                    <TableHead className="w-[80px]">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredTeacherStudents.map((student) => (
                     <TableRow key={student.id}>
                       <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{student.full_name}</span>
-                          {student.email && (
-                            <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                              <Mail className="h-3 w-3" />
-                              {student.email}
-                            </span>
-                          )}
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-medium text-sm">{student.full_name}</span>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            {student.subject_name && (
+                              <span className="flex items-center gap-1">
+                                <BookOpen className="h-3 w-3" />
+                                {student.subject_name}
+                              </span>
+                            )}
+                            {formatSchedule(student.schedule_day, student.schedule_time) && (
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {formatSchedule(student.schedule_day, student.schedule_time)}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        {student.subject_name ? (
-                          <Badge variant="outline" className="flex items-center gap-1 w-fit">
-                            <BookOpen className="h-3 w-3" />
-                            {student.subject_name}
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {formatSchedule(student.schedule_day, student.schedule_time) ? (
-                          <span className="flex items-center gap-1 text-sm">
-                            <Clock className="h-3 w-3 text-muted-foreground" />
-                            {formatSchedule(student.schedule_day, student.schedule_time)}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">-</span>
-                        )}
                       </TableCell>
                       <TableCell>
                         <span className="flex items-center gap-1 text-sm">
@@ -317,7 +302,7 @@ export default function Students() {
                       </TableCell>
                       <TableCell>
                         {student.last_lesson ? (
-                          <span className="text-sm max-w-[150px] truncate block" title={student.last_lesson}>
+                          <span className="text-sm line-clamp-2" title={student.last_lesson}>
                             {student.last_lesson}
                           </span>
                         ) : (
@@ -326,8 +311,7 @@ export default function Students() {
                       </TableCell>
                       <TableCell>
                         {student.homework ? (
-                          <span className="flex items-center gap-1 text-sm max-w-[150px] truncate" title={student.homework}>
-                            <FileText className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                          <span className="text-sm line-clamp-2" title={student.homework}>
                             {student.homework}
                           </span>
                         ) : (
@@ -339,7 +323,7 @@ export default function Students() {
                           variant="outline" 
                           size="sm"
                           onClick={() => setQuickAttendanceStudent(student)}
-                          className="gap-1"
+                          className="gap-1 h-7 px-2 text-xs"
                         >
                           <CheckSquare className="h-3 w-3" />
                           Mark
