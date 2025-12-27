@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Mail, Lock, Loader2, User } from 'lucide-react';
+import { Mail, Lock, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
 import logoDark from '@/assets/logo-dark.jpg';
@@ -14,53 +14,43 @@ const loginSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
-const signUpSchema = loginSchema.extend({
-  fullName: z.string().min(2, 'Name must be at least 2 characters'),
-});
-
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
-  const { login, signUp } = useAuth();
+  const { login, isAuthenticated, profile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Redirect authenticated users to their dashboard
+  useEffect(() => {
+    if (isAuthenticated && profile) {
+      const role = profile.role;
+      if (role === 'super_admin' || role === 'admin' || role?.startsWith('admin_')) {
+        navigate('/admin');
+      } else if (role === 'teacher' || role === 'examiner') {
+        navigate('/teacher');
+      } else {
+        navigate('/dashboard');
+      }
+    }
+  }, [isAuthenticated, profile, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // Validate input
-      if (isSignUp) {
-        signUpSchema.parse({ email, password, fullName });
-      } else {
-        loginSchema.parse({ email, password });
-      }
+      loginSchema.parse({ email, password });
 
-      if (isSignUp) {
-        const { error } = await signUp(email, password, fullName);
-        if (error) {
-          throw error;
-        }
-        toast({
-          title: "Account created!",
-          description: "Please check your email to confirm your account, or sign in if auto-confirm is enabled.",
-        });
-        setIsSignUp(false);
-      } else {
-        const { error } = await login(email, password);
-        if (error) {
-          throw error;
-        }
-        toast({
-          title: "Welcome back!",
-          description: "You have successfully logged in.",
-        });
-        navigate('/dashboard');
+      const { error } = await login(email, password);
+      if (error) {
+        throw error;
       }
+      toast({
+        title: "Welcome back!",
+        description: "You have successfully logged in.",
+      });
     } catch (error) {
       const message = error instanceof z.ZodError 
         ? error.errors[0].message 
@@ -69,7 +59,7 @@ export default function Login() {
           : 'An error occurred';
       
       toast({
-        title: isSignUp ? "Sign up failed" : "Login failed",
+        title: "Login failed",
         description: message,
         variant: "destructive",
       });
@@ -121,32 +111,14 @@ export default function Login() {
 
           <div className="mb-8 text-center lg:text-left">
             <h2 className="font-serif text-3xl font-bold text-foreground">
-              {isSignUp ? 'Create Account' : 'Welcome Back'}
+              Welcome Back
             </h2>
             <p className="text-muted-foreground mt-2">
-              {isSignUp ? 'Start your learning journey today' : 'Sign in to continue your learning journey'}
+              Sign in to continue your learning journey
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {isSignUp && (
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                  <Input
-                    id="fullName"
-                    type="text"
-                    placeholder="Enter your full name"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="pl-10 h-12"
-                    required
-                  />
-                </div>
-              </div>
-            )}
-
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
               <div className="relative">
@@ -183,24 +155,17 @@ export default function Login() {
               {isLoading ? (
                 <>
                   <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                  {isSignUp ? 'Creating account...' : 'Signing in...'}
+                  Signing in...
                 </>
               ) : (
-                isSignUp ? 'Create Account' : 'Sign In'
+                'Sign In'
               )}
             </Button>
           </form>
 
-          <div className="mt-6 text-center">
+          <div className="mt-8 text-center">
             <p className="text-sm text-muted-foreground">
-              {isSignUp ? 'Already have an account?' : "Don't have an account?"}
-              <button
-                type="button"
-                onClick={() => setIsSignUp(!isSignUp)}
-                className="ml-1 text-accent hover:underline font-medium"
-              >
-                {isSignUp ? 'Sign In' : 'Sign Up'}
-              </button>
+              Need an account? Contact your administrator.
             </p>
           </div>
         </div>

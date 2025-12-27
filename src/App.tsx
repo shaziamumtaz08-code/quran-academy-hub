@@ -23,6 +23,8 @@ import UserManagement from "./pages/UserManagement";
 import Resources from "./pages/Resources";
 import Assignments from "./pages/Assignments";
 import MonthlyPlanning from "./pages/MonthlyPlanning";
+import AdminCommandCenter from "./pages/AdminCommandCenter";
+import TeacherNazraDashboard from "./pages/TeacherNazraDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -48,13 +50,78 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Admin only route
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { profile, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+      </div>
+    );
+  }
+  
+  const role = profile?.role;
+  const isAdmin = role === 'super_admin' || role === 'admin' || role?.startsWith('admin_');
+  
+  if (!isAdmin) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return <>{children}</>;
+}
+
+// Teacher only route
+function TeacherRoute({ children }: { children: React.ReactNode }) {
+  const { profile, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+      </div>
+    );
+  }
+  
+  const role = profile?.role;
+  const isTeacher = role === 'teacher' || role === 'examiner';
+  
+  if (!isTeacher) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return <>{children}</>;
+}
+
 function AppRoutes() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, profile } = useAuth();
+  
+  // Role-based redirect on login
+  const getDefaultRoute = () => {
+    if (!profile) return '/dashboard';
+    const role = profile.role;
+    if (role === 'super_admin' || role === 'admin' || role?.startsWith('admin_')) {
+      return '/admin';
+    }
+    if (role === 'teacher' || role === 'examiner') {
+      return '/teacher';
+    }
+    return '/dashboard';
+  };
   
   return (
     <Routes>
-      <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />} />
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/login" element={isAuthenticated ? <Navigate to={getDefaultRoute()} replace /> : <Login />} />
+      <Route path="/" element={<Navigate to={getDefaultRoute()} replace />} />
+      
+      {/* Admin Routes */}
+      <Route path="/admin" element={<ProtectedRoute><AdminRoute><AdminCommandCenter /></AdminRoute></ProtectedRoute>} />
+      
+      {/* Teacher Routes */}
+      <Route path="/teacher" element={<ProtectedRoute><TeacherRoute><TeacherNazraDashboard /></TeacherRoute></ProtectedRoute>} />
+      
+      {/* General Protected Routes */}
       <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout><ErrorBoundary><Dashboard /></ErrorBoundary></DashboardLayout></ProtectedRoute>} />
       <Route path="/user-management" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
       <Route path="/assignments" element={<ProtectedRoute><Assignments /></ProtectedRoute>} />
