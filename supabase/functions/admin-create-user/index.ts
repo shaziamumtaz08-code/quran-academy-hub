@@ -93,12 +93,67 @@ serve(async (req) => {
     const gender = body?.gender && ['male', 'female'].includes(body.gender) ? body.gender : null;
     const age = body?.age && typeof body.age === 'number' ? body.age : null;
 
-    if (!email || !password || !fullName) {
-      return json(400, { error: "Missing required fields" });
+    if (!email || !fullName) {
+      return json(400, { error: "Missing required fields (email, fullName)" });
     }
 
     if (!ALLOWED_ROLES.includes(role)) {
       return json(400, { error: "Invalid role" });
+    }
+
+    // Check if user with this email already exists
+    const { data: existingUsers, error: listError } = await adminClient.auth.admin.listUsers();
+    
+    if (listError) {
+      console.error("Error listing users:", listError);
+      return json(500, { error: "Failed to check existing users" });
+    }
+
+    const existingUser = existingUsers?.users?.find(
+      (u) => u.email?.toLowerCase() === email
+    );
+
+    if (existingUser) {
+      // User exists - just add the new role if not already assigned
+      const existingUserId = existingUser.id;
+
+      // Check if user already has this role
+      const { data: existingRole } = await adminClient
+        .from("user_roles")
+        .select("id")
+        .eq("user_id", existingUserId)
+        .eq("role", role)
+        .maybeSingle();
+
+      if (existingRole) {
+        return json(400, { error: `User already has the ${role} role` });
+      }
+
+      // Add the new role
+      const { error: roleErr } = await adminClient.from("user_roles").insert({
+        user_id: existingUserId,
+        role,
+      });
+
+      if (roleErr) {
+        console.error("Error adding role:", roleErr);
+        return json(500, { error: roleErr.message });
+      }
+
+      console.log(`Added role ${role} to existing user ${email}`);
+
+      return json(200, {
+        userId: existingUserId,
+        email,
+        role,
+        message: `Role '${role}' added to existing user`,
+        roleAdded: true,
+      });
+    }
+
+    // User doesn't exist - create new user
+    if (!password) {
+      return json(400, { error: "Password is required for new users" });
     }
 
     const { data: created, error: createErr } = await adminClient.auth.admin.createUser({
@@ -109,6 +164,7 @@ serve(async (req) => {
     });
 
     if (createErr || !created.user) {
+      console.error("Error creating user:", createErr);
       return json(400, { error: createErr?.message ?? "Failed to create user" });
     }
 
@@ -127,17 +183,23 @@ serve(async (req) => {
       { onConflict: "id" },
     );
 
-    if (profileErr) return json(500, { error: profileErr.message });
+    if (profileErr) {
+      console.error("Error creating profile:", profileErr);
+      return json(500, { error: profileErr.message });
+    }
 
-    // Ensure exactly one role
-    await adminClient.from("user_roles").delete().eq("user_id", newUserId);
-
+    // Add the role (don't delete existing - this is a new user)
     const { error: roleErr } = await adminClient.from("user_roles").insert({
       user_id: newUserId,
       role,
     });
 
-    if (roleErr) return json(500, { error: roleErr.message });
+    if (roleErr) {
+      console.error("Error adding role:", roleErr);
+      return json(500, { error: roleErr.message });
+    }
+
+    console.log(`Created new user ${email} with role ${role}`);
 
     return json(200, {
       userId: newUserId,
@@ -147,8 +209,11 @@ serve(async (req) => {
       whatsapp_number: whatsapp,
       gender,
       age,
+      message: "User created successfully",
+      roleAdded: false,
     });
   } catch (e) {
+    console.error("Unexpected error:", e);
     return json(500, {
       error: e instanceof Error ? e.message : "Unknown error",
     });
