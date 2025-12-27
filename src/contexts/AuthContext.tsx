@@ -56,8 +56,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [allPermissions, setAllPermissions] = useState<string[]>([]);
   const [activeRole, setActiveRoleState] = useState<AppRole | null>(null);
+  const [activeRolePermissions, setActiveRolePermissions] = useState<string[]>([]);
 
   // Set initial active role when profile loads
   useEffect(() => {
@@ -65,6 +65,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setActiveRoleState(profile.role || profile.roles[0]);
     }
   }, [profile, activeRole]);
+
+  // Fetch permissions for the active role
+  useEffect(() => {
+    const fetchActiveRolePermissions = async () => {
+      if (!activeRole) {
+        setActiveRolePermissions([]);
+        return;
+      }
+
+      // Super admin has all permissions - no need to fetch
+      if (activeRole === 'super_admin') {
+        setActiveRolePermissions(['*']); // Special marker for all permissions
+        return;
+      }
+
+      const { data: templateData } = await supabase
+        .from('role_templates')
+        .select('permissions')
+        .eq('role', activeRole)
+        .single();
+
+      setActiveRolePermissions(templateData?.permissions || []);
+    };
+
+    fetchActiveRolePermissions();
+  }, [activeRole]);
 
   const setActiveRole = (role: AppRole) => {
     setActiveRoleState(role);
@@ -97,26 +123,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const roles: AppRole[] = (rolesData || []).map(r => r.role as AppRole);
       const primaryRole = getPrimaryRole(roles);
 
-      // Get permissions from ALL role templates
-      const combinedPermissions: Set<string> = new Set();
-      
-      if (roles.length > 0) {
-        const { data: templatesData } = await supabase
-          .from('role_templates')
-          .select('permissions')
-          .in('role', roles);
-
-        if (templatesData) {
-          templatesData.forEach(template => {
-            if (template.permissions) {
-              template.permissions.forEach((perm: string) => combinedPermissions.add(perm));
-            }
-          });
-        }
-      }
-
-      setAllPermissions(Array.from(combinedPermissions));
-
       setProfile({
         id: userId,
         email: profileData?.email || null,
@@ -143,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }, 0);
         } else {
           setProfile(null);
-          setAllPermissions([]);
+          setActiveRolePermissions([]);
         }
         
         if (event === 'SIGNED_OUT') {
@@ -238,22 +244,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSession(null);
     setProfile(null);
-    setAllPermissions([]);
+    setActiveRolePermissions([]);
+    setActiveRoleState(null);
   };
 
   const hasPermission = (permission: string): boolean => {
-    // Super admin has all permissions
-    if (profile?.roles.includes('super_admin')) {
+    // Check based on activeRole, not all roles
+    if (activeRole === 'super_admin') {
       return true;
     }
-    return allPermissions.includes(permission);
+    // Check if active role has this permission
+    return activeRolePermissions.includes(permission);
   };
 
   const hasRole = (role: AppRole): boolean => {
     return profile?.roles.includes(role) || false;
   };
 
-  const isSuperAdmin = profile?.roles.includes('super_admin') || false;
+  // isSuperAdmin should check activeRole for consistency
+  const isSuperAdmin = activeRole === 'super_admin';
 
   return (
     <AuthContext.Provider value={{ 
