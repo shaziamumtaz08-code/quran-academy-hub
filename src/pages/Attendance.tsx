@@ -84,7 +84,7 @@ const REASON_CATEGORIES: { value: ReasonCategory; label: string }[] = [
 ];
 
 export default function Attendance() {
-  const { profile, user } = useAuth();
+  const { profile, user, activeRole } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -121,11 +121,11 @@ export default function Attendance() {
   const [inputUnit, setInputUnit] = useState<LearningUnit>('lines');
   const [rawInputAmount, setRawInputAmount] = useState('');
 
-  const userRole = profile?.role;
-  const isAdmin = userRole === 'super_admin' || userRole === 'admin' || 
-    userRole === 'admin_admissions' || userRole === 'admin_fees' || userRole === 'admin_academic';
-  const isTeacher = userRole === 'teacher' || userRole === 'examiner';
-  const isStudent = userRole === 'student';
+  // Role checks based on activeRole
+  const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' || 
+    activeRole === 'admin_admissions' || activeRole === 'admin_fees' || activeRole === 'admin_academic';
+  const isTeacher = activeRole === 'teacher' || activeRole === 'examiner';
+  const isStudent = activeRole === 'student';
 
   // Statuses that require reason
   const requiresReason = (status: AttendanceStatus) => 

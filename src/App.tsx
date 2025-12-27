@@ -51,9 +51,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// Admin only route
+// Admin only route - uses activeRole for proper role switching
 function AdminRoute({ children }: { children: React.ReactNode }) {
-  const { profile, isLoading } = useAuth();
+  const { activeRole, isLoading } = useAuth();
   
   if (isLoading) {
     return (
@@ -63,8 +63,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
     );
   }
   
-  const role = profile?.role;
-  const isAdmin = role === 'super_admin' || role === 'admin' || role?.startsWith('admin_');
+  const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_');
   
   if (!isAdmin) {
     return <Navigate to="/dashboard" replace />;
@@ -73,9 +72,9 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// Admin or Examiner route (for exam pages)
+// Admin or Examiner route (for exam templates and submission)
 function AdminOrExaminerRoute({ children }: { children: React.ReactNode }) {
-  const { profile, isLoading } = useAuth();
+  const { activeRole, isLoading } = useAuth();
   
   if (isLoading) {
     return (
@@ -85,8 +84,8 @@ function AdminOrExaminerRoute({ children }: { children: React.ReactNode }) {
     );
   }
   
-  const role = profile?.role;
-  const allowed = role === 'super_admin' || role === 'admin' || role?.startsWith('admin_') || role === 'examiner';
+  const allowed = activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_') || 
+    activeRole === 'examiner';
   
   if (!allowed) {
     return <Navigate to="/dashboard" replace />;
@@ -95,9 +94,9 @@ function AdminOrExaminerRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// Teacher only route
-function TeacherRoute({ children }: { children: React.ReactNode }) {
-  const { profile, isLoading } = useAuth();
+// Admin, Examiner, or Teacher route (for exam results - teachers can view their students' exams)
+function AdminOrExaminerOrTeacherRoute({ children }: { children: React.ReactNode }) {
+  const { activeRole, isLoading } = useAuth();
   
   if (isLoading) {
     return (
@@ -107,8 +106,29 @@ function TeacherRoute({ children }: { children: React.ReactNode }) {
     );
   }
   
-  const role = profile?.role;
-  const isTeacher = role === 'teacher' || role === 'examiner';
+  const allowed = activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_') || 
+    activeRole === 'examiner' || activeRole === 'teacher';
+  
+  if (!allowed) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return <>{children}</>;
+}
+
+// Teacher only route - uses activeRole
+function TeacherRoute({ children }: { children: React.ReactNode }) {
+  const { activeRole, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+      </div>
+    );
+  }
+  
+  const isTeacher = activeRole === 'teacher' || activeRole === 'examiner';
   
   if (!isTeacher) {
     return <Navigate to="/dashboard" replace />;
@@ -118,16 +138,15 @@ function TeacherRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppRoutes() {
-  const { isAuthenticated, profile } = useAuth();
+  const { isAuthenticated, activeRole } = useAuth();
   
-  // Role-based redirect on login
+  // Role-based redirect on login - uses activeRole
   const getDefaultRoute = () => {
-    if (!profile) return '/dashboard';
-    const role = profile.role;
-    if (role === 'super_admin' || role === 'admin' || role?.startsWith('admin_')) {
+    if (!activeRole) return '/dashboard';
+    if (activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_')) {
       return '/admin';
     }
-    if (role === 'teacher' || role === 'examiner') {
+    if (activeRole === 'teacher' || activeRole === 'examiner') {
       return '/teacher';
     }
     return '/dashboard';
@@ -162,7 +181,7 @@ function AppRoutes() {
       {/* Admin/Examiner exam pages */}
       <Route path="/exam-templates" element={<ProtectedRoute><AdminOrExaminerRoute><ExamTemplates /></AdminOrExaminerRoute></ProtectedRoute>} />
       <Route path="/exam-submission" element={<ProtectedRoute><AdminOrExaminerRoute><ExamSubmission /></AdminOrExaminerRoute></ProtectedRoute>} />
-      <Route path="/exam-results" element={<ProtectedRoute><AdminOrExaminerRoute><ExamResults /></AdminOrExaminerRoute></ProtectedRoute>} />
+      <Route path="/exam-results" element={<ProtectedRoute><AdminOrExaminerOrTeacherRoute><ExamResults /></AdminOrExaminerOrTeacherRoute></ProtectedRoute>} />
       <Route path="/resources" element={<ProtectedRoute><Resources /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
