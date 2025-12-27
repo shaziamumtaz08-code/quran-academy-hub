@@ -1,15 +1,9 @@
-import React, { ReactNode, useState } from 'react';
+import React, { ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth, AppRole } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { PageBreadcrumb } from '@/components/layout/PageBreadcrumb';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { RoleSwitcher } from '@/components/layout/RoleSwitcher';
 import {
   LayoutDashboard,
   Users,
@@ -24,11 +18,9 @@ import {
   Menu,
   X,
   Shield,
-  Settings,
   FolderOpen,
   Target,
   BookOpen,
-  RefreshCw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import logoLight from '@/assets/logo-light.png';
@@ -78,32 +70,27 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
-  const { profile, logout, isLoading, hasPermission, isSuperAdmin } = useAuth();
+  const { profile, logout, isLoading, hasPermission, isSuperAdmin, activeRole } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
-  const [activeRole, setActiveRole] = useState<AppRole | null>(null);
 
-  // Set initial active role when profile loads
-  React.useEffect(() => {
-    if (profile?.roles && profile.roles.length > 0 && !activeRole) {
-      setActiveRole(profile.role || profile.roles[0]);
-    }
-  }, [profile, activeRole]);
-
-  const currentActiveRole = activeRole || profile?.role;
-
-  // Filter nav items based on permissions (now supports multiple roles)
+  // Filter nav items based on activeRole (not all roles)
   const filteredNavItems = navItems.filter(item => {
-    if (isSuperAdmin) return true;
-    // Check if user has any of the required roles
-    if (item.roles && profile?.roles) {
-      const hasRequiredRole = item.roles.some(role => profile.roles.includes(role as any));
-      if (hasRequiredRole) return true;
+    // Super admin sees everything
+    if (activeRole === 'super_admin') return true;
+    
+    // Check if current active role is in required roles
+    if (item.roles && activeRole) {
+      if (item.roles.includes(activeRole)) return true;
     }
+    
+    // Check permissions
     if (item.permission && hasPermission(item.permission)) return true;
+    
     // Allow dashboard access for all authenticated users
     if (item.href === '/dashboard') return true;
+    
     return false;
   });
 
@@ -191,9 +178,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           />
           <span className="font-serif text-lg font-bold text-foreground">Al-Quran Time</span>
         </div>
-        <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(!sidebarOpen)}>
-          {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </Button>
+        <div className="flex items-center gap-2">
+          <RoleSwitcher />
+          <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(!sidebarOpen)}>
+            {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
+        </div>
       </header>
 
       {/* Sidebar with Dark Theme */}
@@ -247,32 +237,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-sidebar-foreground truncate">{profile.full_name}</p>
                 <p className="text-xs text-sidebar-foreground/60 capitalize">
-                  {currentActiveRole ? ROLE_LABELS[currentActiveRole] : 'User'}
+                  {activeRole ? ROLE_LABELS[activeRole] : 'User'}
                 </p>
               </div>
             </div>
-            
-            {/* Role Switcher - Only for users with multiple roles */}
-            {profile.roles && profile.roles.length > 1 && (
-              <div className="mb-3 px-2">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <RefreshCw className="h-3 w-3 text-sidebar-foreground/60" />
-                  <span className="text-xs text-sidebar-foreground/60">Switch Role</span>
-                </div>
-                <Select value={currentActiveRole || ''} onValueChange={(v) => setActiveRole(v as AppRole)}>
-                  <SelectTrigger className="h-8 text-xs bg-sidebar-accent/50 border-sidebar-border text-sidebar-foreground">
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {profile.roles.map((role) => (
-                      <SelectItem key={role} value={role} className="text-xs">
-                        {ROLE_LABELS[role] || role.replace('_', ' ')}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
             
             <Button
               variant="ghost"
@@ -296,6 +264,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Main Content */}
       <main className="lg:ml-64 min-h-screen pt-16 lg:pt-0">
+        {/* Desktop Header with Role Switcher */}
+        <header className="hidden lg:flex h-14 border-b border-border bg-card/50 backdrop-blur-sm items-center justify-end px-6">
+          <RoleSwitcher />
+        </header>
+        
         <div className="p-6 lg:p-8">
           <PageBreadcrumb />
           {children}
