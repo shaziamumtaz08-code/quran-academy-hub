@@ -48,7 +48,7 @@ const navItems: NavItem[] = [
   // Exam pages - admin/examiner only
   { label: 'Exam Templates', href: '/exam-templates', icon: FileText, roles: ['super_admin', 'admin', 'examiner'] },
   { label: 'Submit Exam', href: '/exam-submission', icon: ClipboardCheck, roles: ['super_admin', 'admin', 'examiner'] },
-  { label: 'Exam Results', href: '/exam-results', icon: BarChart3, roles: ['super_admin', 'admin', 'examiner'] },
+  { label: 'Exam Results', href: '/exam-results', icon: BarChart3, roles: ['super_admin', 'admin', 'examiner', 'teacher'] },
   { label: 'Reports', href: '/reports', icon: FileText, permission: 'reports.view' },
   { label: 'Payments', href: '/payments', icon: DollarSign, permission: 'payments.view' },
   { label: 'KPI', href: '/kpi', icon: BarChart3, roles: ['super_admin', 'admin'] },

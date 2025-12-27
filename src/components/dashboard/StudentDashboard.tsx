@@ -26,11 +26,32 @@ export function StudentDashboard() {
         .eq('student_id', user.id)
         .order('class_date', { ascending: false });
 
-      // Fetch teacher assignment from student_teacher_assignments
+      // Fetch teacher assignment from student_teacher_assignments first
       const assignmentRes = await supabase.from('student_teacher_assignments')
-        .select('teacher_id')
+        .select('teacher_id, subject:subjects(name)')
         .eq('student_id', user.id)
         .limit(1);
+
+      // If no assignment, fallback to enrollments table
+      let teacherId: string | null = null;
+      let subjectName: string | null = 'Quran';
+
+      if (assignmentRes.data?.[0]) {
+        teacherId = assignmentRes.data[0].teacher_id;
+        subjectName = (assignmentRes.data[0] as any).subject?.name || 'Quran';
+      } else {
+        // Fallback to enrollments
+        const enrollmentRes = await supabase.from('enrollments')
+          .select('teacher_id, subject:subjects(name)')
+          .eq('student_id', user.id)
+          .eq('status', 'active')
+          .limit(1);
+        
+        if (enrollmentRes.data?.[0]) {
+          teacherId = enrollmentRes.data[0].teacher_id;
+          subjectName = (enrollmentRes.data[0] as any).subject?.name || 'Quran';
+        }
+      }
 
       // Fetch monthly plan
       const planRes = await supabase.from('student_monthly_plans')
@@ -42,13 +63,12 @@ export function StudentDashboard() {
         .limit(1);
 
       // Fetch teacher profile separately (RLS allows student -> assigned teacher)
-      const assignment = assignmentRes.data?.[0];
       let teacher: { id: string; full_name: string; email: string | null } | null = null;
-      if (assignment?.teacher_id) {
+      if (teacherId) {
         const { data: teacherData } = await supabase
           .from('profiles')
           .select('id, full_name, email')
-          .eq('id', assignment.teacher_id)
+          .eq('id', teacherId)
           .maybeSingle();
         teacher = teacherData || null;
       }
@@ -85,7 +105,7 @@ export function StudentDashboard() {
         attendanceRate: attendance.length > 0 ? Math.round((present / attendance.length) * 100) : 0,
         teacher: teacher?.full_name || 'Not assigned',
         teacherEmail: teacher?.email || null,
-        subject: 'Quran', // Default subject since we're using simple assignments
+        subject: subjectName,
         currentLesson,
         currentHomework,
         activePlan,

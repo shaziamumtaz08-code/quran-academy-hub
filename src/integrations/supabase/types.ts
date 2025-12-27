@@ -574,6 +574,50 @@ export type Database = {
         }
         Relationships: []
       }
+      schedules: {
+        Row: {
+          assignment_id: string
+          created_at: string
+          day_of_week: string
+          duration_minutes: number
+          id: string
+          is_active: boolean
+          student_local_time: string
+          teacher_local_time: string
+          updated_at: string
+        }
+        Insert: {
+          assignment_id: string
+          created_at?: string
+          day_of_week: string
+          duration_minutes?: number
+          id?: string
+          is_active?: boolean
+          student_local_time: string
+          teacher_local_time: string
+          updated_at?: string
+        }
+        Update: {
+          assignment_id?: string
+          created_at?: string
+          day_of_week?: string
+          duration_minutes?: number
+          id?: string
+          is_active?: boolean
+          student_local_time?: string
+          teacher_local_time?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedules_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "student_teacher_assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_fees: {
         Row: {
           amount_paid: number | null
@@ -743,8 +787,10 @@ export type Database = {
           schedule_day: string | null
           schedule_time: string | null
           student_id: string
+          student_timezone: string | null
           subject_id: string | null
           teacher_id: string
+          teacher_timezone: string | null
         }
         Insert: {
           created_at?: string
@@ -752,8 +798,10 @@ export type Database = {
           schedule_day?: string | null
           schedule_time?: string | null
           student_id: string
+          student_timezone?: string | null
           subject_id?: string | null
           teacher_id: string
+          teacher_timezone?: string | null
         }
         Update: {
           created_at?: string
@@ -761,8 +809,10 @@ export type Database = {
           schedule_day?: string | null
           schedule_time?: string | null
           student_id?: string
+          student_timezone?: string | null
           subject_id?: string | null
           teacher_id?: string
+          teacher_timezone?: string | null
         }
         Relationships: [
           {
