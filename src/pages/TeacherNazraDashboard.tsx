@@ -14,6 +14,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Users, 
   BookOpen, 
@@ -23,6 +24,9 @@ import {
   User,
   Loader2,
   Calendar,
+  Phone,
+  Mail,
+  BarChart3,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -32,7 +36,11 @@ interface StudentWithDetails {
   full_name: string;
   gender: string | null;
   age: number | null;
+  email?: string | null;
+  whatsapp_number?: string | null;
   subject_name?: string;
+  total_lessons?: number;
+  attendance_rate?: number;
   last_lesson?: {
     sabaq: string | null;
     lesson_covered: string | null;
@@ -42,6 +50,7 @@ interface StudentWithDetails {
 }
 
 type LessonStatus = 'present' | 'absent' | 'late';
+type DialogMode = 'profile' | 'mark';
 
 export default function TeacherNazraDashboard() {
   const { user, profile } = useAuth();
@@ -50,6 +59,7 @@ export default function TeacherNazraDashboard() {
   
   const [selectedStudent, setSelectedStudent] = useState<StudentWithDetails | null>(null);
   const [isMarkDialogOpen, setIsMarkDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<DialogMode>('profile');
   
   // Form state
   const [status, setStatus] = useState<LessonStatus>('present');
@@ -80,13 +90,18 @@ export default function TeacherNazraDashboard() {
       // Fetch profiles for those students
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, full_name, gender, age')
+        .select('id, full_name, gender, age, email, whatsapp_number')
         .in('id', studentIds);
 
       if (profilesError) throw profilesError;
 
-      // Get last lesson for each student
-      const studentsWithDetails: StudentWithDetails[] = await Promise.all(
+      // Get last lesson for each student + count total lessons
+      const studentsWithDetails: (StudentWithDetails & { 
+        email?: string | null; 
+        whatsapp_number?: string | null;
+        total_lessons?: number;
+        attendance_rate?: number;
+      })[] = await Promise.all(
         (profilesData || []).map(async (student) => {
           const { data: lastLesson } = await supabase
             .from('attendance')
@@ -97,12 +112,26 @@ export default function TeacherNazraDashboard() {
             .limit(1)
             .maybeSingle();
 
+          // Get attendance stats
+          const { data: allAttendance } = await supabase
+            .from('attendance')
+            .select('status')
+            .eq('student_id', student.id)
+            .eq('teacher_id', user.id);
+
+          const total = allAttendance?.length || 0;
+          const present = allAttendance?.filter(a => a.status === 'present').length || 0;
+
           return {
             id: student.id,
             full_name: student.full_name,
             gender: student.gender,
             age: student.age,
+            email: student.email,
+            whatsapp_number: student.whatsapp_number,
             last_lesson: lastLesson || undefined,
+            total_lessons: total,
+            attendance_rate: total > 0 ? Math.round((present / total) * 100) : 0,
           };
         })
       );
@@ -170,7 +199,12 @@ export default function TeacherNazraDashboard() {
 
   const handleStudentClick = (student: StudentWithDetails) => {
     setSelectedStudent(student);
+    setDialogMode('profile');
     setIsMarkDialogOpen(true);
+  };
+
+  const switchToMarkMode = () => {
+    setDialogMode('mark');
   };
 
   return (
@@ -273,9 +307,12 @@ export default function TeacherNazraDashboard() {
           </CardContent>
         </Card>
 
-        {/* Mark Lesson Dialog */}
-        <Dialog open={isMarkDialogOpen} onOpenChange={setIsMarkDialogOpen}>
-          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        {/* Student Profile & Mark Lesson Dialog */}
+        <Dialog open={isMarkDialogOpen} onOpenChange={(open) => {
+          setIsMarkDialogOpen(open);
+          if (!open) setDialogMode('profile');
+        }}>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
@@ -283,153 +320,253 @@ export default function TeacherNazraDashboard() {
               </DialogTitle>
             </DialogHeader>
 
-            {/* Last Lesson Info */}
-            {selectedStudent?.last_lesson && (
-              <Card className="bg-muted/50">
-                <CardContent className="pt-4">
-                  <p className="text-sm font-medium mb-1">Last Lesson ({selectedStudent.last_lesson.class_date})</p>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedStudent.last_lesson.sabaq || selectedStudent.last_lesson.lesson_covered || 'No details'}
-                  </p>
-                  {selectedStudent.last_lesson.homework && (
-                    <p className="text-xs text-accent mt-1">
-                      Homework: {selectedStudent.last_lesson.homework}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+            <Tabs value={dialogMode} onValueChange={(v) => setDialogMode(v as DialogMode)}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="profile">Profile</TabsTrigger>
+                <TabsTrigger value="mark">Mark Lesson</TabsTrigger>
+              </TabsList>
 
-            <div className="space-y-4 pt-2">
-              {/* Date & Time */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* Profile Tab */}
+              <TabsContent value="profile" className="space-y-4">
+                {/* Student Info Card */}
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="p-4 bg-primary/10 rounded-full">
+                        <User className="h-8 w-8 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold">{selectedStudent?.full_name}</h3>
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
+                          {selectedStudent?.age && <span>Age: {selectedStudent.age}</span>}
+                          {selectedStudent?.gender && <span className="capitalize">• {selectedStudent.gender}</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Contact Info */}
+                    <div className="space-y-2 border-t pt-4">
+                      {selectedStudent?.email && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Mail className="h-4 w-4 text-muted-foreground" />
+                          <span>{selectedStudent.email}</span>
+                        </div>
+                      )}
+                      {selectedStudent?.whatsapp_number && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Phone className="h-4 w-4 text-muted-foreground" />
+                          <span>{selectedStudent.whatsapp_number}</span>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Stats */}
+                <div className="grid grid-cols-2 gap-4">
+                  <Card>
+                    <CardContent className="pt-4">
+                      <div className="flex items-center gap-2">
+                        <BookOpen className="h-5 w-5 text-primary" />
+                        <div>
+                          <p className="text-2xl font-bold">{selectedStudent?.total_lessons || 0}</p>
+                          <p className="text-xs text-muted-foreground">Total Lessons</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-4">
+                      <div className="flex items-center gap-2">
+                        <BarChart3 className="h-5 w-5 text-emerald-light" />
+                        <div>
+                          <p className="text-2xl font-bold">{selectedStudent?.attendance_rate || 0}%</p>
+                          <p className="text-xs text-muted-foreground">Attendance</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Last Lesson */}
+                {selectedStudent?.last_lesson && (
+                  <Card className="bg-muted/50">
+                    <CardContent className="pt-4">
+                      <p className="text-sm font-medium mb-1 flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        Last Lesson ({selectedStudent.last_lesson.class_date})
+                      </p>
+                      <p className="text-sm text-foreground">
+                        {selectedStudent.last_lesson.sabaq || selectedStudent.last_lesson.lesson_covered || 'No details'}
+                      </p>
+                      {selectedStudent.last_lesson.homework && (
+                        <p className="text-xs text-accent mt-2">
+                          📝 Homework: {selectedStudent.last_lesson.homework}
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Mark Lesson Button */}
+                <Button 
+                  className="w-full h-14 text-lg btn-primary-glow" 
+                  onClick={switchToMarkMode}
+                >
+                  <BookOpen className="h-5 w-5 mr-2" />
+                  Mark Today's Lesson
+                </Button>
+              </TabsContent>
+
+              {/* Mark Lesson Tab */}
+              <TabsContent value="mark" className="space-y-4">
+                {/* Last Lesson Info */}
+                {selectedStudent?.last_lesson && (
+                  <Card className="bg-muted/50">
+                    <CardContent className="pt-4">
+                      <p className="text-sm font-medium mb-1">Previous Lesson ({selectedStudent.last_lesson.class_date})</p>
+                      <p className="text-sm text-muted-foreground">
+                        {selectedStudent.last_lesson.sabaq || selectedStudent.last_lesson.lesson_covered || 'No details'}
+                      </p>
+                      {selectedStudent.last_lesson.homework && (
+                        <p className="text-xs text-accent mt-1">
+                          Homework: {selectedStudent.last_lesson.homework}
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Date & Time */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Date</Label>
+                    <Input
+                      type="date"
+                      value={classDate}
+                      onChange={(e) => setClassDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Time</Label>
+                    <Input
+                      type="time"
+                      value={classTime}
+                      onChange={(e) => setClassTime(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Status - Large Buttons for Mobile */}
                 <div className="space-y-2">
-                  <Label>Date</Label>
-                  <Input
-                    type="date"
-                    value={classDate}
-                    onChange={(e) => setClassDate(e.target.value)}
-                  />
+                  <Label>Status *</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Button
+                      type="button"
+                      variant={status === 'present' ? 'default' : 'outline'}
+                      className={cn(
+                        "h-14 flex-col gap-1",
+                        status === 'present' && "bg-emerald-light hover:bg-emerald-light/90"
+                      )}
+                      onClick={() => setStatus('present')}
+                    >
+                      <CheckCircle className="h-5 w-5" />
+                      <span className="text-xs">Present</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={status === 'absent' ? 'default' : 'outline'}
+                      className={cn(
+                        "h-14 flex-col gap-1",
+                        status === 'absent' && "bg-destructive hover:bg-destructive/90"
+                      )}
+                      onClick={() => setStatus('absent')}
+                    >
+                      <XCircle className="h-5 w-5" />
+                      <span className="text-xs">Absent</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={status === 'late' ? 'default' : 'outline'}
+                      className={cn(
+                        "h-14 flex-col gap-1",
+                        status === 'late' && "bg-accent hover:bg-accent/90"
+                      )}
+                      onClick={() => setStatus('late')}
+                    >
+                      <Clock className="h-5 w-5" />
+                      <span className="text-xs">Late</span>
+                    </Button>
+                  </div>
                 </div>
+
+                {/* Sabaq (New Lesson) */}
                 <div className="space-y-2">
-                  <Label>Time</Label>
-                  <Input
-                    type="time"
-                    value={classTime}
-                    onChange={(e) => setClassTime(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              {/* Status - Large Buttons for Mobile */}
-              <div className="space-y-2">
-                <Label>Status *</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  <Button
-                    type="button"
-                    variant={status === 'present' ? 'default' : 'outline'}
-                    className={cn(
-                      "h-14 flex-col gap-1",
-                      status === 'present' && "bg-emerald-light hover:bg-emerald-light/90"
-                    )}
-                    onClick={() => setStatus('present')}
-                  >
-                    <CheckCircle className="h-5 w-5" />
-                    <span className="text-xs">Present</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={status === 'absent' ? 'default' : 'outline'}
-                    className={cn(
-                      "h-14 flex-col gap-1",
-                      status === 'absent' && "bg-destructive hover:bg-destructive/90"
-                    )}
-                    onClick={() => setStatus('absent')}
-                  >
-                    <XCircle className="h-5 w-5" />
-                    <span className="text-xs">Absent</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={status === 'late' ? 'default' : 'outline'}
-                    className={cn(
-                      "h-14 flex-col gap-1",
-                      status === 'late' && "bg-accent hover:bg-accent/90"
-                    )}
-                    onClick={() => setStatus('late')}
-                  >
-                    <Clock className="h-5 w-5" />
-                    <span className="text-xs">Late</span>
-                  </Button>
-                </div>
-              </div>
-
-              {/* Sabaq (New Lesson) */}
-              <div className="space-y-2">
-                <Label>Sabaq (New Lesson)</Label>
-                <Textarea
-                  value={sabaq}
-                  onChange={(e) => setSabaq(e.target.value)}
-                  placeholder="e.g., Surah Al-Fatiha, Ayah 1-7"
-                  rows={2}
-                />
-              </div>
-
-              {/* Revision Toggle */}
-              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                <div>
-                  <Label className="font-medium">Revision Done?</Label>
-                  <p className="text-sm text-muted-foreground">Sabqi/Manzil completed</p>
-                </div>
-                <Switch
-                  checked={revisionDone}
-                  onCheckedChange={setRevisionDone}
-                />
-              </div>
-
-              {/* Revision Notes (shown when revision is done) */}
-              {revisionDone && (
-                <div className="space-y-2">
-                  <Label>Revision Notes</Label>
+                  <Label>Sabaq (New Lesson)</Label>
                   <Textarea
-                    value={revisionNotes}
-                    onChange={(e) => setRevisionNotes(e.target.value)}
-                    placeholder="What was revised?"
+                    value={sabaq}
+                    onChange={(e) => setSabaq(e.target.value)}
+                    placeholder="e.g., Surah Al-Fatiha, Ayah 1-7"
                     rows={2}
                   />
                 </div>
-              )}
 
-              {/* Homework */}
-              <div className="space-y-2">
-                <Label>Homework / Notes for Parent</Label>
-                <Textarea
-                  value={homework}
-                  onChange={(e) => setHomework(e.target.value)}
-                  placeholder="Any homework or notes..."
-                  rows={2}
-                />
-              </div>
+                {/* Revision Toggle */}
+                <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                  <div>
+                    <Label className="font-medium">Revision Done?</Label>
+                    <p className="text-sm text-muted-foreground">Sabqi/Manzil completed</p>
+                  </div>
+                  <Switch
+                    checked={revisionDone}
+                    onCheckedChange={setRevisionDone}
+                  />
+                </div>
 
-              {/* Submit Button - Large for Mobile */}
-              <Button 
-                className="w-full h-14 text-lg btn-primary-glow" 
-                disabled={markLessonMutation.isPending}
-                onClick={() => markLessonMutation.mutate()}
-              >
-                {markLessonMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="h-5 w-5 mr-2" />
-                    Save Lesson
-                  </>
+                {/* Revision Notes (shown when revision is done) */}
+                {revisionDone && (
+                  <div className="space-y-2">
+                    <Label>Revision Notes</Label>
+                    <Textarea
+                      value={revisionNotes}
+                      onChange={(e) => setRevisionNotes(e.target.value)}
+                      placeholder="What was revised?"
+                      rows={2}
+                    />
+                  </div>
                 )}
-              </Button>
-            </div>
+
+                {/* Homework */}
+                <div className="space-y-2">
+                  <Label>Homework / Notes for Parent</Label>
+                  <Textarea
+                    value={homework}
+                    onChange={(e) => setHomework(e.target.value)}
+                    placeholder="Any homework or notes..."
+                    rows={2}
+                  />
+                </div>
+
+                {/* Submit Button - Large for Mobile */}
+                <Button 
+                  className="w-full h-14 text-lg btn-primary-glow" 
+                  disabled={markLessonMutation.isPending}
+                  onClick={() => markLessonMutation.mutate()}
+                >
+                  {markLessonMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="h-5 w-5 mr-2" />
+                      Save Lesson
+                    </>
+                  )}
+                </Button>
+              </TabsContent>
+            </Tabs>
           </DialogContent>
         </Dialog>
       </div>
