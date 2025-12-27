@@ -18,7 +18,22 @@ export default function Reports() {
   const isStudent = activeRole === 'student';
   const isParent = activeRole === 'parent';
 
-  // Fetch real data from attendance table
+  // Fetch parent's children IDs (for parent role)
+  const { data: childrenIds } = useQuery({
+    queryKey: ['parent-children-ids', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from('student_parent_links')
+        .select('student_id')
+        .eq('parent_id', user.id);
+      if (error) throw error;
+      return (data || []).map(d => d.student_id);
+    },
+    enabled: !!user?.id && isParent,
+  });
+
+  // Fetch real data from attendance table with explicit role-based filters
   const { data: reports, isLoading } = useQuery({
     queryKey: ['monthly-reports', selectedMonth, user?.id, activeRole],
     queryFn: async () => {
@@ -46,13 +61,17 @@ export default function Reports() {
         .lte('class_date', endDate)
         .order('class_date', { ascending: false });
 
-      // Apply RLS-compliant filters
+      // Apply explicit role-based filters (not relying on RLS for multi-role users)
       if (isStudent) {
         query = query.eq('student_id', user.id);
       } else if (isTeacher) {
         query = query.eq('teacher_id', user.id);
+      } else if (isParent && childrenIds && childrenIds.length > 0) {
+        query = query.in('student_id', childrenIds);
+      } else if (isParent && (!childrenIds || childrenIds.length === 0)) {
+        return [];
       }
-      // Admins see all via RLS
+      // Admins see all
 
       const { data, error } = await query;
       if (error) throw error;
@@ -82,7 +101,7 @@ export default function Reports() {
 
       return Object.values(groupedByStudent);
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && (isParent ? childrenIds !== undefined : true),
   });
 
   // Generate month options (last 6 months)
