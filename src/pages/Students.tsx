@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Mail, User, Loader2, AlertCircle, BookOpen, Clock, Target, CheckSquare } from 'lucide-react';
+import { Search, Mail, User, Loader2, AlertCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { QuickAttendanceDialog } from '@/components/students/QuickAttendanceDialog';
+import { StudentCard } from '@/components/students/StudentCard';
+import { StudentDetailDrawer } from '@/components/students/StudentDetailDrawer';
 
 interface Student {
   id: string;
@@ -32,6 +33,7 @@ interface TeacherStudent {
 export default function Students() {
   const [searchTerm, setSearchTerm] = useState('');
   const [quickAttendanceStudent, setQuickAttendanceStudent] = useState<TeacherStudent | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<TeacherStudent | null>(null);
   const { user, activeRole } = useAuth();
 
   // Determine role-based behavior
@@ -212,12 +214,6 @@ export default function Students() {
     return "View your academy's students";
   };
 
-  const formatSchedule = (day: string | null, time: string | null) => {
-    if (!day && !time) return null;
-    if (day && time) return `${day} @ ${time}`;
-    return day || time;
-  };
-
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
@@ -247,96 +243,34 @@ export default function Students() {
           </p>
         )}
 
-        {/* Table */}
-        <div className="bg-card rounded-xl border border-border overflow-hidden">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        {/* Content */}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : isTeacher ? (
+          // Teacher's Card Grid View
+          filteredTeacherStudents.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p className="text-lg font-medium">No students found</p>
+              <p className="text-sm mt-1">No students are assigned to you yet</p>
             </div>
-          ) : isTeacher ? (
-            // Teacher's enhanced view
-            filteredTeacherStudents.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="text-lg font-medium">No students found</p>
-                <p className="text-sm mt-1">No students are assigned to you yet</p>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="min-w-[180px]">Student</TableHead>
-                    <TableHead className="min-w-[100px]">Target</TableHead>
-                    <TableHead className="min-w-[140px]">Last Lesson</TableHead>
-                    <TableHead className="min-w-[120px]">Homework</TableHead>
-                    <TableHead className="w-[80px]">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredTeacherStudents.map((student) => (
-                    <TableRow key={student.id}>
-                      <TableCell>
-                        <div className="flex flex-col gap-0.5">
-                          <span className="font-medium text-sm">{student.full_name}</span>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            {student.subject_name && (
-                              <span className="flex items-center gap-1">
-                                <BookOpen className="h-3 w-3" />
-                                {student.subject_name}
-                              </span>
-                            )}
-                            {formatSchedule(student.schedule_day, student.schedule_time) && (
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {formatSchedule(student.schedule_day, student.schedule_time)}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="flex items-center gap-1 text-sm">
-                          <Target className="h-3 w-3 text-muted-foreground" />
-                          {student.daily_target_lines} {student.preferred_unit}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        {student.last_lesson ? (
-                          <span className="text-sm line-clamp-2" title={student.last_lesson}>
-                            {student.last_lesson}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {student.homework ? (
-                          <span className="text-sm line-clamp-2" title={student.homework}>
-                            {student.homework}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => setQuickAttendanceStudent(student)}
-                          className="gap-1 h-7 px-2 text-xs"
-                        >
-                          <CheckSquare className="h-3 w-3" />
-                          Mark
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )
           ) : (
-            // Admin/Parent view (original)
-            filteredStudents.length === 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filteredTeacherStudents.map((student) => (
+                <StudentCard
+                  key={student.id}
+                  student={student}
+                  onClick={() => setSelectedStudent(student)}
+                />
+              ))}
+            </div>
+          )
+        ) : (
+          // Admin/Parent Table View
+          <div className="bg-card rounded-xl border border-border overflow-hidden">
+            {filteredStudents.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p className="text-lg font-medium">No students found</p>
@@ -380,9 +314,20 @@ export default function Students() {
                   ))}
                 </TableBody>
               </Table>
-            )
-          )}
-        </div>
+            )}
+          </div>
+        )}
+
+        {/* Student Detail Drawer (for teachers) */}
+        {isTeacher && user?.id && (
+          <StudentDetailDrawer
+            open={!!selectedStudent}
+            onOpenChange={(open) => !open && setSelectedStudent(null)}
+            student={selectedStudent}
+            teacherId={user.id}
+            onMarkAttendance={() => setQuickAttendanceStudent(selectedStudent)}
+          />
+        )}
 
         {/* Quick Attendance Dialog */}
         {isTeacher && user?.id && (
