@@ -27,7 +27,9 @@ export type Database = {
           id: string
           input_unit: string | null
           lesson_covered: string | null
+          lesson_type: string | null
           lines_completed: number | null
+          manzil_completed: boolean | null
           manzil_notes: string | null
           progress_marker: string | null
           raw_input_amount: number | null
@@ -39,6 +41,8 @@ export type Database = {
           revision_done: boolean | null
           revision_notes: string | null
           sabaq: string | null
+          sabaq_pages: string | null
+          sabqi_notes: string | null
           status: string
           student_id: string
           surah_name: string | null
@@ -58,7 +62,9 @@ export type Database = {
           id?: string
           input_unit?: string | null
           lesson_covered?: string | null
+          lesson_type?: string | null
           lines_completed?: number | null
+          manzil_completed?: boolean | null
           manzil_notes?: string | null
           progress_marker?: string | null
           raw_input_amount?: number | null
@@ -70,6 +76,8 @@ export type Database = {
           revision_done?: boolean | null
           revision_notes?: string | null
           sabaq?: string | null
+          sabaq_pages?: string | null
+          sabqi_notes?: string | null
           status: string
           student_id: string
           surah_name?: string | null
@@ -89,7 +97,9 @@ export type Database = {
           id?: string
           input_unit?: string | null
           lesson_covered?: string | null
+          lesson_type?: string | null
           lines_completed?: number | null
+          manzil_completed?: boolean | null
           manzil_notes?: string | null
           progress_marker?: string | null
           raw_input_amount?: number | null
@@ -101,6 +111,8 @@ export type Database = {
           revision_done?: boolean | null
           revision_notes?: string | null
           sabaq?: string | null
+          sabaq_pages?: string | null
+          sabqi_notes?: string | null
           status?: string
           student_id?: string
           surah_name?: string | null
