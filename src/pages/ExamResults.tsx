@@ -364,6 +364,12 @@ export default function ExamResults() {
           <p className="text-muted-foreground mt-1">
             {isStudentOrParent ? 'View your exam results and progress' : 'View and filter exam results'}
           </p>
+          {/* Debug info - remove later */}
+          <div className="mt-2 p-2 bg-muted rounded text-xs text-muted-foreground">
+            Role: {activeRole} | Total exams: {(examResults ?? []).length} | Filtered: {filteredResults.length}
+            {isTeacher && ` | Assigned students: ${teacherStudentIds?.length ?? 0}`}
+            {activeRole === 'parent' && ` | Children: ${parentChildrenIds?.length ?? 0}`}
+          </div>
         </div>
 
         {/* Filters */}
