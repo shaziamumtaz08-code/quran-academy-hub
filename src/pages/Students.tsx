@@ -28,6 +28,8 @@ interface TeacherStudent {
   preferred_unit: string;
   last_lesson: string | null;
   homework: string | null;
+  age: number | null;
+  gender: string | null;
 }
 
 export default function Students() {
@@ -55,7 +57,7 @@ export default function Students() {
           schedule_day,
           schedule_time,
           student:profiles!student_teacher_assignments_student_id_fkey(
-            id, full_name, email, daily_target_lines, preferred_unit
+            id, full_name, email, daily_target_lines, preferred_unit, age, gender
           ),
           subject:subjects(name)
         `)
@@ -107,6 +109,8 @@ export default function Students() {
         preferred_unit: a.student?.preferred_unit || 'lines',
         last_lesson: latestAttendance.get(a.student_id)?.lesson || null,
         homework: latestAttendance.get(a.student_id)?.homework || null,
+        age: a.student?.age ?? null,
+        gender: a.student?.gender ?? null,
       })) as TeacherStudent[];
     },
     enabled: !!user?.id && isTeacher,
@@ -262,7 +266,8 @@ export default function Students() {
                 <StudentCard
                   key={student.id}
                   student={student}
-                  onClick={() => setSelectedStudent(student)}
+                  onViewSchedule={() => setSelectedStudent(student)}
+                  onMarkAttendance={() => setQuickAttendanceStudent(student)}
                 />
               ))}
             </div>
