@@ -28,6 +28,7 @@ export type Database = {
           input_unit: string | null
           lesson_covered: string | null
           lines_completed: number | null
+          manzil_notes: string | null
           progress_marker: string | null
           raw_input_amount: number | null
           reason: string | null
@@ -58,6 +59,7 @@ export type Database = {
           input_unit?: string | null
           lesson_covered?: string | null
           lines_completed?: number | null
+          manzil_notes?: string | null
           progress_marker?: string | null
           raw_input_amount?: number | null
           reason?: string | null
@@ -88,6 +90,7 @@ export type Database = {
           input_unit?: string | null
           lesson_covered?: string | null
           lines_completed?: number | null
+          manzil_notes?: string | null
           progress_marker?: string | null
           raw_input_amount?: number | null
           reason?: string | null

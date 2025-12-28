@@ -49,7 +49,7 @@ export function QuickAttendanceDialog({ open, onOpenChange, student, teacherId }
   const [homework, setHomework] = useState('');
   const [varianceReason, setVarianceReason] = useState('');
   const [absenceReason, setAbsenceReason] = useState('');
-
+  const [manzilNotes, setManzilNotes] = useState('');
   const dailyTarget = student?.daily_target_lines || 10;
   const linesNum = parseInt(linesCompleted) || 0;
   const needsVarianceReason = status === 'present' && linesNum > 0 && linesNum < dailyTarget;
@@ -71,6 +71,7 @@ export function QuickAttendanceDialog({ open, onOpenChange, student, teacherId }
     setHomework('');
     setVarianceReason('');
     setAbsenceReason('');
+    setManzilNotes('');
   };
 
   const markAttendance = useMutation({
@@ -103,6 +104,7 @@ export function QuickAttendanceDialog({ open, onOpenChange, student, teacherId }
         variance_reason: needsVarianceReason ? varianceReason : null,
         reason: status === 'student_absent' ? absenceReason : null,
         input_unit: student.preferred_unit || 'lines',
+        manzil_notes: manzilNotes || null,
       });
 
       if (error) throw error;
@@ -235,6 +237,17 @@ export function QuickAttendanceDialog({ open, onOpenChange, student, teacherId }
                   placeholder="Enter homework assignment..."
                   value={homework}
                   onChange={(e) => setHomework(e.target.value)}
+                  className="min-h-[60px]"
+                />
+              </div>
+
+              {/* Manzil Notes */}
+              <div className="space-y-2">
+                <Label>Manzil Notes</Label>
+                <Textarea 
+                  placeholder="Enter manzil/revision notes..."
+                  value={manzilNotes}
+                  onChange={(e) => setManzilNotes(e.target.value)}
                   className="min-h-[60px]"
                 />
               </div>
