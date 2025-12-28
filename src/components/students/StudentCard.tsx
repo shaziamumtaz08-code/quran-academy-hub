@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { BookOpen, Target, User, Calendar, Clock, History } from 'lucide-react';
+import { BookOpen, Target, User, Calendar, Clock, BookMarked } from 'lucide-react';
 
 interface StudentCardProps {
   student: {
@@ -24,11 +24,6 @@ interface StudentCardProps {
 }
 
 export function StudentCard({ student, onViewSchedule, onMarkAttendance }: StudentCardProps) {
-  const getGenderLabel = (gender: string | null) => {
-    if (!gender) return 'Not set';
-    return gender.charAt(0).toUpperCase() + gender.slice(1);
-  };
-
   // Check if today matches the schedule day
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
   const isClassToday = student.schedule_day?.toLowerCase() === today.toLowerCase();
@@ -39,88 +34,108 @@ export function StudentCard({ student, onViewSchedule, onMarkAttendance }: Stude
     return `${time} (PK)`;
   };
 
+  // Check if we have any info to display
+  const hasAge = student.age !== null && student.age !== undefined;
+  const hasGender = student.gender !== null && student.gender !== undefined && student.gender !== '';
+  const hasTarget = student.daily_target_lines > 0;
+  const hasInfoRow = hasAge || hasGender || hasTarget;
+
   return (
-    <Card className="hover:border-sky/50 hover:shadow-lg transition-all duration-200 group flex flex-col border-l-4 border-l-navy dark:border-l-sky min-h-[320px] sm:min-h-[300px]">
-      <CardContent className="p-4 sm:p-5 flex flex-col flex-1">
-        {/* Header: Avatar + Name + Subject Badge */}
-        <div className="flex items-start gap-3">
-          <div className="h-12 w-12 rounded-full bg-gradient-to-br from-navy to-navy-light dark:from-sky dark:to-sky-dark flex items-center justify-center flex-shrink-0 shadow-md">
-            <User className="h-6 w-6 text-white" />
-          </div>
+    <Card className="hover:border-sky/50 hover:shadow-lg transition-all duration-200 group flex flex-col border-l-4 border-l-navy dark:border-l-sky overflow-hidden">
+      <CardContent className="p-4 flex flex-col flex-1 min-h-0">
+        {/* Header: Name + Subject (Left) | History Icon (Right) */}
+        <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-base truncate text-navy dark:text-sky-light group-hover:text-sky transition-colors">
+            <h3 className="font-semibold text-lg leading-tight truncate text-navy dark:text-sky-light">
               {student.full_name}
             </h3>
-            <div className="flex flex-wrap gap-1.5 mt-1">
-              {student.subject_name && (
-                <Badge className="text-xs font-normal gap-1 bg-sky/10 text-sky-dark dark:bg-sky/20 dark:text-sky-light border-0">
-                  <BookOpen className="h-3 w-3" />
-                  {student.subject_name}
-                </Badge>
-              )}
-            </div>
+            {student.subject_name && (
+              <Badge className="text-xs font-normal gap-1 mt-1.5 bg-sky/10 text-sky-dark dark:bg-sky/20 dark:text-sky-light border-0">
+                <BookOpen className="h-3 w-3" />
+                {student.subject_name}
+              </Badge>
+            )}
           </div>
+          
+          {/* Large History Button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onViewSchedule();
+            }}
+            className="flex-shrink-0 h-14 w-14 rounded-xl bg-gradient-to-br from-navy to-navy-light dark:from-sky dark:to-sky-dark flex items-center justify-center shadow-md hover:shadow-lg hover:scale-105 transition-all"
+            title="View Full Schedule & History"
+          >
+            <BookMarked className="h-7 w-7 text-white" />
+          </button>
         </div>
 
-        {/* Today's Class Time */}
+        {/* Today's Class Time - Only show if class is today */}
         {isClassToday && student.schedule_time && (
           <div className="mt-3 p-2 rounded-md bg-gradient-to-r from-sky/20 to-sky/10 dark:from-sky/30 dark:to-sky/20 border border-sky/30">
             <div className="flex items-center gap-2 text-sm font-medium text-navy dark:text-sky-light">
               <Clock className="h-4 w-4 text-sky" />
-              <span>Today's Class: {formatTimeWithTZ(student.schedule_time)}</span>
+              <span>Today: {formatTimeWithTZ(student.schedule_time)}</span>
             </div>
           </div>
         )}
 
-        {/* Info Row: Age, Gender, Target */}
-        <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground flex-wrap bg-cream dark:bg-navy-dark/50 p-2 rounded-md">
-          <span className="flex items-center gap-1 font-medium">
-            <User className="h-3 w-3 text-navy dark:text-sky" />
-            {student.age ? `${student.age} Yrs` : 'Age N/A'}
-          </span>
-          <span className="text-navy/30 dark:text-sky/30">•</span>
-          <span className="font-medium">{getGenderLabel(student.gender)}</span>
-          <span className="text-navy/30 dark:text-sky/30">•</span>
-          <span className="flex items-center gap-1 font-medium">
-            <Target className="h-3 w-3 text-sky" />
-            {student.daily_target_lines} {student.preferred_unit}/day
-          </span>
-        </div>
-
-        {/* History Section: Last Lesson - Sky Blue Accent */}
-        <div className="mt-3 p-3 rounded-lg bg-gradient-to-br from-sky/15 to-sky/5 dark:from-sky/25 dark:to-sky/10 border border-sky/20">
-          <div className="flex items-center gap-1.5 mb-1">
-            <History className="h-3.5 w-3.5 text-sky" />
-            <p className="text-xs font-semibold text-navy dark:text-sky-light">Last Lesson:</p>
+        {/* Info Row - Only render if we have data */}
+        {hasInfoRow && (
+          <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground flex-wrap bg-cream dark:bg-navy-dark/50 p-2 rounded-md">
+            {hasAge && (
+              <>
+                <span className="flex items-center gap-1 font-medium">
+                  <User className="h-3 w-3 text-navy dark:text-sky" />
+                  {student.age} Yrs
+                </span>
+                {(hasGender || hasTarget) && <span className="text-navy/30 dark:text-sky/30">•</span>}
+              </>
+            )}
+            {hasGender && (
+              <>
+                <span className="font-medium capitalize">{student.gender}</span>
+                {hasTarget && <span className="text-navy/30 dark:text-sky/30">•</span>}
+              </>
+            )}
+            {hasTarget && (
+              <span className="flex items-center gap-1 font-medium">
+                <Target className="h-3 w-3 text-sky" />
+                {student.daily_target_lines} {student.preferred_unit}/day
+              </span>
+            )}
           </div>
-          <p className="text-sm text-foreground line-clamp-2 pl-5">
+        )}
+
+        {/* Last Lesson Box */}
+        <div className="mt-3 p-3 rounded-lg bg-gradient-to-br from-sky/15 to-sky/5 dark:from-sky/25 dark:to-sky/10 border border-sky/20 flex-1">
+          <p className="text-xs font-semibold text-navy dark:text-sky-light mb-1">Last Lesson:</p>
+          <p className="text-sm text-foreground line-clamp-3">
             {student.last_lesson || 'No lesson recorded yet'}
           </p>
         </div>
 
-        {/* Footer: Action Buttons */}
-        <div className="mt-auto pt-4 flex gap-2">
+        {/* Footer: Action Buttons - Properly contained */}
+        <div className="flex gap-2.5 pt-4 mt-auto">
           <Button
             variant="outline"
-            size="lg"
-            className="flex-1 h-14 text-base border-navy/20 dark:border-sky/20 hover:bg-cream dark:hover:bg-navy-light/20 hover:border-navy dark:hover:border-sky"
+            className="flex-1 h-12 text-sm border-navy/20 dark:border-sky/20 hover:bg-cream dark:hover:bg-navy-light/20"
             onClick={(e) => {
               e.stopPropagation();
               onViewSchedule();
             }}
           >
-            <Calendar className="h-5 w-5 mr-2 text-navy dark:text-sky" />
+            <Calendar className="h-4 w-4 mr-1.5 text-navy dark:text-sky" />
             Schedule
           </Button>
           <Button
-            size="lg"
-            className="flex-1 h-14 text-base bg-gradient-to-r from-navy to-navy-light dark:from-sky dark:to-sky-dark hover:from-navy-dark hover:to-navy dark:hover:from-sky-dark dark:hover:to-sky shadow-md"
+            className="flex-1 h-12 text-sm bg-gradient-to-r from-navy to-navy-light dark:from-sky dark:to-sky-dark"
             onClick={(e) => {
               e.stopPropagation();
               onMarkAttendance();
             }}
           >
-            <Clock className="h-5 w-5 mr-2" />
+            <Clock className="h-4 w-4 mr-1.5" />
             Mark
           </Button>
         </div>
