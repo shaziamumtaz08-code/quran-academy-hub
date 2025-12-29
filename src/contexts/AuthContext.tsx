@@ -240,6 +240,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    // Clear stored email history on logout for privacy
+    try {
+      localStorage.removeItem('lms_recent_emails');
+    } catch {
+      // Ignore storage errors
+    }
+    
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
