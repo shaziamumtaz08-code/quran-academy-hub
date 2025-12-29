@@ -940,7 +940,7 @@ export type Database = {
         | "admin_admissions"
         | "admin_fees"
         | "admin_academic"
-      exam_tenure: "weekly" | "monthly" | "quarterly"
+      exam_tenure: "weekly" | "monthly" | "quarterly" | "yearly"
       permission_type:
         | "users.view"
         | "users.create"
@@ -1118,7 +1118,7 @@ export const Constants = {
         "admin_fees",
         "admin_academic",
       ],
-      exam_tenure: ["weekly", "monthly", "quarterly"],
+      exam_tenure: ["weekly", "monthly", "quarterly", "yearly"],
       permission_type: [
         "users.view",
         "users.create",

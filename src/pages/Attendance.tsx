@@ -20,7 +20,7 @@ import { SurahSearchSelect } from '@/components/attendance/SurahSearchSelect';
 import { UnitInputSelector } from '@/components/attendance/UnitInputSelector';
 import { type LearningUnit, type MushafType, convertToLines, LEARNING_UNITS } from '@/lib/quranData';
 
-type AttendanceStatus = 'present' | 'student_absent' | 'teacher_absent' | 'teacher_leave' | 'rescheduled' | 'holiday';
+type AttendanceStatus = 'present' | 'student_absent' | 'teacher_absent' | 'teacher_leave' | 'rescheduled' | 'student_rescheduled' | 'holiday';
 type ReasonCategory = 'sick' | 'personal' | 'emergency' | 'internet_issue' | 'other';
 type VarianceReason = 'slow_pace' | 'lack_of_revision' | 'technical_issues' | 'student_late' | 'short_verses';
 
@@ -68,10 +68,11 @@ interface Profile {
 
 const STATUS_OPTIONS: { value: AttendanceStatus; label: string }[] = [
   { value: 'present', label: 'Present' },
-  { value: 'student_absent', label: 'Student Absent' },
+  { value: 'student_absent', label: 'Absent' },
+  { value: 'teacher_leave', label: 'Leave' },
   { value: 'teacher_absent', label: 'Teacher Absent' },
-  { value: 'teacher_leave', label: 'Teacher Leave' },
-  { value: 'rescheduled', label: 'Rescheduled' },
+  { value: 'rescheduled', label: 'Rescheduled by the Teacher' },
+  { value: 'student_rescheduled', label: 'Rescheduled by the Student' },
   { value: 'holiday', label: 'Holiday' },
 ];
 
@@ -262,7 +263,8 @@ export default function Attendance() {
 
       const { data, error } = await query;
       if (error) throw error;
-      return (data || []) as AttendanceRecord[];
+      // Filter out ghost data (records where student profile no longer exists)
+      return ((data || []) as AttendanceRecord[]).filter(record => record.student?.full_name);
     },
     enabled: !!user?.id && (activeRole !== 'parent' || (childrenIds !== undefined)),
   });
