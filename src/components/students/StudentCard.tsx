@@ -19,11 +19,12 @@ interface StudentCardProps {
     age: number | null;
     gender: string | null;
   };
+  onViewHistory: () => void;
   onViewSchedule: () => void;
   onMarkAttendance: () => void;
 }
 
-export function StudentCard({ student, onViewSchedule, onMarkAttendance }: StudentCardProps) {
+export function StudentCard({ student, onViewHistory, onViewSchedule, onMarkAttendance }: StudentCardProps) {
   // Check if today matches the schedule day
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
   const isClassToday = student.schedule_day?.toLowerCase() === today.toLowerCase();
@@ -57,14 +58,14 @@ export function StudentCard({ student, onViewSchedule, onMarkAttendance }: Stude
             )}
           </div>
           
-          {/* Large History Button */}
+          {/* Large History Button (Book icon) */}
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onViewSchedule();
+              onViewHistory();
             }}
             className="flex-shrink-0 h-14 w-14 rounded-xl bg-gradient-to-br from-navy to-navy-light dark:from-sky dark:to-sky-dark flex items-center justify-center shadow-md hover:shadow-lg hover:scale-105 transition-all"
-            title="View Full Schedule & History"
+            title="View Lesson History"
           >
             <BookMarked className="h-7 w-7 text-white" />
           </button>

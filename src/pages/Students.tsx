@@ -9,6 +9,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { QuickAttendanceDialog } from '@/components/students/QuickAttendanceDialog';
 import { StudentCard } from '@/components/students/StudentCard';
 import { StudentDetailDrawer } from '@/components/students/StudentDetailDrawer';
+import { StudentHistoryDialog } from '@/components/students/StudentHistoryDialog';
+import { StudentScheduleDialog } from '@/components/students/StudentScheduleDialog';
 
 interface Student {
   id: string;
@@ -36,6 +38,8 @@ export default function Students() {
   const [searchTerm, setSearchTerm] = useState('');
   const [quickAttendanceStudent, setQuickAttendanceStudent] = useState<TeacherStudent | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<TeacherStudent | null>(null);
+  const [historyStudent, setHistoryStudent] = useState<TeacherStudent | null>(null);
+  const [scheduleStudent, setScheduleStudent] = useState<TeacherStudent | null>(null);
   const { user, activeRole } = useAuth();
 
   // Determine role-based behavior
@@ -266,7 +270,8 @@ export default function Students() {
                 <StudentCard
                   key={student.id}
                   student={student}
-                  onViewSchedule={() => setSelectedStudent(student)}
+                  onViewHistory={() => setHistoryStudent(student)}
+                  onViewSchedule={() => setScheduleStudent(student)}
                   onMarkAttendance={() => setQuickAttendanceStudent(student)}
                 />
               ))}
@@ -341,6 +346,26 @@ export default function Students() {
             onOpenChange={(open) => !open && setQuickAttendanceStudent(null)}
             student={quickAttendanceStudent}
             teacherId={user.id}
+          />
+        )}
+
+        {/* Student History Dialog (Book Icon) */}
+        {isTeacher && historyStudent && (
+          <StudentHistoryDialog
+            open={!!historyStudent}
+            onOpenChange={(open) => !open && setHistoryStudent(null)}
+            studentId={historyStudent.id}
+            studentName={historyStudent.full_name}
+          />
+        )}
+
+        {/* Student Schedule Dialog (Calendar Icon) */}
+        {isTeacher && scheduleStudent && (
+          <StudentScheduleDialog
+            open={!!scheduleStudent}
+            onOpenChange={(open) => !open && setScheduleStudent(null)}
+            studentId={scheduleStudent.id}
+            studentName={scheduleStudent.full_name}
           />
         )}
       </div>
