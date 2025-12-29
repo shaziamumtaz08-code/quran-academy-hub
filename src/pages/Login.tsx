@@ -14,12 +14,13 @@ const loginSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
+// Use sessionStorage instead of localStorage for recent emails (clears on browser close)
 const RECENT_EMAILS_KEY = 'lms_recent_emails';
-const MAX_RECENT_EMAILS = 5;
+const MAX_RECENT_EMAILS = 3; // Reduced for privacy
 
 const getRecentEmails = (): string[] => {
   try {
-    const stored = localStorage.getItem(RECENT_EMAILS_KEY);
+    const stored = sessionStorage.getItem(RECENT_EMAILS_KEY);
     return stored ? JSON.parse(stored) : [];
   } catch {
     return [];
@@ -30,7 +31,15 @@ const saveRecentEmail = (email: string) => {
   try {
     const emails = getRecentEmails().filter(e => e !== email);
     emails.unshift(email);
-    localStorage.setItem(RECENT_EMAILS_KEY, JSON.stringify(emails.slice(0, MAX_RECENT_EMAILS)));
+    sessionStorage.setItem(RECENT_EMAILS_KEY, JSON.stringify(emails.slice(0, MAX_RECENT_EMAILS)));
+  } catch {
+    // Ignore storage errors
+  }
+};
+
+const clearRecentEmails = () => {
+  try {
+    sessionStorage.removeItem(RECENT_EMAILS_KEY);
   } catch {
     // Ignore storage errors
   }
@@ -122,7 +131,7 @@ export default function Login() {
     e.stopPropagation();
     const updated = recentEmails.filter(e => e !== emailToRemove);
     setRecentEmails(updated);
-    localStorage.setItem(RECENT_EMAILS_KEY, JSON.stringify(updated));
+    sessionStorage.setItem(RECENT_EMAILS_KEY, JSON.stringify(updated));
   };
 
   return (
