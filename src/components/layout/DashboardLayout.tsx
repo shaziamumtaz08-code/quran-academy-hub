@@ -80,16 +80,16 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     // Super admin sees everything
     if (activeRole === 'super_admin') return true;
     
-    // Check if current active role is in required roles
-    if (item.roles && activeRole) {
-      if (item.roles.includes(activeRole)) return true;
-    }
-    
-    // Check permissions
-    if (item.permission && hasPermission(item.permission)) return true;
-    
     // Allow dashboard access for all authenticated users
     if (item.href === '/dashboard') return true;
+    
+    // Check if current active role is in required roles
+    if (item.roles && activeRole && item.roles.includes(activeRole)) {
+      return true;
+    }
+    
+    // Check permissions (only if no specific roles are defined)
+    if (item.permission && hasPermission(item.permission)) return true;
     
     return false;
   });
