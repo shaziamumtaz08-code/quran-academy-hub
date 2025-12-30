@@ -116,6 +116,31 @@ function AdminOrExaminerOrTeacherRoute({ children }: { children: React.ReactNode
   return <>{children}</>;
 }
 
+// Admin or Teacher route (for monthly planning)
+function AdminOrTeacherRoute({ children }: { children: React.ReactNode }) {
+  const { activeRole, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+      </div>
+    );
+  }
+
+  const allowed =
+    activeRole === 'super_admin' ||
+    activeRole === 'admin' ||
+    activeRole?.startsWith('admin_') ||
+    activeRole === 'teacher';
+
+  if (!allowed) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+}
+
 // Teacher only route - uses activeRole
 function TeacherRoute({ children }: { children: React.ReactNode }) {
   const { activeRole, isLoading } = useAuth();
@@ -177,7 +202,7 @@ function AppRoutes() {
       <Route path="/kpi" element={<ProtectedRoute><KPI /></ProtectedRoute>} />
       {/* Admin-only routes */}
       <Route path="/schedules" element={<ProtectedRoute><AdminRoute><Schedules /></AdminRoute></ProtectedRoute>} />
-      <Route path="/monthly-planning" element={<ProtectedRoute><AdminRoute><MonthlyPlanning /></AdminRoute></ProtectedRoute>} />
+      <Route path="/monthly-planning" element={<ProtectedRoute><AdminOrTeacherRoute><MonthlyPlanning /></AdminOrTeacherRoute></ProtectedRoute>} />
       {/* Admin/Examiner exam pages */}
       <Route path="/exam-templates" element={<ProtectedRoute><AdminOrExaminerRoute><ExamTemplates /></AdminOrExaminerRoute></ProtectedRoute>} />
       <Route path="/exam-submission" element={<ProtectedRoute><AdminOrExaminerRoute><ExamSubmission /></AdminOrExaminerRoute></ProtectedRoute>} />
