@@ -13,7 +13,7 @@ import { format } from 'date-fns';
 import { CheckCircle, XCircle, Loader2, BookOpen, HandHelping, Brain } from 'lucide-react';
 import { SurahSearchSelect } from '@/components/attendance/SurahSearchSelect';
 
-type AttendanceStatus = 'present' | 'student_absent';
+type AttendanceStatus = 'present' | 'student_absent' | 'teacher_absent' | 'teacher_leave' | 'rescheduled' | 'student_rescheduled' | 'holiday';
 type LessonType = 'qaida' | 'nazra' | 'hifz';
 
 interface QuickAttendanceDialogProps {
