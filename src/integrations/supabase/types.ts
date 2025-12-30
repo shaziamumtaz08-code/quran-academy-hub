@@ -690,48 +690,75 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
+          ayah_from: number | null
+          ayah_to: number | null
           created_at: string
           daily_target: number
+          goals: string | null
           id: string
           month: string
           monthly_target: number
           notes: string | null
+          page_from: number | null
+          page_to: number | null
           primary_marker: Database["public"]["Enums"]["primary_marker"]
+          resource_name: string | null
           status: Database["public"]["Enums"]["plan_status"]
           student_id: string
+          subject_id: string | null
+          surah_name: string | null
           teacher_id: string
+          topics_to_cover: string | null
           updated_at: string
           year: string
         }
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
+          ayah_from?: number | null
+          ayah_to?: number | null
           created_at?: string
           daily_target?: number
+          goals?: string | null
           id?: string
           month: string
           monthly_target?: number
           notes?: string | null
+          page_from?: number | null
+          page_to?: number | null
           primary_marker?: Database["public"]["Enums"]["primary_marker"]
+          resource_name?: string | null
           status?: Database["public"]["Enums"]["plan_status"]
           student_id: string
+          subject_id?: string | null
+          surah_name?: string | null
           teacher_id: string
+          topics_to_cover?: string | null
           updated_at?: string
           year: string
         }
         Update: {
           approved_at?: string | null
           approved_by?: string | null
+          ayah_from?: number | null
+          ayah_to?: number | null
           created_at?: string
           daily_target?: number
+          goals?: string | null
           id?: string
           month?: string
           monthly_target?: number
           notes?: string | null
+          page_from?: number | null
+          page_to?: number | null
           primary_marker?: Database["public"]["Enums"]["primary_marker"]
+          resource_name?: string | null
           status?: Database["public"]["Enums"]["plan_status"]
           student_id?: string
+          subject_id?: string | null
+          surah_name?: string | null
           teacher_id?: string
+          topics_to_cover?: string | null
           updated_at?: string
           year?: string
         }
@@ -748,6 +775,13 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_monthly_plans_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
             referencedColumns: ["id"]
           },
           {
