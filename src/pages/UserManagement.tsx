@@ -151,20 +151,8 @@ export default function UserManagement() {
   const [editPassword, setEditPassword] = useState('');
   const [showEditPassword, setShowEditPassword] = useState(false);
 
-  // Check access
-  if (!isSuperAdmin && !hasPermission('users.view')) {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <Shield className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-foreground mb-2">Access Denied</h2>
-            <p className="text-muted-foreground">You don't have permission to access user management.</p>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
+  // Check access permission
+  const canAccessPage = isSuperAdmin || hasPermission('users.view');
 
   // Fetch users with profiles and ALL roles
   const { data: users, isLoading: usersLoading, error: usersError, refetch } = useQuery({
@@ -475,6 +463,21 @@ export default function UserManagement() {
     const userRoles = user.roles || [];
     return allRoles.filter(role => !userRoles.includes(role));
   };
+
+  // Access denied - render after all hooks are called
+  if (!canAccessPage) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <Shield className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-foreground mb-2">Access Denied</h2>
+            <p className="text-muted-foreground">You don't have permission to access user management.</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
