@@ -10,11 +10,19 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
-import { CheckCircle, XCircle, Loader2, BookOpen, HandHelping, Brain } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, BookOpen, HandHelping, Brain, GraduationCap } from 'lucide-react';
 import { SurahSearchSelect } from '@/components/attendance/SurahSearchSelect';
 
 type AttendanceStatus = 'present' | 'student_absent' | 'teacher_absent' | 'teacher_leave' | 'rescheduled' | 'student_rescheduled' | 'holiday';
-type LessonType = 'qaida' | 'nazra' | 'hifz';
+type LessonType = 'qaida' | 'nazra' | 'hifz' | 'academic';
+
+// Quran-related subjects (case-insensitive matching)
+const QURAN_SUBJECTS = ['hifz', 'nazra', 'nazrah', 'qaida'];
+
+const isQuranSubject = (subjectName?: string | null): boolean => {
+  if (!subjectName) return true; // Default to Quran fields if no subject
+  return QURAN_SUBJECTS.some(s => subjectName.toLowerCase().includes(s.toLowerCase()));
+};
 
 interface QuickAttendanceDialogProps {
   open: boolean;
@@ -24,6 +32,7 @@ interface QuickAttendanceDialogProps {
     full_name: string;
     daily_target_lines: number;
     preferred_unit: string;
+    subject_name?: string | null;
   } | null;
   teacherId: string;
 }
@@ -45,6 +54,9 @@ const LESSON_TYPES: { value: LessonType; label: string; icon: React.ReactNode }[
 export function QuickAttendanceDialog({ open, onOpenChange, student, teacherId }: QuickAttendanceDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Determine if this is a Quran subject
+  const isQuran = isQuranSubject(student?.subject_name);
 
   // Form state
   const [status, setStatus] = useState<AttendanceStatus>('present');
@@ -69,6 +81,10 @@ export function QuickAttendanceDialog({ open, onOpenChange, student, teacherId }
   const [manzilNotes, setManzilNotes] = useState('');
   const [manzilCompleted, setManzilCompleted] = useState(false);
   
+  // Academic subject fields
+  const [topicPagesCovered, setTopicPagesCovered] = useState('');
+  const [lessonDetails, setLessonDetails] = useState('');
+  
   // Common fields
   const [homework, setHomework] = useState('');
   const [varianceReason, setVarianceReason] = useState('');
@@ -76,7 +92,7 @@ export function QuickAttendanceDialog({ open, onOpenChange, student, teacherId }
   
   const dailyTarget = student?.daily_target_lines || 10;
   const linesNum = parseInt(linesCompleted) || 0;
-  const needsVarianceReason = status === 'present' && lessonType === 'nazra' && linesNum > 0 && linesNum < dailyTarget;
+  const needsVarianceReason = status === 'present' && isQuran && lessonType === 'nazra' && linesNum > 0 && linesNum < dailyTarget;
 
   const isFormValid = useMemo(() => {
     if (status === 'student_absent') return true;
@@ -100,6 +116,8 @@ export function QuickAttendanceDialog({ open, onOpenChange, student, teacherId }
     setSabqiNotes('');
     setManzilNotes('');
     setManzilCompleted(false);
+    setTopicPagesCovered('');
+    setLessonDetails('');
     setHomework('');
     setVarianceReason('');
     setAbsenceReason('');
@@ -109,13 +127,20 @@ export function QuickAttendanceDialog({ open, onOpenChange, student, teacherId }
     mutationFn: async () => {
       if (!student || !teacherId) throw new Error('Missing data');
 
-      // Build lesson_covered text based on lesson type
+      // Build lesson_covered text based on subject type and lesson type
       let lessonCoveredText = '';
       let finalSurahName = '';
       let finalAyahFrom: number | null = null;
       let finalAyahTo: number | null = null;
+      let finalLessonType = isQuran ? lessonType : 'academic';
 
-      if (lessonType === 'qaida') {
+      if (!isQuran) {
+        // Academic subject
+        lessonCoveredText = topicPagesCovered || '';
+        if (lessonDetails) {
+          lessonCoveredText += lessonCoveredText ? ` - ${lessonDetails}` : lessonDetails;
+        }
+      } else if (lessonType === 'qaida') {
         lessonCoveredText = sabaqPages ? `Qaida Page/Lesson: ${sabaqPages}` : '';
       } else if (lessonType === 'nazra') {
         finalSurahName = surahName;
@@ -146,20 +171,20 @@ export function QuickAttendanceDialog({ open, onOpenChange, student, teacherId }
         class_time: classTime,
         duration_minutes: parseInt(duration),
         status: status,
-        lesson_type: lessonType,
+        lesson_type: finalLessonType,
         lesson_covered: lessonCoveredText || null,
         homework: homework || null,
-        surah_name: finalSurahName || null,
-        ayah_from: finalAyahFrom,
-        ayah_to: finalAyahTo,
-        lines_completed: lessonType === 'nazra' && linesNum > 0 ? linesNum : null,
+        surah_name: isQuran ? (finalSurahName || null) : null,
+        ayah_from: isQuran ? finalAyahFrom : null,
+        ayah_to: isQuran ? finalAyahTo : null,
+        lines_completed: isQuran && lessonType === 'nazra' && linesNum > 0 ? linesNum : null,
         variance_reason: needsVarianceReason ? varianceReason : null,
         reason: status === 'student_absent' ? absenceReason : null,
         input_unit: student.preferred_unit || 'lines',
-        sabaq_pages: lessonType === 'qaida' ? sabaqPages : null,
-        sabqi_notes: lessonType === 'hifz' ? sabqiNotes : null,
-        manzil_notes: lessonType === 'hifz' ? manzilNotes : null,
-        manzil_completed: lessonType === 'hifz' ? manzilCompleted : false,
+        sabaq_pages: isQuran && lessonType === 'qaida' ? sabaqPages : null,
+        sabqi_notes: isQuran && lessonType === 'hifz' ? sabqiNotes : null,
+        manzil_notes: isQuran && lessonType === 'hifz' ? manzilNotes : null,
+        manzil_completed: isQuran && lessonType === 'hifz' ? manzilCompleted : false,
       });
 
       if (error) throw error;
@@ -237,36 +262,71 @@ export function QuickAttendanceDialog({ open, onOpenChange, student, teacherId }
                 </div>
               </div>
 
-              {/* Lesson Type Toggle */}
-              <div className="space-y-2">
-                <Label>Lesson Type</Label>
-                <div className="flex gap-2">
-                  {LESSON_TYPES.map((type) => (
-                    <Button
-                      key={type.value}
-                      type="button"
-                      variant={lessonType === type.value ? 'default' : 'outline'}
-                      className="flex-1"
-                      onClick={() => setLessonType(type.value)}
-                    >
-                      {type.icon}
-                      <span className="ml-1.5">{type.label}</span>
-                    </Button>
-                  ))}
+              {/* Lesson Type Toggle - Only for Quran subjects */}
+              {isQuran && (
+                <div className="space-y-2">
+                  <Label>Lesson Type</Label>
+                  <div className="flex gap-2">
+                    {LESSON_TYPES.map((type) => (
+                      <Button
+                        key={type.value}
+                        type="button"
+                        variant={lessonType === type.value ? 'default' : 'outline'}
+                        className="flex-1"
+                        onClick={() => setLessonType(type.value)}
+                      >
+                        {type.icon}
+                        <span className="ml-1.5">{type.label}</span>
+                      </Button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Dynamic Lesson Details Box */}
               <div className="p-4 rounded-lg border-2 border-sky/50 bg-sky/10 space-y-4">
                 <h4 className="font-medium text-navy text-sm flex items-center gap-2">
-                  {LESSON_TYPES.find(t => t.value === lessonType)?.icon}
-                  {lessonType === 'qaida' && 'Qaida Progress'}
-                  {lessonType === 'nazra' && 'Nazra Progress'}
-                  {lessonType === 'hifz' && 'Hifz Progress'}
+                  {isQuran ? (
+                    <>
+                      {LESSON_TYPES.find(t => t.value === lessonType)?.icon}
+                      {lessonType === 'qaida' && 'Qaida Progress'}
+                      {lessonType === 'nazra' && 'Nazra Progress'}
+                      {lessonType === 'hifz' && 'Hifz Progress'}
+                    </>
+                  ) : (
+                    <>
+                      <GraduationCap className="h-4 w-4" />
+                      {student.subject_name || 'Academic'} Progress
+                    </>
+                  )}
                 </h4>
 
+                {/* Academic Subject Fields */}
+                {!isQuran && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Topic / Pages Covered</Label>
+                      <Input 
+                        placeholder="e.g. Chapter 5, Pages 45-50"
+                        value={topicPagesCovered}
+                        onChange={(e) => setTopicPagesCovered(e.target.value)}
+                        className="bg-background"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Lesson Details</Label>
+                      <Textarea 
+                        placeholder="Brief description of what was taught..."
+                        value={lessonDetails}
+                        onChange={(e) => setLessonDetails(e.target.value)}
+                        className="bg-background min-h-[80px]"
+                      />
+                    </div>
+                  </>
+                )}
+
                 {/* Qaida Fields */}
-                {lessonType === 'qaida' && (
+                {isQuran && lessonType === 'qaida' && (
                   <div className="space-y-2">
                     <Label>Current Page / Lesson No.</Label>
                     <Input 
@@ -279,7 +339,7 @@ export function QuickAttendanceDialog({ open, onOpenChange, student, teacherId }
                 )}
 
                 {/* Nazra Fields */}
-                {lessonType === 'nazra' && (
+                {isQuran && lessonType === 'nazra' && (
                   <>
                     <div className="space-y-2">
                       <Label>Surah</Label>
@@ -342,7 +402,7 @@ export function QuickAttendanceDialog({ open, onOpenChange, student, teacherId }
                 )}
 
                 {/* Hifz Fields */}
-                {lessonType === 'hifz' && (
+                {isQuran && lessonType === 'hifz' && (
                   <>
                     {/* Sabaq (New Lesson) */}
                     <div className="space-y-3 p-3 bg-background rounded-md border">
