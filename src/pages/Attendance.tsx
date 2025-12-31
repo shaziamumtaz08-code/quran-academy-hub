@@ -137,19 +137,44 @@ export default function Attendance() {
 
   // Fetch assigned students (for teacher) with daily_target_lines and preferred_unit
   const { data: assignedStudents } = useQuery({
-    queryKey: ['assigned-students', user?.id],
+    queryKey: ['assigned-students', user?.id, isTeacher],
     queryFn: async () => {
-      if (!user?.id || !isTeacher) return [];
+      if (!user?.id) return [];
       
-      const { data, error } = await supabase
-        .from('student_teacher_assignments')
-        .select('student_id, student:profiles!student_teacher_assignments_student_id_fkey(id, full_name, mushaf_type, daily_target_lines, preferred_unit, daily_target_amount)')
-        .eq('teacher_id', user.id);
+      if (isTeacher) {
+        // Teacher sees their assigned students
+        const { data, error } = await supabase
+          .from('student_teacher_assignments')
+          .select('student_id, subject:subjects(name), student:profiles!student_teacher_assignments_student_id_fkey(id, full_name, mushaf_type, daily_target_lines, preferred_unit, daily_target_amount)')
+          .eq('teacher_id', user.id);
 
-      if (error) throw error;
-      return (data || []).map(d => d.student).filter(Boolean) as Profile[];
+        if (error) throw error;
+        return (data || []).map(d => ({
+          ...d.student,
+          subject_name: d.subject?.name || null
+        })).filter(Boolean) as (Profile & { subject_name?: string | null })[];
+      } else if (isAdmin) {
+        // Admin can see all students with their assignments
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, full_name, mushaf_type, daily_target_lines, preferred_unit, daily_target_amount')
+          .order('full_name');
+        
+        if (error) throw error;
+        
+        // Get role info to filter only students
+        const { data: rolesData } = await supabase
+          .from('user_roles')
+          .select('user_id, role')
+          .eq('role', 'student');
+        
+        const studentIds = new Set((rolesData || []).map(r => r.user_id));
+        return (data || []).filter(p => studentIds.has(p.id)) as Profile[];
+      }
+      
+      return [];
     },
-    enabled: !!user?.id && isTeacher,
+    enabled: !!user?.id && (isTeacher || isAdmin),
   });
 
   // Get selected student's profile and settings
@@ -470,14 +495,14 @@ export default function Attendance() {
             <p className="text-muted-foreground mt-1">
               {isTeacher ? 'Mark and manage class attendance' : 
                isStudent ? 'View your attendance history' : 
-               'View attendance across the academy'}
+               'View and manage attendance across the academy'}
             </p>
           </div>
-          {/* Admin-only: global Mark Attendance – teachers use 'Log Lesson' per student in /teacher */}
-          {isAdmin && (
+          {/* Both Admin and Teacher can mark attendance */}
+          {(isAdmin || isTeacher) && (
             <Button 
               onClick={() => setMarkDialogOpen(true)}
-              title="Mark attendance as admin"
+              title="Mark attendance"
             >
               <Plus className="h-4 w-4 mr-2" />
               Mark Attendance
@@ -592,7 +617,7 @@ export default function Attendance() {
                     <TableHead>Lesson Covered</TableHead>
                     {(isTeacher || isAdmin) && <TableHead>Reason</TableHead>}
                     {isAdmin && <TableHead>Reschedule Info</TableHead>}
-                    {isAdmin && <TableHead className="w-12">Edit</TableHead>}
+                    {(isAdmin || isTeacher) && <TableHead className="w-12">Edit</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -652,7 +677,7 @@ export default function Attendance() {
                           ) : '-'}
                         </TableCell>
                       )}
-                      {isAdmin && (
+                      {(isAdmin || isTeacher) && (
                         <TableCell>
                           <Button
                             variant="ghost"
@@ -919,7 +944,7 @@ export default function Attendance() {
           </DialogContent>
         </Dialog>
 
-        {/* Admin Edit Attendance Dialog */}
+        {/* Edit Attendance Dialog - Admin and Teacher */}
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
