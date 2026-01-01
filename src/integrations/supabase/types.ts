@@ -280,6 +280,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          structure_json: Json | null
           subject_id: string | null
           tenure: Database["public"]["Enums"]["exam_tenure"]
           updated_at: string
@@ -291,6 +292,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          structure_json?: Json | null
           subject_id?: string | null
           tenure: Database["public"]["Enums"]["exam_tenure"]
           updated_at?: string
@@ -302,6 +304,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          structure_json?: Json | null
           subject_id?: string | null
           tenure?: Database["public"]["Enums"]["exam_tenure"]
           updated_at?: string
