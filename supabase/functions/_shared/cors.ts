@@ -10,22 +10,21 @@ const getAllowedOrigin = (): string => {
 };
 
 export const corsHeaders: Record<string, string> = {
-  "Access-Control-Allow-Origin": getAllowedOrigin(),
+  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 // Helper to create CORS headers for dynamic origin validation
 export const getCorsHeaders = (requestOrigin?: string | null): Record<string, string> => {
-  const allowedOrigin = getAllowedOrigin();
-  
-  // Check if request origin matches allowed pattern
+  // Check if request origin matches allowed patterns
   if (requestOrigin) {
-    // Allow lovableproject.com subdomains and localhost for development
+    // Allow lovableproject.com, lovable.app subdomains and localhost for development
     const isAllowed = 
       requestOrigin.endsWith('.lovableproject.com') ||
+      requestOrigin.endsWith('.lovable.app') ||
       requestOrigin.includes('localhost') ||
-      requestOrigin === allowedOrigin;
+      requestOrigin.includes('127.0.0.1');
     
     if (isAllowed) {
       return {
@@ -36,5 +35,6 @@ export const getCorsHeaders = (requestOrigin?: string | null): Record<string, st
     }
   }
   
+  // Fallback to allow all origins for edge functions
   return corsHeaders;
 };
