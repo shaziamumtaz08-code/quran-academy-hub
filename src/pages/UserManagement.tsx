@@ -67,7 +67,9 @@ import {
   X,
   Plus,
   Minus,
+  Upload,
 } from 'lucide-react';
+import { BulkUserImportDialog } from '@/components/users/BulkUserImportDialog';
 
 const ALL_PERMISSIONS = [
   { group: 'Users', permissions: ['users.view', 'users.create', 'users.edit', 'users.delete', 'users.assign_roles'] },
@@ -125,6 +127,7 @@ export default function UserManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserWithRoles | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isAddRoleDialogOpen, setIsAddRoleDialogOpen] = useState(false);
@@ -493,13 +496,18 @@ export default function UserManagement() {
               <RefreshCw className="h-4 w-4" />
             </Button>
             {isSuperAdmin && (
-              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="btn-primary-glow">
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Add User
-                  </Button>
-                </DialogTrigger>
+              <>
+                <Button variant="outline" onClick={() => setIsBulkImportOpen(true)}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Bulk Import
+                </Button>
+                <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="btn-primary-glow">
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Add User
+                    </Button>
+                  </DialogTrigger>
                 <DialogContent className="max-w-2xl">
                   <DialogHeader>
                     <DialogTitle>Create New User</DialogTitle>
@@ -649,6 +657,8 @@ export default function UserManagement() {
                   </div>
                 </DialogContent>
               </Dialog>
+              <BulkUserImportDialog open={isBulkImportOpen} onOpenChange={setIsBulkImportOpen} />
+              </>
             )}
           </div>
         </div>
