@@ -4,7 +4,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, FileText, Loader2, Settings, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, FileText, Loader2, Settings, ToggleLeft, ToggleRight, Layers, ListChecks } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -198,60 +198,89 @@ export default function ReportCardTemplates() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Report Card Templates</h1>
-            <p className="text-muted-foreground mt-1">
-              Create flexible templates for academic and tarbiyah report cards
-            </p>
+      <div className="space-y-8">
+        {/* Premium Page Header */}
+        <div className="page-header-premium">
+          <div className="relative z-10 flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-primary-foreground">Report Card Templates</h1>
+              <p className="text-primary-foreground/70 mt-1">
+                Create flexible templates for academic and tarbiyah report cards
+              </p>
+            </div>
+            <Button 
+              onClick={() => setIsBuilderOpen(true)} 
+              className="gap-2 bg-accent hover:bg-cyan-dark text-accent-foreground shadow-glow"
+            >
+              <Plus className="h-4 w-4" />
+              Create Template
+            </Button>
           </div>
-          <Button onClick={() => setIsBuilderOpen(true)} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Create Template
-          </Button>
         </div>
 
         {/* Templates Grid */}
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <Loader2 className="h-8 w-8 animate-spin text-accent" />
           </div>
         ) : templates.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <FileText className="h-12 w-12 mb-4 opacity-50" />
-              <p className="text-lg font-medium">No templates yet</p>
-              <p className="text-sm mt-1">Create your first report card template to get started</p>
+          <Card className="card-premium border-0">
+            <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+              <div className="w-20 h-20 rounded-full bg-accent/10 flex items-center justify-center mb-6">
+                <FileText className="h-10 w-10 text-accent" />
+              </div>
+              <p className="text-xl font-semibold text-foreground mb-2">No templates yet</p>
+              <p className="text-sm text-muted-foreground mb-6">Create your first report card template to get started</p>
+              <Button 
+                onClick={() => setIsBuilderOpen(true)} 
+                className="gap-2 bg-accent hover:bg-cyan-dark text-accent-foreground"
+              >
+                <Plus className="h-4 w-4" />
+                Create Your First Template
+              </Button>
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {templates.map((template) => {
               const stats = getStructureStats(template.structure_json);
               
               return (
-                <Card key={template.id} className={!template.is_active ? 'opacity-60' : ''}>
-                  <CardHeader className="pb-3">
+                <Card 
+                  key={template.id} 
+                  className={`card-premium border-0 ${!template.is_active ? 'opacity-60' : ''}`}
+                >
+                  <CardHeader className="pb-4">
                     <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-lg">{template.name}</CardTitle>
+                      <div className="section-header">
+                        <CardTitle className="text-lg font-semibold">{template.name}</CardTitle>
                         <p className="text-sm text-muted-foreground mt-1">
-                          {template.subject?.name || 'No subject'}
+                          {template.subject?.name || 'General Template'}
                         </p>
                       </div>
-                      <Badge variant={template.is_active ? 'default' : 'secondary'}>
+                      <Badge 
+                        className={`badge-pill ${template.is_active 
+                          ? 'bg-accent/10 text-accent border-accent/20' 
+                          : 'bg-muted text-muted-foreground'}`}
+                        variant="outline"
+                      >
                         {template.is_active ? 'Active' : 'Inactive'}
                       </Badge>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center gap-2 text-sm">
-                      <Badge variant="outline" className="capitalize">{template.tenure}</Badge>
-                      <span className="text-muted-foreground">•</span>
-                      <span className="text-muted-foreground">{stats.sections} sections</span>
-                      <span className="text-muted-foreground">•</span>
-                      <span className="text-muted-foreground">{stats.criteria} criteria</span>
+                  <CardContent className="space-y-5">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <Badge variant="outline" className="badge-pill capitalize border-border/50">
+                        {template.tenure}
+                      </Badge>
+                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <Layers className="h-4 w-4 text-accent" />
+                        <span>{stats.sections} sections</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <ListChecks className="h-4 w-4 text-accent" />
+                        <span>{stats.criteria} criteria</span>
+                      </div>
                     </div>
                     
                     {template.description && (
@@ -260,11 +289,11 @@ export default function ReportCardTemplates() {
                       </p>
                     )}
                     
-                    <div className="flex items-center gap-2 pt-2">
+                    <div className="flex items-center gap-3 pt-2">
                       <Button
                         variant="outline"
                         size="sm"
-                        className="flex-1 gap-2"
+                        className="flex-1 gap-2 border-border/50 hover:border-accent hover:text-accent"
                         onClick={() => openEdit(template)}
                       >
                         <Settings className="h-4 w-4" />
@@ -279,11 +308,12 @@ export default function ReportCardTemplates() {
                         })}
                         disabled={toggleActiveMutation.isPending}
                         title={template.is_active ? 'Deactivate' : 'Activate'}
+                        className="hover:bg-accent/10"
                       >
                         {template.is_active ? (
-                          <ToggleRight className="h-5 w-5 text-primary" />
+                          <ToggleRight className="h-5 w-5 text-accent" />
                         ) : (
-                          <ToggleLeft className="h-5 w-5" />
+                          <ToggleLeft className="h-5 w-5 text-muted-foreground" />
                         )}
                       </Button>
                     </div>

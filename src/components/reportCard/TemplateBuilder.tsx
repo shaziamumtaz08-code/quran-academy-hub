@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,7 +15,7 @@ import {
   SheetDescription,
   SheetFooter 
 } from '@/components/ui/sheet';
-import { Plus, Loader2, FileText, Save, X } from 'lucide-react';
+import { Plus, Loader2, FileText, Save, X, Layers, ListChecks, Award } from 'lucide-react';
 import { SectionBuilder } from './SectionBuilder';
 import { 
   Section, 
@@ -115,20 +114,26 @@ export function TemplateBuilder({
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-2xl lg:max-w-4xl p-0">
-        <div className="flex flex-col h-full">
-          <SheetHeader className="px-6 py-4 border-b">
-            <div className="flex items-center justify-between">
+      <SheetContent side="right" className="w-full sm:max-w-2xl lg:max-w-4xl p-0 border-0">
+        <div className="flex flex-col h-full bg-background">
+          {/* Premium Header */}
+          <SheetHeader className="page-header-premium rounded-none px-6 py-5">
+            <div className="relative z-10 flex items-center justify-between">
               <div>
-                <SheetTitle className="text-xl flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
+                <SheetTitle className="text-xl flex items-center gap-2 text-primary-foreground">
+                  <FileText className="h-5 w-5 text-accent" />
                   {initialData ? 'Edit Template' : 'Create Report Card Template'}
                 </SheetTitle>
-                <SheetDescription>
+                <SheetDescription className="text-primary-foreground/70">
                   Build a flexible template with sections and grading criteria
                 </SheetDescription>
               </div>
-              <Button variant="ghost" size="icon" onClick={onClose}>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={onClose}
+                className="text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10"
+              >
                 <X className="h-5 w-5" />
               </Button>
             </div>
@@ -136,33 +141,34 @@ export function TemplateBuilder({
 
           <ScrollArea className="flex-1 px-6">
             <div className="py-6 space-y-6">
-              {/* Basic Info */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Template Details</CardTitle>
+              {/* Basic Info Card */}
+              <Card className="card-premium border-0">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-base section-header">Template Details</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
+                <CardContent className="space-y-5">
+                  <div className="grid gap-5 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="name">Template Name *</Label>
+                      <Label htmlFor="name" className="text-sm font-medium">Template Name *</Label>
                       <Input
                         id="name"
                         placeholder="e.g., Monthly Report Card - Nazrah"
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        className="input-premium border-border/50 focus:border-accent focus:ring-2 focus:ring-accent/20"
                       />
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="subject">Subject</Label>
+                      <Label htmlFor="subject" className="text-sm font-medium">Subject</Label>
                       <Select 
                         value={formData.subject_id} 
                         onValueChange={(v) => setFormData({ ...formData, subject_id: v })}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="border-border/50 focus:border-accent focus:ring-2 focus:ring-accent/20">
                           <SelectValue placeholder="Select subject (optional)" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="border-0 shadow-card">
                           {subjects.map((subject) => (
                             <SelectItem key={subject.id} value={subject.id}>
                               {subject.name}
@@ -173,17 +179,17 @@ export function TemplateBuilder({
                     </div>
                   </div>
 
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-5 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="tenure">Frequency *</Label>
+                      <Label htmlFor="tenure" className="text-sm font-medium">Frequency *</Label>
                       <Select 
                         value={formData.tenure} 
                         onValueChange={(v: ExamTenure) => setFormData({ ...formData, tenure: v })}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="border-border/50 focus:border-accent focus:ring-2 focus:ring-accent/20">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="border-0 shadow-card">
                           <SelectItem value="weekly">Weekly</SelectItem>
                           <SelectItem value="monthly">Monthly</SelectItem>
                           <SelectItem value="quarterly">Quarterly</SelectItem>
@@ -193,45 +199,60 @@ export function TemplateBuilder({
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="description">Internal Notes</Label>
+                      <Label htmlFor="description" className="text-sm font-medium">Internal Notes</Label>
                       <Input
                         id="description"
                         placeholder="Optional notes for admins..."
                         value={formData.description}
                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        className="input-premium border-border/50 focus:border-accent focus:ring-2 focus:ring-accent/20"
                       />
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Separator />
+              <Separator className="bg-border/50" />
 
               {/* Sections Builder */}
               <div>
-                <div className="flex items-center justify-between mb-4">
-                  <div>
+                <div className="flex items-center justify-between mb-6">
+                  <div className="section-header">
                     <h3 className="text-lg font-semibold">Report Card Structure</h3>
                     <p className="text-sm text-muted-foreground">
                       Add sections and criteria to define your report card layout
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline">{structure.sections.length} sections</Badge>
-                    <Badge variant="outline">{totalCriteria} criteria</Badge>
-                    <Badge variant="secondary">{maxScore} max score</Badge>
+                    <Badge variant="outline" className="badge-pill border-border/50 gap-1.5">
+                      <Layers className="h-3.5 w-3.5 text-accent" />
+                      {structure.sections.length} sections
+                    </Badge>
+                    <Badge variant="outline" className="badge-pill border-border/50 gap-1.5">
+                      <ListChecks className="h-3.5 w-3.5 text-accent" />
+                      {totalCriteria} criteria
+                    </Badge>
+                    <Badge className="badge-pill bg-accent/10 text-accent border-accent/20 gap-1.5">
+                      <Award className="h-3.5 w-3.5" />
+                      {maxScore} max score
+                    </Badge>
                   </div>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {structure.sections.length === 0 ? (
-                    <div className="text-center py-12 border-2 border-dashed rounded-lg">
-                      <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-                      <p className="text-muted-foreground mb-2">No sections added yet</p>
-                      <p className="text-sm text-muted-foreground mb-4">
+                    <div className="text-center py-16 border-2 border-dashed border-border/50 rounded-xl bg-card">
+                      <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-4">
+                        <FileText className="h-8 w-8 text-accent" />
+                      </div>
+                      <p className="text-foreground font-medium mb-2">No sections added yet</p>
+                      <p className="text-sm text-muted-foreground mb-6">
                         Start by adding a section like "Academic" or "Tarbiyah"
                       </p>
-                      <Button onClick={addSection} className="gap-2">
+                      <Button 
+                        onClick={addSection} 
+                        className="gap-2 bg-accent hover:bg-cyan-dark text-accent-foreground"
+                      >
                         <Plus className="h-4 w-4" />
                         Add First Section
                       </Button>
@@ -255,7 +276,7 @@ export function TemplateBuilder({
                       <Button
                         variant="outline"
                         onClick={addSection}
-                        className="w-full gap-2"
+                        className="w-full gap-2 border-dashed border-2 border-border/50 hover:border-accent hover:text-accent hover:bg-accent/5 py-6"
                       >
                         <Plus className="h-4 w-4" />
                         Add Section
@@ -267,15 +288,19 @@ export function TemplateBuilder({
             </div>
           </ScrollArea>
 
-          <SheetFooter className="px-6 py-4 border-t">
+          <SheetFooter className="px-6 py-4 border-t border-border/50 bg-card">
             <div className="flex items-center justify-between w-full">
-              <Button variant="outline" onClick={onClose}>
+              <Button 
+                variant="outline" 
+                onClick={onClose}
+                className="border-border/50 hover:border-accent hover:text-accent"
+              >
                 Cancel
               </Button>
               <Button 
                 onClick={handleSave} 
                 disabled={!formData.name || isSaving}
-                className="gap-2"
+                className="gap-2 bg-accent hover:bg-cyan-dark text-accent-foreground shadow-glow"
               >
                 {isSaving ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
