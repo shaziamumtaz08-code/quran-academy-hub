@@ -6,10 +6,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Users, GraduationCap, Trash2, Loader2, UserPlus, BookOpen, Pencil } from 'lucide-react';
+import { Users, GraduationCap, Trash2, Loader2, UserPlus, BookOpen, Pencil, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { BulkAssignmentImportDialog } from '@/components/assignments/BulkAssignmentImportDialog';
 
 interface Profile {
   id: string;
@@ -39,6 +40,7 @@ export default function Assignments() {
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
 
   // Fetch teachers
   const { data: teachers = [], isLoading: loadingTeachers } = useQuery({
@@ -280,10 +282,21 @@ export default function Assignments() {
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
         {/* Header */}
-        <div>
-          <h1 className="font-serif text-3xl font-bold text-foreground">Student–Teacher Assignment</h1>
-          <p className="text-muted-foreground mt-1">Assign students to teachers with subject</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="font-serif text-3xl font-bold text-foreground">Student–Teacher Assignment</h1>
+            <p className="text-muted-foreground mt-1">Assign students to teachers with subject</p>
+          </div>
+          <Button onClick={() => setIsBulkImportOpen(true)} variant="outline">
+            <Upload className="h-4 w-4 mr-2" />
+            Bulk Import
+          </Button>
         </div>
+
+        <BulkAssignmentImportDialog 
+          open={isBulkImportOpen} 
+          onOpenChange={setIsBulkImportOpen} 
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Assignment Form */}
