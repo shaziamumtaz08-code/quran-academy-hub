@@ -277,6 +277,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           description: string | null
+          grading_style: Database["public"]["Enums"]["grading_style"]
           id: string
           is_active: boolean
           name: string
@@ -289,6 +290,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          grading_style?: Database["public"]["Enums"]["grading_style"]
           id?: string
           is_active?: boolean
           name: string
@@ -301,6 +303,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          grading_style?: Database["public"]["Enums"]["grading_style"]
           id?: string
           is_active?: boolean
           name?: string
@@ -978,6 +981,7 @@ export type Database = {
         | "admin_fees"
         | "admin_academic"
       exam_tenure: "weekly" | "monthly" | "quarterly" | "yearly"
+      grading_style: "numeric" | "rubric"
       permission_type:
         | "users.view"
         | "users.create"
@@ -1156,6 +1160,7 @@ export const Constants = {
         "admin_academic",
       ],
       exam_tenure: ["weekly", "monthly", "quarterly", "yearly"],
+      grading_style: ["numeric", "rubric"],
       permission_type: [
         "users.view",
         "users.create",
