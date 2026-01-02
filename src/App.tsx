@@ -211,7 +211,7 @@ function AppRoutes() {
       <Route path="/exam-templates" element={<Navigate to="/report-card-templates" replace />} />
       <Route path="/exam-submission" element={<Navigate to="/generate-report-card" replace />} />
       <Route path="/exam-results" element={<Navigate to="/student-reports" replace />} />
-      <Route path="/resources" element={<ProtectedRoute><Resources /></ProtectedRoute>} />
+      <Route path="/resources" element={<ProtectedRoute><DashboardLayout><Resources /></DashboardLayout></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
