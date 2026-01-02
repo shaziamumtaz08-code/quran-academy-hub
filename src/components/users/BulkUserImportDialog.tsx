@@ -89,10 +89,15 @@ function parseCSV(text: string): CSVRow[] {
 
 function generateSampleCSV(): string {
   return `email,full_name,password,role,whatsapp,gender,age
-student1@example.com,Ahmed Khan,password123,student,+1234567890,male,12
-student2@example.com,Fatima Ali,password123,student,+1234567891,female,10
-teacher1@example.com,Mohammad Hassan,password123,teacher,+1234567892,male,35
-parent1@example.com,Zainab Ahmed,password123,parent,+1234567893,female,40`;
+student1@example.com,Ahmed Khan,SecurePass1!,student,+923001234567,male,12
+student2@example.com,Fatima Ali,SecurePass2!,student,+14165551234,female,10
+student3@example.com,Yusuf Malik,SecurePass3!,student,+971501234567,male,14
+teacher1@example.com,Mohammad Hassan,TeachPass1!,teacher,+923211234567,male,35
+teacher2@example.com,Aisha Siddiqui,TeachPass2!,teacher,+12125551234,female,28
+parent1@example.com,Zainab Ahmed,ParentPass1!,parent,+447911123456,female,40
+parent2@example.com,Khalid Rahman,ParentPass2!,parent,+966501234567,male,45
+admin1@example.com,Ibrahim Khan,AdminPass1!,admin,,male,32
+examiner1@example.com,Mariam Yousuf,ExamPass1!,examiner,+923451234567,female,30`;
 }
 
 export function BulkUserImportDialog({ open, onOpenChange }: BulkUserImportDialogProps) {

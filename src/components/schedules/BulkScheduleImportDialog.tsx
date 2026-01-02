@@ -133,10 +133,14 @@ export function BulkScheduleImportDialog({ open, onOpenChange }: BulkScheduleImp
 
   const downloadTemplate = () => {
     const csvContent = `teacher_name,student_name,day_of_week,time,duration_minutes
-Ahmed Ali,Muhammad Khan,Monday,09:00 AM,30
-Ahmed Ali,Fatima Ahmed,Tuesday,10:30 AM,45
-Sarah Hassan,Yusuf Malik,Wed,14:00,30
-Sarah Hassan,Yusuf Malik,Friday,3:00 PM,30`;
+Mohammad Hassan,Ahmed Khan,Monday,09:00 AM,30
+Mohammad Hassan,Ahmed Khan,Wednesday,09:00 AM,30
+Mohammad Hassan,Fatima Ali,Tuesday,10:30 AM,45
+Mohammad Hassan,Fatima Ali,Thursday,10:30 AM,45
+Aisha Siddiqui,Yusuf Malik,Mon,14:00,30
+Aisha Siddiqui,Yusuf Malik,Wed,14:00,30
+Aisha Siddiqui,Sara Khan,Friday,3:00 PM,30
+Teacher Name (exact),Student Name (exact),Day (Mon/Monday),Time (9:00 AM or 14:00),Duration (minutes)`;
     
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);

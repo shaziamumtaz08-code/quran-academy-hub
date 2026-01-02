@@ -44,9 +44,13 @@ export function BulkAssignmentImportDialog({ open, onOpenChange }: BulkAssignmen
 
   const downloadTemplate = () => {
     const csvContent = `teacher_name,student_name,subject_name
-Ahmed Ali,Muhammad Khan,Nazra
-Ahmed Ali,Fatima Ahmed,Hifz
-Sarah Hassan,Yusuf Malik,Tajweed`;
+Mohammad Hassan,Ahmed Khan,Nazra
+Mohammad Hassan,Fatima Ali,Nazra
+Mohammad Hassan,Yusuf Malik,Hifz
+Aisha Siddiqui,Ahmed Khan,Tajweed
+Aisha Siddiqui,Ibrahim Ahmed,Hifz
+Aisha Siddiqui,Sara Khan,Nazra
+Teacher Name (exact match),Student Name (exact match),Subject Name (optional)`;
     
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
