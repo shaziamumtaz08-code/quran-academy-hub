@@ -256,6 +256,100 @@ export default function Resources() {
     },
   });
 
+  // Upload folder mutation
+  const uploadFolderMutation = useMutation({
+    mutationFn: async ({ files, paths }: { files: File[]; paths: string[] }) => {
+      // Get root folder name from first path
+      const rootFolderName = paths[0]?.split("/")[0] || "Uploaded Folder";
+      
+      // Create the root folder
+      const { data: createdFolder, error: folderError } = await supabase
+        .from("folders")
+        .insert({
+          name: rootFolderName,
+          parent_id: currentFolderId,
+          created_by: user?.id,
+        })
+        .select()
+        .single();
+
+      if (folderError) throw folderError;
+
+      // Map to track created subfolders: relative path -> folder id
+      const folderMap = new Map<string, string>();
+      folderMap.set(rootFolderName, createdFolder.id);
+
+      // Create subfolders and upload files
+      const uploadPromises = files.map(async (file, index) => {
+        const relativePath = paths[index];
+        const pathParts = relativePath.split("/");
+        const fileName = pathParts.pop()!;
+        
+        // Create any necessary subfolders
+        let parentFolderId = createdFolder.id;
+        let currentPath = rootFolderName;
+        
+        for (let i = 1; i < pathParts.length; i++) {
+          currentPath = pathParts.slice(0, i + 1).join("/");
+          
+          if (!folderMap.has(currentPath)) {
+            const { data: subfolder, error: subfolderError } = await supabase
+              .from("folders")
+              .insert({
+                name: pathParts[i],
+                parent_id: parentFolderId,
+                created_by: user?.id,
+              })
+              .select()
+              .single();
+
+            if (subfolderError) throw subfolderError;
+            folderMap.set(currentPath, subfolder.id);
+          }
+          parentFolderId = folderMap.get(currentPath)!;
+        }
+
+        // Upload the file
+        const fileType = getFileType(file.name);
+        const fileExt = file.name.split(".").pop();
+        const storageName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const storagePath = `${parentFolderId}/${storageName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("resources")
+          .upload(storagePath, file);
+
+        if (uploadError) throw uploadError;
+
+        return {
+          title: fileName.replace(/\.[^/.]+$/, ""),
+          type: fileType,
+          url: storagePath,
+          folder_id: parentFolderId,
+          folder: "Uploads",
+          uploaded_by: user?.id,
+        };
+      });
+
+      const uploadedResources = await Promise.all(uploadPromises);
+
+      const { error: insertError } = await supabase
+        .from("resources")
+        .insert(uploadedResources);
+
+      if (insertError) throw insertError;
+      return uploadedResources.length;
+    },
+    onSuccess: (count) => {
+      queryClient.invalidateQueries({ queryKey: ["folders"] });
+      queryClient.invalidateQueries({ queryKey: ["resources"] });
+      toast.success(`Folder uploaded with ${count} file(s)`);
+    },
+    onError: (error: Error) => {
+      toast.error("Folder upload failed: " + error.message);
+    },
+  });
+
   // Add link mutation
   const addLinkMutation = useMutation({
     mutationFn: async ({ title, url }: { title: string; url: string }) => {
@@ -644,6 +738,9 @@ export default function Resources() {
         onOpenChange={setUploadOpen}
         onUploadFiles={async (files) => {
           await uploadFilesMutation.mutateAsync(files);
+        }}
+        onUploadFolder={async (files, paths) => {
+          await uploadFolderMutation.mutateAsync({ files, paths });
         }}
         onAddLink={async (title, url) => {
           await addLinkMutation.mutateAsync({ title, url });

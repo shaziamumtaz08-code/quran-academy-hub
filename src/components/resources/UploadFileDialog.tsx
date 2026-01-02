@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,12 +9,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Upload, Link } from "lucide-react";
+import { Loader2, Upload, Link, FolderUp } from "lucide-react";
 
 interface UploadFileDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUploadFiles: (files: FileList) => Promise<void>;
+  onUploadFolder?: (files: File[], relativePaths: string[]) => Promise<void>;
   onAddLink: (title: string, url: string) => Promise<void>;
 }
 
@@ -22,19 +23,24 @@ export function UploadFileDialog({
   open,
   onOpenChange,
   onUploadFiles,
+  onUploadFolder,
   onAddLink,
 }: UploadFileDialogProps) {
-  const [uploadType, setUploadType] = useState<"file" | "link">("file");
+  const [uploadType, setUploadType] = useState<"file" | "folder" | "link">("file");
   const [files, setFiles] = useState<FileList | null>(null);
+  const [folderFiles, setFolderFiles] = useState<{ files: File[]; paths: string[] } | null>(null);
   const [linkTitle, setLinkTitle] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [loading, setLoading] = useState(false);
+  const folderInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async () => {
     setLoading(true);
     try {
       if (uploadType === "file" && files) {
         await onUploadFiles(files);
+      } else if (uploadType === "folder" && folderFiles && onUploadFolder) {
+        await onUploadFolder(folderFiles.files, folderFiles.paths);
       } else if (uploadType === "link" && linkTitle.trim() && linkUrl.trim()) {
         await onAddLink(linkTitle.trim(), linkUrl.trim());
       }
@@ -47,14 +53,41 @@ export function UploadFileDialog({
 
   const resetForm = () => {
     setFiles(null);
+    setFolderFiles(null);
     setLinkTitle("");
     setLinkUrl("");
     setUploadType("file");
   };
 
+  const handleFolderSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
+
+    const filesArray: File[] = [];
+    const pathsArray: string[] = [];
+
+    for (let i = 0; i < fileList.length; i++) {
+      const file = fileList[i];
+      filesArray.push(file);
+      // webkitRelativePath contains the relative path including folder name
+      pathsArray.push((file as any).webkitRelativePath || file.name);
+    }
+
+    setFolderFiles({ files: filesArray, paths: pathsArray });
+  };
+
+  const getFolderName = () => {
+    if (!folderFiles || folderFiles.paths.length === 0) return null;
+    // Extract folder name from first path
+    const firstPath = folderFiles.paths[0];
+    return firstPath.split("/")[0];
+  };
+
   const isValid =
     uploadType === "file"
       ? files && files.length > 0
+      : uploadType === "folder"
+      ? folderFiles && folderFiles.files.length > 0
       : linkTitle.trim() && linkUrl.trim();
 
   return (
@@ -76,6 +109,18 @@ export function UploadFileDialog({
               <Upload className="h-4 w-4 mr-2" />
               Files
             </Button>
+            {onUploadFolder && (
+              <Button
+                type="button"
+                variant={uploadType === "folder" ? "default" : "outline"}
+                onClick={() => setUploadType("folder")}
+                className="flex-1"
+                size="sm"
+              >
+                <FolderUp className="h-4 w-4 mr-2" />
+                Folder
+              </Button>
+            )}
             <Button
               type="button"
               variant={uploadType === "link" ? "default" : "outline"}
@@ -106,6 +151,29 @@ export function UploadFileDialog({
                 </p>
               )}
             </div>
+          ) : uploadType === "folder" ? (
+            <div className="space-y-2">
+              <Label>Select folder</Label>
+              <Input
+                ref={folderInputRef}
+                type="file"
+                // @ts-ignore - webkitdirectory is not in React types but works in browsers
+                webkitdirectory=""
+                // @ts-ignore
+                directory=""
+                multiple
+                onChange={handleFolderSelect}
+                className="cursor-pointer"
+              />
+              <p className="text-xs text-muted-foreground">
+                Select a folder to upload all its contents
+              </p>
+              {folderFiles && folderFiles.files.length > 0 && (
+                <p className="text-xs text-primary font-medium">
+                  Folder "{getFolderName()}" with {folderFiles.files.length} file(s) selected
+                </p>
+              )}
+            </div>
           ) : (
             <>
               <div className="space-y-2">
@@ -133,7 +201,7 @@ export function UploadFileDialog({
           </Button>
           <Button onClick={handleSubmit} disabled={!isValid || loading}>
             {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {uploadType === "file" ? "Upload" : "Add Link"}
+            {uploadType === "file" ? "Upload" : uploadType === "folder" ? "Upload Folder" : "Add Link"}
           </Button>
         </DialogFooter>
       </DialogContent>
