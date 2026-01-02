@@ -22,11 +22,13 @@ function isValidFullName(name: string): boolean {
   return name.length >= 2 && name.length <= 100;
 }
 
-function isValidWhatsApp(phone: string | null): boolean {
-  if (!phone) return true;
-  const phoneRegex = /^\+?[1-9]\d{6,14}$/;
-  return phoneRegex.test(phone.replace(/[\s-]/g, ''));
+function isValidWhatsApp(phone: string | null | undefined): boolean {
+  if (!phone || phone.trim() === "") return true;
+  const digits = phone.replace(/\D/g, "");
+  if (!digits) return true;
+  return digits.length >= 7 && digits.length <= 20;
 }
+
 
 function isValidAge(age: number | null): boolean {
   if (age === null) return true;
