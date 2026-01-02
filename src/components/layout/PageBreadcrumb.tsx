@@ -17,14 +17,17 @@ const ROUTE_LABELS: Record<string, string> = {
   '/students': 'Students',
   '/schedules': 'Schedules',
   '/attendance': 'Attendance',
-  '/exam-templates': 'Exam Templates',
-  '/exam-submission': 'Submit Exam',
-  '/exam-results': 'Exam Results',
+  '/report-card-templates': 'Report Templates',
+  '/generate-report-card': 'Generate Report',
+  '/student-reports': 'Student Reports',
   '/reports': 'Reports',
   '/payments': 'Payments',
   '/kpi': 'KPI',
   '/resources': 'Resources',
   '/lessons': 'Lessons',
+  '/monthly-planning': 'Monthly Planning',
+  '/assignments': 'Assignments',
+  '/subjects': 'Subjects',
 };
 
 export function PageBreadcrumb() {

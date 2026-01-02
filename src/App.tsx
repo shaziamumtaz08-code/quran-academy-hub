@@ -16,9 +16,9 @@ import Lessons from "./pages/Lessons";
 import Reports from "./pages/Reports";
 import Payments from "./pages/Payments";
 import KPI from "./pages/KPI";
-import ExamTemplates from "./pages/ExamTemplates";
-import ExamSubmission from "./pages/ExamSubmission";
-import ExamResults from "./pages/ExamResults";
+import ReportCardTemplates from "./pages/ReportCardTemplates";
+import GenerateReportCard from "./pages/GenerateReportCard";
+import StudentReports from "./pages/StudentReports";
 import UserManagement from "./pages/UserManagement";
 import Resources from "./pages/Resources";
 import Assignments from "./pages/Assignments";
@@ -203,10 +203,14 @@ function AppRoutes() {
       {/* Admin-only routes */}
       <Route path="/schedules" element={<ProtectedRoute><AdminRoute><Schedules /></AdminRoute></ProtectedRoute>} />
       <Route path="/monthly-planning" element={<ProtectedRoute><AdminOrTeacherRoute><MonthlyPlanning /></AdminOrTeacherRoute></ProtectedRoute>} />
-      {/* Admin/Examiner exam pages */}
-      <Route path="/exam-templates" element={<ProtectedRoute><AdminOrExaminerRoute><ExamTemplates /></AdminOrExaminerRoute></ProtectedRoute>} />
-      <Route path="/exam-submission" element={<ProtectedRoute><AdminOrExaminerRoute><ExamSubmission /></AdminOrExaminerRoute></ProtectedRoute>} />
-      <Route path="/exam-results" element={<ProtectedRoute><AdminOrExaminerOrTeacherRoute><ExamResults /></AdminOrExaminerOrTeacherRoute></ProtectedRoute>} />
+      {/* Report Card pages (renamed from Exam) */}
+      <Route path="/report-card-templates" element={<ProtectedRoute><AdminOrExaminerRoute><ReportCardTemplates /></AdminOrExaminerRoute></ProtectedRoute>} />
+      <Route path="/generate-report-card" element={<ProtectedRoute><AdminOrExaminerRoute><GenerateReportCard /></AdminOrExaminerRoute></ProtectedRoute>} />
+      <Route path="/student-reports" element={<ProtectedRoute><AdminOrExaminerOrTeacherRoute><StudentReports /></AdminOrExaminerOrTeacherRoute></ProtectedRoute>} />
+      {/* Legacy routes redirect */}
+      <Route path="/exam-templates" element={<Navigate to="/report-card-templates" replace />} />
+      <Route path="/exam-submission" element={<Navigate to="/generate-report-card" replace />} />
+      <Route path="/exam-results" element={<Navigate to="/student-reports" replace />} />
       <Route path="/resources" element={<ProtectedRoute><Resources /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
