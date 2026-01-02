@@ -7,14 +7,13 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Eye, Filter, FileText, AlertCircle, Calendar, BookOpen, User } from 'lucide-react';
+import { Eye, Filter, FileText, AlertCircle, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { TemplateStructure } from '@/types/reportCard';
+import { ReportCardCertificate } from '@/components/reports/ReportCardCertificate';
 
 interface StudentReport {
   id: string;
@@ -205,11 +204,11 @@ export default function StudentReports() {
   }, [reports, studentFilter, subjectFilter, tenureFilter, monthFilter]);
 
   const getGradeBadge = (pct: number) => {
-    if (isNaN(pct)) return <Badge variant="secondary">N/A</Badge>;
-    if (pct >= 90) return <Badge className="bg-primary">Excellent</Badge>;
-    if (pct >= 75) return <Badge variant="default">Good</Badge>;
-    if (pct >= 60) return <Badge variant="secondary">Satisfactory</Badge>;
-    return <Badge variant="destructive">Needs Improvement</Badge>;
+    if (isNaN(pct)) return <Badge className="rounded-full px-3 py-1 bg-gray-100 text-gray-600">N/A</Badge>;
+    if (pct >= 90) return <Badge className="rounded-full px-3 py-1 bg-cyan-500 text-white font-semibold">Mastered</Badge>;
+    if (pct >= 75) return <Badge className="rounded-full px-3 py-1 bg-cyan-100 text-cyan-800 font-semibold">Proficient</Badge>;
+    if (pct >= 60) return <Badge className="rounded-full px-3 py-1 bg-blue-100 text-blue-800 font-semibold">Progressing</Badge>;
+    return <Badge className="rounded-full px-3 py-1 bg-gray-200 text-gray-700 font-semibold">Beginning</Badge>;
   };
 
   const formatDate = (dateString: string | null | undefined): string => {
@@ -271,28 +270,33 @@ export default function StudentReports() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Student Reports</h1>
-          <p className="text-muted-foreground mt-1">
-            {isStudentOrParent ? 'View your report cards and progress' : 'View and filter student report cards'}
-          </p>
+        {/* Premium Page Header */}
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-navy-900 via-navy-800 to-navy-900 p-6 sm:p-8">
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnM1LjM3MyAxMiAxMiAxMiAxMi01LjM3MyAxMi0xMi01LjM3My0xMi0xMi0xMnptMCAyMGMtNC40MTggMC04LTMuNTgyLTgtOHMzLjU4Mi04IDgtOCA4IDMuNTgyIDggOC0zLjU4MiA4LTggOHoiIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iLjAzIi8+PC9nPjwvc3ZnPg==')] opacity-30" />
+          <div className="relative">
+            <h1 className="text-2xl sm:text-3xl font-bold text-white font-serif">Student Report Cards</h1>
+            <p className="text-cyan-300/80 mt-1">
+              {isStudentOrParent ? 'View your official progress reports' : 'View and manage student report cards'}
+            </p>
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-cyan-400 to-cyan-500" />
         </div>
 
-        {/* Filters */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Filter className="h-4 w-4" />
+        {/* Filters Card */}
+        <Card className="bg-white shadow-md rounded-xl border-0">
+          <CardHeader className="pb-3 border-b border-gray-100">
+            <CardTitle className="text-base flex items-center gap-2 text-navy-900">
+              <Filter className="h-4 w-4 text-cyan-500" />
               Filters
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-4">
             <div className="grid gap-4 md:grid-cols-4">
               {!isStudentOrParent && (
                 <div className="space-y-2">
-                  <Label>Student</Label>
+                  <Label className="text-sm text-muted-foreground">Student</Label>
                   <Select value={studentFilter || "all"} onValueChange={(val) => setStudentFilter(val === "all" ? "" : val)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="border-gray-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
                       <SelectValue placeholder="All students" />
                     </SelectTrigger>
                     <SelectContent>
@@ -306,9 +310,9 @@ export default function StudentReports() {
               )}
               
               <div className="space-y-2">
-                <Label>Subject</Label>
+                <Label className="text-sm text-muted-foreground">Subject</Label>
                 <Select value={subjectFilter || "all"} onValueChange={(val) => setSubjectFilter(val === "all" ? "" : val)}>
-                  <SelectTrigger>
+                  <SelectTrigger className="border-gray-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
                     <SelectValue placeholder="All subjects" />
                   </SelectTrigger>
                   <SelectContent>
@@ -321,9 +325,9 @@ export default function StudentReports() {
               </div>
               
               <div className="space-y-2">
-                <Label>Frequency</Label>
+                <Label className="text-sm text-muted-foreground">Frequency</Label>
                 <Select value={tenureFilter || "all"} onValueChange={(val) => setTenureFilter(val === "all" ? "" : val)}>
-                  <SelectTrigger>
+                  <SelectTrigger className="border-gray-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
                     <SelectValue placeholder="All" />
                   </SelectTrigger>
                   <SelectContent>
@@ -337,9 +341,9 @@ export default function StudentReports() {
               </div>
               
               <div className="space-y-2">
-                <Label>Month</Label>
+                <Label className="text-sm text-muted-foreground">Month</Label>
                 <Select value={monthFilter || "all"} onValueChange={(val) => setMonthFilter(val === "all" ? "" : val)}>
-                  <SelectTrigger>
+                  <SelectTrigger className="border-gray-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
                     <SelectValue placeholder="All months" />
                   </SelectTrigger>
                   <SelectContent>
@@ -355,18 +359,18 @@ export default function StudentReports() {
         </Card>
 
         {/* Results Table */}
-        <Card>
-          <CardContent className="pt-6">
+        <Card className="bg-white shadow-md rounded-xl border-0 overflow-hidden">
+          <CardContent className="p-0">
             {isLoading ? (
-              <div className="space-y-4">
+              <div className="space-y-4 p-6">
                 {[...Array(5)].map((_, i) => (
                   <Skeleton key={i} className="h-12 w-full" />
                 ))}
               </div>
             ) : filteredReports.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
-                <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="text-lg font-medium">No reports found</p>
+                <FileText className="h-12 w-12 mx-auto mb-4 opacity-50 text-cyan-500" />
+                <p className="text-lg font-medium text-navy-900">No reports found</p>
                 <p className="text-sm mt-1">
                   {(reports ?? []).length === 0 
                     ? 'No report cards have been generated yet.'
@@ -375,30 +379,39 @@ export default function StudentReports() {
               </div>
             ) : (
               <Table>
-                <TableHeader>
-                  <TableRow>
-                    {!isStudentOrParent && <TableHead>Student</TableHead>}
-                    <TableHead>Template</TableHead>
-                    <TableHead>Subject</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Score</TableHead>
-                    <TableHead className="text-center">Grade</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                <TableHeader className="bg-gray-50">
+                  <TableRow className="hover:bg-gray-50">
+                    {!isStudentOrParent && <TableHead className="text-navy-900 font-semibold">Student</TableHead>}
+                    <TableHead className="text-navy-900 font-semibold">Template</TableHead>
+                    <TableHead className="text-navy-900 font-semibold">Subject</TableHead>
+                    <TableHead className="text-navy-900 font-semibold">Date</TableHead>
+                    <TableHead className="text-right text-navy-900 font-semibold">Score</TableHead>
+                    <TableHead className="text-center text-navy-900 font-semibold">Grade</TableHead>
+                    <TableHead className="text-right text-navy-900 font-semibold">View</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredReports.map((report) => (
-                    <TableRow key={report.id}>
+                    <TableRow 
+                      key={report.id} 
+                      className="hover:bg-cyan-50/50 transition-colors cursor-pointer"
+                      onClick={() => setSelectedReportId(report.id)}
+                    >
                       {!isStudentOrParent && (
-                        <TableCell className="font-medium">
+                        <TableCell className="font-medium text-navy-900">
                           {report.student?.full_name || '-'}
                         </TableCell>
                       )}
-                      <TableCell>{report.template?.name || '-'}</TableCell>
-                      <TableCell>{report.template?.subject?.name || '-'}</TableCell>
-                      <TableCell>{formatDate(report.exam_date)}</TableCell>
-                      <TableCell className="text-right">
-                        {report.total_marks} / {report.max_total_marks}
+                      <TableCell className="text-muted-foreground">{report.template?.name || '-'}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="rounded-full px-3 border-cyan-200 text-cyan-700 bg-cyan-50">
+                          {report.template?.subject?.name || '-'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{formatDate(report.exam_date)}</TableCell>
+                      <TableCell className="text-right font-medium">
+                        <span className="text-navy-900">{report.total_marks}</span>
+                        <span className="text-muted-foreground"> / {report.max_total_marks}</span>
                       </TableCell>
                       <TableCell className="text-center">
                         {getGradeBadge(report.percentage)}
@@ -407,7 +420,11 @@ export default function StudentReports() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => setSelectedReportId(report.id)}
+                          className="text-cyan-600 hover:text-cyan-700 hover:bg-cyan-100"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedReportId(report.id);
+                          }}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -421,79 +438,24 @@ export default function StudentReports() {
         </Card>
       </div>
 
-      {/* Details Dialog */}
+      {/* Premium Certificate Dialog */}
       <Dialog open={!!selectedReportId} onOpenChange={(open) => !open && setSelectedReportId(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Report Card Details
-            </DialogTitle>
-          </DialogHeader>
+        <DialogContent className="max-w-5xl max-h-[95vh] overflow-auto p-0 bg-slate-100">
+          {/* Close Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-4 top-4 z-10 bg-white/80 hover:bg-white shadow-md rounded-full"
+            onClick={() => setSelectedReportId(null)}
+          >
+            <X className="h-4 w-4" />
+          </Button>
           
           {selectedReport && (
-            <ScrollArea className="flex-1">
-              <div className="space-y-6 pr-4">
-                {/* Header Info */}
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Student</p>
-                      <p className="font-medium">{selectedReport.student?.full_name || '-'}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Subject</p>
-                      <p className="font-medium">{selectedReport.template?.subject?.name || '-'}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Date</p>
-                      <p className="font-medium">{formatDate(selectedReport.exam_date)}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Score Summary */}
-                <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Score</p>
-                    <p className="text-2xl font-bold">
-                      {selectedReport.total_marks} / {selectedReport.max_total_marks}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Overall</p>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl font-bold">{selectedReport.percentage}%</span>
-                      {getGradeBadge(selectedReport.percentage)}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Remarks */}
-                {selectedReport.public_remarks && (
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Remarks</Label>
-                    <p className="mt-1 p-3 bg-muted rounded-lg">{selectedReport.public_remarks}</p>
-                  </div>
-                )}
-
-                {!isStudentOrParent && selectedReport.examiner_remarks && (
-                  <div>
-                    <Label className="text-sm text-muted-foreground">Internal Notes</Label>
-                    <p className="mt-1 p-3 bg-secondary rounded-lg">{selectedReport.examiner_remarks}</p>
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
+            <ReportCardCertificate 
+              report={selectedReport} 
+              showInternalNotes={!isStudentOrParent}
+            />
           )}
         </DialogContent>
       </Dialog>
