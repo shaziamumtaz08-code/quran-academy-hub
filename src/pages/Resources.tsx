@@ -587,7 +587,7 @@ export default function Resources() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Loader2 className="h-8 w-8 animate-spin text-accent" />
       </div>
     );
   }
@@ -595,110 +595,135 @@ export default function Resources() {
   const isEmpty = currentFolders.length === 0 && currentFiles.length === 0;
 
   return (
-    <div className="space-y-4">
-      {/* Top bar with breadcrumb and actions */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-          {currentFolderId && (
-            <Button variant="ghost" size="icon" onClick={goBack}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          )}
-          <ResourcesBreadcrumb
-            folderPath={folderPath}
-            onNavigate={navigateToFolder}
-            onDrop={handleDropOnBreadcrumb}
-          />
-        </div>
-
-        {canManage && (
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => setNewFolderOpen(true)}>
-              <FolderPlus className="h-4 w-4 mr-2" />
-              New Folder
-            </Button>
-            <Button onClick={() => setUploadOpen(true)}>
-              <Upload className="h-4 w-4 mr-2" />
-              Upload
-            </Button>
+    <div className="space-y-6 animate-fade-in">
+      {/* Premium Header */}
+      <div className="premium-header rounded-xl p-6 mb-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            {currentFolderId && (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={goBack}
+                className="text-white/80 hover:text-white hover:bg-white/10"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            )}
+            <div>
+              <h1 className="text-2xl font-bold text-white">Resources</h1>
+              <div className="mt-1">
+                <ResourcesBreadcrumb
+                  folderPath={folderPath}
+                  onNavigate={navigateToFolder}
+                  onDrop={handleDropOnBreadcrumb}
+                />
+              </div>
+            </div>
           </div>
-        )}
+
+          {canManage && (
+            <div className="flex items-center gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => setNewFolderOpen(true)}
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              >
+                <FolderPlus className="h-4 w-4 mr-2" />
+                New Folder
+              </Button>
+              <Button 
+                onClick={() => setUploadOpen(true)}
+                className="bg-accent hover:bg-accent/90 text-white shadow-lg"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Upload
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Toolbar */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[200px] max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search in folder..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
+      {/* Toolbar Card */}
+      <div className="premium-card p-4">
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="relative flex-1 min-w-[200px] max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search in folder..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 premium-input"
+            />
+          </div>
 
-        <div className="flex items-center border rounded-lg p-1 bg-muted/50">
-          <button
-            onClick={() => setViewMode("grid")}
-            className={`p-1.5 rounded-md transition-colors ${
-              viewMode === "grid"
-                ? "bg-background shadow-sm"
-                : "hover:bg-background/50"
-            }`}
-          >
-            <Grid3X3 className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => setViewMode("list")}
-            className={`p-1.5 rounded-md transition-colors ${
-              viewMode === "list"
-                ? "bg-background shadow-sm"
-                : "hover:bg-background/50"
-            }`}
-          >
-            <List className="h-4 w-4" />
-          </button>
+          <div className="flex items-center border border-border/50 rounded-xl p-1 bg-muted/30">
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`p-2 rounded-lg transition-all duration-200 ${
+                viewMode === "grid"
+                  ? "bg-accent text-white shadow-md"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              }`}
+            >
+              <Grid3X3 className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setViewMode("list")}
+              className={`p-2 rounded-lg transition-all duration-200 ${
+                viewMode === "list"
+                  ? "bg-accent text-white shadow-md"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              }`}
+            >
+              <List className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Content */}
       {isEmpty ? (
-        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-          <FolderOpen className="h-16 w-16 mb-4 opacity-50" />
-          <p className="font-medium text-lg">This folder is empty</p>
+        <div className="premium-card p-12 flex flex-col items-center justify-center text-muted-foreground">
+          <div className="w-20 h-20 rounded-full bg-accent/10 flex items-center justify-center mb-4">
+            <FolderOpen className="h-10 w-10 text-accent" />
+          </div>
+          <p className="font-semibold text-lg text-foreground">This folder is empty</p>
           {canManage && (
-            <p className="text-sm mt-1">
+            <p className="text-sm mt-2 text-muted-foreground">
               Create a folder or upload files to get started
             </p>
           )}
         </div>
       ) : viewMode === "grid" ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-          {currentFolders.map((folder) => (
-            <FolderItem
-              key={folder.id}
-              folder={folder}
-              viewMode="grid"
-              canManage={canManage}
-              onOpen={navigateToFolder}
-              onRename={openRenameFolder}
-              onDelete={openDeleteFolder}
-              onDrop={handleDropOnFolder}
-            />
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+          {currentFolders.map((folder, index) => (
+            <div key={folder.id} className="animate-fade-in" style={{ animationDelay: `${index * 30}ms` }}>
+              <FolderItem
+                folder={folder}
+                viewMode="grid"
+                canManage={canManage}
+                onOpen={navigateToFolder}
+                onRename={openRenameFolder}
+                onDelete={openDeleteFolder}
+                onDrop={handleDropOnFolder}
+              />
+            </div>
           ))}
-          {currentFiles.map((file) => (
-            <FileItem
-              key={file.id}
-              resource={file}
-              viewMode="grid"
-              canManage={canManage}
-              onRename={openRenameFile}
-              onDelete={openDeleteFile}
-            />
+          {currentFiles.map((file, index) => (
+            <div key={file.id} className="animate-fade-in" style={{ animationDelay: `${(currentFolders.length + index) * 30}ms` }}>
+              <FileItem
+                resource={file}
+                viewMode="grid"
+                canManage={canManage}
+                onRename={openRenameFile}
+                onDelete={openDeleteFile}
+              />
+            </div>
           ))}
         </div>
       ) : (
-        <div className="space-y-1">
+        <div className="premium-card divide-y divide-border/50">
           {currentFolders.map((folder) => (
             <FolderItem
               key={folder.id}

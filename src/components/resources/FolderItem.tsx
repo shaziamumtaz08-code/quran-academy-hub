@@ -55,7 +55,6 @@ export function FolderItem({
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
     
-    // Don't allow dropping on self
     try {
       const data = e.dataTransfer.types.includes("application/json");
       if (data) {
@@ -67,7 +66,6 @@ export function FolderItem({
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
-    // Only set false if we're actually leaving the element
     if (!e.currentTarget.contains(e.relatedTarget as Node)) {
       setIsDragOver(false);
     }
@@ -79,7 +77,6 @@ export function FolderItem({
     
     try {
       const data = JSON.parse(e.dataTransfer.getData("application/json"));
-      // Don't allow dropping folder on itself
       if (data.type === "folder" && data.id === folder.id) {
         return;
       }
@@ -92,8 +89,8 @@ export function FolderItem({
   if (viewMode === "grid") {
     return (
       <div
-        className={`group relative flex flex-col items-center p-4 rounded-lg border bg-card hover:bg-muted/50 cursor-pointer transition-all ${
-          isDragOver ? "ring-2 ring-primary bg-primary/10 scale-105" : ""
+        className={`group relative flex flex-col items-center p-5 rounded-xl bg-card shadow-md hover:shadow-lg cursor-pointer transition-all duration-200 hover:scale-[1.02] ${
+          isDragOver ? "ring-2 ring-accent bg-accent/10 scale-105" : ""
         } ${isDragging ? "opacity-50" : ""}`}
         onDoubleClick={() => onOpen(folder.id)}
         draggable={canManage}
@@ -104,13 +101,17 @@ export function FolderItem({
         onDrop={handleDrop}
       >
         {canManage && (
-          <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing">
+          <div className="absolute top-3 left-3 opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing transition-opacity">
             <GripVertical className="h-4 w-4 text-muted-foreground" />
           </div>
         )}
-        <Folder className={`h-12 w-12 mb-2 ${isDragOver ? "text-primary" : "text-primary"}`} />
-        <span className="text-sm font-medium text-center line-clamp-2">{folder.name}</span>
-        <span className="text-xs text-muted-foreground mt-1">
+        <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-3 transition-colors ${
+          isDragOver ? "bg-accent/20" : "bg-accent/10"
+        }`}>
+          <Folder className={`h-8 w-8 ${isDragOver ? "text-accent" : "text-accent"}`} />
+        </div>
+        <span className="text-sm font-medium text-center line-clamp-2 text-foreground">{folder.name}</span>
+        <span className="text-xs text-muted-foreground mt-1.5">
           {format(new Date(folder.updated_at), "MMM d, yyyy")}
         </span>
 
@@ -118,22 +119,22 @@ export function FolderItem({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className="absolute top-2 right-2 p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-muted transition-all"
+                className="absolute top-3 right-3 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-muted/80 transition-all"
                 onClick={(e) => e.stopPropagation()}
               >
-                <MoreVertical className="h-4 w-4" />
+                <MoreVertical className="h-4 w-4 text-muted-foreground" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onRename(folder)}>
-                <Pencil className="h-4 w-4 mr-2" />
+            <DropdownMenuContent align="end" className="shadow-lg rounded-xl">
+              <DropdownMenuItem onClick={() => onRename(folder)} className="gap-2">
+                <Pencil className="h-4 w-4 text-accent" />
                 Rename
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => onDelete(folder)}
-                className="text-destructive focus:text-destructive"
+                className="gap-2 text-destructive focus:text-destructive"
               >
-                <Trash2 className="h-4 w-4 mr-2" />
+                <Trash2 className="h-4 w-4" />
                 Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -146,8 +147,8 @@ export function FolderItem({
   // List view
   return (
     <div
-      className={`group flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 cursor-pointer transition-all ${
-        isDragOver ? "ring-2 ring-primary bg-primary/10" : ""
+      className={`group flex items-center gap-4 p-4 hover:bg-muted/30 cursor-pointer transition-all duration-200 ${
+        isDragOver ? "ring-2 ring-accent bg-accent/10" : ""
       } ${isDragging ? "opacity-50" : ""}`}
       onDoubleClick={() => onOpen(folder.id)}
       draggable={canManage}
@@ -158,12 +159,16 @@ export function FolderItem({
       onDrop={handleDrop}
     >
       {canManage && (
-        <div className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing">
+        <div className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing transition-opacity">
           <GripVertical className="h-4 w-4 text-muted-foreground" />
         </div>
       )}
-      <Folder className={`h-6 w-6 flex-shrink-0 ${isDragOver ? "text-primary" : "text-primary"}`} />
-      <span className="flex-1 font-medium truncate">{folder.name}</span>
+      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+        isDragOver ? "bg-accent/20" : "bg-accent/10"
+      }`}>
+        <Folder className={`h-5 w-5 ${isDragOver ? "text-accent" : "text-accent"}`} />
+      </div>
+      <span className="flex-1 font-medium truncate text-foreground">{folder.name}</span>
       <span className="text-sm text-muted-foreground whitespace-nowrap">
         {format(new Date(folder.updated_at), "MMM d, yyyy")}
       </span>
@@ -172,22 +177,22 @@ export function FolderItem({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
-              className="p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-muted transition-all"
+              className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-muted transition-all"
               onClick={(e) => e.stopPropagation()}
             >
-              <MoreVertical className="h-4 w-4" />
+              <MoreVertical className="h-4 w-4 text-muted-foreground" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onRename(folder)}>
-              <Pencil className="h-4 w-4 mr-2" />
+          <DropdownMenuContent align="end" className="shadow-lg rounded-xl">
+            <DropdownMenuItem onClick={() => onRename(folder)} className="gap-2">
+              <Pencil className="h-4 w-4 text-accent" />
               Rename
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onDelete(folder)}
-              className="text-destructive focus:text-destructive"
+              className="gap-2 text-destructive focus:text-destructive"
             >
-              <Trash2 className="h-4 w-4 mr-2" />
+              <Trash2 className="h-4 w-4" />
               Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
