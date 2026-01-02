@@ -57,9 +57,28 @@ function getTypeIcon(type: string, size = "h-8 w-8") {
     case "zip":
       return <Archive className={`${iconClass} text-amber-500`} />;
     case "link":
-      return <Link className={`${iconClass} text-cyan-500`} />;
+      return <Link className={`${iconClass} text-accent`} />;
     default:
       return <File className={`${iconClass} text-muted-foreground`} />;
+  }
+}
+
+function getTypeBackground(type: string) {
+  switch (type) {
+    case "pdf":
+      return "bg-red-500/10";
+    case "audio":
+      return "bg-purple-500/10";
+    case "video":
+      return "bg-blue-500/10";
+    case "image":
+      return "bg-green-500/10";
+    case "zip":
+      return "bg-amber-500/10";
+    case "link":
+      return "bg-accent/10";
+    default:
+      return "bg-muted";
   }
 }
 
@@ -73,15 +92,13 @@ export function FileItem({
   const [isDragging, setIsDragging] = useState(false);
 
   const getSignedUrl = async (): Promise<string | null> => {
-    // If it's a link type, just return the URL directly
     if (resource.type === "link") {
       return resource.url;
     }
     
-    // For storage files, generate a signed URL
     const { data, error } = await supabase.storage
       .from("resources")
-      .createSignedUrl(resource.url, 3600); // 1 hour expiry
+      .createSignedUrl(resource.url, 3600);
     
     if (error) {
       toast.error("Failed to access file");
@@ -126,7 +143,7 @@ export function FileItem({
   if (viewMode === "grid") {
     return (
       <div
-        className={`group relative flex flex-col items-center p-4 rounded-lg border bg-card hover:bg-muted/50 cursor-pointer transition-all ${
+        className={`group relative flex flex-col items-center p-5 rounded-xl bg-card shadow-md hover:shadow-lg cursor-pointer transition-all duration-200 hover:scale-[1.02] ${
           isDragging ? "opacity-50" : ""
         }`}
         onClick={handleOpen}
@@ -135,50 +152,52 @@ export function FileItem({
         onDragEnd={handleDragEnd}
       >
         {canManage && (
-          <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing">
+          <div className="absolute top-3 left-3 opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing transition-opacity">
             <GripVertical className="h-4 w-4 text-muted-foreground" />
           </div>
         )}
-        {getTypeIcon(resource.type, "h-12 w-12")}
-        <span className="text-sm font-medium text-center line-clamp-2 mt-2">
+        <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-3 ${getTypeBackground(resource.type)}`}>
+          {getTypeIcon(resource.type, "h-7 w-7")}
+        </div>
+        <span className="text-sm font-medium text-center line-clamp-2 text-foreground">
           {resource.title}
         </span>
-        <span className="text-xs text-muted-foreground mt-1">
+        <span className="text-xs text-muted-foreground mt-1.5">
           {format(new Date(resource.updated_at), "MMM d, yyyy")}
         </span>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
-              className="absolute top-2 right-2 p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-muted transition-all"
+              className="absolute top-3 right-3 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-muted/80 transition-all"
               onClick={(e) => e.stopPropagation()}
             >
-              <MoreVertical className="h-4 w-4" />
+              <MoreVertical className="h-4 w-4 text-muted-foreground" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={handleOpen}>
-              <ExternalLink className="h-4 w-4 mr-2" />
+          <DropdownMenuContent align="end" className="shadow-lg rounded-xl">
+            <DropdownMenuItem onClick={handleOpen} className="gap-2">
+              <ExternalLink className="h-4 w-4 text-accent" />
               Open
             </DropdownMenuItem>
             {resource.type !== "link" && (
-              <DropdownMenuItem onClick={handleDownload}>
-                <Download className="h-4 w-4 mr-2" />
+              <DropdownMenuItem onClick={handleDownload} className="gap-2">
+                <Download className="h-4 w-4 text-accent" />
                 Download
               </DropdownMenuItem>
             )}
             {canManage && (
               <>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => onRename(resource)}>
-                  <Pencil className="h-4 w-4 mr-2" />
+                <DropdownMenuItem onClick={() => onRename(resource)} className="gap-2">
+                  <Pencil className="h-4 w-4 text-accent" />
                   Rename
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => onDelete(resource)}
-                  className="text-destructive focus:text-destructive"
+                  className="gap-2 text-destructive focus:text-destructive"
                 >
-                  <Trash2 className="h-4 w-4 mr-2" />
+                  <Trash2 className="h-4 w-4" />
                   Delete
                 </DropdownMenuItem>
               </>
@@ -192,7 +211,7 @@ export function FileItem({
   // List view
   return (
     <div
-      className={`group flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 cursor-pointer transition-all ${
+      className={`group flex items-center gap-4 p-4 hover:bg-muted/30 cursor-pointer transition-all duration-200 ${
         isDragging ? "opacity-50" : ""
       }`}
       onClick={handleOpen}
@@ -201,12 +220,14 @@ export function FileItem({
       onDragEnd={handleDragEnd}
     >
       {canManage && (
-        <div className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing">
+        <div className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing transition-opacity">
           <GripVertical className="h-4 w-4 text-muted-foreground" />
         </div>
       )}
-      {getTypeIcon(resource.type, "h-6 w-6")}
-      <span className="flex-1 font-medium truncate">{resource.title}</span>
+      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${getTypeBackground(resource.type)}`}>
+        {getTypeIcon(resource.type, "h-5 w-5")}
+      </div>
+      <span className="flex-1 font-medium truncate text-foreground">{resource.title}</span>
       <span className="text-sm text-muted-foreground whitespace-nowrap">
         {format(new Date(resource.updated_at), "MMM d, yyyy")}
       </span>
@@ -214,35 +235,35 @@ export function FileItem({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
-            className="p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-muted transition-all"
+            className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-muted transition-all"
             onClick={(e) => e.stopPropagation()}
           >
-            <MoreVertical className="h-4 w-4" />
+            <MoreVertical className="h-4 w-4 text-muted-foreground" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={handleOpen}>
-            <ExternalLink className="h-4 w-4 mr-2" />
+        <DropdownMenuContent align="end" className="shadow-lg rounded-xl">
+          <DropdownMenuItem onClick={handleOpen} className="gap-2">
+            <ExternalLink className="h-4 w-4 text-accent" />
             Open
           </DropdownMenuItem>
           {resource.type !== "link" && (
-            <DropdownMenuItem onClick={handleDownload}>
-              <Download className="h-4 w-4 mr-2" />
+            <DropdownMenuItem onClick={handleDownload} className="gap-2">
+              <Download className="h-4 w-4 text-accent" />
               Download
             </DropdownMenuItem>
           )}
           {canManage && (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => onRename(resource)}>
-                <Pencil className="h-4 w-4 mr-2" />
+              <DropdownMenuItem onClick={() => onRename(resource)} className="gap-2">
+                <Pencil className="h-4 w-4 text-accent" />
                 Rename
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => onDelete(resource)}
-                className="text-destructive focus:text-destructive"
+                className="gap-2 text-destructive focus:text-destructive"
               >
-                <Trash2 className="h-4 w-4 mr-2" />
+                <Trash2 className="h-4 w-4" />
                 Delete
               </DropdownMenuItem>
             </>
