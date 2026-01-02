@@ -42,14 +42,13 @@ function isValidFullName(name: string): boolean {
 }
 
 function isValidWhatsApp(phone: string | null | undefined): boolean {
-  // Allow null, undefined, or empty/whitespace-only strings
-  if (!phone || phone.trim() === '') return true;
-  // Basic phone validation: optional +, then 7-15 digits, allowing spaces/dashes/dots
-  const cleanedPhone = phone.replace(/[\s\-\.()]/g, '');
-  // Be more lenient - just check it has at least 7 digits and max 20 chars
-  const phoneRegex = /^\+?[0-9]{7,20}$/;
-  return phoneRegex.test(cleanedPhone);
+  if (!phone || phone.trim() === "") return true;
+  const digits = phone.replace(/\D/g, "");
+  if (!digits) return true; // treat "N/A" etc as empty since phone is optional
+  return digits.length >= 7 && digits.length <= 20;
 }
+
+
 
 function isValidAge(age: number | null): boolean {
   if (age === null) return true; // nullable
