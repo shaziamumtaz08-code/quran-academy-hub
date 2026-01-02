@@ -41,11 +41,14 @@ function isValidFullName(name: string): boolean {
   return name.length >= 2 && name.length <= 100;
 }
 
-function isValidWhatsApp(phone: string | null): boolean {
-  if (!phone) return true; // nullable
-  // Basic phone validation: optional +, then 7-15 digits
-  const phoneRegex = /^\+?[1-9]\d{6,14}$/;
-  return phoneRegex.test(phone.replace(/[\s-]/g, ''));
+function isValidWhatsApp(phone: string | null | undefined): boolean {
+  // Allow null, undefined, or empty/whitespace-only strings
+  if (!phone || phone.trim() === '') return true;
+  // Basic phone validation: optional +, then 7-15 digits, allowing spaces/dashes/dots
+  const cleanedPhone = phone.replace(/[\s\-\.()]/g, '');
+  // Be more lenient - just check it has at least 7 digits and max 20 chars
+  const phoneRegex = /^\+?[0-9]{7,20}$/;
+  return phoneRegex.test(cleanedPhone);
 }
 
 function isValidAge(age: number | null): boolean {
