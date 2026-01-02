@@ -6,77 +6,84 @@
 
 @layer base {
   :root {
-    /* Al-Quran Time Academy Theme - Navy Blue & Sky Blue */
-    --background: 210 25% 97%;
-    --foreground: 220 40% 13%;
+    /* Al-Quran Time Academy - Premium Brand Theme */
+    /* Deep Navy #0a192f = hsl(216, 70%, 11%) */
+    /* Electric Cyan #00a8e8 = hsl(197, 100%, 45%) */
+    /* Light Gray #f8fafc = hsl(210, 40%, 98%) */
+    
+    --background: 210 40% 98%;
+    --foreground: 216 70% 11%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 40% 13%;
+    --card-foreground: 216 70% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 40% 13%;
+    --popover-foreground: 216 70% 11%;
 
-    /* Deep Navy Blue - Brand Primary */
-    --primary: 220 60% 20%;
+    /* Deep Navy - Brand Primary */
+    --primary: 216 70% 11%;
     --primary-foreground: 0 0% 100%;
 
-    /* Light cream secondary */
-    --secondary: 210 20% 94%;
-    --secondary-foreground: 220 40% 20%;
+    /* Light gray secondary */
+    --secondary: 210 20% 96%;
+    --secondary-foreground: 216 60% 20%;
 
-    --muted: 210 15% 92%;
-    --muted-foreground: 220 15% 45%;
+    --muted: 210 20% 94%;
+    --muted-foreground: 216 20% 45%;
 
-    /* Sky Blue accent from logo */
-    --accent: 200 85% 55%;
+    /* Electric Cyan accent */
+    --accent: 197 100% 45%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 210 20% 88%;
-    --input: 210 20% 88%;
-    --ring: 200 85% 55%;
+    --border: 210 20% 90%;
+    --input: 210 20% 90%;
+    --ring: 197 100% 45%;
 
     --radius: 0.75rem;
 
-    /* Custom brand colors */
-    --navy: 220 60% 20%;
-    --navy-dark: 220 65% 12%;
-    --navy-light: 220 50% 30%;
-    --sky: 200 85% 55%;
-    --sky-light: 200 90% 70%;
-    --sky-dark: 200 80% 40%;
-    --cream: 40 33% 96%;
-    --cream-dark: 40 25% 90%;
+    /* Custom brand colors - Premium Palette */
+    --navy: 216 70% 11%;
+    --navy-dark: 216 75% 8%;
+    --navy-light: 216 60% 20%;
+    --cyan: 197 100% 45%;
+    --cyan-light: 197 100% 60%;
+    --cyan-dark: 197 90% 35%;
+    --cream: 210 40% 98%;
+    --cream-dark: 210 20% 94%;
 
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(220 60% 20%), hsl(220 65% 12%));
-    --gradient-accent: linear-gradient(135deg, hsl(200 85% 55%), hsl(200 90% 70%));
-    --gradient-soft: linear-gradient(180deg, hsl(210 25% 97%), hsl(210 20% 94%));
-    --gradient-hero: linear-gradient(135deg, hsl(220 65% 12%) 0%, hsl(220 60% 20%) 50%, hsl(200 80% 35%) 100%);
+    /* Premium Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(216 70% 11%), hsl(216 75% 8%));
+    --gradient-accent: linear-gradient(135deg, hsl(197 100% 45%), hsl(197 100% 60%));
+    --gradient-soft: linear-gradient(180deg, hsl(210 40% 98%), hsl(210 20% 94%));
+    --gradient-hero: linear-gradient(135deg, hsl(216 75% 8%) 0%, hsl(216 70% 11%) 50%, transparent 100%);
+    --gradient-header: linear-gradient(90deg, hsl(216 70% 11%) 0%, hsl(216 60% 20%) 100%);
+    --gradient-section: linear-gradient(90deg, hsl(197 100% 45%) 0%, hsl(197 100% 60%) 100%);
 
-    /* Shadows */
-    --shadow-soft: 0 4px 20px -4px hsl(220 40% 13% / 0.08);
-    --shadow-card: 0 2px 12px -2px hsl(220 40% 13% / 0.06);
-    --shadow-glow: 0 0 30px hsl(200 85% 55% / 0.2);
-    --shadow-navy: 0 4px 20px -4px hsl(220 60% 20% / 0.3);
+    /* Premium Shadows */
+    --shadow-soft: 0 4px 20px -4px hsl(216 70% 11% / 0.08);
+    --shadow-card: 0 4px 16px -2px hsl(216 70% 11% / 0.08), 0 2px 8px -2px hsl(216 70% 11% / 0.04);
+    --shadow-card-hover: 0 12px 32px -4px hsl(216 70% 11% / 0.15), 0 4px 16px -4px hsl(216 70% 11% / 0.08);
+    --shadow-glow: 0 0 30px hsl(197 100% 45% / 0.25);
+    --shadow-navy: 0 4px 20px -4px hsl(216 70% 11% / 0.35);
 
-    --sidebar-background: 220 60% 20%;
+    --sidebar-background: 216 70% 11%;
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 200 85% 55%;
+    --sidebar-primary: 197 100% 45%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 50% 28%;
+    --sidebar-accent: 216 60% 18%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 220 50% 25%;
-    --sidebar-ring: 200 85% 55%;
+    --sidebar-border: 216 60% 16%;
+    --sidebar-ring: 197 100% 45%;
 
     /* Status colors */
     --success: 160 60% 45%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
-    --warning-foreground: 220 40% 13%;
-    --info: 200 85% 55%;
+    --warning-foreground: 216 70% 11%;
+    --info: 197 100% 45%;
     --info-foreground: 0 0% 100%;
   }
 
@@ -137,11 +144,11 @@
 
 @layer components {
   .islamic-pattern {
-    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%231e3a5f' fill-opacity='0.04'%3E%3Cpath d='M30 0L60 30L30 60L0 30z M30 10L50 30L30 50L10 30z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%230a192f' fill-opacity='0.03'%3E%3Cpath d='M30 0L60 30L30 60L0 30z M30 10L50 30L30 50L10 30z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
   }
 
   .glass-card {
-    @apply bg-card/80 backdrop-blur-sm border border-border/50;
+    @apply bg-card/90 backdrop-blur-sm border-0 shadow-card;
   }
 
   .gradient-text {
@@ -162,18 +169,77 @@
     box-shadow: var(--shadow-glow);
   }
 
-  /* Card variants */
+  /* Premium Card variants */
   .card-elevated {
-    @apply bg-card shadow-card border border-border/50 rounded-lg;
+    @apply bg-card shadow-card border-0 rounded-xl;
+  }
+
+  .card-premium {
+    @apply bg-card shadow-card border-0 rounded-xl transition-all duration-300;
+  }
+
+  .card-premium:hover {
+    @apply shadow-card-hover;
+    transform: scale(1.01);
   }
 
   .card-interactive {
-    @apply card-elevated transition-all duration-200 hover:shadow-soft hover:border-accent/30;
+    @apply card-premium cursor-pointer;
+  }
+
+  /* Section header with cyan accent */
+  .section-header {
+    @apply relative pl-4;
+  }
+  
+  .section-header::before {
+    content: '';
+    @apply absolute left-0 top-0 bottom-0 w-1 rounded-full;
+    background: var(--gradient-section);
+  }
+
+  /* Premium page header */
+  .page-header-premium {
+    @apply relative overflow-hidden rounded-xl p-6 mb-6;
+    background: var(--gradient-header);
+  }
+
+  .page-header-premium::after {
+    content: '';
+    @apply absolute inset-0 opacity-10;
+    background: radial-gradient(circle at 100% 0%, hsl(197 100% 45% / 0.3), transparent 50%);
+  }
+
+  /* Premium input focus styles */
+  .input-premium {
+    @apply border-border/50 bg-card transition-all duration-200;
+  }
+
+  .input-premium:focus {
+    @apply border-accent ring-2 ring-accent/20;
+  }
+
+  /* Pill badges */
+  .badge-pill {
+    @apply rounded-full px-3 py-1;
   }
 
   /* Navy header style */
   .header-navy {
-    background: var(--gradient-hero);
+    background: var(--gradient-header);
+  }
+
+  /* Accent icon colors */
+  .icon-accent {
+    @apply text-accent;
+  }
+
+  .icon-muted {
+    @apply text-muted-foreground;
+  }
+
+  .icon-danger {
+    @apply text-destructive;
   }
 }
 

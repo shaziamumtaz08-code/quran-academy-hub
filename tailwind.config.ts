@@ -56,10 +56,10 @@ export default {
           dark: "hsl(var(--navy-dark))",
           light: "hsl(var(--navy-light))",
         },
-        sky: {
-          DEFAULT: "hsl(var(--sky))",
-          light: "hsl(var(--sky-light))",
-          dark: "hsl(var(--sky-dark))",
+        cyan: {
+          DEFAULT: "hsl(var(--cyan))",
+          light: "hsl(var(--cyan-light))",
+          dark: "hsl(var(--cyan-dark))",
         },
         cream: {
           DEFAULT: "hsl(var(--cream))",
@@ -96,6 +96,7 @@ export default {
       boxShadow: {
         soft: "var(--shadow-soft)",
         card: "var(--shadow-card)",
+        "card-hover": "var(--shadow-card-hover)",
         glow: "var(--shadow-glow)",
         navy: "var(--shadow-navy)",
       },
