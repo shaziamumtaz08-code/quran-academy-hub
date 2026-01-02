@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.admin-update-user]
 verify_jwt = false
+
+[functions.bulk-validate-import]
+verify_jwt = false
+
+[functions.bulk-import-execute]
+verify_jwt = false
