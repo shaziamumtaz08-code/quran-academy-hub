@@ -10,11 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Calendar, Clock, User, ChevronDown, ChevronRight, Loader2, AlertCircle, Globe, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Calendar, Clock, User, ChevronDown, ChevronRight, Loader2, AlertCircle, Globe, Pencil, Trash2, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
+import { BulkScheduleImportDialog } from '@/components/schedules/BulkScheduleImportDialog';
 
 const DAYS_OF_WEEK = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const DAYS_LABELS: Record<string, string> = {
@@ -178,6 +179,7 @@ function detectScheduleConflict(
 export default function Schedules() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false);
+  const [isCsvImportOpen, setIsCsvImportOpen] = useState(false);
   const [expandedAssignments, setExpandedAssignments] = useState<Set<string>>(new Set());
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [deleteSchedule, setDeleteSchedule] = useState<Schedule | null>(null);
@@ -546,6 +548,11 @@ export default function Schedules() {
             <p className="text-muted-foreground mt-1">Manage class schedules with timezone support</p>
           </div>
           <div className="flex gap-2">
+            {/* CSV Import Button */}
+            <Button variant="outline" onClick={() => setIsCsvImportOpen(true)}>
+              <Upload className="h-4 w-4 mr-1" />
+              CSV Import
+            </Button>
             {/* Bulk Add Button */}
             <Dialog open={isBulkDialogOpen} onOpenChange={setIsBulkDialogOpen}>
               <DialogTrigger asChild>
@@ -934,6 +941,12 @@ export default function Schedules() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* CSV Import Dialog */}
+        <BulkScheduleImportDialog 
+          open={isCsvImportOpen} 
+          onOpenChange={setIsCsvImportOpen} 
+        />
       </div>
     </DashboardLayout>
   );
