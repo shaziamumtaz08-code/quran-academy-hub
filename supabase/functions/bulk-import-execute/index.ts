@@ -19,6 +19,7 @@ interface ImportResult {
   action: "created" | "updated" | "skipped";
   id: string | null;
   error: string | null;
+  userName: string | null; // Added for detailed error messages
 }
 
 serve(async (req) => {
@@ -52,21 +53,28 @@ serve(async (req) => {
 
     if (type === "users") {
       for (const row of validRows) {
+        const userName = row.data.full_name || `Row ${row.rowNum}`;
         try {
           if (row.status === "update" && row.existingId) {
             // Update existing user profile
+            const updateData: Record<string, any> = {
+              updated_at: new Date().toISOString(),
+            };
+            
+            // Only update fields that have values
+            if (row.data.email) updateData.email = row.data.email;
+            if (row.data.whatsapp_number !== undefined) updateData.whatsapp_number = row.data.whatsapp_number;
+            if (row.data.age !== undefined) updateData.age = row.data.age;
+            if (row.data.gender !== undefined) updateData.gender = row.data.gender;
+
             const { error } = await supabase
               .from("profiles")
-              .update({
-                full_name: row.data.full_name,
-                whatsapp_number: row.data.whatsapp_number,
-                age: row.data.age,
-                gender: row.data.gender,
-                updated_at: new Date().toISOString(),
-              })
+              .update(updateData)
               .eq("id", row.existingId);
 
             if (error) throw error;
+
+            console.log(`[bulk-import-execute] Updated user: ${userName} (${row.existingId})`);
 
             results.push({
               rowNum: row.rowNum,
@@ -74,6 +82,7 @@ serve(async (req) => {
               action: "updated",
               id: row.existingId,
               error: null,
+              userName,
             });
           } else if (row.status === "new" || row.status === "warning") {
             // Create new user via auth
@@ -83,7 +92,14 @@ serve(async (req) => {
               email_confirm: true,
             });
 
-            if (authError) throw authError;
+            if (authError) {
+              // Provide more descriptive error messages
+              let errorMessage = authError.message;
+              if (authError.message.includes("already been registered")) {
+                errorMessage = `Email "${row.data.email}" is already registered in auth system`;
+              }
+              throw new Error(errorMessage);
+            }
 
             const userId = authData.user.id;
 
@@ -98,7 +114,8 @@ serve(async (req) => {
             });
 
             if (profileError) {
-              console.error(`Profile creation failed for ${row.data.email}:`, profileError);
+              console.error(`[bulk-import-execute] Profile creation failed for ${userName}:`, profileError);
+              throw new Error(`Profile creation failed: ${profileError.message}`);
             }
 
             // Assign role
@@ -108,8 +125,11 @@ serve(async (req) => {
             });
 
             if (roleError) {
-              console.error(`Role assignment failed for ${row.data.email}:`, roleError);
+              console.error(`[bulk-import-execute] Role assignment failed for ${userName}:`, roleError);
+              // Don't throw - user was created, just role failed
             }
+
+            console.log(`[bulk-import-execute] Created user: ${userName} (${userId}) as ${row.data.role}`);
 
             results.push({
               rowNum: row.rowNum,
@@ -117,21 +137,24 @@ serve(async (req) => {
               action: "created",
               id: userId,
               error: null,
+              userName,
             });
           }
         } catch (error: any) {
-          console.error(`[bulk-import-execute] User row ${row.rowNum} failed:`, error);
+          console.error(`[bulk-import-execute] User row ${row.rowNum} (${userName}) failed:`, error);
           results.push({
             rowNum: row.rowNum,
             success: false,
             action: "skipped",
             id: null,
             error: error.message || "Unknown error",
+            userName,
           });
         }
       }
     } else if (type === "assignments") {
       for (const row of validRows) {
+        const assignmentName = `${row.data.teacher_name} → ${row.data.student_name}`;
         try {
           if (row.status === "update" && row.existingId) {
             // Update existing assignment
@@ -144,12 +167,15 @@ serve(async (req) => {
 
             if (error) throw error;
 
+            console.log(`[bulk-import-execute] Updated assignment: ${assignmentName}`);
+
             results.push({
               rowNum: row.rowNum,
               success: true,
               action: "updated",
               id: row.existingId,
               error: null,
+              userName: assignmentName,
             });
           } else if (row.status === "new" || row.status === "warning") {
             // Create new assignment
@@ -165,27 +191,32 @@ serve(async (req) => {
 
             if (error) throw error;
 
+            console.log(`[bulk-import-execute] Created assignment: ${assignmentName}`);
+
             results.push({
               rowNum: row.rowNum,
               success: true,
               action: "created",
               id: data.id,
               error: null,
+              userName: assignmentName,
             });
           }
         } catch (error: any) {
-          console.error(`[bulk-import-execute] Assignment row ${row.rowNum} failed:`, error);
+          console.error(`[bulk-import-execute] Assignment row ${row.rowNum} (${assignmentName}) failed:`, error);
           results.push({
             rowNum: row.rowNum,
             success: false,
             action: "skipped",
             id: null,
             error: error.message || "Unknown error",
+            userName: assignmentName,
           });
         }
       }
     } else if (type === "schedules") {
       for (const row of validRows) {
+        const scheduleName = `${row.data.teacher_name} → ${row.data.student_name} (${row.data.day_of_week})`;
         try {
           if (row.status === "update" && row.existingId) {
             // Update existing schedule
@@ -199,12 +230,15 @@ serve(async (req) => {
 
             if (error) throw error;
 
+            console.log(`[bulk-import-execute] Updated schedule: ${scheduleName}`);
+
             results.push({
               rowNum: row.rowNum,
               success: true,
               action: "updated",
               id: row.existingId,
               error: null,
+              userName: scheduleName,
             });
           } else if (row.status === "new" || row.status === "warning") {
             // Create new schedule
@@ -223,22 +257,26 @@ serve(async (req) => {
 
             if (error) throw error;
 
+            console.log(`[bulk-import-execute] Created schedule: ${scheduleName}`);
+
             results.push({
               rowNum: row.rowNum,
               success: true,
               action: "created",
               id: data.id,
               error: null,
+              userName: scheduleName,
             });
           }
         } catch (error: any) {
-          console.error(`[bulk-import-execute] Schedule row ${row.rowNum} failed:`, error);
+          console.error(`[bulk-import-execute] Schedule row ${row.rowNum} (${scheduleName}) failed:`, error);
           results.push({
             rowNum: row.rowNum,
             success: false,
             action: "skipped",
             id: null,
             error: error.message || "Unknown error",
+            userName: scheduleName,
           });
         }
       }
