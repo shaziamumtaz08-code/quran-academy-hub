@@ -85,7 +85,10 @@ serve(async (req) => {
               userName,
             });
           } else if (row.status === "new" || row.status === "warning") {
-            // Create new user via auth
+            // Try to create new user via auth
+            let userId: string | null = null;
+            let wasExistingAuth = false;
+
             const { data: authData, error: authError } = await supabase.auth.admin.createUser({
               email: row.data.email,
               password: row.data.password,
@@ -93,15 +96,32 @@ serve(async (req) => {
             });
 
             if (authError) {
-              // Provide more descriptive error messages
-              let errorMessage = authError.message;
+              // If email already exists in auth, find the existing user and reuse their auth
               if (authError.message.includes("already been registered")) {
-                errorMessage = `Email "${row.data.email}" is already registered in auth system`;
+                console.log(`[bulk-import-execute] Email ${row.data.email} exists in auth, looking up existing user...`);
+                
+                // List users by email to find existing auth user
+                const { data: existingUsers, error: listError } = await supabase.auth.admin.listUsers();
+                
+                if (!listError && existingUsers?.users) {
+                  const existingAuthUser = existingUsers.users.find(u => u.email === row.data.email);
+                  if (existingAuthUser) {
+                    // Generate a new UUID for this profile (sibling)
+                    userId = crypto.randomUUID();
+                    wasExistingAuth = true;
+                    console.log(`[bulk-import-execute] Creating sibling profile with new ID ${userId} (shares email with auth user ${existingAuthUser.id})`);
+                  }
+                }
+                
+                if (!userId) {
+                  throw new Error(`Email "${row.data.email}" is already registered and couldn't find existing user to link`);
+                }
+              } else {
+                throw new Error(authError.message);
               }
-              throw new Error(errorMessage);
+            } else {
+              userId = authData.user.id;
             }
-
-            const userId = authData.user.id;
 
             // Create profile
             const { error: profileError } = await supabase.from("profiles").insert({
@@ -129,7 +149,8 @@ serve(async (req) => {
               // Don't throw - user was created, just role failed
             }
 
-            console.log(`[bulk-import-execute] Created user: ${userName} (${userId}) as ${row.data.role}`);
+            const actionNote = wasExistingAuth ? "(sibling - shares auth)" : "";
+            console.log(`[bulk-import-execute] Created user: ${userName} (${userId}) as ${row.data.role} ${actionNote}`);
 
             results.push({
               rowNum: row.rowNum,
