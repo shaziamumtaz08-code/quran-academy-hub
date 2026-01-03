@@ -96,26 +96,22 @@ serve(async (req) => {
             });
 
             if (authError) {
-              // If email already exists in auth, find the existing user and reuse their auth
+              // Allow duplicate emails for siblings (typically students):
+              // Auth requires unique emails, so if the email is already registered we create a profile-only user.
               if (authError.message.includes("already been registered")) {
-                console.log(`[bulk-import-execute] Email ${row.data.email} exists in auth, looking up existing user...`);
-                
-                // List users by email to find existing auth user
-                const { data: existingUsers, error: listError } = await supabase.auth.admin.listUsers();
-                
-                if (!listError && existingUsers?.users) {
-                  const existingAuthUser = existingUsers.users.find(u => u.email === row.data.email);
-                  if (existingAuthUser) {
-                    // Generate a new UUID for this profile (sibling)
-                    userId = crypto.randomUUID();
-                    wasExistingAuth = true;
-                    console.log(`[bulk-import-execute] Creating sibling profile with new ID ${userId} (shares email with auth user ${existingAuthUser.id})`);
-                  }
+                const role = (row.data.role || "").toString().toLowerCase();
+
+                if (role !== "student") {
+                  throw new Error(
+                    `Email "${row.data.email}" is already registered. For non-students, use a different email.`
+                  );
                 }
-                
-                if (!userId) {
-                  throw new Error(`Email "${row.data.email}" is already registered and couldn't find existing user to link`);
-                }
+
+                userId = crypto.randomUUID();
+                wasExistingAuth = true;
+                console.log(
+                  `[bulk-import-execute] Email ${row.data.email} exists in auth; creating student sibling profile with new ID ${userId}`
+                );
               } else {
                 throw new Error(authError.message);
               }
