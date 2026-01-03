@@ -22,6 +22,27 @@ interface ImportResult {
   userName: string | null; // Added for detailed error messages
 }
 
+// Look up an existing auth user id by email (auth enforces unique emails)
+async function findAuthUserIdByEmail(supabase: any, email: string): Promise<string | null> {
+  const target = (email || "").trim().toLowerCase();
+  if (!target) return null;
+
+  const perPage = 1000;
+  for (let page = 1; page <= 20; page++) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
+    if (error) {
+      throw new Error(`Failed to lookup auth user for email "${email}": ${error.message}`);
+    }
+
+    const found = data?.users?.find((u: any) => (u.email || "").toLowerCase() === target);
+    if (found) return found.id;
+
+    if (!data?.users || data.users.length < perPage) return null;
+  }
+
+  return null;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -85,32 +106,83 @@ serve(async (req) => {
               userName,
             });
           } else if (row.status === "new" || row.status === "warning") {
-            // Try to create new user via auth
+            const normalizedEmail = (row.data.email || "").toString().trim().toLowerCase();
+            const fullName = (row.data.full_name || "").toString().trim();
+
+            // If a profile with the same NAME+EMAIL already exists, update it (idempotent import)
+            if (normalizedEmail && fullName) {
+              const { data: existingProfile, error: existingProfileError } = await supabase
+                .from("profiles")
+                .select("id")
+                .eq("full_name", fullName)
+                .eq("email", normalizedEmail)
+                .maybeSingle();
+
+              if (existingProfileError) throw existingProfileError;
+
+              if (existingProfile?.id) {
+                const updateData: Record<string, any> = {
+                  updated_at: new Date().toISOString(),
+                };
+
+                if (row.data.whatsapp_number !== undefined) updateData.whatsapp_number = row.data.whatsapp_number;
+                if (row.data.age !== undefined) updateData.age = row.data.age;
+                if (row.data.gender !== undefined) updateData.gender = row.data.gender;
+
+                const { error: updateErr } = await supabase
+                  .from("profiles")
+                  .update(updateData)
+                  .eq("id", existingProfile.id);
+
+                if (updateErr) throw updateErr;
+
+                // Best-effort role insert
+                const { error: roleErr } = await supabase.from("user_roles").insert({
+                  user_id: existingProfile.id,
+                  role: row.data.role,
+                });
+                if (roleErr) {
+                  console.error(`[bulk-import-execute] Role assignment failed for ${userName}:`, roleErr);
+                }
+
+                console.log(`[bulk-import-execute] Updated user (matched by name+email): ${userName} (${existingProfile.id})`);
+
+                results.push({
+                  rowNum: row.rowNum,
+                  success: true,
+                  action: "updated",
+                  id: existingProfile.id,
+                  error: null,
+                  userName,
+                });
+
+                continue;
+              }
+            }
+
+            // Create user in auth; if email already exists, reuse the existing auth user id
             let userId: string | null = null;
-            let wasExistingAuth = false;
+            let reusedExistingAuth = false;
 
             const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-              email: row.data.email,
+              email: normalizedEmail,
               password: row.data.password,
               email_confirm: true,
             });
 
             if (authError) {
-              // Allow duplicate emails for siblings (typically students):
-              // Auth requires unique emails, so if the email is already registered we create a profile-only user.
               if (authError.message.includes("already been registered")) {
-                const role = (row.data.role || "").toString().toLowerCase();
-
-                if (role !== "student") {
+                const existingAuthId = await findAuthUserIdByEmail(supabase, normalizedEmail);
+                if (!existingAuthId) {
                   throw new Error(
-                    `Email "${row.data.email}" is already registered. For non-students, use a different email.`
+                    `Email "${normalizedEmail}" is already registered but could not be found in the authentication system.`
                   );
                 }
 
-                userId = crypto.randomUUID();
-                wasExistingAuth = true;
+                userId = existingAuthId;
+                reusedExistingAuth = true;
                 console.log(
-                  `[bulk-import-execute] Email ${row.data.email} exists in auth; creating student sibling profile with new ID ${userId}`
+                  `[bulk-import-execute] Email ${normalizedEmail} exists in auth; reusing auth id ${userId} for profile upsert`
                 );
               } else {
                 throw new Error(authError.message);
@@ -119,19 +191,23 @@ serve(async (req) => {
               userId = authData.user.id;
             }
 
-            // Create profile
-            const { error: profileError } = await supabase.from("profiles").insert({
-              id: userId,
-              email: row.data.email,
-              full_name: row.data.full_name,
-              whatsapp_number: row.data.whatsapp_number,
-              age: row.data.age,
-              gender: row.data.gender,
-            });
+            // Create or update profile (avoids FK failures and duplicate profile inserts)
+            const { error: profileError } = await supabase.from("profiles").upsert(
+              {
+                id: userId,
+                email: normalizedEmail,
+                full_name: row.data.full_name,
+                whatsapp_number: row.data.whatsapp_number,
+                age: row.data.age,
+                gender: row.data.gender,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: "id" }
+            );
 
             if (profileError) {
-              console.error(`[bulk-import-execute] Profile creation failed for ${userName}:`, profileError);
-              throw new Error(`Profile creation failed: ${profileError.message}`);
+              console.error(`[bulk-import-execute] Profile upsert failed for ${userName}:`, profileError);
+              throw new Error(`Profile upsert failed: ${profileError.message}`);
             }
 
             // Assign role
@@ -142,16 +218,18 @@ serve(async (req) => {
 
             if (roleError) {
               console.error(`[bulk-import-execute] Role assignment failed for ${userName}:`, roleError);
-              // Don't throw - user was created, just role failed
+              // Don't throw - profile was upserted
             }
 
-            const actionNote = wasExistingAuth ? "(sibling - shares auth)" : "";
-            console.log(`[bulk-import-execute] Created user: ${userName} (${userId}) as ${row.data.role} ${actionNote}`);
+            const action: ImportResult["action"] = reusedExistingAuth ? "updated" : "created";
+            console.log(
+              `[bulk-import-execute] ${action === "created" ? "Created" : "Updated"} user: ${userName} (${userId}) as ${row.data.role}`
+            );
 
             results.push({
               rowNum: row.rowNum,
               success: true,
-              action: "created",
+              action,
               id: userId,
               error: null,
               userName,
