@@ -17,10 +17,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Upload, Download, FileSpreadsheet, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { Upload, Download, FileSpreadsheet, Loader2, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { ImportSummaryCards } from "./ImportSummaryCards";
 import { ImportPreviewTable } from "./ImportPreviewTable";
-import { useImportLogic, type ImportType } from "@/hooks/useImportLogic";
+import { useImportLogic, type ImportType, type ImportResultRow } from "@/hooks/useImportLogic";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 // ============= Constants =============
 const COUNTRY_OPTIONS = [
@@ -302,19 +303,32 @@ function ImportingStep({ progress }: ImportingStepProps) {
 }
 
 interface DoneStepProps {
-  results: { success: number; failed: number; created: number; updated: number };
+  results: { success: number; failed: number; created: number; updated: number; failedRows?: ImportResultRow[] };
 }
 
 function DoneStep({ results }: DoneStepProps) {
+  const hasFailures = results.failed > 0 && results.failedRows && results.failedRows.length > 0;
+  
   return (
-    <div className="flex flex-col items-center justify-center py-12 space-y-6">
-      <div className="h-16 w-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-        <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+    <div className="flex flex-col items-center justify-center py-8 space-y-6">
+      <div className={`h-16 w-16 rounded-full flex items-center justify-center ${
+        hasFailures 
+          ? "bg-amber-100 dark:bg-amber-900/30" 
+          : "bg-emerald-100 dark:bg-emerald-900/30"
+      }`}>
+        {hasFailures ? (
+          <AlertTriangle className="h-8 w-8 text-amber-600" />
+        ) : (
+          <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+        )}
       </div>
       <div className="text-center">
-        <h4 className="text-xl font-medium">Import Complete!</h4>
+        <h4 className="text-xl font-medium">
+          {hasFailures ? "Import Completed with Errors" : "Import Complete!"}
+        </h4>
         <p className="text-muted-foreground mt-1">
           Successfully processed {results.success} records
+          {hasFailures && `, ${results.failed} failed`}
         </p>
       </div>
       <div className="grid grid-cols-2 gap-4 text-center">
@@ -331,10 +345,38 @@ function DoneStep({ results }: DoneStepProps) {
           <div className="text-sm text-muted-foreground">Updated</div>
         </div>
       </div>
-      {results.failed > 0 && (
-        <div className="flex items-center gap-2 text-destructive">
-          <XCircle className="h-4 w-4" />
-          <span>{results.failed} failed</span>
+      
+      {/* Detailed Failed Rows List */}
+      {hasFailures && results.failedRows && (
+        <div className="w-full max-w-xl">
+          <div className="flex items-center gap-2 text-destructive mb-3">
+            <XCircle className="h-4 w-4" />
+            <span className="font-medium">{results.failed} Failed Records</span>
+          </div>
+          <ScrollArea className="h-48 w-full rounded-md border border-destructive/30 bg-destructive/5">
+            <div className="p-3 space-y-2">
+              {results.failedRows.map((row) => (
+                <div 
+                  key={row.rowNum} 
+                  className="p-2 bg-background rounded border border-destructive/20 text-sm"
+                >
+                  <div className="flex items-start gap-2">
+                    <span className="font-mono text-xs bg-destructive/10 text-destructive px-1.5 py-0.5 rounded">
+                      Row {row.rowNum}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium text-foreground">
+                        {row.userName || "Unknown"}
+                      </span>
+                      <p className="text-destructive text-xs mt-0.5 break-words">
+                        {row.error || "Unknown error"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
         </div>
       )}
     </div>

@@ -112,11 +112,12 @@ function isValidEmail(email: string): boolean {
   return emailRegex.test(email);
 }
 
-// Validate user row
+// Validate user row - using full_name (username) as unique key to allow duplicate emails
 async function validateUserRow(
   row: Record<string, any>,
   rowNum: number,
-  existingUsers: Map<string, any>,
+  existingUsersByName: Map<string, any>,
+  existingEmails: Set<string>,
   defaultCountry: string
 ): Promise<ValidationResult> {
   const errors: string[] = [];
@@ -133,15 +134,14 @@ async function validateUserRow(
   const gender = row.gender?.trim()?.toLowerCase();
   const password = row.password?.trim();
 
-  // Required field validation
-  if (!email) {
-    errors.push("Email is required");
-  } else if (!isValidEmail(email)) {
-    errors.push(`Invalid email format: "${email}"`);
+  // Required field validation - full_name is the unique key
+  if (!fullName || fullName.length < 2) {
+    errors.push("Full name (username) is required (min 2 characters)");
   }
 
-  if (!fullName || fullName.length < 2) {
-    errors.push("Full name is required (min 2 characters)");
+  // Email is optional but validate format if provided
+  if (email && !isValidEmail(email)) {
+    errors.push(`Invalid email format: "${email}"`);
   }
 
   if (!role) {
@@ -151,10 +151,6 @@ async function validateUserRow(
     if (!validRoles.includes(role)) {
       errors.push(`Invalid role: "${role}". Valid: ${validRoles.join(", ")}`);
     }
-  }
-
-  if (!password || password.length < 6) {
-    errors.push("Password is required (min 6 characters)");
   }
 
   // Phone validation with libphonenumber-js
@@ -175,16 +171,17 @@ async function validateUserRow(
     errors.push(`Invalid gender: "${gender}". Valid: male, female, other`);
   }
 
-  // Check if user exists (for upsert)
-  if (email && existingUsers.has(email)) {
-    const existing = existingUsers.get(email);
+  // Check if user exists by full_name (username) for upsert
+  const nameKey = fullName?.toLowerCase();
+  if (nameKey && existingUsersByName.has(nameKey)) {
+    const existing = existingUsersByName.get(nameKey);
     existingId = existing.id;
     status = "update";
     diff = {};
 
     // Calculate diff
-    if (existing.full_name !== fullName) {
-      diff.full_name = { old: existing.full_name, new: fullName };
+    if (existing.email !== email) {
+      diff.email = { old: existing.email, new: email };
     }
     if (existing.whatsapp_number !== phoneResult.normalized) {
       diff.whatsapp_number = { old: existing.whatsapp_number, new: phoneResult.normalized };
@@ -199,6 +196,15 @@ async function validateUserRow(
     if (Object.keys(diff).length === 0) {
       diff = null;
       warnings.push("No changes detected - row will be skipped");
+    }
+  } else {
+    // New user - password is required
+    if (!password || password.length < 6) {
+      errors.push("Password is required for new users (min 6 characters)");
+    }
+    // Email required for new users (for auth)
+    if (!email) {
+      errors.push("Email is required for new users");
     }
   }
 
@@ -461,7 +467,7 @@ async function validateScheduleRow(
       student_name: studentName,
       day_of_week: normalizedDay,
       student_local_time: normalizedTime,
-      teacher_local_time: normalizedTime, // Will be calculated properly in execute
+      teacher_local_time: normalizedTime,
       duration_minutes: duration,
     },
     diff,
@@ -494,18 +500,21 @@ serve(async (req) => {
     const validationResults: ValidationResult[] = [];
 
     if (type === "users") {
-      // Fetch existing users for upsert matching
+      // Fetch existing users for upsert matching by full_name (username)
       const { data: existingUsersData } = await supabase
         .from("profiles")
         .select("id, email, full_name, whatsapp_number, age, gender");
 
-      const existingUsers = new Map<string, any>();
+      // Map by full_name (username) as unique key - allows duplicate emails
+      const existingUsersByName = new Map<string, any>();
+      const existingEmails = new Set<string>();
       existingUsersData?.forEach((u) => {
-        if (u.email) existingUsers.set(u.email.toLowerCase(), u);
+        if (u.full_name) existingUsersByName.set(u.full_name.toLowerCase(), u);
+        if (u.email) existingEmails.add(u.email.toLowerCase());
       });
 
       for (let i = 0; i < rows.length; i++) {
-        const result = await validateUserRow(rows[i], i + 1, existingUsers, defaultCountry);
+        const result = await validateUserRow(rows[i], i + 1, existingUsersByName, existingEmails, defaultCountry);
         validationResults.push(result);
       }
     } else if (type === "assignments") {

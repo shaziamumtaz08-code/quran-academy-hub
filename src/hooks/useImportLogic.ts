@@ -24,11 +24,21 @@ export interface ValidationSummary {
   errors: number;
 }
 
+export interface ImportResultRow {
+  rowNum: number;
+  success: boolean;
+  action: "created" | "updated" | "skipped";
+  id: string | null;
+  error: string | null;
+  userName: string | null;
+}
+
 export interface ImportResults {
   success: number;
   failed: number;
   created: number;
   updated: number;
+  failedRows: ImportResultRow[];
 }
 
 // ============= CSV Parsing =============
@@ -162,12 +172,25 @@ export function useImportLogic(type: ImportType, onComplete?: () => void) {
       if (error) throw error;
 
       setImportProgress(100);
-      setImportResults(data.summary);
+      
+      // Extract failed rows for detailed display
+      const failedRows = data.results?.filter((r: ImportResultRow) => !r.success) || [];
+      
+      setImportResults({
+        ...data.summary,
+        failedRows,
+      });
       setStep("done");
 
-      toast.success(
-        `Import complete: ${data.summary.created} created, ${data.summary.updated} updated`
-      );
+      if (data.summary.failed > 0) {
+        toast.warning(
+          `Import complete with errors: ${data.summary.created} created, ${data.summary.updated} updated, ${data.summary.failed} failed`
+        );
+      } else {
+        toast.success(
+          `Import complete: ${data.summary.created} created, ${data.summary.updated} updated`
+        );
+      }
     } catch (error: any) {
       console.error("Import error:", error);
       toast.error(error.message || "Import failed");
