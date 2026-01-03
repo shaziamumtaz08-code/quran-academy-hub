@@ -215,10 +215,9 @@ export default function UserManagement() {
 
   // Add role to user mutation
   const addRoleMutation = useMutation({
-    mutationFn: async ({ userId, role, email, fullName }: { userId: string; role: AppRole; email: string; fullName: string }) => {
-      // Use admin-create-user which now handles adding roles to existing users
-      const { data, error } = await supabase.functions.invoke('admin-create-user', {
-        body: { email, fullName, role },
+    mutationFn: async ({ userId, role }: { userId: string; role: AppRole }) => {
+      const { data, error } = await supabase.functions.invoke('assign-role', {
+        body: { userId, role },
       });
       if (error) throw new Error(error.message || 'Failed to add role');
       if (data?.error) throw new Error(data.error);
@@ -911,12 +910,10 @@ export default function UserManagement() {
                   className="w-full"
                   disabled={addRoleMutation.isPending}
                   onClick={() => {
-                    if (viewingUser.email) {
+                    if (viewingUser) {
                       addRoleMutation.mutate({
                         userId: viewingUser.id,
                         role: addRoleSelection,
-                        email: viewingUser.email,
-                        fullName: viewingUser.full_name,
                       });
                     }
                   }}
