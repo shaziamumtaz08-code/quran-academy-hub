@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { FunctionsFetchError, FunctionsHttpError, FunctionsRelayError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth, AppRole } from '@/contexts/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -121,7 +122,7 @@ interface UserWithRoles {
 }
 
 export default function UserManagement() {
-  const { isSuperAdmin, hasPermission, user: currentUser } = useAuth();
+  const { isSuperAdmin, hasPermission, user: currentUser, session } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
@@ -216,10 +217,30 @@ export default function UserManagement() {
   // Add role to user mutation
   const addRoleMutation = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: AppRole }) => {
+      if (!session?.access_token) {
+        throw new Error('Authentication required. Please log in again.');
+      }
+
       const { data, error } = await supabase.functions.invoke('assign-role', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
         body: { userId, role },
       });
-      if (error) throw new Error(error.message || 'Failed to add role');
+
+      if (error) {
+        if (error instanceof FunctionsHttpError) {
+          const errBody = await error.context.json().catch(() => null);
+          throw new Error(
+            (errBody && typeof errBody.error === 'string' && errBody.error) ||
+              error.message ||
+              'Failed to add role'
+          );
+        }
+        if (error instanceof FunctionsRelayError || error instanceof FunctionsFetchError) {
+          throw new Error(error.message || 'Failed to add role');
+        }
+        throw new Error(error.message || 'Failed to add role');
+      }
+
       if (data?.error) throw new Error(data.error);
       return data;
     },
