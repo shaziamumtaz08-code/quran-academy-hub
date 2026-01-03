@@ -62,10 +62,13 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization") ?? "";
-    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-    
-    if (!token) {
-      console.error("No authorization token provided");
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+
+    if (!token || token === "undefined" || token === "null") {
+      console.error("Auth missing:", {
+        hasAuthHeader: !!authHeader,
+        authHeaderPrefix: authHeader ? authHeader.slice(0, 20) : "",
+      });
       return json(401, { error: "Authentication required" }, requestOrigin);
     }
 
@@ -78,7 +81,7 @@ serve(async (req) => {
 
     if (callerErr || !caller) {
       console.error("Auth validation failed:", callerErr?.message);
-      return json(401, { error: "Invalid session" }, requestOrigin);
+      return json(401, { error: callerErr?.message || "Invalid session" }, requestOrigin);
     }
 
     // Use service role for privileged actions
