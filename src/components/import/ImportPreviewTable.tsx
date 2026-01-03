@@ -18,20 +18,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-
-interface ValidationRow {
-  rowNum: number;
-  status: "new" | "update" | "warning" | "error";
-  errors: string[];
-  warnings: string[];
-  data: Record<string, any>;
-  diff: Record<string, { old: any; new: any }> | null;
-  existingId: string | null;
-}
+import type { ValidationRow, ImportType } from "@/hooks/useImportLogic";
 
 interface ImportPreviewTableProps {
   rows: ValidationRow[];
-  type: "users" | "assignments" | "schedules";
+  type: ImportType;
 }
 
 const statusConfig = {
