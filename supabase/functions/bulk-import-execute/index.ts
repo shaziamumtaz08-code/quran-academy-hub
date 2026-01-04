@@ -160,38 +160,52 @@ serve(async (req) => {
               }
             }
 
-            // Create user in auth; if email already exists, reuse the existing auth user id
+            // NEW LOGIC: For students, each row should create a SEPARATE profile
+            // even if they share an email (e.g., siblings using parent's email)
+            // Only the first user with an email gets an auth account; others get profiles only
+            
             let userId: string | null = null;
-            let reusedExistingAuth = false;
+            let isNewAuthUser = false;
 
-            const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-              email: normalizedEmail,
-              password: row.data.password,
-              email_confirm: true,
-            });
+            // First, check if an auth user with this email already exists
+            const existingAuthId = await findAuthUserIdByEmail(supabase, normalizedEmail);
 
-            if (authError) {
-              if (authError.message.includes("already been registered")) {
-                const existingAuthId = await findAuthUserIdByEmail(supabase, normalizedEmail);
-                if (!existingAuthId) {
-                  throw new Error(
-                    `Email "${normalizedEmail}" is already registered but could not be found in the authentication system.`
-                  );
-                }
+            if (existingAuthId) {
+              // Auth user exists - check if this exact person (name + email) already has a profile
+              const { data: existingPersonProfile } = await supabase
+                .from("profiles")
+                .select("id")
+                .eq("full_name", fullName)
+                .eq("email", normalizedEmail)
+                .maybeSingle();
 
-                userId = existingAuthId;
-                reusedExistingAuth = true;
-                console.log(
-                  `[bulk-import-execute] Email ${normalizedEmail} exists in auth; reusing auth id ${userId} for profile upsert`
-                );
+              if (existingPersonProfile?.id) {
+                // This exact person already exists, update them
+                userId = existingPersonProfile.id;
+                console.log(`[bulk-import-execute] Found existing profile for ${fullName} with email ${normalizedEmail}`);
               } else {
-                throw new Error(authError.message);
+                // Different person with same email (e.g., sibling) - create new profile with new UUID
+                userId = crypto.randomUUID();
+                console.log(`[bulk-import-execute] Creating new profile (${userId}) for ${fullName} sharing email ${normalizedEmail}`);
               }
             } else {
+              // No auth user exists - create one
+              const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+                email: normalizedEmail,
+                password: row.data.password,
+                email_confirm: true,
+              });
+
+              if (authError) {
+                throw new Error(`Auth user creation failed: ${authError.message}`);
+              }
+
               userId = authData.user.id;
+              isNewAuthUser = true;
+              console.log(`[bulk-import-execute] Created new auth user ${userId} for ${fullName}`);
             }
 
-            // Create or update profile (avoids FK failures and duplicate profile inserts)
+            // Insert or update profile
             const { error: profileError } = await supabase.from("profiles").upsert(
               {
                 id: userId,
@@ -210,20 +224,19 @@ serve(async (req) => {
               throw new Error(`Profile upsert failed: ${profileError.message}`);
             }
 
-            // Assign role
+            // Assign role (ignore duplicate errors)
             const { error: roleError } = await supabase.from("user_roles").insert({
               user_id: userId,
               role: row.data.role,
             });
 
-            if (roleError) {
+            if (roleError && !roleError.message.includes("duplicate")) {
               console.error(`[bulk-import-execute] Role assignment failed for ${userName}:`, roleError);
-              // Don't throw - profile was upserted
             }
 
-            const action: ImportResult["action"] = reusedExistingAuth ? "updated" : "created";
+            const action: ImportResult["action"] = isNewAuthUser ? "created" : "created"; // Both are creates for profile
             console.log(
-              `[bulk-import-execute] ${action === "created" ? "Created" : "Updated"} user: ${userName} (${userId}) as ${row.data.role}`
+              `[bulk-import-execute] Created profile: ${userName} (${userId}) as ${row.data.role}${existingAuthId && !isNewAuthUser ? " (shared email)" : ""}`
             );
 
             results.push({
