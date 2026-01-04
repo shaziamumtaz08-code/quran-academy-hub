@@ -81,7 +81,7 @@ serve(async (req) => {
             const updateData: Record<string, any> = {
               updated_at: new Date().toISOString(),
             };
-            
+
             // Only update fields that have values
             if (row.data.email) updateData.email = row.data.email;
             if (row.data.whatsapp_number !== undefined) updateData.whatsapp_number = row.data.whatsapp_number;
@@ -94,6 +94,21 @@ serve(async (req) => {
               .eq("id", row.existingId);
 
             if (error) throw error;
+
+            // Ensure role is assigned even for updates (fixes previously imported users that ended up with no role)
+            const normalizedRole = (row.data.role || "").toString().trim().toLowerCase();
+            if (normalizedRole) {
+              const { error: roleErr } = await supabase.from("user_roles").upsert(
+                {
+                  user_id: row.existingId,
+                  role: normalizedRole,
+                },
+                { onConflict: "user_id,role" }
+              );
+              if (roleErr) {
+                console.error(`[bulk-import-execute] Role assignment failed for ${userName}:`, roleErr);
+              }
+            }
 
             console.log(`[bulk-import-execute] Updated user: ${userName} (${row.existingId})`);
 
