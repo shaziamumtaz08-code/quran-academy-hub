@@ -129,7 +129,9 @@ async function validateUserRow(
   const email = row.email?.trim()?.toLowerCase();
   const fullName = row.full_name?.trim();
   const role = row.role?.trim()?.toLowerCase();
-  const whatsappNumber = row.whatsapp_number?.trim();
+  // Support both 'phone' and 'whatsapp_number' column names, filter out 'nan' values
+  const rawWhatsapp = (row.whatsapp_number || row.phone)?.trim();
+  const whatsappNumber = rawWhatsapp && rawWhatsapp.toLowerCase() !== 'nan' && rawWhatsapp.toLowerCase() !== 'n/a' ? rawWhatsapp : null;
   const age = row.age ? parseInt(row.age) : null;
   const gender = row.gender?.trim()?.toLowerCase();
   const password = row.password?.trim();
