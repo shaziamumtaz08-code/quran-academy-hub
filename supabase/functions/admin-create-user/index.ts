@@ -183,17 +183,20 @@ serve(async (req) => {
       return json(400, { error: validationErrors.join(", ") }, requestOrigin);
     }
 
-    // Check if user with this email already exists
-    const { data: existingUsers, error: listError } = await adminClient.auth.admin.listUsers();
+    // Check if user with this email already exists using direct lookup
+    // Note: listUsers() has pagination limits, so we try to create first and handle the error
+    let existingUser = null;
     
-    if (listError) {
-      console.error("Error listing users:", listError.message);
-      return json(500, { error: "Failed to process request" }, requestOrigin);
-    }
+    // Try to find existing user by searching in profiles table first
+    const { data: existingProfile } = await adminClient
+      .from("profiles")
+      .select("id, email")
+      .eq("email", email)
+      .maybeSingle();
 
-    const existingUser = existingUsers?.users?.find(
-      (u) => u.email?.toLowerCase() === email
-    );
+    if (existingProfile) {
+      existingUser = { id: existingProfile.id, email: existingProfile.email };
+    }
 
     if (existingUser) {
       // User exists - just add the new role if not already assigned
@@ -250,8 +253,65 @@ serve(async (req) => {
     });
 
     if (createErr || !created.user) {
+      // Handle the case where user exists in auth but not in profiles
+      if (createErr?.message?.includes("already been registered")) {
+        console.log("User exists in auth but not in profiles, attempting to find and add role");
+        
+        // List users with pagination to find this user
+        const { data: authUsers } = await adminClient.auth.admin.listUsers({ 
+          page: 1, 
+          perPage: 1000 
+        });
+        
+        const authUser = authUsers?.users?.find(u => u.email?.toLowerCase() === email);
+        
+        if (authUser) {
+          // Check if user already has this role
+          const { data: existingRole } = await adminClient
+            .from("user_roles")
+            .select("id")
+            .eq("user_id", authUser.id)
+            .eq("role", role)
+            .maybeSingle();
+
+          if (existingRole) {
+            return json(400, { error: `User already has the ${role} role` }, requestOrigin);
+          }
+
+          // Ensure profile exists
+          await adminClient.from("profiles").upsert({
+            id: authUser.id,
+            email,
+            full_name: fullName,
+            whatsapp_number: whatsapp,
+            gender: isValidGender(gender) ? gender : null,
+            age: isValidAge(age) ? age : null,
+          }, { onConflict: "id" });
+
+          // Add the new role
+          const { error: roleErr } = await adminClient.from("user_roles").insert({
+            user_id: authUser.id,
+            role,
+          });
+
+          if (roleErr) {
+            console.error("Error adding role to existing auth user:", roleErr.message);
+            return json(500, { error: "Failed to assign role" }, requestOrigin);
+          }
+
+          console.log(`Added role ${role} to existing auth user ${email}`);
+          return json(200, {
+            userId: authUser.id,
+            email,
+            role,
+            message: `Role '${role}' added to existing user`,
+            roleAdded: true,
+          }, requestOrigin);
+        }
+      }
+      
       console.error("Error creating user:", createErr?.message);
-      return json(400, { error: "Failed to create user account" }, requestOrigin);
+      return json(400, { error: createErr?.message || "Failed to create user account" }, requestOrigin);
     }
 
     const newUserId = created.user.id;
