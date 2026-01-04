@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { parsePhoneNumber, isValidPhoneNumber } from "https://esm.sh/libphonenumber-js@1.10.53";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -34,20 +33,23 @@ function isScientificNotation(value: string): boolean {
   return /^\d+\.?\d*[eE][+\-]?\d+$/.test(value.trim());
 }
 
-// Validate and normalize phone number
-function validatePhone(
-  rawPhone: string | null | undefined,
-  defaultCountry: string = "PK"
-): {
+// Validate E.164 phone number format: +<country_code><number> (7-15 digits total after +)
+function isValidE164(phone: string): boolean {
+  // E.164: starts with +, followed by 7-15 digits (no spaces, dashes, or other characters)
+  return /^\+[1-9]\d{6,14}$/.test(phone);
+}
+
+// Validate phone number - E.164 ONLY, no country-specific parsing or auto-prefixing
+function validatePhone(rawPhone: string | null | undefined): {
   valid: boolean;
   critical: boolean;
-  normalized: string | null;
+  value: string | null;
   error: string | null;
   warning: string | null;
-  original: string | null;
 } {
-  if (!rawPhone || rawPhone.trim() === "" || rawPhone.toLowerCase() === "n/a") {
-    return { valid: true, critical: false, normalized: null, error: null, warning: null, original: null };
+  // Empty/null values are allowed (phone is optional)
+  if (!rawPhone || rawPhone.trim() === "" || rawPhone.toLowerCase() === "n/a" || rawPhone.toLowerCase() === "nan") {
+    return { valid: true, critical: false, value: null, error: null, warning: null };
   }
 
   const trimmed = rawPhone.trim();
@@ -57,53 +59,31 @@ function validatePhone(
     return {
       valid: false,
       critical: true,
-      normalized: null,
+      value: null,
       error: "CRITICAL: Phone appears to be Excel scientific notation (e.g., 9.23E+11). Re-export CSV with phone column formatted as Text.",
       warning: null,
-      original: trimmed,
     };
   }
 
-  try {
-    // Try to parse the phone number
-    const phone = parsePhoneNumber(trimmed, defaultCountry as any);
-    
-    if (!phone || !phone.isValid()) {
-      return {
-        valid: false,
-        critical: true,
-        normalized: null,
-        error: `Invalid phone number format: "${trimmed}"`,
-        warning: null,
-        original: trimmed,
-      };
-    }
-
-    // Get E.164 format
-    const e164 = phone.format("E.164");
-
-    // Check if landline
-    const numType = phone.getType();
-    const isLandline = numType === "FIXED_LINE";
-    
-    return {
-      valid: true,
-      critical: false,
-      normalized: e164,
-      error: null,
-      warning: isLandline ? "Landline detected - SMS/WhatsApp won't work" : null,
-      original: trimmed,
-    };
-  } catch (e) {
+  // Validate E.164 format strictly
+  if (!isValidE164(trimmed)) {
     return {
       valid: false,
       critical: true,
-      normalized: null,
-      error: `Could not parse phone number: "${trimmed}"`,
+      value: null,
+      error: `Invalid phone format: "${trimmed}". Must be E.164 format: +<country_code><number> (e.g., +923001234567, +971564548951, +15108572790)`,
       warning: null,
-      original: trimmed,
     };
   }
+
+  // Valid E.164 - store exactly as provided (no normalization)
+  return {
+    valid: true,
+    critical: false,
+    value: trimmed,
+    error: null,
+    warning: null,
+  };
 }
 
 // Validate email format
@@ -117,8 +97,7 @@ async function validateUserRow(
   row: Record<string, any>,
   rowNum: number,
   existingUsersByName: Map<string, any>,
-  existingEmails: Set<string>,
-  defaultCountry: string
+  existingEmails: Set<string>
 ): Promise<ValidationResult> {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -155,8 +134,8 @@ async function validateUserRow(
     }
   }
 
-  // Phone validation with libphonenumber-js
-  const phoneResult = validatePhone(whatsappNumber, defaultCountry);
+  // Phone validation - E.164 format only, no country-specific parsing
+  const phoneResult = validatePhone(whatsappNumber);
   if (phoneResult.critical) {
     errors.push(phoneResult.error!);
   } else if (phoneResult.warning) {
@@ -185,8 +164,8 @@ async function validateUserRow(
     if (existing.email !== email) {
       diff.email = { old: existing.email, new: email };
     }
-    if (existing.whatsapp_number !== phoneResult.normalized) {
-      diff.whatsapp_number = { old: existing.whatsapp_number, new: phoneResult.normalized };
+    if (existing.whatsapp_number !== phoneResult.value) {
+      diff.whatsapp_number = { old: existing.whatsapp_number, new: phoneResult.value };
     }
     if (existing.age !== age) {
       diff.age = { old: existing.age, new: age };
@@ -226,7 +205,7 @@ async function validateUserRow(
       email,
       full_name: fullName,
       role,
-      whatsapp_number: phoneResult.normalized,
+      whatsapp_number: phoneResult.value,
       age,
       gender,
       password,
@@ -516,7 +495,7 @@ serve(async (req) => {
       });
 
       for (let i = 0; i < rows.length; i++) {
-        const result = await validateUserRow(rows[i], i + 1, existingUsersByName, existingEmails, defaultCountry);
+        const result = await validateUserRow(rows[i], i + 1, existingUsersByName, existingEmails);
         validationResults.push(result);
       }
     } else if (type === "assignments") {

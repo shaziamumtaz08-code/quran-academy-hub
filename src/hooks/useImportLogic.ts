@@ -69,10 +69,11 @@ export function parseCSV(text: string): Record<string, string>[] {
 export function generateTemplate(type: ImportType): string {
   switch (type) {
     case "users":
-      return `email,full_name,role,whatsapp_number,password,age,gender
+      // Phone must be E.164 format: +<country_code><number> (e.g., +923001234567)
+      return `email,full_name,role,phone,password,age,gender
 john.doe@example.com,John Doe,teacher,+923001234567,SecurePass123,35,male
-jane.smith@example.com,Jane Smith,student,+923009876543,StudentPass1,16,female
-parent@example.com,Ahmed Khan,parent,+923331234567,ParentPass1,45,male`;
+jane.smith@example.com,Jane Smith,student,+971564548951,StudentPass1,16,female
+parent@example.com,Ahmed Khan,parent,+15108572790,ParentPass1,45,male`;
 
     case "assignments":
       return `teacher_name,student_name,subject_name
@@ -94,7 +95,6 @@ Aisha Siddiqui,Ahmed Khan,Tuesday,14:00,45`;
 // ============= Hook =============
 export function useImportLogic(type: ImportType, onComplete?: () => void) {
   const [step, setStep] = useState<WizardStep>("upload");
-  const [defaultCountry, setDefaultCountry] = useState("PK");
   const [isValidating, setIsValidating] = useState(false);
   const [validationRows, setValidationRows] = useState<ValidationRow[]>([]);
   const [validationSummary, setValidationSummary] = useState<ValidationSummary | null>(null);
@@ -128,7 +128,7 @@ export function useImportLogic(type: ImportType, onComplete?: () => void) {
         }
 
         const { data, error } = await supabase.functions.invoke("bulk-validate-import", {
-          body: { type, rows, defaultCountry },
+          body: { type, rows },
         });
 
         if (error) throw error;
@@ -143,7 +143,7 @@ export function useImportLogic(type: ImportType, onComplete?: () => void) {
         setIsValidating(false);
       }
     },
-    [type, defaultCountry]
+    [type]
   );
 
   const executeImport = useCallback(async () => {
@@ -224,7 +224,6 @@ export function useImportLogic(type: ImportType, onComplete?: () => void) {
   return {
     // State
     step,
-    defaultCountry,
     isValidating,
     validationRows,
     validationSummary,
@@ -233,7 +232,6 @@ export function useImportLogic(type: ImportType, onComplete?: () => void) {
     canImport,
     importCount,
     // Actions
-    setDefaultCountry,
     downloadTemplate,
     validateFile,
     executeImport,

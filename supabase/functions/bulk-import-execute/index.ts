@@ -84,10 +84,13 @@ serve(async (req) => {
 
             // Only update fields that have values
             if (row.data.email) updateData.email = row.data.email;
-            // Support both 'phone' and 'whatsapp_number', filter out 'nan' values
+            // Phone stored exactly as provided (E.164 format validated upstream)
             const rawWhatsapp = row.data.whatsapp_number || row.data.phone;
-            if (rawWhatsapp !== undefined && rawWhatsapp !== null && String(rawWhatsapp).toLowerCase() !== 'nan' && String(rawWhatsapp).toLowerCase() !== 'n/a') {
-              updateData.whatsapp_number = rawWhatsapp;
+            if (rawWhatsapp !== undefined && rawWhatsapp !== null && 
+                String(rawWhatsapp).toLowerCase() !== 'nan' && 
+                String(rawWhatsapp).toLowerCase() !== 'n/a' &&
+                String(rawWhatsapp).trim() !== '') {
+              updateData.whatsapp_number = String(rawWhatsapp).trim();
             }
             if (row.data.age !== undefined) updateData.age = row.data.age;
             if (row.data.gender !== undefined) updateData.gender = row.data.gender;
@@ -144,10 +147,13 @@ serve(async (req) => {
                   updated_at: new Date().toISOString(),
                 };
 
-                // Support both 'phone' and 'whatsapp_number', filter out 'nan' values
+                // Phone stored exactly as provided (E.164 format validated upstream)
                 const rawWhatsapp2 = row.data.whatsapp_number || row.data.phone;
-                if (rawWhatsapp2 !== undefined && rawWhatsapp2 !== null && String(rawWhatsapp2).toLowerCase() !== 'nan' && String(rawWhatsapp2).toLowerCase() !== 'n/a') {
-                  updateData.whatsapp_number = rawWhatsapp2;
+                if (rawWhatsapp2 !== undefined && rawWhatsapp2 !== null && 
+                    String(rawWhatsapp2).toLowerCase() !== 'nan' && 
+                    String(rawWhatsapp2).toLowerCase() !== 'n/a' &&
+                    String(rawWhatsapp2).trim() !== '') {
+                  updateData.whatsapp_number = String(rawWhatsapp2).trim();
                 }
                 if (row.data.age !== undefined) updateData.age = row.data.age;
                 if (row.data.gender !== undefined) updateData.gender = row.data.gender;
@@ -229,9 +235,12 @@ serve(async (req) => {
             }
 
             // Insert or update profile
-            // Support both 'phone' and 'whatsapp_number', filter out 'nan' values
+            // Phone stored exactly as provided (E.164 format validated upstream)
             const rawWhatsapp3 = row.data.whatsapp_number || row.data.phone;
-            const cleanWhatsapp = (rawWhatsapp3 !== undefined && rawWhatsapp3 !== null && String(rawWhatsapp3).toLowerCase() !== 'nan' && String(rawWhatsapp3).toLowerCase() !== 'n/a') ? rawWhatsapp3 : null;
+            const cleanWhatsapp = (rawWhatsapp3 !== undefined && rawWhatsapp3 !== null && 
+                String(rawWhatsapp3).toLowerCase() !== 'nan' && 
+                String(rawWhatsapp3).toLowerCase() !== 'n/a' &&
+                String(rawWhatsapp3).trim() !== '') ? String(rawWhatsapp3).trim() : null;
             
             const { error: profileError } = await supabase.from("profiles").upsert(
               {
