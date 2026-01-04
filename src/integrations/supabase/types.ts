@@ -488,7 +488,7 @@ export type Database = {
           email?: string | null
           full_name: string
           gender?: string | null
-          id: string
+          id?: string
           mushaf_type?: string
           preferred_language?: string | null
           preferred_unit?: string
