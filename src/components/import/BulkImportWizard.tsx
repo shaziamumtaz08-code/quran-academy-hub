@@ -8,31 +8,14 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Upload, Download, FileSpreadsheet, Loader2, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { ImportSummaryCards } from "./ImportSummaryCards";
 import { ImportPreviewTable } from "./ImportPreviewTable";
 import { useImportLogic, type ImportType, type ImportResultRow } from "@/hooks/useImportLogic";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-// ============= Constants =============
-const COUNTRY_OPTIONS = [
-  { code: "PK", label: "Pakistan (+92)" },
-  { code: "US", label: "United States (+1)" },
-  { code: "GB", label: "United Kingdom (+44)" },
-  { code: "AE", label: "UAE (+971)" },
-  { code: "SA", label: "Saudi Arabia (+966)" },
-  { code: "IN", label: "India (+91)" },
-  { code: "BD", label: "Bangladesh (+880)" },
-];
+// E.164 format is required for all phone numbers (no country selector needed)
 
 const TYPE_LABELS: Record<ImportType, string> = {
   users: "Users",
@@ -57,7 +40,6 @@ export function BulkImportWizard({
 }: BulkImportWizardProps) {
   const {
     step,
-    defaultCountry,
     isValidating,
     validationRows,
     validationSummary,
@@ -65,7 +47,6 @@ export function BulkImportWizard({
     importResults,
     canImport,
     importCount,
-    setDefaultCountry,
     downloadTemplate,
     validateFile,
     executeImport,
@@ -109,8 +90,6 @@ export function BulkImportWizard({
           {step === "upload" && (
             <UploadStep
               type={type}
-              defaultCountry={defaultCountry}
-              setDefaultCountry={setDefaultCountry}
               isValidating={isValidating}
               onDownloadTemplate={downloadTemplate}
               onFileChange={handleFileChange}
@@ -172,8 +151,6 @@ export function BulkImportWizard({
 
 interface UploadStepProps {
   type: ImportType;
-  defaultCountry: string;
-  setDefaultCountry: (country: string) => void;
   isValidating: boolean;
   onDownloadTemplate: () => void;
   onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -181,8 +158,6 @@ interface UploadStepProps {
 
 function UploadStep({
   type,
-  defaultCountry,
-  setDefaultCountry,
   isValidating,
   onDownloadTemplate,
   onFileChange,
@@ -203,31 +178,24 @@ function UploadStep({
         </Button>
       </div>
 
-      {/* Country Selector for Phone Parsing */}
+      {/* E.164 Phone Format Info */}
       {type === "users" && (
-        <div className="space-y-2">
-          <Label>Default Country (for phone number parsing)</Label>
-          <Select value={defaultCountry} onValueChange={setDefaultCountry}>
-            <SelectTrigger className="w-[250px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {COUNTRY_OPTIONS.map((c) => (
-                <SelectItem key={c.code} value={c.code}>
-                  {c.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            Local phone numbers without country code will use this prefix
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+          <h4 className="font-medium text-blue-800 dark:text-blue-300 text-sm">Phone Number Format (E.164)</h4>
+          <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
+            All phone numbers must include the country code with a + prefix.
           </p>
+          <div className="flex flex-wrap gap-2 mt-2">
+            <span className="text-xs font-mono bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 px-2 py-0.5 rounded">+923001234567</span>
+            <span className="text-xs font-mono bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 px-2 py-0.5 rounded">+971564548951</span>
+            <span className="text-xs font-mono bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200 px-2 py-0.5 rounded">+15108572790</span>
+          </div>
         </div>
       )}
 
       {/* File Upload */}
       <div className="space-y-2">
-        <Label>Upload CSV File</Label>
+        <p className="text-sm font-medium">Upload CSV File</p>
         <div className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
           <Input
             type="file"
