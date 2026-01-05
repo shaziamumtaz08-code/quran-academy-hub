@@ -215,12 +215,12 @@ async function validateUserRow(
   };
 }
 
-// Validate assignment row - uses email for lookup
+// Validate assignment row - uses both name AND email for lookup (handles siblings with shared emails)
 async function validateAssignmentRow(
   row: Record<string, any>,
   rowNum: number,
-  teacherMapByEmail: Map<string, { id: string; name: string }>,
-  studentMapByEmail: Map<string, { id: string; name: string }>,
+  allTeachers: Array<{ id: string; full_name: string; email: string | null }>,
+  allStudents: Array<{ id: string; full_name: string; email: string | null }>,
   subjectMap: Map<string, string>,
   existingAssignments: Map<string, any>
 ): Promise<ValidationResult> {
@@ -230,37 +230,76 @@ async function validateAssignmentRow(
   let diff: Record<string, { old: any; new: any }> | null = null;
   let existingId: string | null = null;
 
+  const teacherName = row.teacher_name?.trim();
   const teacherEmail = row.teacher_email?.trim()?.toLowerCase();
+  const studentName = row.student_name?.trim();
   const studentEmail = row.student_email?.trim()?.toLowerCase();
   const subjectName = row.subject_name?.trim();
 
-  // Validate teacher by email
+  // Validate teacher by both name AND email
   let teacherId: string | null = null;
-  let teacherName: string | null = null;
-  if (!teacherEmail) {
+  let resolvedTeacherName: string | null = null;
+  if (!teacherName) {
+    errors.push("Teacher name is required");
+  } else if (!teacherEmail) {
     errors.push("Teacher email is required");
   } else {
-    const teacher = teacherMapByEmail.get(teacherEmail);
+    // Find teacher matching BOTH name and email
+    const teacher = allTeachers.find(
+      (t) => t.full_name?.toLowerCase() === teacherName.toLowerCase() && 
+             t.email?.toLowerCase() === teacherEmail
+    );
     if (!teacher) {
-      errors.push(`Teacher not found with email: "${teacherEmail}"`);
+      // Check if name exists but email doesn't match
+      const nameMatch = allTeachers.find((t) => t.full_name?.toLowerCase() === teacherName.toLowerCase());
+      const emailMatch = allTeachers.find((t) => t.email?.toLowerCase() === teacherEmail);
+      
+      if (nameMatch && emailMatch && nameMatch.id !== emailMatch.id) {
+        errors.push(`Teacher name "${teacherName}" and email "${teacherEmail}" belong to different users`);
+      } else if (nameMatch) {
+        errors.push(`Teacher "${teacherName}" found but email doesn't match (expected: ${nameMatch.email || "no email"})`);
+      } else if (emailMatch) {
+        errors.push(`Email "${teacherEmail}" found but name doesn't match (expected: ${emailMatch.full_name})`);
+      } else {
+        errors.push(`Teacher not found with name "${teacherName}" and email "${teacherEmail}"`);
+      }
     } else {
       teacherId = teacher.id;
-      teacherName = teacher.name;
+      resolvedTeacherName = teacher.full_name;
     }
   }
 
-  // Validate student by email
+  // Validate student by both name AND email (important for siblings sharing same email)
   let studentId: string | null = null;
-  let studentName: string | null = null;
-  if (!studentEmail) {
+  let resolvedStudentName: string | null = null;
+  if (!studentName) {
+    errors.push("Student name is required");
+  } else if (!studentEmail) {
     errors.push("Student email is required");
   } else {
-    const student = studentMapByEmail.get(studentEmail);
+    // Find student matching BOTH name and email
+    const student = allStudents.find(
+      (s) => s.full_name?.toLowerCase() === studentName.toLowerCase() && 
+             s.email?.toLowerCase() === studentEmail
+    );
     if (!student) {
-      errors.push(`Student not found with email: "${studentEmail}"`);
+      // Check if name exists but email doesn't match
+      const nameMatch = allStudents.find((s) => s.full_name?.toLowerCase() === studentName.toLowerCase());
+      const emailMatch = allStudents.find((s) => s.email?.toLowerCase() === studentEmail);
+      
+      if (nameMatch && !emailMatch) {
+        errors.push(`Student "${studentName}" found but email doesn't match (expected: ${nameMatch.email || "no email"})`);
+      } else if (!nameMatch && emailMatch) {
+        errors.push(`Email "${studentEmail}" found but name doesn't match (expected: ${emailMatch.full_name})`);
+      } else if (nameMatch && emailMatch && nameMatch.id !== emailMatch.id) {
+        // This could be siblings - name doesn't match the email's user
+        errors.push(`Student name "${studentName}" not found with email "${studentEmail}". Did you mean "${emailMatch.full_name}"?`);
+      } else {
+        errors.push(`Student not found with name "${studentName}" and email "${studentEmail}"`);
+      }
     } else {
       studentId = student.id;
-      studentName = student.name;
+      resolvedStudentName = student.full_name;
     }
   }
 
@@ -306,9 +345,9 @@ async function validateAssignmentRow(
     warnings,
     data: {
       teacher_id: teacherId,
-      teacher_name: teacherName,
+      teacher_name: resolvedTeacherName,
       student_id: studentId,
-      student_name: studentName,
+      student_name: resolvedStudentName,
       subject_id: subjectId,
       subject_name: subjectName,
     },
@@ -507,7 +546,7 @@ serve(async (req) => {
         validationResults.push(result);
       }
     } else if (type === "assignments") {
-      // Fetch teachers, students, subjects, and existing assignments - lookup by EMAIL
+      // Fetch teachers, students, subjects, and existing assignments - lookup by BOTH name AND email
       const { data: teacherRoles } = await supabase.from("user_roles").select("user_id").eq("role", "teacher");
       const { data: studentRoles } = await supabase.from("user_roles").select("user_id").eq("role", "student");
 
@@ -527,16 +566,18 @@ serve(async (req) => {
         .from("student_teacher_assignments")
         .select("id, teacher_id, student_id, subject_id, subjects(name)");
 
-      // Map by email for lookup
-      const teacherMapByEmail = new Map<string, { id: string; name: string }>();
-      teachers?.forEach((t) => {
-        if (t.email) teacherMapByEmail.set(t.email.toLowerCase(), { id: t.id, name: t.full_name });
-      });
+      // Keep full arrays for name+email matching (handles siblings with shared emails)
+      const allTeachers = (teachers || []).map((t) => ({
+        id: t.id,
+        full_name: t.full_name,
+        email: t.email,
+      }));
 
-      const studentMapByEmail = new Map<string, { id: string; name: string }>();
-      students?.forEach((s) => {
-        if (s.email) studentMapByEmail.set(s.email.toLowerCase(), { id: s.id, name: s.full_name });
-      });
+      const allStudents = (students || []).map((s) => ({
+        id: s.id,
+        full_name: s.full_name,
+        email: s.email,
+      }));
 
       const subjectMap = new Map<string, string>();
       subjects?.forEach((s) => subjectMap.set(s.name.toLowerCase(), s.id));
@@ -550,9 +591,11 @@ serve(async (req) => {
         });
       });
 
+      console.log(`[bulk-validate-import] Found ${allTeachers.length} teachers, ${allStudents.length} students`);
+
       for (let i = 0; i < rows.length; i++) {
         const result = await validateAssignmentRow(
-          rows[i], i + 1, teacherMapByEmail, studentMapByEmail, subjectMap, existingAssignments
+          rows[i], i + 1, allTeachers, allStudents, subjectMap, existingAssignments
         );
         validationResults.push(result);
       }
