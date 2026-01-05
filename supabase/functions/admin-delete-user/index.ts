@@ -98,10 +98,32 @@ serve(async (req) => {
 
     console.log(`Deleting user: ${userId}`);
 
-    // Delete from auth (this cascades to profiles due to FK)
+    // Try to delete from auth first
     const { error: deleteErr } = await adminClient.auth.admin.deleteUser(userId);
 
     if (deleteErr) {
+      // If user not found in auth, try to clean up orphaned profile
+      if (deleteErr.message?.includes("not found") || deleteErr.message?.includes("User not found")) {
+        console.log(`Auth user not found, cleaning up orphaned profile: ${userId}`);
+        
+        // Delete from profiles table directly (orphaned profile cleanup)
+        const { error: profileDeleteErr } = await adminClient
+          .from("profiles")
+          .delete()
+          .eq("id", userId);
+
+        if (profileDeleteErr) {
+          console.error("Profile cleanup error:", profileDeleteErr.message);
+          return json(400, { error: "Failed to delete orphaned profile" }, requestOrigin);
+        }
+
+        // Also clean up user_roles
+        await adminClient.from("user_roles").delete().eq("user_id", userId);
+        
+        console.log(`Orphaned profile ${userId} cleaned up successfully`);
+        return json(200, { success: true, deletedUserId: userId, wasOrphaned: true }, requestOrigin);
+      }
+
       console.error("Delete error:", deleteErr.message);
       return json(400, { error: "Failed to delete user" }, requestOrigin);
     }
