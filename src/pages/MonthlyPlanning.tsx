@@ -11,7 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar, Plus, CheckCircle, Clock, Target, User, Loader2, Edit } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Calendar, Plus, CheckCircle, Clock, Target, User, Loader2, Edit, AlertTriangle, Pause } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -486,6 +487,15 @@ export default function MonthlyPlanning() {
             {plans?.length || 0} plans
           </div>
         </div>
+
+        {/* Info Alert */}
+        <Alert className="bg-muted/50 border-muted-foreground/20">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="text-sm">
+            Monthly plans can only be created for <strong>active</strong> assignments. 
+            Paused or completed assignments are excluded from planning.
+          </AlertDescription>
+        </Alert>
 
         {/* Plans Table */}
         <Card>

@@ -2,7 +2,16 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { BookOpen, Target, User, Calendar, Clock, BookMarked } from 'lucide-react';
+import { BookOpen, Target, User, Calendar, Clock, BookMarked, AlertTriangle, Pause } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+type AssignmentStatus = 'active' | 'paused' | 'completed';
+
+const STATUS_CONFIG = {
+  active: { label: 'Active', badgeClass: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' },
+  paused: { label: 'Paused', badgeClass: 'bg-amber-500/10 text-amber-600 border-amber-500/20' },
+  completed: { label: 'Completed', badgeClass: 'bg-slate-400/10 text-slate-600 border-slate-400/20' },
+} as const;
 
 interface StudentCardProps {
   student: {
@@ -10,6 +19,7 @@ interface StudentCardProps {
     full_name: string;
     email: string | null;
     subject_name: string | null;
+    assignment_status?: AssignmentStatus;
     daily_target_lines: number;
     preferred_unit: string;
     last_lesson: string | null;
@@ -23,6 +33,10 @@ interface StudentCardProps {
 }
 
 export function StudentCard({ student, onViewHistory, onViewSchedule, onMarkAttendance }: StudentCardProps) {
+  const status = student.assignment_status || 'active';
+  const isPaused = status === 'paused';
+  const isCompleted = status === 'completed';
+  const isInactive = isPaused || isCompleted;
 
   // Check if we have any info to display
   const hasAge = student.age !== null && student.age !== undefined;
@@ -31,14 +45,35 @@ export function StudentCard({ student, onViewHistory, onViewSchedule, onMarkAtte
   const hasInfoRow = hasAge || hasGender || hasTarget;
 
   return (
-    <Card className="hover:border-sky/50 hover:shadow-lg transition-all duration-200 group flex flex-col border-l-4 border-l-navy dark:border-l-sky overflow-hidden">
+    <Card className={cn(
+      "hover:border-sky/50 hover:shadow-lg transition-all duration-200 group flex flex-col overflow-hidden",
+      isPaused ? "border-l-4 border-l-amber-500 opacity-75" : "border-l-4 border-l-navy dark:border-l-sky",
+      isCompleted && "opacity-50"
+    )}>
       <CardContent className="p-4 flex flex-col flex-1 min-h-0">
+        {/* Paused Warning Banner */}
+        {isPaused && (
+          <div className="mb-3 p-2 rounded-md bg-amber-500/10 border border-amber-500/20 flex items-center gap-2">
+            <Pause className="h-4 w-4 text-amber-600" />
+            <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
+              Assignment paused – actions disabled
+            </span>
+          </div>
+        )}
+
         {/* Header: Name + Subject (Left) | History Icon (Right) */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-lg leading-tight truncate text-navy dark:text-sky-light">
-              {student.full_name}
-            </h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-lg leading-tight truncate text-navy dark:text-sky-light">
+                {student.full_name}
+              </h3>
+              {status !== 'active' && (
+                <Badge variant="outline" className={cn("text-[10px] h-5", STATUS_CONFIG[status].badgeClass)}>
+                  {STATUS_CONFIG[status].label}
+                </Badge>
+              )}
+            </div>
             {student.subject_name && (
               <Badge className="text-xs font-normal gap-1 mt-1.5 bg-sky/10 text-sky-dark dark:bg-sky/20 dark:text-sky-light border-0">
                 <BookOpen className="h-3 w-3" />
@@ -109,14 +144,20 @@ export function StudentCard({ student, onViewHistory, onViewSchedule, onMarkAtte
             Schedule
           </Button>
           <Button
-            className="flex-1 h-12 text-sm bg-gradient-to-r from-navy to-navy-light dark:from-sky dark:to-sky-dark"
+            className={cn(
+              "flex-1 h-12 text-sm",
+              isInactive 
+                ? "bg-muted text-muted-foreground cursor-not-allowed" 
+                : "bg-gradient-to-r from-navy to-navy-light dark:from-sky dark:to-sky-dark"
+            )}
             onClick={(e) => {
               e.stopPropagation();
-              onMarkAttendance();
+              if (!isInactive) onMarkAttendance();
             }}
+            disabled={isInactive}
           >
             <Clock className="h-4 w-4 mr-1.5" />
-            Mark
+            {isInactive ? 'Disabled' : 'Mark'}
           </Button>
         </div>
       </CardContent>

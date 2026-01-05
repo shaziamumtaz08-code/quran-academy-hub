@@ -19,11 +19,14 @@ interface Student {
   teacher_name: string | null;
 }
 
+type AssignmentStatus = 'active' | 'paused' | 'completed';
+
 interface TeacherStudent {
   id: string;
   full_name: string;
   email: string | null;
   subject_name: string | null;
+  assignment_status: AssignmentStatus;
   daily_target_lines: number;
   preferred_unit: string;
   last_lesson: string | null;
@@ -56,13 +59,14 @@ export default function Students() {
         .from('student_teacher_assignments')
         .select(`
           student_id,
+          status,
           student:profiles!student_teacher_assignments_student_id_fkey(
             id, full_name, email, daily_target_lines, preferred_unit, age, gender
           ),
           subject:subjects(name)
         `)
         .eq('teacher_id', user.id)
-        .eq('status', 'active');
+        .in('status', ['active', 'paused']);
 
       if (assignError) throw assignError;
       if (!assignments || assignments.length === 0) return [];
@@ -104,6 +108,7 @@ export default function Students() {
         full_name: a.student?.full_name || 'Unknown',
         email: a.student?.email || null,
         subject_name: a.subject?.name || null,
+        assignment_status: (a.status || 'active') as AssignmentStatus,
         daily_target_lines: a.student?.daily_target_lines || 0,
         preferred_unit: a.student?.preferred_unit || 'lines',
         last_lesson: latestAttendance.get(a.student_id)?.lesson || null,
