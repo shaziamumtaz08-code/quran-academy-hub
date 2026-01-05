@@ -215,7 +215,7 @@ async function validateUserRow(
   };
 }
 
-// Validate assignment row - email is REQUIRED, name is optional for human verification
+// Validate assignment row - NAME is REQUIRED (profile-based identity), email is OPTIONAL hint
 async function validateAssignmentRow(
   row: Record<string, any>,
   rowNum: number,
@@ -231,75 +231,61 @@ async function validateAssignmentRow(
   let existingId: string | null = null;
 
   const teacherName = row.teacher_name?.trim();
-  const teacherEmail = row.teacher_email?.trim()?.toLowerCase();
   const studentName = row.student_name?.trim();
-  const studentEmail = row.student_email?.trim()?.toLowerCase();
   const subjectName = row.subject_name?.trim();
+  // Guardian email is OPTIONAL - only used as a reference hint, never for identity resolution
+  const guardianEmail = row.guardian_email?.trim()?.toLowerCase();
 
-  // Validate teacher - EMAIL is REQUIRED, name is optional for verification
+  // Validate teacher - NAME is REQUIRED (profile-based identity)
   let teacherId: string | null = null;
   let resolvedTeacherName: string | null = null;
   
-  if (!teacherEmail) {
-    errors.push("Teacher email is required");
+  if (!teacherName) {
+    errors.push("Teacher name is required");
   } else {
-    // Find teacher by email (primary lookup)
-    const teacher = allTeachers.find((t) => t.email?.toLowerCase() === teacherEmail);
+    // Find teacher by full_name (profile-based identity)
+    const matchingTeachers = allTeachers.filter(
+      (t) => t.full_name?.toLowerCase() === teacherName.toLowerCase()
+    );
     
-    if (!teacher) {
-      errors.push(`Teacher not found with email "${teacherEmail}"`);
+    if (matchingTeachers.length === 0) {
+      errors.push(`Teacher not found: "${teacherName}"`);
+    } else if (matchingTeachers.length === 1) {
+      teacherId = matchingTeachers[0].id;
+      resolvedTeacherName = matchingTeachers[0].full_name;
     } else {
-      teacherId = teacher.id;
-      resolvedTeacherName = teacher.full_name;
-      
-      // If name is provided, verify it matches (warning only, not error)
-      if (teacherName && teacher.full_name?.toLowerCase() !== teacherName.toLowerCase()) {
-        warnings.push(`Teacher name mismatch: CSV has "${teacherName}" but database has "${teacher.full_name}" for email ${teacherEmail}`);
-      }
+      // Multiple teachers with same name - ambiguous
+      errors.push(`Ambiguous teacher: Multiple profiles found with name "${teacherName}"`);
     }
   }
 
-  // Validate student - EMAIL is REQUIRED, name is optional for verification
+  // Validate student - NAME is REQUIRED (profile-based identity)
   let studentId: string | null = null;
   let resolvedStudentName: string | null = null;
   
-  if (!studentEmail) {
-    errors.push("Student email is required");
+  if (!studentName) {
+    errors.push("Student name is required");
   } else {
-    // Find student by email (primary lookup)
-    const matchingStudents = allStudents.filter((s) => s.email?.toLowerCase() === studentEmail);
+    // Find student by full_name (profile-based identity)
+    const matchingStudents = allStudents.filter(
+      (s) => s.full_name?.toLowerCase() === studentName.toLowerCase()
+    );
     
     if (matchingStudents.length === 0) {
-      errors.push(`Student not found with email "${studentEmail}"`);
+      errors.push(`Student not found: "${studentName}"`);
     } else if (matchingStudents.length === 1) {
-      // Single match - use it
-      const student = matchingStudents[0];
-      studentId = student.id;
-      resolvedStudentName = student.full_name;
-      
-      // If name is provided, verify it matches (warning only, not error)
-      if (studentName && student.full_name?.toLowerCase() !== studentName.toLowerCase()) {
-        warnings.push(`Student name mismatch: CSV has "${studentName}" but database has "${student.full_name}" for email ${studentEmail}`);
-      }
+      studentId = matchingStudents[0].id;
+      resolvedStudentName = matchingStudents[0].full_name;
     } else {
-      // Multiple students with same email (siblings) - name becomes required for disambiguation
-      if (!studentName) {
-        const names = matchingStudents.map(s => s.full_name).join(", ");
-        errors.push(`Multiple students found with email "${studentEmail}" (${names}). Please provide student_name to disambiguate.`);
-      } else {
-        // Try to find by name among the matches
-        const student = matchingStudents.find(
-          (s) => s.full_name?.toLowerCase() === studentName.toLowerCase()
-        );
-        if (!student) {
-          const names = matchingStudents.map(s => s.full_name).join(", ");
-          errors.push(`Student "${studentName}" not found among users with email "${studentEmail}". Available: ${names}`);
-        } else {
-          studentId = student.id;
-          resolvedStudentName = student.full_name;
-        }
-      }
+      // Multiple students with same name - ambiguous (SaaS integrity requirement)
+      const ids = matchingStudents.map(s => s.id.substring(0, 8)).join(", ");
+      errors.push(`Ambiguous student: Multiple profiles found with name "${studentName}" (IDs: ${ids}...)`);
     }
+  }
+
+  // Guardian email is just for reference/hint - log if provided
+  if (guardianEmail) {
+    warnings.push(`Guardian email "${guardianEmail}" noted for reference`);
   }
 
   // Validate subject (optional)
@@ -349,6 +335,7 @@ async function validateAssignmentRow(
       student_name: resolvedStudentName,
       subject_id: subjectId,
       subject_name: subjectName,
+      guardian_email: guardianEmail,
     },
     diff,
     existingId,
