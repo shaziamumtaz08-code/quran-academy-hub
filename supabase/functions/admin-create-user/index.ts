@@ -211,7 +211,15 @@ serve(async (req) => {
         .maybeSingle();
 
       if (existingRole) {
-        return json(400, { error: `User already has the ${role} role` }, requestOrigin);
+        // Return success - user already exists with this role, no action needed
+        return json(200, {
+          userId: existingUserId,
+          email,
+          role,
+          message: `User already exists with the ${role} role`,
+          roleAdded: false,
+          alreadyExists: true,
+        }, requestOrigin);
       }
 
       // Add the new role
@@ -275,7 +283,15 @@ serve(async (req) => {
             .maybeSingle();
 
           if (existingRole) {
-            return json(400, { error: `User already has the ${role} role` }, requestOrigin);
+            // Return success - user already exists with this role
+            return json(200, {
+              userId: authUser.id,
+              email,
+              role,
+              message: `User already exists with the ${role} role`,
+              roleAdded: false,
+              alreadyExists: true,
+            }, requestOrigin);
           }
 
           // Ensure profile exists
