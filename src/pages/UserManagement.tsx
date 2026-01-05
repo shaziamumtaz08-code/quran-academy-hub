@@ -390,14 +390,32 @@ export default function UserManagement() {
       });
       if (error) throw new Error(error.message || 'Failed to create user');
       if (data?.error) throw new Error(data.error);
-      return data as { userId: string };
+
+      return data as {
+        userId: string;
+        roleAdded?: boolean;
+        alreadyExists?: boolean;
+        message?: string;
+        email?: string;
+        role?: AppRole;
+      };
     },
-    onSuccess: (data: { userId: string; roleAdded?: boolean; message?: string }) => {
+    onSuccess: (data) => {
+      // Ensure the list refreshes immediately so the UI matches the toast
       queryClient.invalidateQueries({ queryKey: ['users-with-roles'] });
+      queryClient.refetchQueries({ queryKey: ['users-with-roles'] });
+
+      const title = data?.alreadyExists
+        ? 'User already exists'
+        : data?.roleAdded
+          ? 'Role added'
+          : 'User created';
+
       toast({
-        title: data?.roleAdded ? 'Role added' : 'User created',
+        title,
         description: data?.message || 'Operation completed successfully.',
       });
+
       setNewUserEmail('');
       setNewUserName('');
       setNewUserPassword('');
