@@ -76,10 +76,12 @@ jane.smith@example.com,Jane Smith,student,+971564548951,StudentPass1,16,female
 parent@example.com,Ahmed Khan,parent,+15108572790,ParentPass1,45,male`;
 
     case "assignments":
-      return `student_name,student_email,teacher_name,teacher_email,subject_name
-Fatima Ali,fatima.ali@example.com,Mohammad Hassan,mohammad.hassan@example.com,Hifz
-Yusuf Malik,yusuf.malik@example.com,Mohammad Hassan,mohammad.hassan@example.com,Hifz
-Ahmed Khan,ahmed.khan@example.com,Aisha Siddiqui,aisha.siddiqui@example.com,Tajweed`;
+      // student_name and teacher_name are REQUIRED (primary identity)
+      // guardian_email is OPTIONAL (hint only, not used for identity resolution)
+      return `student_name,teacher_name,subject_name,guardian_email
+Fatima Ali,Mohammad Hassan,Hifz,parent@example.com
+Yusuf Malik,Mohammad Hassan,Hifz,parent@example.com
+Ahmed Khan,Aisha Siddiqui,Tajweed,ahmed.parent@example.com`;
 
     case "schedules":
       return `teacher_name,student_name,day_of_week,time,duration_minutes
