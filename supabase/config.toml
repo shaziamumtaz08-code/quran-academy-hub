@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.bulk-import-execute]
 verify_jwt = false
+
+[functions.export-users]
+verify_jwt = false

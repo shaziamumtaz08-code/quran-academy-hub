@@ -396,6 +396,47 @@ export type Database = {
           },
         ]
       }
+      export_audit_logs: {
+        Row: {
+          admin_id: string
+          export_format: string
+          export_type: string
+          exported_at: string
+          fields_included: string[]
+          id: string
+          included_passwords: boolean
+          user_count: number
+        }
+        Insert: {
+          admin_id: string
+          export_format: string
+          export_type: string
+          exported_at?: string
+          fields_included: string[]
+          id?: string
+          included_passwords?: boolean
+          user_count: number
+        }
+        Update: {
+          admin_id?: string
+          export_format?: string
+          export_type?: string
+          exported_at?: string
+          fields_included?: string[]
+          id?: string
+          included_passwords?: boolean
+          user_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "export_audit_logs_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       folders: {
         Row: {
           created_at: string

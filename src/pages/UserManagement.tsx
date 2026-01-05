@@ -72,8 +72,11 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Download,
 } from 'lucide-react';
 import { BulkUserImportDialog } from '@/components/users/BulkUserImportDialog';
+import { ExportUsersDialog } from '@/components/users/ExportUsersDialog';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const ALL_PERMISSIONS = [
   { group: 'Users', permissions: ['users.view', 'users.create', 'users.edit', 'users.delete', 'users.assign_roles'] },
@@ -132,11 +135,13 @@ export default function UserManagement() {
   const [selectedUser, setSelectedUser] = useState<UserWithRoles | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isAddRoleDialogOpen, setIsAddRoleDialogOpen] = useState(false);
   const [viewingUser, setViewingUser] = useState<UserWithRoles | null>(null);
   const [deleteConfirmUser, setDeleteConfirmUser] = useState<UserWithRoles | null>(null);
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [removeRoleConfirm, setRemoveRoleConfirm] = useState<{ user: UserWithRoles; role: AppRole } | null>(null);
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserName, setNewUserName] = useState('');
@@ -567,6 +572,10 @@ export default function UserManagement() {
                   <Upload className="h-4 w-4 mr-2" />
                   Bulk Import
                 </Button>
+                <Button variant="outline" onClick={() => setIsExportDialogOpen(true)}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Export Users
+                </Button>
                 <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                   <DialogTrigger asChild>
                     <Button className="btn-primary-glow">
@@ -785,6 +794,20 @@ export default function UserManagement() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        {isSuperAdmin && (
+                          <TableHead className="w-10">
+                            <Checkbox
+                              checked={selectedUserIds.length === filteredUsers.length && filteredUsers.length > 0}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedUserIds(filteredUsers.map(u => u.id));
+                                } else {
+                                  setSelectedUserIds([]);
+                                }
+                              }}
+                            />
+                          </TableHead>
+                        )}
                         <TableHead 
                           className="cursor-pointer select-none hover:bg-muted/50"
                           onClick={() => handleSort('name')}
@@ -828,6 +851,20 @@ export default function UserManagement() {
                     <TableBody>
                       {filteredUsers.map((user) => (
                         <TableRow key={user.id}>
+                          {isSuperAdmin && (
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedUserIds.includes(user.id)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setSelectedUserIds([...selectedUserIds, user.id]);
+                                  } else {
+                                    setSelectedUserIds(selectedUserIds.filter(id => id !== user.id));
+                                  }
+                                }}
+                              />
+                            </TableCell>
+                          )}
                           <TableCell className="font-medium">{user.full_name}</TableCell>
                           <TableCell>
                             {user.whatsapp_number ? (
@@ -1460,6 +1497,17 @@ export default function UserManagement() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Export Users Dialog - Super Admin Only */}
+        {isSuperAdmin && (
+          <ExportUsersDialog
+            open={isExportDialogOpen}
+            onOpenChange={setIsExportDialogOpen}
+            selectedUserIds={selectedUserIds}
+            searchTerm={searchTerm}
+            totalUsers={filteredUsers?.length || 0}
+          />
+        )}
       </div>
     </DashboardLayout>
   );
