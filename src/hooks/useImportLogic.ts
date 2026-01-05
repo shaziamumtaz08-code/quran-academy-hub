@@ -76,10 +76,10 @@ jane.smith@example.com,Jane Smith,student,+971564548951,StudentPass1,16,female
 parent@example.com,Ahmed Khan,parent,+15108572790,ParentPass1,45,male`;
 
     case "assignments":
-      return `student_email,teacher_email,subject_name
-fatima.ali@example.com,mohammad.hassan@example.com,Hifz
-yusuf.malik@example.com,mohammad.hassan@example.com,Hifz
-ahmed.khan@example.com,aisha.siddiqui@example.com,Tajweed`;
+      return `student_name,student_email,teacher_name,teacher_email,subject_name
+Fatima Ali,fatima.ali@example.com,Mohammad Hassan,mohammad.hassan@example.com,Hifz
+Yusuf Malik,yusuf.malik@example.com,Mohammad Hassan,mohammad.hassan@example.com,Hifz
+Ahmed Khan,ahmed.khan@example.com,Aisha Siddiqui,aisha.siddiqui@example.com,Tajweed`;
 
     case "schedules":
       return `teacher_name,student_name,day_of_week,time,duration_minutes
