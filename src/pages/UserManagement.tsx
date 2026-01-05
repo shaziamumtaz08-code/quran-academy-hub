@@ -189,7 +189,7 @@ export default function UserManagement() {
   const canAccessPage = isSuperAdmin || hasPermission('users.view');
 
   // Fetch users with profiles and ALL roles
-  const { data: users, isLoading: usersLoading, error: usersError, refetch } = useQuery({
+  const { data: users, isLoading: usersLoading, error: usersError, refetch, isFetching } = useQuery({
     queryKey: ['users-with-roles'],
     queryFn: async () => {
       const { data: profiles, error: profilesError } = await supabase
@@ -563,8 +563,8 @@ export default function UserManagement() {
             <p className="text-muted-foreground">Manage users, roles, and permissions</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="icon" onClick={() => refetch()} title="Refresh">
-              <RefreshCw className="h-4 w-4" />
+            <Button variant="outline" size="icon" onClick={() => refetch()} title="Refresh" disabled={isFetching}>
+              <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
             </Button>
             {isSuperAdmin && (
               <>
