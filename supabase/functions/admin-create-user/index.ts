@@ -274,6 +274,23 @@ serve(async (req) => {
         const authUser = authUsers?.users?.find(u => u.email?.toLowerCase() === email);
         
         if (authUser) {
+          // Always ensure profile exists first
+          const { error: profileUpsertErr } = await adminClient.from("profiles").upsert({
+            id: authUser.id,
+            email,
+            full_name: fullName,
+            whatsapp_number: whatsapp,
+            gender: isValidGender(gender) ? gender : null,
+            age: isValidAge(age) ? age : null,
+          }, { onConflict: "id" });
+
+          if (profileUpsertErr) {
+            console.error("Error upserting profile for existing auth user:", profileUpsertErr.message);
+            return json(500, { error: "Failed to create/update profile" }, requestOrigin);
+          }
+          
+          console.log(`Profile upserted for auth user ${email}`);
+
           // Check if user already has this role
           const { data: existingRole } = await adminClient
             .from("user_roles")
@@ -283,6 +300,7 @@ serve(async (req) => {
             .maybeSingle();
 
           if (existingRole) {
+            console.log(`User ${email} already has role ${role}`);
             // Return success - user already exists with this role
             return json(200, {
               userId: authUser.id,
@@ -293,16 +311,6 @@ serve(async (req) => {
               alreadyExists: true,
             }, requestOrigin);
           }
-
-          // Ensure profile exists
-          await adminClient.from("profiles").upsert({
-            id: authUser.id,
-            email,
-            full_name: fullName,
-            whatsapp_number: whatsapp,
-            gender: isValidGender(gender) ? gender : null,
-            age: isValidAge(age) ? age : null,
-          }, { onConflict: "id" });
 
           // Add the new role
           const { error: roleErr } = await adminClient.from("user_roles").insert({
