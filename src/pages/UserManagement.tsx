@@ -69,6 +69,9 @@ import {
   Plus,
   Minus,
   Upload,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { BulkUserImportDialog } from '@/components/users/BulkUserImportDialog';
 
@@ -154,6 +157,28 @@ export default function UserManagement() {
   const [editAge, setEditAge] = useState('');
   const [editPassword, setEditPassword] = useState('');
   const [showEditPassword, setShowEditPassword] = useState(false);
+
+  // Sorting state
+  type SortField = 'name' | 'role' | 'gender' | 'age';
+  type SortDirection = 'asc' | 'desc';
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50" />;
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="h-3 w-3 ml-1" /> 
+      : <ArrowDown className="h-3 w-3 ml-1" />;
+  };
 
   // Check access permission
   const canAccessPage = isSuperAdmin || hasPermission('users.view');
@@ -457,10 +482,31 @@ export default function UserManagement() {
     },
   });
 
-  const filteredUsers = users?.filter(user => 
-    user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = users
+    ?.filter(user => 
+      user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    ?.sort((a, b) => {
+      let comparison = 0;
+      switch (sortField) {
+        case 'name':
+          comparison = (a.full_name || '').localeCompare(b.full_name || '');
+          break;
+        case 'role':
+          const aRole = a.roles?.[0] || '';
+          const bRole = b.roles?.[0] || '';
+          comparison = aRole.localeCompare(bRole);
+          break;
+        case 'gender':
+          comparison = (a.gender || '').localeCompare(b.gender || '');
+          break;
+        case 'age':
+          comparison = (a.age || 0) - (b.age || 0);
+          break;
+      }
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
 
   const getRoleTemplate = (role: AppRole | null) => {
     return roleTemplates?.find(t => t.role === role);
@@ -739,10 +785,43 @@ export default function UserManagement() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Roles</TableHead>
-                        <TableHead>Exceptions</TableHead>
+                        <TableHead 
+                          className="cursor-pointer select-none hover:bg-muted/50"
+                          onClick={() => handleSort('name')}
+                        >
+                          <div className="flex items-center">
+                            Name
+                            {getSortIcon('name')}
+                          </div>
+                        </TableHead>
+                        <TableHead>WhatsApp</TableHead>
+                        <TableHead 
+                          className="cursor-pointer select-none hover:bg-muted/50"
+                          onClick={() => handleSort('role')}
+                        >
+                          <div className="flex items-center">
+                            Role
+                            {getSortIcon('role')}
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="cursor-pointer select-none hover:bg-muted/50"
+                          onClick={() => handleSort('gender')}
+                        >
+                          <div className="flex items-center">
+                            Gender
+                            {getSortIcon('gender')}
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="cursor-pointer select-none hover:bg-muted/50"
+                          onClick={() => handleSort('age')}
+                        >
+                          <div className="flex items-center">
+                            Age
+                            {getSortIcon('age')}
+                          </div>
+                        </TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -750,7 +829,13 @@ export default function UserManagement() {
                       {filteredUsers.map((user) => (
                         <TableRow key={user.id}>
                           <TableCell className="font-medium">{user.full_name}</TableCell>
-                          <TableCell>{user.email}</TableCell>
+                          <TableCell>
+                            {user.whatsapp_number ? (
+                              <span className="text-sm">{user.whatsapp_number}</span>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">—</span>
+                            )}
+                          </TableCell>
                           <TableCell>
                             <div className="flex flex-wrap gap-1">
                               {(user.roles?.length ?? 0) > 0 ? (
@@ -797,13 +882,17 @@ export default function UserManagement() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            {(user.exceptions?.length ?? 0) > 0 ? (
-                              <Badge variant="outline" className="gap-1">
-                                <Settings className="h-3 w-3" />
-                                {user.exceptions.length} override{user.exceptions.length > 1 ? 's' : ''}
-                              </Badge>
+                            {user.gender ? (
+                              <span className="text-sm capitalize">{user.gender}</span>
                             ) : (
-                              <span className="text-muted-foreground text-sm">None</span>
+                              <span className="text-muted-foreground text-sm">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {user.age ? (
+                              <span className="text-sm">{user.age}</span>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">—</span>
                             )}
                           </TableCell>
                           <TableCell className="text-right">
