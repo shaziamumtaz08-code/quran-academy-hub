@@ -10,8 +10,6 @@ interface StudentCardProps {
     full_name: string;
     email: string | null;
     subject_name: string | null;
-    schedule_day: string | null;
-    schedule_time: string | null;
     daily_target_lines: number;
     preferred_unit: string;
     last_lesson: string | null;
@@ -25,15 +23,6 @@ interface StudentCardProps {
 }
 
 export function StudentCard({ student, onViewHistory, onViewSchedule, onMarkAttendance }: StudentCardProps) {
-  // Check if today matches the schedule day
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-  const isClassToday = student.schedule_day?.toLowerCase() === today.toLowerCase();
-  
-  // Format time with PK timezone
-  const formatTimeWithTZ = (time: string | null) => {
-    if (!time) return null;
-    return `${time} (PK)`;
-  };
 
   // Check if we have any info to display
   const hasAge = student.age !== null && student.age !== undefined;
@@ -70,16 +59,6 @@ export function StudentCard({ student, onViewHistory, onViewSchedule, onMarkAtte
             <BookMarked className="h-7 w-7 text-white" />
           </button>
         </div>
-
-        {/* Today's Class Time - Only show if class is today */}
-        {isClassToday && student.schedule_time && (
-          <div className="mt-3 p-2 rounded-md bg-gradient-to-r from-sky/20 to-sky/10 dark:from-sky/30 dark:to-sky/20 border border-sky/30">
-            <div className="flex items-center gap-2 text-sm font-medium text-navy dark:text-sky-light">
-              <Clock className="h-4 w-4 text-sky" />
-              <span>Today: {formatTimeWithTZ(student.schedule_time)}</span>
-            </div>
-          </div>
-        )}
 
         {/* Info Row - Only render if we have data */}
         {hasInfoRow && (

@@ -18,8 +18,6 @@ interface StudentWithSchedule {
   gender: string | null;
   age: number | null;
   subject_name: string | null;
-  schedule_day: string | null;
-  schedule_time: string | null;
 }
 
 interface Teacher {
@@ -62,13 +60,11 @@ export default function Teachers() {
 
       if (profileError) throw profileError;
 
-      // Get all student assignments with student details and schedule
+      // Get all student assignments with student details
       const { data: assignments, error: assignError } = await supabase
         .from('student_teacher_assignments')
         .select(`
           teacher_id,
-          schedule_day,
-          schedule_time,
           student:profiles!student_teacher_assignments_student_id_fkey(id, full_name, gender, age),
           subject:subjects(name)
         `)
@@ -78,7 +74,7 @@ export default function Teachers() {
 
       // Group students by teacher
       const studentsByTeacher = new Map<string, StudentWithSchedule[]>();
-      assignments?.forEach(a => {
+      assignments?.forEach((a: any) => {
         const student = a.student as any;
         const subject = a.subject as any;
         if (!studentsByTeacher.has(a.teacher_id)) {
@@ -90,8 +86,6 @@ export default function Teachers() {
           gender: student.gender,
           age: student.age,
           subject_name: subject?.name || null,
-          schedule_day: a.schedule_day,
-          schedule_time: a.schedule_time,
         });
       });
 
@@ -408,15 +402,6 @@ export default function Teachers() {
                                       <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                                         <BookOpen className="h-3 w-3" />
                                         {student.subject_name}
-                                      </p>
-                                    )}
-                                    {/* Schedule */}
-                                    {(student.schedule_day || student.schedule_time) && (
-                                      <p className="text-xs text-primary flex items-center gap-1 mt-1">
-                                        <Clock className="h-3 w-3" />
-                                        {student.schedule_day}
-                                        {student.schedule_day && student.schedule_time && ' • '}
-                                        {student.schedule_time && formatTime(student.schedule_time)}
                                       </p>
                                     )}
                                   </div>

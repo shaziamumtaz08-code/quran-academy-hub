@@ -696,6 +696,7 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
+          assignment_id: string | null
           ayah_from: number | null
           ayah_to: number | null
           created_at: string
@@ -721,6 +722,7 @@ export type Database = {
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
+          assignment_id?: string | null
           ayah_from?: number | null
           ayah_to?: number | null
           created_at?: string
@@ -746,6 +748,7 @@ export type Database = {
         Update: {
           approved_at?: string | null
           approved_by?: string | null
+          assignment_id?: string | null
           ayah_from?: number | null
           ayah_to?: number | null
           created_at?: string
@@ -774,6 +777,13 @@ export type Database = {
             columns: ["approved_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_monthly_plans_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "student_teacher_assignments"
             referencedColumns: ["id"]
           },
           {
@@ -839,8 +849,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
-          schedule_day: string | null
-          schedule_time: string | null
+          status: Database["public"]["Enums"]["assignment_status"]
           student_id: string
           student_timezone: string | null
           subject_id: string | null
@@ -850,8 +859,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
-          schedule_day?: string | null
-          schedule_time?: string | null
+          status?: Database["public"]["Enums"]["assignment_status"]
           student_id: string
           student_timezone?: string | null
           subject_id?: string | null
@@ -861,8 +869,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
-          schedule_day?: string | null
-          schedule_time?: string | null
+          status?: Database["public"]["Enums"]["assignment_status"]
           student_id?: string
           student_timezone?: string | null
           subject_id?: string | null
@@ -988,6 +995,7 @@ export type Database = {
         | "admin_admissions"
         | "admin_fees"
         | "admin_academic"
+      assignment_status: "active" | "paused" | "completed"
       exam_tenure: "weekly" | "monthly" | "quarterly" | "yearly"
       grading_style: "numeric" | "rubric"
       permission_type:
@@ -1167,6 +1175,7 @@ export const Constants = {
         "admin_fees",
         "admin_academic",
       ],
+      assignment_status: ["active", "paused", "completed"],
       exam_tenure: ["weekly", "monthly", "quarterly", "yearly"],
       grading_style: ["numeric", "rubric"],
       permission_type: [

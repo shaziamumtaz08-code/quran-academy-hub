@@ -137,7 +137,7 @@ export default function MonthlyPlanning() {
     },
   });
 
-  // Fetch assigned students for teacher
+  // Fetch assigned students for teacher (with assignment_id for linking)
   const { data: assignedStudents } = useQuery({
     queryKey: ['assigned-students-with-subjects', user?.id],
     queryFn: async () => {
@@ -146,15 +146,19 @@ export default function MonthlyPlanning() {
       const { data, error } = await supabase
         .from('student_teacher_assignments')
         .select(`
+          id,
           student_id, 
           subject_id,
+          status,
           student:profiles!student_teacher_assignments_student_id_fkey(id, full_name),
           subject:subjects(id, name)
         `)
-        .eq('teacher_id', user.id);
+        .eq('teacher_id', user.id)
+        .eq('status', 'active');
 
       if (error) throw error;
       return (data || []).map(d => ({
+        assignment_id: d.id,
         id: d.student?.id || d.student_id,
         full_name: d.student?.full_name || 'Unknown',
         subject_id: d.subject_id,
@@ -164,7 +168,7 @@ export default function MonthlyPlanning() {
     enabled: !!user?.id && isTeacher,
   });
 
-  // Fetch all students for admin
+  // Fetch all students for admin (with assignment info)
   const { data: allStudentsData } = useQuery({
     queryKey: ['all-students-with-assignments'],
     queryFn: async () => {
@@ -185,33 +189,39 @@ export default function MonthlyPlanning() {
 
       if (profileError) throw profileError;
       
-      // Get assignments for subjects
+      // Get active assignments for subjects with assignment_id
       const { data: assignments } = await supabase
         .from('student_teacher_assignments')
-        .select('student_id, subject_id, subject:subjects(id, name)')
-        .in('student_id', studentIds);
+        .select('id, student_id, teacher_id, subject_id, subject:subjects(id, name)')
+        .in('student_id', studentIds)
+        .eq('status', 'active');
       
-      // Create a map of student to subjects
-      const studentSubjects = new Map<string, { subject_id: string; subject_name: string }[]>();
+      // Create a map of student to assignments
+      const studentAssignments = new Map<string, { assignment_id: string; teacher_id: string; subject_id: string; subject_name: string }[]>();
       (assignments || []).forEach((a: any) => {
-        const existing = studentSubjects.get(a.student_id) || [];
+        const existing = studentAssignments.get(a.student_id) || [];
         if (a.subject_id && a.subject?.name) {
-          existing.push({ subject_id: a.subject_id, subject_name: a.subject.name });
+          existing.push({ 
+            assignment_id: a.id,
+            teacher_id: a.teacher_id,
+            subject_id: a.subject_id, 
+            subject_name: a.subject.name 
+          });
         }
-        studentSubjects.set(a.student_id, existing);
+        studentAssignments.set(a.student_id, existing);
       });
       
       return (profileData || []).map(p => ({
         id: p.id,
         full_name: p.full_name,
-        subjects: studentSubjects.get(p.id) || [],
+        assignments: studentAssignments.get(p.id) || [],
       }));
     },
     enabled: isAdmin,
   });
 
-  // Get available subjects for selected student (normalized to { id, name })
-  const availableSubjects = useMemo((): { id: string; name: string }[] => {
+  // Get available subjects for selected student (normalized to { id, name, assignment_id })
+  const availableSubjects = useMemo((): { id: string; name: string; assignment_id?: string }[] => {
     if (!selectedStudent) return [];
     
     if (isTeacher && assignedStudents) {
@@ -219,30 +229,31 @@ export default function MonthlyPlanning() {
       const studentAssignments = assignedStudents.filter(s => s.id === selectedStudent);
       return studentAssignments
         .filter(s => s.subject_id && s.subject_name)
-        .map(s => ({ id: s.subject_id!, name: s.subject_name! }));
+        .map(s => ({ id: s.subject_id!, name: s.subject_name!, assignment_id: s.assignment_id }));
     }
     
     if (isAdmin && allStudentsData) {
       // For admins, show all subjects assigned to this student
       const student = allStudentsData.find(s => s.id === selectedStudent);
-      // Normalize the structure
-      return (student?.subjects || []).map(s => ({ 
-        id: s.subject_id, 
-        name: s.subject_name 
+      return (student?.assignments || []).map(a => ({ 
+        id: a.subject_id, 
+        name: a.subject_name,
+        assignment_id: a.assignment_id
       }));
     }
     
     return [];
   }, [selectedStudent, isTeacher, isAdmin, assignedStudents, allStudentsData]);
 
-  // Get the selected subject details
+  // Get the selected subject details (including assignment_id)
   const selectedSubjectDetails = useMemo(() => {
     if (!selectedSubject) return null;
-    // Check in available subjects first
+    // Check in available subjects first (has assignment_id)
     const found = availableSubjects.find(s => s.id === selectedSubject);
     if (found) return found;
-    // Fallback to all subjects
-    return allSubjects.find(s => s.id === selectedSubject) || null;
+    // Fallback to all subjects (no assignment_id)
+    const fromAll = allSubjects.find(s => s.id === selectedSubject);
+    return fromAll ? { ...fromAll, assignment_id: undefined } : null;
   }, [selectedSubject, availableSubjects, allSubjects]);
 
   const isQuran = isQuranSubject(selectedSubjectDetails?.name);
@@ -288,9 +299,13 @@ export default function MonthlyPlanning() {
       if (!selectedStudent) throw new Error('Please select a student');
       if (!selectedSubject) throw new Error('Please select a subject');
 
+      // Get assignment_id from selected subject details
+      const assignmentId = selectedSubjectDetails?.assignment_id;
+
       const planData: any = {
         student_id: selectedStudent,
         teacher_id: user.id,
+        assignment_id: assignmentId || null,
         month: selectedMonth,
         year: selectedYear,
         primary_marker: primaryMarker,

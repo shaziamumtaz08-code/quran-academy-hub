@@ -44,10 +44,13 @@ const getTzAbbr = (tzValue: string | null) => {
   return TIMEZONES.find(tz => tz.value === tzValue)?.abbr || '??';
 };
 
+type AssignmentStatus = 'active' | 'paused' | 'completed';
+
 interface Assignment {
   id: string;
   teacher_id: string;
   student_id: string;
+  status: AssignmentStatus;
   teacher_name: string;
   student_name: string;
   subject_name: string | null;
@@ -206,7 +209,7 @@ export default function Schedules() {
 
   const todayDayName = format(new Date(), 'EEEE').toLowerCase();
 
-  // Fetch assignments with timezone info
+  // Fetch assignments with timezone info (only active assignments for scheduling)
   const { data: assignments = [], isLoading: loadingAssignments } = useQuery({
     queryKey: ['assignments-with-tz'],
     queryFn: async () => {
@@ -216,18 +219,21 @@ export default function Schedules() {
           id,
           teacher_id,
           student_id,
+          status,
           student_timezone,
           teacher_timezone,
           teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name),
           student:profiles!student_teacher_assignments_student_id_fkey(full_name),
           subject:subjects(name)
-        `);
+        `)
+        .eq('status', 'active');
 
       if (error) throw error;
       return (data || []).map((row: any) => ({
         id: row.id,
         teacher_id: row.teacher_id,
         student_id: row.student_id,
+        status: row.status || 'active',
         teacher_name: row.teacher?.full_name || 'Unknown',
         student_name: row.student?.full_name || 'Unknown',
         subject_name: row.subject?.name || null,
