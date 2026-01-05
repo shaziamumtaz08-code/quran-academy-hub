@@ -6,11 +6,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Users, GraduationCap, Trash2, Loader2, UserPlus, BookOpen, Pencil, Upload } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Users, GraduationCap, Trash2, Loader2, UserPlus, BookOpen, Pencil, Upload, Filter } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { BulkAssignmentImportDialog } from '@/components/assignments/BulkAssignmentImportDialog';
+
+const STATUS_CONFIG = {
+  active: { label: 'Active', color: 'bg-emerald-500', badgeClass: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' },
+  paused: { label: 'Paused', color: 'bg-amber-500', badgeClass: 'bg-amber-500/10 text-amber-600 border-amber-500/20' },
+  completed: { label: 'Completed', color: 'bg-slate-400', badgeClass: 'bg-slate-400/10 text-slate-600 border-slate-400/20' },
+} as const;
 
 interface Profile {
   id: string;
@@ -44,6 +51,7 @@ export default function Assignments() {
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<AssignmentStatus | 'all'>('active');
 
   // Fetch teachers
   const { data: teachers = [], isLoading: loadingTeachers } = useQuery({
@@ -302,6 +310,18 @@ export default function Assignments() {
 
   const isLoading = loadingTeachers || loadingStudents || loadingAssignments;
 
+  // Filter assignments by status
+  const filteredAssignments = assignments.filter(a => 
+    statusFilter === 'all' ? true : a.status === statusFilter
+  );
+
+  // Count by status for filter badges
+  const statusCounts = {
+    active: assignments.filter(a => a.status === 'active').length,
+    paused: assignments.filter(a => a.status === 'paused').length,
+    completed: assignments.filter(a => a.status === 'completed').length,
+  };
+
 
   return (
     <DashboardLayout>
@@ -450,7 +470,7 @@ export default function Assignments() {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Active Assignments</p>
-                    <p className="text-2xl font-bold">{assignments.length}</p>
+                    <p className="text-2xl font-bold">{statusCounts.active}</p>
                   </div>
                 </div>
               </CardContent>
@@ -458,21 +478,79 @@ export default function Assignments() {
           </div>
         </div>
 
+        {/* Status Summary Info */}
+        {(statusCounts.paused > 0 || statusCounts.completed > 0) && (
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            {statusCounts.paused > 0 && (
+              <span className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-amber-500" />
+                {statusCounts.paused} paused (planning/scheduling disabled)
+              </span>
+            )}
+            {statusCounts.completed > 0 && (
+              <span className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-slate-400" />
+                {statusCounts.completed} completed
+              </span>
+            )}
+          </div>
+        )}
+
         {/* Assignments Table */}
         <Card>
-          <CardHeader>
-            <CardTitle>Current Assignments</CardTitle>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <CardTitle>Assignments</CardTitle>
+            {/* Status Filter */}
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <div className="flex gap-1">
+                <Button
+                  variant={statusFilter === 'active' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setStatusFilter('active')}
+                  className="h-7 text-xs"
+                >
+                  Active ({statusCounts.active})
+                </Button>
+                <Button
+                  variant={statusFilter === 'paused' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setStatusFilter('paused')}
+                  className="h-7 text-xs"
+                >
+                  Paused ({statusCounts.paused})
+                </Button>
+                <Button
+                  variant={statusFilter === 'completed' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setStatusFilter('completed')}
+                  className="h-7 text-xs"
+                >
+                  Completed ({statusCounts.completed})
+                </Button>
+                <Button
+                  variant={statusFilter === 'all' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setStatusFilter('all')}
+                  className="h-7 text-xs"
+                >
+                  All
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
-            ) : assignments.length === 0 ? (
+            ) : filteredAssignments.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <UserPlus className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No assignments yet</p>
-                <p className="text-sm">Create an assignment above to get started</p>
+                <p>No {statusFilter !== 'all' ? statusFilter : ''} assignments found</p>
+                <p className="text-sm">
+                  {statusFilter !== 'all' ? `Try viewing "All" assignments or create a new one` : 'Create an assignment above to get started'}
+                </p>
               </div>
             ) : (
               <Table>
@@ -486,8 +564,8 @@ export default function Assignments() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {assignments.map((assignment) => (
-                    <TableRow key={assignment.id}>
+                  {filteredAssignments.map((assignment) => (
+                    <TableRow key={assignment.id} className={assignment.status !== 'active' ? 'opacity-60' : ''}>
                       <TableCell className="font-medium">{assignment.teacher_name}</TableCell>
                       <TableCell>{assignment.student_name}</TableCell>
                       <TableCell>
