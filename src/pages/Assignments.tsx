@@ -22,11 +22,14 @@ interface Subject {
   name: string;
 }
 
+type AssignmentStatus = 'active' | 'paused' | 'completed';
+
 interface Assignment {
   id: string;
   teacher_id: string;
   student_id: string;
   subject_id: string | null;
+  status: AssignmentStatus;
   teacher_name: string;
   student_name: string;
   subject_name: string | null;
@@ -120,6 +123,7 @@ export default function Assignments() {
           teacher_id,
           student_id,
           subject_id,
+          status,
           created_at,
           teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name),
           student:profiles!student_teacher_assignments_student_id_fkey(full_name),
@@ -133,6 +137,7 @@ export default function Assignments() {
         teacher_id: row.teacher_id,
         student_id: row.student_id,
         subject_id: row.subject_id,
+        status: row.status || 'active',
         teacher_name: row.teacher?.full_name || 'Unknown',
         student_name: row.student?.full_name || 'Unknown',
         subject_name: row.subject?.name || null,
@@ -205,12 +210,13 @@ export default function Assignments() {
 
   // Update assignment mutation
   const updateMutation = useMutation({
-    mutationFn: async ({ id, teacherId, subjectId }: { id: string; teacherId: string; subjectId?: string }) => {
+    mutationFn: async ({ id, teacherId, subjectId, status }: { id: string; teacherId: string; subjectId?: string; status?: AssignmentStatus }) => {
       const { error } = await supabase
         .from('student_teacher_assignments')
         .update({
           teacher_id: teacherId,
           subject_id: subjectId || null,
+          ...(status && { status }),
         })
         .eq('id', id);
 
@@ -224,6 +230,25 @@ export default function Assignments() {
       queryClient.invalidateQueries({ queryKey: ['assigned-students'] });
       toast({ title: 'Updated', description: 'Assignment updated successfully' });
       handleCancelEdit();
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // Update status mutation (quick status change)
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: AssignmentStatus }) => {
+      const { error } = await supabase
+        .from('student_teacher_assignments')
+        .update({ status })
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
+      toast({ title: 'Updated', description: 'Assignment status updated' });
     },
     onError: (error: any) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -456,6 +481,7 @@ export default function Assignments() {
                     <TableHead>Teacher</TableHead>
                     <TableHead>Student</TableHead>
                     <TableHead>Subject</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead className="text-center">Action</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -473,6 +499,39 @@ export default function Assignments() {
                         ) : (
                           <span className="text-muted-foreground text-sm">—</span>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={assignment.status}
+                          onValueChange={(value: AssignmentStatus) => 
+                            updateStatusMutation.mutate({ id: assignment.id, status: value })
+                          }
+                          disabled={updateStatusMutation.isPending}
+                        >
+                          <SelectTrigger className="w-[120px] h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="active">
+                              <span className="flex items-center gap-2">
+                                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                                Active
+                              </span>
+                            </SelectItem>
+                            <SelectItem value="paused">
+                              <span className="flex items-center gap-2">
+                                <span className="h-2 w-2 rounded-full bg-amber-500" />
+                                Paused
+                              </span>
+                            </SelectItem>
+                            <SelectItem value="completed">
+                              <span className="flex items-center gap-2">
+                                <span className="h-2 w-2 rounded-full bg-slate-400" />
+                                Completed
+                              </span>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell className="text-center">
                         <div className="flex items-center justify-center gap-1">
