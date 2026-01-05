@@ -215,12 +215,12 @@ async function validateUserRow(
   };
 }
 
-// Validate assignment row
+// Validate assignment row - uses email for lookup
 async function validateAssignmentRow(
   row: Record<string, any>,
   rowNum: number,
-  teacherMap: Map<string, string>,
-  studentMap: Map<string, string>,
+  teacherMapByEmail: Map<string, { id: string; name: string }>,
+  studentMapByEmail: Map<string, { id: string; name: string }>,
   subjectMap: Map<string, string>,
   existingAssignments: Map<string, any>
 ): Promise<ValidationResult> {
@@ -230,29 +230,37 @@ async function validateAssignmentRow(
   let diff: Record<string, { old: any; new: any }> | null = null;
   let existingId: string | null = null;
 
-  const teacherName = row.teacher_name?.trim();
-  const studentName = row.student_name?.trim();
+  const teacherEmail = row.teacher_email?.trim()?.toLowerCase();
+  const studentEmail = row.student_email?.trim()?.toLowerCase();
   const subjectName = row.subject_name?.trim();
 
-  // Validate teacher
+  // Validate teacher by email
   let teacherId: string | null = null;
-  if (!teacherName) {
-    errors.push("Teacher name is required");
+  let teacherName: string | null = null;
+  if (!teacherEmail) {
+    errors.push("Teacher email is required");
   } else {
-    teacherId = teacherMap.get(teacherName.toLowerCase()) || null;
-    if (!teacherId) {
-      errors.push(`Teacher not found: "${teacherName}"`);
+    const teacher = teacherMapByEmail.get(teacherEmail);
+    if (!teacher) {
+      errors.push(`Teacher not found with email: "${teacherEmail}"`);
+    } else {
+      teacherId = teacher.id;
+      teacherName = teacher.name;
     }
   }
 
-  // Validate student
+  // Validate student by email
   let studentId: string | null = null;
-  if (!studentName) {
-    errors.push("Student name is required");
+  let studentName: string | null = null;
+  if (!studentEmail) {
+    errors.push("Student email is required");
   } else {
-    studentId = studentMap.get(studentName.toLowerCase()) || null;
-    if (!studentId) {
-      errors.push(`Student not found: "${studentName}"`);
+    const student = studentMapByEmail.get(studentEmail);
+    if (!student) {
+      errors.push(`Student not found with email: "${studentEmail}"`);
+    } else {
+      studentId = student.id;
+      studentName = student.name;
     }
   }
 
@@ -499,16 +507,19 @@ serve(async (req) => {
         validationResults.push(result);
       }
     } else if (type === "assignments") {
-      // Fetch teachers, students, subjects, and existing assignments
+      // Fetch teachers, students, subjects, and existing assignments - lookup by EMAIL
+      const { data: teacherRoles } = await supabase.from("user_roles").select("user_id").eq("role", "teacher");
+      const { data: studentRoles } = await supabase.from("user_roles").select("user_id").eq("role", "student");
+
       const { data: teachers } = await supabase
         .from("profiles")
-        .select("id, full_name")
-        .in("id", (await supabase.from("user_roles").select("user_id").eq("role", "teacher")).data?.map((r) => r.user_id) || []);
+        .select("id, full_name, email")
+        .in("id", teacherRoles?.map((r) => r.user_id) || []);
 
       const { data: students } = await supabase
         .from("profiles")
-        .select("id, full_name")
-        .in("id", (await supabase.from("user_roles").select("user_id").eq("role", "student")).data?.map((r) => r.user_id) || []);
+        .select("id, full_name, email")
+        .in("id", studentRoles?.map((r) => r.user_id) || []);
 
       const { data: subjects } = await supabase.from("subjects").select("id, name");
 
@@ -516,11 +527,16 @@ serve(async (req) => {
         .from("student_teacher_assignments")
         .select("id, teacher_id, student_id, subject_id, subjects(name)");
 
-      const teacherMap = new Map<string, string>();
-      teachers?.forEach((t) => teacherMap.set(t.full_name.toLowerCase(), t.id));
+      // Map by email for lookup
+      const teacherMapByEmail = new Map<string, { id: string; name: string }>();
+      teachers?.forEach((t) => {
+        if (t.email) teacherMapByEmail.set(t.email.toLowerCase(), { id: t.id, name: t.full_name });
+      });
 
-      const studentMap = new Map<string, string>();
-      students?.forEach((s) => studentMap.set(s.full_name.toLowerCase(), s.id));
+      const studentMapByEmail = new Map<string, { id: string; name: string }>();
+      students?.forEach((s) => {
+        if (s.email) studentMapByEmail.set(s.email.toLowerCase(), { id: s.id, name: s.full_name });
+      });
 
       const subjectMap = new Map<string, string>();
       subjects?.forEach((s) => subjectMap.set(s.name.toLowerCase(), s.id));
@@ -536,7 +552,7 @@ serve(async (req) => {
 
       for (let i = 0; i < rows.length; i++) {
         const result = await validateAssignmentRow(
-          rows[i], i + 1, teacherMap, studentMap, subjectMap, existingAssignments
+          rows[i], i + 1, teacherMapByEmail, studentMapByEmail, subjectMap, existingAssignments
         );
         validationResults.push(result);
       }
