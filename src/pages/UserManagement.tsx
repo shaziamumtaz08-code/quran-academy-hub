@@ -687,14 +687,14 @@ export default function UserManagement() {
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label htmlFor="password" className="text-xs">Password</Label>
+                        <Label htmlFor="password" className="text-xs">Password (min 8 chars)</Label>
                         <div className="relative">
                           <Input
                             id="password"
                             type={showNewUserPassword ? "text" : "password"}
                             value={newUserPassword}
                             onChange={(e) => setNewUserPassword(e.target.value)}
-                            placeholder="Min 6 chars"
+                            placeholder="Min 8 characters"
                             className="h-9 pr-9"
                           />
                           <Button
@@ -808,6 +808,16 @@ export default function UserManagement() {
                             toast({
                               title: 'Email required',
                               description: 'Please enter an email address.',
+                              variant: 'destructive',
+                            });
+                            return;
+                          }
+
+                          // Password is required for new users and must be 8-100 characters
+                          if (password && (password.length < 8 || password.length > 100)) {
+                            toast({
+                              title: 'Invalid password',
+                              description: 'Password must be between 8 and 100 characters.',
                               variant: 'destructive',
                             });
                             return;
