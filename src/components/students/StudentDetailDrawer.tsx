@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Calendar, Clock, User, BookOpen, Target, CheckSquare, Loader2, FileText } from 'lucide-react';
+import { Calendar, Clock, User, BookOpen, Target, CheckSquare, Loader2, FileText, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
+import { useAuth } from '@/contexts/AuthContext';
 
 const DAYS_OF_WEEK = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const DAYS_LABELS: Record<string, string> = {
@@ -17,6 +18,18 @@ const DAYS_LABELS: Record<string, string> = {
   friday: 'Fri',
   saturday: 'Sat',
   sunday: 'Sun',
+};
+
+// Country code abbreviations for timezone display
+const COUNTRY_CODES: Record<string, string> = {
+  'Pakistan': 'PK',
+  'Canada': 'CA',
+  'USA': 'US',
+  'UK': 'UK',
+  'UAE': 'AE',
+  'Saudi Arabia': 'SA',
+  'India': 'IN',
+  'Australia': 'AU',
 };
 
 function formatTime12h(time: string): string {
@@ -48,12 +61,15 @@ interface Schedule {
   id: string;
   day_of_week: string;
   teacher_local_time: string;
+  student_local_time: string;
   duration_minutes: number;
 }
 
 interface StudentProfile {
   age: number | null;
   gender: string | null;
+  country: string | null;
+  city: string | null;
 }
 
 interface MonthlyPlan {
@@ -71,15 +87,16 @@ export function StudentDetailDrawer({
   teacherId,
   onMarkAttendance 
 }: StudentDetailDrawerProps) {
+  const { user } = useAuth();
   
-  // Fetch student's full profile (age, gender)
+  // Fetch student's full profile (age, gender, country, city)
   const { data: profile, isLoading: loadingProfile } = useQuery({
     queryKey: ['student-profile-detail', student?.id],
     queryFn: async () => {
       if (!student?.id) return null;
       const { data, error } = await supabase
         .from('profiles')
-        .select('age, gender')
+        .select('age, gender, country, city')
         .eq('id', student.id)
         .single();
       
@@ -87,6 +104,22 @@ export function StudentDetailDrawer({
       return data as StudentProfile;
     },
     enabled: !!student?.id && open,
+  });
+
+  // Fetch teacher's profile for country code
+  const { data: teacherProfile } = useQuery({
+    queryKey: ['teacher-profile-detail', teacherId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('country, city')
+        .eq('id', teacherId)
+        .single();
+      
+      if (error) return null;
+      return data as { country: string | null; city: string | null };
+    },
+    enabled: !!teacherId && open,
   });
 
   // Fetch student's weekly schedule
@@ -107,7 +140,7 @@ export function StudentDetailDrawer({
       
       const { data, error } = await supabase
         .from('schedules')
-        .select('id, day_of_week, teacher_local_time, duration_minutes')
+        .select('id, day_of_week, teacher_local_time, student_local_time, duration_minutes')
         .eq('assignment_id', assignment.id)
         .eq('is_active', true);
       
@@ -147,6 +180,13 @@ export function StudentDetailDrawer({
     scheduleMap.set(s.day_of_week, s);
   });
 
+  // Count of scheduled days
+  const scheduledDaysCount = scheduleMap.size;
+
+  // Get timezone abbreviations
+  const teacherCode = COUNTRY_CODES[teacherProfile?.country || 'Pakistan'] || teacherProfile?.country?.slice(0, 2).toUpperCase() || 'PK';
+  const studentCode = COUNTRY_CODES[profile?.country || 'Canada'] || profile?.country?.slice(0, 2).toUpperCase() || 'CA';
+
   const isLoading = loadingProfile || loadingSchedules || loadingPlan;
 
   if (!student) return null;
@@ -177,8 +217,17 @@ export function StudentDetailDrawer({
                 <p className="text-xs text-muted-foreground mb-1">Gender</p>
                 <p className="font-medium capitalize">{profile?.gender || '-'}</p>
               </div>
+              {profile?.city && (
+                <div className="bg-muted/50 rounded-lg p-3">
+                  <p className="text-xs text-muted-foreground mb-1">Location</p>
+                  <p className="font-medium flex items-center gap-1">
+                    <MapPin className="h-3 w-3 text-muted-foreground" />
+                    {profile.city}, {profile.country}
+                  </p>
+                </div>
+              )}
               {student.subject_name && (
-                <div className="bg-muted/50 rounded-lg p-3 col-span-2">
+                <div className={`bg-muted/50 rounded-lg p-3 ${!profile?.city ? 'col-span-2' : ''}`}>
                   <p className="text-xs text-muted-foreground mb-1">Subject</p>
                   <p className="font-medium flex items-center gap-2">
                     <BookOpen className="h-4 w-4 text-muted-foreground" />
@@ -195,6 +244,9 @@ export function StudentDetailDrawer({
               <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
                 Weekly Schedule
+                <Badge variant="secondary" className="text-xs ml-auto">
+                  {scheduledDaysCount} {scheduledDaysCount === 1 ? 'day' : 'days'}
+                </Badge>
               </h3>
               <div className="grid grid-cols-7 gap-1">
                 {DAYS_OF_WEEK.map(day => {
@@ -213,10 +265,17 @@ export function StudentDetailDrawer({
                         {DAYS_LABELS[day]}
                       </p>
                       {hasClass && schedule ? (
-                        <p className="text-xs font-semibold">
-                          {formatTime12h(schedule.teacher_local_time)}
-                          <span className="text-muted-foreground ml-0.5">(PK)</span>
-                        </p>
+                        <div className="space-y-0.5">
+                          <p className="text-xs font-semibold">
+                            {formatTime12h(schedule.teacher_local_time)}
+                            <span className="text-muted-foreground ml-0.5">({teacherCode})</span>
+                          </p>
+                          {schedule.student_local_time && schedule.student_local_time !== schedule.teacher_local_time && (
+                            <p className="text-[10px] text-muted-foreground">
+                              {formatTime12h(schedule.student_local_time)} ({studentCode})
+                            </p>
+                          )}
+                        </div>
                       ) : (
                         <p className="text-xs text-muted-foreground">-</p>
                       )}

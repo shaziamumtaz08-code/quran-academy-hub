@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
-import { Calendar, Clock } from 'lucide-react';
+import { Calendar, Clock, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface StudentScheduleDialogProps {
@@ -25,21 +25,60 @@ interface Schedule {
 
 const DAYS_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
+// Country code abbreviations for timezone display
+const COUNTRY_CODES: Record<string, string> = {
+  'Pakistan': 'PK',
+  'Canada': 'CA',
+  'USA': 'US',
+  'UK': 'UK',
+  'UAE': 'AE',
+  'Saudi Arabia': 'SA',
+  'India': 'IN',
+  'Australia': 'AU',
+};
+
 export function StudentScheduleDialog({ open, onOpenChange, studentId, studentName }: StudentScheduleDialogProps) {
-  // Fetch student's weekly schedule
-  const { data: schedules, isLoading } = useQuery({
+  // Fetch student's profile for timezone info
+  const { data: studentProfile } = useQuery({
+    queryKey: ['student-profile-tz', studentId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('country, city')
+        .eq('id', studentId)
+        .single();
+      if (error) return null;
+      return data as { country: string | null; city: string | null };
+    },
+    enabled: open && !!studentId,
+  });
+
+  // Fetch student's weekly schedule with teacher info
+  const { data: schedulesData, isLoading } = useQuery({
     queryKey: ['student-schedules', studentId],
     queryFn: async () => {
       // First get the assignment ID for this student
       const { data: assignments, error: assignmentError } = await supabase
         .from('student_teacher_assignments')
-        .select('id')
+        .select('id, teacher_id')
         .eq('student_id', studentId);
       
       if (assignmentError) throw assignmentError;
-      if (!assignments || assignments.length === 0) return [];
+      if (!assignments || assignments.length === 0) return { schedules: [], teacherProfile: null };
       
       const assignmentIds = assignments.map(a => a.id);
+      const teacherId = assignments[0]?.teacher_id;
+      
+      // Get teacher profile for timezone
+      let teacherProfile = null;
+      if (teacherId) {
+        const { data: teacher } = await supabase
+          .from('profiles')
+          .select('country, city')
+          .eq('id', teacherId)
+          .single();
+        teacherProfile = teacher;
+      }
       
       // Then get schedules for those assignments
       const { data, error } = await supabase
@@ -50,10 +89,13 @@ export function StudentScheduleDialog({ open, onOpenChange, studentId, studentNa
         .order('day_of_week');
       
       if (error) throw error;
-      return data as Schedule[];
+      return { schedules: (data as Schedule[]) || [], teacherProfile };
     },
     enabled: open && !!studentId,
   });
+
+  const schedules = schedulesData?.schedules || [];
+  const teacherProfile = schedulesData?.teacherProfile;
 
   // Sort schedules by day order
   const sortedSchedules = schedules?.sort((a, b) => {
@@ -62,6 +104,10 @@ export function StudentScheduleDialog({ open, onOpenChange, studentId, studentNa
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
 
+  // Get timezone abbreviations
+  const teacherCode = COUNTRY_CODES[teacherProfile?.country || 'Pakistan'] || teacherProfile?.country?.slice(0, 2).toUpperCase() || 'PK';
+  const studentCode = COUNTRY_CODES[studentProfile?.country || 'Canada'] || studentProfile?.country?.slice(0, 2).toUpperCase() || 'CA';
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -69,10 +115,20 @@ export function StudentScheduleDialog({ open, onOpenChange, studentId, studentNa
           <DialogTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-primary" />
             {studentName} - Weekly Schedule
+            <Badge variant="secondary" className="ml-auto text-xs">
+              {sortedSchedules?.length || 0} {(sortedSchedules?.length || 0) === 1 ? 'day' : 'days'}
+            </Badge>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-3 pt-4">
+        {studentProfile?.city && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <MapPin className="h-4 w-4" />
+            {studentProfile.city}, {studentProfile.country}
+          </div>
+        )}
+
+        <div className="space-y-3 pt-2">
           {isLoading ? (
             <div className="space-y-3">
               {[...Array(3)].map((_, i) => (
@@ -111,9 +167,15 @@ export function StudentScheduleDialog({ open, onOpenChange, studentId, studentNa
                       </div>
                       <div>
                         <p className="font-medium text-sm">{schedule.day_of_week}</p>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          {schedule.student_local_time} (Student) / {schedule.teacher_local_time} (Teacher)
+                        <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {schedule.student_local_time} ({studentCode})
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {schedule.teacher_local_time} ({teacherCode})
+                          </div>
                         </div>
                       </div>
                     </div>

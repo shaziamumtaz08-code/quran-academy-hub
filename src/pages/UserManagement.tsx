@@ -122,6 +122,8 @@ interface UserWithRoles {
   whatsapp_number: string | null;
   gender: string | null;
   age: number | null;
+  country: string | null;
+  city: string | null;
   created_at: string;
   roles: AppRole[];
   exceptions: Array<{ permission: string; is_granted: boolean }>;
@@ -160,6 +162,8 @@ export default function UserManagement() {
   const [editWhatsapp, setEditWhatsapp] = useState('');
   const [editGender, setEditGender] = useState<'male' | 'female' | ''>('');
   const [editAge, setEditAge] = useState('');
+  const [editCountry, setEditCountry] = useState('');
+  const [editCity, setEditCity] = useState('');
   const [editPassword, setEditPassword] = useState('');
   const [showEditPassword, setShowEditPassword] = useState(false);
 
@@ -219,6 +223,8 @@ export default function UserManagement() {
             whatsapp_number: profile.whatsapp_number,
             gender: profile.gender,
             age: profile.age,
+            country: profile.country,
+            city: profile.city,
             created_at: profile.created_at,
             roles: (rolesData || []).map(r => r.role as AppRole),
             exceptions: exceptions || [],
@@ -243,6 +249,29 @@ export default function UserManagement() {
       return data;
     },
   });
+
+  // Fetch timezone mappings for country/city dropdowns
+  const { data: timezoneMappings = [] } = useQuery({
+    queryKey: ['timezone-mappings'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('timezone_mappings')
+        .select('country, city, timezone')
+        .order('country')
+        .order('city');
+      
+      if (error) throw error;
+      return data as Array<{ country: string; city: string; timezone: string }>;
+    },
+  });
+
+  // Get unique countries
+  const countries = [...new Set(timezoneMappings.map(t => t.country))];
+  
+  // Get cities for selected country
+  const getCitiesForCountry = (country: string) => {
+    return timezoneMappings.filter(t => t.country === country).map(t => t.city);
+  };
 
   // Add role to user mutation
   const addRoleMutation = useMutation({
@@ -470,6 +499,8 @@ export default function UserManagement() {
       whatsapp,
       gender,
       age,
+      country,
+      city,
       password,
     }: {
       userId: string;
@@ -478,10 +509,12 @@ export default function UserManagement() {
       whatsapp?: string | null;
       gender?: 'male' | 'female' | null;
       age?: number | null;
+      country?: string | null;
+      city?: string | null;
       password?: string;
     }) => {
       const { data, error } = await supabase.functions.invoke('admin-update-user', {
-        body: { userId, fullName, email, whatsapp, gender, age, password },
+        body: { userId, fullName, email, whatsapp, gender, age, country, city, password },
       });
       if (error) throw new Error(error.message || 'Failed to update user');
       if (data?.error) throw new Error(data.error);
@@ -863,6 +896,7 @@ export default function UserManagement() {
                             {getSortIcon('age')}
                           </div>
                         </TableHead>
+                        <TableHead>Location</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -946,6 +980,13 @@ export default function UserManagement() {
                           <TableCell>
                             {user.age ? (
                               <span className="text-sm">{user.age}</span>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {user.city ? (
+                              <span className="text-sm">{user.city}</span>
                             ) : (
                               <span className="text-muted-foreground text-sm">—</span>
                             )}
@@ -1255,6 +1296,8 @@ export default function UserManagement() {
                       setEditWhatsapp(viewingUser.whatsapp_number || '');
                       setEditGender((viewingUser.gender as 'male' | 'female') || '');
                       setEditAge(viewingUser.age?.toString() || '');
+                      setEditCountry(viewingUser.country || 'Pakistan');
+                      setEditCity(viewingUser.city || 'Karachi');
                       setEditPassword('');
                       setIsEditMode(true);
                     }}
@@ -1303,7 +1346,7 @@ export default function UserManagement() {
                           <p className="text-sm font-medium">{viewingUser.whatsapp_number || '—'}</p>
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-3">
                         <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                           <User className="h-4 w-4 text-muted-foreground" />
                           <div>
@@ -1317,6 +1360,17 @@ export default function UserManagement() {
                             <p className="text-xs text-muted-foreground">Age</p>
                             <p className="text-sm font-medium">{viewingUser.age || '—'}</p>
                           </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                        <Settings className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Location (Timezone)</p>
+                          <p className="text-sm font-medium">
+                            {viewingUser.city && viewingUser.country 
+                              ? `${viewingUser.city}, ${viewingUser.country}` 
+                              : '—'}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
@@ -1386,6 +1440,42 @@ export default function UserManagement() {
                             onChange={(e) => setEditAge(e.target.value)}
                             placeholder="Age"
                           />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="edit-country">Country</Label>
+                          <Select 
+                            value={editCountry} 
+                            onValueChange={(v) => {
+                              setEditCountry(v);
+                              // Reset city when country changes
+                              const cities = getCitiesForCountry(v);
+                              setEditCity(cities[0] || '');
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select country" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {countries.map((country) => (
+                                <SelectItem key={country} value={country}>{country}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="edit-city">City</Label>
+                          <Select value={editCity} onValueChange={setEditCity}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select city" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {getCitiesForCountry(editCountry).map((city) => (
+                                <SelectItem key={city} value={city}>{city}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
                       <div className="space-y-2">
@@ -1458,6 +1548,8 @@ export default function UserManagement() {
                             whatsapp: editWhatsapp.trim() || null,
                             gender: editGender || null,
                             age: editAge ? parseInt(editAge) : null,
+                            country: editCountry || null,
+                            city: editCity || null,
                             password: editPassword || undefined,
                           });
                         }}
