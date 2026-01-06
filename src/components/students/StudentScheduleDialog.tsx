@@ -106,7 +106,7 @@ export function StudentScheduleDialog({ open, onOpenChange, studentId, studentNa
 
   // Get timezone abbreviations
   const teacherCode = COUNTRY_CODES[teacherProfile?.country || 'Pakistan'] || teacherProfile?.country?.slice(0, 2).toUpperCase() || 'PK';
-  const studentCode = COUNTRY_CODES[studentProfile?.country || 'Canada'] || studentProfile?.country?.slice(0, 2).toUpperCase() || 'CA';
+  const studentCode = COUNTRY_CODES[studentProfile?.country || 'Pakistan'] || studentProfile?.country?.slice(0, 2).toUpperCase() || 'PK';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
