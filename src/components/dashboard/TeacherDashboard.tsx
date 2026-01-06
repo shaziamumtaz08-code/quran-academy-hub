@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { StatCard } from './StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Calendar, CheckCircle, BookOpen, Clock, AlertCircle } from 'lucide-react';
+import { Users, Calendar, CheckCircle, BookOpen, Clock, AlertCircle, Video } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
+import { StartClassButton } from '@/components/zoom/StartClassButton';
 
 export function TeacherDashboard() {
   const { profile, user } = useAuth();
@@ -62,11 +63,25 @@ export function TeacherDashboard() {
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Header */}
-      <div>
-        <h1 className="font-serif text-3xl font-bold text-foreground">
-          Welcome, {profile?.full_name || 'Teacher'}
-        </h1>
-        <p className="text-muted-foreground mt-1">Here's your teaching overview</p>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="font-serif text-3xl font-bold text-foreground">
+            Welcome, {profile?.full_name || 'Teacher'}
+          </h1>
+          <p className="text-muted-foreground mt-1">Here's your teaching overview</p>
+        </div>
+        
+        {/* Start Class Button */}
+        <Card className="p-4 bg-gradient-to-r from-emerald-50 to-emerald-100/50 dark:from-emerald-900/20 dark:to-emerald-800/10 border-emerald-200 dark:border-emerald-800">
+          <div className="flex items-center gap-3">
+            <Video className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">Zoom License Pool</p>
+              <p className="text-xs text-emerald-600/80 dark:text-emerald-400/80">Start a class with an available Zoom room</p>
+            </div>
+            <StartClassButton />
+          </div>
+        </Card>
       </div>
 
       {/* Stats Grid */}

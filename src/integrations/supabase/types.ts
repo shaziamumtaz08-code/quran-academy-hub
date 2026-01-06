@@ -472,6 +472,53 @@ export type Database = {
           },
         ]
       }
+      live_sessions: {
+        Row: {
+          actual_end: string | null
+          actual_start: string | null
+          created_at: string
+          group_id: string | null
+          id: string
+          license_id: string | null
+          scheduled_start: string | null
+          status: Database["public"]["Enums"]["session_status"]
+          teacher_id: string
+          updated_at: string
+        }
+        Insert: {
+          actual_end?: string | null
+          actual_start?: string | null
+          created_at?: string
+          group_id?: string | null
+          id?: string
+          license_id?: string | null
+          scheduled_start?: string | null
+          status?: Database["public"]["Enums"]["session_status"]
+          teacher_id: string
+          updated_at?: string
+        }
+        Update: {
+          actual_end?: string | null
+          actual_start?: string | null
+          created_at?: string
+          group_id?: string | null
+          id?: string
+          license_id?: string | null
+          scheduled_start?: string | null
+          status?: Database["public"]["Enums"]["session_status"]
+          teacher_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_sessions_license_id_fkey"
+            columns: ["license_id"]
+            isOneToOne: false
+            referencedRelation: "zoom_licenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       permission_exceptions: {
         Row: {
           created_at: string
@@ -994,11 +1041,84 @@ export type Database = {
           },
         ]
       }
+      zoom_attendance_logs: {
+        Row: {
+          action: Database["public"]["Enums"]["attendance_action"]
+          id: string
+          session_id: string
+          timestamp: string
+          user_id: string
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["attendance_action"]
+          id?: string
+          session_id: string
+          timestamp?: string
+          user_id: string
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["attendance_action"]
+          id?: string
+          session_id?: string
+          timestamp?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zoom_attendance_logs_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "live_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      zoom_licenses: {
+        Row: {
+          created_at: string
+          host_id: string | null
+          id: string
+          last_used_at: string | null
+          meeting_link: string
+          status: Database["public"]["Enums"]["zoom_license_status"]
+          updated_at: string
+          zoom_email: string
+        }
+        Insert: {
+          created_at?: string
+          host_id?: string | null
+          id?: string
+          last_used_at?: string | null
+          meeting_link: string
+          status?: Database["public"]["Enums"]["zoom_license_status"]
+          updated_at?: string
+          zoom_email: string
+        }
+        Update: {
+          created_at?: string
+          host_id?: string | null
+          id?: string
+          last_used_at?: string | null
+          meeting_link?: string
+          status?: Database["public"]["Enums"]["zoom_license_status"]
+          updated_at?: string
+          zoom_email?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      get_and_reserve_license: {
+        Args: { _session_id: string; _teacher_id: string }
+        Returns: {
+          license_id: string
+          meeting_link: string
+          zoom_email: string
+        }[]
+      }
       get_parent_children_ids: {
         Args: { _parent_id: string }
         Returns: string[]
@@ -1024,6 +1144,10 @@ export type Database = {
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      release_license: {
+        Args: { _session_id: string; _teacher_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role:
@@ -1037,6 +1161,7 @@ export type Database = {
         | "admin_fees"
         | "admin_academic"
       assignment_status: "active" | "paused" | "completed"
+      attendance_action: "join_intent" | "leave"
       exam_tenure: "weekly" | "monthly" | "quarterly" | "yearly"
       grading_style: "numeric" | "rubric"
       permission_type:
@@ -1078,6 +1203,8 @@ export type Database = {
         | "dashboard.parent"
       plan_status: "pending" | "approved"
       primary_marker: "rukus" | "pages" | "lines"
+      session_status: "scheduled" | "live" | "frozen" | "completed"
+      zoom_license_status: "available" | "busy"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1217,6 +1344,7 @@ export const Constants = {
         "admin_academic",
       ],
       assignment_status: ["active", "paused", "completed"],
+      attendance_action: ["join_intent", "leave"],
       exam_tenure: ["weekly", "monthly", "quarterly", "yearly"],
       grading_style: ["numeric", "rubric"],
       permission_type: [
@@ -1259,6 +1387,8 @@ export const Constants = {
       ],
       plan_status: ["pending", "approved"],
       primary_marker: ["rukus", "pages", "lines"],
+      session_status: ["scheduled", "live", "frozen", "completed"],
+      zoom_license_status: ["available", "busy"],
     },
   },
 } as const
