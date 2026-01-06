@@ -12,11 +12,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Calendar, Plus, CheckCircle, Clock, Target, User, Loader2, Edit, AlertTriangle, Pause } from 'lucide-react';
+import { Calendar, Plus, CheckCircle, Clock, Target, User, Loader2, Edit, AlertTriangle, CalendarDays, Info } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { calculateWorkingDaysInMonth, calculateDailyTarget } from '@/lib/subjectUtils';
 
 type PrimaryMarker = 'rukus' | 'pages' | 'lines';
 type PlanStatus = 'pending' | 'approved';
@@ -268,6 +269,40 @@ export default function MonthlyPlanning() {
     setSelectedSubject('');
   }, [selectedStudent]);
 
+  // Fetch schedule for selected student + subject (to calculate teaching days)
+  const { data: studentSchedule } = useQuery({
+    queryKey: ['student-schedule-for-planning', selectedStudent, selectedSubjectDetails?.assignment_id],
+    queryFn: async () => {
+      const assignmentId = selectedSubjectDetails?.assignment_id;
+      if (!assignmentId) return [];
+      
+      const { data, error } = await supabase
+        .from('schedules')
+        .select('day_of_week, is_active')
+        .eq('assignment_id', assignmentId)
+        .eq('is_active', true);
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!selectedStudent && !!selectedSubjectDetails?.assignment_id,
+  });
+
+  // Calculate total teaching days based on schedule and selected month/year
+  const totalTeachingDays = useMemo(() => {
+    if (!studentSchedule || studentSchedule.length === 0) return 0;
+    const scheduleDays = studentSchedule.map(s => s.day_of_week);
+    return calculateWorkingDaysInMonth(scheduleDays, parseInt(selectedYear), parseInt(selectedMonth));
+  }, [studentSchedule, selectedMonth, selectedYear]);
+
+  // Auto-calculate daily target when monthly target or teaching days change
+  useEffect(() => {
+    if (totalTeachingDays > 0 && monthlyTarget) {
+      const calculated = calculateDailyTarget(parseFloat(monthlyTarget) || 0, totalTeachingDays);
+      setDailyTarget(calculated.toString());
+    }
+  }, [monthlyTarget, totalTeachingDays]);
+
   // Fetch monthly plans
   const { data: plans, isLoading } = useQuery({
     queryKey: ['monthly-plans', monthFilter, yearFilter, user?.id],
@@ -312,6 +347,8 @@ export default function MonthlyPlanning() {
         primary_marker: primaryMarker,
         monthly_target: parseFloat(monthlyTarget),
         daily_target: parseFloat(dailyTarget),
+        total_teaching_days: totalTeachingDays || null,
+        calculated_daily_target: totalTeachingDays > 0 ? parseFloat(dailyTarget) : null,
         notes: notes || null,
         status: 'pending' as PlanStatus,
         subject_id: selectedSubject,
@@ -701,6 +738,24 @@ export default function MonthlyPlanning() {
                       </Select>
                     </div>
 
+                    {/* Teaching Days Info */}
+                    {totalTeachingDays > 0 && (
+                      <div className="flex items-center gap-2 p-3 bg-emerald-light/10 dark:bg-emerald-light/20 rounded-lg border border-emerald-light/30">
+                        <CalendarDays className="h-4 w-4 text-emerald-light" />
+                        <span className="text-sm font-medium text-emerald-dark dark:text-emerald-light">
+                          {totalTeachingDays} teaching days in {MONTHS.find(m => m.value === selectedMonth)?.label} {selectedYear}
+                        </span>
+                      </div>
+                    )}
+                    {studentSchedule && studentSchedule.length === 0 && selectedSubjectDetails?.assignment_id && (
+                      <div className="flex items-center gap-2 p-3 bg-amber/10 rounded-lg border border-amber/30">
+                        <Info className="h-4 w-4 text-amber" />
+                        <span className="text-sm text-amber-dark dark:text-amber">
+                          No schedule configured. Daily target won't be auto-calculated.
+                        </span>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Monthly Target</Label>
@@ -713,7 +768,7 @@ export default function MonthlyPlanning() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Daily Target</Label>
+                        <Label>Daily Target {totalTeachingDays > 0 && <span className="text-muted-foreground text-xs">(auto)</span>}</Label>
                         <Input
                           type="number"
                           min="0.5"
@@ -721,7 +776,13 @@ export default function MonthlyPlanning() {
                           value={dailyTarget}
                           onChange={(e) => setDailyTarget(e.target.value)}
                           placeholder="1"
+                          className={totalTeachingDays > 0 ? 'bg-muted/50' : ''}
                         />
+                        {totalTeachingDays > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            {monthlyTarget} ÷ {totalTeachingDays} days = {dailyTarget}
+                          </p>
+                        )}
                       </div>
                     </div>
 
