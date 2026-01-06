@@ -17,11 +17,11 @@ import {
 } from '@/components/ui/sheet';
 import { Plus, Loader2, FileText, Save, X, Layers, ListChecks, Award } from 'lucide-react';
 import { SectionBuilder } from './SectionBuilder';
-import { 
-  Section, 
-  TemplateStructure, 
+import {
+  ReportSection,
+  TemplateStructure,
   createEmptySection,
-  calculateMaxScore 
+  calculateMaxScore,
 } from '@/types/reportCard';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -89,7 +89,7 @@ export function TemplateBuilder({
     });
   };
 
-  const updateSection = (index: number, section: Section) => {
+  const updateSection = (index: number, section: ReportSection) => {
     const updated = [...structure.sections];
     updated[index] = section;
     setStructure({ sections: updated });
