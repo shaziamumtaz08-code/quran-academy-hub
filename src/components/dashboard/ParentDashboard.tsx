@@ -2,11 +2,14 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { StatCard } from './StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, CheckCircle, BookOpen, DollarSign, User, FileText, AlertCircle } from 'lucide-react';
+import { Calendar, CheckCircle, BookOpen, DollarSign, User, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
+import { SmartSessionRibbon } from './SmartSessionRibbon';
+import { CourseDeckCarousel } from './CourseDeckCarousel';
+import { QuickStatusWidgets } from './QuickStatusWidgets';
 
 interface ChildData {
   id: string;
@@ -92,14 +95,11 @@ export function ParentDashboard() {
 
   if (isLoading) {
     return (
-      <div className="space-y-8 animate-fade-in">
-        <div>
-          <h1 className="font-serif text-3xl font-bold text-foreground">Welcome, Parent</h1>
-          <p className="text-muted-foreground mt-1">Loading your dashboard...</p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="space-y-6 animate-fade-in">
+        <Skeleton className="h-20 rounded-xl" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-32 rounded-xl" />
+            <Skeleton key={i} className="h-28 rounded-xl" />
           ))}
         </div>
       </div>
@@ -110,12 +110,12 @@ export function ParentDashboard() {
 
   if (children.length === 0) {
     return (
-      <div className="space-y-8 animate-fade-in">
+      <div className="space-y-6 animate-fade-in">
         <div>
-          <h1 className="font-serif text-3xl font-bold text-foreground">
+          <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">
             Welcome, {profile?.full_name || 'Parent'}
           </h1>
-          <p className="text-muted-foreground mt-1">Monitor your children's learning progress</p>
+          <p className="text-muted-foreground text-sm mt-1">Monitor your children's learning progress</p>
         </div>
         <Card>
           <CardContent className="pt-6">
@@ -134,36 +134,42 @@ export function ParentDashboard() {
   const child = children[0];
 
   return (
-    <div className="space-y-8 animate-fade-in">
-      {/* Header */}
-      <div>
-        <h1 className="font-serif text-3xl font-bold text-foreground">
-          Welcome, {profile?.full_name || 'Parent'}
-        </h1>
-        <p className="text-muted-foreground mt-1">Monitor your child's Quran learning progress</p>
+    <div className="space-y-6 animate-fade-in">
+      {/* Header with Quick Status */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">
+            Welcome, {profile?.full_name || 'Parent'}
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1">Monitor your child's Quran learning progress</p>
+        </div>
+        <QuickStatusWidgets />
       </div>
 
-      {/* Child Info */}
-      <div className="bg-primary/5 rounded-xl p-6 border border-primary/20">
+      {/* Child Info with Smart Ribbon */}
+      <div className="bg-primary/5 rounded-xl p-4 border border-primary/20">
         <div className="flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-              <User className="h-8 w-8 text-primary" />
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <User className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Your Child</p>
-              <p className="text-xl font-serif font-bold text-foreground">{child.full_name}</p>
+              <p className="text-xs text-muted-foreground">Your Child</p>
+              <p className="text-lg font-serif font-bold text-foreground">{child.full_name}</p>
             </div>
           </div>
           <div className="text-right">
-            <p className="text-sm text-muted-foreground">Teacher</p>
-            <p className="font-medium text-foreground">{child.teacher || 'Not assigned'}</p>
+            <p className="text-xs text-muted-foreground">Teacher</p>
+            <p className="font-medium text-foreground text-sm">{child.teacher || 'Not assigned'}</p>
           </div>
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Course Deck Carousel */}
+      <CourseDeckCarousel />
+
+      {/* Stats Grid - Compact */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           title="Total Classes"
           value={child.totalClasses}
@@ -176,7 +182,7 @@ export function ParentDashboard() {
           variant="primary"
         />
         <StatCard
-          title="Attendance Rate"
+          title="Attendance"
           value={`${child.attendanceRate}%`}
           icon={BookOpen}
         />
@@ -188,28 +194,28 @@ export function ParentDashboard() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Recent Lessons */}
         <Card>
-          <CardHeader>
-            <CardTitle className="font-serif">Recent Lessons</CardTitle>
+          <CardHeader className="pb-2">
+            <CardTitle className="font-serif text-base">Recent Lessons</CardTitle>
           </CardHeader>
           <CardContent>
             {child.recentLessons.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <AlertCircle className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p className="text-lg font-medium">No lessons recorded yet</p>
+              <div className="text-center py-6 text-muted-foreground">
+                <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">No lessons recorded yet</p>
               </div>
             ) : (
               <div className="divide-y divide-border">
                 {child.recentLessons.map((lesson, idx) => (
-                  <div key={idx} className="py-4 first:pt-0 last:pb-0">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-medium text-foreground">{lesson.lesson}</p>
-                        <p className="text-sm text-muted-foreground mt-1">📝 {lesson.homework}</p>
+                  <div key={idx} className="py-3 first:pt-0 last:pb-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground text-sm truncate">{lesson.lesson}</p>
+                        <p className="text-xs text-muted-foreground mt-1 truncate">📝 {lesson.homework}</p>
                       </div>
-                      <span className="text-xs text-muted-foreground">{lesson.date}</span>
+                      <span className="text-xs text-muted-foreground flex-shrink-0">{lesson.date}</span>
                     </div>
                   </div>
                 ))}
@@ -220,26 +226,26 @@ export function ParentDashboard() {
 
         {/* Attendance Summary */}
         <Card>
-          <CardHeader>
-            <CardTitle className="font-serif">Attendance Summary</CardTitle>
+          <CardHeader className="pb-2">
+            <CardTitle className="font-serif text-base">Attendance Summary</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-8">
+            <div className="flex items-center gap-6">
               <div className="flex-1">
-                <div className="h-3 bg-secondary rounded-full overflow-hidden">
+                <div className="h-2 bg-secondary rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-primary rounded-full transition-all duration-500"
                     style={{ width: `${child.attendanceRate}%` }}
                   />
                 </div>
-                <div className="flex justify-between mt-2 text-sm">
+                <div className="flex justify-between mt-2 text-xs">
                   <span className="text-muted-foreground">Attendance Rate</span>
                   <span className="font-medium text-foreground">{child.attendanceRate}%</span>
                 </div>
               </div>
               <div className="text-center">
-                <p className="text-3xl font-serif font-bold text-primary">{child.attended}</p>
-                <p className="text-sm text-muted-foreground">of {child.totalClasses}</p>
+                <p className="text-2xl font-serif font-bold text-primary">{child.attended}</p>
+                <p className="text-xs text-muted-foreground">of {child.totalClasses}</p>
               </div>
             </div>
           </CardContent>
@@ -249,10 +255,10 @@ export function ParentDashboard() {
       {/* Multiple Children Indicator */}
       {children.length > 1 && (
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4 text-muted-foreground">
-              <User className="h-5 w-5" />
-              <p>You have {children.length} children linked. Showing data for {child.full_name}.</p>
+          <CardContent className="py-3">
+            <div className="flex items-center gap-3 text-muted-foreground">
+              <User className="h-4 w-4" />
+              <p className="text-sm">You have {children.length} children linked. Showing data for {child.full_name}.</p>
             </div>
           </CardContent>
         </Card>

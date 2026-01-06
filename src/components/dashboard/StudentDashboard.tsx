@@ -1,15 +1,16 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { StatCard } from './StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, CheckCircle, BookOpen, User, AlertCircle, Target, MessageSquare, Video } from 'lucide-react';
+import { BookOpen, User, AlertCircle, Target, MessageSquare } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { WeeklyProgressChart } from '@/components/progress/WeeklyProgressChart';
 import { ProgressRing } from '@/components/progress/ProgressRing';
-import { JoinClassButton } from '@/components/zoom/JoinClassButton';
+import { SmartSessionRibbon } from './SmartSessionRibbon';
+import { CourseDeckCarousel } from './CourseDeckCarousel';
+import { QuickStatusWidgets } from './QuickStatusWidgets';
 
 export function StudentDashboard() {
   const { profile, user } = useAuth();
@@ -127,100 +128,85 @@ export function StudentDashboard() {
 
   if (isLoading) {
     return (
-      <div className="space-y-8 animate-fade-in">
-        <div>
-          <h1 className="font-serif text-3xl font-bold text-foreground">Welcome, Student</h1>
-          <p className="text-muted-foreground mt-1">Loading your dashboard...</p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-32 rounded-xl" />
-          ))}
+      <div className="space-y-6 animate-fade-in">
+        <Skeleton className="h-20 rounded-xl" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Skeleton className="h-28 rounded-xl" />
+          <Skeleton className="h-28 rounded-xl" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 animate-fade-in">
-      {/* Header with Join Class Button */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div className="space-y-6 animate-fade-in">
+      {/* Header with Quick Status */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="font-serif text-3xl font-bold text-foreground">
+          <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">
             Welcome, {profile?.full_name || 'Student'}
           </h1>
-          <p className="text-muted-foreground mt-1">Track your Quran learning progress</p>
+          <p className="text-muted-foreground text-sm mt-1">Track your Quran learning progress</p>
         </div>
-        
-        {/* Join Class Button */}
-        <Card className="p-4 bg-gradient-to-r from-emerald-50 to-emerald-100/50 dark:from-emerald-900/20 dark:to-emerald-800/10 border-emerald-200 dark:border-emerald-800">
-          <div className="flex items-center gap-3">
-            <Video className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">Live Class</p>
-              <p className="text-xs text-emerald-600/80 dark:text-emerald-400/80">Join when teacher starts</p>
-            </div>
-            <JoinClassButton />
-          </div>
-        </Card>
+        <QuickStatusWidgets />
       </div>
 
-      {/* Current Lesson & Homework Card - Prominently displayed */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Smart Session Ribbon - Top Priority */}
+      <SmartSessionRibbon />
+
+      {/* Current Lesson & Homework - Mobile First */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-primary/20">
           <CardHeader className="pb-2">
-            <CardTitle className="font-serif flex items-center gap-2 text-primary">
-              <BookOpen className="h-5 w-5" />
+            <CardTitle className="font-serif text-base flex items-center gap-2 text-primary">
+              <BookOpen className="h-4 w-4" />
               Current Lesson
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-serif font-bold text-foreground">
+            <p className="text-xl sm:text-2xl font-serif font-bold text-foreground">
               {stats?.currentLesson || 'No lesson recorded'}
             </p>
-            <p className="text-sm text-muted-foreground mt-2">Last recorded lesson position</p>
           </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-br from-accent/10 via-accent/5 to-transparent border-accent/20">
           <CardHeader className="pb-2">
-            <CardTitle className="font-serif flex items-center gap-2 text-accent">
-              <MessageSquare className="h-5 w-5" />
-              Teacher's Homework
+            <CardTitle className="font-serif text-base flex items-center gap-2 text-accent">
+              <MessageSquare className="h-4 w-4" />
+              Homework
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-lg font-medium text-foreground">
+            <p className="text-base sm:text-lg font-medium text-foreground">
               {stats?.currentHomework || 'No homework assigned'}
             </p>
-            <p className="text-sm text-muted-foreground mt-2">Complete before next class</p>
           </CardContent>
         </Card>
       </div>
 
+      {/* Course Deck Carousel */}
+      <CourseDeckCarousel />
+
       {/* Progress Ring & Teacher Info */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Monthly Progress Ring */}
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle className="font-serif flex items-center gap-2">
-              <Target className="h-5 w-5" />
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="font-serif text-base flex items-center gap-2">
+              <Target className="h-4 w-4" />
               Monthly Goal
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-col items-center">
-            <ProgressRing percentage={stats?.monthlyProgress || 0} size={140} />
-            <div className="text-center mt-4">
+          <CardContent className="flex flex-col items-center pb-4">
+            <ProgressRing percentage={stats?.monthlyProgress || 0} size={120} />
+            <div className="text-center mt-3">
               <p className="text-sm text-muted-foreground">
-                {stats?.totalAchieved || 0} of {stats?.monthlyTarget || 30} {stats?.markerLabel}
+                {stats?.totalAchieved || 0} / {stats?.monthlyTarget || 30} {stats?.markerLabel}
               </p>
-              {stats?.activePlan ? (
+              {stats?.activePlan && (
                 <p className="text-xs text-primary mt-1">
-                  Daily target: {stats.dailyTarget} {stats.markerLabel}/day
-                </p>
-              ) : (
-                <p className="text-xs text-muted-foreground mt-1">
-                  No active plan for this month
+                  {stats.dailyTarget} {stats.markerLabel}/day target
                 </p>
               )}
             </div>
@@ -229,36 +215,33 @@ export function StudentDashboard() {
 
         {/* Teacher Info */}
         <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="font-serif">Your Teacher</CardTitle>
+          <CardHeader className="pb-2">
+            <CardTitle className="font-serif text-base">Your Teacher</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                <User className="h-8 w-8 text-primary" />
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <User className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <p className="text-xl font-serif font-bold text-foreground">{stats?.teacher}</p>
+                <p className="text-lg font-serif font-bold text-foreground">{stats?.teacher}</p>
                 <p className="text-sm text-muted-foreground">{stats?.subject}</p>
-                {stats?.teacherEmail && (
-                  <p className="text-xs text-primary mt-1">{stats.teacherEmail}</p>
-                )}
               </div>
             </div>
 
-            {/* Stats Row */}
-            <div className="grid grid-cols-3 gap-4">
-              <div className="text-center p-3 bg-secondary/50 rounded-lg">
-                <p className="text-2xl font-bold text-foreground">{stats?.totalClasses || 0}</p>
-                <p className="text-xs text-muted-foreground">Total Classes</p>
+            {/* Stats Row - Compact */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="text-center p-2 bg-secondary/50 rounded-lg">
+                <p className="text-lg font-bold text-foreground">{stats?.totalClasses || 0}</p>
+                <p className="text-xs text-muted-foreground">Total</p>
               </div>
-              <div className="text-center p-3 bg-emerald-light/10 rounded-lg">
-                <p className="text-2xl font-bold text-emerald-light">{stats?.attended || 0}</p>
+              <div className="text-center p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+                <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{stats?.attended || 0}</p>
                 <p className="text-xs text-muted-foreground">Attended</p>
               </div>
-              <div className="text-center p-3 bg-primary/10 rounded-lg">
-                <p className="text-2xl font-bold text-primary">{stats?.attendanceRate || 0}%</p>
-                <p className="text-xs text-muted-foreground">Attendance</p>
+              <div className="text-center p-2 bg-primary/10 rounded-lg">
+                <p className="text-lg font-bold text-primary">{stats?.attendanceRate || 0}%</p>
+                <p className="text-xs text-muted-foreground">Rate</p>
               </div>
             </div>
           </CardContent>
@@ -276,26 +259,25 @@ export function StudentDashboard() {
 
       {/* Recent Lessons */}
       <Card>
-        <CardHeader>
-          <CardTitle className="font-serif">Recent Lessons</CardTitle>
+        <CardHeader className="pb-2">
+          <CardTitle className="font-serif text-base">Recent Lessons</CardTitle>
         </CardHeader>
         <CardContent>
           {!stats?.recentLessons || stats.recentLessons.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <AlertCircle className="h-12 w-12 mx-auto mb-3 opacity-30" />
-              <p className="text-lg font-medium">No lessons recorded yet</p>
-              <p className="text-sm mt-1">Your lessons will appear here once marked</p>
+            <div className="text-center py-6 text-muted-foreground">
+              <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">No lessons recorded yet</p>
             </div>
           ) : (
             <div className="divide-y divide-border">
               {stats.recentLessons.map((lesson, idx) => (
-                <div key={idx} className="py-4 first:pt-0 last:pb-0">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-medium text-foreground">{lesson.lesson}</p>
-                      <p className="text-sm text-muted-foreground mt-1">📝 {lesson.homework}</p>
+                <div key={idx} className="py-3 first:pt-0 last:pb-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground text-sm truncate">{lesson.lesson}</p>
+                      <p className="text-xs text-muted-foreground mt-1 truncate">📝 {lesson.homework}</p>
                     </div>
-                    <span className="text-xs text-muted-foreground">{lesson.date}</span>
+                    <span className="text-xs text-muted-foreground flex-shrink-0">{lesson.date}</span>
                   </div>
                 </div>
               ))}
