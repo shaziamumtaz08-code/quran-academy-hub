@@ -128,17 +128,20 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
 
       const teacherMap = new Map(teachers?.map(t => [t.id, t.full_name]) || []);
 
-      // Get all participants who joined each session (distinct users)
+      // Get all participants who joined each session and haven't left
       const sessionIds = sessions.map(s => s.id);
       const { data: attendanceLogs } = await supabase
         .from('zoom_attendance_logs')
-        .select('session_id, user_id')
-        .in('session_id', sessionIds)
-        .eq('action', 'join_intent');
+        .select('session_id, user_id, action, leave_time')
+        .in('session_id', sessionIds);
+      
+      // Filter to get only users who are currently in session (joined but no leave_time)
+      const activeParticipants = attendanceLogs?.filter(log => 
+        log.action === 'join_intent' && !log.leave_time
+      ) || [];
 
-      // Get unique user IDs for name lookup
       const allUserIds = new Set<string>();
-      attendanceLogs?.forEach(log => allUserIds.add(log.user_id));
+      activeParticipants.forEach(log => allUserIds.add(log.user_id));
       teacherIds.forEach(id => allUserIds.add(id));
 
       const { data: allUsers } = await supabase
@@ -161,8 +164,8 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
           isTeacher: true,
         });
         
-        // Add students
-        attendanceLogs?.filter(log => log.session_id === session.id)
+        // Add students who are currently active (no leave_time)
+        activeParticipants.filter(log => log.session_id === session.id)
           .forEach(log => {
             if (log.user_id !== session.teacher_id && 
                 !participants.some(p => p.userId === log.user_id)) {
