@@ -11,6 +11,7 @@ import { format } from 'date-fns';
 import { AdminLiveMonitor } from './AdminLiveMonitor';
 import { LiveClassQueue } from './LiveClassQueue';
 import { AccountabilityReport } from './AccountabilityReport';
+import { AccountabilityTrends } from './AccountabilityTrends';
 
 export function AdminDashboard() {
   const today = format(new Date(), 'yyyy-MM-dd');
@@ -113,6 +114,9 @@ export function AdminDashboard() {
         <AccountabilityReport />
         <RecentActivity activities={activities} />
       </div>
+
+      {/* Accountability Trends Charts */}
+      <AccountabilityTrends />
 
       {/* Quick Stats */}
       <Card>

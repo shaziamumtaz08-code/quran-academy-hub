@@ -12,6 +12,7 @@ import { ProgressRing } from '@/components/progress/ProgressRing';
 import { SmartSessionRibbon } from './SmartSessionRibbon';
 import { CourseDeckCarousel } from './CourseDeckCarousel';
 import { QuickStatusWidgets } from './QuickStatusWidgets';
+import { StudentPastClasses } from './StudentPastClasses';
 
 export function StudentDashboard() {
   const { profile, user } = useAuth();
@@ -308,13 +309,16 @@ export function StudentDashboard() {
         </Card>
       </div>
 
-      {/* Weekly Progress Chart */}
+      {/* Weekly Progress Chart & Past Classes */}
       {user?.id && (
-        <WeeklyProgressChart 
-          studentId={user.id} 
-          dailyTarget={stats?.dailyTarget || 1}
-          markerLabel={stats?.markerLabel}
-        />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <WeeklyProgressChart 
+            studentId={user.id} 
+            dailyTarget={stats?.dailyTarget || 1}
+            markerLabel={stats?.markerLabel}
+          />
+          <StudentPastClasses studentId={user.id} />
+        </div>
       )}
 
       {/* Recent Lessons */}
