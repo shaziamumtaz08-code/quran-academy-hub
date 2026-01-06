@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { AdminLiveMonitor } from './AdminLiveMonitor';
+import { LiveClassQueue } from './LiveClassQueue';
 
 export function AdminDashboard() {
   const today = format(new Date(), 'yyyy-MM-dd');
@@ -99,8 +100,11 @@ export function AdminDashboard() {
         />
       </div>
 
-      {/* Live Monitor - New Feature */}
-      <AdminLiveMonitor />
+      {/* Live Monitor Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <LiveClassQueue />
+        <AdminLiveMonitor />
+      </div>
 
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
