@@ -311,28 +311,22 @@ function CriteriaRow({
           </div>
 
           {/* Type */}
-          <Select
-            value={criteria.type}
-            onValueChange={(v) => handleTypeChange(v as CriteriaType)}
-          >
-            <SelectTrigger className="border-border/50 focus:border-accent focus:ring-2 focus:ring-accent/20">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="border-0 shadow-card">
-              <SelectItem value="numeric">Numeric Score</SelectItem>
-              <SelectItem value="skill">Skill Level</SelectItem>
-              <SelectItem value="star">
-                <span className="flex items-center gap-1">
-                  <Star className="h-3 w-3" /> Star Rating
-                </span>
-              </SelectItem>
-              <SelectItem value="grade">
-                <span className="flex items-center gap-1">
-                  <Award className="h-3 w-3" /> Letter Grade (A-F)
-                </span>
-              </SelectItem>
-            </SelectContent>
-          </Select>
+          <div>
+            <Select
+              value={criteria.type}
+              onValueChange={(v) => handleTypeChange(v as CriteriaType)}
+            >
+              <SelectTrigger className="border-border/50 focus:border-accent focus:ring-2 focus:ring-accent/20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="border-0 shadow-card">
+                <SelectItem value="numeric">Numeric Score</SelectItem>
+                <SelectItem value="skill">Skill Level</SelectItem>
+                <SelectItem value="star">Star Rating</SelectItem>
+                <SelectItem value="grade">Letter Grade (A-F)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* Type-specific options */}
           {criteria.type === 'numeric' ? (
