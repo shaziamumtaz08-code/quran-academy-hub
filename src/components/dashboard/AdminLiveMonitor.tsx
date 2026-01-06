@@ -1,19 +1,32 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Video, Clock, Wifi, WifiOff, User, Activity } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Video, Clock, Wifi, WifiOff, User, Activity, UserPlus, Power, ExternalLink } from 'lucide-react';
 import { format, differenceInSeconds } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { toast } from 'sonner';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface AdminLiveMonitorProps {
   className?: string;
@@ -27,12 +40,51 @@ interface SessionParticipant {
 
 export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
   const [now, setNow] = React.useState(new Date());
+  const queryClient = useQueryClient();
 
   // Update timer every second for live duration
   React.useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // End session mutation - releases the license
+  const endSessionMutation = useMutation({
+    mutationFn: async ({ sessionId, licenseId }: { sessionId: string; licenseId: string }) => {
+      // Update session to completed
+      const { error: sessionError } = await supabase
+        .from('live_sessions')
+        .update({ 
+          status: 'completed',
+          actual_end: new Date().toISOString()
+        })
+        .eq('id', sessionId);
+
+      if (sessionError) throw sessionError;
+
+      // Release the license
+      const { error: licenseError } = await supabase
+        .from('zoom_licenses')
+        .update({ status: 'available' })
+        .eq('id', licenseId);
+
+      if (licenseError) throw licenseError;
+    },
+    onSuccess: () => {
+      toast.success('Session ended and license released');
+      queryClient.invalidateQueries({ queryKey: ['active-live-sessions-monitor'] });
+      queryClient.invalidateQueries({ queryKey: ['zoom-licenses-monitor'] });
+    },
+    onError: (error) => {
+      toast.error('Failed to end session: ' + (error as Error).message);
+    },
+  });
+
+  // Handle join as admin
+  const handleJoinAsAdmin = (meetingLink: string) => {
+    window.open(meetingLink, '_blank', 'noopener,noreferrer');
+    toast.info('Opening Zoom meeting in new tab');
+  };
 
   // Fetch all zoom licenses and their status
   const { data: licenses, isLoading: licensesLoading } = useQuery({
@@ -263,68 +315,128 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
                 Active Classes ({liveSessions.length})
               </h4>
               <div className="grid gap-3">
-                {liveSessions.map((session) => (
-                  <div
-                    key={session.id}
-                    className="flex items-center justify-between bg-gradient-to-r from-accent/5 to-transparent rounded-xl p-4 border border-accent/20"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="relative">
-                        <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center">
-                          <Video className="h-5 w-5 text-accent" />
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">{session.teacherName}</p>
-                        <p className="text-xs text-muted-foreground">{(session.license as any)?.zoom_email?.split('@')[0]}</p>
-                      </div>
-                    </div>
+                {liveSessions.map((session) => {
+                  const licenseData = session.license as any;
+                  const meetingLink = licenseData?.meeting_link;
+                  const licenseId = licenseData?.id;
 
-                    {/* Simple Active Participant Count with Tooltip */}
-                    <div className="flex items-center gap-6">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="flex items-center gap-2 cursor-pointer bg-emerald-50 dark:bg-emerald-900/30 px-4 py-2 rounded-xl border border-emerald-200 dark:border-emerald-800">
-                            <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
-                            <span className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">
-                              {session.activeCount}
-                            </span>
-                            <span className="text-xs text-emerald-600 dark:text-emerald-400">
-                              Active
-                            </span>
+                  return (
+                    <div
+                      key={session.id}
+                      className="bg-gradient-to-r from-accent/5 to-transparent rounded-xl p-4 border border-accent/20"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="relative">
+                            <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center">
+                              <Video className="h-5 w-5 text-accent" />
+                            </div>
                           </div>
-                        </TooltipTrigger>
-                        <TooltipContent side="left" className="max-w-xs">
-                          <div className="space-y-1">
-                            <p className="font-semibold text-xs mb-2">Participants:</p>
-                            {session.participants.map((p, idx) => (
-                              <div key={idx} className="flex items-center gap-2 text-xs">
-                                <div className={cn(
-                                  "w-2 h-2 rounded-full",
-                                  p.isTeacher ? "bg-accent" : "bg-primary"
-                                )} />
-                                <span>{p.userName}</span>
-                                {p.isTeacher && (
-                                  <Badge variant="outline" className="text-[9px] px-1 py-0">
-                                    Teacher
-                                  </Badge>
-                                )}
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">{session.teacherName}</p>
+                            <p className="text-xs text-muted-foreground">{licenseData?.zoom_email?.split('@')[0]}</p>
+                          </div>
+                        </div>
+
+                        {/* Simple Active Participant Count with Tooltip */}
+                        <div className="flex items-center gap-4">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center gap-2 cursor-pointer bg-emerald-50 dark:bg-emerald-900/30 px-4 py-2 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                                <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
+                                <span className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">
+                                  {session.activeCount}
+                                </span>
+                                <span className="text-xs text-emerald-600 dark:text-emerald-400">
+                                  Active
+                                </span>
                               </div>
-                            ))}
-                          </div>
-                        </TooltipContent>
-                      </Tooltip>
+                            </TooltipTrigger>
+                            <TooltipContent side="left" className="max-w-xs">
+                              <div className="space-y-1">
+                                <p className="font-semibold text-xs mb-2">Participants:</p>
+                                {session.participants.map((p, idx) => (
+                                  <div key={idx} className="flex items-center gap-2 text-xs">
+                                    <div className={cn(
+                                      "w-2 h-2 rounded-full",
+                                      p.isTeacher ? "bg-accent" : "bg-primary"
+                                    )} />
+                                    <span>{p.userName}</span>
+                                    {p.isTeacher && (
+                                      <Badge variant="outline" className="text-[9px] px-1 py-0">
+                                        Teacher
+                                      </Badge>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
 
-                      <div className="text-right">
-                        <div className="flex items-center gap-1.5 text-accent">
-                          <Clock className="h-4 w-4" />
-                          <span className="text-lg font-mono font-bold">{formatDuration(session.actual_start)}</span>
+                          <div className="text-right">
+                            <div className="flex items-center gap-1.5 text-accent">
+                              <Clock className="h-4 w-4" />
+                              <span className="text-lg font-mono font-bold">{formatDuration(session.actual_start)}</span>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">Duration</p>
+                          </div>
                         </div>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">Duration</p>
+                      </div>
+
+                      {/* Admin Action Buttons */}
+                      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/50">
+                        {meetingLink && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 gap-2 text-xs"
+                            onClick={() => handleJoinAsAdmin(meetingLink)}
+                          >
+                            <UserPlus className="h-3.5 w-3.5" />
+                            Join as Admin
+                            <ExternalLink className="h-3 w-3 ml-auto opacity-50" />
+                          </Button>
+                        )}
+
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="flex-1 gap-2 text-xs"
+                              disabled={endSessionMutation.isPending}
+                            >
+                              <Power className="h-3.5 w-3.5" />
+                              End Session
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>End this session?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will mark the session as completed and release the Zoom license for {session.teacherName}'s class. 
+                                This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => {
+                                  if (licenseId) {
+                                    endSessionMutation.mutate({ sessionId: session.id, licenseId });
+                                  }
+                                }}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                End Session
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

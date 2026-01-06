@@ -480,8 +480,10 @@ export type Database = {
           group_id: string | null
           id: string
           license_id: string | null
+          recording_link: string | null
           scheduled_start: string | null
           status: Database["public"]["Enums"]["session_status"]
+          stream_url: string | null
           teacher_id: string
           updated_at: string
         }
@@ -492,8 +494,10 @@ export type Database = {
           group_id?: string | null
           id?: string
           license_id?: string | null
+          recording_link?: string | null
           scheduled_start?: string | null
           status?: Database["public"]["Enums"]["session_status"]
+          stream_url?: string | null
           teacher_id: string
           updated_at?: string
         }
@@ -504,8 +508,10 @@ export type Database = {
           group_id?: string | null
           id?: string
           license_id?: string | null
+          recording_link?: string | null
           scheduled_start?: string | null
           status?: Database["public"]["Enums"]["session_status"]
+          stream_url?: string | null
           teacher_id?: string
           updated_at?: string
         }
@@ -1075,22 +1081,31 @@ export type Database = {
         Row: {
           action: Database["public"]["Enums"]["attendance_action"]
           id: string
+          join_time: string | null
+          leave_time: string | null
           session_id: string
           timestamp: string
+          total_duration_minutes: number | null
           user_id: string
         }
         Insert: {
           action: Database["public"]["Enums"]["attendance_action"]
           id?: string
+          join_time?: string | null
+          leave_time?: string | null
           session_id: string
           timestamp?: string
+          total_duration_minutes?: number | null
           user_id: string
         }
         Update: {
           action?: Database["public"]["Enums"]["attendance_action"]
           id?: string
+          join_time?: string | null
+          leave_time?: string | null
           session_id?: string
           timestamp?: string
+          total_duration_minutes?: number | null
           user_id?: string
         }
         Relationships: [
@@ -1141,6 +1156,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_attendance_metrics: {
+        Args: {
+          _join_time: string
+          _leave_time: string
+          _scheduled_duration?: number
+          _session_start: string
+        }
+        Returns: Json
+      }
       get_and_reserve_license: {
         Args: { _session_id: string; _teacher_id: string }
         Returns: {

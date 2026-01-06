@@ -1,7 +1,8 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BookOpen, User, AlertCircle, Target, MessageSquare } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { BookOpen, User, AlertCircle, Target, MessageSquare, Youtube, ExternalLink } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -126,6 +127,36 @@ export function StudentDashboard() {
     enabled: !!user?.id,
   });
 
+  // Fetch live group sessions with stream URLs for student's teacher
+  const { data: liveStreams } = useQuery({
+    queryKey: ['student-live-streams', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+
+      // Get student's assigned teacher
+      const { data: assignment } = await supabase
+        .from('student_teacher_assignments')
+        .select('teacher_id')
+        .eq('student_id', user.id)
+        .eq('status', 'active')
+        .limit(1);
+
+      if (!assignment?.[0]?.teacher_id) return [];
+
+      // Check for live group sessions from their teacher with stream URLs
+      const { data: sessions } = await supabase
+        .from('live_sessions')
+        .select('id, stream_url, group_id, teacher_id')
+        .eq('teacher_id', assignment[0].teacher_id)
+        .eq('status', 'live')
+        .not('stream_url', 'is', null);
+
+      return sessions || [];
+    },
+    enabled: !!user?.id,
+    refetchInterval: 30000,
+  });
+
   if (isLoading) {
     return (
       <div className="space-y-6 animate-fade-in">
@@ -153,6 +184,35 @@ export function StudentDashboard() {
 
       {/* Smart Session Ribbon - Top Priority */}
       <SmartSessionRibbon />
+
+      {/* Live Stream Banner - Show if teacher has a live group class with stream URL */}
+      {liveStreams && liveStreams.length > 0 && (
+        <Card className="bg-gradient-to-r from-red-500/10 via-red-500/5 to-transparent border-red-500/30 animate-pulse">
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
+                  <Youtube className="h-5 w-5 text-red-500" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">Live Class Streaming Now!</p>
+                  <p className="text-sm text-muted-foreground">Can't join via Zoom? Watch the live stream instead.</p>
+                </div>
+              </div>
+              <Button
+                variant="destructive"
+                size="sm"
+                className="gap-2"
+                onClick={() => window.open(liveStreams[0].stream_url!, '_blank')}
+              >
+                <Youtube className="h-4 w-4" />
+                Watch Stream
+                <ExternalLink className="h-3 w-3" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Current Lesson & Homework - Mobile First */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
