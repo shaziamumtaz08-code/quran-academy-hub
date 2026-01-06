@@ -84,10 +84,16 @@ Yusuf Malik,Mohammad Hassan,Hifz,parent@example.com
 Ahmed Khan,Aisha Siddiqui,Tajweed,ahmed.parent@example.com`;
 
     case "schedules":
+      // Template with clear multi-day examples
+      // Each row = one schedule slot. To schedule multiple days, add multiple rows for the same student.
       return `teacher_name,student_name,day_of_week,time,duration_minutes
 Mohammad Hassan,Fatima Ali,Monday,09:00,30
 Mohammad Hassan,Fatima Ali,Wednesday,09:00,30
-Aisha Siddiqui,Ahmed Khan,Tuesday,14:00,45`;
+Mohammad Hassan,Fatima Ali,Friday,09:00,30
+Mohammad Hassan,Yusuf Malik,Monday,09:30,30
+Mohammad Hassan,Yusuf Malik,Thursday,09:30,30
+Aisha Siddiqui,Ahmed Khan,Tuesday,14:00,45
+Aisha Siddiqui,Ahmed Khan,Saturday,14:00,45`;
 
     default:
       return "";
