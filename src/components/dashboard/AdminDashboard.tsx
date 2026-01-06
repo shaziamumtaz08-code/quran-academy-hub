@@ -4,10 +4,11 @@ import { StatCard } from './StatCard';
 import { RecentActivity } from './RecentActivity';
 import { TodayClasses } from './TodayClasses';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, GraduationCap, Calendar, DollarSign, TrendingUp } from 'lucide-react';
+import { Users, GraduationCap, Calendar, TrendingUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
+import { AdminLiveMonitor } from './AdminLiveMonitor';
 
 export function AdminDashboard() {
   const today = format(new Date(), 'yyyy-MM-dd');
@@ -50,14 +51,14 @@ export function AdminDashboard() {
 
   if (isLoading) {
     return (
-      <div className="space-y-8 animate-fade-in">
+      <div className="space-y-6 animate-fade-in">
         <div>
-          <h1 className="font-serif text-3xl font-bold text-foreground">Admin Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Overview of your academy's performance</p>
+          <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">Admin Dashboard</h1>
+          <p className="text-muted-foreground text-sm mt-1">Overview of your academy's performance</p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-32 rounded-xl" />
+            <Skeleton key={i} className="h-28 rounded-xl" />
           ))}
         </div>
       </div>
@@ -65,23 +66,23 @@ export function AdminDashboard() {
   }
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div>
-        <h1 className="font-serif text-3xl font-bold text-foreground">Admin Dashboard</h1>
-        <p className="text-muted-foreground mt-1">Overview of your academy's performance</p>
+        <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">Admin Dashboard</h1>
+        <p className="text-muted-foreground text-sm mt-1">Overview of your academy's performance</p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Stats Grid - Mobile optimized */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
-          title="Total Teachers"
+          title="Teachers"
           value={stats?.teachers || 0}
           icon={Users}
           variant="primary"
         />
         <StatCard
-          title="Total Students"
+          title="Students"
           value={stats?.students || 0}
           icon={GraduationCap}
         />
@@ -91,41 +92,44 @@ export function AdminDashboard() {
           icon={Calendar}
         />
         <StatCard
-          title="Attendance Rate"
+          title="Attendance"
           value={`${stats?.monthlyAttendanceRate || 0}%`}
           icon={TrendingUp}
           variant="gold"
         />
       </div>
 
+      {/* Live Monitor - New Feature */}
+      <AdminLiveMonitor />
+
       {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <TodayClasses classes={todayClasses} />
         <RecentActivity activities={activities} />
       </div>
 
       {/* Quick Stats */}
       <Card>
-        <CardHeader>
-          <CardTitle className="font-serif">Monthly Overview</CardTitle>
+        <CardHeader className="pb-3">
+          <CardTitle className="font-serif text-lg">Monthly Overview</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
-              <p className="text-3xl font-serif font-bold text-primary">{stats?.monthlyAttendanceRate || 0}%</p>
-              <p className="text-sm text-muted-foreground mt-1">Attendance Rate</p>
+              <p className="text-2xl sm:text-3xl font-serif font-bold text-primary">{stats?.monthlyAttendanceRate || 0}%</p>
+              <p className="text-xs text-muted-foreground mt-1">Attendance Rate</p>
             </div>
             <div className="text-center">
-              <p className="text-3xl font-serif font-bold text-emerald-light">{stats?.totalMonthClasses || 0}</p>
-              <p className="text-sm text-muted-foreground mt-1">Classes Recorded</p>
+              <p className="text-2xl sm:text-3xl font-serif font-bold text-emerald-600 dark:text-emerald-400">{stats?.totalMonthClasses || 0}</p>
+              <p className="text-xs text-muted-foreground mt-1">Classes Recorded</p>
             </div>
             <div className="text-center">
-              <p className="text-3xl font-serif font-bold text-teal">{stats?.presentToday || 0}</p>
-              <p className="text-sm text-muted-foreground mt-1">Present Today</p>
+              <p className="text-2xl sm:text-3xl font-serif font-bold text-accent">{stats?.presentToday || 0}</p>
+              <p className="text-xs text-muted-foreground mt-1">Present Today</p>
             </div>
             <div className="text-center">
-              <p className="text-3xl font-serif font-bold text-accent">{stats?.students || 0}</p>
-              <p className="text-sm text-muted-foreground mt-1">Active Students</p>
+              <p className="text-2xl sm:text-3xl font-serif font-bold text-foreground">{stats?.students || 0}</p>
+              <p className="text-xs text-muted-foreground mt-1">Active Students</p>
             </div>
           </div>
         </CardContent>

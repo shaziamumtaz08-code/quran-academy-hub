@@ -1,18 +1,17 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { StatCard } from './StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Calendar, CheckCircle, BookOpen, Clock, AlertCircle, Video } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { Users, Calendar, CheckCircle, BookOpen, Clock, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
-import { StartClassButton } from '@/components/zoom/StartClassButton';
+import { SmartSessionRibbon } from './SmartSessionRibbon';
+import { CourseDeckCarousel } from './CourseDeckCarousel';
 
 export function TeacherDashboard() {
   const { profile, user } = useAuth();
-  const { toast } = useToast();
 
   // Fetch teacher stats
   const { data: stats, isLoading } = useQuery({
@@ -46,14 +45,11 @@ export function TeacherDashboard() {
 
   if (isLoading) {
     return (
-      <div className="space-y-8 animate-fade-in">
-        <div>
-          <h1 className="font-serif text-3xl font-bold text-foreground">Welcome, Teacher</h1>
-          <p className="text-muted-foreground mt-1">Loading your dashboard...</p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="space-y-6 animate-fade-in">
+        <Skeleton className="h-20 rounded-xl" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-32 rounded-xl" />
+            <Skeleton key={i} className="h-28 rounded-xl" />
           ))}
         </div>
       </div>
@@ -61,33 +57,22 @@ export function TeacherDashboard() {
   }
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="font-serif text-3xl font-bold text-foreground">
-            Welcome, {profile?.full_name || 'Teacher'}
-          </h1>
-          <p className="text-muted-foreground mt-1">Here's your teaching overview</p>
-        </div>
-        
-        {/* Start Class Button */}
-        <Card className="p-4 bg-gradient-to-r from-emerald-50 to-emerald-100/50 dark:from-emerald-900/20 dark:to-emerald-800/10 border-emerald-200 dark:border-emerald-800">
-          <div className="flex items-center gap-3">
-            <Video className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">Zoom License Pool</p>
-              <p className="text-xs text-emerald-600/80 dark:text-emerald-400/80">Start a class with an available Zoom room</p>
-            </div>
-            <StartClassButton />
-          </div>
-        </Card>
+      <div>
+        <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">
+          Welcome, {profile?.full_name || 'Teacher'}
+        </h1>
+        <p className="text-muted-foreground text-sm mt-1">Here's your teaching overview</p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Smart Session Ribbon - Top Priority */}
+      <SmartSessionRibbon />
+
+      {/* Stats Grid - Compact on mobile */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
-          title="Assigned Students"
+          title="Students"
           value={stats?.assignedStudents || 0}
           icon={Users}
           variant="primary"
@@ -98,76 +83,51 @@ export function TeacherDashboard() {
           icon={Calendar}
         />
         <StatCard
-          title="Classes This Month"
+          title="This Month"
           value={stats?.classesThisMonth || 0}
           icon={BookOpen}
         />
         <StatCard
-          title="Attendance Rate"
+          title="Attendance"
           value={`${stats?.attendanceRate || 0}%`}
           icon={CheckCircle}
           variant="gold"
         />
       </div>
 
+      {/* Course Deck Carousel */}
+      <CourseDeckCarousel />
+
       {/* Today's Summary */}
       <Card>
-        <CardHeader>
-          <CardTitle className="font-serif flex items-center gap-2">
+        <CardHeader className="pb-3">
+          <CardTitle className="font-serif text-lg flex items-center gap-2">
             <Clock className="h-5 w-5" />
             Today's Summary
           </CardTitle>
         </CardHeader>
         <CardContent>
           {stats?.classesToday === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <AlertCircle className="h-12 w-12 mx-auto mb-3 opacity-30" />
-              <p className="text-lg font-medium">No classes recorded today</p>
-              <p className="text-sm mt-1">Go to Attendance to mark today's classes</p>
+            <div className="text-center py-6 text-muted-foreground">
+              <AlertCircle className="h-10 w-10 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">No classes recorded today</p>
             </div>
           ) : (
-            <div className="grid grid-cols-3 gap-6">
-              <div className="text-center p-4 bg-emerald-light/10 rounded-lg">
-                <p className="text-3xl font-serif font-bold text-emerald-light">{stats?.presentToday || 0}</p>
-                <p className="text-sm text-emerald-light/80 mt-1">Present</p>
+            <div className="grid grid-cols-3 gap-3 sm:gap-6">
+              <div className="text-center p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+                <p className="text-2xl sm:text-3xl font-serif font-bold text-emerald-600 dark:text-emerald-400">{stats?.presentToday || 0}</p>
+                <p className="text-xs text-emerald-600/80 dark:text-emerald-400/80 mt-1">Present</p>
               </div>
-              <div className="text-center p-4 bg-accent/10 rounded-lg">
-                <p className="text-3xl font-serif font-bold text-accent">{stats?.lateToday || 0}</p>
-                <p className="text-sm text-accent/80 mt-1">Late</p>
+              <div className="text-center p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+                <p className="text-2xl sm:text-3xl font-serif font-bold text-amber-600 dark:text-amber-400">{stats?.lateToday || 0}</p>
+                <p className="text-xs text-amber-600/80 dark:text-amber-400/80 mt-1">Late</p>
               </div>
-              <div className="text-center p-4 bg-destructive/10 rounded-lg">
-                <p className="text-3xl font-serif font-bold text-destructive">{stats?.absentToday || 0}</p>
-                <p className="text-sm text-destructive/80 mt-1">Absent</p>
+              <div className="text-center p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                <p className="text-2xl sm:text-3xl font-serif font-bold text-red-600 dark:text-red-400">{stats?.absentToday || 0}</p>
+                <p className="text-xs text-red-600/80 dark:text-red-400/80 mt-1">Absent</p>
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Monthly Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-serif">This Month's Overview</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            <div>
-              <p className="text-2xl font-serif font-bold text-primary">{stats?.classesThisMonth || 0}</p>
-              <p className="text-sm text-muted-foreground">Total Classes</p>
-            </div>
-            <div>
-              <p className="text-2xl font-serif font-bold text-emerald-light">{stats?.attendanceRate || 0}%</p>
-              <p className="text-sm text-muted-foreground">Attendance Rate</p>
-            </div>
-            <div>
-              <p className="text-2xl font-serif font-bold text-accent">{stats?.assignedStudents || 0}</p>
-              <p className="text-sm text-muted-foreground">Students</p>
-            </div>
-            <div>
-              <p className="text-2xl font-serif font-bold text-foreground">-</p>
-              <p className="text-sm text-muted-foreground">Avg. Score</p>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>
