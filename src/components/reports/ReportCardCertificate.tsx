@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Award, GraduationCap, PenLine, Star } from 'lucide-react';
-import { TemplateStructure, DEFAULT_STAR_MAX, DEFAULT_GRADE_LABELS, calculateSectionMaxScore } from '@/types/reportCard';
+import { Award, GraduationCap, PenLine } from 'lucide-react';
+import { TemplateStructure, StoredCriteriaEntry, calculateSectionMaxScore } from '@/types/reportCard';
 import logoLight from '@/assets/logo-light.png';
 
 interface StudentReport {
@@ -12,6 +12,7 @@ interface StudentReport {
   total_marks: number;
   max_total_marks: number;
   percentage: number;
+  criteria_values_json: StoredCriteriaEntry[] | null;
   examiner_remarks: string | null;
   public_remarks: string | null;
   exam_date: string;
@@ -162,7 +163,7 @@ export function ReportCardCertificate({ report, showInternalNotes = false }: Rep
             </h3>
             
             <div className="space-y-0">
-              {report.template.structure_json.sections.map((section, sIdx) => {
+              {(report.template?.structure_json?.sections ?? []).map((section, sIdx) => {
                 const sectionMax = calculateSectionMaxScore(section);
                 return (
                   <div key={sIdx}>
@@ -177,55 +178,36 @@ export function ReportCardCertificate({ report, showInternalNotes = false }: Rep
                         )}
                       </div>
                     )}
-                    
+
                     {/* Criteria Rows */}
-                    {section.criteria?.map((criterion, cIdx) => (
-                      <div 
-                        key={cIdx}
-                        className="flex items-center justify-between px-4 py-4 border-b border-dotted border-gray-200 last:border-b-0 hover:bg-gray-50/50 transition-colors"
-                      >
-                        <div className="flex-1">
-                          <p className="font-medium text-navy-900">{criterion.title}</p>
-                          {criterion.type === 'skill' && criterion.skillLabels && (
-                            <p className="text-sm text-muted-foreground mt-0.5">
-                              Skill Levels: {criterion.skillLabels.join(' → ')}
-                            </p>
-                          )}
-                          {criterion.type === 'star' && (
-                            <div className="flex items-center gap-0.5 mt-1">
-                              {Array.from({ length: criterion.starMax || DEFAULT_STAR_MAX }, (_, i) => (
-                                <Star key={i} className="h-4 w-4 text-muted-foreground/30" />
-                              ))}
-                            </div>
-                          )}
-                          {criterion.type === 'grade' && criterion.gradeLabels && (
-                            <p className="text-sm text-muted-foreground mt-0.5">
-                              Grades: {criterion.gradeLabels.join(', ')}
-                            </p>
-                          )}
+                    {section.criteria?.map((criterion, cIdx) => {
+                      const row = (report.criteria_values_json ?? []).find(
+                        (r) => r.criteria_name === criterion.criteria_name && r.max_marks === criterion.max_marks
+                      ) ?? (report.criteria_values_json ?? []).find((r) => r.criteria_name === criterion.criteria_name);
+
+                      const obtained = typeof row?.obtained_marks === 'number' ? row.obtained_marks : null;
+                      const max = typeof row?.max_marks === 'number' ? row.max_marks : criterion.max_marks;
+
+                      return (
+                        <div
+                          key={cIdx}
+                          className="flex items-center justify-between px-4 py-4 border-b border-dotted border-gray-200 last:border-b-0 hover:bg-gray-50/50 transition-colors"
+                        >
+                          <div className="flex-1">
+                            <p className="font-medium text-navy-900">{criterion.criteria_name}</p>
+                            {row?.remarks && (
+                              <p className="text-sm text-muted-foreground mt-0.5">{row.remarks}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <span className="text-sm text-muted-foreground">Max: {max}</span>
+                            <Badge variant="outline" className="px-3 py-1 font-medium">
+                              {obtained ?? '--'} / {max}
+                            </Badge>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-4">
-                          {criterion.type === 'numeric' && criterion.maxMarks && (
-                            <span className="text-sm text-muted-foreground">
-                              Max: {criterion.maxMarks}
-                            </span>
-                          )}
-                          {criterion.type === 'star' && (
-                            <span className="text-sm text-muted-foreground">
-                              Max: {criterion.starMax || DEFAULT_STAR_MAX} ★
-                            </span>
-                          )}
-                          {criterion.type === 'grade' && (
-                            <span className="text-sm text-muted-foreground">
-                              Best: {(criterion.gradeLabels || DEFAULT_GRADE_LABELS).slice(-1)[0]}
-                            </span>
-                          )}
-                          <Badge variant="outline" className="px-3 py-1 font-medium">
-                            --
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 );
               })}

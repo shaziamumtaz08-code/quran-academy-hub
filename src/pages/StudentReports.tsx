@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Eye, Filter, FileText, AlertCircle, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { TemplateStructure } from '@/types/reportCard';
+import { TemplateStructure, StoredCriteriaEntry } from '@/types/reportCard';
 import { ReportCardCertificate } from '@/components/reports/ReportCardCertificate';
 
 interface StudentReport {
@@ -23,6 +23,7 @@ interface StudentReport {
   total_marks: number;
   max_total_marks: number;
   percentage: number;
+  criteria_values_json: StoredCriteriaEntry[] | null;
   examiner_remarks: string | null;
   public_remarks: string | null;
   exam_date: string;
@@ -104,6 +105,7 @@ export default function StudentReports() {
           total_marks,
           max_total_marks,
           percentage,
+          criteria_values_json,
           examiner_remarks,
           public_remarks,
           exam_date,
@@ -135,6 +137,7 @@ export default function StudentReports() {
       if (error) throw error;
       return (data ?? []).map(d => ({
         ...d,
+        criteria_values_json: (d as any).criteria_values_json as unknown as StoredCriteriaEntry[] | null,
         template: d.template ? {
           ...d.template,
           structure_json: d.template.structure_json as unknown as TemplateStructure | null,
