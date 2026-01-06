@@ -147,6 +147,8 @@ serve(async (req) => {
     const whatsapp = body?.whatsapp ? sanitizeString(String(body.whatsapp).trim()) : null;
     const gender = body?.gender ? String(body.gender).toLowerCase() : null;
     const age = body?.age !== undefined && body?.age !== null && typeof body.age === 'number' ? body.age : null;
+    const country = body?.country ? sanitizeString(String(body.country).trim()) : 'Pakistan';
+    const city = body?.city ? sanitizeString(String(body.city).trim()) : 'Karachi';
 
     // Validate all inputs
     const validationErrors: string[] = [];
@@ -282,6 +284,8 @@ serve(async (req) => {
             whatsapp_number: whatsapp,
             gender: isValidGender(gender) ? gender : null,
             age: isValidAge(age) ? age : null,
+            country,
+            city,
           }, { onConflict: "id" });
 
           if (profileUpsertErr) {
@@ -349,6 +353,8 @@ serve(async (req) => {
         whatsapp_number: whatsapp,
         gender: isValidGender(gender) ? gender : null,
         age: isValidAge(age) ? age : null,
+        country,
+        city,
       },
       { onConflict: "id" },
     );
@@ -379,6 +385,8 @@ serve(async (req) => {
       whatsapp_number: whatsapp,
       gender,
       age,
+      country,
+      city,
       message: "User created successfully",
       roleAdded: false,
     }, requestOrigin);
