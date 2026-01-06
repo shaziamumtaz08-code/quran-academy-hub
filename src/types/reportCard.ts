@@ -1,100 +1,66 @@
-// Report Card Template Types
+// Report Card Template Types (Marks-based)
 
-export type CriteriaType = 'numeric' | 'skill' | 'star' | 'grade';
-
-export interface SkillLevel {
-  label: string;
-  value: number; // 1, 2, 3 for ordering/scoring
+export interface ReportCriteriaRow {
+  id: string;
+  criteria_name: string;
+  max_marks: number;
 }
 
-export interface Criteria {
+export interface ReportSection {
   id: string;
   title: string;
-  type: CriteriaType;
-  maxMarks?: number; // Only for numeric type
-  skillLabels?: string[]; // Only for skill type, e.g., ["Beginning", "Progressing", "Mastered"]
-  starMax?: number; // For star type, default 5
-  gradeLabels?: string[]; // For grade type, e.g., ["F", "D", "C", "B", "A"]
-  isPublic: boolean;
-}
-
-export interface Section {
-  id: string;
-  title: string;
-  criteria: Criteria[];
-  showSubtotal?: boolean; // Show section subtotal
+  criteria: ReportCriteriaRow[];
+  showSubtotal?: boolean;
 }
 
 export interface TemplateStructure {
-  sections: Section[];
+  sections: ReportSection[];
 }
 
-// Default skill labels
-export const DEFAULT_SKILL_LABELS = ['Beginning', 'Progressing', 'Mastered'];
+// UI state for examiner entry
+export interface CriteriaValue {
+  criteriaId: string;
+  sectionId: string;
+  obtained_marks: number | null;
+  remarks?: string;
+}
 
-// Default star rating max
-export const DEFAULT_STAR_MAX = 5;
+// Payload shape we persist in exams.criteria_values_json (STRICT)
+export interface StoredCriteriaEntry {
+  criteria_name: string;
+  obtained_marks: number;
+  max_marks: number;
+  remarks?: string;
+}
 
-// Default grade labels (A-F scheme)
-export const DEFAULT_GRADE_LABELS = ['F', 'D', 'C', 'B', 'A'];
-
-// Helper to create empty section
-export const createEmptySection = (): Section => ({
+export const createEmptySection = (): ReportSection => ({
   id: crypto.randomUUID(),
   title: '',
   criteria: [],
   showSubtotal: true,
 });
 
-// Helper to create empty criteria
-export const createEmptyCriteria = (): Criteria => ({
+export const createEmptyCriteria = (): ReportCriteriaRow => ({
   id: crypto.randomUUID(),
-  title: '',
-  type: 'numeric',
-  maxMarks: 10,
-  isPublic: true,
+  criteria_name: '',
+  max_marks: 10,
 });
 
-// Helper to calculate max possible score from structure
 export const calculateMaxScore = (structure: TemplateStructure): number => {
   let total = 0;
   for (const section of structure.sections) {
     for (const criteria of section.criteria) {
-      if (criteria.type === 'numeric' && criteria.maxMarks) {
-        total += criteria.maxMarks;
-      } else if (criteria.type === 'skill') {
-        total += 3; // Skill levels are scored 1-3
-      } else if (criteria.type === 'star') {
-        total += criteria.starMax || DEFAULT_STAR_MAX;
-      } else if (criteria.type === 'grade') {
-        total += (criteria.gradeLabels?.length || DEFAULT_GRADE_LABELS.length) - 1; // A=4, B=3, C=2, D=1, F=0
-      }
+      total += Number(criteria.max_marks) || 0;
     }
   }
   return total;
 };
 
-// Calculate section subtotal max score
-export const calculateSectionMaxScore = (section: Section): number => {
+export const calculateSectionMaxScore = (section: ReportSection): number => {
   let total = 0;
   for (const criteria of section.criteria) {
-    if (criteria.type === 'numeric' && criteria.maxMarks) {
-      total += criteria.maxMarks;
-    } else if (criteria.type === 'skill') {
-      total += 3;
-    } else if (criteria.type === 'star') {
-      total += criteria.starMax || DEFAULT_STAR_MAX;
-    } else if (criteria.type === 'grade') {
-      total += (criteria.gradeLabels?.length || DEFAULT_GRADE_LABELS.length) - 1;
-    }
+    total += Number(criteria.max_marks) || 0;
   }
   return total;
 };
 
-// Submission value for a criteria
-export interface CriteriaValue {
-  criteriaId: string;
-  sectionId: string;
-  value: number | string; // number for numeric/star, skill/grade label for skill/grade type
-  numericValue: number; // Always a number for calculations
-}
