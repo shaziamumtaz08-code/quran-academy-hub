@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Award, GraduationCap, PenLine } from 'lucide-react';
-import { TemplateStructure } from '@/types/reportCard';
+import { Award, GraduationCap, PenLine, Star } from 'lucide-react';
+import { TemplateStructure, DEFAULT_STAR_MAX, DEFAULT_GRADE_LABELS, calculateSectionMaxScore } from '@/types/reportCard';
 import logoLight from '@/assets/logo-light.png';
 
 interface StudentReport {
@@ -162,43 +162,73 @@ export function ReportCardCertificate({ report, showInternalNotes = false }: Rep
             </h3>
             
             <div className="space-y-0">
-              {report.template.structure_json.sections.map((section, sIdx) => (
-                <div key={sIdx}>
-                  {/* Section Header */}
-                  {section.title && (
-                    <div className="bg-navy-900/5 px-4 py-3 rounded-t-lg mt-4 first:mt-0">
-                      <h4 className="font-semibold text-navy-900">{section.title}</h4>
-                    </div>
-                  )}
-                  
-                  {/* Criteria Rows */}
-                  {section.criteria?.map((criterion, cIdx) => (
-                    <div 
-                      key={cIdx}
-                      className="flex items-center justify-between px-4 py-4 border-b border-dotted border-gray-200 last:border-b-0 hover:bg-gray-50/50 transition-colors"
-                    >
-                      <div className="flex-1">
-                        <p className="font-medium text-navy-900">{criterion.title}</p>
-                        {criterion.type === 'skill' && criterion.skillLabels && (
-                          <p className="text-sm text-muted-foreground mt-0.5">
-                            Skill Levels: {criterion.skillLabels.join(' → ')}
-                          </p>
+              {report.template.structure_json.sections.map((section, sIdx) => {
+                const sectionMax = calculateSectionMaxScore(section);
+                return (
+                  <div key={sIdx}>
+                    {/* Section Header */}
+                    {section.title && (
+                      <div className="bg-navy-900/5 px-4 py-3 rounded-t-lg mt-4 first:mt-0 flex items-center justify-between">
+                        <h4 className="font-semibold text-navy-900">{section.title}</h4>
+                        {section.showSubtotal !== false && sectionMax > 0 && (
+                          <Badge variant="outline" className="text-xs">
+                            <Award className="h-3 w-3 mr-1" /> Max: {sectionMax}
+                          </Badge>
                         )}
                       </div>
-                      <div className="flex items-center gap-4">
-                        {criterion.type === 'numeric' && criterion.maxMarks && (
-                          <span className="text-sm text-muted-foreground">
-                            Max: {criterion.maxMarks}
-                          </span>
-                        )}
-                        <Badge variant="outline" className="px-3 py-1 font-medium">
-                          --
-                        </Badge>
+                    )}
+                    
+                    {/* Criteria Rows */}
+                    {section.criteria?.map((criterion, cIdx) => (
+                      <div 
+                        key={cIdx}
+                        className="flex items-center justify-between px-4 py-4 border-b border-dotted border-gray-200 last:border-b-0 hover:bg-gray-50/50 transition-colors"
+                      >
+                        <div className="flex-1">
+                          <p className="font-medium text-navy-900">{criterion.title}</p>
+                          {criterion.type === 'skill' && criterion.skillLabels && (
+                            <p className="text-sm text-muted-foreground mt-0.5">
+                              Skill Levels: {criterion.skillLabels.join(' → ')}
+                            </p>
+                          )}
+                          {criterion.type === 'star' && (
+                            <div className="flex items-center gap-0.5 mt-1">
+                              {Array.from({ length: criterion.starMax || DEFAULT_STAR_MAX }, (_, i) => (
+                                <Star key={i} className="h-4 w-4 text-muted-foreground/30" />
+                              ))}
+                            </div>
+                          )}
+                          {criterion.type === 'grade' && criterion.gradeLabels && (
+                            <p className="text-sm text-muted-foreground mt-0.5">
+                              Grades: {criterion.gradeLabels.join(', ')}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4">
+                          {criterion.type === 'numeric' && criterion.maxMarks && (
+                            <span className="text-sm text-muted-foreground">
+                              Max: {criterion.maxMarks}
+                            </span>
+                          )}
+                          {criterion.type === 'star' && (
+                            <span className="text-sm text-muted-foreground">
+                              Max: {criterion.starMax || DEFAULT_STAR_MAX} ★
+                            </span>
+                          )}
+                          {criterion.type === 'grade' && (
+                            <span className="text-sm text-muted-foreground">
+                              Best: {(criterion.gradeLabels || DEFAULT_GRADE_LABELS).slice(-1)[0]}
+                            </span>
+                          )}
+                          <Badge variant="outline" className="px-3 py-1 font-medium">
+                            --
+                          </Badge>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              ))}
+                    ))}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

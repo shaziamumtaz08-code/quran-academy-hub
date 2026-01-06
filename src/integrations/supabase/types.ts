@@ -359,6 +359,7 @@ export type Database = {
       exams: {
         Row: {
           created_at: string
+          criteria_values_json: Json | null
           exam_date: string
           examiner_id: string | null
           examiner_remarks: string | null
@@ -373,6 +374,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          criteria_values_json?: Json | null
           exam_date: string
           examiner_id?: string | null
           examiner_remarks?: string | null
@@ -387,6 +389,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          criteria_values_json?: Json | null
           exam_date?: string
           examiner_id?: string | null
           examiner_remarks?: string | null
