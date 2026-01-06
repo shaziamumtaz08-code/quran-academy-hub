@@ -4,7 +4,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Video, Clock, Wifi, WifiOff, User, Activity, UserPlus, Power, ExternalLink } from 'lucide-react';
+import { Video, Clock, Wifi, WifiOff, User, Activity, UserPlus, Power, ExternalLink, Link } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { format, differenceInSeconds } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -40,6 +42,7 @@ interface SessionParticipant {
 
 export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
   const [now, setNow] = React.useState(new Date());
+  const [recordingLinks, setRecordingLinks] = React.useState<Record<string, string>>({});
   const queryClient = useQueryClient();
 
   // Update timer every second for live duration
@@ -48,16 +51,22 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
     return () => clearInterval(interval);
   }, []);
 
-  // End session mutation - releases the license
+  // End session mutation - releases the license and optionally saves recording link
   const endSessionMutation = useMutation({
-    mutationFn: async ({ sessionId, licenseId }: { sessionId: string; licenseId: string }) => {
-      // Update session to completed
+    mutationFn: async ({ sessionId, licenseId, recordingLink }: { sessionId: string; licenseId: string; recordingLink?: string }) => {
+      // Update session to completed with optional recording link
+      const updateData: Record<string, any> = { 
+        status: 'completed',
+        actual_end: new Date().toISOString()
+      };
+      
+      if (recordingLink && recordingLink.trim()) {
+        updateData.recording_link = recordingLink.trim();
+      }
+
       const { error: sessionError } = await supabase
         .from('live_sessions')
-        .update({ 
-          status: 'completed',
-          actual_end: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', sessionId);
 
       if (sessionError) throw sessionError;
@@ -70,8 +79,14 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
 
       if (licenseError) throw licenseError;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       toast.success('Session ended and license released');
+      // Clear the recording link input
+      setRecordingLinks(prev => {
+        const updated = { ...prev };
+        delete updated[variables.sessionId];
+        return updated;
+      });
       queryClient.invalidateQueries({ queryKey: ['active-live-sessions-monitor'] });
       queryClient.invalidateQueries({ queryKey: ['zoom-licenses-monitor'] });
     },
@@ -421,12 +436,38 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
                                 This action cannot be undone.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
+                            
+                            {/* Recording Link Input */}
+                            <div className="py-3 space-y-2">
+                              <Label htmlFor={`recording-${session.id}`} className="text-sm flex items-center gap-2">
+                                <Link className="h-3.5 w-3.5" />
+                                Recording Link (Optional)
+                              </Label>
+                              <Input
+                                id={`recording-${session.id}`}
+                                placeholder="Paste Zoom recording link..."
+                                value={recordingLinks[session.id] || ''}
+                                onChange={(e) => setRecordingLinks(prev => ({
+                                  ...prev,
+                                  [session.id]: e.target.value
+                                }))}
+                                className="text-sm"
+                              />
+                              <p className="text-[10px] text-muted-foreground">
+                                If provided, students will be able to view the recording in their past classes.
+                              </p>
+                            </div>
+
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
                               <AlertDialogAction
                                 onClick={() => {
                                   if (licenseId) {
-                                    endSessionMutation.mutate({ sessionId: session.id, licenseId });
+                                    endSessionMutation.mutate({ 
+                                      sessionId: session.id, 
+                                      licenseId,
+                                      recordingLink: recordingLinks[session.id]
+                                    });
                                   }
                                 }}
                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
