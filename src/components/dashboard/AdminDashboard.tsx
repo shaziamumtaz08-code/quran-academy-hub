@@ -13,6 +13,7 @@ import { LiveClassQueue } from './LiveClassQueue';
 import { AccountabilityReport } from './AccountabilityReport';
 import { AccountabilityTrends } from './AccountabilityTrends';
 import { IntegrityEngine } from './IntegrityEngine';
+import { BehaviorAlerts } from './BehaviorAlerts';
 
 export function AdminDashboard() {
   const today = format(new Date(), 'yyyy-MM-dd');
@@ -109,8 +110,11 @@ export function AdminDashboard() {
         <AdminLiveMonitor />
       </div>
 
-      {/* Integrity Engine */}
-      <IntegrityEngine />
+      {/* Integrity Engine + Behavior Alerts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <IntegrityEngine />
+        <BehaviorAlerts />
+      </div>
 
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

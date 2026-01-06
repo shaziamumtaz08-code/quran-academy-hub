@@ -38,7 +38,7 @@ interface MismatchRecord {
   isLate: boolean;
   lateMinutes: number;
   teacherName: string;
-  issueType: 'ghosting' | 'time_thief' | 'mismatch' | 'late';
+  issueType: 'ghosting' | 'low_duration' | 'time_thief' | 'mismatch' | 'late';
 }
 
 export default function IntegrityAudit() {
@@ -151,23 +151,27 @@ export default function IntegrityAudit() {
 
         let issueType: MismatchRecord['issueType'] | null = null;
 
-        // Ghosting: Marked present but no zoom
-        if (att.status === 'present' && (!zoomData || !zoomData.detected)) {
+        // RED: Ghosting - Marked present but no zoom OR 0 duration
+        if (att.status === 'present' && (!zoomData || !zoomData.detected || zoomData.duration === 0 || zoomData.duration === null)) {
           issueType = 'ghosting';
         }
-        // Time thief: <80% of scheduled duration
-        else if (zoomData?.duration && att.duration_minutes) {
+        // AMBER: Low duration - Manual present but <15 mins
+        else if (att.status === 'present' && zoomData?.duration && zoomData.duration > 0 && zoomData.duration < 15) {
+          issueType = 'low_duration';
+        }
+        // Time thief: <80% of scheduled duration (but >15 mins)
+        else if (zoomData?.duration && att.duration_minutes && zoomData.duration >= 15) {
           const percentage = (zoomData.duration / att.duration_minutes) * 100;
           if (percentage < 80) {
             issueType = 'time_thief';
           }
         }
         // Late entry
-        else if (zoomData?.isLate) {
+        if (!issueType && zoomData?.isLate) {
           issueType = 'late';
         }
         // General mismatch
-        else if (att.status !== 'present' && zoomData?.detected) {
+        if (!issueType && att.status !== 'present' && zoomData?.detected) {
           issueType = 'mismatch';
         }
 
@@ -205,6 +209,7 @@ export default function IntegrityAudit() {
     return {
       total: data.length,
       ghosting: data.filter(r => r.issueType === 'ghosting').length,
+      lowDuration: data.filter(r => r.issueType === 'low_duration').length,
       timeThief: data.filter(r => r.issueType === 'time_thief').length,
       late: data.filter(r => r.issueType === 'late').length,
       mismatch: data.filter(r => r.issueType === 'mismatch').length,
@@ -214,7 +219,9 @@ export default function IntegrityAudit() {
   const getIssueIcon = (type: string) => {
     switch (type) {
       case 'ghosting':
-        return <Eye className="h-4 w-4 text-destructive" />;
+        return <Eye className="h-4 w-4 text-red-600" />;
+      case 'low_duration':
+        return <Clock className="h-4 w-4 text-amber-600" />;
       case 'time_thief':
         return <Timer className="h-4 w-4 text-orange-500" />;
       case 'late':
@@ -229,7 +236,9 @@ export default function IntegrityAudit() {
   const getIssueBadge = (type: string) => {
     switch (type) {
       case 'ghosting':
-        return <Badge variant="destructive" className="gap-1"><Eye className="h-3 w-3" />Ghosting</Badge>;
+        return <Badge variant="destructive" className="gap-1 bg-red-600"><Eye className="h-3 w-3" />Ghost (RED)</Badge>;
+      case 'low_duration':
+        return <Badge className="gap-1 bg-amber-500 text-white border-amber-600"><Clock className="h-3 w-3" />&lt;15m (AMBER)</Badge>;
       case 'time_thief':
         return <Badge className="gap-1 bg-orange-100 dark:bg-orange-900/30 text-orange-700 border-orange-200"><Timer className="h-3 w-3" />Time Thief</Badge>;
       case 'late':
@@ -261,35 +270,41 @@ export default function IntegrityAudit() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
           <Card className="text-center">
             <CardContent className="pt-6">
               <p className="text-2xl font-serif font-bold text-foreground">{stats.total}</p>
               <p className="text-sm text-muted-foreground">Total Issues</p>
             </CardContent>
           </Card>
-          <Card className="bg-destructive/10 border-destructive/20 text-center">
+          <Card className="bg-red-100 dark:bg-red-900/20 border-red-300 dark:border-red-800 text-center">
             <CardContent className="pt-6">
-              <p className="text-2xl font-serif font-bold text-destructive">{stats.ghosting}</p>
-              <p className="text-sm text-destructive/80">Ghosting</p>
+              <p className="text-2xl font-serif font-bold text-red-600">{stats.ghosting}</p>
+              <p className="text-sm text-red-600/80">Ghost (0 mins)</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-amber-100 dark:bg-amber-900/20 border-amber-300 dark:border-amber-800 text-center">
+            <CardContent className="pt-6">
+              <p className="text-2xl font-serif font-bold text-amber-600">{stats.lowDuration}</p>
+              <p className="text-sm text-amber-600/80">&lt;15 mins</p>
             </CardContent>
           </Card>
           <Card className="bg-orange-50 dark:bg-orange-900/10 border-orange-200 dark:border-orange-800 text-center">
             <CardContent className="pt-6">
               <p className="text-2xl font-serif font-bold text-orange-600">{stats.timeThief}</p>
-              <p className="text-sm text-orange-600/80">Time Thieves</p>
+              <p className="text-sm text-orange-600/80">&lt;80% Time</p>
             </CardContent>
           </Card>
-          <Card className="bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800 text-center">
+          <Card className="bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-800 text-center">
             <CardContent className="pt-6">
-              <p className="text-2xl font-serif font-bold text-amber-600">{stats.late}</p>
-              <p className="text-sm text-amber-600/80">Late Entries</p>
+              <p className="text-2xl font-serif font-bold text-yellow-600">{stats.late}</p>
+              <p className="text-sm text-yellow-600/80">Late Entries</p>
             </CardContent>
           </Card>
           <Card className="bg-muted text-center">
             <CardContent className="pt-6">
               <p className="text-2xl font-serif font-bold text-muted-foreground">{stats.mismatch}</p>
-              <p className="text-sm text-muted-foreground">Other Mismatches</p>
+              <p className="text-sm text-muted-foreground">Other</p>
             </CardContent>
           </Card>
         </div>
@@ -314,7 +329,8 @@ export default function IntegrityAudit() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Issues</SelectItem>
-              <SelectItem value="ghosting">Ghosting</SelectItem>
+              <SelectItem value="ghosting">Ghost (0 mins)</SelectItem>
+              <SelectItem value="low_duration">&lt;15 mins</SelectItem>
               <SelectItem value="time_thief">Time Thieves</SelectItem>
               <SelectItem value="late">Late Entries</SelectItem>
               <SelectItem value="mismatch">Mismatches</SelectItem>
@@ -357,7 +373,13 @@ export default function IntegrityAudit() {
                 </TableHeader>
                 <TableBody>
                   {filteredData.map((record) => (
-                    <TableRow key={record.id}>
+                    <TableRow 
+                      key={record.id}
+                      className={cn(
+                        record.issueType === 'ghosting' && 'bg-red-50 dark:bg-red-900/10 border-l-4 border-l-red-500',
+                        record.issueType === 'low_duration' && 'bg-amber-50 dark:bg-amber-900/10 border-l-4 border-l-amber-500'
+                      )}
+                    >
                       <TableCell>
                         <span className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -387,7 +409,8 @@ export default function IntegrityAudit() {
                         {getIssueBadge(record.issueType)}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {record.issueType === 'ghosting' && 'Marked present but no Zoom log'}
+                        {record.issueType === 'ghosting' && 'Marked present but 0 mins in Zoom'}
+                        {record.issueType === 'low_duration' && `Only ${record.zoomDuration} mins (<15 mins)`}
                         {record.issueType === 'time_thief' && `${record.zoomDuration}/${record.scheduledDuration} mins`}
                         {record.issueType === 'late' && `+${record.lateMinutes} mins late`}
                         {record.issueType === 'mismatch' && 'Status doesn\'t match evidence'}
