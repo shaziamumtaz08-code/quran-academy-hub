@@ -128,12 +128,17 @@ export default function GenerateReportCard() {
     if (!criteria) return;
 
     let numericValue = 0;
-    if (criteria.type === 'numeric') {
+    if (criteria.type === 'numeric' || criteria.type === 'star') {
       numericValue = typeof value === 'number' ? value : parseInt(value as string) || 0;
-    } else {
+    } else if (criteria.type === 'skill') {
       // Skill type - convert label to numeric value (1, 2, 3)
       const labels = criteria.skillLabels || DEFAULT_SKILL_LABELS;
       numericValue = labels.indexOf(value as string) + 1;
+    } else if (criteria.type === 'grade') {
+      // Grade type - convert letter to numeric value (F=0, D=1, C=2, B=3, A=4)
+      const labels = criteria.gradeLabels || ['F', 'D', 'C', 'B', 'A'];
+      numericValue = labels.indexOf(value as string);
+      if (numericValue < 0) numericValue = 0;
     }
 
     setCriteriaValues(prev => {
@@ -167,6 +172,12 @@ export default function GenerateReportCard() {
           total += val?.numericValue || 0;
         } else if (criteria.type === 'skill') {
           max += 3;
+          total += val?.numericValue || 0;
+        } else if (criteria.type === 'star') {
+          max += criteria.starMax || 5;
+          total += val?.numericValue || 0;
+        } else if (criteria.type === 'grade') {
+          max += (criteria.gradeLabels?.length || 5) - 1;
           total += val?.numericValue || 0;
         }
       }
