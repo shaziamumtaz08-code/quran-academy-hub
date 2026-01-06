@@ -137,6 +137,8 @@ serve(async (req) => {
     const whatsapp = body?.whatsapp !== undefined ? (body.whatsapp ? sanitizeString(String(body.whatsapp).trim()) : null) : undefined;
     const gender = body?.gender !== undefined ? (body.gender ? String(body.gender).toLowerCase() : null) : undefined;
     const age = body?.age !== undefined ? (body.age !== null && typeof body.age === 'number' ? body.age : null) : undefined;
+    const country = body?.country !== undefined ? (body.country ? sanitizeString(String(body.country).trim()) : null) : undefined;
+    const city = body?.city !== undefined ? (body.city ? sanitizeString(String(body.city).trim()) : null) : undefined;
     const password = body?.password ? String(body.password) : undefined;
 
     if (fullName !== undefined && !isValidFullName(fullName)) {
@@ -174,6 +176,8 @@ serve(async (req) => {
     if (whatsapp !== undefined) profileUpdate.whatsapp_number = whatsapp;
     if (gender !== undefined) profileUpdate.gender = gender;
     if (age !== undefined) profileUpdate.age = age;
+    if (country !== undefined) profileUpdate.country = country;
+    if (city !== undefined) profileUpdate.city = city;
 
     if (Object.keys(profileUpdate).length > 0) {
       const { error: profileErr } = await adminClient

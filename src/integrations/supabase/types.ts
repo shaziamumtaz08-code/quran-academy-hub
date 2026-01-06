@@ -555,6 +555,8 @@ export type Database = {
       profiles: {
         Row: {
           age: number | null
+          city: string | null
+          country: string | null
           created_at: string
           daily_target_amount: number
           daily_target_lines: number
@@ -570,6 +572,8 @@ export type Database = {
         }
         Insert: {
           age?: number | null
+          city?: string | null
+          country?: string | null
           created_at?: string
           daily_target_amount?: number
           daily_target_lines?: number
@@ -585,6 +589,8 @@ export type Database = {
         }
         Update: {
           age?: number | null
+          city?: string | null
+          country?: string | null
           created_at?: string
           daily_target_amount?: number
           daily_target_lines?: number
@@ -1009,6 +1015,30 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+        }
+        Relationships: []
+      }
+      timezone_mappings: {
+        Row: {
+          city: string
+          country: string
+          created_at: string | null
+          id: string
+          timezone: string
+        }
+        Insert: {
+          city: string
+          country: string
+          created_at?: string | null
+          id?: string
+          timezone: string
+        }
+        Update: {
+          city?: string
+          country?: string
+          created_at?: string | null
+          id?: string
+          timezone?: string
         }
         Relationships: []
       }
