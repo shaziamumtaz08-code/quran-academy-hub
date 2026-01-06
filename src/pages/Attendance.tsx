@@ -18,7 +18,11 @@ import { useToast } from '@/hooks/use-toast';
 import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { SurahSearchSelect } from '@/components/attendance/SurahSearchSelect';
 import { UnitInputSelector } from '@/components/attendance/UnitInputSelector';
+import { QaidaProgressInput } from '@/components/attendance/QaidaProgressInput';
+import { HifzAttendanceFields } from '@/components/attendance/HifzAttendanceFields';
+import { NazraAttendanceFields } from '@/components/attendance/NazraAttendanceFields';
 import { type LearningUnit, type MushafType, convertToLines, LEARNING_UNITS } from '@/lib/quranData';
+import { getSubjectType, type SubjectType } from '@/lib/subjectUtils';
 
 type AttendanceStatus = 'present' | 'student_absent' | 'teacher_absent' | 'teacher_leave' | 'rescheduled' | 'student_rescheduled' | 'holiday';
 type ReasonCategory = 'sick' | 'personal' | 'emergency' | 'internet_issue' | 'other';
@@ -64,6 +68,8 @@ interface Profile {
   daily_target_lines: number;
   preferred_unit?: string;
   daily_target_amount?: number;
+  subject_name?: string | null;
+  subject_id?: string | null;
 }
 
 const STATUS_OPTIONS: { value: AttendanceStatus; label: string }[] = [
@@ -121,6 +127,18 @@ export default function Attendance() {
   // Multi-unit input fields
   const [inputUnit, setInputUnit] = useState<LearningUnit>('lines');
   const [rawInputAmount, setRawInputAmount] = useState('');
+  
+  // Subject-specific fields
+  const [lessonNumber, setLessonNumber] = useState('');
+  const [pageNumber, setPageNumber] = useState('');
+  
+  // Hifz-specific fields
+  const [sabaqSurahFrom, setSabaqSurahFrom] = useState('');
+  const [sabaqAyahFrom, setSabaqAyahFrom] = useState('');
+  const [sabaqSurahTo, setSabaqSurahTo] = useState('');
+  const [sabaqAyahTo, setSabaqAyahTo] = useState('');
+  const [sabqiDone, setSabqiDone] = useState(false);
+  const [manzilDone, setManzilDone] = useState(false);
 
   // Role checks based on activeRole
   const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' || 
@@ -135,24 +153,26 @@ export default function Attendance() {
   // Status requires reschedule info
   const requiresReschedule = (status: AttendanceStatus) => status === 'rescheduled';
 
-  // Fetch assigned students (for teacher) with daily_target_lines and preferred_unit
+  // Fetch assigned students (for teacher) with daily_target_lines, preferred_unit, and subject info
   const { data: assignedStudents } = useQuery({
     queryKey: ['assigned-students', user?.id, isTeacher],
     queryFn: async () => {
       if (!user?.id) return [];
       
       if (isTeacher) {
-        // Teacher sees their assigned students
+        // Teacher sees their assigned students with subject info
         const { data, error } = await supabase
           .from('student_teacher_assignments')
-          .select('student_id, subject:subjects(name), student:profiles!student_teacher_assignments_student_id_fkey(id, full_name, mushaf_type, daily_target_lines, preferred_unit, daily_target_amount)')
-          .eq('teacher_id', user.id);
+          .select('student_id, subject_id, subject:subjects(id, name), student:profiles!student_teacher_assignments_student_id_fkey(id, full_name, mushaf_type, daily_target_lines, preferred_unit, daily_target_amount)')
+          .eq('teacher_id', user.id)
+          .eq('status', 'active');
 
         if (error) throw error;
         return (data || []).map(d => ({
           ...d.student,
-          subject_name: d.subject?.name || null
-        })).filter(Boolean) as (Profile & { subject_name?: string | null })[];
+          subject_name: d.subject?.name || null,
+          subject_id: d.subject?.id || null
+        })).filter(Boolean) as Profile[];
       } else if (isAdmin) {
         // Admin can see all students with their assignments
         const { data, error } = await supabase
@@ -188,6 +208,11 @@ export default function Attendance() {
     if (selectedStudentProfile?.preferred_unit) {
       setInputUnit(selectedStudentProfile.preferred_unit as LearningUnit);
     }
+  }, [selectedStudentProfile]);
+
+  // Determine subject type for the selected student
+  const currentSubjectType: SubjectType = useMemo(() => {
+    return getSubjectType(selectedStudentProfile?.subject_name);
   }, [selectedStudentProfile]);
 
   const mushafType = (selectedStudentProfile?.mushaf_type || '15-line') as MushafType;
@@ -317,14 +342,26 @@ export default function Attendance() {
         finalReason = `Class rescheduled from ${classDate} ${classTime} to ${rescheduleDate} ${rescheduleTime}`;
       }
 
-      // Build lesson_covered from structured fields for backward compatibility
+      // Build lesson_covered based on subject type
       let lessonCoveredText = '';
-      if (surahName && ayahFrom && ayahTo) {
-        lessonCoveredText = `${surahName}, Ayah ${ayahFrom}-${ayahTo}`;
-      } else if (surahName && ayahFrom) {
-        lessonCoveredText = `${surahName}, Ayah ${ayahFrom}`;
-      } else if (surahName) {
-        lessonCoveredText = surahName;
+      if (currentSubjectType === 'qaida') {
+        lessonCoveredText = lessonNumber ? `Lesson ${lessonNumber}${pageNumber ? `, Page ${pageNumber}` : ''}` : '';
+      } else if (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') {
+        if (sabaqSurahFrom && sabaqAyahFrom) {
+          lessonCoveredText = `${sabaqSurahFrom} ${sabaqAyahFrom}`;
+          if (sabaqSurahTo && sabaqAyahTo) {
+            lessonCoveredText += ` - ${sabaqSurahTo} ${sabaqAyahTo}`;
+          }
+        }
+      } else {
+        // Legacy/academic format
+        if (surahName && ayahFrom && ayahTo) {
+          lessonCoveredText = `${surahName}, Ayah ${ayahFrom}-${ayahTo}`;
+        } else if (surahName && ayahFrom) {
+          lessonCoveredText = `${surahName}, Ayah ${ayahFrom}`;
+        } else if (surahName) {
+          lessonCoveredText = surahName;
+        }
       }
 
       // Calculate final lines completed from the unit input
@@ -344,13 +381,22 @@ export default function Attendance() {
         reason_text: reasonCategory === 'other' ? reasonText : null,
         reschedule_date: rescheduleDate || null,
         reschedule_time: rescheduleTime || null,
-        surah_name: surahName || null,
-        ayah_from: ayahFrom ? parseInt(ayahFrom) : null,
-        ayah_to: ayahTo ? parseInt(ayahTo) : null,
+        surah_name: currentSubjectType === 'qaida' ? null : (sabaqSurahFrom || surahName || null),
+        ayah_from: currentSubjectType === 'qaida' ? null : (sabaqAyahFrom ? parseInt(sabaqAyahFrom) : (ayahFrom ? parseInt(ayahFrom) : null)),
+        ayah_to: currentSubjectType === 'qaida' ? null : (sabaqAyahTo ? parseInt(sabaqAyahTo) : (ayahTo ? parseInt(ayahTo) : null)),
         lines_completed: finalLinesCompleted,
         variance_reason: needsVarianceReason ? varianceReason : null,
         input_unit: inputUnit,
         raw_input_amount: rawInputNum > 0 ? rawInputNum : null,
+        // New subject-specific fields
+        lesson_number: currentSubjectType === 'qaida' && lessonNumber ? parseInt(lessonNumber) : null,
+        page_number: currentSubjectType === 'qaida' && pageNumber ? parseInt(pageNumber) : null,
+        sabaq_surah_from: (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') ? sabaqSurahFrom || null : null,
+        sabaq_surah_to: (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') ? sabaqSurahTo || null : null,
+        sabaq_ayah_from: (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') && sabaqAyahFrom ? parseInt(sabaqAyahFrom) : null,
+        sabaq_ayah_to: (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') && sabaqAyahTo ? parseInt(sabaqAyahTo) : null,
+        sabqi_done: currentSubjectType === 'hifz' ? sabqiDone : null,
+        manzil_done: (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') ? manzilDone : null,
       });
 
       if (error) throw error;
@@ -427,6 +473,15 @@ export default function Attendance() {
     setVarianceReason('');
     setInputUnit('lines');
     setRawInputAmount('');
+    // Subject-specific resets
+    setLessonNumber('');
+    setPageNumber('');
+    setSabaqSurahFrom('');
+    setSabaqAyahFrom('');
+    setSabaqSurahTo('');
+    setSabaqAyahTo('');
+    setSabqiDone(false);
+    setManzilDone(false);
   };
 
   const filteredRecords = useMemo(() => {
@@ -832,78 +887,125 @@ export default function Attendance() {
                 </div>
               )}
 
-              {/* Quran Progress Section - Only for present/rescheduled */}
-              {['present', 'rescheduled'].includes(selectedStatus) && (
+              {/* Subject-Specific Progress Section - Only for present/rescheduled */}
+              {['present', 'rescheduled'].includes(selectedStatus) && selectedStudent && (
                 <>
-                  <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
-                    <p className="text-sm font-medium text-foreground">Quran Progress</p>
-                    
-                    {/* Searchable Surah Dropdown */}
-                    <div className="space-y-2">
-                      <Label>Surah Name</Label>
-                      <SurahSearchSelect
-                        value={surahName}
-                        onChange={setSurahName}
-                        placeholder="Search and select a Surah..."
-                      />
-                    </div>
-                    
-                    {/* Ayah Range */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Ayah From</Label>
-                        <Input
-                          type="number"
-                          placeholder="1"
-                          min="1"
-                          value={ayahFrom}
-                          onChange={(e) => setAyahFrom(e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Ayah To</Label>
-                        <Input
-                          type="number"
-                          placeholder="5"
-                          min="1"
-                          value={ayahTo}
-                          onChange={(e) => setAyahTo(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    
-                    {/* Multi-Unit Input Selector */}
-                    <UnitInputSelector
-                      inputUnit={inputUnit}
-                      onInputUnitChange={setInputUnit}
-                      inputAmount={rawInputAmount}
-                      onInputAmountChange={setRawInputAmount}
-                      mushafType={mushafType}
-                      dailyTargetLines={dailyTarget}
-                      preferredUnit={(selectedStudentProfile?.preferred_unit as LearningUnit) || 'lines'}
-                      showConversion={true}
+                  {/* Qaida Progress */}
+                  {currentSubjectType === 'qaida' && (
+                    <QaidaProgressInput
+                      lessonNumber={lessonNumber}
+                      onLessonNumberChange={setLessonNumber}
+                      pageNumber={pageNumber}
+                      onPageNumberChange={setPageNumber}
                     />
-                    
-                    {/* Variance Reason - Required when lines < target */}
-                    {needsVarianceReason && (
+                  )}
+                  
+                  {/* Hifz Progress */}
+                  {currentSubjectType === 'hifz' && (
+                    <HifzAttendanceFields
+                      sabaqSurahFrom={sabaqSurahFrom}
+                      onSabaqSurahFromChange={setSabaqSurahFrom}
+                      sabaqAyahFrom={sabaqAyahFrom}
+                      onSabaqAyahFromChange={setSabaqAyahFrom}
+                      sabaqSurahTo={sabaqSurahTo}
+                      onSabaqSurahToChange={setSabaqSurahTo}
+                      sabaqAyahTo={sabaqAyahTo}
+                      onSabaqAyahToChange={setSabaqAyahTo}
+                      sabqiDone={sabqiDone}
+                      onSabqiDoneChange={setSabqiDone}
+                      manzilDone={manzilDone}
+                      onManzilDoneChange={setManzilDone}
+                    />
+                  )}
+                  
+                  {/* Nazra Progress */}
+                  {currentSubjectType === 'nazra' && (
+                    <NazraAttendanceFields
+                      sabaqSurahFrom={sabaqSurahFrom}
+                      onSabaqSurahFromChange={setSabaqSurahFrom}
+                      sabaqAyahFrom={sabaqAyahFrom}
+                      onSabaqAyahFromChange={setSabaqAyahFrom}
+                      sabaqSurahTo={sabaqSurahTo}
+                      onSabaqSurahToChange={setSabaqSurahTo}
+                      sabaqAyahTo={sabaqAyahTo}
+                      onSabaqAyahToChange={setSabaqAyahTo}
+                      manzilDone={manzilDone}
+                      onManzilDoneChange={setManzilDone}
+                    />
+                  )}
+                  
+                  {/* Academic/Generic Progress */}
+                  {currentSubjectType === 'academic' && (
+                    <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+                      <p className="text-sm font-medium text-foreground">Lesson Progress</p>
+                      
+                      {/* Searchable Surah Dropdown */}
                       <div className="space-y-2">
-                        <Label>Variance Reason <span className="text-destructive">*</span></Label>
-                        <Select value={varianceReason} onValueChange={(v) => setVarianceReason(v as VarianceReason)}>
-                          <SelectTrigger className="border-destructive/50">
-                            <SelectValue placeholder="Why below target?" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {VARIANCE_REASONS.map((r) => (
-                              <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-destructive">
-                          Lines completed ({Math.round(lineEquivalent)}) is below the daily target ({dailyTarget})
-                        </p>
+                        <Label>Surah Name</Label>
+                        <SurahSearchSelect
+                          value={surahName}
+                          onChange={setSurahName}
+                          placeholder="Search and select a Surah..."
+                        />
                       </div>
-                    )}
-                  </div>
+                      
+                      {/* Ayah Range */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Ayah From</Label>
+                          <Input
+                            type="number"
+                            placeholder="1"
+                            min="1"
+                            value={ayahFrom}
+                            onChange={(e) => setAyahFrom(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Ayah To</Label>
+                          <Input
+                            type="number"
+                            placeholder="5"
+                            min="1"
+                            value={ayahTo}
+                            onChange={(e) => setAyahTo(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Multi-Unit Input Selector */}
+                      <UnitInputSelector
+                        inputUnit={inputUnit}
+                        onInputUnitChange={setInputUnit}
+                        inputAmount={rawInputAmount}
+                        onInputAmountChange={setRawInputAmount}
+                        mushafType={mushafType}
+                        dailyTargetLines={dailyTarget}
+                        preferredUnit={(selectedStudentProfile?.preferred_unit as LearningUnit) || 'lines'}
+                        showConversion={true}
+                      />
+                      
+                      {/* Variance Reason - Required when lines < target */}
+                      {needsVarianceReason && (
+                        <div className="space-y-2">
+                          <Label>Variance Reason <span className="text-destructive">*</span></Label>
+                          <Select value={varianceReason} onValueChange={(v) => setVarianceReason(v as VarianceReason)}>
+                            <SelectTrigger className="border-destructive/50">
+                              <SelectValue placeholder="Why below target?" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {VARIANCE_REASONS.map((r) => (
+                                <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-destructive">
+                            Lines completed ({Math.round(lineEquivalent)}) is below the daily target ({dailyTarget})
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   
                   <div className="space-y-2">
                     <Label>Homework</Label>
