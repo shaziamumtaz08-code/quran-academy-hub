@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { TemplateBuilder } from '@/components/reportCard/TemplateBuilder';
-import { TemplateStructure } from '@/types/reportCard';
+import { TemplateStructure, ReportSection, ReportCriteriaRow } from '@/types/reportCard';
 import type { Database } from '@/integrations/supabase/types';
 
 type ExamTenure = Database['public']['Enums']['exam_tenure'];
@@ -34,6 +34,38 @@ interface ReportTemplate {
   structure_json: TemplateStructure | null;
 }
 
+// Helper to create a sample template structure
+const createSampleTemplateStructure = (): TemplateStructure => {
+  const createCriteria = (name: string, maxMarks: number): ReportCriteriaRow => ({
+    id: crypto.randomUUID(),
+    criteria_name: name,
+    max_marks: maxMarks,
+  });
+
+  const quranSection: ReportSection = {
+    id: crypto.randomUUID(),
+    title: 'Quran Recitation',
+    showSubtotal: true,
+    criteria: [
+      createCriteria('Tajweed', 10),
+      createCriteria('Fluency', 10),
+      createCriteria('Accuracy', 10),
+    ],
+  };
+
+  const islamicSection: ReportSection = {
+    id: crypto.randomUUID(),
+    title: 'Islamic Studies',
+    showSubtotal: true,
+    criteria: [
+      createCriteria('Knowledge', 20),
+      createCriteria('Understanding', 20),
+    ],
+  };
+
+  return { sections: [quranSection, islamicSection] };
+};
+
 export default function ReportCardTemplates() {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -41,6 +73,7 @@ export default function ReportCardTemplates() {
   
   const [isBuilderOpen, setIsBuilderOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<ReportTemplate | null>(null);
+  const [seedingDemo, setSeedingDemo] = useState(false);
 
   // Fetch subjects
   const { data: subjects = [] } = useQuery({
@@ -57,7 +90,7 @@ export default function ReportCardTemplates() {
   });
 
   // Fetch templates
-  const { data: templates = [], isLoading } = useQuery({
+  const { data: templates = [], isLoading, isFetched } = useQuery({
     queryKey: ['report-card-templates'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -83,6 +116,41 @@ export default function ReportCardTemplates() {
       })) as ReportTemplate[];
     },
   });
+
+  // Auto-seed a demo template if none exist
+  useEffect(() => {
+    const seedDemoTemplate = async () => {
+      if (!isFetched || isLoading || seedingDemo) return;
+      if (templates.length > 0) return; // Already have templates
+      if (!user?.id) return;
+
+      setSeedingDemo(true);
+      try {
+        const { error } = await supabase
+          .from('exam_templates')
+          .insert({
+            name: 'Sample Report Card - Quran & Islamic Studies',
+            subject_id: null,
+            tenure: 'monthly' as ExamTenure,
+            description: 'Demo template with Quran Recitation and Islamic Studies sections. Max: 70 marks.',
+            structure_json: createSampleTemplateStructure() as unknown as Database['public']['Tables']['exam_templates']['Insert']['structure_json'],
+            created_by: user.id,
+            is_active: true,
+          });
+        
+        if (!error) {
+          queryClient.invalidateQueries({ queryKey: ['report-card-templates'] });
+          toast({ title: 'Demo Template Created', description: 'A sample report card template has been added for reference.' });
+        }
+      } catch (e) {
+        console.error('Failed to seed demo template:', e);
+      } finally {
+        setSeedingDemo(false);
+      }
+    };
+
+    seedDemoTemplate();
+  }, [isFetched, isLoading, templates.length, user?.id, seedingDemo]);
 
   // Create template mutation
   const createMutation = useMutation({
