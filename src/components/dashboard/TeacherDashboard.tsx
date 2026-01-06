@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { SmartSessionRibbon } from './SmartSessionRibbon';
 import { CourseDeckCarousel } from './CourseDeckCarousel';
+import { LaunchClassCard } from './LaunchClassCard';
 
 export function TeacherDashboard() {
   const { profile, user } = useAuth();
@@ -97,6 +98,9 @@ export function TeacherDashboard() {
 
       {/* Course Deck Carousel */}
       <CourseDeckCarousel />
+
+      {/* Launch Class Card */}
+      <LaunchClassCard />
 
       {/* Today's Summary */}
       <Card>

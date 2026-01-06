@@ -54,10 +54,13 @@ export type Database = {
           id: string
           input_unit: string | null
           lesson_covered: string | null
+          lesson_number: number | null
           lesson_type: string | null
           lines_completed: number | null
           manzil_completed: boolean | null
+          manzil_done: boolean | null
           manzil_notes: string | null
+          page_number: number | null
           progress_marker: string | null
           raw_input_amount: number | null
           reason: string | null
@@ -68,7 +71,12 @@ export type Database = {
           revision_done: boolean | null
           revision_notes: string | null
           sabaq: string | null
+          sabaq_ayah_from: number | null
+          sabaq_ayah_to: number | null
           sabaq_pages: string | null
+          sabaq_surah_from: string | null
+          sabaq_surah_to: string | null
+          sabqi_done: boolean | null
           sabqi_notes: string | null
           status: string
           student_id: string
@@ -89,10 +97,13 @@ export type Database = {
           id?: string
           input_unit?: string | null
           lesson_covered?: string | null
+          lesson_number?: number | null
           lesson_type?: string | null
           lines_completed?: number | null
           manzil_completed?: boolean | null
+          manzil_done?: boolean | null
           manzil_notes?: string | null
+          page_number?: number | null
           progress_marker?: string | null
           raw_input_amount?: number | null
           reason?: string | null
@@ -103,7 +114,12 @@ export type Database = {
           revision_done?: boolean | null
           revision_notes?: string | null
           sabaq?: string | null
+          sabaq_ayah_from?: number | null
+          sabaq_ayah_to?: number | null
           sabaq_pages?: string | null
+          sabaq_surah_from?: string | null
+          sabaq_surah_to?: string | null
+          sabqi_done?: boolean | null
           sabqi_notes?: string | null
           status: string
           student_id: string
@@ -124,10 +140,13 @@ export type Database = {
           id?: string
           input_unit?: string | null
           lesson_covered?: string | null
+          lesson_number?: number | null
           lesson_type?: string | null
           lines_completed?: number | null
           manzil_completed?: boolean | null
+          manzil_done?: boolean | null
           manzil_notes?: string | null
+          page_number?: number | null
           progress_marker?: string | null
           raw_input_amount?: number | null
           reason?: string | null
@@ -138,7 +157,12 @@ export type Database = {
           revision_done?: boolean | null
           revision_notes?: string | null
           sabaq?: string | null
+          sabaq_ayah_from?: number | null
+          sabaq_ayah_to?: number | null
           sabaq_pages?: string | null
+          sabaq_surah_from?: string | null
+          sabaq_surah_to?: string | null
+          sabqi_done?: boolean | null
           sabqi_notes?: string | null
           status?: string
           student_id?: string
@@ -642,6 +666,7 @@ export type Database = {
           full_name: string
           gender: string | null
           id: string
+          meeting_link: string | null
           mushaf_type: string
           preferred_language: string | null
           preferred_unit: string
@@ -659,6 +684,7 @@ export type Database = {
           full_name: string
           gender?: string | null
           id?: string
+          meeting_link?: string | null
           mushaf_type?: string
           preferred_language?: string | null
           preferred_unit?: string
@@ -676,6 +702,7 @@ export type Database = {
           full_name?: string
           gender?: string | null
           id?: string
+          meeting_link?: string | null
           mushaf_type?: string
           preferred_language?: string | null
           preferred_unit?: string
@@ -871,10 +898,13 @@ export type Database = {
           assignment_id: string | null
           ayah_from: number | null
           ayah_to: number | null
+          calculated_daily_target: number | null
           created_at: string
           daily_target: number
           goals: string | null
           id: string
+          lesson_number_from: number | null
+          lesson_number_to: number | null
           month: string
           monthly_target: number
           notes: string | null
@@ -885,9 +915,13 @@ export type Database = {
           status: Database["public"]["Enums"]["plan_status"]
           student_id: string
           subject_id: string | null
+          surah_from: string | null
           surah_name: string | null
+          surah_to: string | null
           teacher_id: string
+          teaching_strategy: string | null
           topics_to_cover: string | null
+          total_teaching_days: number | null
           updated_at: string
           year: string
         }
@@ -897,10 +931,13 @@ export type Database = {
           assignment_id?: string | null
           ayah_from?: number | null
           ayah_to?: number | null
+          calculated_daily_target?: number | null
           created_at?: string
           daily_target?: number
           goals?: string | null
           id?: string
+          lesson_number_from?: number | null
+          lesson_number_to?: number | null
           month: string
           monthly_target?: number
           notes?: string | null
@@ -911,9 +948,13 @@ export type Database = {
           status?: Database["public"]["Enums"]["plan_status"]
           student_id: string
           subject_id?: string | null
+          surah_from?: string | null
           surah_name?: string | null
+          surah_to?: string | null
           teacher_id: string
+          teaching_strategy?: string | null
           topics_to_cover?: string | null
+          total_teaching_days?: number | null
           updated_at?: string
           year: string
         }
@@ -923,10 +964,13 @@ export type Database = {
           assignment_id?: string | null
           ayah_from?: number | null
           ayah_to?: number | null
+          calculated_daily_target?: number | null
           created_at?: string
           daily_target?: number
           goals?: string | null
           id?: string
+          lesson_number_from?: number | null
+          lesson_number_to?: number | null
           month?: string
           monthly_target?: number
           notes?: string | null
@@ -937,9 +981,13 @@ export type Database = {
           status?: Database["public"]["Enums"]["plan_status"]
           student_id?: string
           subject_id?: string | null
+          surah_from?: string | null
           surah_name?: string | null
+          surah_to?: string | null
           teacher_id?: string
+          teaching_strategy?: string | null
           topics_to_cover?: string | null
+          total_teaching_days?: number | null
           updated_at?: string
           year?: string
         }
