@@ -2,13 +2,14 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { StatCard } from './StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, CheckCircle, BookOpen, User, AlertCircle, Target, MessageSquare } from 'lucide-react';
+import { Calendar, CheckCircle, BookOpen, User, AlertCircle, Target, MessageSquare, Video } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { WeeklyProgressChart } from '@/components/progress/WeeklyProgressChart';
 import { ProgressRing } from '@/components/progress/ProgressRing';
+import { JoinClassButton } from '@/components/zoom/JoinClassButton';
 
 export function StudentDashboard() {
   const { profile, user } = useAuth();
@@ -142,12 +143,26 @@ export function StudentDashboard() {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      {/* Header */}
-      <div>
-        <h1 className="font-serif text-3xl font-bold text-foreground">
-          Welcome, {profile?.full_name || 'Student'}
-        </h1>
-        <p className="text-muted-foreground mt-1">Track your Quran learning progress</p>
+      {/* Header with Join Class Button */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="font-serif text-3xl font-bold text-foreground">
+            Welcome, {profile?.full_name || 'Student'}
+          </h1>
+          <p className="text-muted-foreground mt-1">Track your Quran learning progress</p>
+        </div>
+        
+        {/* Join Class Button */}
+        <Card className="p-4 bg-gradient-to-r from-emerald-50 to-emerald-100/50 dark:from-emerald-900/20 dark:to-emerald-800/10 border-emerald-200 dark:border-emerald-800">
+          <div className="flex items-center gap-3">
+            <Video className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">Live Class</p>
+              <p className="text-xs text-emerald-600/80 dark:text-emerald-400/80">Join when teacher starts</p>
+            </div>
+            <JoinClassButton />
+          </div>
+        </Card>
       </div>
 
       {/* Current Lesson & Homework Card - Prominently displayed */}
