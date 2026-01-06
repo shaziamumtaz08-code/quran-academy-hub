@@ -185,7 +185,7 @@ export function StudentDetailDrawer({
 
   // Get timezone abbreviations
   const teacherCode = COUNTRY_CODES[teacherProfile?.country || 'Pakistan'] || teacherProfile?.country?.slice(0, 2).toUpperCase() || 'PK';
-  const studentCode = COUNTRY_CODES[profile?.country || 'Canada'] || profile?.country?.slice(0, 2).toUpperCase() || 'CA';
+  const studentCode = COUNTRY_CODES[profile?.country || 'Pakistan'] || profile?.country?.slice(0, 2).toUpperCase() || 'PK';
 
   const isLoading = loadingProfile || loadingSchedules || loadingPlan;
 

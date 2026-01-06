@@ -44,6 +44,23 @@ const getTzAbbr = (tzValue: string | null) => {
   return TIMEZONES.find(tz => tz.value === tzValue)?.abbr || '??';
 };
 
+// Country code abbreviations for timezone display
+const COUNTRY_CODES: Record<string, string> = {
+  Pakistan: 'PK',
+  Canada: 'CA',
+  USA: 'US',
+  UK: 'UK',
+  UAE: 'AE',
+  'Saudi Arabia': 'SA',
+  India: 'IN',
+  Australia: 'AU',
+};
+
+const getCountryCode = (country: string | null | undefined) => {
+  const c = country || 'Pakistan';
+  return COUNTRY_CODES[c] || c.slice(0, 2).toUpperCase() || 'PK';
+};
+
 type AssignmentStatus = 'active' | 'paused' | 'completed';
 
 interface Assignment {
@@ -56,6 +73,10 @@ interface Assignment {
   subject_name: string | null;
   student_timezone: string | null;
   teacher_timezone: string | null;
+  student_country: string | null;
+  student_city: string | null;
+  teacher_country: string | null;
+  teacher_city: string | null;
 }
 
 interface Schedule {
@@ -66,6 +87,8 @@ interface Schedule {
   teacher_local_time: string;
   duration_minutes: number;
   is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // Helper to calculate teacher time from student time based on timezone offsets
@@ -222,8 +245,8 @@ export default function Schedules() {
           status,
           student_timezone,
           teacher_timezone,
-          teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name),
-          student:profiles!student_teacher_assignments_student_id_fkey(full_name),
+          teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name, country, city),
+          student:profiles!student_teacher_assignments_student_id_fkey(full_name, country, city),
           subject:subjects(name)
         `)
         .eq('status', 'active');
@@ -239,6 +262,10 @@ export default function Schedules() {
         subject_name: row.subject?.name || null,
         student_timezone: row.student_timezone,
         teacher_timezone: row.teacher_timezone,
+        student_country: row.student?.country || null,
+        student_city: row.student?.city || null,
+        teacher_country: row.teacher?.country || null,
+        teacher_city: row.teacher?.city || null,
       })) as Assignment[];
     },
   });
@@ -256,6 +283,36 @@ export default function Schedules() {
       return (data || []) as Schedule[];
     },
   });
+
+  // Fetch location→timezone mappings
+  const { data: timezoneMappings = [] } = useQuery({
+    queryKey: ['timezone-mappings'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('timezone_mappings')
+        .select('country, city, timezone');
+      if (error) throw error;
+      return (data || []) as { country: string; city: string; timezone: string }[];
+    },
+  });
+
+  const tzByLocation = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of timezoneMappings) m.set(`${r.country}|${r.city}`, r.timezone);
+    return m;
+  }, [timezoneMappings]);
+
+  const resolveTimezone = (
+    country: string | null | undefined,
+    city: string | null | undefined,
+    fallback: string | null | undefined
+  ) => {
+    if (country && city) {
+      const tz = tzByLocation.get(`${country}|${city}`);
+      if (tz) return tz;
+    }
+    return fallback || 'Asia/Karachi';
+  };
 
   // Create schedule mutation
   const createScheduleMutation = useMutation({
@@ -340,7 +397,29 @@ export default function Schedules() {
   });
 
   const getSchedulesForAssignment = (assignmentId: string) => {
-    return schedules.filter(s => s.assignment_id === assignmentId);
+    const list = schedules.filter(s => s.assignment_id === assignmentId);
+
+    // Deduplicate in case multiple schedules exist for the same day
+    // (we keep the most recently updated/created one).
+    const byDay = new Map<string, Schedule>();
+    for (const s of list) {
+      const dayKey = (s.day_of_week || '').toLowerCase();
+      const existing = byDay.get(dayKey);
+
+      if (!existing) {
+        byDay.set(dayKey, { ...s, day_of_week: dayKey });
+        continue;
+      }
+
+      const existingTs = existing.updated_at ?? existing.created_at ?? '';
+      const candidateTs = s.updated_at ?? s.created_at ?? '';
+
+      if (candidateTs >= existingTs) {
+        byDay.set(dayKey, { ...s, day_of_week: dayKey });
+      }
+    }
+
+    return DAYS_OF_WEEK.map(day => byDay.get(day)).filter(Boolean) as Schedule[];
   };
 
   const toggleExpanded = (assignmentId: string) => {
@@ -370,8 +449,16 @@ export default function Schedules() {
     setNewSchedule(prev => ({
       ...prev,
       assignmentId,
-      studentTimezone: assignment?.student_timezone || 'America/Toronto',
-      teacherTimezone: assignment?.teacher_timezone || 'Asia/Karachi',
+      studentTimezone: resolveTimezone(
+        assignment?.student_country,
+        assignment?.student_city,
+        assignment?.student_timezone
+      ),
+      teacherTimezone: resolveTimezone(
+        assignment?.teacher_country,
+        assignment?.teacher_city,
+        assignment?.teacher_timezone
+      ),
     }));
   };
 
@@ -380,8 +467,16 @@ export default function Schedules() {
     setBulkSchedule(prev => ({
       ...prev,
       assignmentId,
-      studentTimezone: assignment?.student_timezone || 'America/Toronto',
-      teacherTimezone: assignment?.teacher_timezone || 'Asia/Karachi',
+      studentTimezone: resolveTimezone(
+        assignment?.student_country,
+        assignment?.student_city,
+        assignment?.student_timezone
+      ),
+      teacherTimezone: resolveTimezone(
+        assignment?.teacher_country,
+        assignment?.teacher_city,
+        assignment?.teacher_timezone
+      ),
     }));
   };
 
@@ -416,8 +511,16 @@ export default function Schedules() {
       assignmentId: schedule.assignment_id,
       day: schedule.day_of_week,
       studentTime: schedule.student_local_time,
-      studentTimezone: assignment.student_timezone || 'America/Toronto',
-      teacherTimezone: assignment.teacher_timezone || 'Asia/Karachi',
+      studentTimezone: resolveTimezone(
+        assignment.student_country,
+        assignment.student_city,
+        assignment.student_timezone
+      ),
+      teacherTimezone: resolveTimezone(
+        assignment.teacher_country,
+        assignment.teacher_city,
+        assignment.teacher_timezone
+      ),
       duration: schedule.duration_minutes.toString(),
     });
     setIsDialogOpen(true);
@@ -430,11 +533,10 @@ export default function Schedules() {
     }
 
     // Validate timezones are set
-    const assignment = assignments.find(a => a.id === newSchedule.assignmentId);
-    if (!assignment?.student_timezone || !assignment?.teacher_timezone) {
+    if (!newSchedule.studentTimezone || !newSchedule.teacherTimezone) {
       toast({
         title: 'Missing Timezone',
-        description: 'Please configure student and teacher timezones in the assignment before creating a schedule.',
+        description: 'Please set student/teacher location (or timezone) before creating a schedule.',
         variant: 'destructive',
       });
       return;
@@ -483,11 +585,10 @@ export default function Schedules() {
     }
 
     // Validate timezones are set
-    const assignment = assignments.find(a => a.id === bulkSchedule.assignmentId);
-    if (!assignment?.student_timezone || !assignment?.teacher_timezone) {
+    if (!bulkSchedule.studentTimezone || !bulkSchedule.teacherTimezone) {
       toast({
         title: 'Missing Timezone',
-        description: 'Please configure student and teacher timezones in the assignment before creating schedules.',
+        description: 'Please set student/teacher location (or timezone) before creating schedules.',
         variant: 'destructive',
       });
       return;
@@ -796,8 +897,10 @@ export default function Schedules() {
                   const isExpanded = expandedAssignments.has(assignment.id);
                   const assignmentSchedules = getSchedulesForAssignment(assignment.id);
                   const todaysClass = assignmentSchedules.find(s => s.day_of_week === todayDayName);
-                  const studentTzAbbr = getTzAbbr(assignment.student_timezone);
-                  const teacherTzAbbr = getTzAbbr(assignment.teacher_timezone);
+
+                  const studentCode = getCountryCode(assignment.student_country);
+                  const teacherCode = getCountryCode(assignment.teacher_country);
+
                   const timeViewMode = calendarTimeView[assignment.id] || 'student';
 
                   return (
@@ -828,10 +931,10 @@ export default function Schedules() {
                           {todaysClass ? (
                             <span className="text-sm font-medium">
                               <span className="text-primary">{formatTime12h(todaysClass.student_local_time)}</span>
-                              <span className="text-muted-foreground text-xs ml-1">({studentTzAbbr})</span>
+                              <span className="text-muted-foreground text-xs ml-1">({studentCode})</span>
                               <span className="text-muted-foreground mx-1">/</span>
                               <span className="text-foreground">{formatTime12h(todaysClass.teacher_local_time)}</span>
-                              <span className="text-muted-foreground text-xs ml-1">({teacherTzAbbr})</span>
+                              <span className="text-muted-foreground text-xs ml-1">({teacherCode})</span>
                             </span>
                           ) : (
                             <span className="text-muted-foreground text-sm">No class today</span>
@@ -865,7 +968,7 @@ export default function Schedules() {
                                     className="h-7 text-xs px-2"
                                     onClick={() => setCalendarTimeView(prev => ({ ...prev, [assignment.id]: 'student' }))}
                                   >
-                                    Show {studentTzAbbr} Time
+                                    Show Student ({studentCode})
                                   </Button>
                                   <Button
                                     variant={timeViewMode === 'teacher' ? 'default' : 'outline'}
@@ -873,7 +976,7 @@ export default function Schedules() {
                                     className="h-7 text-xs px-2"
                                     onClick={() => setCalendarTimeView(prev => ({ ...prev, [assignment.id]: 'teacher' }))}
                                   >
-                                    Show {teacherTzAbbr} Time
+                                    Show Teacher ({teacherCode})
                                   </Button>
                                 </div>
                               </div>
@@ -884,7 +987,7 @@ export default function Schedules() {
                                   const displayTime = daySchedule
                                     ? (timeViewMode === 'teacher' ? daySchedule.teacher_local_time : daySchedule.student_local_time)
                                     : null;
-                                  const displayTzAbbr = timeViewMode === 'teacher' ? teacherTzAbbr : studentTzAbbr;
+                                  const displayTzAbbr = timeViewMode === 'teacher' ? teacherCode : studentCode;
 
                                   return (
                                     <Card
