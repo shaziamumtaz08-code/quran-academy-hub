@@ -125,11 +125,13 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
           id,
           teacher_id,
           actual_start,
+          scheduled_start,
           status,
           group_id,
           license:zoom_licenses(id, zoom_email, meeting_link)
         `)
-        .eq('status', 'live');
+        .in('status', ['live', 'scheduled'])
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       if (!sessions || sessions.length === 0) return [];
@@ -330,29 +332,53 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
             <div className="space-y-3">
               <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                Active Classes ({liveSessions.length})
+                Sessions ({liveSessions.length})
               </h4>
               <div className="grid gap-3">
                 {liveSessions.map((session) => {
                   const licenseData = session.license as any;
                   const meetingLink = licenseData?.meeting_link;
                   const licenseId = licenseData?.id;
+                  const isLive = session.status === 'live';
+                  const displayTime = session.actual_start || session.scheduled_start;
 
                   return (
                     <div
                       key={session.id}
-                      className="bg-gradient-to-r from-accent/5 to-transparent rounded-xl p-4 border border-accent/20"
+                      className={cn(
+                        "rounded-xl p-4 border",
+                        isLive 
+                          ? "bg-gradient-to-r from-accent/5 to-transparent border-accent/20" 
+                          : "bg-gradient-to-r from-amber-50 dark:from-amber-900/10 to-transparent border-amber-200 dark:border-amber-800/30"
+                      )}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                           <div className="relative">
-                            <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center">
-                              <Video className="h-5 w-5 text-accent" />
+                            <div className={cn(
+                              "w-12 h-12 rounded-full flex items-center justify-center",
+                              isLive ? "bg-accent/10" : "bg-amber-100 dark:bg-amber-900/30"
+                            )}>
+                              <Video className={cn("h-5 w-5", isLive ? "text-accent" : "text-amber-600")} />
                             </div>
+                            {/* Status Badge */}
+                            <Badge 
+                              variant="secondary" 
+                              className={cn(
+                                "absolute -bottom-1 -right-1 text-[9px] px-1.5 py-0",
+                                isLive 
+                                  ? "bg-red-500 text-white animate-pulse" 
+                                  : "bg-amber-500 text-white"
+                              )}
+                            >
+                              {isLive ? 'LIVE' : 'Ready'}
+                            </Badge>
                           </div>
                           <div>
                             <p className="text-sm font-semibold text-foreground">{session.teacherName}</p>
-                            <p className="text-xs text-muted-foreground">{licenseData?.zoom_email?.split('@')[0]}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {licenseData?.zoom_email?.split('@')[0] || 'No license assigned'}
+                            </p>
                           </div>
                         </div>
 
@@ -360,13 +386,27 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
                         <div className="flex items-center gap-4">
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <div className="flex items-center gap-2 cursor-pointer bg-emerald-50 dark:bg-emerald-900/30 px-4 py-2 rounded-xl border border-emerald-200 dark:border-emerald-800">
-                                <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
-                                <span className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">
+                              <div className={cn(
+                                "flex items-center gap-2 cursor-pointer px-4 py-2 rounded-xl border",
+                                isLive 
+                                  ? "bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800"
+                                  : "bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800"
+                              )}>
+                                <div className={cn(
+                                  "w-3 h-3 rounded-full",
+                                  isLive ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
+                                )} />
+                                <span className={cn(
+                                  "text-2xl font-bold",
+                                  isLive ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"
+                                )}>
                                   {session.activeCount}
                                 </span>
-                                <span className="text-xs text-emerald-600 dark:text-emerald-400">
-                                  Active
+                                <span className={cn(
+                                  "text-xs",
+                                  isLive ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
+                                )}>
+                                  {isLive ? 'Active' : 'Waiting'}
                                 </span>
                               </div>
                             </TooltipTrigger>
@@ -392,11 +432,15 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
                           </Tooltip>
 
                           <div className="text-right">
-                            <div className="flex items-center gap-1.5 text-accent">
+                            <div className={cn("flex items-center gap-1.5", isLive ? "text-accent" : "text-amber-600")}>
                               <Clock className="h-4 w-4" />
-                              <span className="text-lg font-mono font-bold">{formatDuration(session.actual_start)}</span>
+                              <span className="text-lg font-mono font-bold">
+                                {isLive ? formatDuration(session.actual_start) : format(new Date(displayTime || new Date()), 'HH:mm')}
+                              </span>
                             </div>
-                            <p className="text-[10px] text-muted-foreground mt-0.5">Duration</p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              {isLive ? 'Duration' : 'Scheduled'}
+                            </p>
                           </div>
                         </div>
                       </div>
