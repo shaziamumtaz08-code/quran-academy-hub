@@ -815,34 +815,29 @@ export default function Schedules() {
                         ))}
                       </div>
                     </div>
-                    {/* Location info banner */}
+                    {/* Location info banner with frozen timezones */}
                     {bulkSelectedAssignment && (
-                      <div className="sm:col-span-2 lg:col-span-3 p-2 bg-muted/50 rounded-md border border-border flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-1">
-                            <Globe className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-muted-foreground">Student:</span>
-                            <Badge variant="outline" className="text-xs">{bulkSelectedAssignment.student_city || 'Unknown'}, {bulkSelectedAssignment.student_country || 'Unknown'}</Badge>
+                      <div className="sm:col-span-2 lg:col-span-3 p-3 bg-muted/50 rounded-md border border-border">
+                        <div className="grid grid-cols-2 gap-4 text-xs">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              <Globe className="h-3 w-3" />
+                              <span>Student:</span>
+                            </div>
+                            <div className="font-medium">{bulkSelectedAssignment.student_city || 'Unknown'}, {bulkSelectedAssignment.student_country || 'Unknown'}</div>
+                            <Badge variant="secondary" className="text-xs">{getCountryCode(bulkSelectedAssignment.student_country)} - {getTzAbbr(bulkSchedule.studentTimezone)}</Badge>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <Globe className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-muted-foreground">Teacher:</span>
-                            <Badge variant="outline" className="text-xs">{bulkSelectedAssignment.teacher_city || 'Unknown'}, {bulkSelectedAssignment.teacher_country || 'Unknown'}</Badge>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              <Globe className="h-3 w-3" />
+                              <span>Teacher:</span>
+                            </div>
+                            <div className="font-medium">{bulkSelectedAssignment.teacher_city || 'Unknown'}, {bulkSelectedAssignment.teacher_country || 'Unknown'}</div>
+                            <Badge variant="secondary" className="text-xs">{getCountryCode(bulkSelectedAssignment.teacher_country)} - {getTzAbbr(bulkSchedule.teacherTimezone)}</Badge>
                           </div>
                         </div>
                       </div>
                     )}
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Student TZ ({getCountryCode(bulkSelectedAssignment?.student_country)})</Label>
-                      <Select value={bulkSchedule.studentTimezone} onValueChange={handleBulkStudentTimezoneChange}>
-                        <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {TIMEZONES.map((tz) => (
-                            <SelectItem key={tz.value} value={tz.value}>{tz.abbr} - {tz.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs">Student Time *</Label>
                       <Input
@@ -851,6 +846,12 @@ export default function Schedules() {
                         onChange={(e) => handleBulkStudentTimeChange(e.target.value)}
                         className="h-9"
                       />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Teacher Time (auto)</Label>
+                      <div className="h-9 px-3 flex items-center bg-muted rounded-md border border-input text-sm">
+                        {bulkSchedule.teacherTime ? formatTime12h(bulkSchedule.teacherTime) : '--:-- --'}
+                      </div>
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs">Duration</Label>
@@ -862,26 +863,6 @@ export default function Schedules() {
                           <SelectItem value="60">60 min</SelectItem>
                         </SelectContent>
                       </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Teacher TZ ({getCountryCode(bulkSelectedAssignment?.teacher_country)})</Label>
-                      <Select value={bulkSchedule.teacherTimezone} onValueChange={handleBulkTeacherTimezoneChange}>
-                        <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {TIMEZONES.map((tz) => (
-                            <SelectItem key={tz.value} value={tz.value}>{tz.abbr} - {tz.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Teacher Time</Label>
-                      <Input
-                        type="time"
-                        value={bulkSchedule.teacherTime}
-                        onChange={(e) => handleBulkTeacherTimeChange(e.target.value)}
-                        className="h-9"
-                      />
                     </div>
                   </div>
                   <div className="flex justify-end gap-2 pt-3 border-t border-blue-200 dark:border-blue-800 mt-3">
@@ -944,52 +925,38 @@ export default function Schedules() {
                         </SelectContent>
                       </Select>
                     </div>
-                    {/* Location info banner */}
+                    {/* Location info banner with frozen timezones */}
                     {selectedAssignment && (
-                      <div className="sm:col-span-2 lg:col-span-3 p-2 bg-muted/50 rounded-md border border-border flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-1">
-                            <Globe className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-muted-foreground">Student:</span>
-                            <Badge variant="outline" className="text-xs">{selectedAssignment.student_city || 'Unknown'}, {selectedAssignment.student_country || 'Unknown'}</Badge>
+                      <div className="sm:col-span-2 lg:col-span-3 p-3 bg-muted/50 rounded-md border border-border">
+                        <div className="grid grid-cols-2 gap-4 text-xs">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              <Globe className="h-3 w-3" />
+                              <span>Student:</span>
+                            </div>
+                            <div className="font-medium">{selectedAssignment.student_city || 'Unknown'}, {selectedAssignment.student_country || 'Unknown'}</div>
+                            <Badge variant="secondary" className="text-xs">{getCountryCode(selectedAssignment.student_country)} - {getTzAbbr(newSchedule.studentTimezone)}</Badge>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <Globe className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-muted-foreground">Teacher:</span>
-                            <Badge variant="outline" className="text-xs">{selectedAssignment.teacher_city || 'Unknown'}, {selectedAssignment.teacher_country || 'Unknown'}</Badge>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              <Globe className="h-3 w-3" />
+                              <span>Teacher:</span>
+                            </div>
+                            <div className="font-medium">{selectedAssignment.teacher_city || 'Unknown'}, {selectedAssignment.teacher_country || 'Unknown'}</div>
+                            <Badge variant="secondary" className="text-xs">{getCountryCode(selectedAssignment.teacher_country)} - {getTzAbbr(newSchedule.teacherTimezone)}</Badge>
                           </div>
                         </div>
                       </div>
                     )}
                     <div className="space-y-1.5">
-                      <Label className="text-xs">Student TZ ({getCountryCode(selectedAssignment?.student_country)})</Label>
-                      <Select value={newSchedule.studentTimezone} onValueChange={handleStudentTimezoneChange}>
-                        <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {TIMEZONES.map((tz) => (
-                            <SelectItem key={tz.value} value={tz.value}>{tz.abbr} - {tz.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
                       <Label className="text-xs">Student Time *</Label>
                       <Input type="time" value={newSchedule.studentTime} onChange={(e) => handleStudentTimeChange(e.target.value)} className="h-9" />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs">Teacher TZ ({getCountryCode(selectedAssignment?.teacher_country)})</Label>
-                      <Select value={newSchedule.teacherTimezone} onValueChange={handleTeacherTimezoneChange}>
-                        <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {TIMEZONES.map((tz) => (
-                            <SelectItem key={tz.value} value={tz.value}>{tz.abbr} - {tz.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Teacher Time</Label>
-                      <Input type="time" value={newSchedule.teacherTime} onChange={(e) => handleTeacherTimeChange(e.target.value)} className="h-9" />
+                      <Label className="text-xs">Teacher Time (auto)</Label>
+                      <div className="h-9 px-3 flex items-center bg-muted rounded-md border border-input text-sm">
+                        {newSchedule.teacherTime ? formatTime12h(newSchedule.teacherTime) : '--:-- --'}
+                      </div>
                     </div>
                   </div>
                   <div className="flex justify-end gap-2 pt-3 border-t border-blue-200 dark:border-blue-800 mt-3">
