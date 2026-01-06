@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FunctionsFetchError, FunctionsHttpError, FunctionsRelayError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -77,6 +77,7 @@ import {
 import { BulkUserImportDialog } from '@/components/users/BulkUserImportDialog';
 import { ExportUsersDialog } from '@/components/users/ExportUsersDialog';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Country, State, City, ICountry, IState, ICity } from 'country-state-city';
 
 const ALL_PERMISSIONS = [
   { group: 'Users', permissions: ['users.view', 'users.create', 'users.edit', 'users.delete', 'users.assign_roles'] },
@@ -152,6 +153,8 @@ export default function UserManagement() {
   const [newUserWhatsapp, setNewUserWhatsapp] = useState('');
   const [newUserGender, setNewUserGender] = useState<'male' | 'female' | ''>('');
   const [newUserAge, setNewUserAge] = useState('');
+  const [newUserCountry, setNewUserCountry] = useState('PK');  // ISO code default Pakistan
+  const [newUserCity, setNewUserCity] = useState('');
   const [showNewUserPassword, setShowNewUserPassword] = useState(false);
   const [addRoleSelection, setAddRoleSelection] = useState<AppRole>('student');
 
@@ -250,7 +253,7 @@ export default function UserManagement() {
     },
   });
 
-  // Fetch timezone mappings for country/city dropdowns
+  // Fetch timezone mappings for country/city dropdowns (kept for edit backward compat)
   const { data: timezoneMappings = [] } = useQuery({
     queryKey: ['timezone-mappings'],
     queryFn: async () => {
@@ -265,12 +268,24 @@ export default function UserManagement() {
     },
   });
 
-  // Get unique countries
-  const countries = [...new Set(timezoneMappings.map(t => t.country))];
+  // Get unique countries (from timezone_mappings for backward compat - used in edit form as fallback)
+  const oldCountries = [...new Set(timezoneMappings.map(t => t.country))];
   
-  // Get cities for selected country
-  const getCitiesForCountry = (country: string) => {
+  // Get cities for selected country (legacy)
+  const getCitiesForCountryOld = (country: string) => {
     return timezoneMappings.filter(t => t.country === country).map(t => t.city);
+  };
+
+  // World data from country-state-city
+  const allCountries = useMemo(() => Country.getAllCountries(), []);
+  const getCitiesForCountry = (countryCode: string) => {
+    return City.getCitiesOfCountry(countryCode) || [];
+  };
+
+  // Helper to get country name from ISO code
+  const getCountryName = (isoCode: string) => {
+    const c = Country.getCountryByCode(isoCode);
+    return c ? c.name : isoCode;
   };
 
   // Add role to user mutation
@@ -405,6 +420,8 @@ export default function UserManagement() {
       whatsapp,
       gender,
       age,
+      country,
+      city,
     }: {
       email: string;
       password: string;
@@ -413,9 +430,11 @@ export default function UserManagement() {
       whatsapp?: string;
       gender?: 'male' | 'female';
       age?: number;
+      country?: string;
+      city?: string;
     }) => {
       const { data, error } = await supabase.functions.invoke('admin-create-user', {
-        body: { email, password, fullName, role, whatsapp, gender, age },
+        body: { email, password, fullName, role, whatsapp, gender, age, country, city },
       });
       if (error) throw new Error(error.message || 'Failed to create user');
       if (data?.error) throw new Error(data.error);
@@ -452,6 +471,8 @@ export default function UserManagement() {
       setNewUserWhatsapp('');
       setNewUserGender('');
       setNewUserAge('');
+      setNewUserCountry('PK');
+      setNewUserCity('');
       setIsCreateDialogOpen(false);
     },
     onError: (error) => {
@@ -726,7 +747,40 @@ export default function UserManagement() {
                           className="h-9"
                         />
                       </div>
-                      {/* Row 3 */}
+                      {/* Row 3 - Country/City */}
+                      <div className="space-y-1.5">
+                        <Label htmlFor="new-country" className="text-xs">Country</Label>
+                        <Select 
+                          value={newUserCountry} 
+                          onValueChange={(v) => {
+                            setNewUserCountry(v);
+                            setNewUserCity('');
+                          }}
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue placeholder="Select country" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-60">
+                            {allCountries.map((c) => (
+                              <SelectItem key={c.isoCode} value={c.isoCode}>{c.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="new-city" className="text-xs">City</Label>
+                        <Select value={newUserCity} onValueChange={setNewUserCity}>
+                          <SelectTrigger className="h-9">
+                            <SelectValue placeholder="Select city" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-60">
+                            {getCitiesForCountry(newUserCountry).map((city) => (
+                              <SelectItem key={city.name} value={city.name}>{city.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {/* Row 4 */}
                       <div className="space-y-1.5">
                         <Label htmlFor="whatsapp" className="text-xs">WhatsApp</Label>
                         <Input
@@ -767,6 +821,8 @@ export default function UserManagement() {
                             whatsapp: newUserWhatsapp.trim() || undefined,
                             gender: newUserGender || undefined,
                             age: newUserAge ? parseInt(newUserAge) : undefined,
+                            country: newUserCountry ? getCountryName(newUserCountry) : undefined,
+                            city: newUserCity || undefined,
                           });
                         }}
                       >
@@ -1449,17 +1505,15 @@ export default function UserManagement() {
                             value={editCountry} 
                             onValueChange={(v) => {
                               setEditCountry(v);
-                              // Reset city when country changes
-                              const cities = getCitiesForCountry(v);
-                              setEditCity(cities[0] || '');
+                              setEditCity('');
                             }}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Select country" />
                             </SelectTrigger>
-                            <SelectContent>
-                              {countries.map((country) => (
-                                <SelectItem key={country} value={country}>{country}</SelectItem>
+                            <SelectContent className="max-h-60">
+                              {allCountries.map((c) => (
+                                <SelectItem key={c.isoCode} value={c.name}>{c.name}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
@@ -1470,10 +1524,17 @@ export default function UserManagement() {
                             <SelectTrigger>
                               <SelectValue placeholder="Select city" />
                             </SelectTrigger>
-                            <SelectContent>
-                              {getCitiesForCountry(editCountry).map((city) => (
-                                <SelectItem key={city} value={city}>{city}</SelectItem>
-                              ))}
+                            <SelectContent className="max-h-60">
+                              {(() => {
+                                const countryObj = allCountries.find(c => c.name === editCountry);
+                                if (countryObj) {
+                                  const cities = getCitiesForCountry(countryObj.isoCode);
+                                  return cities.map((city) => (
+                                    <SelectItem key={city.name} value={city.name}>{city.name}</SelectItem>
+                                  ));
+                                }
+                                return null;
+                              })()}
                             </SelectContent>
                           </Select>
                         </div>
