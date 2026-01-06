@@ -3,14 +3,26 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Video, Users, Clock, Wifi, WifiOff, User, Activity } from 'lucide-react';
-import { format, differenceInMinutes, differenceInSeconds } from 'date-fns';
+import { Video, Clock, Wifi, WifiOff, User, Activity } from 'lucide-react';
+import { format, differenceInSeconds } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface AdminLiveMonitorProps {
   className?: string;
+}
+
+interface SessionParticipant {
+  userId: string;
+  userName: string;
+  isTeacher: boolean;
 }
 
 export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
@@ -36,7 +48,7 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
     refetchInterval: 10000,
   });
 
-  // Fetch active live sessions with teacher info and student count
+  // Fetch active live sessions with participants (simple headcount)
   const { data: liveSessions, isLoading: sessionsLoading } = useQuery({
     queryKey: ['active-live-sessions-monitor'],
     queryFn: async () => {
@@ -64,7 +76,7 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
 
       const teacherMap = new Map(teachers?.map(t => [t.id, t.full_name]) || []);
 
-      // Get student join counts for each session
+      // Get all participants who joined each session (distinct users)
       const sessionIds = sessions.map(s => s.id);
       const { data: attendanceLogs } = await supabase
         .from('zoom_attendance_logs')
@@ -72,19 +84,52 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
         .in('session_id', sessionIds)
         .eq('action', 'join_intent');
 
-      // Count unique students per session
-      const studentCounts = new Map<string, Set<string>>();
-      attendanceLogs?.forEach(log => {
-        if (!studentCounts.has(log.session_id)) {
-          studentCounts.set(log.session_id, new Set());
-        }
-        studentCounts.get(log.session_id)?.add(log.user_id);
+      // Get unique user IDs for name lookup
+      const allUserIds = new Set<string>();
+      attendanceLogs?.forEach(log => allUserIds.add(log.user_id));
+      teacherIds.forEach(id => allUserIds.add(id));
+
+      const { data: allUsers } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', Array.from(allUserIds));
+
+      const userMap = new Map(allUsers?.map(u => [u.id, u.full_name]) || []);
+
+      // Build participants list per session
+      const participantsMap = new Map<string, SessionParticipant[]>();
+      
+      sessions.forEach(session => {
+        const participants: SessionParticipant[] = [];
+        
+        // Add teacher as first participant
+        participants.push({
+          userId: session.teacher_id,
+          userName: teacherMap.get(session.teacher_id) || 'Teacher',
+          isTeacher: true,
+        });
+        
+        // Add students
+        attendanceLogs?.filter(log => log.session_id === session.id)
+          .forEach(log => {
+            if (log.user_id !== session.teacher_id && 
+                !participants.some(p => p.userId === log.user_id)) {
+              participants.push({
+                userId: log.user_id,
+                userName: userMap.get(log.user_id) || 'Student',
+                isTeacher: false,
+              });
+            }
+          });
+        
+        participantsMap.set(session.id, participants);
       });
 
       return sessions.map(session => ({
         ...session,
         teacherName: teacherMap.get(session.teacher_id) || 'Unknown',
-        studentCount: studentCounts.get(session.id)?.size || 0,
+        participants: participantsMap.get(session.id) || [],
+        activeCount: participantsMap.get(session.id)?.length || 1,
       }));
     },
     refetchInterval: 5000,
@@ -160,141 +205,171 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
   }
 
   return (
-    <Card className={cn('overflow-hidden', className)}>
-      <CardHeader className="pb-3 bg-gradient-to-r from-[hsl(var(--navy))]/5 to-transparent">
-        <CardTitle className="font-serif flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            <Activity className="h-5 w-5 text-accent" />
-            Live Sessions Monitor
-          </span>
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="gap-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
-              <Wifi className="h-3 w-3" />
-              {availableLicenses}/{totalLicenses} Free
-            </Badge>
-            {busyLicenses > 0 && (
-              <Badge variant="secondary" className="gap-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
-                <WifiOff className="h-3 w-3" />
-                {busyLicenses} Active
+    <TooltipProvider>
+      <Card className={cn('overflow-hidden', className)}>
+        <CardHeader className="pb-3 bg-gradient-to-r from-[hsl(var(--navy))]/5 to-transparent">
+          <CardTitle className="font-serif flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <Activity className="h-5 w-5 text-accent" />
+              Live Sessions Monitor
+            </span>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="gap-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+                <Wifi className="h-3 w-3" />
+                {availableLicenses}/{totalLicenses} Free
               </Badge>
-            )}
-          </div>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-5 pt-4">
-        {/* License Status Grid - Visual indicators */}
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-          {licenses?.map((license, idx) => (
-            <div
-              key={license.id}
-              className={cn(
-                'relative rounded-lg p-2 border text-center transition-all duration-300',
-                license.status === 'available' 
-                  ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
-                  : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 ring-2 ring-red-400/50 animate-pulse'
+              {busyLicenses > 0 && (
+                <Badge variant="secondary" className="gap-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
+                  <WifiOff className="h-3 w-3" />
+                  {busyLicenses} Active
+                </Badge>
               )}
-            >
-              <div className={cn(
-                'w-3 h-3 rounded-full mx-auto mb-1',
-                license.status === 'available' ? 'bg-emerald-500' : 'bg-red-500 animate-pulse'
-              )} />
-              <p className="text-[10px] text-muted-foreground">Room {idx + 1}</p>
-              <p className={cn(
-                'text-[10px] font-semibold',
-                license.status === 'available' ? 'text-emerald-600' : 'text-red-600'
-              )}>
-                {license.status === 'available' ? 'Ready' : 'Live'}
-              </p>
             </div>
-          ))}
-        </div>
-
-        {/* Active Sessions - Main Focus */}
-        {liveSessions && liveSessions.length > 0 && (
-          <div className="space-y-3">
-            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              Active Classes ({liveSessions.length})
-            </h4>
-            <div className="grid gap-3">
-              {liveSessions.map((session) => (
-                <div
-                  key={session.id}
-                  className="flex items-center justify-between bg-gradient-to-r from-accent/5 to-transparent rounded-xl p-4 border border-accent/20"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="relative">
-                      <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center">
-                        <Video className="h-5 w-5 text-accent" />
-                      </div>
-                      <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-background border-2 border-accent flex items-center justify-center">
-                        <span className="text-[10px] font-bold text-accent">{session.studentCount}</span>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">{session.teacherName}</p>
-                      <p className="text-xs text-muted-foreground">{(session.license as any)?.zoom_email?.split('@')[0]}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Users className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">
-                          {session.studentCount} student{session.studentCount !== 1 ? 's' : ''} joined
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="flex items-center gap-1.5 text-accent">
-                      <Clock className="h-4 w-4" />
-                      <span className="text-lg font-mono font-bold">{formatDuration(session.actual_start)}</span>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">Duration</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5 pt-4">
+          {/* License Status Grid */}
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+            {licenses?.map((license, idx) => (
+              <div
+                key={license.id}
+                className={cn(
+                  'relative rounded-lg p-2 border text-center transition-all duration-300',
+                  license.status === 'available' 
+                    ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
+                    : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 ring-2 ring-red-400/50 animate-pulse'
+                )}
+              >
+                <div className={cn(
+                  'w-3 h-3 rounded-full mx-auto mb-1',
+                  license.status === 'available' ? 'bg-emerald-500' : 'bg-red-500 animate-pulse'
+                )} />
+                <p className="text-[10px] text-muted-foreground">Room {idx + 1}</p>
+                <p className={cn(
+                  'text-[10px] font-semibold',
+                  license.status === 'available' ? 'text-emerald-600' : 'text-red-600'
+                )}>
+                  {license.status === 'available' ? 'Ready' : 'Live'}
+                </p>
+              </div>
+            ))}
           </div>
-        )}
 
-        {/* Recent Join Logs - Scrollable */}
-        {recentJoins && recentJoins.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <User className="h-4 w-4 text-muted-foreground" />
-              Recent Student Joins
-            </h4>
-            <ScrollArea className="h-28">
-              <div className="space-y-1 pr-4">
-                {recentJoins.map((log) => (
+          {/* Active Sessions - Simple Headcount */}
+          {liveSessions && liveSessions.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                Active Classes ({liveSessions.length})
+              </h4>
+              <div className="grid gap-3">
+                {liveSessions.map((session) => (
                   <div
-                    key={log.id}
-                    className="flex items-center justify-between text-xs py-2 px-3 bg-secondary/40 rounded-lg"
+                    key={session.id}
+                    className="flex items-center justify-between bg-gradient-to-r from-accent/5 to-transparent rounded-xl p-4 border border-accent/20"
                   >
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
-                        <span className="text-[10px] font-medium text-primary">
-                          {log.userName.charAt(0).toUpperCase()}
-                        </span>
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center">
+                          <Video className="h-5 w-5 text-accent" />
+                        </div>
                       </div>
-                      <span className="text-foreground font-medium">{log.userName}</span>
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">{session.teacherName}</p>
+                        <p className="text-xs text-muted-foreground">{(session.license as any)?.zoom_email?.split('@')[0]}</p>
+                      </div>
                     </div>
-                    <span className="text-muted-foreground">{log.timeAgo}</span>
+
+                    {/* Simple Active Participant Count with Tooltip */}
+                    <div className="flex items-center gap-6">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex items-center gap-2 cursor-pointer bg-emerald-50 dark:bg-emerald-900/30 px-4 py-2 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                            <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
+                            <span className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">
+                              {session.activeCount}
+                            </span>
+                            <span className="text-xs text-emerald-600 dark:text-emerald-400">
+                              Active
+                            </span>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="left" className="max-w-xs">
+                          <div className="space-y-1">
+                            <p className="font-semibold text-xs mb-2">Participants:</p>
+                            {session.participants.map((p, idx) => (
+                              <div key={idx} className="flex items-center gap-2 text-xs">
+                                <div className={cn(
+                                  "w-2 h-2 rounded-full",
+                                  p.isTeacher ? "bg-accent" : "bg-primary"
+                                )} />
+                                <span>{p.userName}</span>
+                                {p.isTeacher && (
+                                  <Badge variant="outline" className="text-[9px] px-1 py-0">
+                                    Teacher
+                                  </Badge>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+
+                      <div className="text-right">
+                        <div className="flex items-center gap-1.5 text-accent">
+                          <Clock className="h-4 w-4" />
+                          <span className="text-lg font-mono font-bold">{formatDuration(session.actual_start)}</span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">Duration</p>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
-            </ScrollArea>
-          </div>
-        )}
+            </div>
+          )}
 
-        {/* Empty State */}
-        {(!liveSessions || liveSessions.length === 0) && (
-          <div className="text-center py-8 text-muted-foreground">
-            <Video className="h-12 w-12 mx-auto mb-3 opacity-20" />
-            <p className="text-sm font-medium">No Active Classes</p>
-            <p className="text-xs">All Zoom rooms are available</p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          {/* Recent Join Logs */}
+          {recentJoins && recentJoins.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <User className="h-4 w-4 text-muted-foreground" />
+                Recent Joins
+              </h4>
+              <ScrollArea className="h-28">
+                <div className="space-y-1 pr-4">
+                  {recentJoins.map((log) => (
+                    <div
+                      key={log.id}
+                      className="flex items-center justify-between text-xs py-2 px-3 bg-secondary/40 rounded-lg"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                          <span className="text-[10px] font-medium text-primary">
+                            {log.userName.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <span className="text-foreground font-medium">{log.userName}</span>
+                      </div>
+                      <span className="text-muted-foreground">{log.timeAgo}</span>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
+
+          {/* Empty State */}
+          {(!liveSessions || liveSessions.length === 0) && (
+            <div className="text-center py-8 text-muted-foreground">
+              <Video className="h-12 w-12 mx-auto mb-3 opacity-20" />
+              <p className="text-sm font-medium">No Active Classes</p>
+              <p className="text-xs">All Zoom rooms are available</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </TooltipProvider>
   );
 }
 
