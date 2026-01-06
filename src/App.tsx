@@ -27,6 +27,7 @@ import AdminCommandCenter from "./pages/AdminCommandCenter";
 import TeacherNazraDashboard from "./pages/TeacherNazraDashboard";
 import Subjects from "./pages/Subjects";
 import ZoomManagement from "./pages/ZoomManagement";
+import IntegrityAudit from "./pages/IntegrityAudit";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -204,6 +205,7 @@ function AppRoutes() {
       {/* Admin-only routes */}
       <Route path="/schedules" element={<ProtectedRoute><AdminRoute><Schedules /></AdminRoute></ProtectedRoute>} />
       <Route path="/zoom-management" element={<ProtectedRoute><AdminRoute><ZoomManagement /></AdminRoute></ProtectedRoute>} />
+      <Route path="/integrity-audit" element={<ProtectedRoute><AdminRoute><IntegrityAudit /></AdminRoute></ProtectedRoute>} />
       <Route path="/monthly-planning" element={<ProtectedRoute><AdminOrTeacherRoute><MonthlyPlanning /></AdminOrTeacherRoute></ProtectedRoute>} />
       {/* Report Card pages (renamed from Exam) */}
       <Route path="/report-card-templates" element={<ProtectedRoute><AdminOrExaminerRoute><ReportCardTemplates /></AdminOrExaminerRoute></ProtectedRoute>} />
