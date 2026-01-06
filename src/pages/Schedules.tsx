@@ -159,11 +159,12 @@ function timesOverlap(
 
 interface ConflictResult {
   hasConflict: boolean;
-  conflictType: 'student' | 'teacher' | null;
+  conflictType: 'student' | null;
   conflictDetails: string;
 }
 
 // Detect schedule conflicts
+// NOTE: Teachers CAN have multiple students at the same time - only students are restricted to one teacher
 function detectScheduleConflict(
   newSchedule: {
     day: string;
@@ -179,7 +180,6 @@ function detectScheduleConflict(
   if (!assignment) return { hasConflict: false, conflictType: null, conflictDetails: '' };
 
   const studentId = assignment.student_id;
-  const teacherId = assignment.teacher_id;
 
   // Get all schedules for the same day, excluding the one being edited
   const sameDaySchedules = schedules.filter(
@@ -200,21 +200,13 @@ function detectScheduleConflict(
 
     if (!hasOverlap) continue;
 
-    // Check if same student
+    // Only check if same student (students can only have one teacher at a time)
+    // Teachers CAN have multiple students at the same time - no conflict check needed
     if (existingAssignment.student_id === studentId) {
       return {
         hasConflict: true,
         conflictType: 'student',
         conflictDetails: `${assignment.student_name} already has a class with ${existingAssignment.teacher_name} at ${formatTime12h(existingSchedule.student_local_time)} on ${DAYS_LABELS[newSchedule.day]}`,
-      };
-    }
-
-    // Check if same teacher
-    if (existingAssignment.teacher_id === teacherId) {
-      return {
-        hasConflict: true,
-        conflictType: 'teacher',
-        conflictDetails: `${assignment.teacher_name} already has a class with ${existingAssignment.student_name} at ${formatTime12h(existingSchedule.student_local_time)} on ${DAYS_LABELS[newSchedule.day]}`,
       };
     }
   }

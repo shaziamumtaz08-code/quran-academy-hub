@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { 
   Plus, 
   Trash2, 
@@ -12,14 +13,19 @@ import {
   ChevronDown, 
   ChevronUp,
   Eye,
-  EyeOff
+  EyeOff,
+  Star,
+  Award
 } from 'lucide-react';
 import { 
   Section, 
   Criteria, 
   CriteriaType, 
   createEmptyCriteria,
-  DEFAULT_SKILL_LABELS 
+  DEFAULT_SKILL_LABELS,
+  DEFAULT_STAR_MAX,
+  DEFAULT_GRADE_LABELS,
+  calculateSectionMaxScore
 } from '@/types/reportCard';
 import { cn } from '@/lib/utils';
 
@@ -50,6 +56,10 @@ export function SectionBuilder({
     onUpdate({ ...section, title });
   };
 
+  const toggleSubtotal = (showSubtotal: boolean) => {
+    onUpdate({ ...section, showSubtotal });
+  };
+
   const addCriteria = () => {
     const newCriteria = createEmptyCriteria();
     onUpdate({ ...section, criteria: [...section.criteria, newCriteria] });
@@ -73,6 +83,8 @@ export function SectionBuilder({
     updated.splice(toIndex, 0, moved);
     onUpdate({ ...section, criteria: updated });
   };
+
+  const sectionMaxScore = calculateSectionMaxScore(section);
 
   return (
     <Card className="card-premium border-0 overflow-hidden">
@@ -111,6 +123,23 @@ export function SectionBuilder({
               onChange={(e) => updateSectionTitle(e.target.value)}
               className="font-semibold text-lg border-border/50 focus:border-accent focus:ring-2 focus:ring-accent/20 bg-card"
             />
+            {/* Section subtotal toggle */}
+            <div className="flex items-center gap-2 mt-2">
+              <Switch
+                id={`subtotal-${section.id}`}
+                checked={section.showSubtotal !== false}
+                onCheckedChange={toggleSubtotal}
+              />
+              <Label htmlFor={`subtotal-${section.id}`} className="text-sm text-muted-foreground cursor-pointer">
+                Show section subtotal
+              </Label>
+              {section.showSubtotal !== false && sectionMaxScore > 0 && (
+                <Badge variant="outline" className="ml-2 text-xs">
+                  <Award className="h-3 w-3 mr-1" />
+                  Max: {sectionMaxScore}
+                </Badge>
+              )}
+            </div>
           </div>
           
           <div className="flex items-center gap-1">
@@ -196,7 +225,7 @@ function CriteriaRow({
   isFirst,
   isLast,
 }: CriteriaRowProps) {
-  const [showSkillEditor, setShowSkillEditor] = useState(false);
+  const [showOptionsEditor, setShowOptionsEditor] = useState(false);
 
   const handleTypeChange = (type: CriteriaType) => {
     if (type === 'skill') {
@@ -205,6 +234,26 @@ function CriteriaRow({
         type,
         maxMarks: undefined,
         skillLabels: DEFAULT_SKILL_LABELS,
+        starMax: undefined,
+        gradeLabels: undefined,
+      });
+    } else if (type === 'star') {
+      onUpdate({
+        ...criteria,
+        type,
+        maxMarks: undefined,
+        skillLabels: undefined,
+        starMax: DEFAULT_STAR_MAX,
+        gradeLabels: undefined,
+      });
+    } else if (type === 'grade') {
+      onUpdate({
+        ...criteria,
+        type,
+        maxMarks: undefined,
+        skillLabels: undefined,
+        starMax: undefined,
+        gradeLabels: DEFAULT_GRADE_LABELS,
       });
     } else {
       onUpdate({
@@ -212,6 +261,8 @@ function CriteriaRow({
         type,
         maxMarks: 10,
         skillLabels: undefined,
+        starMax: undefined,
+        gradeLabels: undefined,
       });
     }
   };
@@ -270,10 +321,20 @@ function CriteriaRow({
             <SelectContent className="border-0 shadow-card">
               <SelectItem value="numeric">Numeric Score</SelectItem>
               <SelectItem value="skill">Skill Level</SelectItem>
+              <SelectItem value="star">
+                <span className="flex items-center gap-1">
+                  <Star className="h-3 w-3" /> Star Rating
+                </span>
+              </SelectItem>
+              <SelectItem value="grade">
+                <span className="flex items-center gap-1">
+                  <Award className="h-3 w-3" /> Letter Grade (A-F)
+                </span>
+              </SelectItem>
             </SelectContent>
           </Select>
 
-          {/* Max Marks or Skill Editor Toggle */}
+          {/* Type-specific options */}
           {criteria.type === 'numeric' ? (
             <div className="flex items-center gap-2">
               <Input
@@ -286,14 +347,29 @@ function CriteriaRow({
               />
               <span className="text-sm text-muted-foreground whitespace-nowrap">marks</span>
             </div>
+          ) : criteria.type === 'star' ? (
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={1}
+                max={10}
+                placeholder="Stars"
+                value={criteria.starMax || DEFAULT_STAR_MAX}
+                onChange={(e) => onUpdate({ ...criteria, starMax: parseInt(e.target.value) || DEFAULT_STAR_MAX })}
+                className="w-20 border-border/50 focus:border-accent focus:ring-2 focus:ring-accent/20"
+              />
+              <span className="text-sm text-muted-foreground whitespace-nowrap flex items-center gap-1">
+                <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" /> max
+              </span>
+            </div>
           ) : (
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setShowSkillEditor(!showSkillEditor)}
+              onClick={() => setShowOptionsEditor(!showOptionsEditor)}
               className={cn(
                 "border-border/50 hover:border-accent hover:text-accent",
-                showSkillEditor && 'border-accent text-accent bg-accent/5'
+                showOptionsEditor && 'border-accent text-accent bg-accent/5'
               )}
             >
               Edit Labels
@@ -329,7 +405,7 @@ function CriteriaRow({
       </div>
 
       {/* Skill Labels Editor */}
-      {criteria.type === 'skill' && showSkillEditor && (
+      {criteria.type === 'skill' && showOptionsEditor && (
         <div className="p-4 bg-muted/30 rounded-lg border border-border/50 ml-9">
           <Label className="text-sm font-medium mb-3 block text-muted-foreground">
             Skill Level Labels (Low to High)
@@ -339,9 +415,37 @@ function CriteriaRow({
               <Input
                 key={i}
                 value={label}
-                onChange={(e) => updateSkillLabel(i, e.target.value)}
+                onChange={(e) => {
+                  const labels = [...(criteria.skillLabels || DEFAULT_SKILL_LABELS)];
+                  labels[i] = e.target.value;
+                  onUpdate({ ...criteria, skillLabels: labels });
+                }}
                 placeholder={`Level ${i + 1}`}
                 className="border-border/50 focus:border-accent focus:ring-2 focus:ring-accent/20"
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Grade Labels Editor */}
+      {criteria.type === 'grade' && showOptionsEditor && (
+        <div className="p-4 bg-muted/30 rounded-lg border border-border/50 ml-9">
+          <Label className="text-sm font-medium mb-3 block text-muted-foreground">
+            Grade Labels (Low to High, e.g., F → A)
+          </Label>
+          <div className="grid grid-cols-5 gap-3">
+            {(criteria.gradeLabels || DEFAULT_GRADE_LABELS).map((label, i) => (
+              <Input
+                key={i}
+                value={label}
+                onChange={(e) => {
+                  const labels = [...(criteria.gradeLabels || DEFAULT_GRADE_LABELS)];
+                  labels[i] = e.target.value;
+                  onUpdate({ ...criteria, gradeLabels: labels });
+                }}
+                placeholder={DEFAULT_GRADE_LABELS[i]}
+                className="border-border/50 focus:border-accent focus:ring-2 focus:ring-accent/20 text-center"
               />
             ))}
           </div>
