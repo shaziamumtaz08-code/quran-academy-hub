@@ -193,6 +193,43 @@ function UploadStep({
         </div>
       )}
 
+      {/* Schedule Import Instructions */}
+      {type === "schedules" && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 space-y-3">
+          <div>
+            <h4 className="font-medium text-blue-800 dark:text-blue-300 text-sm">How to Add Multiple Days</h4>
+            <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
+              Add <strong>one row per schedule slot</strong>. For multiple days, repeat the student with different days.
+            </p>
+          </div>
+          
+          <div className="bg-blue-100/50 dark:bg-blue-800/30 rounded p-2">
+            <p className="text-xs font-medium text-blue-800 dark:text-blue-300 mb-1">Example: Schedule Fatima for Mon, Wed, Fri</p>
+            <div className="font-mono text-xs text-blue-700 dark:text-blue-300 space-y-0.5">
+              <div>Mohammad Hassan,Fatima Ali,<strong>Monday</strong>,09:00,30</div>
+              <div>Mohammad Hassan,Fatima Ali,<strong>Wednesday</strong>,09:00,30</div>
+              <div>Mohammad Hassan,Fatima Ali,<strong>Friday</strong>,09:00,30</div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div>
+              <p className="font-medium text-blue-800 dark:text-blue-300">Valid Days:</p>
+              <p className="text-blue-700 dark:text-blue-400">Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday</p>
+            </div>
+            <div>
+              <p className="font-medium text-blue-800 dark:text-blue-300">Time Format:</p>
+              <p className="text-blue-700 dark:text-blue-400">24-hour format (e.g., 09:00, 14:30)</p>
+            </div>
+          </div>
+
+          <div className="bg-amber-100/50 dark:bg-amber-800/30 rounded p-2 text-xs">
+            <p className="font-medium text-amber-800 dark:text-amber-300">⚠️ Student Conflict Rule:</p>
+            <p className="text-amber-700 dark:text-amber-400">A student cannot be scheduled with different teachers at the same day and time. Such conflicts will be flagged.</p>
+          </div>
+        </div>
+      )}
+
       {/* File Upload */}
       <div className="space-y-2">
         <p className="text-sm font-medium">Upload CSV File</p>
