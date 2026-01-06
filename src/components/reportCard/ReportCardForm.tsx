@@ -81,56 +81,83 @@ export function ReportCardForm({
               </div>
             </CardHeader>
             <CardContent>
+              {/* Header row */}
+              <div className="grid grid-cols-12 gap-4 pb-2 mb-2 border-b text-xs font-medium text-muted-foreground">
+                <div className="col-span-5">Criteria</div>
+                <div className="col-span-3 text-center">Obtained Marks</div>
+                <div className="col-span-2 text-center">Max</div>
+                <div className="col-span-2 text-center">%</div>
+              </div>
+
               <div className="divide-y">
                 {section.criteria.map((criteria) => {
                   const entry = getEntry(criteria.id);
                   const obtained = entry?.obtained_marks;
                   const max = criteria.max_marks;
-                  const rowPct = obtained !== null && max > 0 ? Math.round((obtained / max) * 100) : null;
+                  const rowPct = obtained !== null && obtained !== undefined && max > 0 
+                    ? Math.round((obtained / max) * 100) 
+                    : null;
 
                   return (
-                    <div key={criteria.id} className="py-4 first:pt-0 last:pb-0">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between gap-3 mb-2">
-                            <Label className="font-medium">{criteria.criteria_name || 'Untitled Criteria'}</Label>
-                            <div className="flex items-center gap-3">
-                              <div className="flex items-center gap-2">
-                                <Input
-                                  type="number"
-                                  min={0}
-                                  max={max}
-                                  value={obtained ?? ''}
-                                  onChange={(e) => {
-                                    const raw = e.target.value;
-                                    if (raw === '') {
-                                      onEntryChange(criteria.id, section.id, { obtained_marks: null });
-                                      return;
-                                    }
-                                    let next = Number(raw);
-                                    if (Number.isNaN(next)) next = 0;
-                                    next = Math.max(0, Math.min(max, next));
-                                    onEntryChange(criteria.id, section.id, { obtained_marks: next });
-                                  }}
-                                  className="w-28"
-                                  disabled={readOnly}
-                                  aria-label={`Obtained marks for ${criteria.criteria_name}`}
-                                />
-                                <span className="text-muted-foreground">/ {max}</span>
-                              </div>
-                              {showRowPercentage && rowPct !== null && (
-                                <Badge variant="outline">{rowPct}%</Badge>
-                              )}
-                            </div>
-                          </div>
+                    <div key={criteria.id} className="py-4 first:pt-2 last:pb-0">
+                      <div className="grid grid-cols-12 gap-4 items-center">
+                        {/* Criteria Name */}
+                        <div className="col-span-5">
+                          <Label className="font-medium">{criteria.criteria_name || 'Untitled Criteria'}</Label>
+                        </div>
 
-                          <Textarea
-                            placeholder="Optional teacher remarks for this criteria..."
-                            value={entry?.remarks ?? ''}
-                            onChange={(e) => onEntryChange(criteria.id, section.id, { remarks: e.target.value })}
+                        {/* Obtained Marks Input */}
+                        <div className="col-span-3">
+                          <Input
+                            type="number"
+                            min={0}
+                            max={max}
+                            value={obtained ?? ''}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              if (raw === '') {
+                                onEntryChange(criteria.id, section.id, { obtained_marks: null });
+                                return;
+                              }
+                              let next = Number(raw);
+                              if (Number.isNaN(next)) next = 0;
+                              next = Math.max(0, Math.min(max, next));
+                              onEntryChange(criteria.id, section.id, { obtained_marks: next });
+                            }}
+                            className="text-center font-semibold"
                             disabled={readOnly}
+                            placeholder="0"
+                            aria-label={`Obtained marks for ${criteria.criteria_name}`}
                           />
                         </div>
+
+                        {/* Max Marks (Read-only) */}
+                        <div className="col-span-2 text-center">
+                          <span className="font-medium text-muted-foreground">{max}</span>
+                        </div>
+
+                        {/* Percentage */}
+                        <div className="col-span-2 text-center">
+                          {showRowPercentage && rowPct !== null ? (
+                            <Badge variant={rowPct >= 70 ? 'default' : rowPct >= 50 ? 'secondary' : 'destructive'}>
+                              {rowPct}%
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Optional Remarks */}
+                      <div className="mt-3">
+                        <Textarea
+                          placeholder="Optional remarks for this criteria..."
+                          value={entry?.remarks ?? ''}
+                          onChange={(e) => onEntryChange(criteria.id, section.id, { remarks: e.target.value })}
+                          disabled={readOnly}
+                          className="text-sm"
+                          rows={2}
+                        />
                       </div>
                     </div>
                   );

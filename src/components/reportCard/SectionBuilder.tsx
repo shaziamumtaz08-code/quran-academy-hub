@@ -149,7 +149,7 @@ export function SectionBuilder({
             <div className="text-center py-10 border-2 border-dashed border-border/50 rounded-xl bg-muted/30">
               <p className="text-muted-foreground font-medium">No criteria added yet</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Add criteria rows with max marks (obtained marks are entered during report filling)
+                Define criteria with <strong>Max Marks</strong> here. Teachers will enter <strong>Obtained Marks</strong> when generating reports.
               </p>
             </div>
           ) : (
@@ -231,38 +231,41 @@ function CriteriaRow({
           </Button>
         </div>
 
-        <div className="flex-1 grid gap-4 md:grid-cols-4">
+        <div className="flex-1 grid gap-4 md:grid-cols-5">
           <div className="md:col-span-3">
-            <Label className="sr-only" htmlFor={`${criteria.id}-name`}>
-              Criteria name
+            <Label className="text-xs text-muted-foreground mb-1 block" htmlFor={`${criteria.id}-name`}>
+              Criteria Name
             </Label>
             <Input
               id={`${criteria.id}-name`}
-              placeholder={`Criteria Name (Row ${index + 1})`}
+              placeholder={`e.g., Tajweed, Fluency, Understanding`}
               value={criteria.criteria_name}
               onChange={(e) => onUpdate({ ...criteria, criteria_name: e.target.value })}
               className="border-border/50 focus:border-accent focus:ring-2 focus:ring-accent/20"
             />
           </div>
 
-          <div>
-            <Label className="sr-only" htmlFor={`${criteria.id}-max`}>
-              Max marks
+          <div className="md:col-span-2">
+            <Label className="text-xs text-muted-foreground mb-1 block" htmlFor={`${criteria.id}-max`}>
+              Max Marks
             </Label>
-            <Input
-              id={`${criteria.id}-max`}
-              type="number"
-              min={1}
-              value={criteria.max_marks ?? ''}
-              onChange={(e) =>
-                onUpdate({
-                  ...criteria,
-                  max_marks: Math.max(1, parseInt(e.target.value || '0', 10) || 1),
-                })
-              }
-              className="border-border/50 focus:border-accent focus:ring-2 focus:ring-accent/20"
-              placeholder="Max"
-            />
+            <div className="flex items-center gap-2">
+              <Input
+                id={`${criteria.id}-max`}
+                type="number"
+                min={1}
+                value={criteria.max_marks ?? ''}
+                onChange={(e) =>
+                  onUpdate({
+                    ...criteria,
+                    max_marks: Math.max(1, parseInt(e.target.value || '0', 10) || 1),
+                  })
+                }
+                className="border-border/50 focus:border-accent focus:ring-2 focus:ring-accent/20"
+                placeholder="10"
+              />
+              <span className="text-xs text-muted-foreground whitespace-nowrap">pts</span>
+            </div>
           </div>
         </div>
 
