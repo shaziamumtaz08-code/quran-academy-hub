@@ -111,6 +111,26 @@ function calculateTeacherTime(studentTime: string, studentTz: string, teacherTz:
   return `${teacherHours.toString().padStart(2, '0')}:${teacherMins.toString().padStart(2, '0')}`;
 }
 
+// Helper to calculate student time from teacher time based on timezone offsets
+function calculateStudentTime(teacherTime: string, studentTz: string, teacherTz: string): string {
+  const studentOffset = TIMEZONES.find(tz => tz.value === studentTz)?.offset ?? 0;
+  const teacherOffset = TIMEZONES.find(tz => tz.value === teacherTz)?.offset ?? 0;
+  
+  const [hours, minutes] = teacherTime.split(':').map(Number);
+  const teacherMinutesFromMidnight = hours * 60 + minutes;
+  
+  const offsetDiffMinutes = (studentOffset - teacherOffset) * 60;
+  let studentMinutesFromMidnight = teacherMinutesFromMidnight + offsetDiffMinutes;
+  
+  if (studentMinutesFromMidnight < 0) studentMinutesFromMidnight += 24 * 60;
+  if (studentMinutesFromMidnight >= 24 * 60) studentMinutesFromMidnight -= 24 * 60;
+  
+  const studentHours = Math.floor(studentMinutesFromMidnight / 60);
+  const studentMins = studentMinutesFromMidnight % 60;
+  
+  return `${studentHours.toString().padStart(2, '0')}:${studentMins.toString().padStart(2, '0')}`;
+}
+
 function formatTime12h(time: string): string {
   if (!time) return '';
   const [hours, minutes] = time.split(':').map(Number);
@@ -214,19 +234,24 @@ export default function Schedules() {
     assignmentId: '',
     day: '',
     studentTime: '',
+    teacherTime: '',
     studentTimezone: 'America/Toronto',
     teacherTimezone: 'Asia/Karachi',
     duration: '30',
   });
+  // Track which field was last edited for bidirectional sync
+  const [lastEditedField, setLastEditedField] = useState<'student' | 'teacher'>('student');
   // Bulk schedule state
   const [bulkSchedule, setBulkSchedule] = useState({
     assignmentId: '',
     selectedDays: [] as string[],
     studentTime: '',
+    teacherTime: '',
     studentTimezone: 'America/Toronto',
     teacherTimezone: 'Asia/Karachi',
     duration: '30',
   });
+  const [bulkLastEditedField, setBulkLastEditedField] = useState<'student' | 'teacher'>('student');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -434,15 +459,94 @@ export default function Schedules() {
     });
   };
 
-  const calculatedTeacherTime = useMemo(() => {
-    if (!newSchedule.studentTime) return '';
-    return calculateTeacherTime(newSchedule.studentTime, newSchedule.studentTimezone, newSchedule.teacherTimezone);
-  }, [newSchedule.studentTime, newSchedule.studentTimezone, newSchedule.teacherTimezone]);
+  // Get selected assignment info for displaying location labels
+  const selectedAssignment = useMemo(() => {
+    return assignments.find(a => a.id === newSchedule.assignmentId);
+  }, [assignments, newSchedule.assignmentId]);
 
-  const bulkCalculatedTeacherTime = useMemo(() => {
-    if (!bulkSchedule.studentTime) return '';
-    return calculateTeacherTime(bulkSchedule.studentTime, bulkSchedule.studentTimezone, bulkSchedule.teacherTimezone);
-  }, [bulkSchedule.studentTime, bulkSchedule.studentTimezone, bulkSchedule.teacherTimezone]);
+  const bulkSelectedAssignment = useMemo(() => {
+    return assignments.find(a => a.id === bulkSchedule.assignmentId);
+  }, [assignments, bulkSchedule.assignmentId]);
+
+  // Handlers for student time change - update teacher time
+  const handleStudentTimeChange = (time: string) => {
+    const teacherTime = time ? calculateTeacherTime(time, newSchedule.studentTimezone, newSchedule.teacherTimezone) : '';
+    setNewSchedule(prev => ({ ...prev, studentTime: time, teacherTime }));
+    setLastEditedField('student');
+  };
+
+  // Handlers for teacher time change - update student time
+  const handleTeacherTimeChange = (time: string) => {
+    const studentTime = time ? calculateStudentTime(time, newSchedule.studentTimezone, newSchedule.teacherTimezone) : '';
+    setNewSchedule(prev => ({ ...prev, teacherTime: time, studentTime }));
+    setLastEditedField('teacher');
+  };
+
+  // Handlers for timezone change - recalculate opposite time
+  const handleStudentTimezoneChange = (tz: string) => {
+    setNewSchedule(prev => {
+      if (lastEditedField === 'student' && prev.studentTime) {
+        const teacherTime = calculateTeacherTime(prev.studentTime, tz, prev.teacherTimezone);
+        return { ...prev, studentTimezone: tz, teacherTime };
+      } else if (lastEditedField === 'teacher' && prev.teacherTime) {
+        const studentTime = calculateStudentTime(prev.teacherTime, tz, prev.teacherTimezone);
+        return { ...prev, studentTimezone: tz, studentTime };
+      }
+      return { ...prev, studentTimezone: tz };
+    });
+  };
+
+  const handleTeacherTimezoneChange = (tz: string) => {
+    setNewSchedule(prev => {
+      if (lastEditedField === 'student' && prev.studentTime) {
+        const teacherTime = calculateTeacherTime(prev.studentTime, prev.studentTimezone, tz);
+        return { ...prev, teacherTimezone: tz, teacherTime };
+      } else if (lastEditedField === 'teacher' && prev.teacherTime) {
+        const studentTime = calculateStudentTime(prev.teacherTime, prev.studentTimezone, tz);
+        return { ...prev, teacherTimezone: tz, studentTime };
+      }
+      return { ...prev, teacherTimezone: tz };
+    });
+  };
+
+  // Bulk handlers
+  const handleBulkStudentTimeChange = (time: string) => {
+    const teacherTime = time ? calculateTeacherTime(time, bulkSchedule.studentTimezone, bulkSchedule.teacherTimezone) : '';
+    setBulkSchedule(prev => ({ ...prev, studentTime: time, teacherTime }));
+    setBulkLastEditedField('student');
+  };
+
+  const handleBulkTeacherTimeChange = (time: string) => {
+    const studentTime = time ? calculateStudentTime(time, bulkSchedule.studentTimezone, bulkSchedule.teacherTimezone) : '';
+    setBulkSchedule(prev => ({ ...prev, teacherTime: time, studentTime }));
+    setBulkLastEditedField('teacher');
+  };
+
+  const handleBulkStudentTimezoneChange = (tz: string) => {
+    setBulkSchedule(prev => {
+      if (bulkLastEditedField === 'student' && prev.studentTime) {
+        const teacherTime = calculateTeacherTime(prev.studentTime, tz, prev.teacherTimezone);
+        return { ...prev, studentTimezone: tz, teacherTime };
+      } else if (bulkLastEditedField === 'teacher' && prev.teacherTime) {
+        const studentTime = calculateStudentTime(prev.teacherTime, tz, prev.teacherTimezone);
+        return { ...prev, studentTimezone: tz, studentTime };
+      }
+      return { ...prev, studentTimezone: tz };
+    });
+  };
+
+  const handleBulkTeacherTimezoneChange = (tz: string) => {
+    setBulkSchedule(prev => {
+      if (bulkLastEditedField === 'student' && prev.studentTime) {
+        const teacherTime = calculateTeacherTime(prev.studentTime, prev.studentTimezone, tz);
+        return { ...prev, teacherTimezone: tz, teacherTime };
+      } else if (bulkLastEditedField === 'teacher' && prev.teacherTime) {
+        const studentTime = calculateStudentTime(prev.teacherTime, prev.studentTimezone, tz);
+        return { ...prev, teacherTimezone: tz, studentTime };
+      }
+      return { ...prev, teacherTimezone: tz };
+    });
+  };
 
   const handleAssignmentSelect = (assignmentId: string) => {
     const assignment = assignments.find(a => a.id === assignmentId);
@@ -487,10 +591,12 @@ export default function Schedules() {
       assignmentId: '',
       day: '',
       studentTime: '',
+      teacherTime: '',
       studentTimezone: 'America/Toronto',
       teacherTimezone: 'Asia/Karachi',
       duration: '30',
     });
+    setLastEditedField('student');
   };
 
   const handleCloseBulkDialog = () => {
@@ -499,30 +605,36 @@ export default function Schedules() {
       assignmentId: '',
       selectedDays: [],
       studentTime: '',
+      teacherTime: '',
       studentTimezone: 'America/Toronto',
       teacherTimezone: 'Asia/Karachi',
       duration: '30',
     });
+    setBulkLastEditedField('student');
   };
 
   const handleEditSchedule = (schedule: Schedule, assignment: Assignment) => {
     setEditingSchedule(schedule);
+    const studentTz = resolveTimezone(
+      assignment.student_country,
+      assignment.student_city,
+      assignment.student_timezone
+    );
+    const teacherTz = resolveTimezone(
+      assignment.teacher_country,
+      assignment.teacher_city,
+      assignment.teacher_timezone
+    );
     setNewSchedule({
       assignmentId: schedule.assignment_id,
       day: schedule.day_of_week,
       studentTime: schedule.student_local_time,
-      studentTimezone: resolveTimezone(
-        assignment.student_country,
-        assignment.student_city,
-        assignment.student_timezone
-      ),
-      teacherTimezone: resolveTimezone(
-        assignment.teacher_country,
-        assignment.teacher_city,
-        assignment.teacher_timezone
-      ),
+      teacherTime: schedule.teacher_local_time,
+      studentTimezone: studentTz,
+      teacherTimezone: teacherTz,
       duration: schedule.duration_minutes.toString(),
     });
+    setLastEditedField('student');
     setIsDialogOpen(true);
   };
 
@@ -567,7 +679,7 @@ export default function Schedules() {
     const scheduleData = {
       day_of_week: newSchedule.day,
       student_local_time: newSchedule.studentTime,
-      teacher_local_time: calculatedTeacherTime,
+      teacher_local_time: newSchedule.teacherTime || calculateTeacherTime(newSchedule.studentTime, newSchedule.studentTimezone, newSchedule.teacherTimezone),
       duration_minutes: parseInt(newSchedule.duration),
     };
 
@@ -625,7 +737,7 @@ export default function Schedules() {
       assignment_id: bulkSchedule.assignmentId,
       day_of_week: day,
       student_local_time: bulkSchedule.studentTime,
-      teacher_local_time: bulkCalculatedTeacherTime,
+      teacher_local_time: bulkSchedule.teacherTime || calculateTeacherTime(bulkSchedule.studentTime, bulkSchedule.studentTimezone, bulkSchedule.teacherTimezone),
       duration_minutes: parseInt(bulkSchedule.duration),
     }));
 
@@ -703,9 +815,26 @@ export default function Schedules() {
                         ))}
                       </div>
                     </div>
+                    {/* Location info banner */}
+                    {bulkSelectedAssignment && (
+                      <div className="sm:col-span-2 lg:col-span-3 p-2 bg-muted/50 rounded-md border border-border flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-1">
+                            <Globe className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-muted-foreground">Student:</span>
+                            <Badge variant="outline" className="text-xs">{bulkSelectedAssignment.student_city || 'Unknown'}, {bulkSelectedAssignment.student_country || 'Unknown'}</Badge>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Globe className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-muted-foreground">Teacher:</span>
+                            <Badge variant="outline" className="text-xs">{bulkSelectedAssignment.teacher_city || 'Unknown'}, {bulkSelectedAssignment.teacher_country || 'Unknown'}</Badge>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     <div className="space-y-1.5">
-                      <Label className="text-xs">Student TZ</Label>
-                      <Select value={bulkSchedule.studentTimezone} onValueChange={(v) => setBulkSchedule(prev => ({ ...prev, studentTimezone: v }))}>
+                      <Label className="text-xs">Student TZ ({getCountryCode(bulkSelectedAssignment?.student_country)})</Label>
+                      <Select value={bulkSchedule.studentTimezone} onValueChange={handleBulkStudentTimezoneChange}>
                         <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {TIMEZONES.map((tz) => (
@@ -719,7 +848,7 @@ export default function Schedules() {
                       <Input
                         type="time"
                         value={bulkSchedule.studentTime}
-                        onChange={(e) => setBulkSchedule(prev => ({ ...prev, studentTime: e.target.value }))}
+                        onChange={(e) => handleBulkStudentTimeChange(e.target.value)}
                         className="h-9"
                       />
                     </div>
@@ -734,15 +863,26 @@ export default function Schedules() {
                         </SelectContent>
                       </Select>
                     </div>
-                    {bulkCalculatedTeacherTime && (
-                      <div className="sm:col-span-2 lg:col-span-3 p-2 bg-primary/10 rounded-md border border-primary/20 flex items-center justify-between">
-                        <div>
-                          <p className="text-xs text-muted-foreground">Teacher's Local Time</p>
-                          <p className="text-sm font-bold text-primary">{formatTime12h(bulkCalculatedTeacherTime)}</p>
-                        </div>
-                        <Badge variant="outline" className="text-xs">{getTzAbbr(bulkSchedule.teacherTimezone)}</Badge>
-                      </div>
-                    )}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Teacher TZ ({getCountryCode(bulkSelectedAssignment?.teacher_country)})</Label>
+                      <Select value={bulkSchedule.teacherTimezone} onValueChange={handleBulkTeacherTimezoneChange}>
+                        <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {TIMEZONES.map((tz) => (
+                            <SelectItem key={tz.value} value={tz.value}>{tz.abbr} - {tz.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Teacher Time</Label>
+                      <Input
+                        type="time"
+                        value={bulkSchedule.teacherTime}
+                        onChange={(e) => handleBulkTeacherTimeChange(e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
                   </div>
                   <div className="flex justify-end gap-2 pt-3 border-t border-blue-200 dark:border-blue-800 mt-3">
                     <Button variant="outline" size="sm" onClick={handleCloseBulkDialog}>Cancel</Button>
@@ -804,9 +944,26 @@ export default function Schedules() {
                         </SelectContent>
                       </Select>
                     </div>
+                    {/* Location info banner */}
+                    {selectedAssignment && (
+                      <div className="sm:col-span-2 lg:col-span-3 p-2 bg-muted/50 rounded-md border border-border flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-1">
+                            <Globe className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-muted-foreground">Student:</span>
+                            <Badge variant="outline" className="text-xs">{selectedAssignment.student_city || 'Unknown'}, {selectedAssignment.student_country || 'Unknown'}</Badge>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Globe className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-muted-foreground">Teacher:</span>
+                            <Badge variant="outline" className="text-xs">{selectedAssignment.teacher_city || 'Unknown'}, {selectedAssignment.teacher_country || 'Unknown'}</Badge>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     <div className="space-y-1.5">
-                      <Label className="text-xs">Student TZ</Label>
-                      <Select value={newSchedule.studentTimezone} onValueChange={(v) => setNewSchedule(prev => ({ ...prev, studentTimezone: v }))}>
+                      <Label className="text-xs">Student TZ ({getCountryCode(selectedAssignment?.student_country)})</Label>
+                      <Select value={newSchedule.studentTimezone} onValueChange={handleStudentTimezoneChange}>
                         <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {TIMEZONES.map((tz) => (
@@ -817,11 +974,11 @@ export default function Schedules() {
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs">Student Time *</Label>
-                      <Input type="time" value={newSchedule.studentTime} onChange={(e) => setNewSchedule(prev => ({ ...prev, studentTime: e.target.value }))} className="h-9" />
+                      <Input type="time" value={newSchedule.studentTime} onChange={(e) => handleStudentTimeChange(e.target.value)} className="h-9" />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs">Teacher TZ</Label>
-                      <Select value={newSchedule.teacherTimezone} onValueChange={(v) => setNewSchedule(prev => ({ ...prev, teacherTimezone: v }))}>
+                      <Label className="text-xs">Teacher TZ ({getCountryCode(selectedAssignment?.teacher_country)})</Label>
+                      <Select value={newSchedule.teacherTimezone} onValueChange={handleTeacherTimezoneChange}>
                         <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {TIMEZONES.map((tz) => (
@@ -830,15 +987,10 @@ export default function Schedules() {
                         </SelectContent>
                       </Select>
                     </div>
-                    {calculatedTeacherTime && (
-                      <div className="sm:col-span-2 lg:col-span-3 p-2 bg-primary/10 rounded-md border border-primary/20 flex items-center justify-between">
-                        <div>
-                          <p className="text-xs text-muted-foreground">Teacher's Local Time (Auto)</p>
-                          <p className="text-sm font-bold text-primary">{formatTime12h(calculatedTeacherTime)}</p>
-                        </div>
-                        <Badge variant="outline" className="text-xs">{getTzAbbr(newSchedule.teacherTimezone)}</Badge>
-                      </div>
-                    )}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Teacher Time</Label>
+                      <Input type="time" value={newSchedule.teacherTime} onChange={(e) => handleTeacherTimeChange(e.target.value)} className="h-9" />
+                    </div>
                   </div>
                   <div className="flex justify-end gap-2 pt-3 border-t border-blue-200 dark:border-blue-800 mt-3">
                     <Button variant="outline" size="sm" onClick={handleCloseDialog}>Cancel</Button>
