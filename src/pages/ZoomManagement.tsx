@@ -51,6 +51,8 @@ export default function ZoomManagement() {
           actual_end,
           status,
           created_at,
+          recording_link,
+          stream_url,
           license:zoom_licenses(id, zoom_email, meeting_link)
         `)
         .order('created_at', { ascending: false })
@@ -362,6 +364,7 @@ export default function ZoomManagement() {
                         <TableHead>Started</TableHead>
                         <TableHead>Ended</TableHead>
                         <TableHead>Duration</TableHead>
+                        <TableHead>Recording</TableHead>
                         <TableHead>Status</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -395,6 +398,21 @@ export default function ZoomManagement() {
                               {duration > 0 ? `${duration} min` : '-'}
                             </TableCell>
                             <TableCell>
+                              {(session as any).recording_link ? (
+                                <a 
+                                  href={(session as any).recording_link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-1 text-accent hover:underline text-sm"
+                                >
+                                  <Video className="h-3 w-3" />
+                                  View
+                                </a>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
                               <Badge className={cn(
                                 session.status === 'live' && 'bg-emerald-100 text-emerald-700 animate-pulse',
                                 session.status === 'completed' && 'bg-gray-100 text-gray-700',
@@ -408,7 +426,7 @@ export default function ZoomManagement() {
                       })}
                       {(!liveSessions || liveSessions.length === 0) && (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                             No session history available.
                           </TableCell>
                         </TableRow>
