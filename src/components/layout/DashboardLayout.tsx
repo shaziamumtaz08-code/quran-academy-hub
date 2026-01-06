@@ -21,6 +21,7 @@ import {
   FolderOpen,
   Target,
   BookOpen,
+  Video,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import logoLight from '@/assets/logo-light.png';
@@ -53,13 +54,14 @@ const navItems: NavItem[] = [
   { label: 'Assignments', href: '/assignments', icon: Users, roles: ['super_admin', 'admin'] },
   { label: 'Monthly Planning', href: '/monthly-planning', icon: Target, roles: ['super_admin', 'admin', 'teacher'] },
   { label: 'Schedules', href: '/schedules', icon: Calendar, roles: ['super_admin', 'admin'] },
+  { label: 'Zoom Management', href: '/zoom-management', icon: Video, roles: ['super_admin', 'admin'] },
   { label: 'Teachers', href: '/teachers', icon: Users, permission: 'teachers.view' },
   { label: 'Students', href: '/students', icon: GraduationCap, permission: 'students.view' },
   { label: 'Attendance', href: '/attendance', icon: ClipboardCheck, permission: 'attendance.view' },
   { label: 'Exam Report Template', href: '/report-card-templates', icon: FileText, roles: ['super_admin', 'admin', 'examiner'] },
   { label: 'Generate Exam Report', href: '/generate-report-card', icon: ClipboardCheck, roles: ['super_admin', 'admin', 'examiner'] },
   { label: 'Student Exam Reports', href: '/student-reports', icon: BarChart3, roles: ['super_admin', 'admin', 'examiner', 'teacher'] },
-  { label: 'Reports', href: '/reports', icon: FileText, permission: 'reports.view' },
+  { label: 'Academic Reports', href: '/reports', icon: FileText, permission: 'reports.view' },
   { label: 'Payments', href: '/payments', icon: DollarSign, permission: 'payments.view' },
   { label: 'KPI', href: '/kpi', icon: BarChart3, roles: ['super_admin', 'admin'] },
   { label: 'Resources', href: '/resources', icon: FolderOpen },
