@@ -115,6 +115,7 @@ export default function MonthlyPlanning() {
   const [ayahFrom, setAyahFrom] = useState('');
   const [ayahTo, setAyahTo] = useState('');
   const [teachingStrategy, setTeachingStrategy] = useState<'normal' | 'reverse'>('normal');
+  const [mushafType, setMushafType] = useState<'15-line' | '13-line'>('15-line');
   
   // Non-Quran specific fields
   const [resourceName, setResourceName] = useState('');
@@ -446,6 +447,7 @@ export default function MonthlyPlanning() {
     setAyahFrom('');
     setAyahTo('');
     setTeachingStrategy('normal');
+    setMushafType('15-line');
     setResourceName('');
     setGoals('');
     setTopicsToCover('');
@@ -754,6 +756,26 @@ export default function MonthlyPlanning() {
                           <SelectItem value="reverse">Reverse (Nas → Fatiha)</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Mushaf Type</Label>
+                        <Select value={mushafType} onValueChange={(v) => setMushafType(v as '15-line' | '13-line')}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="15-line">15-Line (Hafizi)</SelectItem>
+                            <SelectItem value="13-line">13-Line</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-end pb-2">
+                        <p className="text-sm text-muted-foreground">
+                          1 Page = {mushafType === '15-line' ? '15' : '13'} Lines
+                        </p>
+                      </div>
                     </div>
 
                     {/* Teaching Days Info */}
