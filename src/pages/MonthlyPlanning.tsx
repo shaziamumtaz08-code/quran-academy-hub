@@ -45,6 +45,7 @@ interface MonthlyPlan {
   surah_name: string | null;
   ayah_from: number | null;
   ayah_to: number | null;
+  teaching_strategy: string | null;
   student?: { full_name: string };
   teacher?: { full_name: string };
   subject?: { name: string };
@@ -360,6 +361,7 @@ export default function MonthlyPlanning() {
         planData.surah_name = surahName || null;
         planData.ayah_from = ayahFrom ? parseInt(ayahFrom) : null;
         planData.ayah_to = ayahTo ? parseInt(ayahTo) : null;
+        planData.teaching_strategy = teachingStrategy;
         // Clear non-Quran fields
         planData.resource_name = null;
         planData.goals = null;
@@ -465,6 +467,7 @@ export default function MonthlyPlanning() {
     setSurahName(plan.surah_name || '');
     setAyahFrom(plan.ayah_from?.toString() || '');
     setAyahTo(plan.ayah_to?.toString() || '');
+    setTeachingStrategy((plan.teaching_strategy as 'normal' | 'reverse') || 'normal');
     setResourceName(plan.resource_name || '');
     setGoals(plan.goals || '');
     setTopicsToCover(plan.topics_to_cover || '');
@@ -736,6 +739,19 @@ export default function MonthlyPlanning() {
                           {MARKERS.map((m) => (
                             <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
                           ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Teaching Strategy</Label>
+                      <Select value={teachingStrategy} onValueChange={(v) => setTeachingStrategy(v as 'normal' | 'reverse')}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="normal">Normal (Fatiha → Nas)</SelectItem>
+                          <SelectItem value="reverse">Reverse (Nas → Fatiha)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
