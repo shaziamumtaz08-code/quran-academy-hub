@@ -29,10 +29,9 @@ interface StudentCardProps {
   };
   onViewHistory: () => void;
   onViewSchedule: () => void;
-  onMarkAttendance: () => void;
 }
 
-export function StudentCard({ student, onViewHistory, onViewSchedule, onMarkAttendance }: StudentCardProps) {
+export function StudentCard({ student, onViewHistory, onViewSchedule }: StudentCardProps) {
   const status = student.assignment_status || 'active';
   const isPaused = status === 'paused';
   const isCompleted = status === 'completed';
@@ -130,34 +129,18 @@ export function StudentCard({ student, onViewHistory, onViewSchedule, onMarkAtte
           </p>
         </div>
 
-        {/* Footer: Action Buttons - Properly contained */}
-        <div className="flex gap-2.5 pt-4 mt-auto">
+        {/* Footer: Action Button */}
+        <div className="pt-4 mt-auto">
           <Button
             variant="outline"
-            className="flex-1 h-12 text-sm border-navy/20 dark:border-sky/20 hover:bg-cream dark:hover:bg-navy-light/20"
+            className="w-full h-12 text-sm border-navy/20 dark:border-sky/20 hover:bg-cream dark:hover:bg-navy-light/20"
             onClick={(e) => {
               e.stopPropagation();
               onViewSchedule();
             }}
           >
             <Calendar className="h-4 w-4 mr-1.5 text-navy dark:text-sky" />
-            Schedule
-          </Button>
-          <Button
-            className={cn(
-              "flex-1 h-12 text-sm",
-              isInactive 
-                ? "bg-muted text-muted-foreground cursor-not-allowed" 
-                : "bg-gradient-to-r from-navy to-navy-light dark:from-sky dark:to-sky-dark"
-            )}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!isInactive) onMarkAttendance();
-            }}
-            disabled={isInactive}
-          >
-            <Clock className="h-4 w-4 mr-1.5" />
-            {isInactive ? 'Disabled' : 'Mark'}
+            View Schedule
           </Button>
         </div>
       </CardContent>

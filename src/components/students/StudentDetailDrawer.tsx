@@ -54,7 +54,6 @@ interface StudentDetailDrawerProps {
     homework: string | null;
   } | null;
   teacherId: string;
-  onMarkAttendance: () => void;
 }
 
 interface Schedule {
@@ -84,8 +83,7 @@ export function StudentDetailDrawer({
   open, 
   onOpenChange, 
   student, 
-  teacherId,
-  onMarkAttendance 
+  teacherId
 }: StudentDetailDrawerProps) {
   const { user } = useAuth();
   
@@ -337,17 +335,6 @@ export function StudentDetailDrawer({
               </div>
             </div>
 
-            {/* Action Button */}
-            <Button 
-              className="w-full gap-2"
-              onClick={() => {
-                onOpenChange(false);
-                onMarkAttendance();
-              }}
-            >
-              <CheckSquare className="h-4 w-4" />
-              Mark Attendance
-            </Button>
           </div>
         )}
       </SheetContent>
