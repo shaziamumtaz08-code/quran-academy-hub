@@ -6,7 +6,6 @@ import { Search, Mail, User, Loader2, AlertCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { QuickAttendanceDialog } from '@/components/students/QuickAttendanceDialog';
 import { StudentCard } from '@/components/students/StudentCard';
 import { StudentDetailDrawer } from '@/components/students/StudentDetailDrawer';
 import { StudentHistoryDialog } from '@/components/students/StudentHistoryDialog';
@@ -37,7 +36,6 @@ interface TeacherStudent {
 
 export default function Students() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [quickAttendanceStudent, setQuickAttendanceStudent] = useState<TeacherStudent | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<TeacherStudent | null>(null);
   const [historyStudent, setHistoryStudent] = useState<TeacherStudent | null>(null);
   const [scheduleStudent, setScheduleStudent] = useState<TeacherStudent | null>(null);
@@ -272,7 +270,6 @@ export default function Students() {
                   student={student}
                   onViewHistory={() => setHistoryStudent(student)}
                   onViewSchedule={() => setScheduleStudent(student)}
-                  onMarkAttendance={() => setQuickAttendanceStudent(student)}
                 />
               ))}
             </div>
@@ -334,17 +331,6 @@ export default function Students() {
             open={!!selectedStudent}
             onOpenChange={(open) => !open && setSelectedStudent(null)}
             student={selectedStudent}
-            teacherId={user.id}
-            onMarkAttendance={() => setQuickAttendanceStudent(selectedStudent)}
-          />
-        )}
-
-        {/* Quick Attendance Dialog */}
-        {isTeacher && user?.id && (
-          <QuickAttendanceDialog
-            open={!!quickAttendanceStudent}
-            onOpenChange={(open) => !open && setQuickAttendanceStudent(null)}
-            student={quickAttendanceStudent}
             teacherId={user.id}
           />
         )}
