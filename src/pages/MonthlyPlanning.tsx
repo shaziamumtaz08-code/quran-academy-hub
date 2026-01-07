@@ -113,6 +113,7 @@ export default function MonthlyPlanning() {
   const [surahName, setSurahName] = useState('');
   const [ayahFrom, setAyahFrom] = useState('');
   const [ayahTo, setAyahTo] = useState('');
+  const [teachingStrategy, setTeachingStrategy] = useState<'normal' | 'reverse'>('normal');
   
   // Non-Quran specific fields
   const [resourceName, setResourceName] = useState('');
@@ -442,6 +443,7 @@ export default function MonthlyPlanning() {
     setSurahName('');
     setAyahFrom('');
     setAyahTo('');
+    setTeachingStrategy('normal');
     setResourceName('');
     setGoals('');
     setTopicsToCover('');
