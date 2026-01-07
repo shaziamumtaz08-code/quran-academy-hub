@@ -7,11 +7,12 @@ interface QaidaProgressInputProps {
   onLessonNumberChange: (value: string) => void;
   pageNumber: string;
   onPageNumberChange: (value: string) => void;
-  isPlanning?: boolean;
+  // Optional range inputs for planning mode
   lessonNumberTo?: string;
   onLessonNumberToChange?: (value: string) => void;
   pageNumberTo?: string;
   onPageNumberToChange?: (value: string) => void;
+  isPlanning?: boolean;
 }
 
 export function QaidaProgressInput({
@@ -19,68 +20,67 @@ export function QaidaProgressInput({
   onLessonNumberChange,
   pageNumber,
   onPageNumberChange,
-  isPlanning = false,
   lessonNumberTo,
   onLessonNumberToChange,
   pageNumberTo,
   onPageNumberToChange,
+  isPlanning = false,
 }: QaidaProgressInputProps) {
-  if (isPlanning) {
-    // Planning mode: show From/To ranges
+  if (isPlanning && onLessonNumberToChange && onPageNumberToChange) {
     return (
-      <div className="space-y-4">
-        <div className="p-4 bg-secondary/30 rounded-lg space-y-4">
-          <h4 className="font-medium text-sm text-foreground">Qaida Progress Range</h4>
-          
-          {/* Lesson Range */}
-          <div className="space-y-2">
-            <Label className="text-sm">Lesson Range</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">From</Label>
+      <div className="space-y-4 p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+        <Label className="text-sm font-medium">📘 Qaida Progress (Range)</Label>
+        
+        <div className="grid grid-cols-2 gap-4">
+          {/* From */}
+          <div className="space-y-3">
+            <Label className="text-xs text-muted-foreground">From</Label>
+            <div className="space-y-2">
+              <div>
+                <Label className="text-xs">Lesson No.</Label>
                 <Input
                   type="number"
                   min="1"
-                  placeholder="Lesson #"
+                  placeholder="e.g., 1"
                   value={lessonNumber}
                   onChange={(e) => onLessonNumberChange(e.target.value)}
                 />
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">To</Label>
+              <div>
+                <Label className="text-xs">Page No.</Label>
                 <Input
                   type="number"
                   min="1"
-                  placeholder="Lesson #"
-                  value={lessonNumberTo || ''}
-                  onChange={(e) => onLessonNumberToChange?.(e.target.value)}
+                  placeholder="e.g., 5"
+                  value={pageNumber}
+                  onChange={(e) => onPageNumberChange(e.target.value)}
                 />
               </div>
             </div>
           </div>
           
-          {/* Page Range */}
-          <div className="space-y-2">
-            <Label className="text-sm">Page Range</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">From</Label>
+          {/* To */}
+          <div className="space-y-3">
+            <Label className="text-xs text-muted-foreground">To</Label>
+            <div className="space-y-2">
+              <div>
+                <Label className="text-xs">Lesson No.</Label>
                 <Input
                   type="number"
                   min="1"
-                  placeholder="Page #"
-                  value={pageNumber}
-                  onChange={(e) => onPageNumberChange(e.target.value)}
+                  placeholder="e.g., 5"
+                  value={lessonNumberTo}
+                  onChange={(e) => onLessonNumberToChange(e.target.value)}
                 />
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">To</Label>
+              <div>
+                <Label className="text-xs">Page No.</Label>
                 <Input
                   type="number"
                   min="1"
-                  placeholder="Page #"
-                  value={pageNumberTo || ''}
-                  onChange={(e) => onPageNumberToChange?.(e.target.value)}
+                  placeholder="e.g., 15"
+                  value={pageNumberTo}
+                  onChange={(e) => onPageNumberToChange(e.target.value)}
                 />
               </div>
             </div>
@@ -90,30 +90,33 @@ export function QaidaProgressInput({
     );
   }
 
-  // Attendance mode: single values
+  // Attendance mode - single inputs only (no Surah/Verse fields)
   return (
-    <div className="p-4 bg-secondary/30 rounded-lg space-y-4">
-      <h4 className="font-medium text-sm text-foreground">Qaida Progress</h4>
+    <div className="space-y-4 p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+      <Label className="text-sm font-medium">📘 Qaida Progress</Label>
+      <p className="text-xs text-muted-foreground">
+        Record lesson and page number only (Surah/Verse tracking not applicable for Qaida)
+      </p>
       
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="lessonNumber">Lesson Number</Label>
+          <Label className="text-xs">Lesson Number</Label>
           <Input
-            id="lessonNumber"
             type="number"
             min="1"
-            placeholder="e.g., 5"
+            max="65"
+            placeholder="e.g., 12"
             value={lessonNumber}
             onChange={(e) => onLessonNumberChange(e.target.value)}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="pageNumber">Page Number</Label>
+          <Label className="text-xs">Page Number</Label>
           <Input
-            id="pageNumber"
             type="number"
             min="1"
-            placeholder="e.g., 12"
+            max="100"
+            placeholder="e.g., 25"
             value={pageNumber}
             onChange={(e) => onPageNumberChange(e.target.value)}
           />

@@ -23,6 +23,7 @@ import { HifzAttendanceFields } from '@/components/attendance/HifzAttendanceFiel
 import { NazraAttendanceFields } from '@/components/attendance/NazraAttendanceFields';
 import { type LearningUnit, type MushafType, convertToLines, LEARNING_UNITS } from '@/lib/quranData';
 import { getSubjectType, type SubjectType } from '@/lib/subjectUtils';
+import { isRepeatLesson as checkRepeatLesson, type LessonPosition } from '@/lib/quranValidation';
 
 type AttendanceStatus = 'present' | 'student_absent' | 'teacher_absent' | 'teacher_leave' | 'rescheduled' | 'student_rescheduled' | 'holiday';
 type ReasonCategory = 'sick' | 'personal' | 'emergency' | 'internet_issue' | 'other';
@@ -217,6 +218,48 @@ export default function Attendance() {
 
   const mushafType = (selectedStudentProfile?.mushaf_type || '15-line') as MushafType;
   const dailyTarget = selectedStudentProfile?.daily_target_lines || 10;
+  
+  // Fetch last attendance record for this student (for repeat lesson detection)
+  const { data: lastAttendance } = useQuery({
+    queryKey: ['last-attendance', selectedStudent, user?.id],
+    queryFn: async () => {
+      if (!selectedStudent || !user?.id) return null;
+      
+      const { data, error } = await supabase
+        .from('attendance')
+        .select('sabaq_surah_from, sabaq_ayah_from, sabaq_surah_to, sabaq_ayah_to, surah_name, ayah_from, ayah_to, lesson_number, page_number, class_date')
+        .eq('student_id', selectedStudent)
+        .eq('status', 'present')
+        .order('class_date', { ascending: false })
+        .limit(1)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') return null; // PGRST116 = no rows returned
+      return data;
+    },
+    enabled: !!selectedStudent && !!user?.id,
+  });
+
+  // Check if current lesson is a repeat of last lesson
+  const isRepeatLessonDetected = useMemo(() => {
+    if (!lastAttendance || !sabaqSurahFrom) return false;
+    
+    const todayPosition: LessonPosition = {
+      surahFrom: sabaqSurahFrom,
+      ayahFrom: sabaqAyahFrom,
+      surahTo: sabaqSurahTo,
+      ayahTo: sabaqAyahTo,
+    };
+    
+    const yesterdayPosition: LessonPosition = {
+      surahFrom: lastAttendance.sabaq_surah_from || lastAttendance.surah_name || '',
+      ayahFrom: lastAttendance.sabaq_ayah_from || lastAttendance.ayah_from || 0,
+      surahTo: lastAttendance.sabaq_surah_to || '',
+      ayahTo: lastAttendance.sabaq_ayah_to || lastAttendance.ayah_to || 0,
+    };
+    
+    return checkRepeatLesson(todayPosition, yesterdayPosition);
+  }, [lastAttendance, sabaqSurahFrom, sabaqAyahFrom, sabaqSurahTo, sabaqAyahTo]);
   
   // Calculate line equivalent from the raw input
   const rawInputNum = parseFloat(rawInputAmount) || 0;
@@ -915,6 +958,7 @@ export default function Attendance() {
                       onSabqiDoneChange={setSabqiDone}
                       manzilDone={manzilDone}
                       onManzilDoneChange={setManzilDone}
+                      isRepeatLesson={isRepeatLessonDetected}
                     />
                   )}
                   
@@ -931,6 +975,7 @@ export default function Attendance() {
                       onSabaqAyahToChange={setSabaqAyahTo}
                       manzilDone={manzilDone}
                       onManzilDoneChange={setManzilDone}
+                      isRepeatLesson={isRepeatLessonDetected}
                     />
                   )}
                   

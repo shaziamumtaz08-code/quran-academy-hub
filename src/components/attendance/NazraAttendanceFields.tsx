@@ -2,6 +2,8 @@ import React from 'react';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { SurahRangeSelector } from './SurahRangeSelector';
+import { Badge } from '@/components/ui/badge';
+import { AlertTriangle } from 'lucide-react';
 
 interface NazraAttendanceFieldsProps {
   // Sabaq (New Lesson) - Full Surah/Verse tracking
@@ -17,6 +19,9 @@ interface NazraAttendanceFieldsProps {
   // Manzil (Revision) - Yes/No only
   manzilDone: boolean;
   onManzilDoneChange: (value: boolean) => void;
+
+  // Repeat lesson flag (optional)
+  isRepeatLesson?: boolean;
 }
 
 export function NazraAttendanceFields({
@@ -30,9 +35,23 @@ export function NazraAttendanceFields({
   onSabaqAyahToChange,
   manzilDone,
   onManzilDoneChange,
+  isRepeatLesson = false,
 }: NazraAttendanceFieldsProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {/* Repeat Lesson Warning */}
+      {isRepeatLesson && (
+        <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+          <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <span className="text-sm text-amber-700 dark:text-amber-300 font-medium">
+            Repeat Lesson Detected
+          </span>
+          <Badge variant="outline" className="text-xs border-amber-400 text-amber-600">
+            Same as last class
+          </Badge>
+        </div>
+      )}
+
       {/* Sabaq Section - Full Tracking */}
       <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
         <SurahRangeSelector
@@ -44,7 +63,7 @@ export function NazraAttendanceFields({
           onSurahToChange={onSabaqSurahToChange}
           ayahTo={sabaqAyahTo}
           onAyahToChange={onSabaqAyahToChange}
-          label="📖 Sabaq (New Lesson)"
+          label="📖 Sabaq (New Reading)"
           showToFields={true}
         />
       </div>

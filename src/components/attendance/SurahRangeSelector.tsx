@@ -3,6 +3,8 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { SurahSearchSelect } from './SurahSearchSelect';
 import { getSurahByName, SURAHS } from '@/lib/quranData';
+import { validateSurahRange, getMaxAyahs } from '@/lib/quranValidation';
+import { AlertCircle } from 'lucide-react';
 
 interface SurahRangeSelectorProps {
   surahFrom: string;
@@ -26,35 +28,38 @@ export function SurahRangeSelector({
   onSurahToChange,
   ayahTo,
   onAyahToChange,
-  label = 'Sabaq (New Lesson)',
+  label = '📖 Sabaq (New Lesson)',
   showToFields = true,
 }: SurahRangeSelectorProps) {
-  // Get max ayahs for validation
-  const fromSurah = getSurahByName(surahFrom);
-  const toSurah = getSurahByName(surahTo);
-  const maxAyahFrom = fromSurah?.totalAyahs || 999;
-  const maxAyahTo = toSurah?.totalAyahs || 999;
+  // Get max ayahs for validation display
+  const maxAyahFrom = getMaxAyahs(surahFrom) || 999;
+  const maxAyahTo = getMaxAyahs(surahTo) || 999;
 
-  // Validate that "To" comes after "From" in Quran order
-  const isValidRange = React.useMemo(() => {
-    if (!surahFrom || !surahTo) return true;
-    
-    const fromIndex = SURAHS.findIndex(s => s.name === surahFrom);
-    const toIndex = SURAHS.findIndex(s => s.name === surahTo);
-    
-    if (fromIndex === -1 || toIndex === -1) return true;
-    
-    // If same surah, check ayah order
-    if (fromIndex === toIndex) {
-      const fromAyah = parseInt(ayahFrom) || 0;
-      const toAyah = parseInt(ayahTo) || 0;
-      if (fromAyah > 0 && toAyah > 0) {
-        return toAyah >= fromAyah;
+  // Validate the complete range
+  const validation = React.useMemo(() => {
+    return validateSurahRange(surahFrom, ayahFrom, surahTo, ayahTo);
+  }, [surahFrom, surahTo, ayahFrom, ayahTo]);
+
+  // Auto-clamp ayah values when they exceed max
+  React.useEffect(() => {
+    if (surahFrom && ayahFrom) {
+      const max = getMaxAyahs(surahFrom);
+      const current = parseInt(ayahFrom) || 0;
+      if (max > 0 && current > max) {
+        onAyahFromChange(max.toString());
       }
     }
-    
-    return toIndex >= fromIndex;
-  }, [surahFrom, surahTo, ayahFrom, ayahTo]);
+  }, [surahFrom, ayahFrom, onAyahFromChange]);
+
+  React.useEffect(() => {
+    if (surahTo && ayahTo) {
+      const max = getMaxAyahs(surahTo);
+      const current = parseInt(ayahTo) || 0;
+      if (max > 0 && current > max) {
+        onAyahToChange(max.toString());
+      }
+    }
+  }, [surahTo, ayahTo, onAyahToChange]);
 
   return (
     <div className="space-y-4">
@@ -72,15 +77,24 @@ export function SurahRangeSelector({
               onChange={onSurahFromChange}
               placeholder="Select Surah"
             />
-            <Input
-              type="number"
-              min="1"
-              max={maxAyahFrom}
-              placeholder="Ayah"
-              value={ayahFrom}
-              onChange={(e) => onAyahFromChange(e.target.value)}
-            />
+            <div className="relative">
+              <Input
+                type="number"
+                min="1"
+                max={maxAyahFrom}
+                placeholder={surahFrom ? `1-${maxAyahFrom}` : 'Ayah'}
+                value={ayahFrom}
+                onChange={(e) => onAyahFromChange(e.target.value)}
+                className={validation.fromError ? 'border-destructive pr-8' : ''}
+              />
+              {validation.fromError && (
+                <AlertCircle className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-destructive" />
+              )}
+            </div>
           </div>
+          {validation.fromError && (
+            <p className="text-xs text-destructive">{validation.fromError}</p>
+          )}
         </div>
         
         {/* To Section */}
@@ -93,20 +107,23 @@ export function SurahRangeSelector({
                 onChange={onSurahToChange}
                 placeholder="Select Surah"
               />
-              <Input
-                type="number"
-                min="1"
-                max={maxAyahTo}
-                placeholder="Ayah"
-                value={ayahTo}
-                onChange={(e) => onAyahToChange(e.target.value)}
-                className={!isValidRange ? 'border-destructive' : ''}
-              />
+              <div className="relative">
+                <Input
+                  type="number"
+                  min="1"
+                  max={maxAyahTo}
+                  placeholder={surahTo ? `1-${maxAyahTo}` : 'Ayah'}
+                  value={ayahTo}
+                  onChange={(e) => onAyahToChange(e.target.value)}
+                  className={validation.toError ? 'border-destructive pr-8' : ''}
+                />
+                {validation.toError && (
+                  <AlertCircle className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-destructive" />
+                )}
+              </div>
             </div>
-            {!isValidRange && (
-              <p className="text-xs text-destructive">
-                "To" must come after "From" in Quran order
-              </p>
+            {validation.toError && (
+              <p className="text-xs text-destructive">{validation.toError}</p>
             )}
           </div>
         )}
