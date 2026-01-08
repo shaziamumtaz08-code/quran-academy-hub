@@ -12,12 +12,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Calendar, Plus, CheckCircle, Clock, Target, User, Loader2, Edit, AlertTriangle, CalendarDays, Info } from 'lucide-react';
+import { Calendar, Plus, CheckCircle, Clock, Target, User, Loader2, Edit, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { calculateWorkingDaysInMonth, calculateDailyTarget } from '@/lib/subjectUtils';
+import { calculateWorkingDaysInMonth } from '@/lib/subjectUtils';
+import { PlanningMarkerSection, PlanMarkerType } from '@/components/planning/PlanningMarkerSection';
 
 type PrimaryMarker = 'rukus' | 'pages' | 'lines';
 type PlanStatus = 'pending' | 'approved';
@@ -43,6 +44,8 @@ interface MonthlyPlan {
   page_from: number | null;
   page_to: number | null;
   surah_name: string | null;
+  surah_from: string | null;
+  surah_to: string | null;
   ayah_from: number | null;
   ayah_to: number | null;
   teaching_strategy: string | null;
@@ -106,16 +109,22 @@ export default function MonthlyPlanning() {
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'MM'));
   const [selectedYear, setSelectedYear] = useState(currentYear.toString());
   const [primaryMarker, setPrimaryMarker] = useState<PrimaryMarker>('lines');
-  const [monthlyTarget, setMonthlyTarget] = useState('30');
-  const [dailyTarget, setDailyTarget] = useState('1');
   const [notes, setNotes] = useState('');
   
-  // Quran-specific fields
-  const [surahName, setSurahName] = useState('');
-  const [ayahFrom, setAyahFrom] = useState('');
-  const [ayahTo, setAyahTo] = useState('');
-  const [teachingStrategy, setTeachingStrategy] = useState<'normal' | 'reverse'>('normal');
-  const [mushafType, setMushafType] = useState<'15-line' | '13-line'>('15-line');
+  // Planning marker state (for Quran subjects)
+  const [planMarkerType, setPlanMarkerType] = useState<PlanMarkerType>('ruku');
+  const [rukuFromJuz, setRukuFromJuz] = useState('');
+  const [rukuFromNumber, setRukuFromNumber] = useState('');
+  const [rukuToJuz, setRukuToJuz] = useState('');
+  const [rukuToNumber, setRukuToNumber] = useState('');
+  const [ayahFromSurah, setAyahFromSurah] = useState('');
+  const [ayahFromNumber, setAyahFromNumber] = useState('');
+  const [ayahToSurah, setAyahToSurah] = useState('');
+  const [ayahToNumber, setAyahToNumber] = useState('');
+  const [quarterFromJuz, setQuarterFromJuz] = useState('');
+  const [quarterFromNumber, setQuarterFromNumber] = useState('');
+  const [quarterToJuz, setQuarterToJuz] = useState('');
+  const [quarterToNumber, setQuarterToNumber] = useState('');
   
   // Non-Quran specific fields
   const [resourceName, setResourceName] = useState('');
@@ -298,14 +307,6 @@ export default function MonthlyPlanning() {
     return calculateWorkingDaysInMonth(scheduleDays, parseInt(selectedYear), parseInt(selectedMonth));
   }, [studentSchedule, selectedMonth, selectedYear]);
 
-  // Auto-calculate daily target when monthly target or teaching days change
-  useEffect(() => {
-    if (totalTeachingDays > 0 && monthlyTarget) {
-      const calculated = calculateDailyTarget(parseFloat(monthlyTarget) || 0, totalTeachingDays);
-      setDailyTarget(calculated.toString());
-    }
-  }, [monthlyTarget, totalTeachingDays]);
-
   // Fetch monthly plans
   const { data: plans, isLoading } = useQuery({
     queryKey: ['monthly-plans', monthFilter, yearFilter, user?.id],
@@ -347,11 +348,10 @@ export default function MonthlyPlanning() {
         assignment_id: assignmentId || null,
         month: selectedMonth,
         year: selectedYear,
-        primary_marker: primaryMarker,
-        monthly_target: parseFloat(monthlyTarget),
-        daily_target: parseFloat(dailyTarget),
+        primary_marker: planMarkerType === 'ruku' ? 'rukus' : planMarkerType === 'ayah' ? 'lines' : 'pages',
+        monthly_target: 0, // Will be calculated from marker selection
+        daily_target: totalTeachingDays > 0 ? 1 : 0,
         total_teaching_days: totalTeachingDays || null,
-        calculated_daily_target: totalTeachingDays > 0 ? parseFloat(dailyTarget) : null,
         notes: notes || null,
         status: 'pending' as PlanStatus,
         subject_id: selectedSubject,
@@ -359,10 +359,13 @@ export default function MonthlyPlanning() {
 
       // Add subject-specific fields
       if (isQuran) {
-        planData.surah_name = surahName || null;
-        planData.ayah_from = ayahFrom ? parseInt(ayahFrom) : null;
-        planData.ayah_to = ayahTo ? parseInt(ayahTo) : null;
-        planData.teaching_strategy = teachingStrategy;
+        // Store the marker selections (surah/ayah or juz/ruku info)
+        if (planMarkerType === 'ayah') {
+          planData.surah_from = ayahFromSurah || null;
+          planData.surah_to = ayahToSurah || null;
+          planData.ayah_from = ayahFromNumber ? parseInt(ayahFromNumber) : null;
+          planData.ayah_to = ayahToNumber ? parseInt(ayahToNumber) : null;
+        }
         // Clear non-Quran fields
         planData.resource_name = null;
         planData.goals = null;
@@ -440,14 +443,20 @@ export default function MonthlyPlanning() {
     setSelectedMonth(format(new Date(), 'MM'));
     setSelectedYear(currentYear.toString());
     setPrimaryMarker('lines');
-    setMonthlyTarget('30');
-    setDailyTarget('1');
     setNotes('');
-    setSurahName('');
-    setAyahFrom('');
-    setAyahTo('');
-    setTeachingStrategy('normal');
-    setMushafType('15-line');
+    setPlanMarkerType('ruku');
+    setRukuFromJuz('');
+    setRukuFromNumber('');
+    setRukuToJuz('');
+    setRukuToNumber('');
+    setAyahFromSurah('');
+    setAyahFromNumber('');
+    setAyahToSurah('');
+    setAyahToNumber('');
+    setQuarterFromJuz('');
+    setQuarterFromNumber('');
+    setQuarterToJuz('');
+    setQuarterToNumber('');
     setResourceName('');
     setGoals('');
     setTopicsToCover('');
@@ -463,13 +472,20 @@ export default function MonthlyPlanning() {
     setSelectedMonth(plan.month);
     setSelectedYear(plan.year);
     setPrimaryMarker(plan.primary_marker);
-    setMonthlyTarget(plan.monthly_target.toString());
-    setDailyTarget(plan.daily_target.toString());
     setNotes(plan.notes || '');
-    setSurahName(plan.surah_name || '');
-    setAyahFrom(plan.ayah_from?.toString() || '');
-    setAyahTo(plan.ayah_to?.toString() || '');
-    setTeachingStrategy((plan.teaching_strategy as 'normal' | 'reverse') || 'normal');
+    // Map primary_marker to planMarkerType
+    if (plan.primary_marker === 'rukus') {
+      setPlanMarkerType('ruku');
+    } else if (plan.primary_marker === 'lines') {
+      setPlanMarkerType('ayah');
+    } else {
+      setPlanMarkerType('quarter');
+    }
+    // Restore ayah values if present
+    if (plan.ayah_from) setAyahFromNumber(plan.ayah_from.toString());
+    if (plan.ayah_to) setAyahToNumber(plan.ayah_to.toString());
+    if (plan.surah_from) setAyahFromSurah(plan.surah_from);
+    if (plan.surah_to) setAyahToSurah(plan.surah_to);
     setResourceName(plan.resource_name || '');
     setGoals(plan.goals || '');
     setTopicsToCover(plan.topics_to_cover || '');
@@ -727,137 +743,40 @@ export default function MonthlyPlanning() {
 
                 {/* Conditional Fields based on Subject Type */}
                 {isQuran ? (
-                  // Quran-specific fields (Hifz, Nazrah)
-                  <div className="space-y-4 p-4 bg-sky/10 dark:bg-sky/20 rounded-lg border border-sky/30">
-                    <p className="text-sm font-medium text-sky-dark dark:text-sky-light">Quran Learning Fields</p>
-                    
-                    <div className="space-y-2">
-                      <Label>Primary Marker <span className="text-destructive">*</span></Label>
-                      <Select value={primaryMarker} onValueChange={(v) => setPrimaryMarker(v as PrimaryMarker)}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {MARKERS.map((m) => (
-                            <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Teaching Strategy</Label>
-                      <Select value={teachingStrategy} onValueChange={(v) => setTeachingStrategy(v as 'normal' | 'reverse')}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="normal">Normal (Fatiha → Nas)</SelectItem>
-                          <SelectItem value="reverse">Reverse (Nas → Fatiha)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Mushaf Type</Label>
-                        <Select value={mushafType} onValueChange={(v) => setMushafType(v as '15-line' | '13-line')}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="15-line">15-Line (Hafizi)</SelectItem>
-                            <SelectItem value="13-line">13-Line</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex items-end pb-2">
-                        <p className="text-sm text-muted-foreground">
-                          1 Page = {mushafType === '15-line' ? '15' : '13'} Lines
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Teaching Days Info */}
-                    {totalTeachingDays > 0 && (
-                      <div className="flex items-center gap-2 p-3 bg-emerald-light/10 dark:bg-emerald-light/20 rounded-lg border border-emerald-light/30">
-                        <CalendarDays className="h-4 w-4 text-emerald-light" />
-                        <span className="text-sm font-medium text-emerald-dark dark:text-emerald-light">
-                          {totalTeachingDays} teaching days in {MONTHS.find(m => m.value === selectedMonth)?.label} {selectedYear}
-                        </span>
-                      </div>
-                    )}
-                    {studentSchedule && studentSchedule.length === 0 && selectedSubjectDetails?.assignment_id && (
-                      <div className="flex items-center gap-2 p-3 bg-amber/10 rounded-lg border border-amber/30">
-                        <Info className="h-4 w-4 text-amber" />
-                        <span className="text-sm text-amber-dark dark:text-amber">
-                          No schedule configured. Daily target won't be auto-calculated.
-                        </span>
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Monthly Target</Label>
-                        <Input
-                          type="number"
-                          min="1"
-                          value={monthlyTarget}
-                          onChange={(e) => setMonthlyTarget(e.target.value)}
-                          placeholder="30"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Daily Target {totalTeachingDays > 0 && <span className="text-muted-foreground text-xs">(auto)</span>}</Label>
-                        <Input
-                          type="number"
-                          min="0.5"
-                          step="0.5"
-                          value={dailyTarget}
-                          onChange={(e) => setDailyTarget(e.target.value)}
-                          placeholder="1"
-                          className={totalTeachingDays > 0 ? 'bg-muted/50' : ''}
-                        />
-                        {totalTeachingDays > 0 && (
-                          <p className="text-xs text-muted-foreground">
-                            {monthlyTarget} ÷ {totalTeachingDays} days = {dailyTarget}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Surah Name</Label>
-                      <Input
-                        value={surahName}
-                        onChange={(e) => setSurahName(e.target.value)}
-                        placeholder="e.g., Al-Baqarah"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Ayah From</Label>
-                        <Input
-                          type="number"
-                          min="1"
-                          value={ayahFrom}
-                          onChange={(e) => setAyahFrom(e.target.value)}
-                          placeholder="1"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Ayah To</Label>
-                        <Input
-                          type="number"
-                          min="1"
-                          value={ayahTo}
-                          onChange={(e) => setAyahTo(e.target.value)}
-                          placeholder="50"
-                        />
-                      </div>
-                    </div>
-                  </div>
+                  // Quran-specific fields - use new PlanningMarkerSection
+                  <PlanningMarkerSection
+                    markerType={planMarkerType}
+                    onMarkerTypeChange={setPlanMarkerType}
+                    rukuFromJuz={rukuFromJuz}
+                    onRukuFromJuzChange={setRukuFromJuz}
+                    rukuFromNumber={rukuFromNumber}
+                    onRukuFromNumberChange={setRukuFromNumber}
+                    rukuToJuz={rukuToJuz}
+                    onRukuToJuzChange={setRukuToJuz}
+                    rukuToNumber={rukuToNumber}
+                    onRukuToNumberChange={setRukuToNumber}
+                    ayahFromSurah={ayahFromSurah}
+                    onAyahFromSurahChange={setAyahFromSurah}
+                    ayahFromNumber={ayahFromNumber}
+                    onAyahFromNumberChange={setAyahFromNumber}
+                    ayahToSurah={ayahToSurah}
+                    onAyahToSurahChange={setAyahToSurah}
+                    ayahToNumber={ayahToNumber}
+                    onAyahToNumberChange={setAyahToNumber}
+                    quarterFromJuz={quarterFromJuz}
+                    onQuarterFromJuzChange={setQuarterFromJuz}
+                    quarterFromNumber={quarterFromNumber}
+                    onQuarterFromNumberChange={setQuarterFromNumber}
+                    quarterToJuz={quarterToJuz}
+                    onQuarterToJuzChange={setQuarterToJuz}
+                    quarterToNumber={quarterToNumber}
+                    onQuarterToNumberChange={setQuarterToNumber}
+                    totalTeachingDays={totalTeachingDays}
+                    monthLabel={MONTHS.find(m => m.value === selectedMonth)?.label || ''}
+                    year={selectedYear}
+                    notes={notes}
+                    onNotesChange={setNotes}
+                  />
                 ) : (
                   // Non-Quran subject fields (English, Math, etc.)
                   <div className="space-y-4 p-4 bg-accent/50 rounded-lg border border-border">
@@ -916,16 +835,18 @@ export default function MonthlyPlanning() {
                   </div>
                 )}
 
-                {/* Notes */}
-                <div className="space-y-2">
-                  <Label>Notes (Optional)</Label>
-                  <Textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Any additional notes..."
-                    rows={2}
-                  />
-                </div>
+                {/* Notes - only for non-Quran (Quran has notes in PlanningMarkerSection) */}
+                {!isQuran && (
+                  <div className="space-y-2">
+                    <Label>Notes (Optional)</Label>
+                    <Textarea
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      placeholder="Any additional notes..."
+                      rows={2}
+                    />
+                  </div>
+                )}
               </>
             )}
           </div>
