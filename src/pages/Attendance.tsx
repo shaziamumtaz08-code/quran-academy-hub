@@ -24,6 +24,7 @@ import { NazraAttendanceFields } from '@/components/attendance/NazraAttendanceFi
 import { type LearningUnit, type MushafType, convertToLines, LEARNING_UNITS } from '@/lib/quranData';
 import { getSubjectType, type SubjectType } from '@/lib/subjectUtils';
 import { isRepeatLesson as checkRepeatLesson, type LessonPosition } from '@/lib/quranValidation';
+import { type MarkerType } from '@/components/attendance/SabaqSection';
 
 type AttendanceStatus = 'present' | 'student_absent' | 'teacher_absent' | 'teacher_leave' | 'rescheduled' | 'student_rescheduled' | 'holiday';
 type ReasonCategory = 'sick' | 'personal' | 'emergency' | 'internet_issue' | 'other';
@@ -133,7 +134,28 @@ export default function Attendance() {
   const [lessonNumber, setLessonNumber] = useState('');
   const [pageNumber, setPageNumber] = useState('');
   
-  // Hifz-specific fields
+  // Hifz/Nazra-specific fields - New Sabaq Section
+  const [markerType, setMarkerType] = useState<MarkerType>('ayah');
+  
+  // Ruku mode
+  const [rukuFromJuz, setRukuFromJuz] = useState('');
+  const [rukuFromNumber, setRukuFromNumber] = useState('');
+  const [rukuToJuz, setRukuToJuz] = useState('');
+  const [rukuToNumber, setRukuToNumber] = useState('');
+  
+  // Ayah mode
+  const [ayahFromSurah, setAyahFromSurah] = useState('');
+  const [ayahFromNumber, setAyahFromNumber] = useState('');
+  const [ayahToSurah, setAyahToSurah] = useState('');
+  const [ayahToNumber, setAyahToNumber] = useState('');
+  
+  // Quarter mode
+  const [quarterFromJuz, setQuarterFromJuz] = useState('');
+  const [quarterFromNumber, setQuarterFromNumber] = useState('');
+  const [quarterToJuz, setQuarterToJuz] = useState('');
+  const [quarterToNumber, setQuarterToNumber] = useState('');
+  
+  // Legacy fields kept for compatibility
   const [sabaqSurahFrom, setSabaqSurahFrom] = useState('');
   const [sabaqAyahFrom, setSabaqAyahFrom] = useState('');
   const [sabaqSurahTo, setSabaqSurahTo] = useState('');
@@ -946,14 +968,32 @@ export default function Attendance() {
                   {/* Hifz Progress */}
                   {currentSubjectType === 'hifz' && (
                     <HifzAttendanceFields
-                      sabaqSurahFrom={sabaqSurahFrom}
-                      onSabaqSurahFromChange={setSabaqSurahFrom}
-                      sabaqAyahFrom={sabaqAyahFrom}
-                      onSabaqAyahFromChange={setSabaqAyahFrom}
-                      sabaqSurahTo={sabaqSurahTo}
-                      onSabaqSurahToChange={setSabaqSurahTo}
-                      sabaqAyahTo={sabaqAyahTo}
-                      onSabaqAyahToChange={setSabaqAyahTo}
+                      markerType={markerType}
+                      onMarkerTypeChange={setMarkerType}
+                      rukuFromJuz={rukuFromJuz}
+                      onRukuFromJuzChange={setRukuFromJuz}
+                      rukuFromNumber={rukuFromNumber}
+                      onRukuFromNumberChange={setRukuFromNumber}
+                      rukuToJuz={rukuToJuz}
+                      onRukuToJuzChange={setRukuToJuz}
+                      rukuToNumber={rukuToNumber}
+                      onRukuToNumberChange={setRukuToNumber}
+                      ayahFromSurah={ayahFromSurah}
+                      onAyahFromSurahChange={setAyahFromSurah}
+                      ayahFromNumber={ayahFromNumber}
+                      onAyahFromNumberChange={setAyahFromNumber}
+                      ayahToSurah={ayahToSurah}
+                      onAyahToSurahChange={setAyahToSurah}
+                      ayahToNumber={ayahToNumber}
+                      onAyahToNumberChange={setAyahToNumber}
+                      quarterFromJuz={quarterFromJuz}
+                      onQuarterFromJuzChange={setQuarterFromJuz}
+                      quarterFromNumber={quarterFromNumber}
+                      onQuarterFromNumberChange={setQuarterFromNumber}
+                      quarterToJuz={quarterToJuz}
+                      onQuarterToJuzChange={setQuarterToJuz}
+                      quarterToNumber={quarterToNumber}
+                      onQuarterToNumberChange={setQuarterToNumber}
                       sabqiDone={sabqiDone}
                       onSabqiDoneChange={setSabqiDone}
                       manzilDone={manzilDone}
@@ -965,14 +1005,32 @@ export default function Attendance() {
                   {/* Nazra Progress */}
                   {currentSubjectType === 'nazra' && (
                     <NazraAttendanceFields
-                      sabaqSurahFrom={sabaqSurahFrom}
-                      onSabaqSurahFromChange={setSabaqSurahFrom}
-                      sabaqAyahFrom={sabaqAyahFrom}
-                      onSabaqAyahFromChange={setSabaqAyahFrom}
-                      sabaqSurahTo={sabaqSurahTo}
-                      onSabaqSurahToChange={setSabaqSurahTo}
-                      sabaqAyahTo={sabaqAyahTo}
-                      onSabaqAyahToChange={setSabaqAyahTo}
+                      markerType={markerType}
+                      onMarkerTypeChange={setMarkerType}
+                      rukuFromJuz={rukuFromJuz}
+                      onRukuFromJuzChange={setRukuFromJuz}
+                      rukuFromNumber={rukuFromNumber}
+                      onRukuFromNumberChange={setRukuFromNumber}
+                      rukuToJuz={rukuToJuz}
+                      onRukuToJuzChange={setRukuToJuz}
+                      rukuToNumber={rukuToNumber}
+                      onRukuToNumberChange={setRukuToNumber}
+                      ayahFromSurah={ayahFromSurah}
+                      onAyahFromSurahChange={setAyahFromSurah}
+                      ayahFromNumber={ayahFromNumber}
+                      onAyahFromNumberChange={setAyahFromNumber}
+                      ayahToSurah={ayahToSurah}
+                      onAyahToSurahChange={setAyahToSurah}
+                      ayahToNumber={ayahToNumber}
+                      onAyahToNumberChange={setAyahToNumber}
+                      quarterFromJuz={quarterFromJuz}
+                      onQuarterFromJuzChange={setQuarterFromJuz}
+                      quarterFromNumber={quarterFromNumber}
+                      onQuarterFromNumberChange={setQuarterFromNumber}
+                      quarterToJuz={quarterToJuz}
+                      onQuarterToJuzChange={setQuarterToJuz}
+                      quarterToNumber={quarterToNumber}
+                      onQuarterToNumberChange={setQuarterToNumber}
                       manzilDone={manzilDone}
                       onManzilDoneChange={setManzilDone}
                       isRepeatLesson={isRepeatLessonDetected}

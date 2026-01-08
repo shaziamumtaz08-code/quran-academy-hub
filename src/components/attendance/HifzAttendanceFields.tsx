@@ -1,20 +1,44 @@
 import React from 'react';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { SurahRangeSelector } from './SurahRangeSelector';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle } from 'lucide-react';
+import { SabaqSection, type MarkerType } from './SabaqSection';
 
 interface HifzAttendanceFieldsProps {
-  // Sabaq (New Lesson) - Full Surah/Verse tracking
-  sabaqSurahFrom: string;
-  onSabaqSurahFromChange: (value: string) => void;
-  sabaqAyahFrom: string;
-  onSabaqAyahFromChange: (value: string) => void;
-  sabaqSurahTo: string;
-  onSabaqSurahToChange: (value: string) => void;
-  sabaqAyahTo: string;
-  onSabaqAyahToChange: (value: string) => void;
+  // Marker type selection
+  markerType: MarkerType;
+  onMarkerTypeChange: (type: MarkerType) => void;
+  
+  // Ruku mode values
+  rukuFromJuz: string;
+  onRukuFromJuzChange: (value: string) => void;
+  rukuFromNumber: string;
+  onRukuFromNumberChange: (value: string) => void;
+  rukuToJuz: string;
+  onRukuToJuzChange: (value: string) => void;
+  rukuToNumber: string;
+  onRukuToNumberChange: (value: string) => void;
+  
+  // Ayah mode values
+  ayahFromSurah: string;
+  onAyahFromSurahChange: (value: string) => void;
+  ayahFromNumber: string;
+  onAyahFromNumberChange: (value: string) => void;
+  ayahToSurah: string;
+  onAyahToSurahChange: (value: string) => void;
+  ayahToNumber: string;
+  onAyahToNumberChange: (value: string) => void;
+  
+  // Quarter mode values
+  quarterFromJuz: string;
+  onQuarterFromJuzChange: (value: string) => void;
+  quarterFromNumber: string;
+  onQuarterFromNumberChange: (value: string) => void;
+  quarterToJuz: string;
+  onQuarterToJuzChange: (value: string) => void;
+  quarterToNumber: string;
+  onQuarterToNumberChange: (value: string) => void;
   
   // Sabqi (Recent Revision) - Yes/No only
   sabqiDone: boolean;
@@ -29,14 +53,32 @@ interface HifzAttendanceFieldsProps {
 }
 
 export function HifzAttendanceFields({
-  sabaqSurahFrom,
-  onSabaqSurahFromChange,
-  sabaqAyahFrom,
-  onSabaqAyahFromChange,
-  sabaqSurahTo,
-  onSabaqSurahToChange,
-  sabaqAyahTo,
-  onSabaqAyahToChange,
+  markerType,
+  onMarkerTypeChange,
+  rukuFromJuz,
+  onRukuFromJuzChange,
+  rukuFromNumber,
+  onRukuFromNumberChange,
+  rukuToJuz,
+  onRukuToJuzChange,
+  rukuToNumber,
+  onRukuToNumberChange,
+  ayahFromSurah,
+  onAyahFromSurahChange,
+  ayahFromNumber,
+  onAyahFromNumberChange,
+  ayahToSurah,
+  onAyahToSurahChange,
+  ayahToNumber,
+  onAyahToNumberChange,
+  quarterFromJuz,
+  onQuarterFromJuzChange,
+  quarterFromNumber,
+  onQuarterFromNumberChange,
+  quarterToJuz,
+  onQuarterToJuzChange,
+  quarterToNumber,
+  onQuarterToNumberChange,
   sabqiDone,
   onSabqiDoneChange,
   manzilDone,
@@ -58,21 +100,35 @@ export function HifzAttendanceFields({
         </div>
       )}
 
-      {/* Sabaq Section - Full Tracking */}
-      <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
-        <SurahRangeSelector
-          surahFrom={sabaqSurahFrom}
-          onSurahFromChange={onSabaqSurahFromChange}
-          ayahFrom={sabaqAyahFrom}
-          onAyahFromChange={onSabaqAyahFromChange}
-          surahTo={sabaqSurahTo}
-          onSurahToChange={onSabaqSurahToChange}
-          ayahTo={sabaqAyahTo}
-          onAyahToChange={onSabaqAyahToChange}
-          label="📖 Sabaq (New Memorization)"
-          showToFields={true}
-        />
-      </div>
+      {/* Sabaq Section - New Redesigned UI */}
+      <SabaqSection
+        markerType={markerType}
+        onMarkerTypeChange={onMarkerTypeChange}
+        rukuFromJuz={rukuFromJuz}
+        onRukuFromJuzChange={onRukuFromJuzChange}
+        rukuFromNumber={rukuFromNumber}
+        onRukuFromNumberChange={onRukuFromNumberChange}
+        rukuToJuz={rukuToJuz}
+        onRukuToJuzChange={onRukuToJuzChange}
+        rukuToNumber={rukuToNumber}
+        onRukuToNumberChange={onRukuToNumberChange}
+        ayahFromSurah={ayahFromSurah}
+        onAyahFromSurahChange={onAyahFromSurahChange}
+        ayahFromNumber={ayahFromNumber}
+        onAyahFromNumberChange={onAyahFromNumberChange}
+        ayahToSurah={ayahToSurah}
+        onAyahToSurahChange={onAyahToSurahChange}
+        ayahToNumber={ayahToNumber}
+        onAyahToNumberChange={onAyahToNumberChange}
+        quarterFromJuz={quarterFromJuz}
+        onQuarterFromJuzChange={onQuarterFromJuzChange}
+        quarterFromNumber={quarterFromNumber}
+        onQuarterFromNumberChange={onQuarterFromNumberChange}
+        quarterToJuz={quarterToJuz}
+        onQuarterToJuzChange={onQuarterToJuzChange}
+        quarterToNumber={quarterToNumber}
+        onQuarterToNumberChange={onQuarterToNumberChange}
+      />
       
       {/* Sabqi Section - Yes/No Only */}
       <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
