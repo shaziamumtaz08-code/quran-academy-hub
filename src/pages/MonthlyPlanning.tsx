@@ -778,75 +778,84 @@ export default function MonthlyPlanning() {
                     onNotesChange={setNotes}
                   />
                 ) : (
-                  // Non-Quran subject fields (English, Math, etc.)
-                  <div className="space-y-4 p-4 bg-accent/50 rounded-lg border border-border">
-                    <p className="text-sm font-medium">Academic Subject Fields</p>
+                  // Non-Quran subject fields (English, Math, etc.) - Dark Navy Theme
+                  <div className="bg-[#1e3a5f] rounded-xl p-5 border border-[#2d4a6f] shadow-lg space-y-4">
+                    {/* Header */}
+                    <div className="flex items-center gap-2">
+                      <Target className="h-5 w-5 text-cyan-400" />
+                      <h3 className="font-semibold text-base text-cyan-300">Academic Subject Fields</h3>
+                    </div>
                     
                     <div className="space-y-2">
-                      <Label>Resource Name</Label>
+                      <Label className="text-sm font-medium text-slate-200">Resource Name</Label>
                       <Input
                         value={resourceName}
                         onChange={(e) => setResourceName(e.target.value)}
                         placeholder="e.g., English Grammar Workbook"
+                        className="bg-white text-navy-900 border-0 placeholder:text-slate-400"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Goals</Label>
+                      <Label className="text-sm font-medium text-slate-200">Goals</Label>
                       <Textarea
                         value={goals}
                         onChange={(e) => setGoals(e.target.value)}
                         placeholder="e.g., Improve vocabulary and reading comprehension"
                         rows={2}
+                        className="bg-white text-navy-900 border-0 placeholder:text-slate-400 resize-none"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Topics to Cover</Label>
+                      <Label className="text-sm font-medium text-slate-200">Topics to Cover</Label>
                       <Input
                         value={topicsToCover}
                         onChange={(e) => setTopicsToCover(e.target.value)}
                         placeholder="e.g., Past tense verbs, Prepositions"
+                        className="bg-white text-navy-900 border-0 placeholder:text-slate-400"
                       />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>From Page</Label>
+                        <Label className="text-sm font-medium text-slate-200">From Page</Label>
                         <Input
                           type="number"
                           min="1"
                           value={pageFrom}
                           onChange={(e) => setPageFrom(e.target.value)}
                           placeholder="1"
+                          className="bg-white text-navy-900 border-0 placeholder:text-slate-400"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>To Page</Label>
+                        <Label className="text-sm font-medium text-slate-200">To Page</Label>
                         <Input
                           type="number"
                           min="1"
                           value={pageTo}
                           onChange={(e) => setPageTo(e.target.value)}
                           placeholder="30"
+                          className="bg-white text-navy-900 border-0 placeholder:text-slate-400"
                         />
                       </div>
+                    </div>
+
+                    {/* Notes inside Academic section */}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-slate-200">Notes (Optional)</Label>
+                      <Textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Any additional notes..."
+                        rows={2}
+                        className="bg-white text-navy-900 border-0 placeholder:text-slate-400 resize-none"
+                      />
                     </div>
                   </div>
                 )}
 
-                {/* Notes - only for non-Quran (Quran has notes in PlanningMarkerSection) */}
-                {!isQuran && (
-                  <div className="space-y-2">
-                    <Label>Notes (Optional)</Label>
-                    <Textarea
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Any additional notes..."
-                      rows={2}
-                    />
-                  </div>
-                )}
               </>
             )}
           </div>

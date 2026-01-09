@@ -61,34 +61,35 @@ export function AcademicAttendanceFields({
   };
 
   return (
-    <div className="bg-card rounded-xl p-5 border border-border shadow-sm space-y-5">
-      <div className="flex items-center gap-2 text-foreground">
-        <BookOpen className="h-5 w-5 text-emerald-600" />
-        <h3 className="font-semibold text-base">Academic Progress</h3>
+    <div className="bg-[#1e3a5f] rounded-xl p-5 border border-[#2d4a6f] shadow-lg space-y-5">
+      {/* Header */}
+      <div className="flex items-center gap-2">
+        <BookOpen className="h-5 w-5 text-cyan-400" />
+        <h3 className="font-semibold text-base text-cyan-300">Academic Progress</h3>
       </div>
 
       {/* Lesson/Topic Taught */}
       <div className="space-y-2">
-        <Label className="text-sm font-medium text-foreground flex items-center gap-1.5">
-          <FileText className="h-4 w-4 text-muted-foreground" />
+        <Label className="text-sm font-medium text-slate-200 flex items-center gap-1.5">
+          <FileText className="h-4 w-4 text-slate-400" />
           Lesson/Topic Taught
         </Label>
         <Input
           placeholder="e.g., Chapter 5: Fractions, Verb conjugation, etc."
           value={lessonTopic}
           onChange={(e) => onLessonTopicChange(e.target.value)}
-          className="bg-background border-input focus:border-emerald-500 focus:ring-emerald-500/20"
+          className="bg-white text-navy-900 border-0 placeholder:text-slate-400"
         />
       </div>
 
       {/* Status Update */}
       <div className="space-y-2">
-        <Label className="text-sm font-medium text-foreground flex items-center gap-1.5">
-          <CheckCircle className="h-4 w-4 text-muted-foreground" />
+        <Label className="text-sm font-medium text-slate-200 flex items-center gap-1.5">
+          <CheckCircle className="h-4 w-4 text-slate-400" />
           Status Update
         </Label>
         <Select value={lessonStatus} onValueChange={onLessonStatusChange}>
-          <SelectTrigger className="bg-background border-input focus:border-emerald-500 focus:ring-emerald-500/20">
+          <SelectTrigger className="bg-white text-navy-900 border-0">
             <SelectValue placeholder="Select lesson status..." />
           </SelectTrigger>
           <SelectContent>
@@ -103,20 +104,20 @@ export function AcademicAttendanceFields({
 
       {/* Homework */}
       <div className="space-y-2">
-        <Label className="text-sm font-medium text-foreground">Homework</Label>
+        <Label className="text-sm font-medium text-slate-200">Homework</Label>
         <Textarea
           placeholder="Enter homework or notes..."
           value={homework}
           onChange={(e) => onHomeworkChange(e.target.value)}
           rows={3}
-          className="bg-background border-input focus:border-emerald-500 focus:ring-emerald-500/20 resize-none"
+          className="bg-white text-navy-900 border-0 placeholder:text-slate-400 resize-none"
         />
       </div>
 
       {/* Follow-up Suggestion Pills */}
       <div className="space-y-2">
-        <Label className="text-sm font-medium text-foreground flex items-center gap-1.5">
-          <Lightbulb className="h-4 w-4 text-muted-foreground" />
+        <Label className="text-sm font-medium text-slate-200 flex items-center gap-1.5">
+          <Lightbulb className="h-4 w-4 text-slate-400" />
           Follow-up Suggestions
         </Label>
         <div className="flex flex-wrap gap-2">
@@ -129,10 +130,10 @@ export function AcademicAttendanceFields({
                 onClick={() => toggleFollowup(opt.value)}
                 className={cn(
                   "px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200",
-                  "border focus:outline-none focus:ring-2 focus:ring-emerald-500/20",
+                  "border focus:outline-none focus:ring-2 focus:ring-cyan-400/30",
                   isSelected
-                    ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
-                    : "bg-background text-foreground border-input hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
+                    ? "bg-cyan-500 text-white border-cyan-500 shadow-sm"
+                    : "bg-white/10 text-white border-slate-500 hover:border-cyan-400 hover:bg-white/20"
                 )}
               >
                 {opt.label}
@@ -141,7 +142,7 @@ export function AcademicAttendanceFields({
           })}
         </div>
         {followupSuggestions.length > 0 && (
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-slate-400 mt-1">
             Selected: {followupSuggestions.map(s => 
               FOLLOWUP_OPTIONS.find(o => o.value === s)?.label
             ).join(', ')}
