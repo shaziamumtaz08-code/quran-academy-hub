@@ -2,8 +2,9 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { BookOpen, Target, User, Calendar, Clock, BookMarked, AlertTriangle, Pause } from 'lucide-react';
+import { BookOpen, Target, User, Calendar, Clock, BookMarked, AlertTriangle, Pause, PenLine } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 type AssignmentStatus = 'active' | 'paused' | 'completed';
 
@@ -29,9 +30,10 @@ interface StudentCardProps {
   };
   onViewHistory: () => void;
   onViewSchedule: () => void;
+  onMarkAttendance?: () => void;
 }
 
-export function StudentCard({ student, onViewHistory, onViewSchedule }: StudentCardProps) {
+export function StudentCard({ student, onViewHistory, onViewSchedule, onMarkAttendance }: StudentCardProps) {
   const status = student.assignment_status || 'active';
   const isPaused = status === 'paused';
   const isCompleted = status === 'completed';
@@ -129,11 +131,36 @@ export function StudentCard({ student, onViewHistory, onViewSchedule }: StudentC
           </p>
         </div>
 
-        {/* Footer: Action Button */}
-        <div className="pt-4 mt-auto">
+        {/* Footer: Action Buttons */}
+        <div className="pt-4 mt-auto space-y-2">
+          {/* Mark Attendance Button with Last Lesson Tooltip */}
+          {onMarkAttendance && !isInactive && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    className="w-full h-12 text-sm bg-emerald-600 hover:bg-emerald-700 text-white"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onMarkAttendance();
+                    }}
+                  >
+                    <PenLine className="h-4 w-4 mr-1.5" />
+                    Mark Attendance
+                  </Button>
+                </TooltipTrigger>
+                {student.last_lesson && (
+                  <TooltipContent side="top" className="bg-navy text-white border-navy-light">
+                    <p className="text-xs">Last: {student.last_lesson}</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          
           <Button
             variant="outline"
-            className="w-full h-12 text-sm border-navy/20 dark:border-sky/20 hover:bg-cream dark:hover:bg-navy-light/20"
+            className="w-full h-10 text-sm border-navy/20 dark:border-sky/20 hover:bg-cream dark:hover:bg-navy-light/20"
             onClick={(e) => {
               e.stopPropagation();
               onViewSchedule();
