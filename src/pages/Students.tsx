@@ -10,6 +10,7 @@ import { StudentCard } from '@/components/students/StudentCard';
 import { StudentDetailDrawer } from '@/components/students/StudentDetailDrawer';
 import { StudentHistoryDialog } from '@/components/students/StudentHistoryDialog';
 import { StudentScheduleDialog } from '@/components/students/StudentScheduleDialog';
+import { QuickAttendanceModal } from '@/components/attendance/QuickAttendanceModal';
 
 interface Student {
   id: string;
@@ -39,6 +40,7 @@ export default function Students() {
   const [selectedStudent, setSelectedStudent] = useState<TeacherStudent | null>(null);
   const [historyStudent, setHistoryStudent] = useState<TeacherStudent | null>(null);
   const [scheduleStudent, setScheduleStudent] = useState<TeacherStudent | null>(null);
+  const [attendanceStudent, setAttendanceStudent] = useState<TeacherStudent | null>(null);
   const { user, activeRole } = useAuth();
 
   // Determine role-based behavior
@@ -270,6 +272,7 @@ export default function Students() {
                   student={student}
                   onViewHistory={() => setHistoryStudent(student)}
                   onViewSchedule={() => setScheduleStudent(student)}
+                  onMarkAttendance={() => setAttendanceStudent(student)}
                 />
               ))}
             </div>
@@ -352,6 +355,15 @@ export default function Students() {
             onOpenChange={(open) => !open && setScheduleStudent(null)}
             studentId={scheduleStudent.id}
             studentName={scheduleStudent.full_name}
+          />
+        )}
+
+        {/* Quick Attendance Modal */}
+        {isTeacher && attendanceStudent && (
+          <QuickAttendanceModal
+            open={!!attendanceStudent}
+            onOpenChange={(open) => !open && setAttendanceStudent(null)}
+            student={attendanceStudent}
           />
         )}
       </div>
