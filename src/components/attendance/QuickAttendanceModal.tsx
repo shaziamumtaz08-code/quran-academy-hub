@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,11 +7,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, BookOpen, Clock, User } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2, BookOpen, Clock, User, AlertTriangle, Ban } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { format } from 'date-fns';
+import { format, parseISO, getDay } from 'date-fns';
 import { getSubjectType, type SubjectType } from '@/lib/subjectUtils';
 import { QaidaProgressInput } from './QaidaProgressInput';
 import { HifzAttendanceFields } from './HifzAttendanceFields';
@@ -50,6 +51,8 @@ const REASON_CATEGORIES: { value: ReasonCategory; label: string }[] = [
   { value: 'other', label: 'Other' },
 ];
 
+const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
 export function QuickAttendanceModal({ open, onOpenChange, student }: QuickAttendanceModalProps) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -57,7 +60,7 @@ export function QuickAttendanceModal({ open, onOpenChange, student }: QuickAtten
 
   // Form state
   const [selectedStatus, setSelectedStatus] = useState<AttendanceStatus>('present');
-  const [classTime, setClassTime] = useState('09:00');
+  const [classTime, setClassTime] = useState('');
   const [classDate, setClassDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [duration, setDuration] = useState('30');
   const [homework, setHomework] = useState('');
@@ -96,6 +99,87 @@ export function QuickAttendanceModal({ open, onOpenChange, student }: QuickAtten
     return getSubjectType(student.subject_name);
   }, [student.subject_name]);
 
+  // Fetch student's schedule
+  const { data: scheduleData } = useQuery({
+    queryKey: ['student-schedule', student.id, user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      
+      const { data, error } = await supabase
+        .from('schedules')
+        .select(`
+          day_of_week,
+          teacher_local_time,
+          duration_minutes,
+          student_teacher_assignments!inner (
+            student_id,
+            teacher_id
+          )
+        `)
+        .eq('student_teacher_assignments.student_id', student.id)
+        .eq('student_teacher_assignments.teacher_id', user.id)
+        .eq('is_active', true);
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: open && !!user?.id,
+  });
+
+  // Check for duplicate attendance
+  const { data: existingAttendance } = useQuery({
+    queryKey: ['attendance-check', student.id, classDate],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('attendance')
+        .select('id, class_date, status')
+        .eq('student_id', student.id)
+        .eq('class_date', classDate);
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: open && !!classDate,
+  });
+
+  const hasDuplicateAttendance = existingAttendance && existingAttendance.length > 0;
+
+  // Get scheduled days array
+  const scheduledDays = useMemo(() => {
+    if (!scheduleData) return [];
+    return scheduleData.map(s => s.day_of_week.toLowerCase());
+  }, [scheduleData]);
+
+  // Check if selected date is a scheduled day
+  const isScheduledDay = useMemo(() => {
+    if (!classDate || scheduledDays.length === 0) return true; // Default allow if no schedule
+    const dayIndex = getDay(parseISO(classDate));
+    const dayName = DAY_NAMES[dayIndex];
+    return scheduledDays.includes(dayName);
+  }, [classDate, scheduledDays]);
+
+  // Get scheduled time for the selected day
+  const getScheduledTimeForDay = (date: string) => {
+    if (!scheduleData || !date) return null;
+    const dayIndex = getDay(parseISO(date));
+    const dayName = DAY_NAMES[dayIndex];
+    const schedule = scheduleData.find(s => s.day_of_week.toLowerCase() === dayName);
+    return schedule ? { time: schedule.teacher_local_time, duration: schedule.duration_minutes } : null;
+  };
+
+  // Update time when date changes or modal opens
+  useEffect(() => {
+    if (open && classDate && scheduleData) {
+      const scheduleInfo = getScheduledTimeForDay(classDate);
+      if (scheduleInfo) {
+        // Format time from "HH:mm:ss" to "HH:mm"
+        const timeStr = scheduleInfo.time.substring(0, 5);
+        setClassTime(timeStr);
+        setDuration(scheduleInfo.duration.toString());
+      }
+    }
+  }, [open, classDate, scheduleData]);
+
   const requiresReason = (status: AttendanceStatus) => 
     ['student_absent'].includes(status);
 
@@ -106,7 +190,7 @@ export function QuickAttendanceModal({ open, onOpenChange, student }: QuickAtten
   useEffect(() => {
     if (!open) {
       setSelectedStatus('present');
-      setClassTime('09:00');
+      setClassTime('');
       setClassDate(format(new Date(), 'yyyy-MM-dd'));
       setDuration('30');
       setHomework('');
@@ -220,11 +304,13 @@ export function QuickAttendanceModal({ open, onOpenChange, student }: QuickAtten
 
   const isFormValid = useMemo(() => {
     if (!classTime || !classDate) return false;
+    if (hasDuplicateAttendance) return false;
+    if (!isScheduledDay) return false;
     if (requiresReason(selectedStatus) && !reasonCategory) return false;
     if (requiresReason(selectedStatus) && reasonCategory === 'other' && !reasonText.trim()) return false;
     if (requiresReschedule(selectedStatus) && (!rescheduleDate || !rescheduleTime)) return false;
     return true;
-  }, [selectedStatus, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleTime]);
+  }, [selectedStatus, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleTime, hasDuplicateAttendance, isScheduledDay]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -261,6 +347,27 @@ export function QuickAttendanceModal({ open, onOpenChange, student }: QuickAtten
         </div>
 
         <div className="space-y-4 py-2">
+          {/* Duplicate Attendance Warning */}
+          {hasDuplicateAttendance && (
+            <Alert className="bg-red-500/20 border-red-500/50 text-red-200">
+              <Ban className="h-4 w-4" />
+              <AlertDescription>
+                Attendance has already been marked for this student on {format(parseISO(classDate), 'MMM dd, yyyy')}. 
+                Duplicate entries are not allowed.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Non-Scheduled Day Warning */}
+          {!isScheduledDay && !hasDuplicateAttendance && (
+            <Alert className="bg-amber-500/20 border-amber-500/50 text-amber-200">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                Attendance cannot be marked on non-scheduled days. This student is scheduled for: {scheduledDays.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ') || 'No schedule found'}.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Status Selection */}
           <div className="space-y-2">
             <Label className="text-sky-100">Status <span className="text-red-400">*</span></Label>
@@ -288,13 +395,17 @@ export function QuickAttendanceModal({ open, onOpenChange, student }: QuickAtten
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-sky-100">Time <span className="text-red-400">*</span></Label>
+              <Label className="text-sky-100">Scheduled Time <span className="text-red-400">*</span></Label>
               <Input 
                 type="time" 
                 value={classTime} 
-                onChange={(e) => setClassTime(e.target.value)} 
-                className="bg-white text-[#1e3a5f] border-0"
+                readOnly
+                disabled
+                className="bg-slate-200 text-[#1e3a5f] border-0 cursor-not-allowed"
               />
+              {classTime && (
+                <p className="text-xs text-sky-300">Auto-filled from student schedule</p>
+              )}
             </div>
           </div>
 
@@ -304,8 +415,9 @@ export function QuickAttendanceModal({ open, onOpenChange, student }: QuickAtten
             <Input 
               type="number" 
               value={duration} 
-              onChange={(e) => setDuration(e.target.value)} 
-              className="bg-white text-[#1e3a5f] border-0"
+              readOnly
+              disabled
+              className="bg-slate-200 text-[#1e3a5f] border-0 cursor-not-allowed"
             />
           </div>
 
