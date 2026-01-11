@@ -12,10 +12,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Calendar, Plus, CheckCircle, Clock, Target, User, Loader2, Edit, AlertTriangle } from 'lucide-react';
+import { Calendar, Plus, CheckCircle, Clock, Target, User, Loader2, Edit, AlertTriangle, Trash2, Eye } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { calculateWorkingDaysInMonth } from '@/lib/subjectUtils';
 import { PlanningMarkerSection, PlanMarkerType } from '@/components/planning/PlanningMarkerSection';
@@ -99,7 +102,9 @@ export default function MonthlyPlanning() {
   const queryClient = useQueryClient();
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'edit' | 'view'>('edit'); // For admin full-form view
   const [editingPlan, setEditingPlan] = useState<MonthlyPlan | null>(null);
+  const [selectedPlanIds, setSelectedPlanIds] = useState<Set<string>>(new Set());
   const [monthFilter, setMonthFilter] = useState(format(new Date(), 'MM'));
   const [yearFilter, setYearFilter] = useState(currentYear.toString());
 
@@ -437,6 +442,28 @@ export default function MonthlyPlanning() {
     },
   });
 
+  // Delete plan mutation (admin only)
+  const deletePlanMutation = useMutation({
+    mutationFn: async (planIds: string[]) => {
+      if (!user?.id) throw new Error('Not authenticated');
+      
+      const { error } = await supabase
+        .from('student_monthly_plans')
+        .delete()
+        .in('id', planIds);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: 'Deleted', description: 'Plan(s) deleted successfully' });
+      queryClient.invalidateQueries({ queryKey: ['monthly-plans'] });
+      setSelectedPlanIds(new Set());
+    },
+    onError: (error) => {
+      toast({ title: 'Error', description: error.message || 'Failed to delete plan(s)', variant: 'destructive' });
+    },
+  });
+
   const resetForm = () => {
     setSelectedStudent('');
     setSelectedSubject('');
@@ -465,8 +492,9 @@ export default function MonthlyPlanning() {
     setEditingPlan(null);
   };
 
-  const openEditDialog = (plan: MonthlyPlan) => {
+  const openEditDialog = (plan: MonthlyPlan, mode: 'edit' | 'view' = 'edit') => {
     setEditingPlan(plan);
+    setViewMode(mode);
     setSelectedStudent(plan.student_id);
     setSelectedSubject(plan.subject_id || '');
     setSelectedMonth(plan.month);
@@ -492,6 +520,26 @@ export default function MonthlyPlanning() {
     setPageFrom(plan.page_from?.toString() || '');
     setPageTo(plan.page_to?.toString() || '');
     setDialogOpen(true);
+  };
+
+  // Toggle selection for bulk delete
+  const togglePlanSelection = (planId: string) => {
+    const newSet = new Set(selectedPlanIds);
+    if (newSet.has(planId)) {
+      newSet.delete(planId);
+    } else {
+      newSet.add(planId);
+    }
+    setSelectedPlanIds(newSet);
+  };
+
+  const toggleSelectAll = () => {
+    if (!plans) return;
+    if (selectedPlanIds.size === plans.length) {
+      setSelectedPlanIds(new Set());
+    } else {
+      setSelectedPlanIds(new Set(plans.map(p => p.id)));
+    }
   };
 
   const getMarkerLabel = (marker: PrimaryMarker) => {
@@ -557,6 +605,38 @@ export default function MonthlyPlanning() {
           </AlertDescription>
         </Alert>
 
+        {/* Admin Bulk Actions */}
+        {isAdmin && selectedPlanIds.size > 0 && (
+          <div className="flex items-center gap-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+            <span className="text-sm font-medium">{selectedPlanIds.size} plan(s) selected</span>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Selected
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Plans</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete {selectedPlanIds.size} plan(s)? This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={() => deletePlanMutation.mutate(Array.from(selectedPlanIds))}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
+
         {/* Plans Table */}
         <Card>
           <CardHeader>
@@ -579,6 +659,14 @@ export default function MonthlyPlanning() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    {isAdmin && (
+                      <TableHead className="w-10">
+                        <Checkbox 
+                          checked={selectedPlanIds.size === plans.length && plans.length > 0}
+                          onCheckedChange={toggleSelectAll}
+                        />
+                      </TableHead>
+                    )}
                     <TableHead>Student</TableHead>
                     <TableHead>Subject</TableHead>
                     <TableHead>Primary Marker</TableHead>
@@ -591,7 +679,27 @@ export default function MonthlyPlanning() {
                 </TableHeader>
                 <TableBody>
                   {plans.map((plan) => (
-                    <TableRow key={plan.id}>
+                    <TableRow 
+                      key={plan.id} 
+                      className={cn(
+                        isAdmin && "cursor-pointer hover:bg-muted/50",
+                        selectedPlanIds.has(plan.id) && "bg-primary/5"
+                      )}
+                      onClick={(e) => {
+                        // Only open view dialog if clicking on the row (not buttons/checkboxes)
+                        if (isAdmin && !(e.target as HTMLElement).closest('button, [role="checkbox"]')) {
+                          openEditDialog(plan, 'view');
+                        }
+                      }}
+                    >
+                      {isAdmin && (
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox 
+                            checked={selectedPlanIds.has(plan.id)}
+                            onCheckedChange={() => togglePlanSelection(plan.id)}
+                          />
+                        </TableCell>
+                      )}
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
@@ -628,23 +736,51 @@ export default function MonthlyPlanning() {
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-2">
+                          {isAdmin && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => openEditDialog(plan, 'view')}
+                              title="View full form"
+                            >
+                              <Eye className="h-3 w-3" />
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => openEditDialog(plan)}
+                            onClick={() => openEditDialog(plan, 'edit')}
+                            title="Edit"
                           >
                             <Edit className="h-3 w-3" />
                           </Button>
-                          {isAdmin && plan.status === 'pending' && (
-                            <Button
-                              size="sm"
-                              onClick={() => approvePlanMutation.mutate(plan.id)}
-                              disabled={approvePlanMutation.isPending}
-                            >
-                              Approve
-                            </Button>
+                          {isAdmin && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Plan</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete this plan for {plan.student?.full_name}? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    onClick={() => deletePlanMutation.mutate([plan.id])}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           )}
                         </div>
                       </TableCell>
@@ -657,11 +793,27 @@ export default function MonthlyPlanning() {
         </Card>
       </div>
 
-      {/* Create/Edit Plan Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      {/* Create/Edit/View Plan Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { resetForm(); setViewMode('edit'); } }}>
+        <DialogContent className={cn(
+          "sm:max-w-xl max-h-[90vh] overflow-y-auto",
+          viewMode === 'view' && isAdmin && "bg-[#1e3a5f] border-[#2d4a6f] text-white"
+        )}>
           <DialogHeader>
-            <DialogTitle>{editingPlan ? 'Edit Monthly Plan' : 'Create Monthly Plan'}</DialogTitle>
+            <DialogTitle className={viewMode === 'view' && isAdmin ? 'text-white' : ''}>
+              {viewMode === 'view' ? 'View Monthly Plan' : editingPlan ? 'Edit Monthly Plan' : 'Create Monthly Plan'}
+            </DialogTitle>
+            {viewMode === 'view' && editingPlan && (
+              <div className="flex items-center gap-2 mt-2">
+                <Badge className={editingPlan.status === 'approved' 
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' 
+                  : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                }>
+                  {editingPlan.status === 'approved' ? <CheckCircle className="h-3 w-3 mr-1" /> : <Clock className="h-3 w-3 mr-1" />}
+                  {editingPlan.status === 'approved' ? 'Approved' : 'Pending Approval'}
+                </Badge>
+              </div>
+            )}
           </DialogHeader>
 
           <div className="space-y-4 py-4">
@@ -860,15 +1012,49 @@ export default function MonthlyPlanning() {
             )}
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button
-              onClick={() => savePlanMutation.mutate()}
-              disabled={!selectedStudent || !selectedSubject || savePlanMutation.isPending}
+          <DialogFooter className={cn("gap-2", viewMode === 'view' && isAdmin && "border-t border-[#2d4a6f] pt-4")}>
+            <Button 
+              variant="outline" 
+              onClick={() => setDialogOpen(false)}
+              className={viewMode === 'view' && isAdmin ? 'border-sky-400/30 text-sky-200 hover:bg-sky-900/50' : ''}
             >
-              {savePlanMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {editingPlan ? 'Update Plan' : 'Create Plan'}
+              Cancel
             </Button>
+            {viewMode === 'view' && isAdmin && editingPlan && (
+              <>
+                <Button 
+                  variant="outline"
+                  onClick={() => setViewMode('edit')}
+                  className="border-sky-400/30 text-sky-200 hover:bg-sky-900/50"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
+                {editingPlan.status === 'pending' && (
+                  <Button
+                    onClick={() => {
+                      approvePlanMutation.mutate(editingPlan.id);
+                      setDialogOpen(false);
+                    }}
+                    disabled={approvePlanMutation.isPending}
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    {approvePlanMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Approve
+                  </Button>
+                )}
+              </>
+            )}
+            {viewMode === 'edit' && (
+              <Button
+                onClick={() => savePlanMutation.mutate()}
+                disabled={!selectedStudent || !selectedSubject || savePlanMutation.isPending}
+              >
+                {savePlanMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {editingPlan ? 'Update Plan' : 'Create Plan'}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
