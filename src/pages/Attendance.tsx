@@ -10,7 +10,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar, CheckCircle, XCircle, AlertCircle, User, Plus, Clock, CalendarClock, UserX, Palmtree, Pencil } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, AlertCircle, User, Plus, Clock, CalendarClock, UserX, Palmtree, Pencil, Trash2 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -103,6 +105,7 @@ export default function Attendance() {
   const [markDialogOpen, setMarkDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
+  const [selectedRecordIds, setSelectedRecordIds] = useState<Set<string>>(new Set());
   
   // Form state for marking attendance
   const [selectedStudent, setSelectedStudent] = useState('');
@@ -527,6 +530,45 @@ export default function Attendance() {
     },
   });
 
+  // Delete attendance mutation (admin only)
+  const deleteAttendanceMutation = useMutation({
+    mutationFn: async (recordIds: string[]) => {
+      const { error } = await supabase
+        .from('attendance')
+        .delete()
+        .in('id', recordIds);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: 'Deleted', description: 'Attendance record(s) deleted successfully' });
+      queryClient.invalidateQueries({ queryKey: ['attendance'] });
+      setSelectedRecordIds(new Set());
+    },
+    onError: (error) => {
+      toast({ title: 'Error', description: error instanceof Error ? error.message : 'Failed to delete', variant: 'destructive' });
+    },
+  });
+
+  // Toggle selection for bulk delete
+  const toggleRecordSelection = (recordId: string) => {
+    const newSet = new Set(selectedRecordIds);
+    if (newSet.has(recordId)) {
+      newSet.delete(recordId);
+    } else {
+      newSet.add(recordId);
+    }
+    setSelectedRecordIds(newSet);
+  };
+
+  const toggleSelectAllRecords = () => {
+    if (selectedRecordIds.size === filteredRecords.length) {
+      setSelectedRecordIds(new Set());
+    } else {
+      setSelectedRecordIds(new Set(filteredRecords.map(r => r.id)));
+    }
+  };
+
   const resetForm = () => {
     setSelectedStudent('');
     setSelectedStatus('present');
@@ -720,6 +762,38 @@ export default function Attendance() {
           </Select>
         </div>
 
+        {/* Admin Bulk Actions */}
+        {isAdmin && selectedRecordIds.size > 0 && (
+          <div className="flex items-center gap-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+            <span className="text-sm font-medium">{selectedRecordIds.size} record(s) selected</span>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Selected
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Attendance Records</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete {selectedRecordIds.size} attendance record(s)? This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={() => deleteAttendanceMutation.mutate(Array.from(selectedRecordIds))}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
+
         {/* Table */}
         <Card>
           <CardContent className="pt-6">
@@ -742,6 +816,14 @@ export default function Attendance() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    {isAdmin && (
+                      <TableHead className="w-10">
+                        <Checkbox 
+                          checked={selectedRecordIds.size === filteredRecords.length && filteredRecords.length > 0}
+                          onCheckedChange={toggleSelectAllRecords}
+                        />
+                      </TableHead>
+                    )}
                     <TableHead>Date</TableHead>
                     {!isStudent && <TableHead>Student</TableHead>}
                     {isAdmin && <TableHead>Teacher</TableHead>}
@@ -750,12 +832,23 @@ export default function Attendance() {
                     <TableHead>Lesson Covered</TableHead>
                     {(isTeacher || isAdmin) && <TableHead>Reason</TableHead>}
                     {isAdmin && <TableHead>Reschedule Info</TableHead>}
-                    {(isAdmin || isTeacher) && <TableHead className="w-12">Edit</TableHead>}
+                    {(isAdmin || isTeacher) && <TableHead className="w-24">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredRecords.map((record) => (
-                    <TableRow key={record.id}>
+                    <TableRow 
+                      key={record.id}
+                      className={selectedRecordIds.has(record.id) ? "bg-primary/5" : ""}
+                    >
+                      {isAdmin && (
+                        <TableCell>
+                          <Checkbox 
+                            checked={selectedRecordIds.has(record.id)}
+                            onCheckedChange={() => toggleRecordSelection(record.id)}
+                          />
+                        </TableCell>
+                      )}
                       <TableCell>
                         <span className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -812,17 +905,45 @@ export default function Attendance() {
                       )}
                       {(isAdmin || isTeacher) && (
                         <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            onClick={() => {
-                              setEditingRecord(record);
-                              setEditDialogOpen(true);
-                            }}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => {
+                                setEditingRecord(record);
+                                setEditDialogOpen(true);
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            {isAdmin && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive">
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Attendance Record</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete this attendance record for {record.student?.full_name} on {format(parseISO(record.class_date), 'MMM dd, yyyy')}? This action cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction 
+                                      onClick={() => deleteAttendanceMutation.mutate([record.id])}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                          </div>
                         </TableCell>
                       )}
                     </TableRow>
