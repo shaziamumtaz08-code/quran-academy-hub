@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -157,7 +157,7 @@ export default function MonthlyPlanning() {
   });
 
   // Fetch assigned students for teacher (with assignment_id for linking)
-  const { data: assignedStudents } = useQuery({
+  const { data: assignedStudents = [], isLoading: assignedStudentsLoading } = useQuery({
     queryKey: ['assigned-students-with-subjects', user?.id],
     queryFn: async () => {
       if (!user?.id || !isTeacher) return [];
@@ -188,7 +188,7 @@ export default function MonthlyPlanning() {
   });
 
   // Fetch all students for admin (with assignment info)
-  const { data: allStudentsData } = useQuery({
+  const { data: allStudentsData = [], isLoading: allStudentsLoading } = useQuery({
     queryKey: ['all-students-with-assignments'],
     queryFn: async () => {
       const { data: roleData, error: roleError } = await supabase
@@ -275,16 +275,44 @@ export default function MonthlyPlanning() {
     return fromAll ? { ...fromAll, assignment_id: undefined } : null;
   }, [selectedSubject, availableSubjects, allSubjects]);
 
-  const isQuran = isQuranSubject(selectedSubjectDetails?.name);
+  const isQuran = isQuranSubject(selectedSubjectDetails?.name ?? editingPlan?.subject?.name);
 
-  const students = isAdmin 
-    ? (allStudentsData || []).map(s => ({ id: s.id, full_name: s.full_name }))
-    : [...new Map((assignedStudents || []).map(s => [s.id, { id: s.id, full_name: s.full_name }])).values()];
+  const studentsLoading = isAdmin ? allStudentsLoading : assignedStudentsLoading;
 
-  // Reset subject when student changes
-  useEffect(() => {
+  const students = useMemo(() => {
+    const base = isAdmin
+      ? (allStudentsData as any[]).map((s: any) => ({ id: s.id, full_name: s.full_name }))
+      : [...new Map((assignedStudents as any[]).map((s: any) => [s.id, { id: s.id, full_name: s.full_name }])).values()];
+
+    if (editingPlan && !base.some((s) => s.id === editingPlan.student_id)) {
+      return [
+        { id: editingPlan.student_id, full_name: editingPlan.student?.full_name || 'Selected student' },
+        ...base,
+      ];
+    }
+
+    return base;
+  }, [isAdmin, allStudentsData, assignedStudents, editingPlan]);
+
+  const handleStudentChange = (value: string) => {
+    setSelectedStudent(value);
     setSelectedSubject('');
-  }, [selectedStudent]);
+  };
+
+  const subjectOptions = useMemo(() => {
+    const base = availableSubjects;
+    if (editingPlan?.subject_id && !base.some((s) => s.id === editingPlan.subject_id)) {
+      return [
+        {
+          id: editingPlan.subject_id,
+          name: editingPlan.subject?.name || 'Selected subject',
+          assignment_id: undefined,
+        },
+        ...base,
+      ];
+    }
+    return base;
+  }, [availableSubjects, editingPlan]);
 
   // Fetch schedule for selected student + subject (to calculate teaching days)
   const { data: studentSchedule } = useQuery({
