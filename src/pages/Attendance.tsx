@@ -1434,12 +1434,12 @@ export default function Attendance() {
                   <div className="space-y-2">
                     <Label>Variance Reason</Label>
                     <Select 
-                      value={editingRecord.variance_reason || ''} 
-                      onValueChange={(v) => setEditingRecord({...editingRecord, variance_reason: v || null})}
+                      value={editingRecord.variance_reason || 'none'} 
+                      onValueChange={(v) => setEditingRecord({...editingRecord, variance_reason: v === 'none' ? null : v})}
                     >
                       <SelectTrigger><SelectValue placeholder="Select if needed" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">None</SelectItem>
+                        <SelectItem value="none">None</SelectItem>
                         {VARIANCE_REASONS.map((vr) => (
                           <SelectItem key={vr.value} value={vr.value}>{vr.label}</SelectItem>
                         ))}
