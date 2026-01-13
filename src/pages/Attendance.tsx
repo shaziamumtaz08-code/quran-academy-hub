@@ -885,6 +885,7 @@ export default function Attendance() {
                     <TableHead>Lesson Covered</TableHead>
                     {(isTeacher || isAdmin) && <TableHead>Reason</TableHead>}
                     {isAdmin && <TableHead>Reschedule Info</TableHead>}
+                    <TableHead className="text-xs">Created (PKT)</TableHead>
                     {(isAdmin || isTeacher) && <TableHead className="w-24">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
@@ -956,6 +957,9 @@ export default function Attendance() {
                           ) : '-'}
                         </TableCell>
                       )}
+                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                        {record.created_at ? format(parseISO(record.created_at), 'MMM dd, h:mm a') : '-'}
+                      </TableCell>
                       {(isAdmin || isTeacher) && (
                         <TableCell>
                           <div className="flex items-center gap-1">

@@ -19,7 +19,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { calculateWorkingDaysInMonth } from '@/lib/subjectUtils';
 import { PlanningMarkerSection, PlanMarkerType } from '@/components/planning/PlanningMarkerSection';
 
@@ -673,6 +673,7 @@ export default function MonthlyPlanning() {
                     <TableHead className="text-center">Monthly Target</TableHead>
                     <TableHead className="text-center">Daily Target</TableHead>
                     <TableHead className="hidden md:table-cell">Notes</TableHead>
+                    <TableHead className="text-xs">Created (PKT)</TableHead>
                     <TableHead className="text-center">Status</TableHead>
                     <TableHead className="text-center">Actions</TableHead>
                   </TableRow>
@@ -722,6 +723,9 @@ export default function MonthlyPlanning() {
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-muted-foreground text-sm max-w-[200px] truncate" title={plan.notes || ''}>
                         {plan.notes || '-'}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                        {plan.created_at ? format(parseISO(plan.created_at), 'MMM dd, h:mm a') : '-'}
                       </TableCell>
                       <TableCell className="text-center">
                         {plan.status === 'approved' ? (
