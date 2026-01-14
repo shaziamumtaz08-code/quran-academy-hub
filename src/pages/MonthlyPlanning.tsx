@@ -875,89 +875,130 @@ export default function MonthlyPlanning() {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            {/* Step 1: Student Selection */}
-            <div className="space-y-2">
-              <Label>Step 1: Select Student <span className="text-destructive">*</span></Label>
-              <Select value={selectedStudent} onValueChange={handleStudentChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select student" />
-                </SelectTrigger>
-                <SelectContent>
-                  {studentsLoading ? (
-                    <SelectItem value="__loading__" disabled>Loading...</SelectItem>
-                  ) : students.length === 0 ? (
-                    <SelectItem value="__empty__" disabled>No students found</SelectItem>
-                  ) : (
-                    students.map((student) => (
-                      <SelectItem key={student.id} value={student.id}>
-                        {student.full_name}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Step 2: Subject Selection (only shows subjects assigned to selected student) */}
-            {selectedStudent && (
-              <div className="space-y-2">
-                <Label>Step 2: Select Subject <span className="text-destructive">*</span></Label>
-                <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select subject" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {subjectsLoading ? (
-                      <SelectItem value="__loading__" disabled>Loading...</SelectItem>
-                    ) : subjectOptions.length === 0 ? (
-                      <SelectItem value="__no_subjects__" disabled>No subjects assigned</SelectItem>
-                    ) : (
-                      subjectOptions.map((subject) => (
-                        <SelectItem key={subject.id} value={subject.id}>
-                          {subject.name}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-                {subjectOptions.length === 0 && !subjectsLoading && (
-                  <p className="text-xs text-muted-foreground">This student has no subjects assigned. Please assign a subject first.</p>
-                )}
-              </div>
-            )}
-
-            {/* Step 3: Dynamic Form based on Subject */}
-            {selectedStudent && selectedSubject && (
-              <>
-                {/* Month/Year */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Month</Label>
-                    <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {MONTHS.map((m) => (
-                          <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+            {/* When editing an existing plan, show read-only student/subject info instead of dropdowns */}
+            {editingPlan ? (
+              <div className="space-y-4">
+                {/* Read-only Student & Subject display */}
+                <div className="grid grid-cols-2 gap-4 p-4 rounded-lg bg-muted/50 border">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Student</Label>
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
+                        <User className="h-3.5 w-3.5 text-primary" />
+                      </div>
+                      <span className="font-medium">{editingPlan.student?.full_name || 'Unknown'}</span>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Year</Label>
-                    <Select value={selectedYear} onValueChange={setSelectedYear}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {YEARS.map((y) => (
-                          <SelectItem key={y} value={y}>{y}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Subject</Label>
+                    <Badge variant="outline" className="mt-1">{editingPlan.subject?.name || selectedSubjectDetails?.name || '-'}</Badge>
                   </div>
                 </div>
+                {/* Period display for existing plan */}
+                <div className="grid grid-cols-2 gap-4 p-3 rounded-lg bg-muted/30 border">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Period</Label>
+                    <span className="text-sm font-medium">
+                      {MONTHS.find(m => m.value === editingPlan.month)?.label} {editingPlan.year}
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Created</Label>
+                    <span className="text-xs text-muted-foreground">
+                      {editingPlan.created_at ? format(parseISO(editingPlan.created_at), 'MMM dd, yyyy h:mm a') : '-'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Step 1: Student Selection (only for new plans) */}
+                <div className="space-y-2">
+                  <Label>Step 1: Select Student <span className="text-destructive">*</span></Label>
+                  <Select value={selectedStudent} onValueChange={handleStudentChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select student" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {studentsLoading ? (
+                        <SelectItem value="__loading__" disabled>Loading...</SelectItem>
+                      ) : students.length === 0 ? (
+                        <SelectItem value="__empty__" disabled>No students found</SelectItem>
+                      ) : (
+                        students.map((student) => (
+                          <SelectItem key={student.id} value={student.id}>
+                            {student.full_name}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Step 2: Subject Selection (only for new plans) */}
+                {selectedStudent && (
+                  <div className="space-y-2">
+                    <Label>Step 2: Select Subject <span className="text-destructive">*</span></Label>
+                    <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select subject" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {subjectsLoading ? (
+                          <SelectItem value="__loading__" disabled>Loading...</SelectItem>
+                        ) : subjectOptions.length === 0 ? (
+                          <SelectItem value="__no_subjects__" disabled>No subjects assigned</SelectItem>
+                        ) : (
+                          subjectOptions.map((subject) => (
+                            <SelectItem key={subject.id} value={subject.id}>
+                              {subject.name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    {subjectOptions.length === 0 && !subjectsLoading && (
+                      <p className="text-xs text-muted-foreground">This student has no subjects assigned. Please assign a subject first.</p>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Step 3: Dynamic Form based on Subject - show when editing OR when student+subject selected */}
+            {(editingPlan || (selectedStudent && selectedSubject)) && (
+              <>
+                {/* Month/Year - only show for NEW plans, editing uses read-only display above */}
+                {!editingPlan && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Month</Label>
+                      <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MONTHS.map((m) => (
+                            <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Year</Label>
+                      <Select value={selectedYear} onValueChange={setSelectedYear}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {YEARS.map((y) => (
+                            <SelectItem key={y} value={y}>{y}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
 
                 {/* Conditional Fields based on Subject Type */}
                 {isQuran ? (
