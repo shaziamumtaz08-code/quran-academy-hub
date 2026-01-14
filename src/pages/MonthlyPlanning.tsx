@@ -239,45 +239,71 @@ export default function MonthlyPlanning() {
     enabled: isAdmin,
   });
 
+  // Fetch active subject assignments for selected student (admin)
+  const { data: adminStudentAssignments = [], isLoading: adminStudentAssignmentsLoading } = useQuery({
+    queryKey: ['admin-student-active-assignments', selectedStudent],
+    queryFn: async () => {
+      if (!selectedStudent) return [];
+
+      const { data, error } = await supabase
+        .from('student_teacher_assignments')
+        .select('id, teacher_id, subject_id, subject:subjects(id, name)')
+        .eq('student_id', selectedStudent)
+        .eq('status', 'active');
+
+      if (error) throw error;
+
+      return (data || [])
+        .filter((a: any) => a.subject_id && a.subject?.name)
+        .map((a: any) => ({
+          assignment_id: a.id as string,
+          teacher_id: a.teacher_id as string,
+          subject_id: a.subject_id as string,
+          subject_name: a.subject.name as string,
+        }));
+    },
+    enabled: isAdmin && !!selectedStudent,
+  });
+
   // Get available subjects for selected student (normalized to { id, name, assignment_id })
   const availableSubjects = useMemo((): { id: string; name: string; assignment_id?: string }[] => {
     if (!selectedStudent) return [];
-    
-    if (isTeacher && assignedStudents) {
+
+    if (isTeacher) {
       // For teachers, only show subjects they're assigned to teach this student
-      const studentAssignments = assignedStudents.filter(s => s.id === selectedStudent);
+      const studentAssignments = assignedStudents.filter((s: any) => s.id === selectedStudent);
       return studentAssignments
-        .filter(s => s.subject_id && s.subject_name)
-        .map(s => ({ id: s.subject_id!, name: s.subject_name!, assignment_id: s.assignment_id }));
+        .filter((s: any) => s.subject_id && s.subject_name)
+        .map((s: any) => ({ id: s.subject_id!, name: s.subject_name!, assignment_id: s.assignment_id }));
     }
-    
-    if (isAdmin && allStudentsData) {
-      // For admins, show all subjects assigned to this student
-      const student = allStudentsData.find(s => s.id === selectedStudent);
-      return (student?.assignments || []).map(a => ({ 
-        id: a.subject_id, 
+
+    if (isAdmin) {
+      // For admins, show all active subjects assigned to this student
+      return adminStudentAssignments.map((a: any) => ({
+        id: a.subject_id,
         name: a.subject_name,
-        assignment_id: a.assignment_id
+        assignment_id: a.assignment_id,
       }));
     }
-    
+
     return [];
-  }, [selectedStudent, isTeacher, isAdmin, assignedStudents, allStudentsData]);
+  }, [selectedStudent, isTeacher, isAdmin, assignedStudents, adminStudentAssignments]);
 
   // Get the selected subject details (including assignment_id)
   const selectedSubjectDetails = useMemo(() => {
     if (!selectedSubject) return null;
     // Check in available subjects first (has assignment_id)
-    const found = availableSubjects.find(s => s.id === selectedSubject);
+    const found = availableSubjects.find((s) => s.id === selectedSubject);
     if (found) return found;
     // Fallback to all subjects (no assignment_id)
-    const fromAll = allSubjects.find(s => s.id === selectedSubject);
+    const fromAll = allSubjects.find((s) => s.id === selectedSubject);
     return fromAll ? { ...fromAll, assignment_id: undefined } : null;
   }, [selectedSubject, availableSubjects, allSubjects]);
 
   const isQuran = isQuranSubject(selectedSubjectDetails?.name ?? editingPlan?.subject?.name);
 
   const studentsLoading = isAdmin ? allStudentsLoading : assignedStudentsLoading;
+  const subjectsLoading = isAdmin ? adminStudentAssignmentsLoading : false;
 
   const students = useMemo(() => {
     const base = isAdmin
