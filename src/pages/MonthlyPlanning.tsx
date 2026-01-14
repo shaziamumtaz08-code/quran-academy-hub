@@ -878,16 +878,22 @@ export default function MonthlyPlanning() {
             {/* Step 1: Student Selection */}
             <div className="space-y-2">
               <Label>Step 1: Select Student <span className="text-destructive">*</span></Label>
-              <Select value={selectedStudent} onValueChange={setSelectedStudent}>
+              <Select value={selectedStudent} onValueChange={handleStudentChange}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select student" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(students || []).map((student) => (
-                    <SelectItem key={student.id} value={student.id}>
-                      {student.full_name}
-                    </SelectItem>
-                  ))}
+                  {studentsLoading ? (
+                    <SelectItem value="__loading__" disabled>Loading...</SelectItem>
+                  ) : students.length === 0 ? (
+                    <SelectItem value="__empty__" disabled>No students found</SelectItem>
+                  ) : (
+                    students.map((student) => (
+                      <SelectItem key={student.id} value={student.id}>
+                        {student.full_name}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -901,10 +907,12 @@ export default function MonthlyPlanning() {
                     <SelectValue placeholder="Select subject" />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableSubjects.length === 0 ? (
-                      <SelectItem value="" disabled>No subjects assigned</SelectItem>
+                    {subjectsLoading ? (
+                      <SelectItem value="__loading__" disabled>Loading...</SelectItem>
+                    ) : subjectOptions.length === 0 ? (
+                      <SelectItem value="__no_subjects__" disabled>No subjects assigned</SelectItem>
                     ) : (
-                      availableSubjects.map((subject) => (
+                      subjectOptions.map((subject) => (
                         <SelectItem key={subject.id} value={subject.id}>
                           {subject.name}
                         </SelectItem>
@@ -912,7 +920,7 @@ export default function MonthlyPlanning() {
                     )}
                   </SelectContent>
                 </Select>
-                {availableSubjects.length === 0 && (
+                {subjectOptions.length === 0 && !subjectsLoading && (
                   <p className="text-xs text-muted-foreground">This student has no subjects assigned. Please assign a subject first.</p>
                 )}
               </div>
