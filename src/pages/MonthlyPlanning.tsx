@@ -107,6 +107,10 @@ export default function MonthlyPlanning() {
   const [selectedPlanIds, setSelectedPlanIds] = useState<Set<string>>(new Set());
   const [monthFilter, setMonthFilter] = useState(format(new Date(), 'MM'));
   const [yearFilter, setYearFilter] = useState(currentYear.toString());
+  
+  // DEBUG MODE state
+  const [debugPayload, setDebugPayload] = useState<object | null>(null);
+  const [showDebugModal, setShowDebugModal] = useState(false);
 
   // Form state
   const [selectedStudent, setSelectedStudent] = useState('');
@@ -391,6 +395,101 @@ export default function MonthlyPlanning() {
     enabled: !!user?.id,
   });
 
+  // Build payload function (extracted for DEBUG MODE)
+  const buildPlanPayload = () => {
+    const assignmentId = selectedSubjectDetails?.assignment_id;
+    
+    // Get student and subject names for debugging context
+    const studentName = students.find(s => s.id === selectedStudent)?.full_name || 'Unknown';
+    const subjectName = selectedSubjectDetails?.name || 'Unknown';
+
+    const planData: any = {
+      // Debug context (not sent to DB)
+      _debug_student_name: studentName,
+      _debug_subject_name: subjectName,
+      _debug_is_quran: isQuran,
+      _debug_editing: !!editingPlan,
+      _debug_plan_id: editingPlan?.id || null,
+      // Actual DB fields
+      student_id: selectedStudent,
+      teacher_id: user?.id,
+      assignment_id: assignmentId || null,
+      month: selectedMonth,
+      year: selectedYear,
+      primary_marker: planMarkerType === 'ruku' ? 'rukus' : planMarkerType === 'ayah' ? 'lines' : 'pages',
+      monthly_target: 0,
+      daily_target: totalTeachingDays > 0 ? 1 : 0,
+      total_teaching_days: totalTeachingDays || null,
+      notes: notes || null,
+      status: 'pending' as PlanStatus,
+      subject_id: selectedSubject,
+    };
+
+    // Add subject-specific fields
+    if (isQuran) {
+      // Quran marker fields
+      planData.planMarkerType = planMarkerType;
+      planData.rukuFromJuz = rukuFromJuz || null;
+      planData.rukuFromNumber = rukuFromNumber || null;
+      planData.rukuToJuz = rukuToJuz || null;
+      planData.rukuToNumber = rukuToNumber || null;
+      planData.quarterFromJuz = quarterFromJuz || null;
+      planData.quarterFromNumber = quarterFromNumber || null;
+      planData.quarterToJuz = quarterToJuz || null;
+      planData.quarterToNumber = quarterToNumber || null;
+      
+      if (planMarkerType === 'ayah') {
+        planData.surah_from = ayahFromSurah || null;
+        planData.surah_to = ayahToSurah || null;
+        planData.ayah_from = ayahFromNumber ? parseInt(ayahFromNumber) : null;
+        planData.ayah_to = ayahToNumber ? parseInt(ayahToNumber) : null;
+      }
+      // Clear non-Quran fields
+      planData.resource_name = null;
+      planData.goals = null;
+      planData.topics_to_cover = null;
+      planData.page_from = null;
+      planData.page_to = null;
+    } else {
+      planData.resource_name = resourceName || null;
+      planData.goals = goals || null;
+      planData.topics_to_cover = topicsToCover || null;
+      planData.page_from = pageFrom ? parseInt(pageFrom) : null;
+      planData.page_to = pageTo ? parseInt(pageTo) : null;
+      // Clear Quran fields
+      planData.surah_name = null;
+      planData.ayah_from = null;
+      planData.ayah_to = null;
+    }
+
+    return planData;
+  };
+
+  // DEBUG MODE: Handle submit with payload preview
+  const handleDebugSubmit = () => {
+    if (!user?.id) {
+      toast({ title: 'Error', description: 'Not authenticated', variant: 'destructive' });
+      return;
+    }
+    if (!selectedStudent) {
+      toast({ title: 'Error', description: 'Please select a student', variant: 'destructive' });
+      return;
+    }
+    if (!selectedSubject) {
+      toast({ title: 'Error', description: 'Please select a subject', variant: 'destructive' });
+      return;
+    }
+
+    const payload = buildPlanPayload();
+    
+    // Log to console
+    console.log("MonthlyPlanningPayload", payload);
+    
+    // Show debug modal
+    setDebugPayload(payload);
+    setShowDebugModal(true);
+  };
+
   // Create/Update plan mutation
   const savePlanMutation = useMutation({
     mutationFn: async () => {
@@ -398,50 +497,24 @@ export default function MonthlyPlanning() {
       if (!selectedStudent) throw new Error('Please select a student');
       if (!selectedSubject) throw new Error('Please select a subject');
 
-      // Get assignment_id from selected subject details
-      const assignmentId = selectedSubjectDetails?.assignment_id;
-
-      const planData: any = {
-        student_id: selectedStudent,
-        teacher_id: user.id,
-        assignment_id: assignmentId || null,
-        month: selectedMonth,
-        year: selectedYear,
-        primary_marker: planMarkerType === 'ruku' ? 'rukus' : planMarkerType === 'ayah' ? 'lines' : 'pages',
-        monthly_target: 0, // Will be calculated from marker selection
-        daily_target: totalTeachingDays > 0 ? 1 : 0,
-        total_teaching_days: totalTeachingDays || null,
-        notes: notes || null,
-        status: 'pending' as PlanStatus,
-        subject_id: selectedSubject,
-      };
-
-      // Add subject-specific fields
-      if (isQuran) {
-        // Store the marker selections (surah/ayah or juz/ruku info)
-        if (planMarkerType === 'ayah') {
-          planData.surah_from = ayahFromSurah || null;
-          planData.surah_to = ayahToSurah || null;
-          planData.ayah_from = ayahFromNumber ? parseInt(ayahFromNumber) : null;
-          planData.ayah_to = ayahToNumber ? parseInt(ayahToNumber) : null;
-        }
-        // Clear non-Quran fields
-        planData.resource_name = null;
-        planData.goals = null;
-        planData.topics_to_cover = null;
-        planData.page_from = null;
-        planData.page_to = null;
-      } else {
-        planData.resource_name = resourceName || null;
-        planData.goals = goals || null;
-        planData.topics_to_cover = topicsToCover || null;
-        planData.page_from = pageFrom ? parseInt(pageFrom) : null;
-        planData.page_to = pageTo ? parseInt(pageTo) : null;
-        // Clear Quran fields
-        planData.surah_name = null;
-        planData.ayah_from = null;
-        planData.ayah_to = null;
-      }
+      const payload = buildPlanPayload();
+      
+      // Remove debug fields before sending to DB
+      const planData = { ...payload };
+      delete planData._debug_student_name;
+      delete planData._debug_subject_name;
+      delete planData._debug_is_quran;
+      delete planData._debug_editing;
+      delete planData._debug_plan_id;
+      delete planData.planMarkerType;
+      delete planData.rukuFromJuz;
+      delete planData.rukuFromNumber;
+      delete planData.rukuToJuz;
+      delete planData.rukuToNumber;
+      delete planData.quarterFromJuz;
+      delete planData.quarterFromNumber;
+      delete planData.quarterToJuz;
+      delete planData.quarterToNumber;
 
       if (editingPlan) {
         const { error } = await supabase
@@ -461,6 +534,8 @@ export default function MonthlyPlanning() {
       queryClient.invalidateQueries({ queryKey: ['monthly-plans'] });
       resetForm();
       setDialogOpen(false);
+      setShowDebugModal(false);
+      setDebugPayload(null);
     },
     onError: (error: any) => {
       if (error.message?.includes('duplicate')) {
@@ -1155,13 +1230,48 @@ export default function MonthlyPlanning() {
             )}
             {viewMode === 'edit' && (
               <Button
-                onClick={() => savePlanMutation.mutate()}
+                onClick={handleDebugSubmit}
                 disabled={!selectedStudent || !selectedSubject || savePlanMutation.isPending}
               >
                 {savePlanMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 {editingPlan ? 'Update Plan' : 'Create Plan'}
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* DEBUG MODE Modal */}
+      <Dialog open={showDebugModal} onOpenChange={setShowDebugModal}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-600">
+              <AlertTriangle className="h-5 w-5" />
+              DEBUG MODE - Payload Preview
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto bg-muted/50 p-4 rounded-lg border">
+            <pre className="text-xs font-mono whitespace-pre-wrap break-all">
+              {debugPayload ? JSON.stringify(debugPayload, null, 2) : 'No payload'}
+            </pre>
+          </div>
+          <Alert className="bg-amber-50 border-amber-200">
+            <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-800 text-sm">
+              This is the exact payload that will be sent to the database. Check the console for the same output.
+            </AlertDescription>
+          </Alert>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowDebugModal(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => savePlanMutation.mutate()}
+              disabled={savePlanMutation.isPending}
+            >
+              {savePlanMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Confirm & Save to Database
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
