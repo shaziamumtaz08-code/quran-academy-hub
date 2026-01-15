@@ -22,6 +22,8 @@ import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { calculateWorkingDaysInMonth } from '@/lib/subjectUtils';
 import { PlanningMarkerSection, PlanMarkerType } from '@/components/planning/PlanningMarkerSection';
+import { JUZ_DATA } from '@/lib/juzData';
+import { SURAHS, getSurahByName } from '@/lib/quranData';
 
 type PrimaryMarker = 'rukus' | 'pages' | 'lines';
 type PlanStatus = 'pending' | 'approved';
@@ -395,13 +397,108 @@ export default function MonthlyPlanning() {
     enabled: !!user?.id,
   });
 
+  // Calculate monthly target based on marker type (imported from PlanningMarkerSection logic)
+  const calculatedMonthlyTarget = useMemo(() => {
+    if (isQuran) {
+      if (planMarkerType === 'ruku') {
+        const fromJuz = parseInt(rukuFromJuz) || 0;
+        const fromRuku = parseInt(rukuFromNumber) || 0;
+        const toJuz = parseInt(rukuToJuz) || 0;
+        const toRuku = parseInt(rukuToNumber) || 0;
+        if (!fromJuz || !toJuz || !fromRuku || !toRuku) return 0;
+        
+        if (fromJuz === toJuz) {
+          return Math.max(0, toRuku - fromRuku + 1);
+        }
+        
+        let total = 0;
+        // Rukus remaining in fromJuz
+        const fromJuzInfo = JUZ_DATA.find(j => j.number === fromJuz);
+        if (fromJuzInfo) total += fromJuzInfo.rukuCount - fromRuku + 1;
+        // Full Juz in between
+        for (let j = fromJuz + 1; j < toJuz; j++) {
+          const juzInfo = JUZ_DATA.find(juz => juz.number === j);
+          if (juzInfo) total += juzInfo.rukuCount;
+        }
+        // Rukus in toJuz
+        total += toRuku;
+        return total;
+      }
+      
+      if (planMarkerType === 'quarter') {
+        const fromJuz = parseInt(quarterFromJuz) || 0;
+        const fromQ = parseInt(quarterFromNumber) || 0;
+        const toJuz = parseInt(quarterToJuz) || 0;
+        const toQ = parseInt(quarterToNumber) || 0;
+        if (!fromJuz || !toJuz || !fromQ || !toQ) return 0;
+        
+        if (fromJuz === toJuz) {
+          return Math.max(0, toQ - fromQ + 1);
+        }
+        const quartersPerJuz = 4;
+        let total = quartersPerJuz - fromQ + 1;
+        total += (toJuz - fromJuz - 1) * quartersPerJuz;
+        total += toQ;
+        return total;
+      }
+      
+      // Ayah mode - count total ayahs
+      if (planMarkerType === 'ayah') {
+        const fromSurah = getSurahByName(ayahFromSurah);
+        const toSurah = getSurahByName(ayahToSurah);
+        const fromAyah = parseInt(ayahFromNumber) || 0;
+        const toAyah = parseInt(ayahToNumber) || 0;
+        
+        if (fromSurah && toSurah && fromAyah && toAyah) {
+          if (fromSurah.number === toSurah.number) {
+            return Math.max(0, toAyah - fromAyah + 1);
+          }
+          let total = fromSurah.totalAyahs - fromAyah + 1;
+          for (let i = fromSurah.number + 1; i < toSurah.number; i++) {
+            const midSurah = SURAHS.find(s => s.number === i);
+            if (midSurah) total += midSurah.totalAyahs;
+          }
+          total += toAyah;
+          return total;
+        }
+        return 0;
+      }
+    } else {
+      // Academic: monthly target = page range
+      const from = parseInt(pageFrom) || 0;
+      const to = parseInt(pageTo) || 0;
+      if (from && to) return Math.max(0, to - from + 1);
+    }
+    return 0;
+  }, [isQuran, planMarkerType, rukuFromJuz, rukuFromNumber, rukuToJuz, rukuToNumber, 
+      quarterFromJuz, quarterFromNumber, quarterToJuz, quarterToNumber,
+      ayahFromSurah, ayahFromNumber, ayahToSurah, ayahToNumber, pageFrom, pageTo]);
+
   // Build payload function (extracted for DEBUG MODE)
   const buildPlanPayload = () => {
     const assignmentId = selectedSubjectDetails?.assignment_id;
     
     // Get student and subject names for debugging context
     const studentName = students.find(s => s.id === selectedStudent)?.full_name || 'Unknown';
-    const subjectName = selectedSubjectDetails?.name || 'Unknown';
+    const subjectName = selectedSubjectDetails?.name || editingPlan?.subject?.name || 'Unknown';
+
+    // Calculate daily target: monthly / teaching days (minimum 1)
+    const dailyTarget = totalTeachingDays > 0 
+      ? Math.ceil(calculatedMonthlyTarget / totalTeachingDays) || 1 
+      : 1;
+
+    // Build marker data JSON for storage in teaching_strategy field
+    const markerData = isQuran ? {
+      type: planMarkerType,
+      rukuFromJuz: rukuFromJuz || null,
+      rukuFromNumber: rukuFromNumber || null,
+      rukuToJuz: rukuToJuz || null,
+      rukuToNumber: rukuToNumber || null,
+      quarterFromJuz: quarterFromJuz || null,
+      quarterFromNumber: quarterFromNumber || null,
+      quarterToJuz: quarterToJuz || null,
+      quarterToNumber: quarterToNumber || null,
+    } : null;
 
     const planData: any = {
       // Debug context (not sent to DB)
@@ -410,6 +507,8 @@ export default function MonthlyPlanning() {
       _debug_is_quran: isQuran,
       _debug_editing: !!editingPlan,
       _debug_plan_id: editingPlan?.id || null,
+      _debug_calculated_monthly_target: calculatedMonthlyTarget,
+      _debug_marker_data: markerData,
       // Actual DB fields
       student_id: selectedStudent,
       teacher_id: user?.id,
@@ -417,32 +516,28 @@ export default function MonthlyPlanning() {
       month: selectedMonth,
       year: selectedYear,
       primary_marker: planMarkerType === 'ruku' ? 'rukus' : planMarkerType === 'ayah' ? 'lines' : 'pages',
-      monthly_target: 0,
-      daily_target: totalTeachingDays > 0 ? 1 : 0,
+      monthly_target: calculatedMonthlyTarget, // FIX: Use calculated value
+      daily_target: dailyTarget,
       total_teaching_days: totalTeachingDays || null,
       notes: notes || null,
       status: 'pending' as PlanStatus,
       subject_id: selectedSubject,
+      // Store marker selections as JSON in teaching_strategy for Quran subjects
+      teaching_strategy: markerData ? JSON.stringify(markerData) : null,
     };
 
     // Add subject-specific fields
     if (isQuran) {
-      // Quran marker fields
-      planData.planMarkerType = planMarkerType;
-      planData.rukuFromJuz = rukuFromJuz || null;
-      planData.rukuFromNumber = rukuFromNumber || null;
-      planData.rukuToJuz = rukuToJuz || null;
-      planData.rukuToNumber = rukuToNumber || null;
-      planData.quarterFromJuz = quarterFromJuz || null;
-      planData.quarterFromNumber = quarterFromNumber || null;
-      planData.quarterToJuz = quarterToJuz || null;
-      planData.quarterToNumber = quarterToNumber || null;
-      
       if (planMarkerType === 'ayah') {
         planData.surah_from = ayahFromSurah || null;
         planData.surah_to = ayahToSurah || null;
-        planData.ayah_from = ayahFromNumber ? parseInt(ayahFromNumber) : null;
-        planData.ayah_to = ayahToNumber ? parseInt(ayahToNumber) : null;
+        planData.ayah_from = ayahFromNumber ? parseInt(ayahFromNumber, 10) : null;
+        planData.ayah_to = ayahToNumber ? parseInt(ayahToNumber, 10) : null;
+      } else {
+        planData.surah_from = null;
+        planData.surah_to = null;
+        planData.ayah_from = null;
+        planData.ayah_to = null;
       }
       // Clear non-Quran fields
       planData.resource_name = null;
@@ -454,10 +549,11 @@ export default function MonthlyPlanning() {
       planData.resource_name = resourceName || null;
       planData.goals = goals || null;
       planData.topics_to_cover = topicsToCover || null;
-      planData.page_from = pageFrom ? parseInt(pageFrom) : null;
-      planData.page_to = pageTo ? parseInt(pageTo) : null;
+      planData.page_from = pageFrom ? parseInt(pageFrom, 10) : null; // FIX: Ensure numeric
+      planData.page_to = pageTo ? parseInt(pageTo, 10) : null;
       // Clear Quran fields
-      planData.surah_name = null;
+      planData.surah_from = null;
+      planData.surah_to = null;
       planData.ayah_from = null;
       planData.ayah_to = null;
     }
@@ -506,15 +602,10 @@ export default function MonthlyPlanning() {
       delete planData._debug_is_quran;
       delete planData._debug_editing;
       delete planData._debug_plan_id;
-      delete planData.planMarkerType;
-      delete planData.rukuFromJuz;
-      delete planData.rukuFromNumber;
-      delete planData.rukuToJuz;
-      delete planData.rukuToNumber;
-      delete planData.quarterFromJuz;
-      delete planData.quarterFromNumber;
-      delete planData.quarterToJuz;
-      delete planData.quarterToNumber;
+      delete planData._debug_calculated_monthly_target;
+      delete planData._debug_marker_data;
+
+      let savedPlanId: string | null = null;
 
       if (editingPlan) {
         const { error } = await supabase
@@ -522,11 +613,33 @@ export default function MonthlyPlanning() {
           .update(planData)
           .eq('id', editingPlan.id);
         if (error) throw error;
+        savedPlanId = editingPlan.id;
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('student_monthly_plans')
-          .insert(planData);
+          .insert(planData)
+          .select('id')
+          .single();
         if (error) throw error;
+        savedPlanId = data?.id || null;
+      }
+
+      // POST-SAVE VERIFICATION: Fetch saved record and log it
+      if (savedPlanId) {
+        const { data: savedRecord, error: fetchError } = await supabase
+          .from('student_monthly_plans')
+          .select('*')
+          .eq('id', savedPlanId)
+          .single();
+        
+        if (fetchError) {
+          console.warn('MonthlyPlanning: Post-save verification failed', fetchError);
+        } else {
+          console.log('MonthlyPlanning: POST-SAVE VERIFICATION - Saved record:', savedRecord);
+          console.log('MonthlyPlanning: monthly_target saved:', savedRecord?.monthly_target);
+          console.log('MonthlyPlanning: page_from saved:', savedRecord?.page_from);
+          console.log('MonthlyPlanning: teaching_strategy (marker data):', savedRecord?.teaching_strategy);
+        }
       }
     },
     onSuccess: () => {
@@ -630,24 +743,76 @@ export default function MonthlyPlanning() {
     setSelectedYear(plan.year);
     setPrimaryMarker(plan.primary_marker);
     setNotes(plan.notes || '');
-    // Map primary_marker to planMarkerType
-    if (plan.primary_marker === 'rukus') {
-      setPlanMarkerType('ruku');
-    } else if (plan.primary_marker === 'lines') {
-      setPlanMarkerType('ayah');
+    
+    // Reset all marker fields first
+    setRukuFromJuz('');
+    setRukuFromNumber('');
+    setRukuToJuz('');
+    setRukuToNumber('');
+    setQuarterFromJuz('');
+    setQuarterFromNumber('');
+    setQuarterToJuz('');
+    setQuarterToNumber('');
+    setAyahFromSurah('');
+    setAyahFromNumber('');
+    setAyahToSurah('');
+    setAyahToNumber('');
+    
+    // Try to restore marker data from teaching_strategy JSON
+    if (plan.teaching_strategy) {
+      try {
+        const markerData = typeof plan.teaching_strategy === 'string' 
+          ? JSON.parse(plan.teaching_strategy) 
+          : plan.teaching_strategy;
+        
+        console.log('MonthlyPlanning: Restoring marker data from teaching_strategy:', markerData);
+        
+        if (markerData.type) {
+          setPlanMarkerType(markerData.type as PlanMarkerType);
+        }
+        if (markerData.rukuFromJuz) setRukuFromJuz(markerData.rukuFromJuz);
+        if (markerData.rukuFromNumber) setRukuFromNumber(markerData.rukuFromNumber);
+        if (markerData.rukuToJuz) setRukuToJuz(markerData.rukuToJuz);
+        if (markerData.rukuToNumber) setRukuToNumber(markerData.rukuToNumber);
+        if (markerData.quarterFromJuz) setQuarterFromJuz(markerData.quarterFromJuz);
+        if (markerData.quarterFromNumber) setQuarterFromNumber(markerData.quarterFromNumber);
+        if (markerData.quarterToJuz) setQuarterToJuz(markerData.quarterToJuz);
+        if (markerData.quarterToNumber) setQuarterToNumber(markerData.quarterToNumber);
+      } catch (e) {
+        console.warn('MonthlyPlanning: Failed to parse teaching_strategy as JSON:', e);
+        // Fallback to primary_marker mapping
+        if (plan.primary_marker === 'rukus') {
+          setPlanMarkerType('ruku');
+        } else if (plan.primary_marker === 'lines') {
+          setPlanMarkerType('ayah');
+        } else {
+          setPlanMarkerType('quarter');
+        }
+      }
     } else {
-      setPlanMarkerType('quarter');
+      // No teaching_strategy, use primary_marker mapping
+      if (plan.primary_marker === 'rukus') {
+        setPlanMarkerType('ruku');
+      } else if (plan.primary_marker === 'lines') {
+        setPlanMarkerType('ayah');
+      } else {
+        setPlanMarkerType('quarter');
+      }
     }
-    // Restore ayah values if present
+    
+    // Restore ayah values if present (for ayah mode)
     if (plan.ayah_from) setAyahFromNumber(plan.ayah_from.toString());
     if (plan.ayah_to) setAyahToNumber(plan.ayah_to.toString());
     if (plan.surah_from) setAyahFromSurah(plan.surah_from);
     if (plan.surah_to) setAyahToSurah(plan.surah_to);
+    
+    // Restore academic fields
     setResourceName(plan.resource_name || '');
     setGoals(plan.goals || '');
     setTopicsToCover(plan.topics_to_cover || '');
     setPageFrom(plan.page_from?.toString() || '');
     setPageTo(plan.page_to?.toString() || '');
+    
     setDialogOpen(true);
   };
 
