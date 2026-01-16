@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Calendar, Plus, CheckCircle, Clock, Target, User, Loader2, Edit, AlertTriangle, Trash2, Eye } from 'lucide-react';
+import { Calendar, Plus, CheckCircle, Clock, Target, User, Loader2, Edit, AlertTriangle, Trash2, Eye, Search, ArrowUpDown, Filter, Book, FileText } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/contexts/AuthContext';
@@ -110,16 +110,23 @@ export default function MonthlyPlanning() {
   const [monthFilter, setMonthFilter] = useState(format(new Date(), 'MM'));
   const [yearFilter, setYearFilter] = useState(currentYear.toString());
   
-  // DEBUG MODE state
+  // DEBUG MODE state (admin-only in production)
   const [debugPayload, setDebugPayload] = useState<object | null>(null);
   const [showDebugModal, setShowDebugModal] = useState(false);
+  
+  // Admin controls state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [subjectFilter, setSubjectFilter] = useState('all');
+  const [teacherFilter, setTeacherFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved'>('all');
+  const [sortBy, setSortBy] = useState<'created_at' | 'student_name' | 'teacher_name'>('created_at');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Form state
   const [selectedStudent, setSelectedStudent] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'MM'));
   const [selectedYear, setSelectedYear] = useState(currentYear.toString());
-  const [primaryMarker, setPrimaryMarker] = useState<PrimaryMarker>('lines');
   const [notes, setNotes] = useState('');
   
   // Planning marker state (for Quran subjects)
@@ -372,9 +379,9 @@ export default function MonthlyPlanning() {
     return calculateWorkingDaysInMonth(scheduleDays, parseInt(selectedYear), parseInt(selectedMonth));
   }, [studentSchedule, selectedMonth, selectedYear]);
 
-  // Fetch monthly plans
+  // Fetch monthly plans (filter by teacher for non-admin users)
   const { data: plans, isLoading } = useQuery({
-    queryKey: ['monthly-plans', monthFilter, yearFilter, user?.id],
+    queryKey: ['monthly-plans', monthFilter, yearFilter, user?.id, isAdmin],
     queryFn: async () => {
       if (!user?.id) return [];
 
@@ -390,12 +397,88 @@ export default function MonthlyPlanning() {
         .eq('year', yearFilter)
         .order('created_at', { ascending: false });
 
+      // Teachers can only see their own plans
+      if (isTeacher && !isAdmin) {
+        query = query.eq('teacher_id', user.id);
+      }
+
       const { data, error } = await query;
       if (error) throw error;
       return (data || []) as MonthlyPlan[];
     },
     enabled: !!user?.id,
   });
+
+  // Fetch all teachers for admin filter
+  const { data: allTeachers = [] } = useQuery({
+    queryKey: ['all-teachers-for-filter'],
+    queryFn: async () => {
+      const { data: roleData, error: roleError } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'teacher');
+      if (roleError) throw roleError;
+      
+      const teacherIds = (roleData || []).map(r => r.user_id);
+      if (teacherIds.length === 0) return [];
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', teacherIds)
+        .order('full_name');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isAdmin,
+  });
+
+  // Filtered and sorted plans
+  const filteredPlans = useMemo(() => {
+    if (!plans) return [];
+    
+    let result = [...plans];
+    
+    // Search filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(p => 
+        p.student?.full_name?.toLowerCase().includes(q) ||
+        p.teacher?.full_name?.toLowerCase().includes(q) ||
+        p.subject?.name?.toLowerCase().includes(q)
+      );
+    }
+    
+    // Subject filter
+    if (subjectFilter !== 'all') {
+      result = result.filter(p => p.subject_id === subjectFilter);
+    }
+    
+    // Teacher filter (admin only)
+    if (teacherFilter !== 'all' && isAdmin) {
+      result = result.filter(p => p.teacher_id === teacherFilter);
+    }
+    
+    // Status filter
+    if (statusFilter !== 'all') {
+      result = result.filter(p => p.status === statusFilter);
+    }
+    
+    // Sorting
+    result.sort((a, b) => {
+      let cmp = 0;
+      if (sortBy === 'created_at') {
+        cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      } else if (sortBy === 'student_name') {
+        cmp = (a.student?.full_name || '').localeCompare(b.student?.full_name || '');
+      } else if (sortBy === 'teacher_name') {
+        cmp = (a.teacher?.full_name || '').localeCompare(b.teacher?.full_name || '');
+      }
+      return sortOrder === 'desc' ? -cmp : cmp;
+    });
+    
+    return result;
+  }, [plans, searchQuery, subjectFilter, teacherFilter, statusFilter, sortBy, sortOrder, isAdmin]);
 
   // Calculate monthly target based on marker type (imported from PlanningMarkerSection logic)
   const calculatedMonthlyTarget = useMemo(() => {
@@ -561,7 +644,7 @@ export default function MonthlyPlanning() {
     return planData;
   };
 
-  // DEBUG MODE: Handle submit with payload preview
+  // DEBUG MODE: Handle submit with payload preview (admin-only in production)
   const handleDebugSubmit = () => {
     if (!user?.id) {
       toast({ title: 'Error', description: 'Not authenticated', variant: 'destructive' });
@@ -576,14 +659,21 @@ export default function MonthlyPlanning() {
       return;
     }
 
-    const payload = buildPlanPayload();
-    
-    // Log to console
-    console.log("MonthlyPlanningPayload", payload);
-    
-    // Show debug modal
-    setDebugPayload(payload);
-    setShowDebugModal(true);
+    // For admin users: show debug modal with payload preview
+    // For non-admin users: directly save without debug modal
+    if (isAdmin) {
+      const payload = buildPlanPayload();
+      
+      // Log to console
+      console.log("MonthlyPlanningPayload", payload);
+      
+      // Show debug modal for admin
+      setDebugPayload(payload);
+      setShowDebugModal(true);
+    } else {
+      // Non-admin: save directly without debug modal
+      savePlanMutation.mutate();
+    }
   };
 
   // Create/Update plan mutation
@@ -886,9 +976,118 @@ export default function MonthlyPlanning() {
           </Select>
           <div className="text-sm text-muted-foreground">
             <Calendar className="h-4 w-4 inline mr-1" />
-            {plans?.length || 0} plans
+            {filteredPlans.length} of {plans?.length || 0} plans
           </div>
         </div>
+
+        {/* Admin Search & Filter Controls */}
+        {isAdmin && (
+          <Card className="p-4">
+            <div className="flex flex-wrap gap-4 items-end">
+              {/* Search */}
+              <div className="flex-1 min-w-[200px]">
+                <Label className="text-xs text-muted-foreground mb-1 block">Search</Label>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search student, teacher, subject..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-8"
+                  />
+                </div>
+              </div>
+              
+              {/* Subject Filter */}
+              <div className="w-[150px]">
+                <Label className="text-xs text-muted-foreground mb-1 block">Subject</Label>
+                <Select value={subjectFilter} onValueChange={setSubjectFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Subjects" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Subjects</SelectItem>
+                    {allSubjects.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* Teacher Filter */}
+              <div className="w-[150px]">
+                <Label className="text-xs text-muted-foreground mb-1 block">Teacher</Label>
+                <Select value={teacherFilter} onValueChange={setTeacherFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Teachers" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Teachers</SelectItem>
+                    {allTeachers.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.full_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* Status Filter */}
+              <div className="w-[120px]">
+                <Label className="text-xs text-muted-foreground mb-1 block">Status</Label>
+                <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="approved">Approved</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* Sort */}
+              <div className="w-[150px]">
+                <Label className="text-xs text-muted-foreground mb-1 block">Sort By</Label>
+                <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="created_at">Created Date</SelectItem>
+                    <SelectItem value="student_name">Student Name</SelectItem>
+                    <SelectItem value="teacher_name">Teacher Name</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* Sort Order Toggle */}
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setSortOrder(o => o === 'asc' ? 'desc' : 'asc')}
+                title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+              >
+                <ArrowUpDown className={cn("h-4 w-4", sortOrder === 'asc' && "rotate-180")} />
+              </Button>
+              
+              {/* Reset Filters */}
+              {(searchQuery || subjectFilter !== 'all' || teacherFilter !== 'all' || statusFilter !== 'all') && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSubjectFilter('all');
+                    setTeacherFilter('all');
+                    setStatusFilter('all');
+                  }}
+                >
+                  Clear Filters
+                </Button>
+              )}
+            </div>
+          </Card>
+        )}
 
         {/* Info Alert */}
         <Alert className="bg-muted/50 border-muted-foreground/20">
@@ -943,11 +1142,11 @@ export default function MonthlyPlanning() {
                   <Skeleton key={i} className="h-16 w-full" />
                 ))}
               </div>
-            ) : !plans || plans.length === 0 ? (
+            ) : !filteredPlans || filteredPlans.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Target className="h-12 w-12 mx-auto mb-4 opacity-30" />
-                <p className="text-lg font-medium">No plans for this period</p>
-                <p className="text-sm">Create a monthly plan to get started</p>
+                <p className="text-lg font-medium">No plans found</p>
+                <p className="text-sm">{plans && plans.length > 0 ? 'Try adjusting your filters' : 'Create a monthly plan to get started'}</p>
               </div>
             ) : (
               <Table>
@@ -956,104 +1155,180 @@ export default function MonthlyPlanning() {
                     {isAdmin && (
                       <TableHead className="w-10">
                         <Checkbox 
-                          checked={selectedPlanIds.size === plans.length && plans.length > 0}
+                          checked={selectedPlanIds.size === filteredPlans.length && filteredPlans.length > 0}
                           onCheckedChange={toggleSelectAll}
                         />
                       </TableHead>
                     )}
                     <TableHead>Student</TableHead>
                     <TableHead>Subject</TableHead>
-                    <TableHead>Primary Marker</TableHead>
+                    <TableHead>Details</TableHead>
                     <TableHead className="text-center">Monthly Target</TableHead>
-                    <TableHead className="text-center">Daily Target</TableHead>
-                    <TableHead className="hidden md:table-cell">Notes</TableHead>
+                    {isAdmin && <TableHead>Teacher</TableHead>}
+                    <TableHead className="hidden md:table-cell max-w-[150px]">Notes</TableHead>
                     <TableHead className="text-xs">Created (PKT)</TableHead>
                     <TableHead className="text-center">Status</TableHead>
                     <TableHead className="text-center">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {plans.map((plan) => (
-                    <TableRow 
-                      key={plan.id} 
-                      className={cn(
-                        isAdmin && "cursor-pointer hover:bg-muted/50",
-                        selectedPlanIds.has(plan.id) && "bg-primary/5"
-                      )}
-                      onClick={(e) => {
-                        // Only open view dialog if clicking on the row (not buttons/checkboxes)
-                        if (isAdmin && !(e.target as HTMLElement).closest('button, [role="checkbox"]')) {
-                          openEditDialog(plan, 'view');
+                  {filteredPlans.map((plan) => {
+                    const planIsQuran = isQuranSubject(plan.subject?.name);
+                    // Parse marker data from teaching_strategy
+                    let markerInfo = '';
+                    if (planIsQuran && plan.teaching_strategy) {
+                      try {
+                        const md = typeof plan.teaching_strategy === 'string' 
+                          ? JSON.parse(plan.teaching_strategy) 
+                          : plan.teaching_strategy;
+                        if (md.type === 'ruku' && md.rukuFromJuz && md.rukuToJuz) {
+                          markerInfo = `Juz ${md.rukuFromJuz} R${md.rukuFromNumber} → Juz ${md.rukuToJuz} R${md.rukuToNumber}`;
+                        } else if (md.type === 'quarter' && md.quarterFromJuz) {
+                          markerInfo = `Juz ${md.quarterFromJuz} Q${md.quarterFromNumber} → Juz ${md.quarterToJuz} Q${md.quarterToNumber}`;
                         }
-                      }}
-                    >
-                      {isAdmin && (
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          <Checkbox 
-                            checked={selectedPlanIds.has(plan.id)}
-                            onCheckedChange={() => togglePlanSelection(plan.id)}
-                          />
-                        </TableCell>
-                      )}
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                            <User className="h-4 w-4 text-primary" />
-                          </div>
-                          <span className="font-medium">{plan.student?.full_name || 'Unknown'}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{plan.subject?.name || '-'}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{getMarkerLabel(plan.primary_marker)}</Badge>
-                      </TableCell>
-                      <TableCell className="text-center font-medium">
-                        {plan.monthly_target} {getMarkerLabel(plan.primary_marker)}
-                      </TableCell>
-                      <TableCell className="text-center font-medium">
-                        {plan.daily_target} / day
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell text-muted-foreground text-sm max-w-[200px] truncate" title={plan.notes || ''}>
-                        {plan.notes || '-'}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                        {plan.created_at ? format(parseISO(plan.created_at), 'MMM dd, h:mm a') : '-'}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {plan.status === 'approved' ? (
-                          <Badge className="bg-emerald-light/10 text-emerald-light border-emerald-light/20">
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            Approved
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">
-                            <Clock className="h-3 w-3 mr-1" />
-                            Pending
-                          </Badge>
+                      } catch (e) {}
+                    }
+                    if (planIsQuran && !markerInfo && plan.surah_from) {
+                      markerInfo = `${plan.surah_from}:${plan.ayah_from || 1} → ${plan.surah_to || plan.surah_from}:${plan.ayah_to || '?'}`;
+                    }
+                    
+                    return (
+                      <TableRow 
+                        key={plan.id} 
+                        className={cn(
+                          isAdmin && "cursor-pointer hover:bg-muted/50",
+                          selectedPlanIds.has(plan.id) && "bg-primary/5"
                         )}
-                      </TableCell>
-                      <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-center gap-2">
-                          {isAdmin && (
+                        onClick={(e) => {
+                          if (isAdmin && !(e.target as HTMLElement).closest('button, [role="checkbox"]')) {
+                            openEditDialog(plan, 'view');
+                          }
+                        }}
+                      >
+                        {isAdmin && (
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <Checkbox 
+                              checked={selectedPlanIds.has(plan.id)}
+                              onCheckedChange={() => togglePlanSelection(plan.id)}
+                            />
+                          </TableCell>
+                        )}
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                              <User className="h-4 w-4 text-primary" />
+                            </div>
+                            <span className="font-medium">{plan.student?.full_name || 'Unknown'}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="gap-1">
+                            {planIsQuran ? <Book className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
+                            {plan.subject?.name || '-'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="max-w-[200px]">
+                          {planIsQuran ? (
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-1">
+                                <Badge variant="secondary" className="text-xs">{getMarkerLabel(plan.primary_marker)}</Badge>
+                              </div>
+                              {markerInfo && (
+                                <p className="text-xs text-muted-foreground truncate" title={markerInfo}>{markerInfo}</p>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="space-y-0.5 text-xs">
+                              {plan.resource_name && (
+                                <p className="font-medium truncate" title={plan.resource_name}>{plan.resource_name}</p>
+                              )}
+                              {(plan.page_from || plan.page_to) && (
+                                <p className="text-muted-foreground">Pages {plan.page_from || '?'} - {plan.page_to || '?'}</p>
+                              )}
+                              {plan.goals && (
+                                <p className="text-muted-foreground truncate" title={plan.goals}>{plan.goals}</p>
+                              )}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center font-medium">
+                          {plan.monthly_target} {planIsQuran ? getMarkerLabel(plan.primary_marker) : 'pages'}
+                        </TableCell>
+                        {isAdmin && (
+                          <TableCell>
+                            <span className="text-sm text-muted-foreground">{plan.teacher?.full_name || '-'}</span>
+                          </TableCell>
+                        )}
+                        <TableCell className="hidden md:table-cell text-muted-foreground text-sm max-w-[150px] truncate" title={plan.notes || ''}>
+                          {plan.notes || '-'}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                          {plan.created_at ? format(parseISO(plan.created_at), 'MMM dd, h:mm a') : '-'}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {plan.status === 'approved' ? (
+                            <Badge className="bg-emerald-light/10 text-emerald-light border-emerald-light/20">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Approved
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary">
+                              <Clock className="h-3 w-3 mr-1" />
+                              Pending
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-center gap-2">
+                            {isAdmin && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => openEditDialog(plan, 'view')}
+                                title="View full form"
+                              >
+                                <Eye className="h-3 w-3" />
+                              </Button>
+                            )}
                             <Button
                               size="sm"
-                              variant="ghost"
-                              onClick={() => openEditDialog(plan, 'view')}
-                              title="View full form"
+                              variant="outline"
+                              onClick={() => openEditDialog(plan, 'edit')}
+                              title="Edit"
                             >
-                              <Eye className="h-3 w-3" />
+                              <Edit className="h-3 w-3" />
                             </Button>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => openEditDialog(plan, 'edit')}
-                            title="Edit"
-                          >
-                            <Edit className="h-3 w-3" />
-                          </Button>
+                            {isAdmin && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Plan</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete this plan for {plan.student?.full_name}? This action cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction 
+                                      onClick={() => deletePlanMutation.mutate([plan.id])}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                           {isAdmin && (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
