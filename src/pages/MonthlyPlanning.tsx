@@ -801,7 +801,7 @@ export default function MonthlyPlanning() {
     setSelectedSubject('');
     setSelectedMonth(format(new Date(), 'MM'));
     setSelectedYear(currentYear.toString());
-    setPrimaryMarker('lines');
+    setPlanMarkerType('ruku');
     setNotes('');
     setPlanMarkerType('ruku');
     setRukuFromJuz('');
@@ -831,7 +831,7 @@ export default function MonthlyPlanning() {
     setSelectedSubject(plan.subject_id || '');
     setSelectedMonth(plan.month);
     setSelectedYear(plan.year);
-    setPrimaryMarker(plan.primary_marker);
+    // Set plan marker type based on stored teaching_strategy
     setNotes(plan.notes || '');
     
     // Reset all marker fields first
@@ -1329,36 +1329,6 @@ export default function MonthlyPlanning() {
                       </TableRow>
                     );
                   })}
-                          {isAdmin && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Plan</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to delete this plan for {plan.student?.full_name}? This action cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction 
-                                    onClick={() => deletePlanMutation.mutate([plan.id])}
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                  >
-                                    Delete
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
                 </TableBody>
               </Table>
             )}
