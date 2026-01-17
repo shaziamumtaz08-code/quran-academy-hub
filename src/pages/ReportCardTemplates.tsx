@@ -4,7 +4,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, FileText, Loader2, Settings, ToggleLeft, ToggleRight, Layers, ListChecks } from 'lucide-react';
+import { Plus, FileText, Loader2, Settings, ToggleLeft, ToggleRight, Layers, ListChecks, Copy } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -234,6 +234,31 @@ export default function ReportCardTemplates() {
     },
   });
 
+  // Duplicate template mutation
+  const duplicateMutation = useMutation({
+    mutationFn: async (template: ReportTemplate) => {
+      const { error } = await supabase
+        .from('exam_templates')
+        .insert({
+          name: `${template.name} (Copy)`,
+          subject_id: template.subject_id,
+          tenure: template.tenure,
+          description: template.description,
+          structure_json: template.structure_json as unknown as Database['public']['Tables']['exam_templates']['Insert']['structure_json'],
+          created_by: user?.id || null,
+          is_active: true,
+        });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['report-card-templates'] });
+      toast({ title: 'Success', description: 'Template duplicated successfully. You can now edit the copy.' });
+    },
+    onError: (error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
   const handleSave = (data: {
     name: string;
     subject_id: string | null;
@@ -357,7 +382,7 @@ export default function ReportCardTemplates() {
                       </p>
                     )}
                     
-                    <div className="flex items-center gap-3 pt-2">
+                    <div className="flex items-center gap-2 pt-2">
                       <Button
                         variant="outline"
                         size="sm"
@@ -365,7 +390,18 @@ export default function ReportCardTemplates() {
                         onClick={() => openEdit(template)}
                       >
                         <Settings className="h-4 w-4" />
-                        Edit Template
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2 border-border/50 hover:border-accent hover:text-accent"
+                        onClick={() => duplicateMutation.mutate(template)}
+                        disabled={duplicateMutation.isPending}
+                        title="Duplicate template"
+                      >
+                        <Copy className="h-4 w-4" />
+                        Duplicate
                       </Button>
                       <Button
                         variant="ghost"
