@@ -11,6 +11,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import { TemplateBuilder } from '@/components/reportCard/TemplateBuilder';
 import { TemplateStructure, ReportSection, ReportCriteriaRow } from '@/types/reportCard';
 import type { Database } from '@/integrations/supabase/types';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 type ExamTenure = Database['public']['Enums']['exam_tenure'];
 
@@ -74,6 +84,9 @@ export default function ReportCardTemplates() {
   const [isBuilderOpen, setIsBuilderOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<ReportTemplate | null>(null);
   const [seedingDemo, setSeedingDemo] = useState(false);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [duplicatingTemplate, setDuplicatingTemplate] = useState<ReportTemplate | null>(null);
+  const [duplicateName, setDuplicateName] = useState('');
 
   // Fetch subjects
   const { data: subjects = [] } = useQuery({
@@ -236,11 +249,11 @@ export default function ReportCardTemplates() {
 
   // Duplicate template mutation
   const duplicateMutation = useMutation({
-    mutationFn: async (template: ReportTemplate) => {
+    mutationFn: async ({ template, newName }: { template: ReportTemplate; newName: string }) => {
       const { error } = await supabase
         .from('exam_templates')
         .insert({
-          name: `${template.name} (Copy)`,
+          name: newName,
           subject_id: template.subject_id,
           tenure: template.tenure,
           description: template.description,
@@ -252,12 +265,33 @@ export default function ReportCardTemplates() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['report-card-templates'] });
+      setDuplicateDialogOpen(false);
+      setDuplicatingTemplate(null);
+      setDuplicateName('');
       toast({ title: 'Success', description: 'Template duplicated successfully. You can now edit the copy.' });
     },
     onError: (error) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     },
   });
+
+  const openDuplicateDialog = (template: ReportTemplate) => {
+    // Generate a unique name like "Template Name (1)", checking for existing copies
+    const baseName = template.name.replace(/\s*\(\d+\)$/, ''); // Remove existing (n) suffix
+    const existingCopies = templates.filter(t => 
+      t.name.startsWith(baseName) && t.name !== template.name
+    );
+    const nextNumber = existingCopies.length + 1;
+    setDuplicateName(`${baseName} (${nextNumber})`);
+    setDuplicatingTemplate(template);
+    setDuplicateDialogOpen(true);
+  };
+
+  const handleDuplicate = () => {
+    if (duplicatingTemplate && duplicateName.trim()) {
+      duplicateMutation.mutate({ template: duplicatingTemplate, newName: duplicateName.trim() });
+    }
+  };
 
   const handleSave = (data: {
     name: string;
@@ -396,7 +430,7 @@ export default function ReportCardTemplates() {
                         variant="outline"
                         size="sm"
                         className="gap-2 border-border/50 hover:border-accent hover:text-accent"
-                        onClick={() => duplicateMutation.mutate(template)}
+                        onClick={() => openDuplicateDialog(template)}
                         disabled={duplicateMutation.isPending}
                         title="Duplicate template"
                       >
@@ -444,6 +478,53 @@ export default function ReportCardTemplates() {
           structure_json: editingTemplate.structure_json,
         } : undefined}
       />
+
+      {/* Duplicate Template Dialog */}
+      <Dialog open={duplicateDialogOpen} onOpenChange={setDuplicateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Duplicate Template</DialogTitle>
+            <DialogDescription>
+              Enter a name for the duplicated template.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="duplicate-name">Template Name</Label>
+            <Input
+              id="duplicate-name"
+              value={duplicateName}
+              onChange={(e) => setDuplicateName(e.target.value)}
+              placeholder="Enter template name"
+              className="mt-2"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDuplicateDialogOpen(false);
+                setDuplicatingTemplate(null);
+                setDuplicateName('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDuplicate}
+              disabled={!duplicateName.trim() || duplicateMutation.isPending}
+            >
+              {duplicateMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Duplicating...
+                </>
+              ) : (
+                'Duplicate'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
