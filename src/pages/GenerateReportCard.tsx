@@ -10,11 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { FileText, User, Calendar, Loader2, Send } from 'lucide-react';
+import { FileText, User, Calendar, Loader2, Send, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { ReportCardForm } from '@/components/reportCard/ReportCardForm';
+import { BulkReportCardDialog } from '@/components/reportCard/BulkReportCardDialog';
 import {
   CriteriaValue,
   StoredCriteriaEntry,
@@ -50,6 +51,7 @@ export default function GenerateReportCard() {
   const [criteriaValues, setCriteriaValues] = useState<CriteriaValue[]>([]);
   const [examinerRemarks, setExaminerRemarks] = useState('');
   const [publicRemarks, setPublicRemarks] = useState('');
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
 
   const isAdminOrExaminer =
     activeRole === 'admin' ||
@@ -280,12 +282,27 @@ export default function GenerateReportCard() {
   return (
     <DashboardLayout>
       <div className="space-y-6 max-w-4xl">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Generate Report Card</h1>
-          <p className="text-muted-foreground mt-1">
-            Enter obtained marks for every criteria row (max marks come from the template)
-          </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Generate Report Card</h1>
+            <p className="text-muted-foreground mt-1">
+              Enter obtained marks for every criteria row (max marks come from the template)
+            </p>
+          </div>
+          <Badge
+            variant="secondary"
+            className="cursor-pointer hover:bg-secondary/80 transition-colors px-3 py-1.5 text-sm font-medium flex items-center gap-1.5"
+            onClick={() => setBulkDialogOpen(true)}
+          >
+            <Upload className="h-3.5 w-3.5" />
+            Bulk Import
+          </Badge>
         </div>
+
+        <BulkReportCardDialog
+          open={bulkDialogOpen}
+          onOpenChange={setBulkDialogOpen}
+        />
 
         <Card>
           <CardHeader>
