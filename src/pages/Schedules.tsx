@@ -230,6 +230,7 @@ export default function Schedules() {
     studentTimezone: 'America/Toronto',
     teacherTimezone: 'Asia/Karachi',
     duration: '30',
+    customDuration: '',
   });
   // Track which field was last edited for bidirectional sync
   const [lastEditedField, setLastEditedField] = useState<'student' | 'teacher'>('student');
@@ -242,8 +243,18 @@ export default function Schedules() {
     studentTimezone: 'America/Toronto',
     teacherTimezone: 'Asia/Karachi',
     duration: '30',
+    customDuration: '',
   });
   const [bulkLastEditedField, setBulkLastEditedField] = useState<'student' | 'teacher'>('student');
+
+  // Helper to get effective duration value
+  const getEffectiveDuration = (duration: string, customDuration: string): number => {
+    if (duration === 'custom') {
+      const val = parseInt(customDuration);
+      return isNaN(val) ? 30 : Math.min(180, Math.max(5, val));
+    }
+    return parseInt(duration);
+  };
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -587,6 +598,7 @@ export default function Schedules() {
       studentTimezone: 'America/Toronto',
       teacherTimezone: 'Asia/Karachi',
       duration: '30',
+      customDuration: '',
     });
     setLastEditedField('student');
   };
@@ -601,6 +613,7 @@ export default function Schedules() {
       studentTimezone: 'America/Toronto',
       teacherTimezone: 'Asia/Karachi',
       duration: '30',
+      customDuration: '',
     });
     setBulkLastEditedField('student');
   };
@@ -617,6 +630,8 @@ export default function Schedules() {
       assignment.teacher_city,
       assignment.teacher_timezone
     );
+    const durationVal = schedule.duration_minutes;
+    const isPreset = [30, 45, 60].includes(durationVal);
     setNewSchedule({
       assignmentId: schedule.assignment_id,
       day: schedule.day_of_week,
@@ -624,7 +639,8 @@ export default function Schedules() {
       teacherTime: schedule.teacher_local_time,
       studentTimezone: studentTz,
       teacherTimezone: teacherTz,
-      duration: schedule.duration_minutes.toString(),
+      duration: isPreset ? durationVal.toString() : 'custom',
+      customDuration: isPreset ? '' : durationVal.toString(),
     });
     setLastEditedField('student');
     setIsDialogOpen(true);
@@ -634,6 +650,15 @@ export default function Schedules() {
     if (!newSchedule.assignmentId || !newSchedule.day || !newSchedule.studentTime) {
       toast({ title: 'Error', description: 'Please fill in all required fields', variant: 'destructive' });
       return;
+    }
+
+    // Validate custom duration if selected
+    if (newSchedule.duration === 'custom') {
+      const customVal = parseInt(newSchedule.customDuration);
+      if (isNaN(customVal) || customVal < 5 || customVal > 180) {
+        toast({ title: 'Error', description: 'Custom duration must be between 5 and 180 minutes', variant: 'destructive' });
+        return;
+      }
     }
 
     // Validate timezones are set
@@ -646,12 +671,14 @@ export default function Schedules() {
       return;
     }
 
+    const effectiveDuration = getEffectiveDuration(newSchedule.duration, newSchedule.customDuration);
+
     // Check for conflicts
     const conflict = detectScheduleConflict(
       {
         day: newSchedule.day,
         studentTime: newSchedule.studentTime,
-        duration: parseInt(newSchedule.duration),
+        duration: effectiveDuration,
         assignmentId: newSchedule.assignmentId,
       },
       assignments,
@@ -672,7 +699,7 @@ export default function Schedules() {
       day_of_week: newSchedule.day,
       student_local_time: newSchedule.studentTime,
       teacher_local_time: newSchedule.teacherTime || calculateTeacherTime(newSchedule.studentTime, newSchedule.studentTimezone, newSchedule.teacherTimezone),
-      duration_minutes: parseInt(newSchedule.duration),
+      duration_minutes: effectiveDuration,
     };
 
     if (editingSchedule) {
@@ -688,6 +715,15 @@ export default function Schedules() {
       return;
     }
 
+    // Validate custom duration if selected
+    if (bulkSchedule.duration === 'custom') {
+      const customVal = parseInt(bulkSchedule.customDuration);
+      if (isNaN(customVal) || customVal < 5 || customVal > 180) {
+        toast({ title: 'Error', description: 'Custom duration must be between 5 and 180 minutes', variant: 'destructive' });
+        return;
+      }
+    }
+
     // Validate timezones are set
     if (!bulkSchedule.studentTimezone || !bulkSchedule.teacherTimezone) {
       toast({
@@ -698,6 +734,8 @@ export default function Schedules() {
       return;
     }
 
+    const effectiveDuration = getEffectiveDuration(bulkSchedule.duration, bulkSchedule.customDuration);
+
     // Check for conflicts on each selected day
     const conflicts: string[] = [];
     for (const day of bulkSchedule.selectedDays) {
@@ -705,7 +743,7 @@ export default function Schedules() {
         {
           day,
           studentTime: bulkSchedule.studentTime,
-          duration: parseInt(bulkSchedule.duration),
+          duration: effectiveDuration,
           assignmentId: bulkSchedule.assignmentId,
         },
         assignments,
@@ -730,7 +768,7 @@ export default function Schedules() {
       day_of_week: day,
       student_local_time: bulkSchedule.studentTime,
       teacher_local_time: bulkSchedule.teacherTime || calculateTeacherTime(bulkSchedule.studentTime, bulkSchedule.studentTimezone, bulkSchedule.teacherTimezone),
-      duration_minutes: parseInt(bulkSchedule.duration),
+      duration_minutes: effectiveDuration,
     }));
 
     bulkCreateScheduleMutation.mutate(schedulesData);
@@ -847,14 +885,28 @@ export default function Schedules() {
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs">Duration</Label>
-                      <Select value={bulkSchedule.duration} onValueChange={(v) => setBulkSchedule(prev => ({ ...prev, duration: v }))}>
-                        <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="30">30 min</SelectItem>
-                          <SelectItem value="45">45 min</SelectItem>
-                          <SelectItem value="60">60 min</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="flex gap-2">
+                        <Select value={bulkSchedule.duration} onValueChange={(v) => setBulkSchedule(prev => ({ ...prev, duration: v, customDuration: v === 'custom' ? prev.customDuration : '' }))}>
+                          <SelectTrigger className="h-9 flex-1"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="30">30 min</SelectItem>
+                            <SelectItem value="45">45 min</SelectItem>
+                            <SelectItem value="60">60 min</SelectItem>
+                            <SelectItem value="custom">Custom</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {bulkSchedule.duration === 'custom' && (
+                          <Input
+                            type="number"
+                            min={5}
+                            max={180}
+                            placeholder="e.g. 40"
+                            value={bulkSchedule.customDuration}
+                            onChange={(e) => setBulkSchedule(prev => ({ ...prev, customDuration: e.target.value }))}
+                            className="h-9 w-20"
+                          />
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="flex justify-end gap-2 pt-3 border-t border-blue-200 dark:border-blue-800 mt-3">
@@ -908,14 +960,28 @@ export default function Schedules() {
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs">Duration</Label>
-                      <Select value={newSchedule.duration} onValueChange={(v) => setNewSchedule(prev => ({ ...prev, duration: v }))}>
-                        <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="30">30 min</SelectItem>
-                          <SelectItem value="45">45 min</SelectItem>
-                          <SelectItem value="60">60 min</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="flex gap-2">
+                        <Select value={newSchedule.duration} onValueChange={(v) => setNewSchedule(prev => ({ ...prev, duration: v, customDuration: v === 'custom' ? prev.customDuration : '' }))}>
+                          <SelectTrigger className="h-9 flex-1"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="30">30 min</SelectItem>
+                            <SelectItem value="45">45 min</SelectItem>
+                            <SelectItem value="60">60 min</SelectItem>
+                            <SelectItem value="custom">Custom</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {newSchedule.duration === 'custom' && (
+                          <Input
+                            type="number"
+                            min={5}
+                            max={180}
+                            placeholder="e.g. 40"
+                            value={newSchedule.customDuration}
+                            onChange={(e) => setNewSchedule(prev => ({ ...prev, customDuration: e.target.value }))}
+                            className="h-9 w-20"
+                          />
+                        )}
+                      </div>
                     </div>
                     {/* Location info banner with frozen timezones */}
                     {selectedAssignment && (
