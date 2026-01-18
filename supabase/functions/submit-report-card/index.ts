@@ -81,18 +81,20 @@ serve(async (req) => {
 
     const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Role gate
-    const { data: roleRow, error: roleErr } = await adminClient
+    // Role gate - get first matching role (user may have multiple roles)
+    const { data: roleRows, error: roleErr } = await adminClient
       .from("user_roles")
       .select("role")
       .eq("user_id", caller.id)
-      .maybeSingle();
+      .limit(1);
 
     if (roleErr) {
       console.error("Role lookup failed:", roleErr.message);
       return json(500, { error: "Authorization check failed" }, requestOrigin);
     }
-    if (!isAllowedRole(roleRow?.role ?? null)) {
+    
+    const userRole = roleRows?.[0]?.role ?? null;
+    if (!isAllowedRole(userRole)) {
       return json(403, { error: "Forbidden" }, requestOrigin);
     }
 
