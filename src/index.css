@@ -2,7 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Google Fonts: Inter (sans), Amiri (serif for Arabic titles) */
 @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Urdu Nastaleeq font for proper rendering */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap');
+
+/* Fallback: Jameel Noori Nastaleeq (local install) with Noto as web fallback */
+@font-face {
+  font-family: 'Urdu Nastaleeq';
+  src: local('Jameel Noori Nastaleeq'), local('Jameel Noori Nastaliq');
+  unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
+}
 
 @layer base {
   :root {
@@ -240,6 +251,26 @@
 
   .icon-danger {
     @apply text-destructive;
+  }
+
+  /* Urdu/Arabic text styling with Nastaleeq font */
+  .urdu-text {
+    font-family: 'Urdu Nastaleeq', 'Jameel Noori Nastaleeq', 'Noto Nastaliq Urdu', 'Noto Naskh Arabic', serif;
+    direction: rtl;
+    unicode-bidi: embed;
+    line-height: 2;
+  }
+
+  /* Print-optimized styles for report cards */
+  @media print {
+    .print-certificate {
+      @apply shadow-none;
+      page-break-inside: avoid;
+    }
+    
+    .no-print {
+      display: none !important;
+    }
   }
 }
 
