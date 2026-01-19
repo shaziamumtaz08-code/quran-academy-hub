@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Eye, Filter, FileText, AlertCircle, X } from 'lucide-react';
+import { Eye, Filter, FileText, AlertCircle, X, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { TemplateStructure, StoredCriteriaEntry } from '@/types/reportCard';
@@ -57,6 +57,7 @@ export default function StudentReports() {
   const [subjectFilter, setSubjectFilter] = useState('');
   const [tenureFilter, setTenureFilter] = useState('');
   const [monthFilter, setMonthFilter] = useState('');
+  const [yearFilter, setYearFilter] = useState(new Date().getFullYear().toString());
 
   const isAdminOrExaminer = activeRole === 'admin' || activeRole === 'examiner' || 
     activeRole === 'super_admin' || activeRole?.startsWith('admin_');
@@ -194,30 +195,64 @@ export default function StudentReports() {
       if (studentFilter && report.student_id !== studentFilter) return false;
       if (subjectFilter && report.template?.subject?.id !== subjectFilter) return false;
       if (tenureFilter && report.template?.tenure !== tenureFilter) return false;
-      if (monthFilter) {
+      
+      // Year + Month filter
+      if (report.exam_date) {
         try {
-          const month = new Date(report.exam_date).getMonth() + 1;
-          if (month !== parseInt(monthFilter, 10)) return false;
+          const reportDate = new Date(report.exam_date);
+          const reportYear = reportDate.getFullYear().toString();
+          const reportMonth = (reportDate.getMonth() + 1).toString();
+          
+          if (yearFilter && reportYear !== yearFilter) return false;
+          if (monthFilter && reportMonth !== monthFilter) return false;
         } catch {
           return false;
         }
       }
       return true;
     });
-  }, [reports, studentFilter, subjectFilter, tenureFilter, monthFilter]);
+  }, [reports, studentFilter, subjectFilter, tenureFilter, monthFilter, yearFilter]);
+
+  // Progress tracking: count reports per student this month
+  const reportsThisMonth = useMemo(() => {
+    if (!Array.isArray(reports)) return new Map<string, number>();
+    
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    const countMap = new Map<string, number>();
+    
+    reports.forEach(report => {
+      if (!report.exam_date || !report.student_id) return;
+      try {
+        const reportDate = new Date(report.exam_date);
+        if (reportDate.getMonth() === currentMonth && reportDate.getFullYear() === currentYear) {
+          countMap.set(report.student_id, (countMap.get(report.student_id) || 0) + 1);
+        }
+      } catch {}
+    });
+    
+    return countMap;
+  }, [reports]);
 
   const getGradeBadge = (pct: number) => {
     if (isNaN(pct)) return <Badge className="rounded-full px-3 py-1 bg-gray-100 text-gray-600">N/A</Badge>;
     if (pct >= 90) return <Badge className="rounded-full px-3 py-1 bg-cyan-500 text-white font-semibold">Mastered</Badge>;
-    if (pct >= 75) return <Badge className="rounded-full px-3 py-1 bg-cyan-100 text-cyan-800 font-semibold">Proficient</Badge>;
-    if (pct >= 60) return <Badge className="rounded-full px-3 py-1 bg-blue-100 text-blue-800 font-semibold">Progressing</Badge>;
-    return <Badge className="rounded-full px-3 py-1 bg-gray-200 text-gray-700 font-semibold">Beginning</Badge>;
+    if (pct >= 80) return <Badge className="rounded-full px-3 py-1 bg-cyan-400 text-white font-semibold">Excellent</Badge>;
+    if (pct >= 70) return <Badge className="rounded-full px-3 py-1 bg-blue-500 text-white font-semibold">Proficient</Badge>;
+    if (pct >= 60) return <Badge className="rounded-full px-3 py-1 bg-amber-500 text-white font-semibold">Progressing</Badge>;
+    return <Badge className="rounded-full px-3 py-1 bg-gray-400 text-white font-semibold">Beginning</Badge>;
   };
 
   const formatDate = (dateString: string | null | undefined): string => {
     if (!dateString) return '-';
     try {
-      return new Date(dateString).toLocaleDateString();
+      return new Date(dateString).toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric',
+        year: 'numeric' 
+      });
     } catch {
       return '-';
     }
@@ -237,6 +272,16 @@ export default function StudentReports() {
     { value: '11', label: 'November' },
     { value: '12', label: 'December' },
   ];
+
+  const years = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    return [
+      { value: (currentYear - 2).toString(), label: (currentYear - 2).toString() },
+      { value: (currentYear - 1).toString(), label: (currentYear - 1).toString() },
+      { value: currentYear.toString(), label: currentYear.toString() },
+      { value: (currentYear + 1).toString(), label: (currentYear + 1).toString() },
+    ];
+  }, []);
 
   if (!profile) {
     return (
@@ -276,11 +321,23 @@ export default function StudentReports() {
         {/* Premium Page Header */}
         <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-navy-900 via-navy-800 to-navy-900 p-6 sm:p-8">
           <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnM1LjM3MyAxMiAxMiAxMiAxMi01LjM3MyAxMi0xMi01LjM3My0xMi0xMi0xMnptMCAyMGMtNC40MTggMC04LTMuNTgyLTgtOHMzLjU4Mi04IDgtOCA4IDMuNTgyIDggOC0zLjU4MiA4LTggOHoiIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iLjAzIi8+PC9nPjwvc3ZnPg==')] opacity-30" />
-          <div className="relative">
-            <h1 className="text-2xl sm:text-3xl font-bold text-white font-serif">Student Report Cards</h1>
-            <p className="text-cyan-300/80 mt-1">
-              {isStudentOrParent ? 'View your official progress reports' : 'View and manage student report cards'}
-            </p>
+          <div className="relative flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white font-serif">Student Report Cards</h1>
+              <p className="text-cyan-300/80 mt-1">
+                {isStudentOrParent ? 'View your official progress reports' : 'View and manage student report cards'}
+              </p>
+            </div>
+            {/* Progress tracking summary */}
+            {!isStudentOrParent && reportsThisMonth.size > 0 && (
+              <div className="hidden sm:flex items-center gap-2 bg-white/10 rounded-lg px-4 py-2">
+                <TrendingUp className="h-5 w-5 text-cyan-400" />
+                <div className="text-white">
+                  <p className="text-xs text-cyan-300">Reports This Month</p>
+                  <p className="text-lg font-bold">{[...reportsThisMonth.values()].reduce((a, b) => a + b, 0)}</p>
+                </div>
+              </div>
+            )}
           </div>
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-cyan-400 to-cyan-500" />
         </div>
@@ -294,7 +351,7 @@ export default function StudentReports() {
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-4">
-            <div className="grid gap-4 md:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-5">
               {!isStudentOrParent && (
                 <div className="space-y-2">
                   <Label className="text-sm text-muted-foreground">Student</Label>
@@ -357,6 +414,20 @@ export default function StudentReports() {
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm text-muted-foreground">Year</Label>
+                <Select value={yearFilter} onValueChange={setYearFilter}>
+                  <SelectTrigger className="border-gray-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
+                    <SelectValue placeholder="Select year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {years.map((y) => (
+                      <SelectItem key={y.value} value={y.value}>{y.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -394,46 +465,57 @@ export default function StudentReports() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredReports.map((report) => (
-                    <TableRow 
-                      key={report.id} 
-                      className="hover:bg-cyan-50/50 transition-colors cursor-pointer"
-                      onClick={() => setSelectedReportId(report.id)}
-                    >
-                      {!isStudentOrParent && (
-                        <TableCell className="font-medium text-navy-900">
-                          {report.student?.full_name || '-'}
+                  {filteredReports.map((report) => {
+                    const monthCount = reportsThisMonth.get(report.student_id) || 0;
+                    
+                    return (
+                      <TableRow 
+                        key={report.id} 
+                        className="hover:bg-cyan-50/50 transition-colors cursor-pointer"
+                        onClick={() => setSelectedReportId(report.id)}
+                      >
+                        {!isStudentOrParent && (
+                          <TableCell className="font-medium text-navy-900">
+                            <div className="flex items-center gap-2">
+                              {report.student?.full_name || '-'}
+                              {monthCount > 0 && (
+                                <Badge variant="outline" className="text-xs text-cyan-600 border-cyan-200 bg-cyan-50">
+                                  {monthCount} this month
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                        )}
+                        <TableCell className="text-muted-foreground">{report.template?.name || '-'}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="rounded-full px-3 border-cyan-200 text-cyan-700 bg-cyan-50">
+                            {report.template?.subject?.name || 'General'}
+                          </Badge>
                         </TableCell>
-                      )}
-                      <TableCell className="text-muted-foreground">{report.template?.name || '-'}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="rounded-full px-3 border-cyan-200 text-cyan-700 bg-cyan-50">
-                          {report.template?.subject?.name || '-'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{formatDate(report.exam_date)}</TableCell>
-                      <TableCell className="text-right font-medium">
-                        <span className="text-navy-900">{report.total_marks}</span>
-                        <span className="text-muted-foreground"> / {report.max_total_marks}</span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {getGradeBadge(report.percentage)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-cyan-600 hover:text-cyan-700 hover:bg-cyan-100"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedReportId(report.id);
-                          }}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        <TableCell className="text-muted-foreground">{formatDate(report.exam_date)}</TableCell>
+                        <TableCell className="text-right font-medium">
+                          <span className="text-navy-900">{report.total_marks}</span>
+                          <span className="text-muted-foreground"> / {report.max_total_marks}</span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {getGradeBadge(report.percentage)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-cyan-600 hover:text-cyan-700 hover:bg-cyan-100"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedReportId(report.id);
+                            }}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             )}

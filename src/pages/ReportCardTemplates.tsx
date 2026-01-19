@@ -44,7 +44,7 @@ interface ReportTemplate {
   structure_json: TemplateStructure | null;
 }
 
-// Helper to create a sample template structure
+// Helper to create a sample template structure matching requirements
 const createSampleTemplateStructure = (): TemplateStructure => {
   const createCriteria = (name: string, maxMarks: number): ReportCriteriaRow => ({
     id: crypto.randomUUID(),
@@ -52,28 +52,21 @@ const createSampleTemplateStructure = (): TemplateStructure => {
     max_marks: maxMarks,
   });
 
-  const quranSection: ReportSection = {
+  // Section: Qur'an Recitation with 5 criteria, each Max = 20, Total = 100
+  const quranRecitationSection: ReportSection = {
     id: crypto.randomUUID(),
-    title: 'Quran Recitation',
+    title: "Qur'an Recitation",
     showSubtotal: true,
     criteria: [
-      createCriteria('Tajweed', 10),
-      createCriteria('Fluency', 10),
-      createCriteria('Accuracy', 10),
+      createCriteria('Pronunciation of Letters (Huroof) / ادائیگی حروف', 20),
+      createCriteria('Pronunciation of Vowel Marks (Harakaat) / ادائیگی حرکات', 20),
+      createCriteria('Rules of Recitation (Application of Rules) / اطلاق تجوید', 20),
+      createCriteria('Fluency / روانی', 20),
+      createCriteria('Explanations / توضیحات', 20),
     ],
   };
 
-  const islamicSection: ReportSection = {
-    id: crypto.randomUUID(),
-    title: 'Islamic Studies',
-    showSubtotal: true,
-    criteria: [
-      createCriteria('Knowledge', 20),
-      createCriteria('Understanding', 20),
-    ],
-  };
-
-  return { sections: [quranSection, islamicSection] };
+  return { sections: [quranRecitationSection] };
 };
 
 export default function ReportCardTemplates() {
@@ -142,10 +135,10 @@ export default function ReportCardTemplates() {
         const { error } = await supabase
           .from('exam_templates')
           .insert({
-            name: 'Sample Report Card - Quran & Islamic Studies',
+            name: 'Nazrah Quran - Monthly',
             subject_id: null,
             tenure: 'monthly' as ExamTenure,
-            description: 'Demo template with Quran Recitation and Islamic Studies sections. Max: 70 marks.',
+            description: "Standard monthly assessment for Nazrah Qur'an with 5 criteria. Total: 100 marks. Includes Urdu/Arabic terminology.",
             structure_json: createSampleTemplateStructure() as unknown as Database['public']['Tables']['exam_templates']['Insert']['structure_json'],
             created_by: user.id,
             is_active: true,
@@ -153,7 +146,7 @@ export default function ReportCardTemplates() {
         
         if (!error) {
           queryClient.invalidateQueries({ queryKey: ['report-card-templates'] });
-          toast({ title: 'Demo Template Created', description: 'A sample report card template has been added for reference.' });
+          toast({ title: 'Demo Template Created', description: 'Nazrah Quran - Monthly template has been added.' });
         }
       } catch (e) {
         console.error('Failed to seed demo template:', e);
