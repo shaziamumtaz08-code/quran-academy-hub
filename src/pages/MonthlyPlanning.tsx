@@ -123,6 +123,8 @@ export default function MonthlyPlanning() {
   const [sortBy, setSortBy] = useState<'created_at' | 'student_name' | 'teacher_name'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showMissingPlans, setShowMissingPlans] = useState(false);
+  const [missingSubjectFilter, setMissingSubjectFilter] = useState('all');
+  const [missingTeacherFilter, setMissingTeacherFilter] = useState('all');
 
   // Form state
   const [selectedStudent, setSelectedStudent] = useState('');
@@ -467,7 +469,7 @@ export default function MonthlyPlanning() {
   });
 
   // Calculate missing plans (active assignments without a plan for the selected month/year)
-  const missingPlans = useMemo(() => {
+  const allMissingPlans = useMemo(() => {
     if (!isAdmin || !plans || !allActiveAssignments.length) return [];
     
     // Get set of assignment IDs that have plans for this month/year
@@ -489,6 +491,42 @@ export default function MonthlyPlanning() {
       return !hasDirectPlan && !hasIndirectPlan;
     });
   }, [isAdmin, plans, allActiveAssignments]);
+
+  // Filtered missing plans based on subject and teacher filters
+  const missingPlans = useMemo(() => {
+    let result = [...allMissingPlans];
+    
+    if (missingSubjectFilter !== 'all') {
+      result = result.filter(a => a.subject_id === missingSubjectFilter);
+    }
+    
+    if (missingTeacherFilter !== 'all') {
+      result = result.filter(a => a.teacher_id === missingTeacherFilter);
+    }
+    
+    return result;
+  }, [allMissingPlans, missingSubjectFilter, missingTeacherFilter]);
+
+  // Get unique subjects and teachers from missing plans for filter options
+  const missingPlanSubjects = useMemo(() => {
+    const subjects = new Map<string, string>();
+    allMissingPlans.forEach(a => {
+      if (a.subject_id && a.subject_name) {
+        subjects.set(a.subject_id, a.subject_name);
+      }
+    });
+    return Array.from(subjects.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [allMissingPlans]);
+
+  const missingPlanTeachers = useMemo(() => {
+    const teachers = new Map<string, string>();
+    allMissingPlans.forEach(a => {
+      if (a.teacher_id && a.teacher_name) {
+        teachers.set(a.teacher_id, a.teacher_name);
+      }
+    });
+    return Array.from(teachers.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [allMissingPlans]);
 
   // Helper to select all pending plans
   const selectAllPending = () => {
@@ -1222,11 +1260,61 @@ export default function MonthlyPlanning() {
         {isAdmin && showMissingPlans && (
           <Card className="border-destructive/30 bg-destructive/5">
             <CardHeader className="pb-3">
-              <CardTitle className="font-serif text-lg flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-destructive" />
-                Missing Plans for {formatPeriod(monthFilter, yearFilter)}
-                <Badge variant="destructive" className="ml-2">{missingPlans.length}</Badge>
-              </CardTitle>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <CardTitle className="font-serif text-lg flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5 text-destructive" />
+                  Missing Plans for {formatPeriod(monthFilter, yearFilter)}
+                  <Badge variant="destructive" className="ml-2">{missingPlans.length}</Badge>
+                  {allMissingPlans.length !== missingPlans.length && (
+                    <span className="text-xs text-muted-foreground font-normal">
+                      (of {allMissingPlans.length} total)
+                    </span>
+                  )}
+                </CardTitle>
+                
+                {/* Missing Plans Filters */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Select value={missingSubjectFilter} onValueChange={setMissingSubjectFilter}>
+                    <SelectTrigger className="w-[160px] h-8 text-xs bg-background">
+                      <Book className="h-3 w-3 mr-1" />
+                      <SelectValue placeholder="All Subjects" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Subjects</SelectItem>
+                      {missingPlanSubjects.map(s => (
+                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  <Select value={missingTeacherFilter} onValueChange={setMissingTeacherFilter}>
+                    <SelectTrigger className="w-[160px] h-8 text-xs bg-background">
+                      <User className="h-3 w-3 mr-1" />
+                      <SelectValue placeholder="All Teachers" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Teachers</SelectItem>
+                      {missingPlanTeachers.map(t => (
+                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  {(missingSubjectFilter !== 'all' || missingTeacherFilter !== 'all') && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      className="h-8 text-xs"
+                      onClick={() => {
+                        setMissingSubjectFilter('all');
+                        setMissingTeacherFilter('all');
+                      }}
+                    >
+                      Clear Filters
+                    </Button>
+                  )}
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               {assignmentsLoading ? (
@@ -1235,10 +1323,16 @@ export default function MonthlyPlanning() {
                     <Skeleton key={i} className="h-10 w-full" />
                   ))}
                 </div>
-              ) : missingPlans.length === 0 ? (
+              ) : missingPlans.length === 0 && allMissingPlans.length === 0 ? (
                 <div className="text-center py-6 text-muted-foreground">
                   <CheckCircle className="h-8 w-8 mx-auto mb-2 text-emerald-500" />
                   <p className="font-medium">All active assignments have plans!</p>
+                </div>
+              ) : missingPlans.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground">
+                  <Filter className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="font-medium">No missing plans match your filters</p>
+                  <p className="text-xs mt-1">Try adjusting the subject or teacher filter</p>
                 </div>
               ) : (
                 <Table>
