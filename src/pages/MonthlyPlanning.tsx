@@ -774,6 +774,32 @@ export default function MonthlyPlanning() {
     },
   });
 
+  // Bulk approve plans mutation (admin only)
+  const bulkApproveMutation = useMutation({
+    mutationFn: async (planIds: string[]) => {
+      if (!user?.id) throw new Error('Not authenticated');
+      
+      const { error } = await supabase
+        .from('student_monthly_plans')
+        .update({
+          status: 'approved' as PlanStatus,
+          approved_by: user.id,
+          approved_at: new Date().toISOString(),
+        })
+        .in('id', planIds);
+      
+      if (error) throw error;
+    },
+    onSuccess: (_, planIds) => {
+      toast({ title: 'Approved', description: `${planIds.length} plan(s) approved successfully` });
+      queryClient.invalidateQueries({ queryKey: ['monthly-plans'] });
+      setSelectedPlanIds(new Set());
+    },
+    onError: (error) => {
+      toast({ title: 'Error', description: error.message || 'Failed to approve plans', variant: 'destructive' });
+    },
+  });
+
   // Delete plan mutation (admin only)
   const deletePlanMutation = useMutation({
     mutationFn: async (planIds: string[]) => {
@@ -1100,8 +1126,46 @@ export default function MonthlyPlanning() {
 
         {/* Admin Bulk Actions */}
         {isAdmin && selectedPlanIds.size > 0 && (
-          <div className="flex items-center gap-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+          <div className="flex items-center gap-4 p-3 bg-muted/50 border border-border rounded-lg">
             <span className="text-sm font-medium">{selectedPlanIds.size} plan(s) selected</span>
+            
+            {/* Bulk Approve - only show if there are pending plans selected */}
+            {(() => {
+              const pendingSelectedIds = Array.from(selectedPlanIds).filter(id => {
+                const plan = plans?.find(p => p.id === id);
+                return plan?.status === 'pending';
+              });
+              if (pendingSelectedIds.length === 0) return null;
+              return (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="default" size="sm" className="bg-emerald-600 hover:bg-emerald-700">
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Approve Selected ({pendingSelectedIds.length})
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Approve Plans</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to approve {pendingSelectedIds.length} pending plan(s)?
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={() => bulkApproveMutation.mutate(pendingSelectedIds)}
+                        className="bg-emerald-600 hover:bg-emerald-700"
+                      >
+                        Approve
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              );
+            })()}
+            
+            {/* Bulk Delete */}
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" size="sm">
