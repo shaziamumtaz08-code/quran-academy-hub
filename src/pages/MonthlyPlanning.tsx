@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Calendar, Plus, CheckCircle, Clock, Target, User, Loader2, Edit, AlertTriangle, Trash2, Eye, Search, ArrowUpDown, Filter, Book, FileText } from 'lucide-react';
+import { Calendar, Plus, CheckCircle, Clock, Target, User, Loader2, Edit, AlertTriangle, Trash2, Eye, Search, ArrowUpDown, Filter, Book, FileText, Users, AlertCircle } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,6 +32,7 @@ interface MonthlyPlan {
   id: string;
   student_id: string;
   teacher_id: string;
+  assignment_id: string | null;
   month: string;
   year: string;
   primary_marker: PrimaryMarker;
@@ -121,6 +122,7 @@ export default function MonthlyPlanning() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved'>('all');
   const [sortBy, setSortBy] = useState<'created_at' | 'student_name' | 'teacher_name'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [showMissingPlans, setShowMissingPlans] = useState(false);
 
   // Form state
   const [selectedStudent, setSelectedStudent] = useState('');
@@ -432,6 +434,68 @@ export default function MonthlyPlanning() {
     },
     enabled: isAdmin,
   });
+
+  // Fetch all active assignments to find missing plans
+  const { data: allActiveAssignments = [], isLoading: assignmentsLoading } = useQuery({
+    queryKey: ['all-active-assignments-for-planning', monthFilter, yearFilter],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('student_teacher_assignments')
+        .select(`
+          id,
+          student_id,
+          teacher_id,
+          subject_id,
+          student:profiles!student_teacher_assignments_student_id_fkey(id, full_name),
+          teacher:profiles!student_teacher_assignments_teacher_id_fkey(id, full_name),
+          subject:subjects(id, name)
+        `)
+        .eq('status', 'active');
+      
+      if (error) throw error;
+      return (data || []).map((a: any) => ({
+        assignment_id: a.id,
+        student_id: a.student_id,
+        student_name: a.student?.full_name || 'Unknown',
+        teacher_id: a.teacher_id,
+        teacher_name: a.teacher?.full_name || 'Unknown',
+        subject_id: a.subject_id,
+        subject_name: a.subject?.name || 'No Subject',
+      }));
+    },
+    enabled: isAdmin,
+  });
+
+  // Calculate missing plans (active assignments without a plan for the selected month/year)
+  const missingPlans = useMemo(() => {
+    if (!isAdmin || !plans || !allActiveAssignments.length) return [];
+    
+    // Get set of assignment IDs that have plans for this month/year
+    const assignmentsWithPlans = new Set(
+      plans
+        .filter(p => p.assignment_id)
+        .map(p => p.assignment_id)
+    );
+    
+    // Also check by student_id + subject_id combo for plans without assignment_id
+    const studentSubjectWithPlans = new Set(
+      plans.map(p => `${p.student_id}-${p.subject_id}`)
+    );
+    
+    // Filter assignments that don't have plans
+    return allActiveAssignments.filter(a => {
+      const hasDirectPlan = a.assignment_id && assignmentsWithPlans.has(a.assignment_id);
+      const hasIndirectPlan = studentSubjectWithPlans.has(`${a.student_id}-${a.subject_id}`);
+      return !hasDirectPlan && !hasIndirectPlan;
+    });
+  }, [isAdmin, plans, allActiveAssignments]);
+
+  // Helper to select all pending plans
+  const selectAllPending = () => {
+    if (!plans) return;
+    const pendingIds = plans.filter(p => p.status === 'pending').map(p => p.id);
+    setSelectedPlanIds(new Set(pendingIds));
+  };
 
   // Filtered and sorted plans
   const filteredPlans = useMemo(() => {
@@ -1112,6 +1176,118 @@ export default function MonthlyPlanning() {
                 </Button>
               )}
             </div>
+          </Card>
+        )}
+
+        {/* Quick Actions Bar */}
+        {isAdmin && (
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Select All Pending Button */}
+            {plans && plans.filter(p => p.status === 'pending').length > 0 && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={selectAllPending}
+                className="border-amber-500/50 text-amber-600 hover:bg-amber-50"
+              >
+                <Clock className="h-4 w-4 mr-2" />
+                Select All Pending ({plans.filter(p => p.status === 'pending').length})
+              </Button>
+            )}
+            
+            {/* Show/Hide Missing Plans Toggle */}
+            <Button 
+              variant={showMissingPlans ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowMissingPlans(!showMissingPlans)}
+              className={showMissingPlans ? "" : "border-destructive/50 text-destructive hover:bg-destructive/10"}
+            >
+              <AlertCircle className="h-4 w-4 mr-2" />
+              {showMissingPlans ? 'Hide' : 'Show'} Missing Plans ({missingPlans.length})
+            </Button>
+            
+            {selectedPlanIds.size > 0 && (
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => setSelectedPlanIds(new Set())}
+              >
+                Clear Selection
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* Missing Plans Section */}
+        {isAdmin && showMissingPlans && (
+          <Card className="border-destructive/30 bg-destructive/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="font-serif text-lg flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-destructive" />
+                Missing Plans for {formatPeriod(monthFilter, yearFilter)}
+                <Badge variant="destructive" className="ml-2">{missingPlans.length}</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {assignmentsLoading ? (
+                <div className="space-y-2">
+                  {[...Array(3)].map((_, i) => (
+                    <Skeleton key={i} className="h-10 w-full" />
+                  ))}
+                </div>
+              ) : missingPlans.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground">
+                  <CheckCircle className="h-8 w-8 mx-auto mb-2 text-emerald-500" />
+                  <p className="font-medium">All active assignments have plans!</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Student</TableHead>
+                      <TableHead>Subject</TableHead>
+                      <TableHead>Teacher</TableHead>
+                      <TableHead className="text-center">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {missingPlans.slice(0, 20).map((a) => (
+                      <TableRow key={a.assignment_id} className="bg-background/50">
+                        <TableCell className="font-medium">{a.student_name}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-xs">
+                            {a.subject_name}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{a.teacher_name}</TableCell>
+                        <TableCell className="text-center">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => {
+                              resetForm();
+                              setSelectedStudent(a.student_id);
+                              setSelectedSubject(a.subject_id || '');
+                              setSelectedMonth(monthFilter);
+                              setSelectedYear(yearFilter);
+                              setDialogOpen(true);
+                            }}
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            Create Plan
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+              {missingPlans.length > 20 && (
+                <p className="text-xs text-muted-foreground mt-2 text-center">
+                  Showing first 20 of {missingPlans.length} missing plans
+                </p>
+              )}
+            </CardContent>
           </Card>
         )}
 
