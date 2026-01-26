@@ -272,7 +272,6 @@ export default function Students() {
                   student={student}
                   onViewHistory={() => setHistoryStudent(student)}
                   onViewSchedule={() => setScheduleStudent(student)}
-                  onMarkAttendance={() => setAttendanceStudent(student)}
                 />
               ))}
             </div>

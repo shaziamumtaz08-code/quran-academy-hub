@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { BookOpen, Target, User, Calendar, Clock, BookMarked, AlertTriangle, Pause, PenLine } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { UnifiedAttendanceForm, type StudentInfo } from '@/components/attendance/UnifiedAttendanceForm';
 
 type AssignmentStatus = 'active' | 'paused' | 'completed';
 
@@ -20,6 +21,7 @@ interface StudentCardProps {
     full_name: string;
     email: string | null;
     subject_name: string | null;
+    subject_id?: string | null;
     assignment_status?: AssignmentStatus;
     daily_target_lines: number;
     preferred_unit: string;
@@ -27,13 +29,15 @@ interface StudentCardProps {
     homework: string | null;
     age: number | null;
     gender: string | null;
+    timezone?: string;
   };
   onViewHistory: () => void;
   onViewSchedule: () => void;
-  onMarkAttendance?: () => void;
+  // Remove the onMarkAttendance prop - we handle it internally now
 }
 
-export function StudentCard({ student, onViewHistory, onViewSchedule, onMarkAttendance }: StudentCardProps) {
+export function StudentCard({ student, onViewHistory, onViewSchedule }: StudentCardProps) {
+  const [attendanceOpen, setAttendanceOpen] = useState(false);
   const status = student.assignment_status || 'active';
   const isPaused = status === 'paused';
   const isCompleted = status === 'completed';
@@ -134,7 +138,7 @@ export function StudentCard({ student, onViewHistory, onViewSchedule, onMarkAtte
         {/* Footer: Action Buttons */}
         <div className="pt-4 mt-auto space-y-2">
           {/* Mark Attendance Button with Last Lesson Tooltip */}
-          {onMarkAttendance && !isInactive && (
+          {!isInactive && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -142,7 +146,7 @@ export function StudentCard({ student, onViewHistory, onViewSchedule, onMarkAtte
                     className="w-full h-12 text-sm bg-emerald-600 hover:bg-emerald-700 text-white"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onMarkAttendance();
+                      setAttendanceOpen(true);
                     }}
                   >
                     <PenLine className="h-4 w-4 mr-1.5" />
@@ -170,6 +174,22 @@ export function StudentCard({ student, onViewHistory, onViewSchedule, onMarkAtte
             View Schedule
           </Button>
         </div>
+
+        {/* Unified Attendance Form Dialog */}
+        <UnifiedAttendanceForm
+          open={attendanceOpen}
+          onOpenChange={setAttendanceOpen}
+          student={{
+            id: student.id,
+            full_name: student.full_name,
+            subject_name: student.subject_name,
+            subject_id: student.subject_id,
+            last_lesson: student.last_lesson,
+            daily_target_lines: student.daily_target_lines,
+            preferred_unit: student.preferred_unit,
+            timezone: student.timezone,
+          }}
+        />
       </CardContent>
     </Card>
   );
