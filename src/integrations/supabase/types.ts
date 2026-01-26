@@ -659,6 +659,7 @@ export type Database = {
           age: number | null
           city: string | null
           country: string | null
+          country_code: string | null
           created_at: string
           daily_target_amount: number
           daily_target_lines: number
@@ -670,6 +671,8 @@ export type Database = {
           mushaf_type: string
           preferred_language: string | null
           preferred_unit: string
+          region: string | null
+          timezone: string | null
           updated_at: string
           whatsapp_number: string | null
         }
@@ -677,6 +680,7 @@ export type Database = {
           age?: number | null
           city?: string | null
           country?: string | null
+          country_code?: string | null
           created_at?: string
           daily_target_amount?: number
           daily_target_lines?: number
@@ -688,6 +692,8 @@ export type Database = {
           mushaf_type?: string
           preferred_language?: string | null
           preferred_unit?: string
+          region?: string | null
+          timezone?: string | null
           updated_at?: string
           whatsapp_number?: string | null
         }
@@ -695,6 +701,7 @@ export type Database = {
           age?: number | null
           city?: string | null
           country?: string | null
+          country_code?: string | null
           created_at?: string
           daily_target_amount?: number
           daily_target_lines?: number
@@ -706,6 +713,8 @@ export type Database = {
           mushaf_type?: string
           preferred_language?: string | null
           preferred_unit?: string
+          region?: string | null
+          timezone?: string | null
           updated_at?: string
           whatsapp_number?: string | null
         }
@@ -793,6 +802,95 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      rukus: {
+        Row: {
+          ayah_from: number
+          ayah_to: number
+          created_at: string | null
+          id: string
+          juz_number: number | null
+          ruku_number: number
+          surah_number: number
+        }
+        Insert: {
+          ayah_from: number
+          ayah_to: number
+          created_at?: string | null
+          id?: string
+          juz_number?: number | null
+          ruku_number: number
+          surah_number: number
+        }
+        Update: {
+          ayah_from?: number
+          ayah_to?: number
+          created_at?: string | null
+          id?: string
+          juz_number?: number | null
+          ruku_number?: number
+          surah_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rukus_surah_number_fkey"
+            columns: ["surah_number"]
+            isOneToOne: false
+            referencedRelation: "surahs"
+            referencedColumns: ["surah_number"]
+          },
+        ]
+      }
+      schedule_overrides: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          new_date: string
+          new_start_time: string
+          original_date: string
+          reason: string | null
+          schedule_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          new_date: string
+          new_start_time: string
+          original_date: string
+          reason?: string | null
+          schedule_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          new_date?: string
+          new_start_time?: string
+          original_date?: string
+          reason?: string | null
+          schedule_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_overrides_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_overrides_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "schedules"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       schedules: {
         Row: {
@@ -1141,6 +1239,39 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+        }
+        Relationships: []
+      }
+      surahs: {
+        Row: {
+          created_at: string | null
+          juz_end: number | null
+          juz_start: number | null
+          revelation_type: string
+          surah_name_ar: string
+          surah_name_en: string
+          surah_number: number
+          total_ayah: number
+        }
+        Insert: {
+          created_at?: string | null
+          juz_end?: number | null
+          juz_start?: number | null
+          revelation_type?: string
+          surah_name_ar: string
+          surah_name_en: string
+          surah_number: number
+          total_ayah: number
+        }
+        Update: {
+          created_at?: string | null
+          juz_end?: number | null
+          juz_start?: number | null
+          revelation_type?: string
+          surah_name_ar?: string
+          surah_name_en?: string
+          surah_number?: number
+          total_ayah?: number
         }
         Relationships: []
       }
