@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { Calendar, Clock, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getTimezoneAbbr } from '@/lib/timezones';
 
 interface StudentScheduleDialogProps {
   open: boolean;
@@ -23,19 +24,26 @@ interface Schedule {
   is_active: boolean;
 }
 
-const DAYS_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-
-// Country code abbreviations for timezone display
-const COUNTRY_CODES: Record<string, string> = {
-  'Pakistan': 'PK',
-  'Canada': 'CA',
-  'USA': 'US',
-  'UK': 'UK',
-  'UAE': 'AE',
-  'Saudi Arabia': 'SA',
-  'India': 'IN',
-  'Australia': 'AU',
+// Canonical order: Monday = 1, Sunday = 7
+const DAYS_ORDER: Record<string, number> = {
+  'monday': 1,
+  'tuesday': 2,
+  'wednesday': 3,
+  'thursday': 4,
+  'friday': 5,
+  'saturday': 6,
+  'sunday': 7,
 };
+
+// Format time by removing seconds (HH:MM:SS -> HH:MM)
+function formatTimeDisplay(time: string): string {
+  if (!time) return '';
+  const parts = time.split(':');
+  if (parts.length >= 2) {
+    return `${parts[0]}:${parts[1]}`;
+  }
+  return time;
+}
 
 export function StudentScheduleDialog({ open, onOpenChange, studentId, studentName }: StudentScheduleDialogProps) {
   // Fetch student's profile for timezone info
@@ -44,11 +52,11 @@ export function StudentScheduleDialog({ open, onOpenChange, studentId, studentNa
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('country, city')
+        .select('timezone, city, country')
         .eq('id', studentId)
         .single();
       if (error) return null;
-      return data as { country: string | null; city: string | null };
+      return data as { timezone: string | null; city: string | null; country: string | null };
     },
     enabled: open && !!studentId,
   });
@@ -74,7 +82,7 @@ export function StudentScheduleDialog({ open, onOpenChange, studentId, studentNa
       if (teacherId) {
         const { data: teacher } = await supabase
           .from('profiles')
-          .select('country, city')
+          .select('timezone, city, country')
           .eq('id', teacherId)
           .single();
         teacherProfile = teacher;
@@ -85,8 +93,7 @@ export function StudentScheduleDialog({ open, onOpenChange, studentId, studentNa
         .from('schedules')
         .select('id, day_of_week, teacher_local_time, student_local_time, duration_minutes, is_active')
         .in('assignment_id', assignmentIds)
-        .eq('is_active', true)
-        .order('day_of_week');
+        .eq('is_active', true);
       
       if (error) throw error;
       return { schedules: (data as Schedule[]) || [], teacherProfile };
@@ -97,16 +104,18 @@ export function StudentScheduleDialog({ open, onOpenChange, studentId, studentNa
   const schedules = schedulesData?.schedules || [];
   const teacherProfile = schedulesData?.teacherProfile;
 
-  // Sort schedules by day order
-  const sortedSchedules = schedules?.sort((a, b) => {
-    return DAYS_ORDER.indexOf(a.day_of_week) - DAYS_ORDER.indexOf(b.day_of_week);
+  // Sort schedules by day order (Monday first)
+  const sortedSchedules = [...schedules].sort((a, b) => {
+    const dayA = DAYS_ORDER[a.day_of_week.toLowerCase()] || 8;
+    const dayB = DAYS_ORDER[b.day_of_week.toLowerCase()] || 8;
+    return dayA - dayB;
   });
 
-  const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
 
-  // Get timezone abbreviations
-  const teacherCode = COUNTRY_CODES[teacherProfile?.country || 'Pakistan'] || teacherProfile?.country?.slice(0, 2).toUpperCase() || 'PK';
-  const studentCode = COUNTRY_CODES[studentProfile?.country || 'Pakistan'] || studentProfile?.country?.slice(0, 2).toUpperCase() || 'PK';
+  // Get timezone abbreviations from IANA timezone
+  const teacherTzAbbr = getTimezoneAbbr(teacherProfile?.timezone);
+  const studentTzAbbr = getTimezoneAbbr(studentProfile?.timezone);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -116,7 +125,7 @@ export function StudentScheduleDialog({ open, onOpenChange, studentId, studentNa
             <Calendar className="h-5 w-5 text-primary" />
             {studentName} - Weekly Schedule
             <Badge variant="secondary" className="ml-auto text-xs">
-              {sortedSchedules?.length || 0} {(sortedSchedules?.length || 0) === 1 ? 'day' : 'days'}
+              {sortedSchedules.length} {sortedSchedules.length === 1 ? 'day' : 'days'}
             </Badge>
           </DialogTitle>
         </DialogHeader>
@@ -124,7 +133,7 @@ export function StudentScheduleDialog({ open, onOpenChange, studentId, studentNa
         {studentProfile?.city && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <MapPin className="h-4 w-4" />
-            {studentProfile.city}, {studentProfile.country}
+            {studentProfile.city}{studentProfile.country ? `, ${studentProfile.country}` : ''}
           </div>
         )}
 
@@ -135,7 +144,7 @@ export function StudentScheduleDialog({ open, onOpenChange, studentId, studentNa
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
             </div>
-          ) : !sortedSchedules || sortedSchedules.length === 0 ? (
+          ) : sortedSchedules.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Calendar className="h-12 w-12 mx-auto mb-3 opacity-30" />
               <p>No schedule configured</p>
@@ -144,7 +153,8 @@ export function StudentScheduleDialog({ open, onOpenChange, studentId, studentNa
           ) : (
             <div className="grid gap-2">
               {sortedSchedules.map((schedule) => {
-                const isToday = schedule.day_of_week.toLowerCase() === today.toLowerCase();
+                const isToday = schedule.day_of_week.toLowerCase() === today;
+                const dayName = schedule.day_of_week.charAt(0).toUpperCase() + schedule.day_of_week.slice(1).toLowerCase();
                 
                 return (
                   <div 
@@ -163,18 +173,18 @@ export function StudentScheduleDialog({ open, onOpenChange, studentId, studentNa
                           ? "bg-primary text-primary-foreground" 
                           : "bg-muted text-muted-foreground"
                       )}>
-                        {schedule.day_of_week.slice(0, 3)}
+                        {dayName.slice(0, 3)}
                       </div>
                       <div>
-                        <p className="font-medium text-sm">{schedule.day_of_week}</p>
+                        <p className="font-medium text-sm">{dayName}</p>
                         <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
                           <div className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            {schedule.student_local_time} ({studentCode})
+                            {formatTimeDisplay(schedule.student_local_time)} ({studentTzAbbr})
                           </div>
                           <div className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            {schedule.teacher_local_time} ({teacherCode})
+                            {formatTimeDisplay(schedule.teacher_local_time)} ({teacherTzAbbr})
                           </div>
                         </div>
                       </div>
