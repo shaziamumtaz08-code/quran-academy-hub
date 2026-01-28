@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Video, Clock, Wifi, WifiOff, User, Activity, UserPlus, Power, ExternalLink, Link } from 'lucide-react';
+import { Video, Clock, Wifi, WifiOff, User, Activity, UserPlus, UserMinus, Power, ExternalLink, Link, Radio } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { format, differenceInSeconds } from 'date-fns';
@@ -29,6 +29,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { useZoomRealtimeEvents } from '@/hooks/useZoomRealtimeEvents';
 
 interface AdminLiveMonitorProps {
   className?: string;
@@ -40,10 +41,31 @@ interface SessionParticipant {
   isTeacher: boolean;
 }
 
+interface LiveEvent {
+  id: string;
+  userName: string;
+  action: 'join' | 'leave';
+  timestamp: Date;
+}
+
 export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
   const [now, setNow] = React.useState(new Date());
   const [recordingLinks, setRecordingLinks] = React.useState<Record<string, string>>({});
+  const [liveEvents, setLiveEvents] = React.useState<LiveEvent[]>([]);
   const queryClient = useQueryClient();
+
+  // Subscribe to realtime Zoom events
+  useZoomRealtimeEvents({
+    showToasts: true,
+    onEvent: (event) => {
+      setLiveEvents(prev => [{
+        id: event.id,
+        userName: event.userName,
+        action: event.action,
+        timestamp: event.timestamp,
+      }, ...prev].slice(0, 10)); // Keep last 10 events
+    },
+  });
 
   // Update timer every second for live duration
   React.useEffect(() => {
@@ -529,12 +551,68 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
             </div>
           )}
 
+          {/* Live Event Feed - Realtime */}
+          {liveEvents.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Radio className="h-4 w-4 text-accent animate-pulse" />
+                Live Activity
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-accent/10 text-accent">
+                  REALTIME
+                </Badge>
+              </h4>
+              <ScrollArea className="h-32">
+                <div className="space-y-1.5 pr-4">
+                  {liveEvents.map((event, idx) => (
+                    <div
+                      key={event.id}
+                      className={cn(
+                        "flex items-center justify-between text-xs py-2 px-3 rounded-lg border transition-all",
+                        event.action === 'join'
+                          ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/30"
+                          : "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/30",
+                        idx === 0 && "animate-fade-in ring-2 ring-accent/30"
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className={cn(
+                          "w-6 h-6 rounded-full flex items-center justify-center",
+                          event.action === 'join'
+                            ? "bg-emerald-100 dark:bg-emerald-900/50"
+                            : "bg-amber-100 dark:bg-amber-900/50"
+                        )}>
+                          {event.action === 'join' ? (
+                            <UserPlus className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                          ) : (
+                            <UserMinus className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-foreground font-medium">{event.userName}</span>
+                          <span className={cn(
+                            "ml-1.5 text-[10px]",
+                            event.action === 'join' ? "text-emerald-600" : "text-amber-600"
+                          )}>
+                            {event.action === 'join' ? 'joined' : 'left'}
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-muted-foreground text-[10px]">
+                        {format(event.timestamp, 'HH:mm:ss')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
+
           {/* Recent Join Logs */}
           {recentJoins && recentJoins.length > 0 && (
             <div className="space-y-2">
               <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <User className="h-4 w-4 text-muted-foreground" />
-                Recent Joins
+                Recent Joins (History)
               </h4>
               <ScrollArea className="h-28">
                 <div className="space-y-1 pr-4">
