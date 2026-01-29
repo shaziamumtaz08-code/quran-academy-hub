@@ -170,8 +170,13 @@ export default function UserManagement() {
   const [editPassword, setEditPassword] = useState('');
   const [showEditPassword, setShowEditPassword] = useState(false);
 
+  // Location filter states
+  const [filterCountry, setFilterCountry] = useState<string>('');
+  const [filterCity, setFilterCity] = useState<string>('');
+  const [filterRole, setFilterRole] = useState<string>('');
+
   // Sorting state
-  type SortField = 'name' | 'role' | 'gender' | 'age';
+  type SortField = 'name' | 'role' | 'gender' | 'age' | 'country' | 'city';
   type SortDirection = 'asc' | 'desc';
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -559,11 +564,44 @@ export default function UserManagement() {
     },
   });
 
+  // Get unique countries and cities from users for filter dropdowns
+  const availableCountries = useMemo(() => {
+    const countries = new Set<string>();
+    users?.forEach(u => {
+      if (u.country) countries.add(u.country);
+    });
+    return Array.from(countries).sort();
+  }, [users]);
+
+  const availableCities = useMemo(() => {
+    if (!filterCountry) return [];
+    const cities = new Set<string>();
+    users?.forEach(u => {
+      if (u.country === filterCountry && u.city) {
+        cities.add(u.city);
+      }
+    });
+    return Array.from(cities).sort();
+  }, [users, filterCountry]);
+
   const filteredUsers = users
-    ?.filter(user => 
-      user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+    ?.filter(user => {
+      // Text search filter
+      const matchesSearch = !searchTerm || 
+        user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Country filter
+      const matchesCountry = !filterCountry || user.country === filterCountry;
+      
+      // City filter
+      const matchesCity = !filterCity || user.city === filterCity;
+      
+      // Role filter
+      const matchesRole = !filterRole || user.roles?.includes(filterRole as AppRole);
+      
+      return matchesSearch && matchesCountry && matchesCity && matchesRole;
+    })
     ?.sort((a, b) => {
       let comparison = 0;
       switch (sortField) {
@@ -581,9 +619,24 @@ export default function UserManagement() {
         case 'age':
           comparison = (a.age || 0) - (b.age || 0);
           break;
+        case 'country':
+          comparison = (a.country || '').localeCompare(b.country || '');
+          break;
+        case 'city':
+          comparison = (a.city || '').localeCompare(b.city || '');
+          break;
       }
       return sortDirection === 'asc' ? comparison : -comparison;
     });
+
+  const hasActiveFilters = !!filterCountry || !!filterCity || !!filterRole;
+
+  const resetFilters = () => {
+    setFilterCountry('');
+    setFilterCity('');
+    setFilterRole('');
+    setSearchTerm('');
+  };
 
   const getRoleTemplate = (role: AppRole | null) => {
     return roleTemplates?.find(t => t.role === role);
@@ -884,15 +937,74 @@ export default function UserManagement() {
 
           {/* Users Tab */}
           <TabsContent value="users" className="space-y-4">
-            {/* Search */}
-            <div className="relative max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search users..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+            {/* Search and Filters */}
+            <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
+              <div className="relative flex-1 min-w-[200px] max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name or email..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              
+              {/* Role Filter */}
+              <Select value={filterRole} onValueChange={setFilterRole}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="All Roles" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Roles</SelectItem>
+                  {Object.entries(ROLE_LABELS).map(([role, label]) => (
+                    <SelectItem key={role} value={role}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              {/* Country Filter */}
+              <Select 
+                value={filterCountry} 
+                onValueChange={(v) => {
+                  setFilterCountry(v);
+                  setFilterCity(''); // Reset city when country changes
+                }}
+              >
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="All Countries" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Countries</SelectItem>
+                  {availableCountries.map((country) => (
+                    <SelectItem key={country} value={country}>{country}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              {/* City Filter (cascading - only shows cities for selected country) */}
+              <Select 
+                value={filterCity} 
+                onValueChange={setFilterCity}
+                disabled={!filterCountry}
+              >
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder={filterCountry ? "All Cities" : "Select Country First"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Cities</SelectItem>
+                  {availableCities.map((city) => (
+                    <SelectItem key={city} value={city}>{city}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              {/* Reset Filters Button */}
+              {hasActiveFilters && (
+                <Button variant="outline" size="sm" onClick={resetFilters} className="h-10">
+                  <X className="h-4 w-4 mr-1" />
+                  Reset
+                </Button>
+              )}
             </div>
 
             {/* Users Table */}

@@ -175,12 +175,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Update user's timezone in profile (silently, on login)
+  const updateUserTimezone = async (userId: string) => {
+    try {
+      const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (!browserTimezone) return;
+
+      // Update timezone in profile
+      const { error } = await supabase
+        .from('profiles')
+        .update({ timezone: browserTimezone })
+        .eq('id', userId);
+
+      if (error) {
+        console.warn('Failed to update timezone:', error.message);
+      }
+    } catch (err) {
+      console.warn('Error detecting/updating timezone:', err);
+    }
+  };
+
   const login = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+      
+      // On successful login, update the user's timezone silently
+      if (!error && data?.user?.id) {
+        // Don't await - update timezone in background
+        updateUserTimezone(data.user.id);
+      }
+      
       return { error: error ? new Error(error.message) : null };
     } catch (error) {
       return { error: error as Error };
