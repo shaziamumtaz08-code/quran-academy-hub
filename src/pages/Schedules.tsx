@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Calendar, Clock, User, ChevronDown, ChevronRight, Loader2, AlertCircle, Globe, Pencil, Trash2, Upload } from 'lucide-react';
+import { Plus, Calendar, Clock, User, ChevronDown, ChevronRight, Loader2, AlertCircle, Globe, Pencil, Trash2, Upload, ArrowUpDown, ArrowUp, ArrowDown, Search, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -222,6 +222,35 @@ export default function Schedules() {
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [deleteSchedule, setDeleteSchedule] = useState<Schedule | null>(null);
   const [calendarTimeView, setCalendarTimeView] = useState<Record<string, 'student' | 'teacher'>>({});
+  
+  // Filtering state
+  const [filterTeacher, setFilterTeacher] = useState<string>('');
+  const [filterSubject, setFilterSubject] = useState<string>('');
+  const [filterStatus, setFilterStatus] = useState<string>(''); // 'scheduled' | 'not_scheduled' | ''
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  
+  // Sorting state
+  type ScheduleSortField = 'student' | 'teacher' | 'subject' | 'status' | 'classes';
+  type SortDirection = 'asc' | 'desc';
+  const [sortField, setSortField] = useState<ScheduleSortField>('student');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  
+  const handleSort = (field: ScheduleSortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+  
+  const getSortIcon = (field: ScheduleSortField) => {
+    if (sortField !== field) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50" />;
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="h-3 w-3 ml-1" /> 
+      : <ArrowDown className="h-3 w-3 ml-1" />;
+  };
+  
   const [newSchedule, setNewSchedule] = useState({
     assignmentId: '',
     day: '',
@@ -460,6 +489,83 @@ export default function Schedules() {
       }
       return newSet;
     });
+  };
+
+  // Get unique teachers and subjects for filter dropdowns
+  const availableTeachers = useMemo(() => {
+    const teachers = new Map<string, string>();
+    assignments.forEach(a => {
+      teachers.set(a.teacher_id, a.teacher_name);
+    });
+    return Array.from(teachers.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [assignments]);
+
+  const availableSubjects = useMemo(() => {
+    const subjects = new Set<string>();
+    assignments.forEach(a => {
+      if (a.subject_name) subjects.add(a.subject_name);
+    });
+    return Array.from(subjects).sort();
+  }, [assignments]);
+
+  // Filter and sort assignments
+  const filteredAssignments = useMemo(() => {
+    return assignments
+      .filter(assignment => {
+        const assignmentSchedules = schedules.filter(s => s.assignment_id === assignment.id);
+        const isScheduled = assignmentSchedules.length > 0;
+        
+        // Search term filter (student or teacher name)
+        const matchesSearch = !searchTerm || 
+          assignment.student_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          assignment.teacher_name.toLowerCase().includes(searchTerm.toLowerCase());
+        
+        // Teacher filter
+        const matchesTeacher = !filterTeacher || assignment.teacher_id === filterTeacher;
+        
+        // Subject filter
+        const matchesSubject = !filterSubject || assignment.subject_name === filterSubject;
+        
+        // Status filter
+        const matchesStatus = !filterStatus || 
+          (filterStatus === 'scheduled' && isScheduled) ||
+          (filterStatus === 'not_scheduled' && !isScheduled);
+        
+        return matchesSearch && matchesTeacher && matchesSubject && matchesStatus;
+      })
+      .sort((a, b) => {
+        const aSchedules = schedules.filter(s => s.assignment_id === a.id);
+        const bSchedules = schedules.filter(s => s.assignment_id === b.id);
+        
+        let comparison = 0;
+        switch (sortField) {
+          case 'student':
+            comparison = a.student_name.localeCompare(b.student_name);
+            break;
+          case 'teacher':
+            comparison = a.teacher_name.localeCompare(b.teacher_name);
+            break;
+          case 'subject':
+            comparison = (a.subject_name || '').localeCompare(b.subject_name || '');
+            break;
+          case 'status':
+            comparison = (aSchedules.length > 0 ? 1 : 0) - (bSchedules.length > 0 ? 1 : 0);
+            break;
+          case 'classes':
+            comparison = aSchedules.length - bSchedules.length;
+            break;
+        }
+        return sortDirection === 'asc' ? comparison : -comparison;
+      });
+  }, [assignments, schedules, searchTerm, filterTeacher, filterSubject, filterStatus, sortField, sortDirection]);
+
+  const hasActiveFilters = !!filterTeacher || !!filterSubject || !!filterStatus || !!searchTerm;
+
+  const resetFilters = () => {
+    setFilterTeacher('');
+    setFilterSubject('');
+    setFilterStatus('');
+    setSearchTerm('');
   };
 
   // Get selected assignment info for displaying location labels
@@ -1045,6 +1151,70 @@ export default function Schedules() {
           </Card>
         )}
 
+        {/* Filters Section */}
+        {hasAssignments && (
+          <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
+            {/* Search */}
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search student or teacher..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            
+            {/* Teacher Filter */}
+            <Select value={filterTeacher} onValueChange={setFilterTeacher}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="All Teachers" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Teachers</SelectItem>
+                {availableTeachers.map((teacher) => (
+                  <SelectItem key={teacher.id} value={teacher.id}>{teacher.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            {/* Subject Filter */}
+            {availableSubjects.length > 0 && (
+              <Select value={filterSubject} onValueChange={setFilterSubject}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="All Subjects" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Subjects</SelectItem>
+                  {availableSubjects.map((subject) => (
+                    <SelectItem key={subject} value={subject}>{subject}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            
+            {/* Status Filter */}
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All Status</SelectItem>
+                <SelectItem value="scheduled">Scheduled</SelectItem>
+                <SelectItem value="not_scheduled">Not Scheduled</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            {/* Reset Filters */}
+            {hasActiveFilters && (
+              <Button variant="outline" size="sm" onClick={resetFilters} className="h-10">
+                <X className="h-4 w-4 mr-1" />
+                Reset
+              </Button>
+            )}
+          </div>
+        )}
+
         {/* Master Schedule Table */}
         <div className="bg-card rounded-xl border border-border overflow-hidden">
           {isLoading ? (
@@ -1057,20 +1227,51 @@ export default function Schedules() {
               <p className="text-lg font-medium">No schedules available</p>
               <p className="text-sm mt-1">Assignments must exist before creating schedules</p>
             </div>
+          ) : filteredAssignments.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p className="text-lg font-medium">No matching results</p>
+              <p className="text-sm mt-1">Try adjusting your filters</p>
+              <Button variant="link" onClick={resetFilters} className="mt-2">Reset Filters</Button>
+            </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-10"></TableHead>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Teacher</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead 
+                    className="cursor-pointer select-none hover:bg-muted/50"
+                    onClick={() => handleSort('student')}
+                  >
+                    <div className="flex items-center">
+                      Student
+                      {getSortIcon('student')}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer select-none hover:bg-muted/50"
+                    onClick={() => handleSort('teacher')}
+                  >
+                    <div className="flex items-center">
+                      Teacher
+                      {getSortIcon('teacher')}
+                    </div>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer select-none hover:bg-muted/50"
+                    onClick={() => handleSort('status')}
+                  >
+                    <div className="flex items-center">
+                      Status
+                      {getSortIcon('status')}
+                    </div>
+                  </TableHead>
                   <TableHead>Time (Student / Teacher)</TableHead>
                   <TableHead className="w-20">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {assignments.map((assignment) => {
+                {filteredAssignments.map((assignment) => {
                   const isExpanded = expandedAssignments.has(assignment.id);
                   const assignmentSchedules = getSchedulesForAssignment(assignment.id);
                   const todaysClass = assignmentSchedules.find(s => s.day_of_week === todayDayName);
