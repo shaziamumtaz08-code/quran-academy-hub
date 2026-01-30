@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Search, Mail, Users, MoreHorizontal, Pencil, Trash2, Loader2, AlertCircle, ChevronDown, ChevronRight, User, Clock, BookOpen } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Plus, Search, Mail, Users, MoreHorizontal, Pencil, Trash2, Loader2, AlertCircle, ChevronDown, ChevronRight, User, Clock, BookOpen, ArrowUpDown, ArrowUp, ArrowDown, RotateCcw } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -26,7 +27,12 @@ interface Teacher {
   email: string | null;
   student_count: number;
   students?: StudentWithSchedule[];
+  country: string | null;
+  city: string | null;
 }
+
+type SortField = 'name' | 'email' | 'student_count' | 'country' | 'city';
+type SortOrder = 'asc' | 'desc';
 
 export default function Teachers() {
   const { toast } = useToast();
@@ -36,6 +42,12 @@ export default function Teachers() {
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [formData, setFormData] = useState({ name: '', email: '' });
   const [expandedTeachers, setExpandedTeachers] = useState<Set<string>>(new Set());
+  
+  // Sorting & Filtering
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const [filterCountry, setFilterCountry] = useState('');
+  const [filterCity, setFilterCity] = useState('');
 
   // Fetch teachers from Supabase with assigned students and schedules
   const { data: teachers = [], isLoading } = useQuery({
@@ -52,10 +64,10 @@ export default function Teachers() {
       const teacherIds = roleData?.map(r => r.user_id) || [];
       if (teacherIds.length === 0) return [];
 
-      // Get profiles for those teachers
+      // Get profiles for those teachers with location
       const { data: profiles, error: profileError } = await supabase
         .from('profiles')
-        .select('id, full_name, email')
+        .select('id, full_name, email, country, city')
         .in('id', teacherIds);
 
       if (profileError) throw profileError;
@@ -95,14 +107,84 @@ export default function Teachers() {
         email: p.email,
         student_count: studentsByTeacher.get(p.id)?.length || 0,
         students: studentsByTeacher.get(p.id) || [],
+        country: p.country || null,
+        city: p.city || null,
       })) as Teacher[];
     },
   });
 
-  const filteredTeachers = teachers.filter(teacher =>
-    teacher.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (teacher.email?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
-  );
+  // Get unique countries and cities for filters
+  const uniqueCountries = useMemo(() => {
+    const countries = new Set(teachers.map(t => t.country).filter(Boolean) as string[]);
+    return [...countries].sort();
+  }, [teachers]);
+
+  const uniqueCities = useMemo(() => {
+    const cities = teachers
+      .filter(t => !filterCountry || t.country === filterCountry)
+      .map(t => t.city)
+      .filter(Boolean) as string[];
+    return [...new Set(cities)].sort();
+  }, [teachers, filterCountry]);
+
+  const filteredTeachers = useMemo(() => {
+    let filtered = teachers.filter(teacher => {
+      const matchesSearch = teacher.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (teacher.email?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
+      const matchesCountry = !filterCountry || teacher.country === filterCountry;
+      const matchesCity = !filterCity || teacher.city === filterCity;
+      return matchesSearch && matchesCountry && matchesCity;
+    });
+
+    // Sort
+    filtered.sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case 'name':
+          cmp = (a.full_name || '').localeCompare(b.full_name || '');
+          break;
+        case 'email':
+          cmp = (a.email || '').localeCompare(b.email || '');
+          break;
+        case 'student_count':
+          cmp = a.student_count - b.student_count;
+          break;
+        case 'country':
+          cmp = (a.country || '').localeCompare(b.country || '');
+          break;
+        case 'city':
+          cmp = (a.city || '').localeCompare(b.city || '');
+          break;
+      }
+      return sortOrder === 'asc' ? cmp : -cmp;
+    });
+
+    return filtered;
+  }, [teachers, searchTerm, filterCountry, filterCity, sortField, sortOrder]);
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) return <ArrowUpDown className="h-4 w-4 ml-1 opacity-40" />;
+    return sortOrder === 'asc' 
+      ? <ArrowUp className="h-4 w-4 ml-1 text-primary" /> 
+      : <ArrowDown className="h-4 w-4 ml-1 text-primary" />;
+  };
+
+  const resetFilters = () => {
+    setSearchTerm('');
+    setFilterCountry('');
+    setFilterCity('');
+    setSortField('name');
+    setSortOrder('asc');
+  };
 
   // Add teacher mutation
   const addMutation = useMutation({
@@ -280,15 +362,42 @@ export default function Teachers() {
           </Dialog>
         </div>
 
-        {/* Search */}
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search teachers..."
-            className="pl-10"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        {/* Search and Filters */}
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search teachers..."
+              className="pl-10"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <Select value={filterCountry || "all"} onValueChange={(v) => { setFilterCountry(v === 'all' ? '' : v); setFilterCity(''); }}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Country" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Countries</SelectItem>
+              {uniqueCountries.map(c => (
+                <SelectItem key={c} value={c}>{c}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={filterCity || "all"} onValueChange={(v) => setFilterCity(v === 'all' ? '' : v)}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="City" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Cities</SelectItem>
+              {uniqueCities.map(c => (
+                <SelectItem key={c} value={c}>{c}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button variant="outline" size="icon" onClick={resetFilters} title="Reset Filters">
+            <RotateCcw className="h-4 w-4" />
+          </Button>
         </div>
 
         {/* Table */}
@@ -308,9 +417,36 @@ export default function Teachers() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[40px]"></TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead className="text-center">Assigned Students</TableHead>
+                  <TableHead 
+                    className="cursor-pointer select-none hover:bg-muted/50"
+                    onClick={() => handleSort('name')}
+                  >
+                    <span className="flex items-center">Name {getSortIcon('name')}</span>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer select-none hover:bg-muted/50"
+                    onClick={() => handleSort('email')}
+                  >
+                    <span className="flex items-center">Email {getSortIcon('email')}</span>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer select-none hover:bg-muted/50"
+                    onClick={() => handleSort('country')}
+                  >
+                    <span className="flex items-center">Country {getSortIcon('country')}</span>
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer select-none hover:bg-muted/50"
+                    onClick={() => handleSort('city')}
+                  >
+                    <span className="flex items-center">City {getSortIcon('city')}</span>
+                  </TableHead>
+                  <TableHead 
+                    className="text-center cursor-pointer select-none hover:bg-muted/50"
+                    onClick={() => handleSort('student_count')}
+                  >
+                    <span className="flex items-center justify-center">Students {getSortIcon('student_count')}</span>
+                  </TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -346,6 +482,8 @@ export default function Teachers() {
                           <span className="text-muted-foreground text-sm">No email</span>
                         )}
                       </TableCell>
+                      <TableCell className="text-muted-foreground">{teacher.country || '-'}</TableCell>
+                      <TableCell className="text-muted-foreground">{teacher.city || '-'}</TableCell>
                       <TableCell className="text-center">
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary text-secondary-foreground text-sm">
                           <Users className="h-3 w-3" />
