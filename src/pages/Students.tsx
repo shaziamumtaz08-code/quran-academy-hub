@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Mail, User, Loader2, AlertCircle } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Search, Mail, User, Loader2, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, RotateCcw } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,6 +19,10 @@ interface Student {
   full_name: string;
   email: string | null;
   teacher_name: string | null;
+  country: string | null;
+  city: string | null;
+  gender: string | null;
+  age: number | null;
 }
 
 type AssignmentStatus = 'active' | 'paused' | 'completed';
@@ -35,6 +41,9 @@ interface TeacherStudent {
   gender: string | null;
 }
 
+type SortField = 'name' | 'email' | 'teacher' | 'country' | 'city' | 'gender' | 'age';
+type SortOrder = 'asc' | 'desc';
+
 export default function Students() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<TeacherStudent | null>(null);
@@ -42,6 +51,13 @@ export default function Students() {
   const [scheduleStudent, setScheduleStudent] = useState<TeacherStudent | null>(null);
   const [attendanceStudent, setAttendanceStudent] = useState<TeacherStudent | null>(null);
   const { user, activeRole } = useAuth();
+  
+  // Sorting & Filtering
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const [filterGender, setFilterGender] = useState('');
+  const [filterCountry, setFilterCountry] = useState('');
+  const [filterCity, setFilterCity] = useState('');
 
   // Determine role-based behavior
   const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_');
@@ -158,7 +174,7 @@ export default function Students() {
         })) as Student[];
       }
 
-      // For admins: show all students (original behavior)
+      // For admins: show all students with location data
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('user_id')
@@ -171,7 +187,7 @@ export default function Students() {
 
       const { data: profiles, error: profileError } = await supabase
         .from('profiles')
-        .select('id, full_name, email')
+        .select('id, full_name, email, country, city, gender, age')
         .in('id', studentIds);
 
       if (profileError) throw profileError;
@@ -196,6 +212,10 @@ export default function Students() {
         full_name: p.full_name,
         email: p.email,
         teacher_name: teacherMap.get(p.id) || null,
+        country: p.country || null,
+        city: p.city || null,
+        gender: p.gender || null,
+        age: p.age || null,
       })) as Student[];
     },
     enabled: !!user?.id && !isTeacher,
@@ -203,17 +223,93 @@ export default function Students() {
 
   const isLoading = isTeacher ? isLoadingTeacher : isLoadingOther;
 
+  // Get unique countries and cities for filters
+  const uniqueCountries = useMemo(() => {
+    const countries = new Set(students.map(s => s.country).filter(Boolean) as string[]);
+    return [...countries].sort();
+  }, [students]);
+
+  const uniqueCities = useMemo(() => {
+    const cities = students
+      .filter(s => !filterCountry || s.country === filterCountry)
+      .map(s => s.city)
+      .filter(Boolean) as string[];
+    return [...new Set(cities)].sort();
+  }, [students, filterCountry]);
+
   // Filter for teacher view
   const filteredTeacherStudents = teacherStudents.filter(student =>
     student.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
   );
 
-  // Filter for admin/parent view
-  const filteredStudents = students.filter(student =>
-    student.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
-  );
+  // Filter for admin/parent view with sorting
+  const filteredStudents = useMemo(() => {
+    let filtered = students.filter(student => {
+      const matchesSearch = student.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
+      const matchesGender = !filterGender || student.gender === filterGender;
+      const matchesCountry = !filterCountry || student.country === filterCountry;
+      const matchesCity = !filterCity || student.city === filterCity;
+      return matchesSearch && matchesGender && matchesCountry && matchesCity;
+    });
+
+    // Sort
+    filtered.sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case 'name':
+          cmp = (a.full_name || '').localeCompare(b.full_name || '');
+          break;
+        case 'email':
+          cmp = (a.email || '').localeCompare(b.email || '');
+          break;
+        case 'teacher':
+          cmp = (a.teacher_name || '').localeCompare(b.teacher_name || '');
+          break;
+        case 'country':
+          cmp = (a.country || '').localeCompare(b.country || '');
+          break;
+        case 'city':
+          cmp = (a.city || '').localeCompare(b.city || '');
+          break;
+        case 'gender':
+          cmp = (a.gender || '').localeCompare(b.gender || '');
+          break;
+        case 'age':
+          cmp = (a.age || 0) - (b.age || 0);
+          break;
+      }
+      return sortOrder === 'asc' ? cmp : -cmp;
+    });
+
+    return filtered;
+  }, [students, searchTerm, filterGender, filterCountry, filterCity, sortField, sortOrder]);
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) return <ArrowUpDown className="h-4 w-4 ml-1 opacity-40" />;
+    return sortOrder === 'asc' 
+      ? <ArrowUp className="h-4 w-4 ml-1 text-primary" /> 
+      : <ArrowDown className="h-4 w-4 ml-1 text-primary" />;
+  };
+
+  const resetFilters = () => {
+    setSearchTerm('');
+    setFilterGender('');
+    setFilterCountry('');
+    setFilterCity('');
+    setSortField('name');
+    setSortOrder('asc');
+  };
 
   // Get appropriate subtitle based on role
   const getSubtitle = () => {
@@ -233,15 +329,56 @@ export default function Students() {
           </div>
         </div>
 
-        {/* Search */}
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search students..."
-            className="pl-10"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        {/* Search and Filters */}
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search students..."
+              className="pl-10"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          {isAdmin && (
+            <>
+              <Select value={filterGender || "all"} onValueChange={(v) => setFilterGender(v === 'all' ? '' : v)}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Gender" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Genders</SelectItem>
+                  <SelectItem value="male">Male</SelectItem>
+                  <SelectItem value="female">Female</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={filterCountry || "all"} onValueChange={(v) => { setFilterCountry(v === 'all' ? '' : v); setFilterCity(''); }}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="Country" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Countries</SelectItem>
+                  {uniqueCountries.map(c => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={filterCity || "all"} onValueChange={(v) => setFilterCity(v === 'all' ? '' : v)}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="City" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Cities</SelectItem>
+                  {uniqueCities.map(c => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button variant="outline" size="icon" onClick={resetFilters} title="Reset Filters">
+                <RotateCcw className="h-4 w-4" />
+              </Button>
+            </>
+          )}
         </div>
 
         {/* Info note - only for admins */}
@@ -291,8 +428,46 @@ export default function Students() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Student</TableHead>
-                    <TableHead>Assigned Teacher</TableHead>
+                    <TableHead 
+                      className="cursor-pointer select-none hover:bg-muted/50"
+                      onClick={() => handleSort('name')}
+                    >
+                      <span className="flex items-center">Student {getSortIcon('name')}</span>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer select-none hover:bg-muted/50"
+                      onClick={() => handleSort('teacher')}
+                    >
+                      <span className="flex items-center">Assigned Teacher {getSortIcon('teacher')}</span>
+                    </TableHead>
+                    {isAdmin && (
+                      <>
+                        <TableHead 
+                          className="cursor-pointer select-none hover:bg-muted/50"
+                          onClick={() => handleSort('country')}
+                        >
+                          <span className="flex items-center">Country {getSortIcon('country')}</span>
+                        </TableHead>
+                        <TableHead 
+                          className="cursor-pointer select-none hover:bg-muted/50"
+                          onClick={() => handleSort('city')}
+                        >
+                          <span className="flex items-center">City {getSortIcon('city')}</span>
+                        </TableHead>
+                        <TableHead 
+                          className="cursor-pointer select-none hover:bg-muted/50"
+                          onClick={() => handleSort('gender')}
+                        >
+                          <span className="flex items-center">Gender {getSortIcon('gender')}</span>
+                        </TableHead>
+                        <TableHead 
+                          className="cursor-pointer select-none hover:bg-muted/50"
+                          onClick={() => handleSort('age')}
+                        >
+                          <span className="flex items-center">Age {getSortIcon('age')}</span>
+                        </TableHead>
+                      </>
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -319,6 +494,14 @@ export default function Students() {
                           <span className="text-muted-foreground text-sm">Not assigned</span>
                         )}
                       </TableCell>
+                      {isAdmin && (
+                        <>
+                          <TableCell className="text-muted-foreground">{student.country || '-'}</TableCell>
+                          <TableCell className="text-muted-foreground">{student.city || '-'}</TableCell>
+                          <TableCell className="capitalize text-muted-foreground">{student.gender || '-'}</TableCell>
+                          <TableCell className="text-muted-foreground">{student.age || '-'}</TableCell>
+                        </>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>

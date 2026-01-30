@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,13 +7,15 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Eye, Filter, FileText, AlertCircle, X, TrendingUp } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Eye, Filter, FileText, AlertCircle, X, TrendingUp, Trash2, ArrowUpDown, ArrowUp, ArrowDown, RotateCcw, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { TemplateStructure, StoredCriteriaEntry } from '@/types/reportCard';
 import { ReportCardCertificate } from '@/components/reports/ReportCardCertificate';
+import { useToast } from '@/hooks/use-toast';
 
 interface StudentReport {
   id: string;
@@ -48,9 +50,21 @@ interface Profile {
   full_name: string;
 }
 
+type SortField = 'student' | 'template' | 'subject' | 'date' | 'score' | 'percentage';
+type SortOrder = 'asc' | 'desc';
+
 export default function StudentReports() {
   const { profile, user, activeRole } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null); // single delete
+  
+  // Sorting
+  const [sortField, setSortField] = useState<SortField>('date');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   
   // Filters
   const [studentFilter, setStudentFilter] = useState('');
@@ -213,6 +227,36 @@ export default function StudentReports() {
     });
   }, [reports, studentFilter, subjectFilter, tenureFilter, monthFilter, yearFilter]);
 
+  // Sort filtered reports
+  const sortedReports = useMemo(() => {
+    const sorted = [...filteredReports];
+    sorted.sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case 'student':
+          cmp = (a.student?.full_name || '').localeCompare(b.student?.full_name || '');
+          break;
+        case 'template':
+          cmp = (a.template?.name || '').localeCompare(b.template?.name || '');
+          break;
+        case 'subject':
+          cmp = (a.template?.subject?.name || '').localeCompare(b.template?.subject?.name || '');
+          break;
+        case 'date':
+          cmp = new Date(a.exam_date || 0).getTime() - new Date(b.exam_date || 0).getTime();
+          break;
+        case 'score':
+          cmp = a.total_marks - b.total_marks;
+          break;
+        case 'percentage':
+          cmp = a.percentage - b.percentage;
+          break;
+      }
+      return sortOrder === 'asc' ? cmp : -cmp;
+    });
+    return sorted;
+  }, [filteredReports, sortField, sortOrder]);
+
   // Progress tracking: count reports per student this month
   const reportsThisMonth = useMemo(() => {
     if (!Array.isArray(reports)) return new Map<string, number>();
@@ -235,6 +279,86 @@ export default function StudentReports() {
     
     return countMap;
   }, [reports]);
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase
+        .from('exams')
+        .delete()
+        .in('id', ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['student-reports'] });
+      toast({ title: 'Deleted', description: 'Report card(s) deleted successfully' });
+      setSelectedIds(new Set());
+      setDeleteDialogOpen(false);
+      setDeleteTarget(null);
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('desc');
+    }
+  };
+
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) return <ArrowUpDown className="h-4 w-4 ml-1 opacity-40" />;
+    return sortOrder === 'asc' 
+      ? <ArrowUp className="h-4 w-4 ml-1 text-cyan-600" /> 
+      : <ArrowDown className="h-4 w-4 ml-1 text-cyan-600" />;
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(sortedReports.map(r => r.id)));
+    } else {
+      setSelectedIds(new Set());
+    }
+  };
+
+  const handleSelectOne = (id: string, checked: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const handleDeleteClick = (id?: string) => {
+    if (id) {
+      setDeleteTarget(id);
+    } else {
+      setDeleteTarget(null);
+    }
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    const ids = deleteTarget ? [deleteTarget] : [...selectedIds];
+    if (ids.length > 0) {
+      deleteMutation.mutate(ids);
+    }
+  };
+
+  const resetFilters = () => {
+    setStudentFilter('');
+    setSubjectFilter('');
+    setTenureFilter('');
+    setMonthFilter('');
+    setYearFilter(new Date().getFullYear().toString());
+    setSortField('date');
+    setSortOrder('desc');
+  };
 
   const getGradeBadge = (pct: number) => {
     if (isNaN(pct)) return <Badge className="rounded-full px-3 py-1 bg-gray-100 text-gray-600">N/A</Badge>;
@@ -425,12 +549,31 @@ export default function StudentReports() {
                     {years.map((y) => (
                       <SelectItem key={y.value} value={y.value}>{y.label}</SelectItem>
                     ))}
-                  </SelectContent>
-                </Select>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+
+              {/* Reset + Bulk Delete */}
+              <div className="flex items-end gap-2 pt-2 md:col-span-5">
+                <Button variant="outline" size="sm" onClick={resetFilters} className="gap-1">
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Reset
+                </Button>
+                {isAdminOrExaminer && selectedIds.size > 0 && (
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    onClick={() => handleDeleteClick()}
+                    className="gap-1"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete ({selectedIds.size})
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
         {/* Results Table */}
         <Card className="bg-white shadow-md rounded-xl border-0 overflow-hidden">
@@ -455,17 +598,57 @@ export default function StudentReports() {
               <Table>
                 <TableHeader className="bg-gray-50">
                   <TableRow className="hover:bg-gray-50">
-                    {!isStudentOrParent && <TableHead className="text-navy-900 font-semibold">Student</TableHead>}
-                    <TableHead className="text-navy-900 font-semibold">Template</TableHead>
-                    <TableHead className="text-navy-900 font-semibold">Subject</TableHead>
-                    <TableHead className="text-navy-900 font-semibold">Date</TableHead>
-                    <TableHead className="text-right text-navy-900 font-semibold">Score</TableHead>
-                    <TableHead className="text-center text-navy-900 font-semibold">Grade</TableHead>
-                    <TableHead className="text-right text-navy-900 font-semibold">View</TableHead>
+                    {isAdminOrExaminer && (
+                      <TableHead className="w-[40px]">
+                        <Checkbox
+                          checked={sortedReports.length > 0 && selectedIds.size === sortedReports.length}
+                          onCheckedChange={handleSelectAll}
+                        />
+                      </TableHead>
+                    )}
+                    {!isStudentOrParent && (
+                      <TableHead 
+                        className="text-navy-900 font-semibold cursor-pointer select-none hover:bg-gray-100"
+                        onClick={() => handleSort('student')}
+                      >
+                        <span className="flex items-center">Student {getSortIcon('student')}</span>
+                      </TableHead>
+                    )}
+                    <TableHead 
+                      className="text-navy-900 font-semibold cursor-pointer select-none hover:bg-gray-100"
+                      onClick={() => handleSort('template')}
+                    >
+                      <span className="flex items-center">Template {getSortIcon('template')}</span>
+                    </TableHead>
+                    <TableHead 
+                      className="text-navy-900 font-semibold cursor-pointer select-none hover:bg-gray-100"
+                      onClick={() => handleSort('subject')}
+                    >
+                      <span className="flex items-center">Subject {getSortIcon('subject')}</span>
+                    </TableHead>
+                    <TableHead 
+                      className="text-navy-900 font-semibold cursor-pointer select-none hover:bg-gray-100"
+                      onClick={() => handleSort('date')}
+                    >
+                      <span className="flex items-center">Date {getSortIcon('date')}</span>
+                    </TableHead>
+                    <TableHead 
+                      className="text-right text-navy-900 font-semibold cursor-pointer select-none hover:bg-gray-100"
+                      onClick={() => handleSort('score')}
+                    >
+                      <span className="flex items-center justify-end">Score {getSortIcon('score')}</span>
+                    </TableHead>
+                    <TableHead 
+                      className="text-center text-navy-900 font-semibold cursor-pointer select-none hover:bg-gray-100"
+                      onClick={() => handleSort('percentage')}
+                    >
+                      <span className="flex items-center justify-center">Grade {getSortIcon('percentage')}</span>
+                    </TableHead>
+                    <TableHead className="text-right text-navy-900 font-semibold">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredReports.map((report) => {
+                  {sortedReports.map((report) => {
                     const monthCount = reportsThisMonth.get(report.student_id) || 0;
                     
                     return (
@@ -474,6 +657,14 @@ export default function StudentReports() {
                         className="hover:bg-cyan-50/50 transition-colors cursor-pointer"
                         onClick={() => setSelectedReportId(report.id)}
                       >
+                        {isAdminOrExaminer && (
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <Checkbox
+                              checked={selectedIds.has(report.id)}
+                              onCheckedChange={(checked) => handleSelectOne(report.id, !!checked)}
+                            />
+                          </TableCell>
+                        )}
                         {!isStudentOrParent && (
                           <TableCell className="font-medium text-navy-900">
                             <div className="flex items-center gap-2">
@@ -500,18 +691,27 @@ export default function StudentReports() {
                         <TableCell className="text-center">
                           {getGradeBadge(report.percentage)}
                         </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-cyan-600 hover:text-cyan-700 hover:bg-cyan-100"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedReportId(report.id);
-                            }}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
+                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-cyan-600 hover:text-cyan-700 hover:bg-cyan-100"
+                              onClick={() => setSelectedReportId(report.id)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            {isAdminOrExaminer && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => handleDeleteClick(report.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -542,6 +742,32 @@ export default function StudentReports() {
               showInternalNotes={!isStudentOrParent}
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Report Card{deleteTarget ? '' : 's'}</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete {deleteTarget ? 'this report card' : `${selectedIds.size} report card(s)`}? 
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={confirmDelete}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Delete
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </DashboardLayout>
