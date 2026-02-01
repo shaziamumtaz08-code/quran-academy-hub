@@ -155,7 +155,14 @@ serve(async (req) => {
       .maybeSingle();
 
     if (existingRole) {
-      return json(400, { error: `User already has the '${role}' role` }, requestOrigin);
+      // Return success with message - idempotent operation
+      return json(200, { 
+        success: true,
+        alreadyExists: true,
+        userId, 
+        role, 
+        message: `User already has the '${role}' role` 
+      }, requestOrigin);
     }
 
     // Add the role
