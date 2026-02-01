@@ -127,6 +127,11 @@ export function ReportCardCertificate({ report, showInternalNotes = false }: Rep
     window.print();
   };
 
+  const handleDownloadPDF = () => {
+    // Use print dialog in PDF mode - browsers allow saving as PDF
+    window.print();
+  };
+
   return (
     <div className="bg-slate-100 p-4 sm:p-8 min-h-screen print-certificate">
       {/* Action Buttons - Hide on print */}
@@ -135,7 +140,7 @@ export function ReportCardCertificate({ report, showInternalNotes = false }: Rep
           <Printer className="h-4 w-4" />
           Print
         </Button>
-        <Button size="sm" className="gap-2 bg-cyan-500 hover:bg-cyan-600 text-white">
+        <Button size="sm" className="gap-2 bg-cyan-500 hover:bg-cyan-600 text-white" onClick={handleDownloadPDF}>
           <Download className="h-4 w-4" />
           Download PDF
         </Button>
