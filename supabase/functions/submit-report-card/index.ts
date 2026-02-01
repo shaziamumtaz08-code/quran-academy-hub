@@ -101,6 +101,10 @@ serve(async (req) => {
     const body = await req.json().catch(() => null);
     if (!body) return json(400, { error: "Invalid request body" }, requestOrigin);
 
+    // Check if this is an update operation
+    const exam_id = body?.exam_id ? String(body.exam_id).trim() : null;
+    const isUpdate = exam_id && isUuid(exam_id);
+
     const template_id = String(body?.template_id ?? "").trim();
     const student_id = String(body?.student_id ?? "").trim();
     const exam_date = String(body?.exam_date ?? "").trim();
@@ -110,8 +114,8 @@ serve(async (req) => {
     const criteria_entries_raw = body?.criteria_entries;
 
     const errors: string[] = [];
-    if (!isUuid(template_id)) errors.push("Invalid template_id");
-    if (!isUuid(student_id)) errors.push("Invalid student_id");
+    if (!isUpdate && !isUuid(template_id)) errors.push("Invalid template_id");
+    if (!isUpdate && !isUuid(student_id)) errors.push("Invalid student_id");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(exam_date)) errors.push("Invalid exam_date");
     if (!Array.isArray(criteria_entries_raw) || criteria_entries_raw.length === 0)
       errors.push("criteria_entries is required");
@@ -151,29 +155,56 @@ serve(async (req) => {
     const max_total_marks = criteria_entries.reduce((sum, r) => sum + r.max_marks, 0);
     const percentage = max_total_marks > 0 ? Math.round((total_marks / max_total_marks) * 100) : 0;
 
-    const { data: examData, error: examError } = await adminClient
-      .from("exams")
-      .insert({
-        template_id,
-        student_id,
-        examiner_id: caller.id,
-        exam_date,
-        total_marks,
-        max_total_marks,
-        percentage,
-        criteria_values_json: criteria_entries as unknown,
-        examiner_remarks,
-        public_remarks,
-      })
-      .select("id")
-      .single();
+    if (isUpdate) {
+      // UPDATE existing exam record
+      const { data: examData, error: examError } = await adminClient
+        .from("exams")
+        .update({
+          exam_date,
+          total_marks,
+          max_total_marks,
+          percentage,
+          criteria_values_json: criteria_entries as unknown,
+          examiner_remarks,
+          public_remarks,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", exam_id)
+        .select("id")
+        .single();
 
-    if (examError) {
-      console.error("Insert exam failed:", examError.message);
-      return json(500, { error: "Failed to save report card" }, requestOrigin);
+      if (examError) {
+        console.error("Update exam failed:", examError.message);
+        return json(500, { error: "Failed to update report card" }, requestOrigin);
+      }
+
+      return json(200, { id: examData?.id, updated: true, total_marks, max_total_marks, percentage }, requestOrigin);
+    } else {
+      // INSERT new exam record
+      const { data: examData, error: examError } = await adminClient
+        .from("exams")
+        .insert({
+          template_id,
+          student_id,
+          examiner_id: caller.id,
+          exam_date,
+          total_marks,
+          max_total_marks,
+          percentage,
+          criteria_values_json: criteria_entries as unknown,
+          examiner_remarks,
+          public_remarks,
+        })
+        .select("id")
+        .single();
+
+      if (examError) {
+        console.error("Insert exam failed:", examError.message);
+        return json(500, { error: "Failed to save report card" }, requestOrigin);
+      }
+
+      return json(200, { id: examData?.id, total_marks, max_total_marks, percentage }, requestOrigin);
     }
-
-    return json(200, { id: examData?.id, total_marks, max_total_marks, percentage }, requestOrigin);
   } catch (e) {
     console.error("Unexpected error:", e instanceof Error ? e.message : "Unknown error");
     return json(500, { error: "An unexpected error occurred" }, requestOrigin);
