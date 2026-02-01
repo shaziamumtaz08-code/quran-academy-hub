@@ -950,12 +950,12 @@ export default function UserManagement() {
               </div>
               
               {/* Role Filter */}
-              <Select value={filterRole} onValueChange={setFilterRole}>
+              <Select value={filterRole || "all"} onValueChange={(v) => setFilterRole(v === "all" ? "" : v)}>
                 <SelectTrigger className="w-[160px]">
                   <SelectValue placeholder="All Roles" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Roles</SelectItem>
+                  <SelectItem value="all">All Roles</SelectItem>
                   {Object.entries(ROLE_LABELS).map(([role, label]) => (
                     <SelectItem key={role} value={role}>{label}</SelectItem>
                   ))}
@@ -964,9 +964,9 @@ export default function UserManagement() {
               
               {/* Country Filter */}
               <Select 
-                value={filterCountry} 
+                value={filterCountry || "all"} 
                 onValueChange={(v) => {
-                  setFilterCountry(v);
+                  setFilterCountry(v === "all" ? "" : v);
                   setFilterCity(''); // Reset city when country changes
                 }}
               >
@@ -974,7 +974,7 @@ export default function UserManagement() {
                   <SelectValue placeholder="All Countries" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Countries</SelectItem>
+                  <SelectItem value="all">All Countries</SelectItem>
                   {availableCountries.map((country) => (
                     <SelectItem key={country} value={country}>{country}</SelectItem>
                   ))}
@@ -983,15 +983,15 @@ export default function UserManagement() {
               
               {/* City Filter (cascading - only shows cities for selected country) */}
               <Select 
-                value={filterCity} 
-                onValueChange={setFilterCity}
+                value={filterCity || "all"} 
+                onValueChange={(v) => setFilterCity(v === "all" ? "" : v)}
                 disabled={!filterCountry}
               >
                 <SelectTrigger className="w-[160px]">
                   <SelectValue placeholder={filterCountry ? "All Cities" : "Select Country First"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Cities</SelectItem>
+                  <SelectItem value="all">All Cities</SelectItem>
                   {availableCities.map((city) => (
                     <SelectItem key={city} value={city}>{city}</SelectItem>
                   ))}
