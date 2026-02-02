@@ -1166,12 +1166,12 @@ export default function Schedules() {
             </div>
             
             {/* Teacher Filter */}
-            <Select value={filterTeacher} onValueChange={setFilterTeacher}>
+            <Select value={filterTeacher || "all"} onValueChange={(v) => setFilterTeacher(v === "all" ? "" : v)}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="All Teachers" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Teachers</SelectItem>
+                <SelectItem value="all">All Teachers</SelectItem>
                 {availableTeachers.map((teacher) => (
                   <SelectItem key={teacher.id} value={teacher.id}>{teacher.name}</SelectItem>
                 ))}
@@ -1180,12 +1180,12 @@ export default function Schedules() {
             
             {/* Subject Filter */}
             {availableSubjects.length > 0 && (
-              <Select value={filterSubject} onValueChange={setFilterSubject}>
+              <Select value={filterSubject || "all"} onValueChange={(v) => setFilterSubject(v === "all" ? "" : v)}>
                 <SelectTrigger className="w-[160px]">
                   <SelectValue placeholder="All Subjects" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Subjects</SelectItem>
+                  <SelectItem value="all">All Subjects</SelectItem>
                   {availableSubjects.map((subject) => (
                     <SelectItem key={subject} value={subject}>{subject}</SelectItem>
                   ))}
@@ -1194,12 +1194,12 @@ export default function Schedules() {
             )}
             
             {/* Status Filter */}
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <Select value={filterStatus || "all"} onValueChange={(v) => setFilterStatus(v === "all" ? "" : v)}>
               <SelectTrigger className="w-[140px]">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Status</SelectItem>
+                <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="scheduled">Scheduled</SelectItem>
                 <SelectItem value="not_scheduled">Not Scheduled</SelectItem>
               </SelectContent>
