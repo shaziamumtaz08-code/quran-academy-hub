@@ -848,19 +848,17 @@ export default function UserManagement() {
                           className="h-9"
                         />
                       </div>
-                      {/* Sibling checkbox - shown when role is student */}
-                      {newUserRole === 'student' && (
-                        <div className="flex items-center space-x-2 pt-4">
-                          <Checkbox
-                            id="sibling"
-                            checked={createAsSibling}
-                            onCheckedChange={(checked) => setCreateAsSibling(checked === true)}
-                          />
-                          <Label htmlFor="sibling" className="text-xs cursor-pointer">
-                            Create as sibling (new student with shared family email)
-                          </Label>
-                        </div>
-                      )}
+                      {/* Create new profile checkbox - for different people sharing an email */}
+                      <div className="flex items-center space-x-2 pt-4 col-span-full">
+                        <Checkbox
+                          id="forceNewProfile"
+                          checked={createAsSibling}
+                          onCheckedChange={(checked) => setCreateAsSibling(checked === true)}
+                        />
+                        <Label htmlFor="forceNewProfile" className="text-xs cursor-pointer">
+                          Create as new person (different person sharing this email, e.g., sibling or family member)
+                        </Label>
+                      </div>
                     </div>
                     <div className="flex justify-end gap-2 pt-3 border-t border-blue-200 dark:border-blue-800 mt-3">
                       <Button variant="outline" size="sm" onClick={() => setIsCreateDialogOpen(false)}>
