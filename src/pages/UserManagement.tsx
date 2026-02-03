@@ -157,6 +157,7 @@ export default function UserManagement() {
   const [newUserCity, setNewUserCity] = useState('');
   const [showNewUserPassword, setShowNewUserPassword] = useState(false);
   const [addRoleSelection, setAddRoleSelection] = useState<AppRole>('student');
+  const [createAsSibling, setCreateAsSibling] = useState(false); // For creating siblings with shared email
 
   // View/Edit dialog states
   const [isEditMode, setIsEditMode] = useState(false);
@@ -427,6 +428,7 @@ export default function UserManagement() {
       age,
       country,
       city,
+      forceNewProfile,
     }: {
       email: string;
       password: string;
@@ -437,9 +439,10 @@ export default function UserManagement() {
       age?: number;
       country?: string;
       city?: string;
+      forceNewProfile?: boolean;
     }) => {
       const { data, error } = await supabase.functions.invoke('admin-create-user', {
-        body: { email, password, fullName, role, whatsapp, gender, age, country, city },
+        body: { email, password, fullName, role, whatsapp, gender, age, country, city, forceNewProfile },
       });
       if (error) throw new Error(error.message || 'Failed to create user');
       if (data?.error) throw new Error(data.error);
@@ -478,6 +481,7 @@ export default function UserManagement() {
       setNewUserAge('');
       setNewUserCountry('PK');
       setNewUserCity('');
+      setCreateAsSibling(false);
       setIsCreateDialogOpen(false);
     },
     onError: (error) => {
@@ -844,6 +848,19 @@ export default function UserManagement() {
                           className="h-9"
                         />
                       </div>
+                      {/* Sibling checkbox - shown when role is student */}
+                      {newUserRole === 'student' && (
+                        <div className="flex items-center space-x-2 pt-4">
+                          <Checkbox
+                            id="sibling"
+                            checked={createAsSibling}
+                            onCheckedChange={(checked) => setCreateAsSibling(checked === true)}
+                          />
+                          <Label htmlFor="sibling" className="text-xs cursor-pointer">
+                            Create as sibling (new student with shared family email)
+                          </Label>
+                        </div>
+                      )}
                     </div>
                     <div className="flex justify-end gap-2 pt-3 border-t border-blue-200 dark:border-blue-800 mt-3">
                       <Button variant="outline" size="sm" onClick={() => setIsCreateDialogOpen(false)}>
@@ -886,6 +903,7 @@ export default function UserManagement() {
                             age: newUserAge ? parseInt(newUserAge) : undefined,
                             country: newUserCountry ? getCountryName(newUserCountry) : undefined,
                             city: newUserCity || undefined,
+                            forceNewProfile: createAsSibling || undefined,
                           });
                         }}
                       >

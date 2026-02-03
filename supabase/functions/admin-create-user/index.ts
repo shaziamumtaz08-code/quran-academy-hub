@@ -149,6 +149,8 @@ serve(async (req) => {
     const age = body?.age !== undefined && body?.age !== null && typeof body.age === 'number' ? body.age : null;
     const country = body?.country ? sanitizeString(String(body.country).trim()) : 'Pakistan';
     const city = body?.city ? sanitizeString(String(body.city).trim()) : 'Karachi';
+    // forceNewProfile: when true, always create a new profile even if email exists (for siblings)
+    const forceNewProfile = body?.forceNewProfile === true;
 
     // Validate all inputs
     const validationErrors: string[] = [];
@@ -190,17 +192,20 @@ serve(async (req) => {
     let existingUser = null;
     
     // Try to find existing user by searching in profiles table first
-    const { data: existingProfile } = await adminClient
-      .from("profiles")
-      .select("id, email")
-      .eq("email", email)
-      .maybeSingle();
+    // Skip this check if forceNewProfile is true (creating a sibling)
+    if (!forceNewProfile) {
+      const { data: existingProfile } = await adminClient
+        .from("profiles")
+        .select("id, email")
+        .eq("email", email)
+        .maybeSingle();
 
-    if (existingProfile) {
-      existingUser = { id: existingProfile.id, email: existingProfile.email };
+      if (existingProfile) {
+        existingUser = { id: existingProfile.id, email: existingProfile.email };
+      }
     }
 
-    if (existingUser) {
+    if (existingUser && !forceNewProfile) {
       // User exists - just add the new role if not already assigned
       const existingUserId = existingUser.id;
 
@@ -245,6 +250,9 @@ serve(async (req) => {
         roleAdded: true,
       }, requestOrigin);
     }
+
+    // If forceNewProfile is true (sibling), create a new profile with unique ID
+    // The new profile will share the same email but have its own identity
 
     // User doesn't exist - create new user
     if (!password) {
