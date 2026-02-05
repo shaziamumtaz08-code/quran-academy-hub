@@ -254,7 +254,69 @@ serve(async (req) => {
     // If forceNewProfile is true (sibling), create a new profile with unique ID
     // The new profile will share the same email but have its own identity
 
-    // User doesn't exist - create new user
+    // For sibling creation (forceNewProfile), we need special handling
+    if (forceNewProfile) {
+      // Check if auth user already exists for this email
+      const { data: authUsers } = await adminClient.auth.admin.listUsers({ 
+        page: 1, 
+        perPage: 1000 
+      });
+      
+      const existingAuthUser = authUsers?.users?.find(u => u.email?.toLowerCase() === email);
+      
+      if (existingAuthUser) {
+        // Auth user exists - create an ORPHAN profile (not linked to auth.users)
+        // This profile shares the email for contact but has its own identity
+        const newProfileId = crypto.randomUUID();
+        
+        const { error: profileErr } = await adminClient.from("profiles").insert({
+          id: newProfileId,
+          email,
+          full_name: fullName,
+          whatsapp_number: whatsapp,
+          gender: isValidGender(gender) ? gender : null,
+          age: isValidAge(age) ? age : null,
+          country,
+          city,
+        });
+
+        if (profileErr) {
+          console.error("Error creating sibling profile:", profileErr.message);
+          return json(500, { error: "Failed to create sibling profile" }, requestOrigin);
+        }
+        
+        // Add the role to the new profile
+        const { error: roleErr } = await adminClient.from("user_roles").insert({
+          user_id: newProfileId,
+          role,
+        });
+
+        if (roleErr) {
+          console.error("Error adding role to sibling profile:", roleErr.message);
+          return json(500, { error: "Sibling profile created but role assignment failed" }, requestOrigin);
+        }
+
+        console.log(`Created sibling profile for ${fullName} (${email}) with role ${role}, profile ID: ${newProfileId}`);
+
+        return json(200, {
+          userId: newProfileId,
+          email,
+          full_name: fullName,
+          role,
+          whatsapp_number: whatsapp,
+          gender,
+          age,
+          country,
+          city,
+          message: "Sibling profile created successfully (shares email with existing user)",
+          roleAdded: false,
+          isSiblingProfile: true,
+        }, requestOrigin);
+      }
+      // If no existing auth user, fall through to create new user normally
+    }
+
+    // User doesn't exist - create new user (requires password)
     if (!password) {
       return json(400, { error: "Password is required for new users" }, requestOrigin);
     }
