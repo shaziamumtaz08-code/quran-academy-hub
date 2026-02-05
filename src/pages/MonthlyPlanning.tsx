@@ -522,8 +522,21 @@ export default function MonthlyPlanning() {
       );
     }
     
+    // Apply sorting
+    result.sort((a, b) => {
+      let cmp = 0;
+      if (sortBy === 'student_name') {
+        cmp = (a.student_name || '').localeCompare(b.student_name || '');
+      } else if (sortBy === 'teacher_name') {
+        cmp = (a.teacher_name || '').localeCompare(b.teacher_name || '');
+      } else if (sortBy === 'subject_name') {
+        cmp = (a.subject_name || '').localeCompare(b.subject_name || '');
+      }
+      return sortOrder === 'desc' ? -cmp : cmp;
+    });
+    
     return result;
-  }, [allMissingPlans, subjectFilter, teacherFilter, searchQuery]);
+  }, [allMissingPlans, subjectFilter, teacherFilter, searchQuery, sortBy, sortOrder]);
 
   // Helper to select all pending plans
   const selectAllPending = () => {
@@ -1484,9 +1497,33 @@ export default function MonthlyPlanning() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Student</TableHead>
-                        <TableHead>Subject</TableHead>
-                        <TableHead>Teacher</TableHead>
+                        <TableHead 
+                          className="cursor-pointer hover:bg-muted/50 select-none"
+                          onClick={() => handleSort('student_name')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Student
+                            <ArrowUpDown className={cn("h-3 w-3", sortBy === 'student_name' ? 'text-primary' : 'text-muted-foreground/50')} />
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="cursor-pointer hover:bg-muted/50 select-none"
+                          onClick={() => handleSort('subject_name')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Subject
+                            <ArrowUpDown className={cn("h-3 w-3", sortBy === 'subject_name' ? 'text-primary' : 'text-muted-foreground/50')} />
+                          </div>
+                        </TableHead>
+                        <TableHead 
+                          className="cursor-pointer hover:bg-muted/50 select-none"
+                          onClick={() => handleSort('teacher_name')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Teacher
+                            <ArrowUpDown className={cn("h-3 w-3", sortBy === 'teacher_name' ? 'text-primary' : 'text-muted-foreground/50')} />
+                          </div>
+                        </TableHead>
                         <TableHead className="text-center">Status</TableHead>
                         <TableHead className="text-center">Action</TableHead>
                       </TableRow>
