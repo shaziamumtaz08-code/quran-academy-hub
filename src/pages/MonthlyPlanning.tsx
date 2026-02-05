@@ -558,10 +558,13 @@ export default function MonthlyPlanning() {
       result = result.filter(p => p.teacher_id === teacherFilter);
     }
     
-    // Status filter (skip 'missing' as it shows different data)
-    if (statusFilter !== 'all' && statusFilter !== 'missing') {
-      result = result.filter(p => p.status === statusFilter);
-    }
+   // Status filter
+   if (statusFilter === 'pending') {
+     result = result.filter(p => p.status === 'pending');
+   } else if (statusFilter === 'approved') {
+     result = result.filter(p => p.status === 'approved');
+   }
+   // 'all' and 'missing' will be handled after sorting (missing plans merged for 'all')
     
     // Sorting
     result.sort((a, b) => {
@@ -580,6 +583,117 @@ export default function MonthlyPlanning() {
     
     return result;
   }, [plans, searchQuery, subjectFilter, teacherFilter, statusFilter, sortBy, sortOrder, isAdmin]);
+
+  // Combined list: merges regular plans with missing plans (as pseudo-entries) for 'All Status' view
+  const combinedPlans = useMemo(() => {
+    // For 'pending' or 'approved', just return filtered plans
+    if (statusFilter === 'pending' || statusFilter === 'approved') {
+      return filteredPlans.map(p => ({ ...p, isMissing: false }));
+    }
+    
+    // For 'missing' only, return only missing plans as pseudo-entries
+    if (statusFilter === 'missing') {
+      return missingPlans.map(mp => ({
+        id: `missing-${mp.assignment_id || mp.student_id}-${mp.subject_id}`,
+        student_id: mp.student_id,
+        teacher_id: mp.teacher_id,
+        subject_id: mp.subject_id,
+        student: { full_name: mp.student_name },
+        teacher: { full_name: mp.teacher_name },
+        subject: { name: mp.subject_name },
+        status: 'missing' as const,
+        monthly_target: 0,
+        daily_target: 0,
+        month: selectedMonth,
+        year: selectedYear,
+        primary_marker: 'rukus' as const,
+        notes: null,
+        created_at: null,
+        teaching_strategy: null,
+        surah_from: null,
+        ayah_from: null,
+        surah_to: null,
+        ayah_to: null,
+        resource_name: null,
+        page_from: null,
+        page_to: null,
+        goals: null,
+        assignment_id: mp.assignment_id,
+        isMissing: true,
+        approved_by: null,
+        approved_at: null,
+        topics_to_cover: null,
+        surah_name: null,
+        calculated_daily_target: null,
+        total_teaching_days: null,
+        lesson_number_from: null,
+        lesson_number_to: null,
+        updated_at: null,
+      }));
+    }
+    
+    // For 'all', merge regular plans + missing plans
+    const regularPlans = filteredPlans.map(p => ({ ...p, isMissing: false }));
+    const missingAsPseudo = missingPlans.map(mp => ({
+      id: `missing-${mp.assignment_id || mp.student_id}-${mp.subject_id}`,
+      student_id: mp.student_id,
+      teacher_id: mp.teacher_id,
+      subject_id: mp.subject_id,
+      student: { full_name: mp.student_name },
+      teacher: { full_name: mp.teacher_name },
+      subject: { name: mp.subject_name },
+      status: 'missing' as const,
+      monthly_target: 0,
+      daily_target: 0,
+      month: selectedMonth,
+      year: selectedYear,
+      primary_marker: 'rukus' as const,
+      notes: null,
+      created_at: null,
+      teaching_strategy: null,
+      surah_from: null,
+      ayah_from: null,
+      surah_to: null,
+      ayah_to: null,
+      resource_name: null,
+      page_from: null,
+      page_to: null,
+      goals: null,
+      assignment_id: mp.assignment_id,
+      isMissing: true,
+      approved_by: null,
+      approved_at: null,
+      topics_to_cover: null,
+      surah_name: null,
+      calculated_daily_target: null,
+      total_teaching_days: null,
+      lesson_number_from: null,
+      lesson_number_to: null,
+      updated_at: null,
+    }));
+    
+    const combined = [...regularPlans, ...missingAsPseudo];
+    
+    // Sort combined list
+    combined.sort((a, b) => {
+      let cmp = 0;
+      if (sortBy === 'created_at') {
+        // Missing plans have no created_at, push them to end/beginning based on sort order
+        const aTime = a.created_at ? new Date(a.created_at).getTime() : (sortOrder === 'desc' ? -Infinity : Infinity);
+        const bTime = b.created_at ? new Date(b.created_at).getTime() : (sortOrder === 'desc' ? -Infinity : Infinity);
+        cmp = aTime - bTime;
+      } else if (sortBy === 'student_name') {
+        cmp = (a.student?.full_name || '').localeCompare(b.student?.full_name || '');
+      } else if (sortBy === 'teacher_name') {
+        cmp = (a.teacher?.full_name || '').localeCompare(b.teacher?.full_name || '');
+      } else if (sortBy === 'subject_name') {
+        cmp = (a.subject?.name || '').localeCompare(b.subject?.name || '');
+      }
+      return sortOrder === 'desc' ? -cmp : cmp;
+    });
+    
+    return combined;
+  }, [filteredPlans, missingPlans, statusFilter, sortBy, sortOrder, selectedMonth, selectedYear]);
 
   // Calculate monthly target based on marker type (imported from PlanningMarkerSection logic)
   const calculatedMonthlyTarget = useMemo(() => {
@@ -1103,7 +1217,7 @@ export default function MonthlyPlanning() {
           </Select>
           <div className="text-sm text-muted-foreground">
             <Calendar className="h-4 w-4 inline mr-1" />
-            {filteredPlans.length} of {plans?.length || 0} plans
+            {combinedPlans.length} of {(plans?.length || 0) + (isAdmin ? missingPlans.length : 0)} plans
           </div>
         </div>
 
@@ -1498,11 +1612,11 @@ export default function MonthlyPlanning() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredPlans.map((plan) => {
+                  {combinedPlans.map((plan) => {
                     const planIsQuran = isQuranSubject(plan.subject?.name);
                     // Parse marker data from teaching_strategy
                     let markerInfo = '';
-                    if (planIsQuran && plan.teaching_strategy) {
+                    if (planIsQuran && plan.teaching_strategy && !plan.isMissing) {
                       try {
                         const md = typeof plan.teaching_strategy === 'string' 
                           ? JSON.parse(plan.teaching_strategy) 
@@ -1522,39 +1636,49 @@ export default function MonthlyPlanning() {
                       <TableRow 
                         key={plan.id} 
                         className={cn(
-                          isAdmin && "cursor-pointer hover:bg-muted/50",
-                          selectedPlanIds.has(plan.id) && "bg-primary/5"
+                          isAdmin && !plan.isMissing && "cursor-pointer hover:bg-muted/50",
+                          !plan.isMissing && selectedPlanIds.has(plan.id) && "bg-primary/5",
+                          plan.isMissing && "bg-destructive/5"
                         )}
                         onClick={(e) => {
-                          if (isAdmin && !(e.target as HTMLElement).closest('button, [role="checkbox"]')) {
-                            openEditDialog(plan, 'view');
+                          if (isAdmin && !plan.isMissing && !(e.target as HTMLElement).closest('button, [role="checkbox"]')) {
+                            openEditDialog(plan as MonthlyPlan, 'view');
                           }
                         }}
                       >
                         {isAdmin && (
                           <TableCell onClick={(e) => e.stopPropagation()}>
-                            <Checkbox 
-                              checked={selectedPlanIds.has(plan.id)}
-                              onCheckedChange={() => togglePlanSelection(plan.id)}
-                            />
+                            {!plan.isMissing ? (
+                              <Checkbox 
+                                checked={selectedPlanIds.has(plan.id)}
+                                onCheckedChange={() => togglePlanSelection(plan.id)}
+                              />
+                            ) : (
+                              <span className="text-destructive">—</span>
+                            )}
                           </TableCell>
                         )}
-                        <TableCell>
+                        <TableCell className={plan.isMissing ? "text-destructive" : ""}>
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                              <User className="h-4 w-4 text-primary" />
+                            <div className={cn(
+                              "w-8 h-8 rounded-full flex items-center justify-center",
+                              plan.isMissing ? "bg-destructive/10" : "bg-primary/10"
+                            )}>
+                              <User className={cn("h-4 w-4", plan.isMissing ? "text-destructive" : "text-primary")} />
                             </div>
-                            <span className="font-medium">{plan.student?.full_name || 'Unknown'}</span>
+                            <span className={cn("font-medium", plan.isMissing && "text-destructive")}>{plan.student?.full_name || 'Unknown'}</span>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className="gap-1">
+                          <Badge variant="outline" className={cn("gap-1", plan.isMissing && "border-destructive/30 text-destructive")}>
                             {planIsQuran ? <Book className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
                             {plan.subject?.name || '-'}
                           </Badge>
                         </TableCell>
                         <TableCell className="max-w-[200px]">
-                          {planIsQuran ? (
+                          {plan.isMissing ? (
+                            <span className="text-xs text-destructive italic">No plan submitted</span>
+                          ) : planIsQuran ? (
                             <div className="space-y-0.5">
                               <div className="flex items-center gap-1">
                                 <Badge variant="secondary" className="text-xs">{getMarkerLabel(plan.primary_marker)}</Badge>
@@ -1577,22 +1701,27 @@ export default function MonthlyPlanning() {
                             </div>
                           )}
                         </TableCell>
-                        <TableCell className="text-center font-medium">
-                          {plan.monthly_target} {planIsQuran ? getMarkerLabel(plan.primary_marker) : 'pages'}
+                        <TableCell className={cn("text-center font-medium", plan.isMissing && "text-destructive")}>
+                          {plan.isMissing ? '-' : `${plan.monthly_target} ${planIsQuran ? getMarkerLabel(plan.primary_marker) : 'pages'}`}
                         </TableCell>
                         {isAdmin && (
                           <TableCell>
-                            <span className="text-sm text-muted-foreground">{plan.teacher?.full_name || '-'}</span>
+                            <span className={cn("text-sm", plan.isMissing ? "text-destructive" : "text-muted-foreground")}>{plan.teacher?.full_name || '-'}</span>
                           </TableCell>
                         )}
-                        <TableCell className="hidden md:table-cell text-muted-foreground text-sm max-w-[150px] truncate" title={plan.notes || ''}>
-                          {plan.notes || '-'}
+                        <TableCell className={cn("hidden md:table-cell text-sm max-w-[150px] truncate", plan.isMissing ? "text-destructive" : "text-muted-foreground")} title={plan.notes || ''}>
+                          {plan.isMissing ? '-' : (plan.notes || '-')}
                         </TableCell>
-                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                          {plan.created_at ? format(parseISO(plan.created_at), 'MMM dd, h:mm a') : '-'}
+                        <TableCell className={cn("text-xs whitespace-nowrap", plan.isMissing ? "text-destructive" : "text-muted-foreground")}>
+                          {plan.isMissing ? '-' : (plan.created_at ? format(parseISO(plan.created_at), 'MMM dd, h:mm a') : '-')}
                         </TableCell>
                         <TableCell className="text-center">
-                          {plan.status === 'approved' ? (
+                          {plan.isMissing ? (
+                            <Badge className="bg-destructive/10 text-destructive border-destructive/20">
+                              <AlertCircle className="h-3 w-3 mr-1" />
+                              Missing
+                            </Badge>
+                          ) : plan.status === 'approved' ? (
                             <Badge className="bg-emerald-light/10 text-emerald-light border-emerald-light/20">
                               <CheckCircle className="h-3 w-3 mr-1" />
                               Approved
@@ -1605,52 +1734,72 @@ export default function MonthlyPlanning() {
                           )}
                         </TableCell>
                         <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-center gap-2">
-                            {isAdmin && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => openEditDialog(plan, 'view')}
-                                title="View full form"
-                              >
-                                <Eye className="h-3 w-3" />
-                              </Button>
-                            )}
+                          {plan.isMissing ? (
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => openEditDialog(plan, 'edit')}
-                              title="Edit"
+                              className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                              onClick={() => {
+                                // Pre-fill form with assignment data and open create dialog
+                                setSelectedStudent(plan.student_id);
+                                setSelectedSubject(plan.subject_id || '');
+                                setDialogOpen(true);
+                                setEditingPlan(null);
+                                setViewMode('edit');
+                              }}
+                              title="Create plan for this student"
                             >
-                              <Edit className="h-3 w-3" />
+                              <Plus className="h-3 w-3 mr-1" />
+                              Create
                             </Button>
-                            {isAdmin && (
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Delete Plan</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Are you sure you want to delete this plan for {plan.student?.full_name}? This action cannot be undone.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction 
-                                      onClick={() => deletePlanMutation.mutate([plan.id])}
-                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                    >
-                                      Delete
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            )}
-                          </div>
+                          ) : (
+                            <div className="flex items-center justify-center gap-2">
+                              {isAdmin && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => openEditDialog(plan as MonthlyPlan, 'view')}
+                                  title="View full form"
+                                >
+                                  <Eye className="h-3 w-3" />
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openEditDialog(plan as MonthlyPlan, 'edit')}
+                                title="Edit"
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                              {isAdmin && (
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Delete Plan</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Are you sure you want to delete this plan for {plan.student?.full_name}? This action cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction 
+                                        onClick={() => deletePlanMutation.mutate([plan.id])}
+                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              )}
+                            </div>
+                          )}
                         </TableCell>
                       </TableRow>
                     );
