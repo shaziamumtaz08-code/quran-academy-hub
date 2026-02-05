@@ -120,8 +120,18 @@ export default function MonthlyPlanning() {
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [teacherFilter, setTeacherFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'missing'>('all');
-  const [sortBy, setSortBy] = useState<'created_at' | 'student_name' | 'teacher_name'>('created_at');
+  const [sortBy, setSortBy] = useState<'created_at' | 'student_name' | 'teacher_name' | 'subject_name'>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // Helper to toggle sorting
+  const handleSort = (column: typeof sortBy) => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column);
+      setSortOrder('asc');
+    }
+  };
 
   // Form state
   const [selectedStudent, setSelectedStudent] = useState('');
@@ -562,6 +572,8 @@ export default function MonthlyPlanning() {
         cmp = (a.student?.full_name || '').localeCompare(b.student?.full_name || '');
       } else if (sortBy === 'teacher_name') {
         cmp = (a.teacher?.full_name || '').localeCompare(b.teacher?.full_name || '');
+      } else if (sortBy === 'subject_name') {
+        cmp = (a.subject?.name || '').localeCompare(b.subject?.name || '');
       }
       return sortOrder === 'desc' ? -cmp : cmp;
     });
@@ -1440,13 +1452,47 @@ export default function MonthlyPlanning() {
                         />
                       </TableHead>
                     )}
-                    <TableHead>Student</TableHead>
-                    <TableHead>Subject</TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50 select-none"
+                      onClick={() => handleSort('student_name')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Student
+                        <ArrowUpDown className={cn("h-3 w-3", sortBy === 'student_name' ? 'text-primary' : 'text-muted-foreground/50')} />
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50 select-none"
+                      onClick={() => handleSort('subject_name')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Subject
+                        <ArrowUpDown className={cn("h-3 w-3", sortBy === 'subject_name' ? 'text-primary' : 'text-muted-foreground/50')} />
+                      </div>
+                    </TableHead>
                     <TableHead>Details</TableHead>
                     <TableHead className="text-center">Monthly Target</TableHead>
-                    {isAdmin && <TableHead>Teacher</TableHead>}
+                    {isAdmin && (
+                      <TableHead 
+                        className="cursor-pointer hover:bg-muted/50 select-none"
+                        onClick={() => handleSort('teacher_name')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Teacher
+                          <ArrowUpDown className={cn("h-3 w-3", sortBy === 'teacher_name' ? 'text-primary' : 'text-muted-foreground/50')} />
+                        </div>
+                      </TableHead>
+                    )}
                     <TableHead className="hidden md:table-cell max-w-[150px]">Notes</TableHead>
-                    <TableHead className="text-xs">Created (PKT)</TableHead>
+                    <TableHead 
+                      className="text-xs cursor-pointer hover:bg-muted/50 select-none"
+                      onClick={() => handleSort('created_at')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Created (PKT)
+                        <ArrowUpDown className={cn("h-3 w-3", sortBy === 'created_at' ? 'text-primary' : 'text-muted-foreground/50')} />
+                      </div>
+                    </TableHead>
                     <TableHead className="text-center">Status</TableHead>
                     <TableHead className="text-center">Actions</TableHead>
                   </TableRow>
