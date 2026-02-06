@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar, CheckCircle, XCircle, AlertCircle, User, Plus, Clock, CalendarClock, UserX, Palmtree, Pencil, Trash2, ArrowUpDown, CalendarRange } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, AlertCircle, User, Plus, Clock, CalendarClock, UserX, Palmtree, Pencil, Trash2, ArrowUpDown, CalendarRange, Search } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
@@ -120,6 +120,7 @@ export default function Attendance() {
   const [dateTo, setDateTo] = useState('');
   const [sortBy, setSortBy] = useState<'class_date' | 'student_name' | 'teacher_name'>('class_date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [searchQuery, setSearchQuery] = useState('');
   const [markDialogOpen, setMarkDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
@@ -675,6 +676,15 @@ export default function Attendance() {
     if (!attendanceRecords) return [];
     let records = filter === 'all' ? attendanceRecords : attendanceRecords.filter(r => r.status === filter);
     
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      records = records.filter(r =>
+        (r.student?.full_name || '').toLowerCase().includes(q) ||
+        (r.teacher?.full_name || '').toLowerCase().includes(q)
+      );
+    }
+    
     // Apply sorting
     records = [...records].sort((a, b) => {
       let cmp = 0;
@@ -689,7 +699,7 @@ export default function Attendance() {
     });
     
     return records;
-  }, [attendanceRecords, filter, sortBy, sortOrder]);
+  }, [attendanceRecords, filter, searchQuery, sortBy, sortOrder]);
 
   const stats = useMemo(() => {
     const records = attendanceRecords || [];
@@ -837,7 +847,16 @@ export default function Attendance() {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4 flex-wrap">
+        <div className="flex flex-col sm:flex-row gap-4 flex-wrap items-end">
+          <div className="relative w-full sm:w-[260px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search student or teacher..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
           <Select value={filter} onValueChange={setFilter}>
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Filter by status" />
