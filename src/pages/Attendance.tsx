@@ -10,14 +10,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar, CheckCircle, XCircle, AlertCircle, User, Plus, Clock, CalendarClock, UserX, Palmtree, Pencil, Trash2 } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, AlertCircle, User, Plus, Clock, CalendarClock, UserX, Palmtree, Pencil, Trash2, ArrowUpDown, CalendarRange } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
+import { format, startOfMonth, endOfMonth, parseISO, startOfWeek, endOfWeek } from 'date-fns';
 import { SurahSearchSelect } from '@/components/attendance/SurahSearchSelect';
 import { trackActivity } from '@/lib/activityLogger';
 import { UnitInputSelector } from '@/components/attendance/UnitInputSelector';
@@ -115,6 +115,11 @@ export default function Attendance() {
   
   const [filter, setFilter] = useState('all');
   const [monthFilter, setMonthFilter] = useState(format(new Date(), 'yyyy-MM'));
+  const [dateMode, setDateMode] = useState<'month' | 'dateRange'>('month');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [sortBy, setSortBy] = useState<'class_date' | 'student_name' | 'teacher_name'>('class_date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [markDialogOpen, setMarkDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
@@ -356,12 +361,21 @@ export default function Attendance() {
 
   // Fetch attendance records with explicit role-based filters
   const { data: attendanceRecords, isLoading } = useQuery({
-    queryKey: ['attendance', user?.id, monthFilter, activeRole],
+    queryKey: ['attendance', user?.id, dateMode, monthFilter, dateFrom, dateTo, activeRole],
     queryFn: async () => {
       if (!user?.id) return [];
 
-      const startDate = startOfMonth(parseISO(`${monthFilter}-01`));
-      const endDate = endOfMonth(startDate);
+      let startDate: string;
+      let endDate: string;
+
+      if (dateMode === 'dateRange' && dateFrom && dateTo) {
+        startDate = dateFrom;
+        endDate = dateTo;
+      } else {
+        const monthStart = startOfMonth(parseISO(`${monthFilter}-01`));
+        startDate = format(monthStart, 'yyyy-MM-dd');
+        endDate = format(endOfMonth(monthStart), 'yyyy-MM-dd');
+      }
 
       let query = supabase
         .from('attendance')
@@ -400,8 +414,8 @@ export default function Attendance() {
           student:profiles!attendance_student_id_fkey(full_name),
           teacher:profiles!attendance_teacher_id_fkey(full_name)
         `)
-        .gte('class_date', format(startDate, 'yyyy-MM-dd'))
-        .lte('class_date', format(endDate, 'yyyy-MM-dd'))
+        .gte('class_date', startDate)
+        .lte('class_date', endDate)
         .order('class_date', { ascending: false });
 
       // Apply explicit role-based filters (not relying on RLS for multi-role users)
@@ -659,9 +673,23 @@ export default function Attendance() {
 
   const filteredRecords = useMemo(() => {
     if (!attendanceRecords) return [];
-    if (filter === 'all') return attendanceRecords;
-    return attendanceRecords.filter(r => r.status === filter);
-  }, [attendanceRecords, filter]);
+    let records = filter === 'all' ? attendanceRecords : attendanceRecords.filter(r => r.status === filter);
+    
+    // Apply sorting
+    records = [...records].sort((a, b) => {
+      let cmp = 0;
+      if (sortBy === 'class_date') {
+        cmp = a.class_date.localeCompare(b.class_date);
+      } else if (sortBy === 'student_name') {
+        cmp = (a.student?.full_name || '').localeCompare(b.student?.full_name || '');
+      } else if (sortBy === 'teacher_name') {
+        cmp = (a.teacher?.full_name || '').localeCompare(b.teacher?.full_name || '');
+      }
+      return sortOrder === 'desc' ? -cmp : cmp;
+    });
+    
+    return records;
+  }, [attendanceRecords, filter, sortBy, sortOrder]);
 
   const stats = useMemo(() => {
     const records = attendanceRecords || [];
@@ -696,6 +724,24 @@ export default function Attendance() {
   const getStatusLabel = (status: string) => {
     const option = STATUS_OPTIONS.find(o => o.value === status);
     return option?.label || status;
+  };
+
+  const handleSort = (column: 'class_date' | 'student_name' | 'teacher_name') => {
+    if (sortBy === column) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column);
+      setSortOrder(column === 'class_date' ? 'desc' : 'asc');
+    }
+  };
+
+  const setThisWeek = () => {
+    const now = new Date();
+    const monday = startOfWeek(now, { weekStartsOn: 1 });
+    const sunday = endOfWeek(now, { weekStartsOn: 1 });
+    setDateMode('dateRange');
+    setDateFrom(format(monday, 'yyyy-MM-dd'));
+    setDateTo(format(sunday, 'yyyy-MM-dd'));
   };
 
   const months = [
@@ -740,19 +786,19 @@ export default function Attendance() {
 
         {/* Stats - Enhanced for Admin */}
         <div className={cn("grid gap-4", isAdmin ? "grid-cols-2 md:grid-cols-6" : "grid-cols-2 md:grid-cols-4")}>
-          <Card className="text-center">
+          <Card className={cn("text-center cursor-pointer transition-all hover:ring-2 hover:ring-primary/30", filter === 'all' && "ring-2 ring-primary")} onClick={() => setFilter('all')}>
             <CardContent className="pt-6">
               <p className="text-2xl font-serif font-bold text-foreground">{stats.total}</p>
               <p className="text-sm text-muted-foreground">Total Classes</p>
             </CardContent>
           </Card>
-          <Card className="bg-emerald-light/10 border-emerald-light/20 text-center">
+          <Card className={cn("bg-emerald-light/10 border-emerald-light/20 text-center cursor-pointer transition-all hover:ring-2 hover:ring-emerald-light/30", filter === 'present' && "ring-2 ring-emerald-light")} onClick={() => setFilter(filter === 'present' ? 'all' : 'present')}>
             <CardContent className="pt-6">
               <p className="text-2xl font-serif font-bold text-emerald-light">{stats.present}</p>
               <p className="text-sm text-emerald-light/80">Present</p>
             </CardContent>
           </Card>
-          <Card className="bg-destructive/10 border-destructive/20 text-center">
+          <Card className={cn("bg-destructive/10 border-destructive/20 text-center cursor-pointer transition-all hover:ring-2 hover:ring-destructive/30", filter === 'student_absent' && "ring-2 ring-destructive")} onClick={() => setFilter(filter === 'student_absent' ? 'all' : 'student_absent')}>
             <CardContent className="pt-6">
               <p className="text-2xl font-serif font-bold text-destructive">{stats.studentAbsent}</p>
               <p className="text-sm text-destructive/80">Student Absent</p>
@@ -760,19 +806,19 @@ export default function Attendance() {
           </Card>
           {isAdmin && (
             <>
-              <Card className="bg-accent/10 border-accent/20 text-center">
+              <Card className={cn("bg-accent/10 border-accent/20 text-center cursor-pointer transition-all hover:ring-2 hover:ring-accent/30", (filter === 'teacher_absent' || filter === 'teacher_leave') && "ring-2 ring-accent")} onClick={() => setFilter(filter === 'teacher_absent' ? 'all' : 'teacher_absent')}>
                 <CardContent className="pt-6">
                   <p className="text-2xl font-serif font-bold text-accent">{stats.teacherOff}</p>
                   <p className="text-sm text-accent/80">Teacher Off</p>
                 </CardContent>
               </Card>
-              <Card className="bg-primary/10 border-primary/20 text-center">
+              <Card className={cn("bg-primary/10 border-primary/20 text-center cursor-pointer transition-all hover:ring-2 hover:ring-primary/30", filter === 'rescheduled' && "ring-2 ring-primary")} onClick={() => setFilter(filter === 'rescheduled' ? 'all' : 'rescheduled')}>
                 <CardContent className="pt-6">
                   <p className="text-2xl font-serif font-bold text-primary">{stats.rescheduled}</p>
                   <p className="text-sm text-primary/80">Rescheduled</p>
                 </CardContent>
               </Card>
-              <Card className="bg-muted text-center">
+              <Card className={cn("bg-muted text-center cursor-pointer transition-all hover:ring-2 hover:ring-muted-foreground/30", filter === 'holiday' && "ring-2 ring-muted-foreground")} onClick={() => setFilter(filter === 'holiday' ? 'all' : 'holiday')}>
                 <CardContent className="pt-6">
                   <p className="text-2xl font-serif font-bold text-muted-foreground">{stats.holiday}</p>
                   <p className="text-sm text-muted-foreground">Holidays</p>
@@ -781,7 +827,7 @@ export default function Attendance() {
             </>
           )}
           {!isAdmin && (
-            <Card className="bg-accent/10 border-accent/20 text-center">
+            <Card className={cn("bg-accent/10 border-accent/20 text-center cursor-pointer transition-all hover:ring-2 hover:ring-accent/30", filter === 'rescheduled' && "ring-2 ring-accent")} onClick={() => setFilter(filter === 'rescheduled' ? 'all' : 'rescheduled')}>
               <CardContent className="pt-6">
                 <p className="text-2xl font-serif font-bold text-accent">{stats.rescheduled}</p>
                 <p className="text-sm text-accent/80">Rescheduled</p>
@@ -791,7 +837,7 @@ export default function Attendance() {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col sm:flex-row gap-4 flex-wrap">
           <Select value={filter} onValueChange={setFilter}>
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Filter by status" />
@@ -803,16 +849,74 @@ export default function Attendance() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={monthFilter} onValueChange={setMonthFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filter by month" />
-            </SelectTrigger>
-            <SelectContent>
-              {months.map((month) => (
-                <SelectItem key={month.value} value={month.value}>{month.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+
+          {/* Date Mode Toggle */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant={dateMode === 'month' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setDateMode('month')}
+            >
+              <Calendar className="h-4 w-4 mr-1" />
+              Month
+            </Button>
+            <Button
+              variant={dateMode === 'dateRange' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setDateMode('dateRange');
+                if (!dateFrom || !dateTo) {
+                  const now = new Date();
+                  setDateFrom(format(startOfMonth(now), 'yyyy-MM-dd'));
+                  setDateTo(format(endOfMonth(now), 'yyyy-MM-dd'));
+                }
+              }}
+            >
+              <CalendarRange className="h-4 w-4 mr-1" />
+              Date Range
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={setThisWeek}
+              className="text-primary border-primary/30 hover:bg-primary/10"
+            >
+              This Week
+            </Button>
+          </div>
+
+          {/* Month Selector */}
+          {dateMode === 'month' && (
+            <Select value={monthFilter} onValueChange={setMonthFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by month" />
+              </SelectTrigger>
+              <SelectContent>
+                {months.map((month) => (
+                  <SelectItem key={month.value} value={month.value}>{month.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {/* Date Range Inputs */}
+          {dateMode === 'dateRange' && (
+            <div className="flex items-center gap-2">
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="w-[160px]"
+              />
+              <span className="text-muted-foreground text-sm">to</span>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="w-[160px]"
+              />
+            </div>
+          )}
         </div>
 
         {/* Admin Bulk Actions */}
@@ -877,9 +981,37 @@ export default function Attendance() {
                         />
                       </TableHead>
                     )}
-                    <TableHead>Date</TableHead>
-                    {!isStudent && <TableHead>Student</TableHead>}
-                    {isAdmin && <TableHead>Teacher</TableHead>}
+                    <TableHead 
+                      className="cursor-pointer hover:bg-muted/50 select-none"
+                      onClick={() => handleSort('class_date')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Date
+                        <ArrowUpDown className={cn("h-3 w-3", sortBy === 'class_date' ? 'text-primary' : 'text-muted-foreground/50')} />
+                      </div>
+                    </TableHead>
+                    {!isStudent && (
+                      <TableHead 
+                        className="cursor-pointer hover:bg-muted/50 select-none"
+                        onClick={() => handleSort('student_name')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Student
+                          <ArrowUpDown className={cn("h-3 w-3", sortBy === 'student_name' ? 'text-primary' : 'text-muted-foreground/50')} />
+                        </div>
+                      </TableHead>
+                    )}
+                    {isAdmin && (
+                      <TableHead 
+                        className="cursor-pointer hover:bg-muted/50 select-none"
+                        onClick={() => handleSort('teacher_name')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Teacher
+                          <ArrowUpDown className={cn("h-3 w-3", sortBy === 'teacher_name' ? 'text-primary' : 'text-muted-foreground/50')} />
+                        </div>
+                      </TableHead>
+                    )}
                     <TableHead>Time</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Lesson Covered</TableHead>
