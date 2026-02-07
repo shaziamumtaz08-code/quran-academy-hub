@@ -78,6 +78,7 @@ import { BulkUserImportDialog } from '@/components/users/BulkUserImportDialog';
 import { ExportUsersDialog } from '@/components/users/ExportUsersDialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Country, State, City, ICountry, IState, ICity } from 'country-state-city';
+import { SearchableCitySelect } from '@/components/ui/searchable-city-select';
 
 const ALL_PERMISSIONS = [
   { group: 'Users', permissions: ['users.view', 'users.create', 'users.edit', 'users.delete', 'users.assign_roles'] },
@@ -826,16 +827,12 @@ export default function UserManagement() {
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor="new-city" className="text-xs">City</Label>
-                        <Select value={newUserCity} onValueChange={setNewUserCity}>
-                          <SelectTrigger className="h-9">
-                            <SelectValue placeholder="Select city" />
-                          </SelectTrigger>
-                          <SelectContent className="max-h-60">
-                            {getCitiesForCountry(newUserCountry).map((city) => (
-                              <SelectItem key={city.name} value={city.name}>{city.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <SearchableCitySelect
+                          countryCode={newUserCountry}
+                          value={newUserCity}
+                          onValueChange={setNewUserCity}
+                          placeholder="Search city..."
+                        />
                       </div>
                       {/* Row 4 */}
                       <div className="space-y-1.5">
@@ -1179,8 +1176,10 @@ export default function UserManagement() {
                             )}
                           </TableCell>
                           <TableCell>
-                            {user.city ? (
-                              <span className="text-sm">{user.city}</span>
+                            {user.city || user.country ? (
+                              <span className="text-sm">
+                                {[user.city, user.country].filter(Boolean).join(', ')}
+                              </span>
                             ) : (
                               <span className="text-muted-foreground text-sm">—</span>
                             )}
@@ -1658,23 +1657,15 @@ export default function UserManagement() {
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="edit-city">City</Label>
-                          <Select value={editCity} onValueChange={setEditCity}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select city" />
-                            </SelectTrigger>
-                            <SelectContent className="max-h-60">
-                              {(() => {
-                                const countryObj = allCountries.find(c => c.name === editCountry);
-                                if (countryObj) {
-                                  const cities = getCitiesForCountry(countryObj.isoCode);
-                                  return cities.map((city) => (
-                                    <SelectItem key={city.name} value={city.name}>{city.name}</SelectItem>
-                                  ));
-                                }
-                                return null;
-                              })()}
-                            </SelectContent>
-                          </Select>
+                          <SearchableCitySelect
+                            countryCode={(() => {
+                              const countryObj = allCountries.find(c => c.name === editCountry);
+                              return countryObj?.isoCode || '';
+                            })()}
+                            value={editCity}
+                            onValueChange={setEditCity}
+                            placeholder="Search city..."
+                          />
                         </div>
                       </div>
                       <div className="space-y-2">
