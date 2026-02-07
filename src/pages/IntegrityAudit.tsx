@@ -383,7 +383,7 @@ export default function IntegrityAudit() {
                       <TableCell>
                         <span className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-muted-foreground" />
-                          {format(parseISO(record.date), 'MMM dd, yyyy')}
+                          {format(parseISO(record.date), 'dd MMM yyyy')}
                         </span>
                       </TableCell>
                       <TableCell>

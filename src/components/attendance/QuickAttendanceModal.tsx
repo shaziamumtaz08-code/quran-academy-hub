@@ -352,7 +352,7 @@ export function QuickAttendanceModal({ open, onOpenChange, student }: QuickAtten
             <Alert className="bg-red-500/20 border-red-500/50 text-red-200">
               <Ban className="h-4 w-4" />
               <AlertDescription>
-                Attendance has already been marked for this student on {format(parseISO(classDate), 'MMM dd, yyyy')}. 
+                Attendance has already been marked for this student on {format(parseISO(classDate), 'dd MMM yyyy')}. 
                 Duplicate entries are not allowed.
               </AlertDescription>
             </Alert>

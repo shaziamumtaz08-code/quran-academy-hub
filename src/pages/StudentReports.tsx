@@ -374,9 +374,9 @@ export default function StudentReports() {
   const formatDate = (dateString: string | null | undefined): string => {
     if (!dateString) return '-';
     try {
-      return new Date(dateString).toLocaleDateString('en-US', { 
-        month: 'short', 
+      return new Date(dateString).toLocaleDateString('en-GB', { 
         day: 'numeric',
+        month: 'short', 
         year: 'numeric' 
       });
     } catch {
