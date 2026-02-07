@@ -186,7 +186,7 @@ export function TodayClasses({ classes, onMarkAttendance, isTeacher = false }: T
         <div className="p-6 border-b border-border">
           <h3 className="font-serif text-xl font-bold text-foreground">Today's Classes</h3>
           <p className="text-sm text-muted-foreground mt-1">
-            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
           </p>
         </div>
         <div className="divide-y divide-border">

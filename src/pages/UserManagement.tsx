@@ -1571,7 +1571,7 @@ export default function UserManagement() {
                         <div>
                           <p className="text-xs text-muted-foreground">Created</p>
                           <p className="text-sm font-medium">
-                            {new Date(viewingUser.created_at).toLocaleDateString()}
+                            {new Date(viewingUser.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                           </p>
                         </div>
                       </div>

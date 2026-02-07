@@ -91,10 +91,10 @@ export function ReportCardCertificate({ report, showInternalNotes = false }: Rep
   const formatDate = (dateString: string | null | undefined): string => {
     if (!dateString) return '-';
     try {
-      return new Date(dateString).toLocaleDateString('en-US', {
-        year: 'numeric',
+      return new Date(dateString).toLocaleDateString('en-GB', {
+        day: 'numeric',
         month: 'long',
-        day: 'numeric'
+        year: 'numeric'
       });
     } catch {
       return '-';
@@ -104,7 +104,7 @@ export function ReportCardCertificate({ report, showInternalNotes = false }: Rep
   const getMonth = (dateString: string | null | undefined): string => {
     if (!dateString) return '-';
     try {
-      return new Date(dateString).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      return new Date(dateString).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
     } catch {
       return '-';
     }

@@ -347,7 +347,7 @@ export default function Reports() {
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-2">
-                          {format(new Date(exam.exam_date), 'MMM dd, yyyy')}
+                          {format(new Date(exam.exam_date), 'dd MMM yyyy')}
                         </p>
                       </CardContent>
                     </Card>

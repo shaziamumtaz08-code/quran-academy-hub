@@ -1057,7 +1057,7 @@ export default function Attendance() {
                       <TableCell>
                         <span className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-muted-foreground" />
-                          {format(parseISO(record.class_date), 'MMM dd, yyyy')}
+                          {format(parseISO(record.class_date), 'dd MMM yyyy')}
                         </span>
                       </TableCell>
                       {!isStudent && (
@@ -1136,7 +1136,7 @@ export default function Attendance() {
                                   <AlertDialogHeader>
                                     <AlertDialogTitle>Delete Attendance Record</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                      Are you sure you want to delete this attendance record for {record.student?.full_name} on {format(parseISO(record.class_date), 'MMM dd, yyyy')}? This action cannot be undone.
+                                      Are you sure you want to delete this attendance record for {record.student?.full_name} on {format(parseISO(record.class_date), 'dd MMM yyyy')}? This action cannot be undone.
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
@@ -1446,7 +1446,7 @@ export default function Attendance() {
                 )}
                 {editingRecord?.created_at && (
                   <span className="block text-xs text-muted-foreground mt-1">
-                    Created: {format(parseISO(editingRecord.created_at), 'MMM dd, yyyy h:mm a')} PKT
+                    Created: {format(parseISO(editingRecord.created_at), 'dd MMM yyyy h:mm a')} PKT
                   </span>
                 )}
               </DialogDescription>

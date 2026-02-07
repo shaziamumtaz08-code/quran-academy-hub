@@ -1902,7 +1902,7 @@ export default function MonthlyPlanning() {
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground">Created</Label>
                     <span className="text-xs text-muted-foreground">
-                      {editingPlan.created_at ? format(parseISO(editingPlan.created_at), 'MMM dd, yyyy h:mm a') : '-'}
+                      {editingPlan.created_at ? format(parseISO(editingPlan.created_at), 'dd MMM yyyy h:mm a') : '-'}
                     </span>
                   </div>
                 </div>
