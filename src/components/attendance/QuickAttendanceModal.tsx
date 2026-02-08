@@ -12,7 +12,7 @@ import { Loader2, BookOpen, Clock, User, AlertTriangle, Ban } from 'lucide-react
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { format, parseISO, getDay } from 'date-fns';
+import { format, parseISO, getDay, isAfter } from 'date-fns';
 import { getSubjectType, type SubjectType } from '@/lib/subjectUtils';
 import { QaidaProgressInput } from './QaidaProgressInput';
 import { HifzAttendanceFields } from './HifzAttendanceFields';
@@ -302,15 +302,24 @@ export function QuickAttendanceModal({ open, onOpenChange, student }: QuickAtten
     },
   });
 
+  const isFutureDate = useMemo(() => {
+    if (!classDate) return false;
+    const selected = parseISO(classDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return isAfter(selected, today);
+  }, [classDate]);
+
   const isFormValid = useMemo(() => {
     if (!classTime || !classDate) return false;
+    if (isFutureDate) return false;
     if (hasDuplicateAttendance) return false;
     if (!isScheduledDay) return false;
     if (requiresReason(selectedStatus) && !reasonCategory) return false;
     if (requiresReason(selectedStatus) && reasonCategory === 'other' && !reasonText.trim()) return false;
     if (requiresReschedule(selectedStatus) && (!rescheduleDate || !rescheduleTime)) return false;
     return true;
-  }, [selectedStatus, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleTime, hasDuplicateAttendance, isScheduledDay]);
+  }, [selectedStatus, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleTime, hasDuplicateAttendance, isScheduledDay, isFutureDate]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -359,11 +368,21 @@ export function QuickAttendanceModal({ open, onOpenChange, student }: QuickAtten
           )}
 
           {/* Non-Scheduled Day Warning */}
-          {!isScheduledDay && !hasDuplicateAttendance && (
+          {!isScheduledDay && !hasDuplicateAttendance && !isFutureDate && (
             <Alert className="bg-amber-500/20 border-amber-500/50 text-amber-200">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                Attendance cannot be marked on non-scheduled days. This student is scheduled for: {scheduledDays.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ') || 'No schedule found'}.
+                This is not a scheduled day. Scheduled: {scheduledDays.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ') || 'No schedule found'}.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Future Date Warning */}
+          {isFutureDate && (
+            <Alert className="bg-red-500/20 border-red-500/50 text-red-200">
+              <Ban className="h-4 w-4" />
+              <AlertDescription>
+                Cannot mark attendance for future dates.
               </AlertDescription>
             </Alert>
           )}
@@ -391,6 +410,7 @@ export function QuickAttendanceModal({ open, onOpenChange, student }: QuickAtten
                 type="date" 
                 value={classDate} 
                 onChange={(e) => setClassDate(e.target.value)} 
+                max={format(new Date(), 'yyyy-MM-dd')}
                 className="bg-white text-[#1e3a5f] border-0"
               />
             </div>

@@ -10,14 +10,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar, CheckCircle, XCircle, AlertCircle, User, Plus, Clock, CalendarClock, UserX, Palmtree, Pencil, Trash2, ArrowUpDown, CalendarRange, Search } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Calendar, CheckCircle, XCircle, AlertCircle, User, Plus, Clock, CalendarClock, UserX, Palmtree, Pencil, Trash2, ArrowUpDown, CalendarRange, Search, Ban, AlertTriangle } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { format, startOfMonth, endOfMonth, parseISO, startOfWeek, endOfWeek } from 'date-fns';
+import { format, startOfMonth, endOfMonth, parseISO, startOfWeek, endOfWeek, getDay, isAfter } from 'date-fns';
 import { SurahSearchSelect } from '@/components/attendance/SurahSearchSelect';
 import { trackActivity } from '@/lib/activityLogger';
 import { UnitInputSelector } from '@/components/attendance/UnitInputSelector';
@@ -29,6 +30,9 @@ import { type LearningUnit, type MushafType, convertToLines, LEARNING_UNITS } fr
 import { getSubjectType, type SubjectType } from '@/lib/subjectUtils';
 import { isRepeatLesson as checkRepeatLesson, type LessonPosition } from '@/lib/quranValidation';
 import { type MarkerType } from '@/components/attendance/SabaqSection';
+import { MissingAttendanceSection, useMissingAttendanceCount } from '@/components/attendance/MissingAttendanceSection';
+
+const DAY_NAMES_MAIN = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
 type AttendanceStatus = 'present' | 'student_absent' | 'teacher_absent' | 'teacher_leave' | 'rescheduled' | 'student_rescheduled' | 'holiday';
 type ReasonCategory = 'sick' | 'personal' | 'emergency' | 'internet_issue' | 'other';
@@ -125,6 +129,7 @@ export default function Attendance() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
   const [selectedRecordIds, setSelectedRecordIds] = useState<Set<string>>(new Set());
+  const [showMissing, setShowMissing] = useState(false);
   
   // Form state for marking attendance
   const [selectedStudent, setSelectedStudent] = useState('');
@@ -319,6 +324,94 @@ export default function Attendance() {
   
   const needsVarianceReason = lineEquivalent > 0 && lineEquivalent < dailyTarget;
 
+  // Fetch schedule for selected student in the mark dialog
+  const { data: markDialogSchedule } = useQuery({
+    queryKey: ['mark-dialog-schedule', selectedStudent, user?.id],
+    queryFn: async () => {
+      if (!selectedStudent || !user?.id) return null;
+      const teacherId = isAdmin ? undefined : user.id;
+      
+      let query = supabase
+        .from('schedules')
+        .select(`
+          day_of_week,
+          teacher_local_time,
+          duration_minutes,
+          student_teacher_assignments!inner (
+            student_id,
+            teacher_id
+          )
+        `)
+        .eq('student_teacher_assignments.student_id', selectedStudent)
+        .eq('is_active', true);
+      
+      if (teacherId) {
+        query = query.eq('student_teacher_assignments.teacher_id', teacherId);
+      }
+      
+      const { data, error } = await query;
+      if (error) throw error;
+      return data;
+    },
+    enabled: markDialogOpen && !!selectedStudent && !!user?.id,
+  });
+
+  // Check for duplicate attendance in the mark dialog
+  const { data: markDialogExisting } = useQuery({
+    queryKey: ['mark-dialog-duplicate', selectedStudent, classDate],
+    queryFn: async () => {
+      if (!selectedStudent || !classDate) return [];
+      const { data, error } = await supabase
+        .from('attendance')
+        .select('id, class_date, status')
+        .eq('student_id', selectedStudent)
+        .eq('class_date', classDate);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: markDialogOpen && !!selectedStudent && !!classDate,
+  });
+
+  const markDialogHasDuplicate = markDialogExisting && markDialogExisting.length > 0;
+
+  // Check if selected date is a scheduled day in mark dialog
+  const markDialogScheduledDays = useMemo(() => {
+    if (!markDialogSchedule) return [];
+    return markDialogSchedule.map(s => s.day_of_week.toLowerCase());
+  }, [markDialogSchedule]);
+
+  const markDialogIsScheduledDay = useMemo(() => {
+    if (!classDate || markDialogScheduledDays.length === 0) return true;
+    const dayIndex = getDay(parseISO(classDate));
+    const dayName = DAY_NAMES_MAIN[dayIndex];
+    return markDialogScheduledDays.includes(dayName);
+  }, [classDate, markDialogScheduledDays]);
+
+  // Check if selected date is in the future
+  const isMarkDateFuture = useMemo(() => {
+    if (!classDate) return false;
+    const selected = parseISO(classDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return isAfter(selected, today);
+  }, [classDate]);
+
+  // Auto-fill time from schedule when student or date changes in mark dialog
+  useEffect(() => {
+    if (markDialogOpen && selectedStudent && classDate && markDialogSchedule) {
+      const dayIndex = getDay(parseISO(classDate));
+      const dayName = DAY_NAMES_MAIN[dayIndex];
+      const schedule = markDialogSchedule.find(s => s.day_of_week.toLowerCase() === dayName);
+      if (schedule) {
+        setClassTime(schedule.teacher_local_time?.substring(0, 5) || classTime);
+        setDuration(schedule.duration_minutes?.toString() || duration);
+      }
+    }
+  }, [markDialogOpen, selectedStudent, classDate, markDialogSchedule]);
+
+  // Missing attendance count for the stat card
+  const missingCount = useMissingAttendanceCount(monthFilter, dateMode, dateFrom, dateTo, isAdmin);
+
   // Validation
   const isFormValid = useMemo(() => {
     // For teacher leave/absent statuses, don't require student selection
@@ -326,6 +419,15 @@ export default function Attendance() {
     
     if (!isTeacherStatus && !selectedStudent) return false;
     if (!classTime) return false;
+    
+    // Block future dates
+    if (isMarkDateFuture) return false;
+    
+    // Block unscheduled days (only when student is selected and schedule is loaded)
+    if (!isTeacherStatus && selectedStudent && markDialogScheduledDays.length > 0 && !markDialogIsScheduledDay) return false;
+    
+    // Block duplicate attendance
+    if (!isTeacherStatus && markDialogHasDuplicate) return false;
     
     if (requiresReason(selectedStatus)) {
       if (!reasonCategory) return false;
@@ -343,7 +445,7 @@ export default function Attendance() {
     if (selectedStatus === 'present' && surahName && !surahName.trim()) return false;
     
     return true;
-  }, [selectedStudent, selectedStatus, classTime, reasonCategory, reasonText, rescheduleDate, rescheduleTime, needsVarianceReason, varianceReason, surahName]);
+  }, [selectedStudent, selectedStatus, classTime, reasonCategory, reasonText, rescheduleDate, rescheduleTime, needsVarianceReason, varianceReason, surahName, isMarkDateFuture, markDialogIsScheduledDay, markDialogHasDuplicate, markDialogScheduledDays]);
 
   // Fetch parent's children IDs (for parent role)
   const { data: childrenIds } = useQuery({
@@ -795,7 +897,7 @@ export default function Attendance() {
         </div>
 
         {/* Stats - Enhanced for Admin */}
-        <div className={cn("grid gap-4", isAdmin ? "grid-cols-2 md:grid-cols-6" : "grid-cols-2 md:grid-cols-4")}>
+        <div className={cn("grid gap-4", isAdmin ? "grid-cols-2 md:grid-cols-7" : "grid-cols-2 md:grid-cols-4")}>
           <Card className={cn("text-center cursor-pointer transition-all hover:ring-2 hover:ring-primary/30", filter === 'all' && "ring-2 ring-primary")} onClick={() => setFilter('all')}>
             <CardContent className="pt-6">
               <p className="text-2xl font-serif font-bold text-foreground">{stats.total}</p>
@@ -832,6 +934,18 @@ export default function Attendance() {
                 <CardContent className="pt-6">
                   <p className="text-2xl font-serif font-bold text-muted-foreground">{stats.holiday}</p>
                   <p className="text-sm text-muted-foreground">Holidays</p>
+                </CardContent>
+              </Card>
+              <Card 
+                className={cn(
+                  "bg-orange-500/10 border-orange-500/20 text-center cursor-pointer transition-all hover:ring-2 hover:ring-orange-500/30",
+                  showMissing && "ring-2 ring-orange-500"
+                )} 
+                onClick={() => setShowMissing(!showMissing)}
+              >
+                <CardContent className="pt-6">
+                  <p className="text-2xl font-serif font-bold text-orange-500">{missingCount}</p>
+                  <p className="text-sm text-orange-500/80">Missing</p>
                 </CardContent>
               </Card>
             </>
@@ -968,6 +1082,18 @@ export default function Attendance() {
               </AlertDialogContent>
             </AlertDialog>
           </div>
+        )}
+
+        {/* Missing Attendance Section */}
+        {isAdmin && (
+          <MissingAttendanceSection
+            monthFilter={monthFilter}
+            dateMode={dateMode}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            isVisible={showMissing}
+            onClose={() => setShowMissing(false)}
+          />
         )}
 
         {/* Table */}
@@ -1214,11 +1340,44 @@ export default function Attendance() {
                 </div>
               )}
 
+              {/* Validation Warnings */}
+              {selectedStudent && markDialogHasDuplicate && (
+                <Alert className="bg-destructive/10 border-destructive/30">
+                  <Ban className="h-4 w-4 text-destructive" />
+                  <AlertDescription className="text-destructive">
+                    Attendance already marked for this student on {format(parseISO(classDate), 'dd MMM yyyy')}. Duplicate entries are not allowed.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {isMarkDateFuture && (
+                <Alert className="bg-destructive/10 border-destructive/30">
+                  <AlertTriangle className="h-4 w-4 text-destructive" />
+                  <AlertDescription className="text-destructive">
+                    Cannot mark attendance for future dates.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {selectedStudent && !markDialogHasDuplicate && !isMarkDateFuture && markDialogScheduledDays.length > 0 && !markDialogIsScheduledDay && (
+                <Alert className="bg-amber-500/10 border-amber-500/30">
+                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  <AlertDescription className="text-amber-700 dark:text-amber-400">
+                    This is not a scheduled day. Scheduled: {markDialogScheduledDays.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ') || 'None'}.
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {/* Date and Time */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Class Date <span className="text-destructive">*</span></Label>
-                  <Input type="date" value={classDate} onChange={(e) => setClassDate(e.target.value)} />
+                  <Input 
+                    type="date" 
+                    value={classDate} 
+                    onChange={(e) => setClassDate(e.target.value)}
+                    max={format(new Date(), 'yyyy-MM-dd')}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Class Time <span className="text-destructive">*</span></Label>
