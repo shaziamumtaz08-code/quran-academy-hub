@@ -898,19 +898,19 @@ export default function Attendance() {
 
         {/* Stats - Enhanced for Admin */}
         <div className={cn("grid gap-4", isAdmin ? "grid-cols-2 md:grid-cols-7" : "grid-cols-2 md:grid-cols-4")}>
-          <Card className={cn("text-center cursor-pointer transition-all hover:ring-2 hover:ring-primary/30", filter === 'all' && "ring-2 ring-primary")} onClick={() => setFilter('all')}>
+          <Card className={cn("text-center cursor-pointer transition-all hover:ring-2 hover:ring-primary/30", filter === 'all' && !showMissing && "ring-2 ring-primary")} onClick={() => { setFilter('all'); setShowMissing(false); }}>
             <CardContent className="pt-6">
               <p className="text-2xl font-serif font-bold text-foreground">{stats.total}</p>
               <p className="text-sm text-muted-foreground">Total Classes</p>
             </CardContent>
           </Card>
-          <Card className={cn("bg-emerald-light/10 border-emerald-light/20 text-center cursor-pointer transition-all hover:ring-2 hover:ring-emerald-light/30", filter === 'present' && "ring-2 ring-emerald-light")} onClick={() => setFilter(filter === 'present' ? 'all' : 'present')}>
+          <Card className={cn("bg-emerald-light/10 border-emerald-light/20 text-center cursor-pointer transition-all hover:ring-2 hover:ring-emerald-light/30", filter === 'present' && "ring-2 ring-emerald-light")} onClick={() => { setFilter(filter === 'present' ? 'all' : 'present'); setShowMissing(false); }}>
             <CardContent className="pt-6">
               <p className="text-2xl font-serif font-bold text-emerald-light">{stats.present}</p>
               <p className="text-sm text-emerald-light/80">Present</p>
             </CardContent>
           </Card>
-          <Card className={cn("bg-destructive/10 border-destructive/20 text-center cursor-pointer transition-all hover:ring-2 hover:ring-destructive/30", filter === 'student_absent' && "ring-2 ring-destructive")} onClick={() => setFilter(filter === 'student_absent' ? 'all' : 'student_absent')}>
+          <Card className={cn("bg-destructive/10 border-destructive/20 text-center cursor-pointer transition-all hover:ring-2 hover:ring-destructive/30", filter === 'student_absent' && "ring-2 ring-destructive")} onClick={() => { setFilter(filter === 'student_absent' ? 'all' : 'student_absent'); setShowMissing(false); }}>
             <CardContent className="pt-6">
               <p className="text-2xl font-serif font-bold text-destructive">{stats.studentAbsent}</p>
               <p className="text-sm text-destructive/80">Student Absent</p>
@@ -918,19 +918,19 @@ export default function Attendance() {
           </Card>
           {isAdmin && (
             <>
-              <Card className={cn("bg-accent/10 border-accent/20 text-center cursor-pointer transition-all hover:ring-2 hover:ring-accent/30", (filter === 'teacher_absent' || filter === 'teacher_leave') && "ring-2 ring-accent")} onClick={() => setFilter(filter === 'teacher_absent' ? 'all' : 'teacher_absent')}>
+              <Card className={cn("bg-accent/10 border-accent/20 text-center cursor-pointer transition-all hover:ring-2 hover:ring-accent/30", (filter === 'teacher_absent' || filter === 'teacher_leave') && "ring-2 ring-accent")} onClick={() => { setFilter(filter === 'teacher_absent' ? 'all' : 'teacher_absent'); setShowMissing(false); }}>
                 <CardContent className="pt-6">
                   <p className="text-2xl font-serif font-bold text-accent">{stats.teacherOff}</p>
                   <p className="text-sm text-accent/80">Teacher Off</p>
                 </CardContent>
               </Card>
-              <Card className={cn("bg-primary/10 border-primary/20 text-center cursor-pointer transition-all hover:ring-2 hover:ring-primary/30", filter === 'rescheduled' && "ring-2 ring-primary")} onClick={() => setFilter(filter === 'rescheduled' ? 'all' : 'rescheduled')}>
+              <Card className={cn("bg-primary/10 border-primary/20 text-center cursor-pointer transition-all hover:ring-2 hover:ring-primary/30", filter === 'rescheduled' && "ring-2 ring-primary")} onClick={() => { setFilter(filter === 'rescheduled' ? 'all' : 'rescheduled'); setShowMissing(false); }}>
                 <CardContent className="pt-6">
                   <p className="text-2xl font-serif font-bold text-primary">{stats.rescheduled}</p>
                   <p className="text-sm text-primary/80">Rescheduled</p>
                 </CardContent>
               </Card>
-              <Card className={cn("bg-muted text-center cursor-pointer transition-all hover:ring-2 hover:ring-muted-foreground/30", filter === 'holiday' && "ring-2 ring-muted-foreground")} onClick={() => setFilter(filter === 'holiday' ? 'all' : 'holiday')}>
+              <Card className={cn("bg-muted text-center cursor-pointer transition-all hover:ring-2 hover:ring-muted-foreground/30", filter === 'holiday' && "ring-2 ring-muted-foreground")} onClick={() => { setFilter(filter === 'holiday' ? 'all' : 'holiday'); setShowMissing(false); }}>
                 <CardContent className="pt-6">
                   <p className="text-2xl font-serif font-bold text-muted-foreground">{stats.holiday}</p>
                   <p className="text-sm text-muted-foreground">Holidays</p>
@@ -941,7 +941,7 @@ export default function Attendance() {
                   "bg-orange-500/10 border-orange-500/20 text-center cursor-pointer transition-all hover:ring-2 hover:ring-orange-500/30",
                   showMissing && "ring-2 ring-orange-500"
                 )} 
-                onClick={() => setShowMissing(!showMissing)}
+                onClick={() => { setShowMissing(!showMissing); if (!showMissing) setFilter('all'); }}
               >
                 <CardContent className="pt-6">
                   <p className="text-2xl font-serif font-bold text-orange-500">{missingCount}</p>
@@ -951,7 +951,7 @@ export default function Attendance() {
             </>
           )}
           {!isAdmin && (
-            <Card className={cn("bg-accent/10 border-accent/20 text-center cursor-pointer transition-all hover:ring-2 hover:ring-accent/30", filter === 'rescheduled' && "ring-2 ring-accent")} onClick={() => setFilter(filter === 'rescheduled' ? 'all' : 'rescheduled')}>
+            <Card className={cn("bg-accent/10 border-accent/20 text-center cursor-pointer transition-all hover:ring-2 hover:ring-accent/30", filter === 'rescheduled' && "ring-2 ring-accent")} onClick={() => { setFilter(filter === 'rescheduled' ? 'all' : 'rescheduled'); setShowMissing(false); }}>
               <CardContent className="pt-6">
                 <p className="text-2xl font-serif font-bold text-accent">{stats.rescheduled}</p>
                 <p className="text-sm text-accent/80">Rescheduled</p>
@@ -971,7 +971,15 @@ export default function Attendance() {
               className="pl-9"
             />
           </div>
-          <Select value={filter} onValueChange={setFilter}>
+          <Select value={showMissing ? 'missing' : filter} onValueChange={(val) => {
+            if (val === 'missing') {
+              setShowMissing(true);
+              setFilter('all');
+            } else {
+              setShowMissing(false);
+              setFilter(val);
+            }
+          }}>
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
@@ -980,6 +988,7 @@ export default function Attendance() {
               {STATUS_OPTIONS.map((opt) => (
                 <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
               ))}
+              {isAdmin && <SelectItem value="missing">Missing</SelectItem>}
             </SelectContent>
           </Select>
 
