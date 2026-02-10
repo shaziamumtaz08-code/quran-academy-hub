@@ -73,6 +73,8 @@ import {
   ArrowUp,
   ArrowDown,
   Download,
+  Archive,
+  ArchiveRestore,
 } from 'lucide-react';
 import { BulkUserImportDialog } from '@/components/users/BulkUserImportDialog';
 import { ExportUsersDialog } from '@/components/users/ExportUsersDialog';
@@ -569,7 +571,30 @@ export default function UserManagement() {
     },
   });
 
-  // Get unique countries and cities from users for filter dropdowns
+  // Archive/Unarchive user mutation
+  const archiveMutation = useMutation({
+    mutationFn: async ({ userId, archive }: { userId: string; archive: boolean }) => {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ archived_at: archive ? new Date().toISOString() : null })
+        .eq('id', userId);
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['users-with-roles'] });
+      toast({
+        title: variables.archive ? 'User Archived' : 'User Restored',
+        description: variables.archive ? 'User has been archived.' : 'User has been restored from archive.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to update archive status',
+        variant: 'destructive',
+      });
+    },
+  });
   const availableCountries = useMemo(() => {
     const countries = new Set<string>();
     users?.forEach(u => {
@@ -1210,16 +1235,28 @@ export default function UserManagement() {
                                   >
                                     <Edit className="h-4 w-4" />
                                   </Button>
-                                  {user.id !== currentUser?.id && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => setDeleteConfirmUser(user)}
-                                      className="text-destructive hover:text-destructive"
-                                      title="Delete user"
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
+                              {user.id !== currentUser?.id && (
+                                    <>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => archiveMutation.mutate({ userId: user.id, archive: !(user as any).archived_at })}
+                                        className={(user as any).archived_at ? "text-emerald-600 hover:text-emerald-700" : "text-amber-600 hover:text-amber-700"}
+                                        title={(user as any).archived_at ? "Unarchive user" : "Archive user"}
+                                        disabled={archiveMutation.isPending}
+                                      >
+                                        {(user as any).archived_at ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setDeleteConfirmUser(user)}
+                                        className="text-destructive hover:text-destructive"
+                                        title="Delete user"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </>
                                   )}
                                 </>
                               )}

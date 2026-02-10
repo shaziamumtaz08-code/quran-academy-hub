@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Upload, Link, FolderUp } from "lucide-react";
+import { Loader2, Upload, Link, FolderUp, Cloud } from "lucide-react";
 
 interface UploadFileDialogProps {
   open: boolean;
@@ -26,7 +26,7 @@ export function UploadFileDialog({
   onUploadFolder,
   onAddLink,
 }: UploadFileDialogProps) {
-  const [uploadType, setUploadType] = useState<"file" | "folder" | "link">("file");
+  const [uploadType, setUploadType] = useState<"file" | "folder" | "link" | "cloud">("file");
   const [files, setFiles] = useState<FileList | null>(null);
   const [folderFiles, setFolderFiles] = useState<{ files: File[]; paths: string[] } | null>(null);
   const [linkTitle, setLinkTitle] = useState("");
@@ -69,7 +69,6 @@ export function UploadFileDialog({
     for (let i = 0; i < fileList.length; i++) {
       const file = fileList[i];
       filesArray.push(file);
-      // webkitRelativePath contains the relative path including folder name
       pathsArray.push((file as any).webkitRelativePath || file.name);
     }
 
@@ -78,9 +77,16 @@ export function UploadFileDialog({
 
   const getFolderName = () => {
     if (!folderFiles || folderFiles.paths.length === 0) return null;
-    // Extract folder name from first path
     const firstPath = folderFiles.paths[0];
     return firstPath.split("/")[0];
+  };
+
+  const openGoogleDrivePicker = () => {
+    window.open("https://drive.google.com", "_blank");
+  };
+
+  const openOneDrivePicker = () => {
+    window.open("https://onedrive.live.com", "_blank");
   };
 
   const isValid =
@@ -88,7 +94,9 @@ export function UploadFileDialog({
       ? files && files.length > 0
       : uploadType === "folder"
       ? folderFiles && folderFiles.files.length > 0
-      : linkTitle.trim() && linkUrl.trim();
+      : uploadType === "link"
+      ? linkTitle.trim() && linkUrl.trim()
+      : false;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -98,7 +106,7 @@ export function UploadFileDialog({
         </DialogHeader>
         <div className="space-y-4 py-4">
           {/* Type toggle */}
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button
               type="button"
               variant={uploadType === "file" ? "default" : "outline"}
@@ -130,6 +138,16 @@ export function UploadFileDialog({
             >
               <Link className="h-4 w-4 mr-2" />
               Link
+            </Button>
+            <Button
+              type="button"
+              variant={uploadType === "cloud" ? "default" : "outline"}
+              onClick={() => setUploadType("cloud")}
+              className="flex-1"
+              size="sm"
+            >
+              <Cloud className="h-4 w-4 mr-2" />
+              Cloud
             </Button>
           </div>
 
@@ -174,6 +192,35 @@ export function UploadFileDialog({
                 </p>
               )}
             </div>
+          ) : uploadType === "cloud" ? (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Open your cloud storage, download the file(s), then upload them here. Or copy the sharing link and add it as a Link.
+              </p>
+              <div className="flex flex-col gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={openGoogleDrivePicker}
+                  className="justify-start gap-3 h-12"
+                >
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/1/12/Google_Drive_icon_%282020%29.svg" alt="Google Drive" className="h-5 w-5" />
+                  Open Google Drive
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={openOneDrivePicker}
+                  className="justify-start gap-3 h-12"
+                >
+                  <img src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Microsoft_Office_OneDrive_%282019%E2%80%93present%29.svg" alt="OneDrive" className="h-5 w-5" />
+                  Open OneDrive
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Tip: You can also paste a sharing link using the "Link" tab.
+              </p>
+            </div>
           ) : (
             <>
               <div className="space-y-2">
@@ -195,15 +242,17 @@ export function UploadFileDialog({
             </>
           )}
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={!isValid || loading}>
-            {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {uploadType === "file" ? "Upload" : uploadType === "folder" ? "Upload Folder" : "Add Link"}
-          </Button>
-        </DialogFooter>
+        {uploadType !== "cloud" && (
+          <DialogFooter>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={!isValid || loading}>
+              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {uploadType === "file" ? "Upload" : uploadType === "folder" ? "Upload Folder" : "Add Link"}
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

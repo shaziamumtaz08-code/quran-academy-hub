@@ -384,6 +384,7 @@ export type Database = {
         Row: {
           created_at: string
           criteria_values_json: Json | null
+          deleted_at: string | null
           exam_date: string
           examiner_id: string | null
           examiner_remarks: string | null
@@ -399,6 +400,7 @@ export type Database = {
         Insert: {
           created_at?: string
           criteria_values_json?: Json | null
+          deleted_at?: string | null
           exam_date: string
           examiner_id?: string | null
           examiner_remarks?: string | null
@@ -414,6 +416,7 @@ export type Database = {
         Update: {
           created_at?: string
           criteria_values_json?: Json | null
+          deleted_at?: string | null
           exam_date?: string
           examiner_id?: string | null
           examiner_remarks?: string | null
@@ -495,6 +498,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          deleted_at: string | null
           id: string
           name: string
           parent_id: string | null
@@ -503,6 +507,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           id?: string
           name: string
           parent_id?: string | null
@@ -511,6 +516,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           id?: string
           name?: string
           parent_id?: string | null
@@ -657,6 +663,7 @@ export type Database = {
       profiles: {
         Row: {
           age: number | null
+          archived_at: string | null
           city: string | null
           country: string | null
           country_code: string | null
@@ -678,6 +685,7 @@ export type Database = {
         }
         Insert: {
           age?: number | null
+          archived_at?: string | null
           city?: string | null
           country?: string | null
           country_code?: string | null
@@ -699,6 +707,7 @@ export type Database = {
         }
         Update: {
           age?: number | null
+          archived_at?: string | null
           city?: string | null
           country?: string | null
           country_code?: string | null
@@ -723,6 +732,7 @@ export type Database = {
       resources: {
         Row: {
           created_at: string
+          deleted_at: string | null
           folder: string
           folder_id: string | null
           id: string
@@ -736,6 +746,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           folder: string
           folder_id?: string | null
           id?: string
@@ -749,6 +760,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           folder?: string
           folder_id?: string | null
           id?: string
