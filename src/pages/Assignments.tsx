@@ -7,7 +7,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Users, GraduationCap, Trash2, Loader2, UserPlus, BookOpen, Pencil, Upload, Filter } from 'lucide-react';
+import { Users, GraduationCap, Trash2, Loader2, UserPlus, BookOpen, Pencil, Upload, Filter, ArrowRightLeft } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -52,6 +60,8 @@ export default function Assignments() {
   const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<AssignmentStatus | 'all'>('active');
+  const [reassignDialog, setReassignDialog] = useState<Assignment | null>(null);
+  const [reassignTeacherId, setReassignTeacherId] = useState('');
 
   // Fetch teachers
   const { data: teachers = [], isLoading: loadingTeachers } = useQuery({
@@ -257,6 +267,28 @@ export default function Assignments() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
       toast({ title: 'Updated', description: 'Assignment status updated' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // Reassign teacher mutation - preserves student, subject, schedules
+  const reassignMutation = useMutation({
+    mutationFn: async ({ id, newTeacherId }: { id: string; newTeacherId: string }) => {
+      const { error } = await supabase
+        .from('student_teacher_assignments')
+        .update({ teacher_id: newTeacherId })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['teachers-list'] });
+      queryClient.invalidateQueries({ queryKey: ['students-list'] });
+      toast({ title: 'Reassigned', description: 'Teacher has been reassigned. Student details, subject, and schedules are preserved.' });
+      setReassignDialog(null);
+      setReassignTeacherId('');
     },
     onError: (error: any) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -556,11 +588,12 @@ export default function Assignments() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Teacher</TableHead>
-                    <TableHead>Student</TableHead>
-                    <TableHead>Subject</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-center">Action</TableHead>
+                     <TableHead>Teacher</TableHead>
+                     <TableHead>Student</TableHead>
+                     <TableHead>Subject</TableHead>
+                     <TableHead>Status</TableHead>
+                     <TableHead className="text-center">Reassign</TableHead>
+                     <TableHead className="text-center">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -612,6 +645,21 @@ export default function Assignments() {
                         </Select>
                       </TableCell>
                       <TableCell className="text-center">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setReassignDialog(assignment);
+                            setReassignTeacherId('');
+                          }}
+                          title="Reassign teacher"
+                        >
+                          <ArrowRightLeft className="h-4 w-4 text-primary" />
+                        </Button>
+                      </TableCell>
+                      <TableCell className="text-center">
                         <div className="flex items-center justify-center gap-1">
                           <Button
                             variant="ghost"
@@ -645,6 +693,58 @@ export default function Assignments() {
             )}
           </CardContent>
         </Card>
+
+        {/* Teacher Reassignment Dialog */}
+        <Dialog open={!!reassignDialog} onOpenChange={(open) => { if (!open) { setReassignDialog(null); setReassignTeacherId(''); } }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Reassign Teacher</DialogTitle>
+              <DialogDescription>
+                Change the teacher for <strong>{reassignDialog?.student_name}</strong>'s assignment.
+                Student details, subject ({reassignDialog?.subject_name || 'N/A'}), and existing schedules will be preserved.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Current Teacher</Label>
+                <p className="text-sm font-medium text-muted-foreground">{reassignDialog?.teacher_name}</p>
+              </div>
+              <div className="space-y-2">
+                <Label>New Teacher *</Label>
+                <Select value={reassignTeacherId} onValueChange={setReassignTeacherId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select new teacher..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teachers
+                      .filter(t => t.id !== reassignDialog?.teacher_id)
+                      .map((teacher) => (
+                        <SelectItem key={teacher.id} value={teacher.id}>
+                          {teacher.full_name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setReassignDialog(null); setReassignTeacherId(''); }}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (reassignDialog && reassignTeacherId) {
+                    reassignMutation.mutate({ id: reassignDialog.id, newTeacherId: reassignTeacherId });
+                  }
+                }}
+                disabled={!reassignTeacherId || reassignMutation.isPending}
+              >
+                {reassignMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Reassign
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

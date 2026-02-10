@@ -180,6 +180,42 @@ serve(async (req) => {
 
       return json(200, { id: examData?.id, updated: true, total_marks, max_total_marks, percentage }, requestOrigin);
     } else {
+      // Check for existing record (same student + template + exam_date) for overwrite
+      const { data: existingExam } = await adminClient
+        .from("exams")
+        .select("id")
+        .eq("student_id", student_id)
+        .eq("template_id", template_id)
+        .eq("exam_date", exam_date)
+        .is("deleted_at", null)
+        .maybeSingle();
+
+      if (existingExam) {
+        // OVERWRITE existing record
+        const { data: examData, error: examError } = await adminClient
+          .from("exams")
+          .update({
+            examiner_id: caller.id,
+            total_marks,
+            max_total_marks,
+            percentage,
+            criteria_values_json: criteria_entries as unknown,
+            examiner_remarks,
+            public_remarks,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existingExam.id)
+          .select("id")
+          .single();
+
+        if (examError) {
+          console.error("Overwrite exam failed:", examError.message);
+          return json(500, { error: "Failed to overwrite report card" }, requestOrigin);
+        }
+
+        return json(200, { id: examData?.id, updated: true, overwritten: true, total_marks, max_total_marks, percentage }, requestOrigin);
+      }
+
       // INSERT new exam record
       const { data: examData, error: examError } = await adminClient
         .from("exams")
