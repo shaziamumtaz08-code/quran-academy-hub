@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertTriangle, Calendar, User, Search, X, Filter } from 'lucide-react';
+import { AlertTriangle, Calendar, User, Search, X, Filter, ArrowUpDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isAfter } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -45,6 +45,8 @@ export function MissingAttendanceSection({
   const [teacherFilter, setTeacherFilter] = useState('all');
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortField, setSortField] = useState<'date' | 'student' | 'teacher' | 'subject' | 'time'>('date');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
   // Compute date range
   const { startDate, endDate } = useMemo(() => {
@@ -179,7 +181,7 @@ export function MissingAttendanceSection({
   }, [missingRecords]);
 
   // Apply filters
-  const filteredMissing = useMemo(() => {
+  const filteredAndSortedMissing = useMemo(() => {
     let records = missingRecords;
 
     if (studentFilter !== 'all') {
@@ -200,8 +202,30 @@ export function MissingAttendanceSection({
       );
     }
 
+    // Sort
+    const dir = sortDir === 'asc' ? 1 : -1;
+    records = [...records].sort((a, b) => {
+      switch (sortField) {
+        case 'date': return dir * a.date.localeCompare(b.date);
+        case 'student': return dir * a.studentName.localeCompare(b.studentName);
+        case 'teacher': return dir * a.teacherName.localeCompare(b.teacherName);
+        case 'subject': return dir * (a.subjectName || '').localeCompare(b.subjectName || '');
+        case 'time': return dir * a.scheduledTime.localeCompare(b.scheduledTime);
+        default: return 0;
+      }
+    });
+
     return records;
-  }, [missingRecords, studentFilter, teacherFilter, subjectFilter, searchQuery]);
+  }, [missingRecords, studentFilter, teacherFilter, subjectFilter, searchQuery, sortField, sortDir]);
+
+  const toggleSort = (field: typeof sortField) => {
+    if (sortField === field) {
+      setSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDir('asc');
+    }
+  };
 
   const isLoading = schedulesLoading || attendanceLoading;
 
@@ -218,7 +242,7 @@ export function MissingAttendanceSection({
               Missing Attendance Records
             </h3>
             <Badge variant="destructive" className="ml-2">
-              {filteredMissing.length}
+              {filteredAndSortedMissing.length}
             </Badge>
           </div>
           <Button variant="ghost" size="sm" onClick={onClose}>
@@ -286,7 +310,7 @@ export function MissingAttendanceSection({
               <Skeleton key={i} className="h-10 w-full" />
             ))}
           </div>
-        ) : filteredMissing.length === 0 ? (
+        ) : filteredAndSortedMissing.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <Calendar className="h-10 w-10 mx-auto mb-3 opacity-30" />
             <p className="text-sm">No missing attendance records found</p>
@@ -296,15 +320,18 @@ export function MissingAttendanceSection({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Teacher</TableHead>
-                  <TableHead>Subject</TableHead>
-                  <TableHead>Scheduled Time</TableHead>
+                  {([['date', 'Date'], ['student', 'Student'], ['teacher', 'Teacher'], ['subject', 'Subject'], ['time', 'Scheduled Time']] as const).map(([field, label]) => (
+                    <TableHead key={field} className="cursor-pointer select-none hover:bg-muted/50" onClick={() => toggleSort(field)}>
+                      <span className="flex items-center gap-1">
+                        {label}
+                        <ArrowUpDown className={cn("h-3 w-3", sortField === field ? "text-foreground" : "text-muted-foreground/40")} />
+                      </span>
+                    </TableHead>
+                  ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredMissing.map((record, idx) => (
+                {filteredAndSortedMissing.map((record, idx) => (
                   <TableRow key={`${record.studentId}-${record.date}-${idx}`} className="bg-destructive/5 hover:bg-destructive/10">
                     <TableCell>
                       <span className="flex items-center gap-2">
