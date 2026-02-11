@@ -57,6 +57,7 @@ const navItems: NavItem[] = [
   { label: 'Schedules', href: '/schedules', icon: Calendar, roles: ['super_admin', 'admin'] },
   { label: 'Zoom Management', href: '/zoom-management', icon: Video, roles: ['super_admin', 'admin'] },
   { label: 'Integrity Audit', href: '/integrity-audit', icon: AlertTriangle, roles: ['super_admin', 'admin'] },
+  { label: 'Course Management', href: '/courses', icon: Users, roles: ['super_admin', 'admin', 'admin_academic'] },
   { label: 'Teachers', href: '/teachers', icon: Users, permission: 'teachers.view' },
   { label: 'Students', href: '/students', icon: GraduationCap, permission: 'students.view' },
   { label: 'Attendance', href: '/attendance', icon: ClipboardCheck, permission: 'attendance.view' },
