@@ -46,10 +46,12 @@ export type Database = {
           absence_type: string | null
           ayah_from: number | null
           ayah_to: number | null
+          branch_id: string | null
           class_date: string
           class_time: string
           course_id: string | null
           created_at: string
+          division_id: string | null
           duration_minutes: number
           homework: string | null
           id: string
@@ -90,10 +92,12 @@ export type Database = {
           absence_type?: string | null
           ayah_from?: number | null
           ayah_to?: number | null
+          branch_id?: string | null
           class_date?: string
           class_time: string
           course_id?: string | null
           created_at?: string
+          division_id?: string | null
           duration_minutes?: number
           homework?: string | null
           id?: string
@@ -134,10 +138,12 @@ export type Database = {
           absence_type?: string | null
           ayah_from?: number | null
           ayah_to?: number | null
+          branch_id?: string | null
           class_date?: string
           class_time?: string
           course_id?: string | null
           created_at?: string
+          division_id?: string | null
           duration_minutes?: number
           homework?: string | null
           id?: string
@@ -176,10 +182,24 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "attendance_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "attendance_course_id_fkey"
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
             referencedColumns: ["id"]
           },
           {
@@ -194,6 +214,50 @@ export type Database = {
             columns: ["teacher_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      branches: {
+        Row: {
+          address: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          org_id: string
+          timezone: string | null
+          type: Database["public"]["Enums"]["branch_type"]
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          org_id: string
+          timezone?: string | null
+          type?: Database["public"]["Enums"]["branch_type"]
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          org_id?: string
+          timezone?: string | null
+          type?: Database["public"]["Enums"]["branch_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branches_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -242,7 +306,9 @@ export type Database = {
       }
       courses: {
         Row: {
+          branch_id: string | null
           created_at: string
+          division_id: string | null
           end_date: string | null
           id: string
           is_group_class: boolean
@@ -255,7 +321,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          branch_id?: string | null
           created_at?: string
+          division_id?: string | null
           end_date?: string | null
           id?: string
           is_group_class?: boolean
@@ -268,7 +336,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          branch_id?: string | null
           created_at?: string
+          division_id?: string | null
           end_date?: string | null
           id?: string
           is_group_class?: boolean
@@ -282,6 +352,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "courses_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "courses_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "courses_subject_id_fkey"
             columns: ["subject_id"]
             isOneToOne: false
@@ -293,6 +377,44 @@ export type Database = {
             columns: ["teacher_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      divisions: {
+        Row: {
+          branch_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          model_type: Database["public"]["Enums"]["division_model"]
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          model_type: Database["public"]["Enums"]["division_model"]
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          model_type?: Database["public"]["Enums"]["division_model"]
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "divisions_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
             referencedColumns: ["id"]
           },
         ]
@@ -736,6 +858,36 @@ export type Database = {
         }
         Relationships: []
       }
+      organizations: {
+        Row: {
+          created_at: string
+          id: string
+          logo_url: string | null
+          name: string
+          settings: Json
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          name: string
+          settings?: Json
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          name?: string
+          settings?: Json
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       permission_exceptions: {
         Row: {
           created_at: string
@@ -1016,9 +1168,11 @@ export type Database = {
       schedules: {
         Row: {
           assignment_id: string | null
+          branch_id: string | null
           course_id: string | null
           created_at: string
           day_of_week: string
+          division_id: string | null
           duration_minutes: number
           id: string
           is_active: boolean
@@ -1028,9 +1182,11 @@ export type Database = {
         }
         Insert: {
           assignment_id?: string | null
+          branch_id?: string | null
           course_id?: string | null
           created_at?: string
           day_of_week: string
+          division_id?: string | null
           duration_minutes?: number
           id?: string
           is_active?: boolean
@@ -1040,9 +1196,11 @@ export type Database = {
         }
         Update: {
           assignment_id?: string | null
+          branch_id?: string | null
           course_id?: string | null
           created_at?: string
           day_of_week?: string
+          division_id?: string | null
           duration_minutes?: number
           id?: string
           is_active?: boolean
@@ -1059,10 +1217,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "schedules_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "schedules_course_id_fkey"
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedules_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
             referencedColumns: ["id"]
           },
         ]
@@ -1296,7 +1468,9 @@ export type Database = {
       }
       student_teacher_assignments: {
         Row: {
+          branch_id: string | null
           created_at: string
+          division_id: string | null
           id: string
           status: Database["public"]["Enums"]["assignment_status"]
           student_id: string
@@ -1306,7 +1480,9 @@ export type Database = {
           teacher_timezone: string | null
         }
         Insert: {
+          branch_id?: string | null
           created_at?: string
+          division_id?: string | null
           id?: string
           status?: Database["public"]["Enums"]["assignment_status"]
           student_id: string
@@ -1316,7 +1492,9 @@ export type Database = {
           teacher_timezone?: string | null
         }
         Update: {
+          branch_id?: string | null
           created_at?: string
+          division_id?: string | null
           id?: string
           status?: Database["public"]["Enums"]["assignment_status"]
           student_id?: string
@@ -1326,6 +1504,20 @@ export type Database = {
           teacher_timezone?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "student_teacher_assignments_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_teacher_assignments_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "student_teacher_assignments_student_id_fkey"
             columns: ["student_id"]
@@ -1477,6 +1669,55 @@ export type Database = {
         }
         Relationships: []
       }
+      user_context: {
+        Row: {
+          branch_id: string
+          created_at: string
+          division_id: string
+          id: string
+          is_default: boolean
+          user_id: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          division_id: string
+          id?: string
+          is_default?: boolean
+          user_id: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          division_id?: string
+          id?: string
+          is_default?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_context_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_context_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_context_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1610,6 +1851,13 @@ export type Database = {
         Args: { _teacher_id: string }
         Returns: string[]
       }
+      get_user_default_context: {
+        Args: { _user_id: string }
+        Returns: {
+          branch_id: string
+          division_id: string
+        }[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -1645,6 +1893,8 @@ export type Database = {
         | "admin_academic"
       assignment_status: "active" | "paused" | "completed"
       attendance_action: "join_intent" | "leave"
+      branch_type: "online" | "onsite"
+      division_model: "one_to_one" | "group"
       exam_tenure: "weekly" | "monthly" | "quarterly" | "yearly"
       grading_style: "numeric" | "rubric"
       permission_type:
@@ -1828,6 +2078,8 @@ export const Constants = {
       ],
       assignment_status: ["active", "paused", "completed"],
       attendance_action: ["join_intent", "leave"],
+      branch_type: ["online", "onsite"],
+      division_model: ["one_to_one", "group"],
       exam_tenure: ["weekly", "monthly", "quarterly", "yearly"],
       grading_style: ["numeric", "rubric"],
       permission_type: [
