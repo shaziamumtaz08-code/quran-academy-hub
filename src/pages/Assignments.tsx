@@ -19,6 +19,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useDivision } from '@/contexts/DivisionContext';
 import { BulkAssignmentImportDialog } from '@/components/assignments/BulkAssignmentImportDialog';
 
 const STATUS_CONFIG = {
@@ -54,6 +55,7 @@ interface Assignment {
 export default function Assignments() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { activeDivision } = useDivision();
   const [selectedTeacher, setSelectedTeacher] = useState<string>('');
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<string>('');
@@ -132,9 +134,9 @@ export default function Assignments() {
 
   // Fetch existing assignments
   const { data: assignments = [], isLoading: loadingAssignments } = useQuery({
-    queryKey: ['student-teacher-assignments'],
+    queryKey: ['student-teacher-assignments', activeDivision?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('student_teacher_assignments')
         .select(`
           id,
@@ -149,7 +151,11 @@ export default function Assignments() {
         `)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (activeDivision?.id) {
+        query = query.eq('division_id', activeDivision.id);
+      }
+
+      const { data, error } = await query;
       return (data || []).map((row: any) => ({
         id: row.id,
         teacher_id: row.teacher_id,

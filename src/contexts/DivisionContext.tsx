@@ -1,0 +1,180 @@
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+
+export type DivisionModelType = 'one_to_one' | 'group';
+export type BranchType = 'online' | 'onsite';
+
+export interface Division {
+  id: string;
+  name: string;
+  model_type: DivisionModelType;
+  branch_id: string;
+  is_active: boolean;
+}
+
+export interface Branch {
+  id: string;
+  name: string;
+  type: BranchType;
+  org_id: string;
+  timezone: string | null;
+}
+
+export interface DivisionContextEntry {
+  id: string;
+  branch_id: string;
+  division_id: string;
+  is_default: boolean;
+  branch?: Branch;
+  division?: Division;
+}
+
+interface DivisionContextType {
+  /** All contexts the user has access to */
+  userContexts: DivisionContextEntry[];
+  /** The currently active division */
+  activeDivision: Division | null;
+  /** The currently active branch */
+  activeBranch: Branch | null;
+  /** Set the active division by its ID */
+  setActiveDivisionId: (divisionId: string) => void;
+  /** The active division's model type shortcut */
+  activeModelType: DivisionModelType | null;
+  /** Whether division data is still loading */
+  isLoading: boolean;
+  /** Formatted switcher options */
+  switcherOptions: { id: string; label: string; divisionId: string; branchId: string; modelType: DivisionModelType }[];
+}
+
+const DivisionContext = createContext<DivisionContextType | undefined>(undefined);
+
+const DIVISION_STORAGE_KEY = 'lms_active_division_id';
+
+export function DivisionProvider({ children }: { children: ReactNode }) {
+  const { user, isLoading: authLoading } = useAuth();
+  const [userContexts, setUserContexts] = useState<DivisionContextEntry[]>([]);
+  const [activeDivisionId, setActiveDivisionIdState] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(DIVISION_STORAGE_KEY);
+    } catch {
+      return null;
+    }
+  });
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [divisions, setDivisions] = useState<Division[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch user contexts, branches, and divisions
+  useEffect(() => {
+    if (!user?.id || authLoading) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchContextData = async () => {
+      setIsLoading(true);
+      try {
+        // Fetch all in parallel
+        const [contextsRes, branchesRes, divisionsRes] = await Promise.all([
+          supabase.from('user_context').select('*').eq('user_id', user.id),
+          supabase.from('branches').select('*').eq('is_active', true),
+          supabase.from('divisions').select('*').eq('is_active', true),
+        ]);
+
+        const ctxs = contextsRes.data || [];
+        const brs = (branchesRes.data || []) as Branch[];
+        const divs = (divisionsRes.data || []) as Division[];
+
+        setBranches(brs);
+        setDivisions(divs);
+
+        // Enrich contexts with branch/division objects
+        const enriched: DivisionContextEntry[] = ctxs.map(ctx => ({
+          ...ctx,
+          branch: brs.find(b => b.id === ctx.branch_id),
+          division: divs.find(d => d.id === ctx.division_id),
+        }));
+
+        setUserContexts(enriched);
+
+        // Set default active division if none stored
+        if (!activeDivisionId || !divs.some(d => d.id === activeDivisionId)) {
+          const defaultCtx = enriched.find(c => c.is_default) || enriched[0];
+          if (defaultCtx) {
+            setActiveDivisionIdState(defaultCtx.division_id);
+            localStorage.setItem(DIVISION_STORAGE_KEY, defaultCtx.division_id);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching division context:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchContextData();
+  }, [user?.id, authLoading]);
+
+  const setActiveDivisionId = (divisionId: string) => {
+    setActiveDivisionIdState(divisionId);
+    try {
+      localStorage.setItem(DIVISION_STORAGE_KEY, divisionId);
+    } catch {
+      // Ignore storage errors
+    }
+  };
+
+  const activeDivision = useMemo(() => {
+    return divisions.find(d => d.id === activeDivisionId) || null;
+  }, [divisions, activeDivisionId]);
+
+  const activeBranch = useMemo(() => {
+    if (!activeDivision) return null;
+    return branches.find(b => b.id === activeDivision.branch_id) || null;
+  }, [branches, activeDivision]);
+
+  const activeModelType = activeDivision?.model_type || null;
+
+  // Build switcher options from user's authorized contexts
+  const switcherOptions = useMemo(() => {
+    // Deduplicate by division_id
+    const seen = new Set<string>();
+    return userContexts
+      .filter(ctx => ctx.division && ctx.branch)
+      .filter(ctx => {
+        if (seen.has(ctx.division_id)) return false;
+        seen.add(ctx.division_id);
+        return true;
+      })
+      .map(ctx => ({
+        id: ctx.id,
+        label: `${ctx.branch!.name} — ${ctx.division!.name}`,
+        divisionId: ctx.division_id,
+        branchId: ctx.branch_id,
+        modelType: ctx.division!.model_type,
+      }));
+  }, [userContexts]);
+
+  return (
+    <DivisionContext.Provider value={{
+      userContexts,
+      activeDivision,
+      activeBranch,
+      setActiveDivisionId,
+      activeModelType,
+      isLoading,
+      switcherOptions,
+    }}>
+      {children}
+    </DivisionContext.Provider>
+  );
+}
+
+export function useDivision() {
+  const context = useContext(DivisionContext);
+  if (context === undefined) {
+    throw new Error('useDivision must be used within a DivisionProvider');
+  }
+  return context;
+}

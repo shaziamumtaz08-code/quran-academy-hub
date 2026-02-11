@@ -18,6 +18,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDivision } from '@/contexts/DivisionContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format, startOfMonth, endOfMonth, parseISO, startOfWeek, endOfWeek, getDay, isAfter } from 'date-fns';
@@ -118,6 +119,7 @@ const REASON_CATEGORIES: { value: ReasonCategory; label: string }[] = [
 
 export default function Attendance() {
   const { profile, user, activeRole } = useAuth();
+  const { activeDivision } = useDivision();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -468,7 +470,7 @@ export default function Attendance() {
 
   // Fetch attendance records with explicit role-based filters
   const { data: attendanceRecords, isLoading } = useQuery({
-    queryKey: ['attendance', user?.id, dateMode, monthFilter, dateFrom, dateTo, activeRole],
+    queryKey: ['attendance', user?.id, dateMode, monthFilter, dateFrom, dateTo, activeRole, activeDivision?.id],
     queryFn: async () => {
       if (!user?.id) return [];
 
@@ -526,6 +528,11 @@ export default function Attendance() {
         .gte('class_date', startDate)
         .lte('class_date', endDate)
         .order('class_date', { ascending: false });
+
+      // Filter by active division
+      if (activeDivision?.id) {
+        query = query.eq('division_id', activeDivision.id);
+      }
 
       // Apply explicit role-based filters (not relying on RLS for multi-role users)
       if (isTeacher) {
