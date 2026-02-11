@@ -20,6 +20,8 @@ const FIELD_HEADERS: Record<string, string> = {
   status: "Status",
   gender: "Gender",
   age: "Age",
+  country: "Country",
+  city: "City",
   created_at: "Created Date",
   password: "Password",
 };
@@ -159,6 +161,12 @@ Deno.serve(async (req) => {
             break;
           case "age":
             row[FIELD_HEADERS[field]] = profile.age?.toString() || "";
+            break;
+          case "country":
+            row[FIELD_HEADERS[field]] = profile.country || "";
+            break;
+          case "city":
+            row[FIELD_HEADERS[field]] = profile.city || "";
             break;
           case "created_at":
             row[FIELD_HEADERS[field]] = profile.created_at 
