@@ -1884,6 +1884,10 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_enrolled_in_course: {
+        Args: { _course_id: string; _student_id: string }
+        Returns: boolean
+      }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       release_license: {
         Args: { _session_id: string; _teacher_id: string }
