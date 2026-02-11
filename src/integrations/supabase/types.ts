@@ -1302,6 +1302,7 @@ export type Database = {
           calculated_daily_target: number | null
           created_at: string
           daily_target: number
+          division_id: string | null
           goals: string | null
           id: string
           lesson_number_from: number | null
@@ -1335,6 +1336,7 @@ export type Database = {
           calculated_daily_target?: number | null
           created_at?: string
           daily_target?: number
+          division_id?: string | null
           goals?: string | null
           id?: string
           lesson_number_from?: number | null
@@ -1368,6 +1370,7 @@ export type Database = {
           calculated_daily_target?: number | null
           created_at?: string
           daily_target?: number
+          division_id?: string | null
           goals?: string | null
           id?: string
           lesson_number_from?: number | null
@@ -1405,6 +1408,13 @@ export type Database = {
             columns: ["assignment_id"]
             isOneToOne: false
             referencedRelation: "student_teacher_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_monthly_plans_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
             referencedColumns: ["id"]
           },
           {
