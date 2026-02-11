@@ -627,7 +627,7 @@ export default function Resources() {
               <Button 
                 variant="outline" 
                 onClick={() => setNewFolderOpen(true)}
-                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                className="bg-primary text-primary-foreground border-primary hover:bg-primary/90 shadow-md"
               >
                 <FolderPlus className="h-4 w-4 mr-2" />
                 New Folder
