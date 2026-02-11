@@ -27,6 +27,16 @@ import {
   Settings,
   MessageSquare,
   CreditCard,
+  Layers,
+  UserCheck,
+  Bell,
+  Wallet,
+  Archive,
+  CalendarClock,
+  Megaphone,
+  ClipboardList,
+  Award,
+  Cog,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -53,11 +63,19 @@ interface NavItem {
   roles?: string[];
 }
 
-interface NavGroup {
+interface NavSubGroup {
   id: string;
   label: string;
   icon: React.ElementType;
   items: NavItem[];
+}
+
+interface NavGroup {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  items?: NavItem[];
+  subGroups?: NavSubGroup[];
 }
 
 // Standalone items (always top-level)
@@ -65,32 +83,62 @@ const standaloneItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: 'dashboard.admin' },
 ];
 
-// Grouped navigation
+// Grouped navigation — organized by operational domain
 const navGroups: NavGroup[] = [
+  {
+    id: 'teaching-models',
+    label: 'Teaching Models',
+    icon: Layers,
+    subGroups: [
+      {
+        id: 'one-to-one',
+        label: 'One-to-One',
+        icon: UserCheck,
+        items: [
+          { label: 'Assignments', href: '/assignments', icon: Users, roles: ['super_admin', 'admin'] },
+          { label: '1:1 Schedules', href: '/schedules', icon: Calendar, roles: ['super_admin', 'admin'] },
+        ],
+      },
+      {
+        id: 'group-batches',
+        label: 'Group / Batches',
+        icon: GraduationCap,
+        items: [
+          { label: 'Course Management', href: '/courses', icon: BookOpen, roles: ['super_admin', 'admin', 'admin_academic'] },
+          { label: 'Batch Schedules', href: '/schedules', icon: CalendarClock, roles: ['super_admin', 'admin'] },
+        ],
+      },
+    ],
+  },
   {
     id: 'academics',
     label: 'Academics',
     icon: BookOpen,
     items: [
-      { label: 'Course Management', href: '/courses', icon: BookOpen, roles: ['super_admin', 'admin', 'admin_academic'] },
-      { label: '1:1 Assignments', href: '/assignments', icon: Users, roles: ['super_admin', 'admin'] },
-      { label: '1:1 Schedules', href: '/schedules', icon: Calendar, roles: ['super_admin', 'admin'] },
       { label: 'Attendance', href: '/attendance', icon: ClipboardCheck, permission: 'attendance.view' },
       { label: 'Monthly Planning', href: '/monthly-planning', icon: Target, roles: ['super_admin', 'admin', 'teacher'] },
       { label: 'Subjects', href: '/subjects', icon: BookOpen, roles: ['super_admin', 'admin'] },
-      { label: 'Exam Report Template', href: '/report-card-templates', icon: FileText, roles: ['super_admin', 'admin', 'examiner'] },
-      { label: 'Generate Exam Report', href: '/generate-report-card', icon: ClipboardCheck, roles: ['super_admin', 'admin', 'examiner'] },
-      { label: 'Student Exam Reports', href: '/student-reports', icon: BarChart3, roles: ['super_admin', 'admin', 'examiner', 'teacher'] },
-      { label: 'Academic Reports', href: '/reports', icon: FileText, permission: 'reports.view' },
-      { label: 'Zoom Management', href: '/zoom-management', icon: Video, roles: ['super_admin', 'admin'] },
+    ],
+    subGroups: [
+      {
+        id: 'exam-center',
+        label: 'Exam Center',
+        icon: Award,
+        items: [
+          { label: 'Report Templates', href: '/report-card-templates', icon: FileText, roles: ['super_admin', 'admin', 'examiner'] },
+          { label: 'Generate Reports', href: '/generate-report-card', icon: ClipboardCheck, roles: ['super_admin', 'admin', 'examiner'] },
+          { label: 'Student Reports', href: '/student-reports', icon: BarChart3, roles: ['super_admin', 'admin', 'examiner', 'teacher'] },
+          { label: 'Academic Reports', href: '/reports', icon: FileText, permission: 'reports.view' },
+        ],
+      },
     ],
   },
   {
-    id: 'users',
-    label: 'Users & Roles',
+    id: 'people',
+    label: 'People',
     icon: Users,
     items: [
-      { label: 'User Management', href: '/user-management', icon: Shield, roles: ['super_admin', 'admin'] },
+      { label: 'All Users', href: '/user-management', icon: Shield, roles: ['super_admin', 'admin'] },
       { label: 'Teachers', href: '/teachers', icon: Users, permission: 'teachers.view' },
       { label: 'Students', href: '/students', icon: GraduationCap, permission: 'students.view' },
     ],
@@ -100,8 +148,16 @@ const navGroups: NavGroup[] = [
     label: 'Finance',
     icon: DollarSign,
     items: [
-      { label: 'Payments', href: '/payments', icon: CreditCard, permission: 'payments.view' },
+      { label: 'Student Fees', href: '/payments', icon: CreditCard, permission: 'payments.view' },
       { label: 'KPI', href: '/kpi', icon: BarChart3, roles: ['super_admin', 'admin'] },
+    ],
+  },
+  {
+    id: 'communication',
+    label: 'Communication',
+    icon: MessageSquare,
+    items: [
+      { label: 'Notifications', href: '/notifications', icon: Bell, roles: ['super_admin', 'admin'] },
     ],
   },
   {
@@ -109,6 +165,7 @@ const navGroups: NavGroup[] = [
     label: 'System',
     icon: Settings,
     items: [
+      { label: 'Zoom Engine', href: '/zoom-management', icon: Video, roles: ['super_admin', 'admin'] },
       { label: 'Integrity Audit', href: '/integrity-audit', icon: AlertTriangle, roles: ['super_admin', 'admin'] },
       { label: 'Resources', href: '/resources', icon: FolderOpen },
     ],
@@ -162,32 +219,49 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     if (item.href === '/dashboard') return true;
     if (item.roles && activeRole && item.roles.includes(activeRole)) return true;
     if (item.permission && hasPermission(item.permission)) return true;
-    // Resources visible to all authenticated users
     if (item.href === '/resources') return true;
     return false;
   }, [activeRole, hasPermission]);
+
+  // Helper: get all nav items from a group (including sub-groups)
+  const getAllGroupItems = useCallback((group: NavGroup): NavItem[] => {
+    const direct = group.items ?? [];
+    const nested = (group.subGroups ?? []).flatMap(sg => sg.items);
+    return [...direct, ...nested];
+  }, []);
 
   // Filter groups: only show groups that have at least one visible item
   const visibleGroups = useMemo(() => {
     return navGroups.map(group => ({
       ...group,
-      items: group.items.filter(isItemVisible),
-    })).filter(group => group.items.length > 0);
+      items: (group.items ?? []).filter(isItemVisible),
+      subGroups: (group.subGroups ?? []).map(sg => ({
+        ...sg,
+        items: sg.items.filter(isItemVisible),
+      })).filter(sg => sg.items.length > 0),
+    })).filter(group => (group.items?.length ?? 0) > 0 || (group.subGroups?.length ?? 0) > 0);
   }, [isItemVisible]);
 
   const filteredStandaloneItems = useMemo(() => {
     return standaloneItems.filter(isItemVisible);
   }, [isItemVisible]);
 
-  // Auto-expand group containing the active route
+  // Auto-expand group & sub-group containing the active route
   useEffect(() => {
     for (const group of navGroups) {
-      if (group.items.some(item => location.pathname === item.href)) {
+      const allItems = getAllGroupItems(group);
+      if (allItems.some(item => location.pathname === item.href)) {
         expandGroup(group.id);
+        // Also expand any matching sub-group
+        for (const sg of (group.subGroups ?? [])) {
+          if (sg.items.some(item => location.pathname === item.href)) {
+            expandGroup(sg.id);
+          }
+        }
         break;
       }
     }
-  }, [location.pathname, expandGroup]);
+  }, [location.pathname, expandGroup, getAllGroupItems]);
 
   const handleLogout = async () => {
     await logout();
@@ -256,6 +330,36 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     );
   };
 
+  const renderSubGroup = (sg: NavSubGroup, closeMobile?: boolean) => {
+    const isOpen = expandedGroups[sg.id] ?? false;
+    return (
+      <Collapsible
+        key={sg.id}
+        open={isOpen}
+        onOpenChange={() => toggleGroup(sg.id)}
+      >
+        <CollapsibleTrigger className={cn(
+          "flex items-center justify-between w-full px-3 py-1.5 rounded-md text-xs font-semibold uppercase tracking-wider transition-all duration-200",
+          isOpen
+            ? "text-sidebar-primary"
+            : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
+        )}>
+          <span className="flex items-center gap-2">
+            <sg.icon className="h-3.5 w-3.5" />
+            {sg.label}
+          </span>
+          <ChevronDown className={cn(
+            "h-3 w-3 transition-transform duration-200",
+            isOpen && "rotate-180"
+          )} />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pl-2 mt-0.5 space-y-0.5">
+          {sg.items.map(item => renderNavLink(item, closeMobile))}
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  };
+
   const renderSidebarContent = (closeMobile?: boolean) => (
     <>
       {/* Standalone items */}
@@ -264,7 +368,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Grouped items */}
       {visibleGroups.map(group => {
         const isOpen = expandedGroups[group.id] ?? false;
-        const hasActiveChild = group.items.some(item => location.pathname === item.href);
 
         return (
           <Collapsible
@@ -288,7 +391,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               )} />
             </CollapsibleTrigger>
             <CollapsibleContent className="pl-3 mt-0.5 space-y-0.5">
-              {group.items.map(item => renderNavLink(item, closeMobile))}
+              {/* Direct items */}
+              {(group.items ?? []).map(item => renderNavLink(item, closeMobile))}
+              {/* Sub-groups */}
+              {(group.subGroups ?? []).map(sg => renderSubGroup(sg, closeMobile))}
             </CollapsibleContent>
           </Collapsible>
         );
