@@ -48,6 +48,7 @@ export type Database = {
           ayah_to: number | null
           class_date: string
           class_time: string
+          course_id: string | null
           created_at: string
           duration_minutes: number
           homework: string | null
@@ -91,6 +92,7 @@ export type Database = {
           ayah_to?: number | null
           class_date?: string
           class_time: string
+          course_id?: string | null
           created_at?: string
           duration_minutes?: number
           homework?: string | null
@@ -134,6 +136,7 @@ export type Database = {
           ayah_to?: number | null
           class_date?: string
           class_time?: string
+          course_id?: string | null
           created_at?: string
           duration_minutes?: number
           homework?: string | null
@@ -172,6 +175,13 @@ export type Database = {
           variance_reason?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "attendance_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "attendance_student_id_fkey"
             columns: ["student_id"]
