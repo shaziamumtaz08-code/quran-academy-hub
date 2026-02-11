@@ -1,9 +1,11 @@
 import React, { ReactNode, useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth, AppRole } from '@/contexts/AuthContext';
+import { useDivision } from '@/contexts/DivisionContext';
 import { Button } from '@/components/ui/button';
 import { PageBreadcrumb } from '@/components/layout/PageBreadcrumb';
 import { RoleSwitcher } from '@/components/layout/RoleSwitcher';
+import { DivisionSwitcher } from '@/components/layout/DivisionSwitcher';
 import {
   LayoutDashboard,
   Users,
@@ -83,94 +85,93 @@ const standaloneItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: 'dashboard.admin' },
 ];
 
-// Grouped navigation — organized by operational domain
-const navGroups: NavGroup[] = [
-  {
-    id: 'teaching-models',
-    label: 'Teaching Models',
-    icon: Layers,
-    subGroups: [
-      {
-        id: 'one-to-one',
-        label: 'One-to-One',
-        icon: UserCheck,
-        items: [
-          { label: 'Assignments', href: '/assignments', icon: Users, roles: ['super_admin', 'admin'] },
-          { label: '1:1 Schedules', href: '/schedules', icon: Calendar, roles: ['super_admin', 'admin'] },
-        ],
-      },
-      {
-        id: 'group-batches',
-        label: 'Group / Batches',
-        icon: GraduationCap,
-        items: [
-          { label: 'Course Management', href: '/courses', icon: BookOpen, roles: ['super_admin', 'admin', 'admin_academic'] },
-          { label: 'Batch Schedules', href: '/schedules', icon: CalendarClock, roles: ['super_admin', 'admin'] },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'academics',
-    label: 'Academics',
-    icon: BookOpen,
-    items: [
-      { label: 'Attendance', href: '/attendance', icon: ClipboardCheck, permission: 'attendance.view' },
-      { label: 'Monthly Planning', href: '/monthly-planning', icon: Target, roles: ['super_admin', 'admin', 'teacher'] },
-      { label: 'Subjects', href: '/subjects', icon: BookOpen, roles: ['super_admin', 'admin'] },
-    ],
-    subGroups: [
-      {
-        id: 'exam-center',
-        label: 'Exam Center',
-        icon: Award,
-        items: [
-          { label: 'Report Templates', href: '/report-card-templates', icon: FileText, roles: ['super_admin', 'admin', 'examiner'] },
-          { label: 'Generate Reports', href: '/generate-report-card', icon: ClipboardCheck, roles: ['super_admin', 'admin', 'examiner'] },
-          { label: 'Student Reports', href: '/student-reports', icon: BarChart3, roles: ['super_admin', 'admin', 'examiner', 'teacher'] },
-          { label: 'Academic Reports', href: '/reports', icon: FileText, permission: 'reports.view' },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'people',
-    label: 'People',
-    icon: Users,
-    items: [
-      { label: 'All Users', href: '/user-management', icon: Shield, roles: ['super_admin', 'admin'] },
-      { label: 'Teachers', href: '/teachers', icon: Users, permission: 'teachers.view' },
-      { label: 'Students', href: '/students', icon: GraduationCap, permission: 'students.view' },
-    ],
-  },
-  {
-    id: 'finance',
-    label: 'Finance',
-    icon: DollarSign,
-    items: [
-      { label: 'Student Fees', href: '/payments', icon: CreditCard, permission: 'payments.view' },
-      { label: 'KPI', href: '/kpi', icon: BarChart3, roles: ['super_admin', 'admin'] },
-    ],
-  },
-  {
-    id: 'communication',
-    label: 'Communication',
-    icon: MessageSquare,
-    items: [
-      { label: 'Notifications', href: '/notifications', icon: Bell, roles: ['super_admin', 'admin'] },
-    ],
-  },
-  {
-    id: 'system',
-    label: 'System',
-    icon: Settings,
-    items: [
-      { label: 'Zoom Engine', href: '/zoom-management', icon: Video, roles: ['super_admin', 'admin'] },
-      { label: 'Integrity Audit', href: '/integrity-audit', icon: AlertTriangle, roles: ['super_admin', 'admin'] },
-      { label: 'Resources', href: '/resources', icon: FolderOpen },
-    ],
-  },
-];
+// Build navigation groups dynamically based on active division
+function buildNavGroups(modelType: string | null): NavGroup[] {
+  const isOneToOne = modelType === 'one_to_one' || !modelType;
+  const isGroup = modelType === 'group';
+
+  return [
+    // Teaching context — shows contextual items based on division
+    ...(isOneToOne ? [{
+      id: 'teaching',
+      label: 'Teaching',
+      icon: UserCheck,
+      items: [
+        { label: 'Assignments', href: '/assignments', icon: Users, roles: ['super_admin', 'admin'] },
+        { label: 'Schedules', href: '/schedules', icon: Calendar, roles: ['super_admin', 'admin'] },
+      ] as NavItem[],
+    }] : []),
+    ...(isGroup ? [{
+      id: 'teaching',
+      label: 'Teaching',
+      icon: GraduationCap,
+      items: [
+        { label: 'Course Management', href: '/courses', icon: BookOpen, roles: ['super_admin', 'admin', 'admin_academic'] },
+        { label: 'Batch Schedules', href: '/schedules', icon: CalendarClock, roles: ['super_admin', 'admin'] },
+      ] as NavItem[],
+    }] : []),
+    {
+      id: 'academics',
+      label: 'Academics',
+      icon: BookOpen,
+      items: [
+        { label: 'Attendance', href: '/attendance', icon: ClipboardCheck, permission: 'attendance.view' },
+        { label: 'Monthly Planning', href: '/monthly-planning', icon: Target, roles: ['super_admin', 'admin', 'teacher'] },
+        { label: 'Subjects', href: '/subjects', icon: BookOpen, roles: ['super_admin', 'admin'] },
+      ],
+      subGroups: [
+        {
+          id: 'exam-center',
+          label: 'Exam Center',
+          icon: Award,
+          items: [
+            { label: 'Report Templates', href: '/report-card-templates', icon: FileText, roles: ['super_admin', 'admin', 'examiner'] },
+            { label: 'Generate Reports', href: '/generate-report-card', icon: ClipboardCheck, roles: ['super_admin', 'admin', 'examiner'] },
+            { label: 'Student Reports', href: '/student-reports', icon: BarChart3, roles: ['super_admin', 'admin', 'examiner', 'teacher'] },
+            { label: 'Academic Reports', href: '/reports', icon: FileText, permission: 'reports.view' },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'people',
+      label: 'People',
+      icon: Users,
+      items: [
+        { label: 'All Users', href: '/user-management', icon: Shield, roles: ['super_admin', 'admin'] },
+        { label: 'Teachers', href: '/teachers', icon: Users, permission: 'teachers.view' },
+        { label: 'Students', href: '/students', icon: GraduationCap, permission: 'students.view' },
+      ],
+    },
+    {
+      id: 'finance',
+      label: 'Finance',
+      icon: DollarSign,
+      items: [
+        { label: 'Student Fees', href: '/payments', icon: CreditCard, permission: 'payments.view' },
+        { label: 'KPI', href: '/kpi', icon: BarChart3, roles: ['super_admin', 'admin'] },
+      ],
+    },
+    {
+      id: 'communication',
+      label: 'Communication',
+      icon: MessageSquare,
+      items: [
+        { label: 'Notifications', href: '/notifications', icon: Bell, roles: ['super_admin', 'admin'] },
+      ],
+    },
+    {
+      id: 'system',
+      label: 'System',
+      icon: Settings,
+      items: [
+        { label: 'Zoom Engine', href: '/zoom-management', icon: Video, roles: ['super_admin', 'admin'] },
+        { label: 'Integrity Audit', href: '/integrity-audit', icon: AlertTriangle, roles: ['super_admin', 'admin'] },
+        { label: 'Resources', href: '/resources', icon: FolderOpen },
+      ],
+    },
+  ];
+}
 
 const SIDEBAR_STATE_KEY = 'sidebar-groups-state';
 
@@ -208,10 +209,14 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { profile, logout, isLoading, hasPermission, isSuperAdmin, activeRole } = useAuth();
+  const { activeModelType } = useDivision();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { expandedGroups, toggleGroup, expandGroup } = useSidebarState();
+
+  // Build nav groups based on active division
+  const navGroups = useMemo(() => buildNavGroups(activeModelType), [activeModelType]);
 
   // Check item visibility
   const isItemVisible = useCallback((item: NavItem) => {
@@ -240,7 +245,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         items: sg.items.filter(isItemVisible),
       })).filter(sg => sg.items.length > 0),
     })).filter(group => (group.items?.length ?? 0) > 0 || (group.subGroups?.length ?? 0) > 0);
-  }, [isItemVisible]);
+  }, [isItemVisible, navGroups]);
 
   const filteredStandaloneItems = useMemo(() => {
     return standaloneItems.filter(isItemVisible);
@@ -261,7 +266,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         break;
       }
     }
-  }, [location.pathname, expandGroup, getAllGroupItems]);
+  }, [location.pathname, expandGroup, getAllGroupItems, navGroups]);
 
   const handleLogout = async () => {
     await logout();
@@ -411,6 +416,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           <span className="font-serif text-lg font-bold text-foreground">Al-Quran Time</span>
         </div>
         <div className="flex items-center gap-2">
+          <DivisionSwitcher />
           <RoleSwitcher />
           <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(!sidebarOpen)}>
             {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -473,7 +479,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Main Content */}
       <main className="lg:ml-64 min-h-screen pt-16 lg:pt-0">
-        <header className="hidden lg:flex h-14 border-b border-border bg-card/50 backdrop-blur-sm items-center justify-end px-6">
+        <header className="hidden lg:flex h-14 border-b border-border bg-card/50 backdrop-blur-sm items-center justify-end px-6 gap-2">
+          <DivisionSwitcher />
           <RoleSwitcher />
         </header>
         <div className="p-6 lg:p-8">

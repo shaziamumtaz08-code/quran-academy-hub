@@ -16,6 +16,7 @@ import { Calendar, Plus, CheckCircle, Clock, Target, User, Loader2, Edit, AlertT
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDivision } from '@/contexts/DivisionContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -101,6 +102,7 @@ const isQuranSubject = (subjectName: string | null | undefined): boolean => {
 
 export default function MonthlyPlanning() {
   const { profile, user, activeRole } = useAuth();
+  const { activeDivision } = useDivision();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -182,11 +184,11 @@ export default function MonthlyPlanning() {
 
   // Fetch assigned students for teacher (with assignment_id for linking)
   const { data: assignedStudents = [], isLoading: assignedStudentsLoading } = useQuery({
-    queryKey: ['assigned-students-with-subjects', user?.id],
+    queryKey: ['assigned-students-with-subjects', user?.id, activeDivision?.id],
     queryFn: async () => {
       if (!user?.id || !isTeacher) return [];
       
-      const { data, error } = await supabase
+      let query = supabase
         .from('student_teacher_assignments')
         .select(`
           id,
@@ -198,6 +200,12 @@ export default function MonthlyPlanning() {
         `)
         .eq('teacher_id', user.id)
         .eq('status', 'active');
+
+      if (activeDivision?.id) {
+        query = query.eq('division_id', activeDivision.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return (data || []).map(d => ({

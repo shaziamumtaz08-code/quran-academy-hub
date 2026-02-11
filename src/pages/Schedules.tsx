@@ -14,6 +14,7 @@ import { Plus, Calendar, Clock, User, ChevronDown, ChevronRight, Loader2, AlertC
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useDivision } from '@/contexts/DivisionContext';
 import { format } from 'date-fns';
 import { BulkScheduleImportDialog } from '@/components/schedules/BulkScheduleImportDialog';
 
@@ -286,14 +287,15 @@ export default function Schedules() {
   };
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { activeDivision } = useDivision();
 
   const todayDayName = format(new Date(), 'EEEE').toLowerCase();
 
   // Fetch assignments with timezone info (only active assignments for scheduling)
   const { data: assignments = [], isLoading: loadingAssignments } = useQuery({
-    queryKey: ['assignments-with-tz'],
+    queryKey: ['assignments-with-tz', activeDivision?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('student_teacher_assignments')
         .select(`
           id,
@@ -308,7 +310,11 @@ export default function Schedules() {
         `)
         .eq('status', 'active');
 
-      if (error) throw error;
+      if (activeDivision?.id) {
+        query = query.eq('division_id', activeDivision.id);
+      }
+
+      const { data, error } = await query;
       return (data || []).map((row: any) => ({
         id: row.id,
         teacher_id: row.teacher_id,
@@ -329,14 +335,19 @@ export default function Schedules() {
 
   // Fetch schedules (1:1 only — exclude group/course schedules)
   const { data: schedules = [], isLoading: loadingSchedules } = useQuery({
-    queryKey: ['class-schedules'],
+    queryKey: ['class-schedules', activeDivision?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('schedules')
         .select('*')
         .eq('is_active', true)
         .not('assignment_id', 'is', null);
 
+      if (activeDivision?.id) {
+        query = query.eq('division_id', activeDivision.id);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return (data || []) as Schedule[];
     },
