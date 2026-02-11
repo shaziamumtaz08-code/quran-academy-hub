@@ -2,7 +2,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { StatCard } from './StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Calendar, CheckCircle, BookOpen, Clock, AlertCircle } from 'lucide-react';
+import { Users, Calendar, CheckCircle, BookOpen, Clock, AlertCircle, Layers } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { SmartSessionRibbon } from './SmartSessionRibbon';
 import { CourseDeckCarousel } from './CourseDeckCarousel';
 import { LaunchClassCard } from './LaunchClassCard';
+import { HybridTodayTimeline, useActiveBatchesCount } from './HybridTodayTimeline';
 
 export function TeacherDashboard() {
   const { profile, user } = useAuth();
@@ -57,6 +58,8 @@ export function TeacherDashboard() {
     );
   }
 
+  const { data: activeBatches } = useActiveBatchesCount();
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -71,12 +74,17 @@ export function TeacherDashboard() {
       <SmartSessionRibbon />
 
       {/* Stats Grid - Compact on mobile */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         <StatCard
           title="Students"
           value={stats?.assignedStudents || 0}
           icon={Users}
           variant="primary"
+        />
+        <StatCard
+          title="Active Batches"
+          value={activeBatches ?? 0}
+          icon={Layers}
         />
         <StatCard
           title="Classes Today"
@@ -95,6 +103,9 @@ export function TeacherDashboard() {
           variant="gold"
         />
       </div>
+
+      {/* Hybrid Today Timeline */}
+      <HybridTodayTimeline />
 
       {/* Course Deck Carousel */}
       <CourseDeckCarousel />
