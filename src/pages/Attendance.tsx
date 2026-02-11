@@ -79,8 +79,10 @@ interface AttendanceRecord {
   lesson_number: number | null;
   page_number: number | null;
   created_at: string;
+  course_id: string | null;
   student?: { full_name: string };
   teacher?: { full_name: string };
+  course?: { name: string } | null;
 }
 
 interface Profile {
@@ -514,8 +516,10 @@ export default function Attendance() {
           lesson_number,
           page_number,
           created_at,
+          course_id,
           student:profiles!attendance_student_id_fkey(full_name),
-          teacher:profiles!attendance_teacher_id_fkey(full_name)
+          teacher:profiles!attendance_teacher_id_fkey(full_name),
+          course:courses!attendance_course_id_fkey(name)
         `)
         .gte('class_date', startDate)
         .lte('class_date', endDate)
@@ -1200,6 +1204,11 @@ export default function Attendance() {
                           <span className="flex items-center gap-2">
                             <User className="h-4 w-4 text-muted-foreground" />
                             <span className="font-medium">{record.student?.full_name || 'Unknown'}</span>
+                            {record.course_id && record.course?.name && (
+                              <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                                {record.course.name}
+                              </span>
+                            )}
                           </span>
                         </TableCell>
                       )}

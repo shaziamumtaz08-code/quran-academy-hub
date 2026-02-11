@@ -20,7 +20,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Users, Eye, UserPlus, Archive, Search, Clock, Trash2 } from 'lucide-react';
+import { Plus, Users, Eye, UserPlus, Archive, Search, Clock, Trash2, CheckCircle, XCircle, AlertCircle, ClipboardCheck } from 'lucide-react';
 import { format } from 'date-fns';
 
 // ─── Types ─────────────────────────────────────────────
@@ -87,6 +87,10 @@ export default function Courses() {
   const [scheduleDay, setScheduleDay] = useState('');
   const [scheduleTime, setScheduleTime] = useState('');
   const [scheduleDuration, setScheduleDuration] = useState('30');
+
+  // Attendance state
+  const [attendanceDate, setAttendanceDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [attendanceStatuses, setAttendanceStatuses] = useState<Record<string, 'present' | 'student_absent' | 'late'>>({});
 
   // Form state
   const [formName, setFormName] = useState('');
@@ -293,6 +297,66 @@ export default function Courses() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['course-schedules', detailCourse?.id] });
       toast({ title: 'Class timing removed' });
+    },
+  });
+
+  // Fetch existing attendance for selected date & course
+  const { data: existingAttendance = [], isLoading: loadingAttendance } = useQuery({
+    queryKey: ['course-attendance', detailCourse?.id, attendanceDate],
+    enabled: !!detailCourse && activeTab === 'attendance',
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('attendance')
+        .select('id, student_id, status, class_date')
+        .eq('course_id', detailCourse!.id)
+        .eq('class_date', attendanceDate);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const markedStudentIds = new Set(existingAttendance.map(a => a.student_id));
+
+  // Submit group attendance
+  const submitGroupAttendance = useMutation({
+    mutationFn: async () => {
+      if (!detailCourse) return;
+      const entries = Object.entries(attendanceStatuses);
+      if (entries.length === 0) throw new Error('No statuses selected');
+
+      // Validate all students are enrolled
+      const activeEnrollmentIds = new Set(enrollments.filter(e => e.status === 'active').map(e => e.student_id));
+      const invalidStudents = entries.filter(([sid]) => !activeEnrollmentIds.has(sid));
+      if (invalidStudents.length > 0) throw new Error('Some students are not enrolled in this course');
+
+      // Get course schedule for time info
+      const scheduleForToday = courseSchedules[0]; // Use first slot as default
+      
+      const rows = entries
+        .filter(([sid]) => !markedStudentIds.has(sid)) // Skip already marked
+        .map(([studentId, status]) => ({
+          student_id: studentId,
+          teacher_id: detailCourse.teacher_id,
+          course_id: detailCourse.id,
+          class_date: attendanceDate,
+          class_time: scheduleForToday?.teacher_local_time || '09:00',
+          duration_minutes: scheduleForToday?.duration_minutes || 30,
+          status: status === 'late' ? 'present' : status,
+          reason: status === 'late' ? 'Late' : null,
+        }));
+
+      if (rows.length === 0) throw new Error('All selected students already have attendance for this date');
+
+      const { error } = await supabase.from('attendance').insert(rows);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['course-attendance', detailCourse?.id, attendanceDate] });
+      setAttendanceStatuses({});
+      toast({ title: 'Group attendance saved', description: `Attendance marked for ${attendanceDate}` });
+    },
+    onError: (err: any) => {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
     },
   });
 
@@ -542,11 +606,12 @@ export default function Courses() {
               )}
             </div>
 
-            {/* Tabs: Students | Class Timings */}
+            {/* Tabs: Students | Class Timings | Attendance */}
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="w-full">
                 <TabsTrigger value="students" className="flex-1">Students</TabsTrigger>
-                <TabsTrigger value="timings" className="flex-1">Class Timings</TabsTrigger>
+                <TabsTrigger value="timings" className="flex-1">Timings</TabsTrigger>
+                <TabsTrigger value="attendance" className="flex-1">Attendance</TabsTrigger>
               </TabsList>
 
               {/* Students Tab */}
@@ -656,6 +721,103 @@ export default function Courses() {
                           )}
                         </div>
                       ))}
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+
+              {/* Attendance Tab */}
+              <TabsContent value="attendance">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <Label className="shrink-0">Date:</Label>
+                    <Input 
+                      type="date" 
+                      value={attendanceDate} 
+                      onChange={e => { setAttendanceDate(e.target.value); setAttendanceStatuses({}); }}
+                      max={format(new Date(), 'yyyy-MM-dd')}
+                      className="w-auto"
+                    />
+                  </div>
+
+                  {loadingAttendance ? (
+                    <p className="text-muted-foreground text-sm text-center py-4">Loading...</p>
+                  ) : enrollments.filter(e => e.status === 'active').length === 0 ? (
+                    <p className="text-muted-foreground text-sm text-center py-4">No enrolled students.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {enrollments.filter(e => e.status === 'active').map(enrollment => {
+                        const alreadyMarked = markedStudentIds.has(enrollment.student_id);
+                        const existing = existingAttendance.find(a => a.student_id === enrollment.student_id);
+                        const currentStatus = attendanceStatuses[enrollment.student_id];
+
+                        return (
+                          <div key={enrollment.id} className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium">{(enrollment as any).student?.full_name}</p>
+                              {alreadyMarked && (
+                                <Badge variant="outline" className="text-xs">
+                                  {existing?.status === 'present' ? '✓ Present' : existing?.status === 'student_absent' ? '✗ Absent' : existing?.status}
+                                </Badge>
+                              )}
+                            </div>
+                            {!alreadyMarked && (
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  size="sm"
+                                  variant={currentStatus === 'present' ? 'default' : 'outline'}
+                                  className={currentStatus === 'present' ? 'bg-emerald-600 hover:bg-emerald-700 text-white h-7 px-2' : 'h-7 px-2'}
+                                  onClick={() => setAttendanceStatuses(prev => ({ ...prev, [enrollment.student_id]: 'present' }))}
+                                >
+                                  <CheckCircle className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant={currentStatus === 'late' ? 'default' : 'outline'}
+                                  className={currentStatus === 'late' ? 'bg-amber-600 hover:bg-amber-700 text-white h-7 px-2' : 'h-7 px-2'}
+                                  onClick={() => setAttendanceStatuses(prev => ({ ...prev, [enrollment.student_id]: 'late' }))}
+                                >
+                                  <AlertCircle className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant={currentStatus === 'student_absent' ? 'default' : 'outline'}
+                                  className={currentStatus === 'student_absent' ? 'bg-red-600 hover:bg-red-700 text-white h-7 px-2' : 'h-7 px-2'}
+                                  onClick={() => setAttendanceStatuses(prev => ({ ...prev, [enrollment.student_id]: 'student_absent' }))}
+                                >
+                                  <XCircle className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Mark All shortcuts + Submit */}
+                  {enrollments.filter(e => e.status === 'active').length > 0 && (
+                    <div className="flex items-center gap-2 pt-2 border-t">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const all: Record<string, 'present'> = {};
+                          enrollments.filter(e => e.status === 'active' && !markedStudentIds.has(e.student_id))
+                            .forEach(e => { all[e.student_id] = 'present'; });
+                          setAttendanceStatuses(prev => ({ ...prev, ...all }));
+                        }}
+                      >
+                        Mark All Present
+                      </Button>
+                      <div className="flex-1" />
+                      <Button
+                        onClick={() => submitGroupAttendance.mutate()}
+                        disabled={Object.keys(attendanceStatuses).length === 0 || submitGroupAttendance.isPending}
+                      >
+                        <ClipboardCheck className="h-4 w-4 mr-1" />
+                        {submitGroupAttendance.isPending ? 'Saving...' : `Save (${Object.keys(attendanceStatuses).length})`}
+                      </Button>
                     </div>
                   )}
                 </div>
