@@ -1005,7 +1005,8 @@ export type Database = {
       }
       schedules: {
         Row: {
-          assignment_id: string
+          assignment_id: string | null
+          course_id: string | null
           created_at: string
           day_of_week: string
           duration_minutes: number
@@ -1016,7 +1017,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          assignment_id: string
+          assignment_id?: string | null
+          course_id?: string | null
           created_at?: string
           day_of_week: string
           duration_minutes?: number
@@ -1027,7 +1029,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          assignment_id?: string
+          assignment_id?: string | null
+          course_id?: string | null
           created_at?: string
           day_of_week?: string
           duration_minutes?: number
@@ -1043,6 +1046,13 @@ export type Database = {
             columns: ["assignment_id"]
             isOneToOne: false
             referencedRelation: "student_teacher_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedules_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
             referencedColumns: ["id"]
           },
         ]

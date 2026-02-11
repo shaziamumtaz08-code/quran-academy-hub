@@ -17,11 +17,13 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Users, Eye, UserPlus, Archive, Search } from 'lucide-react';
+import { Plus, Users, Eye, UserPlus, Archive, Search, Clock, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 
+// ─── Types ─────────────────────────────────────────────
 interface Course {
   id: string;
   name: string;
@@ -47,6 +49,31 @@ interface CourseEnrollment {
   student?: { full_name: string; email: string | null };
 }
 
+interface CourseSchedule {
+  id: string;
+  course_id: string;
+  day_of_week: string;
+  student_local_time: string;
+  teacher_local_time: string;
+  duration_minutes: number;
+  is_active: boolean;
+}
+
+const DAYS_OF_WEEK = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+const DAYS_LABELS: Record<string, string> = {
+  monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu',
+  friday: 'Fri', saturday: 'Sat', sunday: 'Sun',
+};
+
+function formatTime12h(time: string): string {
+  if (!time) return '';
+  const [hours, minutes] = time.split(':').map(Number);
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const hour12 = hours % 12 || 12;
+  return `${hour12}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+}
+
+// ─── Main Component ────────────────────────────────────
 export default function Courses() {
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
@@ -54,6 +81,12 @@ export default function Courses() {
   const [enrollOpen, setEnrollOpen] = useState(false);
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [studentSearch, setStudentSearch] = useState('');
+  const [activeTab, setActiveTab] = useState('students');
+
+  // Schedule form state
+  const [scheduleDay, setScheduleDay] = useState('');
+  const [scheduleTime, setScheduleTime] = useState('');
+  const [scheduleDuration, setScheduleDuration] = useState('30');
 
   // Form state
   const [formName, setFormName] = useState('');
@@ -63,7 +96,7 @@ export default function Courses() {
   const [formEndDate, setFormEndDate] = useState('');
   const [formMaxStudents, setFormMaxStudents] = useState('30');
 
-  // Fetch courses with teacher and subject names
+  // ─── Queries ──────────────────────────────────────────
   const { data: courses = [], isLoading } = useQuery({
     queryKey: ['courses'],
     queryFn: async () => {
@@ -73,7 +106,6 @@ export default function Courses() {
         .order('created_at', { ascending: false });
       if (error) throw error;
 
-      // Fetch enrollment counts
       const { data: enrollments } = await supabase
         .from('course_enrollments')
         .select('course_id')
@@ -91,7 +123,6 @@ export default function Courses() {
     },
   });
 
-  // Fetch teachers for dropdown
   const { data: teachers = [] } = useQuery({
     queryKey: ['teachers-list'],
     queryFn: async () => {
@@ -106,7 +137,6 @@ export default function Courses() {
     },
   });
 
-  // Fetch subjects for dropdown
   const { data: subjects = [] } = useQuery({
     queryKey: ['subjects-list'],
     queryFn: async () => {
@@ -115,7 +145,6 @@ export default function Courses() {
     },
   });
 
-  // Fetch enrollments for selected course
   const { data: enrollments = [] } = useQuery({
     queryKey: ['course-enrollments', detailCourse?.id],
     enabled: !!detailCourse,
@@ -130,7 +159,21 @@ export default function Courses() {
     },
   });
 
-  // Fetch all students for enrollment picker
+  const { data: courseSchedules = [], isLoading: loadingSchedules } = useQuery({
+    queryKey: ['course-schedules', detailCourse?.id],
+    enabled: !!detailCourse,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('schedules')
+        .select('id, course_id, day_of_week, student_local_time, teacher_local_time, duration_minutes, is_active')
+        .eq('course_id', detailCourse!.id)
+        .eq('is_active', true)
+        .order('day_of_week');
+      if (error) throw error;
+      return (data || []) as CourseSchedule[];
+    },
+  });
+
   const { data: allStudents = [] } = useQuery({
     queryKey: ['all-students'],
     enabled: enrollOpen,
@@ -147,7 +190,7 @@ export default function Courses() {
     },
   });
 
-  // Create course mutation
+  // ─── Mutations ────────────────────────────────────────
   const createCourse = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from('courses').insert({
@@ -171,7 +214,6 @@ export default function Courses() {
     },
   });
 
-  // Enroll students mutation
   const enrollStudents = useMutation({
     mutationFn: async () => {
       if (!detailCourse) return;
@@ -194,7 +236,6 @@ export default function Courses() {
     },
   });
 
-  // Archive course mutation
   const archiveCourse = useMutation({
     mutationFn: async (courseId: string) => {
       const { error } = await supabase.from('courses').update({ status: 'archived' }).eq('id', courseId);
@@ -207,7 +248,6 @@ export default function Courses() {
     },
   });
 
-  // Drop student mutation
   const dropStudent = useMutation({
     mutationFn: async (enrollmentId: string) => {
       const { error } = await supabase.from('course_enrollments').update({ status: 'dropped' }).eq('id', enrollmentId);
@@ -220,20 +260,55 @@ export default function Courses() {
     },
   });
 
+  const addCourseSchedule = useMutation({
+    mutationFn: async () => {
+      if (!detailCourse) return;
+      const { error } = await supabase.from('schedules').insert({
+        course_id: detailCourse.id,
+        assignment_id: null,
+        day_of_week: scheduleDay,
+        student_local_time: scheduleTime,
+        teacher_local_time: scheduleTime,
+        duration_minutes: parseInt(scheduleDuration),
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['course-schedules', detailCourse?.id] });
+      setScheduleDay('');
+      setScheduleTime('');
+      setScheduleDuration('30');
+      toast({ title: 'Class timing added' });
+    },
+    onError: (err: any) => {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    },
+  });
+
+  const deleteCourseSchedule = useMutation({
+    mutationFn: async (scheduleId: string) => {
+      const { error } = await supabase.from('schedules').delete().eq('id', scheduleId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['course-schedules', detailCourse?.id] });
+      toast({ title: 'Class timing removed' });
+    },
+  });
+
+  // ─── Helpers ──────────────────────────────────────────
   const resetForm = () => {
-    setFormName('');
-    setFormTeacherId('');
-    setFormSubjectId('');
-    setFormStartDate('');
-    setFormEndDate('');
-    setFormMaxStudents('30');
+    setFormName(''); setFormTeacherId(''); setFormSubjectId('');
+    setFormStartDate(''); setFormEndDate(''); setFormMaxStudents('30');
   };
 
   const activeCourses = courses.filter(c => c.status === 'active');
   const archivedCourses = courses.filter(c => c.status === 'archived');
 
-  // Filter already-enrolled students out of the enrollment picker
   const enrolledIds = new Set(enrollments.filter(e => e.status === 'active').map(e => e.student_id));
+  const activeEnrolled = enrollments.filter(e => e.status === 'active').length;
+  const capacityReached = detailCourse?.max_students ? activeEnrolled >= detailCourse.max_students : false;
+
   const availableStudents = allStudents.filter(
     s => !enrolledIds.has(s.id) && (
       !studentSearch ||
@@ -241,6 +316,24 @@ export default function Courses() {
       s.email?.toLowerCase().includes(studentSearch.toLowerCase())
     )
   );
+
+  // Sort course schedules by day order
+  const sortedSchedules = [...courseSchedules].sort((a, b) => {
+    return DAYS_OF_WEEK.indexOf(a.day_of_week) - DAYS_OF_WEEK.indexOf(b.day_of_week);
+  });
+
+  // Check max_students before enrolling
+  const handleEnroll = () => {
+    if (detailCourse?.max_students && (activeEnrolled + selectedStudents.length) > detailCourse.max_students) {
+      toast({
+        title: 'Capacity exceeded',
+        description: `Max ${detailCourse.max_students} students. Currently ${activeEnrolled} enrolled.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    enrollStudents.mutate();
+  };
 
   return (
     <DashboardLayout>
@@ -294,7 +387,7 @@ export default function Courses() {
                         <Badge variant="secondary">{course.enrollment_count}/{course.max_students}</Badge>
                       </TableCell>
                       <TableCell>
-                        <Button size="sm" variant="ghost" onClick={() => setDetailCourse(course)}>
+                        <Button size="sm" variant="ghost" onClick={() => { setDetailCourse(course); setActiveTab('students'); }}>
                           <Eye className="h-4 w-4 mr-1" /> View
                         </Button>
                       </TableCell>
@@ -329,7 +422,7 @@ export default function Courses() {
                       <TableCell>{(course as any).teacher?.full_name || '—'}</TableCell>
                       <TableCell>{course.enrollment_count}</TableCell>
                       <TableCell>
-                        <Button size="sm" variant="ghost" onClick={() => setDetailCourse(course)}>
+                        <Button size="sm" variant="ghost" onClick={() => { setDetailCourse(course); setActiveTab('students'); }}>
                           <Eye className="h-4 w-4 mr-1" /> View
                         </Button>
                       </TableCell>
@@ -403,7 +496,7 @@ export default function Courses() {
         </DialogContent>
       </Dialog>
 
-      {/* Course Detail Sheet */}
+      {/* Course Detail Sheet with Tabs */}
       <Sheet open={!!detailCourse} onOpenChange={open => !open && setDetailCourse(null)}>
         <SheetContent className="sm:max-w-lg overflow-y-auto">
           <SheetHeader>
@@ -422,7 +515,7 @@ export default function Courses() {
             {/* Quick stats */}
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-muted rounded-lg p-3 text-center">
-                <p className="text-2xl font-bold">{enrollments.filter(e => e.status === 'active').length}</p>
+                <p className="text-2xl font-bold">{activeEnrolled}</p>
                 <p className="text-xs text-muted-foreground">Enrolled</p>
               </div>
               <div className="bg-muted rounded-lg p-3 text-center">
@@ -430,8 +523,8 @@ export default function Courses() {
                 <p className="text-xs text-muted-foreground">Max</p>
               </div>
               <div className="bg-muted rounded-lg p-3 text-center">
-                <p className="text-2xl font-bold">{enrollments.filter(e => e.status === 'dropped').length}</p>
-                <p className="text-xs text-muted-foreground">Dropped</p>
+                <p className="text-2xl font-bold">{courseSchedules.length}</p>
+                <p className="text-xs text-muted-foreground">Slots/wk</p>
               </div>
             </div>
 
@@ -449,42 +542,125 @@ export default function Courses() {
               )}
             </div>
 
-            {/* Enrolled students list */}
-            <div>
-              <h3 className="font-medium mb-2">Enrolled Students</h3>
-              {enrollments.filter(e => e.status === 'active').length === 0 ? (
-                <p className="text-muted-foreground text-sm py-4 text-center">No students enrolled yet.</p>
-              ) : (
-                <div className="space-y-2">
-                  {enrollments.filter(e => e.status === 'active').map(enrollment => (
-                    <div key={enrollment.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div>
-                        <p className="font-medium text-sm">{(enrollment as any).student?.full_name}</p>
-                        <p className="text-xs text-muted-foreground">{(enrollment as any).student?.email}</p>
+            {/* Tabs: Students | Class Timings */}
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="w-full">
+                <TabsTrigger value="students" className="flex-1">Students</TabsTrigger>
+                <TabsTrigger value="timings" className="flex-1">Class Timings</TabsTrigger>
+              </TabsList>
+
+              {/* Students Tab */}
+              <TabsContent value="students">
+                <div className="space-y-4">
+                  <h3 className="font-medium">Enrolled Students</h3>
+                  {enrollments.filter(e => e.status === 'active').length === 0 ? (
+                    <p className="text-muted-foreground text-sm py-4 text-center">No students enrolled yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {enrollments.filter(e => e.status === 'active').map(enrollment => (
+                        <div key={enrollment.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div>
+                            <p className="font-medium text-sm">{(enrollment as any).student?.full_name}</p>
+                            <p className="text-xs text-muted-foreground">{(enrollment as any).student?.email}</p>
+                          </div>
+                          {detailCourse?.status === 'active' && (
+                            <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive"
+                              onClick={() => dropStudent.mutate(enrollment.id)}>
+                              Drop
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {enrollments.filter(e => e.status === 'dropped').length > 0 && (
+                    <div>
+                      <h3 className="font-medium mb-2 text-muted-foreground">Dropped Students</h3>
+                      <div className="space-y-2">
+                        {enrollments.filter(e => e.status === 'dropped').map(enrollment => (
+                          <div key={enrollment.id} className="flex items-center p-3 border rounded-lg opacity-60">
+                            <p className="text-sm">{(enrollment as any).student?.full_name}</p>
+                          </div>
+                        ))}
                       </div>
-                      <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive"
-                        onClick={() => dropStudent.mutate(enrollment.id)}>
-                        Drop
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+
+              {/* Class Timings Tab */}
+              <TabsContent value="timings">
+                <div className="space-y-4">
+                  {/* Add slot form */}
+                  {detailCourse?.status === 'active' && (
+                    <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
+                      <h4 className="text-sm font-medium flex items-center gap-2">
+                        <Clock className="h-4 w-4" /> Add Weekly Slot
+                      </h4>
+                      <div className="grid grid-cols-3 gap-2">
+                        <Select value={scheduleDay} onValueChange={setScheduleDay}>
+                          <SelectTrigger><SelectValue placeholder="Day" /></SelectTrigger>
+                          <SelectContent>
+                            {DAYS_OF_WEEK.map(d => (
+                              <SelectItem key={d} value={d}>{DAYS_LABELS[d]}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Input type="time" value={scheduleTime} onChange={e => setScheduleTime(e.target.value)} />
+                        <Select value={scheduleDuration} onValueChange={setScheduleDuration}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="30">30 min</SelectItem>
+                            <SelectItem value="45">45 min</SelectItem>
+                            <SelectItem value="60">60 min</SelectItem>
+                            <SelectItem value="90">90 min</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => addCourseSchedule.mutate()}
+                        disabled={!scheduleDay || !scheduleTime || addCourseSchedule.isPending}
+                      >
+                        {addCourseSchedule.isPending ? 'Adding...' : 'Add Slot'}
                       </Button>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                  )}
 
-            {/* Dropped students */}
-            {enrollments.filter(e => e.status === 'dropped').length > 0 && (
-              <div>
-                <h3 className="font-medium mb-2 text-muted-foreground">Dropped Students</h3>
-                <div className="space-y-2">
-                  {enrollments.filter(e => e.status === 'dropped').map(enrollment => (
-                    <div key={enrollment.id} className="flex items-center p-3 border rounded-lg opacity-60">
-                      <p className="text-sm">{(enrollment as any).student?.full_name}</p>
+                  {/* List existing slots */}
+                  {loadingSchedules ? (
+                    <p className="text-muted-foreground text-sm text-center py-4">Loading...</p>
+                  ) : sortedSchedules.length === 0 ? (
+                    <p className="text-muted-foreground text-sm text-center py-4">No class timings set.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {sortedSchedules.map(slot => (
+                        <div key={slot.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <Badge variant="outline" className="capitalize font-medium">
+                              {DAYS_LABELS[slot.day_of_week] || slot.day_of_week}
+                            </Badge>
+                            <span className="text-sm font-medium">
+                              {formatTime12h(slot.student_local_time)}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              ({slot.duration_minutes} min)
+                            </span>
+                          </div>
+                          {detailCourse?.status === 'active' && (
+                            <Button size="sm" variant="ghost" className="text-destructive"
+                              onClick={() => deleteCourseSchedule.mutate(slot.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
-              </div>
-            )}
+              </TabsContent>
+            </Tabs>
           </div>
         </SheetContent>
       </Sheet>
@@ -494,7 +670,12 @@ export default function Courses() {
         <DialogContent className="sm:max-w-md max-h-[80vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Enroll Students</DialogTitle>
-            <DialogDescription>Select students to add to {detailCourse?.name}</DialogDescription>
+            <DialogDescription>
+              Select students to add to {detailCourse?.name}
+              {capacityReached && (
+                <span className="block text-destructive mt-1">⚠ Course is at full capacity ({detailCourse?.max_students})</span>
+              )}
+            </DialogDescription>
           </DialogHeader>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -530,8 +711,8 @@ export default function Courses() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setEnrollOpen(false)}>Cancel</Button>
             <Button
-              onClick={() => enrollStudents.mutate()}
-              disabled={selectedStudents.length === 0 || enrollStudents.isPending}
+              onClick={handleEnroll}
+              disabled={selectedStudents.length === 0 || enrollStudents.isPending || capacityReached}
             >
               {enrollStudents.isPending ? 'Enrolling...' : `Enroll ${selectedStudents.length} Student(s)`}
             </Button>
