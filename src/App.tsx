@@ -31,6 +31,7 @@ import ZoomManagement from "./pages/ZoomManagement";
 import IntegrityAudit from "./pages/IntegrityAudit";
 import Courses from "./pages/Courses";
 import OrganizationSettings from "./pages/OrganizationSettings";
+import SelectDivision from "./pages/SelectDivision";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -173,7 +174,8 @@ function AppRoutes() {
   // Role-based redirect on login - uses activeRole
   const getDefaultRoute = () => {
     if (!activeRole) return '/dashboard';
-    if (activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_')) {
+    if (activeRole === 'super_admin') return '/select-division';
+    if (activeRole === 'admin' || activeRole?.startsWith('admin_')) {
       return '/admin';
     }
     if (activeRole === 'teacher' || activeRole === 'examiner') {
@@ -186,6 +188,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={isAuthenticated ? <Navigate to={getDefaultRoute()} replace /> : <Login />} />
       <Route path="/" element={<Navigate to={getDefaultRoute()} replace />} />
+      <Route path="/select-division" element={<ProtectedRoute><SelectDivision /></ProtectedRoute>} />
       
       {/* Admin Routes */}
       <Route path="/admin" element={<ProtectedRoute><AdminRoute><AdminCommandCenter /></AdminRoute></ProtectedRoute>} />
