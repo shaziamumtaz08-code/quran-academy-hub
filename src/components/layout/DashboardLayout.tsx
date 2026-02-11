@@ -165,6 +165,7 @@ function buildNavGroups(modelType: string | null): NavGroup[] {
       label: 'System',
       icon: Settings,
       items: [
+        { label: 'Organization', href: '/organization-settings', icon: Cog, roles: ['super_admin', 'admin'] },
         { label: 'Zoom Engine', href: '/zoom-management', icon: Video, roles: ['super_admin', 'admin'] },
         { label: 'Integrity Audit', href: '/integrity-audit', icon: AlertTriangle, roles: ['super_admin', 'admin'] },
         { label: 'Resources', href: '/resources', icon: FolderOpen },
