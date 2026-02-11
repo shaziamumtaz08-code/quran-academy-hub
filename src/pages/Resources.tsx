@@ -597,7 +597,7 @@ export default function Resources() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Premium Header */}
-      <div className="premium-header rounded-xl p-6 mb-6">
+      <div className="page-header-premium rounded-xl p-6 mb-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             {currentFolderId && (
