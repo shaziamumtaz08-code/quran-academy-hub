@@ -4,13 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Building2, Plus, Pencil, Trash2, Globe, MapPin, Layers, Loader2, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -185,137 +185,151 @@ export default function OrganizationSettings() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-8 max-w-5xl">
+      <div className="space-y-6 max-w-5xl">
         <div>
           <h1 className="text-2xl font-serif font-bold text-foreground">System Control</h1>
           <p className="text-muted-foreground">Organization, branches, and division management</p>
         </div>
 
-        {/* ── Organization Info ── */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Building2 className="h-5 w-5" /> Organization</CardTitle>
-            <CardDescription>Global branding and contact information</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Organization Name</Label>
-                <Input value={orgForm.name} onChange={e => setOrgForm(p => ({ ...p, name: e.target.value }))} />
-              </div>
-              <div className="space-y-2">
-                <Label>Logo URL</Label>
-                <Input value={orgForm.logo_url} onChange={e => setOrgForm(p => ({ ...p, logo_url: e.target.value }))} placeholder="https://..." />
-              </div>
-              <div className="space-y-2">
-                <Label>Master Website</Label>
-                <Input value={settings.website || ''} onChange={e => setOrgForm(p => ({ ...p, settings: { ...p.settings, website: e.target.value } }))} placeholder="https://..." />
-              </div>
-              <div className="space-y-2">
-                <Label>HQ Address</Label>
-                <Input value={settings.address || ''} onChange={e => setOrgForm(p => ({ ...p, settings: { ...p.settings, address: e.target.value } }))} />
-              </div>
-            </div>
-            <Button onClick={() => updateOrg.mutate()} disabled={updateOrg.isPending} className="gap-2">
-              <Save className="h-4 w-4" /> {updateOrg.isPending ? 'Saving...' : 'Save Organization'}
-            </Button>
-          </CardContent>
-        </Card>
+        <Tabs defaultValue="identity" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="identity">🏢 Identity</TabsTrigger>
+            <TabsTrigger value="branches">🌐 Branches</TabsTrigger>
+            <TabsTrigger value="divisions">📦 Divisions</TabsTrigger>
+          </TabsList>
 
-        {/* ── Branch Manager ── */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2"><Globe className="h-5 w-5" /> Branch Manager</CardTitle>
-              <CardDescription>Manage online and onsite campus locations</CardDescription>
-            </div>
-            <Button onClick={openNewBranch} size="sm" className="gap-1"><Plus className="h-4 w-4" /> Add Branch</Button>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Timezone</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {branches.map(b => (
-                  <TableRow key={b.id}>
-                    <TableCell className="font-medium">{b.name}</TableCell>
-                    <TableCell>
-                      <Badge variant={b.type === 'online' ? 'default' : 'secondary'}>
-                        {b.type === 'online' ? '🌐 Online' : '🏢 Onsite'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{b.timezone || '—'}</TableCell>
-                    <TableCell>
-                      <Badge variant={b.is_active ? 'default' : 'destructive'}>{b.is_active ? 'Active' : 'Inactive'}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={() => openEditBranch(b)}><Pencil className="h-4 w-4" /></Button>
-                      {b.is_active && (
-                        <Button variant="ghost" size="icon" onClick={() => deleteBranch.mutate(b.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {branches.length === 0 && (
-                  <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No branches configured</TableCell></TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
-        {/* ── Division Manager ── */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2"><Layers className="h-5 w-5" /> Division Manager</CardTitle>
-              <CardDescription>Toggle academic models per branch</CardDescription>
-            </div>
-            <Button onClick={() => { setDivForm({ name: '', model_type: 'one_to_one', branch_id: branches[0]?.id || '' }); setDivDialog(true); }} size="sm" className="gap-1"><Plus className="h-4 w-4" /> Add Division</Button>
-          </CardHeader>
-          <CardContent>
-            {branches.filter(b => b.is_active).map(branch => {
-              const branchDivisions = divisions.filter(d => d.branch_id === branch.id);
-              return (
-                <div key={branch.id} className="mb-6 last:mb-0">
-                  <div className="flex items-center gap-2 mb-3">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <h3 className="font-semibold text-foreground">{branch.name}</h3>
-                    <Badge variant="outline" className="text-xs">{branch.type}</Badge>
+          {/* ── Tab 1: Identity ── */}
+          <TabsContent value="identity">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Building2 className="h-5 w-5" /> Organization Identity</CardTitle>
+                <CardDescription>Global branding and contact information</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Organization Name</Label>
+                    <Input value={orgForm.name} onChange={e => setOrgForm(p => ({ ...p, name: e.target.value }))} />
                   </div>
-                  {branchDivisions.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pl-6">
-                      {branchDivisions.map(div => (
-                        <div key={div.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
-                          <div>
-                            <p className="font-medium text-sm">{div.name}</p>
-                            <Badge variant="outline" className="text-xs mt-1">
-                              {div.model_type === 'one_to_one' ? '1:1 Mentorship' : 'Group Academy'}
-                            </Badge>
-                          </div>
-                          <Switch
-                            checked={div.is_active}
-                            onCheckedChange={checked => toggleDivision.mutate({ id: div.id, is_active: checked })}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground pl-6">No divisions — add one above</p>
-                  )}
-                  <Separator className="mt-4" />
+                  <div className="space-y-2">
+                    <Label>Logo URL</Label>
+                    <Input value={orgForm.logo_url} onChange={e => setOrgForm(p => ({ ...p, logo_url: e.target.value }))} placeholder="https://..." />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Master Website</Label>
+                    <Input value={settings.website || ''} onChange={e => setOrgForm(p => ({ ...p, settings: { ...p.settings, website: e.target.value } }))} placeholder="https://..." />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>HQ Address</Label>
+                    <Input value={settings.address || ''} onChange={e => setOrgForm(p => ({ ...p, settings: { ...p.settings, address: e.target.value } }))} />
+                  </div>
                 </div>
-              );
-            })}
-          </CardContent>
-        </Card>
+                <Button onClick={() => updateOrg.mutate()} disabled={updateOrg.isPending} className="gap-2">
+                  <Save className="h-4 w-4" /> {updateOrg.isPending ? 'Saving...' : 'Save Organization'}
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ── Tab 2: Branches ── */}
+          <TabsContent value="branches">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2"><Globe className="h-5 w-5" /> Branch Manager</CardTitle>
+                  <CardDescription>Manage online and onsite campus locations</CardDescription>
+                </div>
+                <Button onClick={openNewBranch} size="sm" className="gap-1"><Plus className="h-4 w-4" /> Add Branch</Button>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Timezone</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {branches.map(b => (
+                      <TableRow key={b.id}>
+                        <TableCell className="font-medium">{b.name}</TableCell>
+                        <TableCell>
+                          <Badge variant={b.type === 'online' ? 'default' : 'secondary'}>
+                            {b.type === 'online' ? '🌐 Online' : '🏢 Onsite'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{b.timezone || '—'}</TableCell>
+                        <TableCell>
+                          <Badge variant={b.is_active ? 'default' : 'destructive'}>{b.is_active ? 'Active' : 'Inactive'}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="icon" onClick={() => openEditBranch(b)}><Pencil className="h-4 w-4" /></Button>
+                          {b.is_active && (
+                            <Button variant="ghost" size="icon" onClick={() => deleteBranch.mutate(b.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {branches.length === 0 && (
+                      <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No branches configured</TableCell></TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ── Tab 3: Divisions ── */}
+          <TabsContent value="divisions">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2"><Layers className="h-5 w-5" /> Division Manager</CardTitle>
+                  <CardDescription>Toggle academic models per branch</CardDescription>
+                </div>
+                <Button onClick={() => { setDivForm({ name: '', model_type: 'one_to_one', branch_id: branches[0]?.id || '' }); setDivDialog(true); }} size="sm" className="gap-1"><Plus className="h-4 w-4" /> Add Division</Button>
+              </CardHeader>
+              <CardContent>
+                {branches.filter(b => b.is_active).map(branch => {
+                  const branchDivisions = divisions.filter(d => d.branch_id === branch.id);
+                  return (
+                    <div key={branch.id} className="mb-6 last:mb-0">
+                      <div className="flex items-center gap-2 mb-3">
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                        <h3 className="font-semibold text-foreground">{branch.name}</h3>
+                        <Badge variant="outline" className="text-xs">{branch.type}</Badge>
+                      </div>
+                      {branchDivisions.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pl-6">
+                          {branchDivisions.map(div => (
+                            <div key={div.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                              <div>
+                                <p className="font-medium text-sm">{div.name}</p>
+                                <Badge variant="outline" className="text-xs mt-1">
+                                  {div.model_type === 'one_to_one' ? '1:1 Mentorship' : 'Group Academy'}
+                                </Badge>
+                              </div>
+                              <Switch
+                                checked={div.is_active}
+                                onCheckedChange={checked => toggleDivision.mutate({ id: div.id, is_active: checked })}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground pl-6">No divisions — add one above</p>
+                      )}
+                      <Separator className="mt-4" />
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* ── Branch Dialog ── */}
