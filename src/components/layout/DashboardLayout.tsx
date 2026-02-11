@@ -85,15 +85,16 @@ const standaloneItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: 'dashboard.admin' },
 ];
 
-// Build navigation groups dynamically based on active division
-function buildNavGroups(modelType: string | null): NavGroup[] {
-  const isOneToOne = modelType === 'one_to_one' || !modelType;
+// Build navigation groups dynamically based on active division model type and branch type
+function buildNavGroups(modelType: string | null, branchType: string | null): NavGroup[] {
+  const isOneToOne = modelType === 'one_to_one';
   const isGroup = modelType === 'group';
+  const isOnsite = branchType === 'onsite';
 
   // Context-aware teaching items
   const teachingItems: NavItem[] = isOneToOne
     ? [
-        { label: 'Assignments', href: '/assignments', icon: Users, roles: ['super_admin', 'admin'] },
+        { label: 'Assignments', href: '/assignments', icon: UserCheck, roles: ['super_admin', 'admin'] },
         { label: 'Schedules', href: '/schedules', icon: Calendar, roles: ['super_admin', 'admin'] },
       ]
     : [
@@ -101,10 +102,25 @@ function buildNavGroups(modelType: string | null): NavGroup[] {
         { label: 'Schedules', href: '/schedules', icon: CalendarClock, roles: ['super_admin', 'admin'] },
       ];
 
+  // Context-aware academic items
+  const academicItems: NavItem[] = [
+    { label: 'Attendance', href: '/attendance', icon: ClipboardCheck, permission: 'attendance.view' },
+    { label: 'Planning', href: '/monthly-planning', icon: Target, roles: ['super_admin', 'admin', 'teacher'] },
+    { label: 'Subjects', href: '/subjects', icon: BookOpen, roles: ['super_admin', 'admin'] },
+  ];
+
+  // System items - hide Zoom for onsite
+  const systemItems: NavItem[] = [
+    { label: 'System Control', href: '/organization-settings', icon: Cog, roles: ['super_admin', 'admin'] },
+    ...(!isOnsite ? [{ label: 'Zoom Engine', href: '/zoom-management', icon: Video, roles: ['super_admin', 'admin'] as string[] }] : []),
+    { label: 'Integrity Audit', href: '/integrity-audit', icon: AlertTriangle, roles: ['super_admin', 'admin'] },
+    { label: 'Resources', href: '/resources', icon: FolderOpen },
+  ];
+
   return [
     {
       id: 'teaching',
-      label: 'Teaching',
+      label: isOneToOne ? 'Mentorship' : isGroup ? 'Batch Academy' : 'Teaching',
       icon: isOneToOne ? UserCheck : GraduationCap,
       items: teachingItems,
     },
@@ -112,11 +128,7 @@ function buildNavGroups(modelType: string | null): NavGroup[] {
       id: 'academics',
       label: 'Academics',
       icon: BookOpen,
-      items: [
-        { label: 'Attendance', href: '/attendance', icon: ClipboardCheck, permission: 'attendance.view' },
-        { label: 'Monthly Planning', href: '/monthly-planning', icon: Target, roles: ['super_admin', 'admin', 'teacher'] },
-        { label: 'Subjects', href: '/subjects', icon: BookOpen, roles: ['super_admin', 'admin'] },
-      ],
+      items: academicItems,
       subGroups: [
         {
           id: 'exam-center',
@@ -126,7 +138,7 @@ function buildNavGroups(modelType: string | null): NavGroup[] {
             { label: 'Report Templates', href: '/report-card-templates', icon: FileText, roles: ['super_admin', 'admin', 'examiner'] },
             { label: 'Generate Reports', href: '/generate-report-card', icon: ClipboardCheck, roles: ['super_admin', 'admin', 'examiner'] },
             { label: 'Student Reports', href: '/student-reports', icon: BarChart3, roles: ['super_admin', 'admin', 'examiner', 'teacher'] },
-            { label: 'Academic Reports', href: '/reports', icon: FileText, permission: 'reports.view' },
+            { label: 'Reports', href: '/reports', icon: FileText, permission: 'reports.view' },
           ],
         },
       ],
@@ -146,28 +158,15 @@ function buildNavGroups(modelType: string | null): NavGroup[] {
       label: 'Finance',
       icon: DollarSign,
       items: [
-        { label: 'Student Fees', href: '/payments', icon: CreditCard, permission: 'payments.view' },
+        { label: 'Fees', href: '/payments', icon: CreditCard, permission: 'payments.view' },
         { label: 'KPI', href: '/kpi', icon: BarChart3, roles: ['super_admin', 'admin'] },
-      ],
-    },
-    {
-      id: 'communication',
-      label: 'Communication',
-      icon: MessageSquare,
-      items: [
-        { label: 'Notifications', href: '/notifications', icon: Bell, roles: ['super_admin', 'admin'] },
       ],
     },
     {
       id: 'system',
       label: 'System',
       icon: Settings,
-      items: [
-        { label: 'Organization', href: '/organization-settings', icon: Cog, roles: ['super_admin', 'admin'] },
-        { label: 'Zoom Engine', href: '/zoom-management', icon: Video, roles: ['super_admin', 'admin'] },
-        { label: 'Integrity Audit', href: '/integrity-audit', icon: AlertTriangle, roles: ['super_admin', 'admin'] },
-        { label: 'Resources', href: '/resources', icon: FolderOpen },
-      ],
+      items: systemItems,
     },
   ];
 }
@@ -208,14 +207,14 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { profile, logout, isLoading, hasPermission, isSuperAdmin, activeRole } = useAuth();
-  const { activeModelType } = useDivision();
+  const { activeModelType, activeDivision, activeBranch } = useDivision();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { expandedGroups, toggleGroup, expandGroup } = useSidebarState();
 
-  // Build nav groups based on active division
-  const navGroups = useMemo(() => buildNavGroups(activeModelType), [activeModelType]);
+  // Build nav groups based on active division and branch
+  const navGroups = useMemo(() => buildNavGroups(activeModelType, activeBranch?.type || null), [activeModelType, activeBranch?.type]);
 
   // Check item visibility
   const isItemVisible = useCallback((item: NavItem) => {
@@ -429,13 +428,22 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="hidden lg:flex items-center gap-3 p-4 border-b border-sidebar-border">
-            <img src={logoDark} alt="Al-Quran Time Academy" className="h-12 w-12 object-contain rounded-lg" />
-            <div>
-              <h1 className="font-serif text-sm font-bold text-sidebar-foreground">Al-Quran Time</h1>
-              <p className="text-xs text-sidebar-foreground/70">Academy LMS</p>
+          {/* Logo + Active Context */}
+          <div className="hidden lg:flex flex-col p-4 border-b border-sidebar-border">
+            <div className="flex items-center gap-3">
+              <img src={logoDark} alt="Al-Quran Time Academy" className="h-12 w-12 object-contain rounded-lg" />
+              <div>
+                <h1 className="font-serif text-sm font-bold text-sidebar-foreground">Al-Quran Time</h1>
+                <p className="text-xs text-sidebar-foreground/70">Academy LMS</p>
+              </div>
             </div>
+            {activeBranch && activeDivision && (
+              <div className="mt-3 px-2 py-1.5 rounded-md bg-sidebar-accent/50 border border-sidebar-border">
+                <p className="text-[11px] font-semibold text-accent truncate">
+                  {activeBranch.name} — {activeDivision.name}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Navigation */}
@@ -478,9 +486,18 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Main Content */}
       <main className="lg:ml-64 min-h-screen pt-16 lg:pt-0">
-        <header className="hidden lg:flex h-14 border-b border-border bg-card/50 backdrop-blur-sm items-center justify-end px-6 gap-2">
-          <DivisionSwitcher />
-          <RoleSwitcher />
+        <header className="hidden lg:flex h-14 border-b border-border bg-card/50 backdrop-blur-sm items-center justify-between px-6">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            {activeBranch && activeDivision && (
+              <span className="font-medium text-foreground">
+                {activeBranch.name} <span className="text-muted-foreground mx-1">›</span> {activeDivision.name}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <DivisionSwitcher />
+            <RoleSwitcher />
+          </div>
         </header>
         <div className="p-6 lg:p-8">
           <PageBreadcrumb />

@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { StatCard } from './StatCard';
 import { RecentActivity } from './RecentActivity';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, GraduationCap, Calendar, TrendingUp, Layers } from 'lucide-react';
+import { Users, GraduationCap, Calendar, TrendingUp, Layers, BookOpen, UserCheck, ClipboardList } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
@@ -14,51 +14,68 @@ import { AccountabilityTrends } from './AccountabilityTrends';
 import { IntegrityEngine } from './IntegrityEngine';
 import { BehaviorAlerts } from './BehaviorAlerts';
 import { HybridTodayTimeline, useActiveBatchesCount } from './HybridTodayTimeline';
+import { useDivision } from '@/contexts/DivisionContext';
 
 export function AdminDashboard() {
   const today = format(new Date(), 'yyyy-MM-dd');
+  const { activeDivision, activeBranch, activeModelType } = useDivision();
+  const isOneToOne = activeModelType === 'one_to_one';
+  const isGroup = activeModelType === 'group';
+  const divisionId = activeDivision?.id;
 
-  // Fetch stats from database
+  // Fetch stats from database filtered by division
   const { data: stats, isLoading } = useQuery({
-    queryKey: ['admin-stats'],
+    queryKey: ['admin-stats', divisionId],
     queryFn: async () => {
-      const [rolesRes, attendanceRes] = await Promise.all([
-        supabase.from('user_roles').select('role'),
-        supabase.from('attendance').select('status, class_date'),
+      let assignmentsQuery = supabase.from('student_teacher_assignments').select('student_id, teacher_id').eq('status', 'active');
+      let attendanceQuery = supabase.from('attendance').select('status, class_date');
+      let coursesQuery = supabase.from('courses').select('id, status').eq('status', 'active');
+      let enrollmentsQuery = supabase.from('course_enrollments').select('id').eq('status', 'active');
+
+      if (divisionId) {
+        assignmentsQuery = assignmentsQuery.eq('division_id', divisionId);
+        attendanceQuery = attendanceQuery.eq('division_id', divisionId);
+        coursesQuery = coursesQuery.eq('division_id', divisionId);
+      }
+
+      const [assignmentsRes, attendanceRes, coursesResult, enrollmentsRes] = await Promise.all([
+        assignmentsQuery,
+        attendanceQuery,
+        coursesQuery,
+        enrollmentsQuery,
       ]);
 
-      const roleCounts = (rolesRes.data || []).reduce((acc, r) => {
-        acc[r.role] = (acc[r.role] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-
+      const assignments = assignmentsRes.data || [];
       const todayAttendance = (attendanceRes.data || []).filter(a => a.class_date === today);
-      const monthAttendance = attendanceRes.data || [];
+      const allAttendance = attendanceRes.data || [];
+      const courses = coursesResult.data || [];
+      const enrollments = enrollmentsRes.data || [];
 
       return {
-        teachers: roleCounts['teacher'] || 0,
-        students: roleCounts['student'] || 0,
+        teachers: new Set(assignments.map(a => a.teacher_id)).size,
+        students: new Set(assignments.map(a => a.student_id)).size,
+        activeAssignments: assignments.length,
         classesToday: todayAttendance.length,
         presentToday: todayAttendance.filter(a => a.status === 'present').length,
-        totalMonthClasses: monthAttendance.length,
-        monthlyAttendanceRate: monthAttendance.length > 0 
-          ? Math.round((monthAttendance.filter(a => a.status === 'present').length / monthAttendance.length) * 100)
+        totalMonthClasses: allAttendance.length,
+        monthlyAttendanceRate: allAttendance.length > 0
+          ? Math.round((allAttendance.filter(a => a.status === 'present').length / allAttendance.length) * 100)
           : 0,
+        activeCourses: courses.length,
+        totalEnrollments: enrollments.length,
       };
     },
   });
 
-  // Real activities - empty for now, would come from database
   const activities: { id: string; type: 'attendance' | 'lesson' | 'schedule' | 'payment'; title: string; description: string; time: string }[] = [];
-
   const { data: activeBatches } = useActiveBatchesCount();
 
   if (isLoading) {
     return (
       <div className="space-y-6 animate-fade-in">
         <div>
-          <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">Admin Dashboard</h1>
-          <p className="text-muted-foreground text-sm mt-1">Overview of your academy's performance</p>
+          <Skeleton className="h-9 w-64" />
+          <Skeleton className="h-5 w-48 mt-2" />
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {[...Array(4)].map((_, i) => (
@@ -69,43 +86,39 @@ export function AdminDashboard() {
     );
   }
 
+  const contextLabel = activeBranch && activeDivision
+    ? `${activeBranch.name} — ${activeDivision.name}`
+    : 'Dashboard';
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div>
-        <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">Admin Dashboard</h1>
-        <p className="text-muted-foreground text-sm mt-1">Overview of your academy's performance</p>
+        <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">
+          {isOneToOne ? 'Mentorship Dashboard' : isGroup ? 'Academy Dashboard' : 'Admin Dashboard'}
+        </h1>
+        <p className="text-muted-foreground text-sm mt-1">{contextLabel}</p>
       </div>
 
-      {/* Stats Grid - Mobile optimized */}
+      {/* Stats Grid - Context-dependent */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
-        <StatCard
-          title="Teachers"
-          value={stats?.teachers || 0}
-          icon={Users}
-          variant="primary"
-        />
-        <StatCard
-          title="Students"
-          value={stats?.students || 0}
-          icon={GraduationCap}
-        />
-        <StatCard
-          title="Active Batches"
-          value={activeBatches ?? 0}
-          icon={Layers}
-        />
-        <StatCard
-          title="Classes Today"
-          value={stats?.classesToday || 0}
-          icon={Calendar}
-        />
-        <StatCard
-          title="Attendance"
-          value={`${stats?.monthlyAttendanceRate || 0}%`}
-          icon={TrendingUp}
-          variant="gold"
-        />
+        {isOneToOne ? (
+          <>
+            <StatCard title="Students" value={stats?.students || 0} icon={GraduationCap} />
+            <StatCard title="Teachers" value={stats?.teachers || 0} icon={Users} variant="primary" />
+            <StatCard title="Assignments" value={stats?.activeAssignments || 0} icon={UserCheck} />
+            <StatCard title="Sessions Today" value={stats?.classesToday || 0} icon={Calendar} />
+            <StatCard title="Attendance" value={`${stats?.monthlyAttendanceRate || 0}%`} icon={TrendingUp} variant="gold" />
+          </>
+        ) : (
+          <>
+            <StatCard title="Active Batches" value={stats?.activeCourses || activeBatches || 0} icon={Layers} variant="primary" />
+            <StatCard title="Enrollments" value={stats?.totalEnrollments || 0} icon={ClipboardList} />
+            <StatCard title="Teachers" value={stats?.teachers || 0} icon={Users} />
+            <StatCard title="Classes Today" value={stats?.classesToday || 0} icon={Calendar} />
+            <StatCard title="Attendance" value={`${stats?.monthlyAttendanceRate || 0}%`} icon={TrendingUp} variant="gold" />
+          </>
+        )}
       </div>
 
       {/* Live Monitor Section */}
@@ -144,7 +157,7 @@ export function AdminDashboard() {
               <p className="text-xs text-muted-foreground mt-1">Attendance Rate</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl sm:text-3xl font-serif font-bold text-emerald-600 dark:text-emerald-400">{stats?.totalMonthClasses || 0}</p>
+              <p className="text-2xl sm:text-3xl font-serif font-bold text-accent">{stats?.totalMonthClasses || 0}</p>
               <p className="text-xs text-muted-foreground mt-1">Classes Recorded</p>
             </div>
             <div className="text-center">
