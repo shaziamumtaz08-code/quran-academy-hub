@@ -52,7 +52,7 @@ const DivisionContext = createContext<DivisionContextType | undefined>(undefined
 const DIVISION_STORAGE_KEY = 'lms_active_division_id';
 
 export function DivisionProvider({ children }: { children: ReactNode }) {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, isSuperAdmin } = useAuth();
   const [userContexts, setUserContexts] = useState<DivisionContextEntry[]>([]);
   const [activeDivisionId, setActiveDivisionIdState] = useState<string | null>(() => {
     try {
@@ -89,12 +89,24 @@ export function DivisionProvider({ children }: { children: ReactNode }) {
         setBranches(brs);
         setDivisions(divs);
 
-        // Enrich contexts with branch/division objects
-        const enriched: DivisionContextEntry[] = ctxs.map(ctx => ({
-          ...ctx,
-          branch: brs.find(b => b.id === ctx.branch_id),
-          division: divs.find(d => d.id === ctx.division_id),
-        }));
+        // Super admins get access to ALL divisions, not just their user_context entries
+        let enriched: DivisionContextEntry[];
+        if (isSuperAdmin) {
+          enriched = divs.map(d => ({
+            id: `sa-${d.id}`,
+            branch_id: d.branch_id,
+            division_id: d.id,
+            is_default: d.id === (ctxs.find(c => c.is_default)?.division_id || divs[0]?.id),
+            branch: brs.find(b => b.id === d.branch_id),
+            division: d,
+          }));
+        } else {
+          enriched = ctxs.map(ctx => ({
+            ...ctx,
+            branch: brs.find(b => b.id === ctx.branch_id),
+            division: divs.find(d => d.id === ctx.division_id),
+          }));
+        }
 
         setUserContexts(enriched);
 
