@@ -68,9 +68,9 @@ const standaloneItems: NavItem[] = [
 // Grouped navigation
 const navGroups: NavGroup[] = [
   {
-    id: 'education',
-    label: 'Education & Classes',
-    icon: GraduationCap,
+    id: 'academics',
+    label: 'Academics',
+    icon: BookOpen,
     items: [
       { label: 'Course Management', href: '/courses', icon: BookOpen, roles: ['super_admin', 'admin', 'admin_academic'] },
       { label: '1:1 Assignments', href: '/assignments', icon: Users, roles: ['super_admin', 'admin'] },
@@ -274,8 +274,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           >
             <CollapsibleTrigger className={cn(
               "flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group",
-              hasActiveChild
-                ? "text-sidebar-primary-foreground/90"
+              isOpen
+                ? "bg-cyan text-white"
                 : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             )}>
               <span className="flex items-center gap-3">
