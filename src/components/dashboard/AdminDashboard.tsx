@@ -2,9 +2,8 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { StatCard } from './StatCard';
 import { RecentActivity } from './RecentActivity';
-import { TodayClasses } from './TodayClasses';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, GraduationCap, Calendar, TrendingUp } from 'lucide-react';
+import { Users, GraduationCap, Calendar, TrendingUp, Layers } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
@@ -14,6 +13,7 @@ import { AccountabilityReport } from './AccountabilityReport';
 import { AccountabilityTrends } from './AccountabilityTrends';
 import { IntegrityEngine } from './IntegrityEngine';
 import { BehaviorAlerts } from './BehaviorAlerts';
+import { HybridTodayTimeline, useActiveBatchesCount } from './HybridTodayTimeline';
 
 export function AdminDashboard() {
   const today = format(new Date(), 'yyyy-MM-dd');
@@ -51,8 +51,7 @@ export function AdminDashboard() {
   // Real activities - empty for now, would come from database
   const activities: { id: string; type: 'attendance' | 'lesson' | 'schedule' | 'payment'; title: string; description: string; time: string }[] = [];
 
-  // Real today classes - empty for now, would come from database
-  const todayClasses: { id: string; studentId: string; studentName: string; time: string; duration: number; status: 'pending' | 'present' | 'absent' | 'late' }[] = [];
+  const { data: activeBatches } = useActiveBatchesCount();
 
   if (isLoading) {
     return (
@@ -79,7 +78,7 @@ export function AdminDashboard() {
       </div>
 
       {/* Stats Grid - Mobile optimized */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         <StatCard
           title="Teachers"
           value={stats?.teachers || 0}
@@ -90,6 +89,11 @@ export function AdminDashboard() {
           title="Students"
           value={stats?.students || 0}
           icon={GraduationCap}
+        />
+        <StatCard
+          title="Active Batches"
+          value={activeBatches ?? 0}
+          icon={Layers}
         />
         <StatCard
           title="Classes Today"
@@ -116,9 +120,11 @@ export function AdminDashboard() {
         <BehaviorAlerts />
       </div>
 
+      {/* Hybrid Today Timeline */}
+      <HybridTodayTimeline />
+
       {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <TodayClasses classes={todayClasses} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <AccountabilityReport />
         <RecentActivity activities={activities} />
       </div>
