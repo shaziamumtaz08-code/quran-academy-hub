@@ -11,7 +11,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Calendar, CheckCircle, XCircle, AlertCircle, User, Plus, Clock, CalendarClock, UserX, Palmtree, Pencil, Trash2, ArrowUpDown, CalendarRange, Search, Ban, AlertTriangle } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Calendar, CheckCircle, XCircle, AlertCircle, User, Plus, Clock, CalendarClock, UserX, Palmtree, Pencil, Trash2, ArrowUpDown, CalendarRange, Search, Ban, AlertTriangle, Users } from 'lucide-react';
+import { GroupAttendanceTab } from '@/components/attendance/GroupAttendanceTab';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
@@ -900,6 +902,21 @@ export default function Attendance() {
           )}
         </div>
 
+        {/* Tabs for 1:1 vs Group */}
+        <Tabs defaultValue="one-on-one" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="one-on-one">
+              <User className="h-4 w-4 mr-1.5" />
+              1:1 Sessions
+            </TabsTrigger>
+            <TabsTrigger value="group">
+              <Users className="h-4 w-4 mr-1.5" />
+              Group Classes
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="one-on-one" className="space-y-6">
+
         {/* Stats - Enhanced for Admin */}
         <div className={cn("grid gap-4", isAdmin ? "grid-cols-2 md:grid-cols-7" : "grid-cols-2 md:grid-cols-4")}>
           <Card className={cn("text-center cursor-pointer transition-all hover:ring-2 hover:ring-primary/30", filter === 'all' && !showMissing && "ring-2 ring-primary")} onClick={() => { setFilter('all'); setShowMissing(false); }}>
@@ -1305,6 +1322,13 @@ export default function Attendance() {
             )}
           </CardContent>
         </Card>
+
+          </TabsContent>
+
+          <TabsContent value="group">
+            <GroupAttendanceTab />
+          </TabsContent>
+        </Tabs>
 
         {/* Mark Attendance Dialog */}
         <Dialog open={markDialogOpen} onOpenChange={setMarkDialogOpen}>
