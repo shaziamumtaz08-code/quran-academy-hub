@@ -45,15 +45,17 @@ interface ExportUsersDialogProps {
 }
 
 const EXPORT_FIELDS = [
-  { id: 'id', label: 'User ID', default: false },
+  { id: 'id', label: 'User ID', default: true },
   { id: 'full_name', label: 'Full Name', default: true },
   { id: 'email', label: 'Email', default: true },
   { id: 'whatsapp_number', label: 'Phone', default: true },
   { id: 'role', label: 'Role', default: true },
   { id: 'gender', label: 'Gender', default: true },
   { id: 'age', label: 'Age', default: true },
-  { id: 'status', label: 'Status', default: false },
-  { id: 'created_at', label: 'Created Date', default: false },
+  { id: 'country', label: 'Country', default: true },
+  { id: 'city', label: 'City', default: true },
+  { id: 'status', label: 'Status', default: true },
+  { id: 'created_at', label: 'Created Date', default: true },
   { id: 'password', label: 'Password (Plain Text)', default: false, sensitive: true },
 ];
 
