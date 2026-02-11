@@ -327,14 +327,15 @@ export default function Schedules() {
     },
   });
 
-  // Fetch schedules
+  // Fetch schedules (1:1 only — exclude group/course schedules)
   const { data: schedules = [], isLoading: loadingSchedules } = useQuery({
     queryKey: ['class-schedules'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('schedules')
         .select('*')
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .not('assignment_id', 'is', null);
 
       if (error) throw error;
       return (data || []) as Schedule[];

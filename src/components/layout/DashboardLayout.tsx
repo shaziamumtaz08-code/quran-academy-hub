@@ -54,7 +54,7 @@ const navItems: NavItem[] = [
   { label: 'Subjects', href: '/subjects', icon: BookOpen, roles: ['super_admin', 'admin'] },
   { label: 'Assignments', href: '/assignments', icon: Users, roles: ['super_admin', 'admin'] },
   { label: 'Monthly Planning', href: '/monthly-planning', icon: Target, roles: ['super_admin', 'admin', 'teacher'] },
-  { label: 'Schedules', href: '/schedules', icon: Calendar, roles: ['super_admin', 'admin'] },
+  { label: '1:1 Schedules', href: '/schedules', icon: Calendar, roles: ['super_admin', 'admin'] },
   { label: 'Zoom Management', href: '/zoom-management', icon: Video, roles: ['super_admin', 'admin'] },
   { label: 'Integrity Audit', href: '/integrity-audit', icon: AlertTriangle, roles: ['super_admin', 'admin'] },
   { label: 'Course Management', href: '/courses', icon: Users, roles: ['super_admin', 'admin', 'admin_academic'] },
