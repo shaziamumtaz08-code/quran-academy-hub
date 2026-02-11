@@ -90,26 +90,24 @@ function buildNavGroups(modelType: string | null): NavGroup[] {
   const isOneToOne = modelType === 'one_to_one' || !modelType;
   const isGroup = modelType === 'group';
 
-  return [
-    // Teaching context — shows contextual items based on division
-    ...(isOneToOne ? [{
-      id: 'teaching',
-      label: 'Teaching',
-      icon: UserCheck,
-      items: [
+  // Context-aware teaching items
+  const teachingItems: NavItem[] = isOneToOne
+    ? [
         { label: 'Assignments', href: '/assignments', icon: Users, roles: ['super_admin', 'admin'] },
         { label: 'Schedules', href: '/schedules', icon: Calendar, roles: ['super_admin', 'admin'] },
-      ] as NavItem[],
-    }] : []),
-    ...(isGroup ? [{
+      ]
+    : [
+        { label: 'Courses', href: '/courses', icon: BookOpen, roles: ['super_admin', 'admin', 'admin_academic'] },
+        { label: 'Schedules', href: '/schedules', icon: CalendarClock, roles: ['super_admin', 'admin'] },
+      ];
+
+  return [
+    {
       id: 'teaching',
       label: 'Teaching',
-      icon: GraduationCap,
-      items: [
-        { label: 'Course Management', href: '/courses', icon: BookOpen, roles: ['super_admin', 'admin', 'admin_academic'] },
-        { label: 'Batch Schedules', href: '/schedules', icon: CalendarClock, roles: ['super_admin', 'admin'] },
-      ] as NavItem[],
-    }] : []),
+      icon: isOneToOne ? UserCheck : GraduationCap,
+      items: teachingItems,
+    },
     {
       id: 'academics',
       label: 'Academics',
