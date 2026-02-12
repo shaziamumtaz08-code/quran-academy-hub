@@ -188,7 +188,19 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={isAuthenticated ? <Navigate to={getDefaultRoute()} replace /> : <Login />} />
       <Route path="/" element={<Navigate to={getDefaultRoute()} replace />} />
-      <Route path="/select-division" element={<ProtectedRoute><SelectDivision /></ProtectedRoute>} />
+      <Route path="/select-division" element={
+        <ProtectedRoute>
+          {(() => {
+            const SelectDivisionGuard = () => {
+              const { activeRole, isLoading } = useAuth();
+              if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-background"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div></div>;
+              if (activeRole !== 'super_admin') return <Navigate to="/dashboard" replace />;
+              return <SelectDivision />;
+            };
+            return <SelectDivisionGuard />;
+          })()}
+        </ProtectedRoute>
+      } />
       
       {/* Admin Routes */}
       <Route path="/admin" element={<ProtectedRoute><AdminRoute><AdminCommandCenter /></AdminRoute></ProtectedRoute>} />

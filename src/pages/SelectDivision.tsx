@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Globe, MapPin, Users, User, Building2, Wifi, ChevronRight } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import logoLight from '@/assets/logo-light.png';
 
 interface DivisionCard {
@@ -39,11 +40,20 @@ const BRANCH_ICONS: Record<string, React.ElementType> = {
 };
 
 export default function SelectDivision() {
-  const { profile, isLoading: authLoading } = useAuth();
+  const { profile, activeRole, isLoading: authLoading } = useAuth();
   const { setActiveDivisionId } = useDivision();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [cards, setCards] = useState<DivisionCard[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Role guard: only super_admin can access this page
+  useEffect(() => {
+    if (!authLoading && activeRole && activeRole !== 'super_admin') {
+      toast({ title: 'Unauthorized access', description: 'Redirecting to your dashboard...', variant: 'destructive' });
+      navigate('/dashboard', { replace: true });
+    }
+  }, [authLoading, activeRole, navigate, toast]);
 
   useEffect(() => {
     const fetchDivisions = async () => {
@@ -130,7 +140,7 @@ export default function SelectDivision() {
           <div className="flex items-center gap-3">
             <div className="text-right">
               <p className="text-sm font-medium text-foreground">{profile?.full_name}</p>
-              <p className="text-xs text-muted-foreground">Super Admin</p>
+              <p className="text-xs text-muted-foreground capitalize">{activeRole?.replace(/_/g, ' ') || 'User'}</p>
             </div>
             <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center">
               <User className="h-4 w-4 text-primary-foreground" />
