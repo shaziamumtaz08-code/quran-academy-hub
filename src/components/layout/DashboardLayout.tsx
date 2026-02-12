@@ -114,7 +114,7 @@ function buildNavGroups(modelType: string | null, branchType: string | null): Na
     { label: 'System Control', href: '/organization-settings', icon: Cog, roles: ['super_admin', 'admin'] },
     ...(!isOnsite ? [{ label: 'Zoom Engine', href: '/zoom-management', icon: Video, roles: ['super_admin', 'admin'] as string[] }] : []),
     { label: 'Integrity Audit', href: '/integrity-audit', icon: AlertTriangle, roles: ['super_admin', 'admin'] },
-    { label: 'Resources', href: '/resources', icon: FolderOpen },
+    { label: 'Resources', href: '/resources', icon: FolderOpen, roles: ['super_admin'] },
   ];
 
   return [
@@ -222,7 +222,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     if (item.href === '/dashboard') return true;
     if (item.roles && activeRole && item.roles.includes(activeRole)) return true;
     if (item.permission && hasPermission(item.permission)) return true;
-    if (item.href === '/resources') return true;
+    // Resources no longer has open access - it uses roles like other items
     return false;
   }, [activeRole, hasPermission]);
 

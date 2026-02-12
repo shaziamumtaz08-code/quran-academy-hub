@@ -235,7 +235,19 @@ function AppRoutes() {
       <Route path="/exam-templates" element={<Navigate to="/report-card-templates" replace />} />
       <Route path="/exam-submission" element={<Navigate to="/generate-report-card" replace />} />
       <Route path="/exam-results" element={<Navigate to="/student-reports" replace />} />
-      <Route path="/resources" element={<ProtectedRoute><DashboardLayout><Resources /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/resources" element={
+        <ProtectedRoute>
+          {(() => {
+            const ResourcesGuard = () => {
+              const { activeRole, isLoading } = useAuth();
+              if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-background"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div></div>;
+              if (activeRole !== 'super_admin') return <Navigate to="/dashboard" replace />;
+              return <DashboardLayout><Resources /></DashboardLayout>;
+            };
+            return <ResourcesGuard />;
+          })()}
+        </ProtectedRoute>
+      } />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
