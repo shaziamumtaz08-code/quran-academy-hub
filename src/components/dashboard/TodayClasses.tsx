@@ -11,6 +11,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDivision } from '@/contexts/DivisionContext';
 import { format } from 'date-fns';
 import { SurahSearchSelect } from '@/components/attendance/SurahSearchSelect';
 import { UnitInputSelector } from '@/components/attendance/UnitInputSelector';
@@ -48,6 +49,7 @@ interface TodayClassesProps {
 export function TodayClasses({ classes, onMarkAttendance, isTeacher = false }: TodayClassesProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { activeDivision } = useDivision();
   const queryClient = useQueryClient();
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -148,6 +150,7 @@ export function TodayClasses({ classes, onMarkAttendance, isTeacher = false }: T
         reason: selectedStatus === 'late' ? 'Student arrived late' : null,
         input_unit: inputUnit,
         raw_input_amount: rawInputNum > 0 ? rawInputNum : null,
+        division_id: activeDivision?.id || null,
       });
 
       if (error) throw error;
