@@ -364,18 +364,19 @@ export default function Attendance() {
 
   // Check for duplicate attendance in the mark dialog
   const { data: markDialogExisting } = useQuery({
-    queryKey: ['mark-dialog-duplicate', selectedStudent, classDate],
+    queryKey: ['mark-dialog-duplicate', selectedStudent, classDate, user?.id],
     queryFn: async () => {
-      if (!selectedStudent || !classDate) return [];
+      if (!selectedStudent || !classDate || !user?.id) return [];
       const { data, error } = await supabase
         .from('attendance')
         .select('id, class_date, status')
         .eq('student_id', selectedStudent)
-        .eq('class_date', classDate);
+        .eq('class_date', classDate)
+        .eq('teacher_id', user.id);
       if (error) throw error;
       return data || [];
     },
-    enabled: markDialogOpen && !!selectedStudent && !!classDate,
+    enabled: markDialogOpen && !!selectedStudent && !!classDate && !!user?.id,
   });
 
   const markDialogHasDuplicate = markDialogExisting && markDialogExisting.length > 0;
