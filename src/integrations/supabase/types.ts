@@ -1118,6 +1118,10 @@ export type Database = {
           id: string
           invoice_id: string
           notes: string | null
+          payment_date: string | null
+          payment_method: string | null
+          period_from: string | null
+          period_to: string | null
           receipt_url: string | null
           recorded_by: string | null
           resolution_type: string
@@ -1136,6 +1140,10 @@ export type Database = {
           id?: string
           invoice_id: string
           notes?: string | null
+          payment_date?: string | null
+          payment_method?: string | null
+          period_from?: string | null
+          period_to?: string | null
           receipt_url?: string | null
           recorded_by?: string | null
           resolution_type?: string
@@ -1154,6 +1162,10 @@ export type Database = {
           id?: string
           invoice_id?: string
           notes?: string | null
+          payment_date?: string | null
+          payment_method?: string | null
+          period_from?: string | null
+          period_to?: string | null
           receipt_url?: string | null
           recorded_by?: string | null
           resolution_type?: string

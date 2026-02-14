@@ -1,0 +1,6 @@
+
+ALTER TABLE public.payment_transactions
+  ADD COLUMN IF NOT EXISTS payment_date DATE DEFAULT CURRENT_DATE,
+  ADD COLUMN IF NOT EXISTS period_from DATE,
+  ADD COLUMN IF NOT EXISTS period_to DATE,
+  ADD COLUMN IF NOT EXISTS payment_method TEXT;
