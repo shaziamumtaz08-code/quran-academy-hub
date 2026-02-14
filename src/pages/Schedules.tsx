@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
 import { format } from 'date-fns';
 import { BulkScheduleImportDialog } from '@/components/schedules/BulkScheduleImportDialog';
+import { TIMEZONES_SORTED as TIMEZONES, getTimezoneAbbr, convertTimeBetweenTimezones, formatTime12h as formatTime12hShared } from '@/lib/timezones';
 
 const DAYS_OF_WEEK = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const DAYS_LABELS: Record<string, string> = {
@@ -29,20 +30,8 @@ const DAYS_LABELS: Record<string, string> = {
   sunday: 'Sunday',
 };
 
-const TIMEZONES = [
-  { value: 'America/Toronto', label: 'Canada (Toronto) EST/EDT', offset: -5, abbr: 'CA' },
-  { value: 'America/New_York', label: 'USA (New York) EST/EDT', offset: -5, abbr: 'NY' },
-  { value: 'America/Los_Angeles', label: 'USA (Los Angeles) PST/PDT', offset: -8, abbr: 'LA' },
-  { value: 'Europe/London', label: 'UK (London) GMT/BST', offset: 0, abbr: 'UK' },
-  { value: 'Asia/Karachi', label: 'Pakistan (Karachi) PKT', offset: 5, abbr: 'PK' },
-  { value: 'Asia/Dubai', label: 'UAE (Dubai) GST', offset: 4, abbr: 'AE' },
-  { value: 'Asia/Riyadh', label: 'Saudi Arabia (Riyadh) AST', offset: 3, abbr: 'SA' },
-  { value: 'Asia/Kolkata', label: 'India (Mumbai) IST', offset: 5.5, abbr: 'IN' },
-  { value: 'Australia/Sydney', label: 'Australia (Sydney) AEST', offset: 10, abbr: 'AU' },
-];
-
 const getTzAbbr = (tzValue: string | null) => {
-  return TIMEZONES.find(tz => tz.value === tzValue)?.abbr || '??';
+  return getTimezoneAbbr(tzValue);
 };
 
 // Country code abbreviations for timezone display
@@ -94,50 +83,16 @@ interface Schedule {
 
 // Helper to calculate teacher time from student time based on timezone offsets
 function calculateTeacherTime(studentTime: string, studentTz: string, teacherTz: string): string {
-  const studentOffset = TIMEZONES.find(tz => tz.value === studentTz)?.offset ?? 0;
-  const teacherOffset = TIMEZONES.find(tz => tz.value === teacherTz)?.offset ?? 0;
-  
-  const [hours, minutes] = studentTime.split(':').map(Number);
-  const studentMinutesFromMidnight = hours * 60 + minutes;
-  
-  const offsetDiffMinutes = (teacherOffset - studentOffset) * 60;
-  let teacherMinutesFromMidnight = studentMinutesFromMidnight + offsetDiffMinutes;
-  
-  if (teacherMinutesFromMidnight < 0) teacherMinutesFromMidnight += 24 * 60;
-  if (teacherMinutesFromMidnight >= 24 * 60) teacherMinutesFromMidnight -= 24 * 60;
-  
-  const teacherHours = Math.floor(teacherMinutesFromMidnight / 60);
-  const teacherMins = teacherMinutesFromMidnight % 60;
-  
-  return `${teacherHours.toString().padStart(2, '0')}:${teacherMins.toString().padStart(2, '0')}`;
+  return convertTimeBetweenTimezones(studentTime, studentTz, teacherTz);
 }
 
 // Helper to calculate student time from teacher time based on timezone offsets
 function calculateStudentTime(teacherTime: string, studentTz: string, teacherTz: string): string {
-  const studentOffset = TIMEZONES.find(tz => tz.value === studentTz)?.offset ?? 0;
-  const teacherOffset = TIMEZONES.find(tz => tz.value === teacherTz)?.offset ?? 0;
-  
-  const [hours, minutes] = teacherTime.split(':').map(Number);
-  const teacherMinutesFromMidnight = hours * 60 + minutes;
-  
-  const offsetDiffMinutes = (studentOffset - teacherOffset) * 60;
-  let studentMinutesFromMidnight = teacherMinutesFromMidnight + offsetDiffMinutes;
-  
-  if (studentMinutesFromMidnight < 0) studentMinutesFromMidnight += 24 * 60;
-  if (studentMinutesFromMidnight >= 24 * 60) studentMinutesFromMidnight -= 24 * 60;
-  
-  const studentHours = Math.floor(studentMinutesFromMidnight / 60);
-  const studentMins = studentMinutesFromMidnight % 60;
-  
-  return `${studentHours.toString().padStart(2, '0')}:${studentMins.toString().padStart(2, '0')}`;
+  return convertTimeBetweenTimezones(teacherTime, teacherTz, studentTz);
 }
 
 function formatTime12h(time: string): string {
-  if (!time) return '';
-  const [hours, minutes] = time.split(':').map(Number);
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  const hour12 = hours % 12 || 12;
-  return `${hour12}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+  return formatTime12hShared(time);
 }
 
 // Convert time string to minutes from midnight for comparison
@@ -257,8 +212,8 @@ export default function Schedules() {
     day: '',
     studentTime: '',
     teacherTime: '',
-    studentTimezone: 'America/Toronto',
-    teacherTimezone: 'Asia/Karachi',
+    studentTimezone: '',
+    teacherTimezone: '',
     duration: '30',
     customDuration: '',
   });
@@ -270,8 +225,8 @@ export default function Schedules() {
     selectedDays: [] as string[],
     studentTime: '',
     teacherTime: '',
-    studentTimezone: 'America/Toronto',
-    teacherTimezone: 'Asia/Karachi',
+    studentTimezone: '',
+    teacherTimezone: '',
     duration: '30',
     customDuration: '',
   });
@@ -713,8 +668,8 @@ export default function Schedules() {
       day: '',
       studentTime: '',
       teacherTime: '',
-      studentTimezone: 'America/Toronto',
-      teacherTimezone: 'Asia/Karachi',
+      studentTimezone: '',
+      teacherTimezone: '',
       duration: '30',
       customDuration: '',
     });
@@ -728,8 +683,8 @@ export default function Schedules() {
       selectedDays: [],
       studentTime: '',
       teacherTime: '',
-      studentTimezone: 'America/Toronto',
-      teacherTimezone: 'Asia/Karachi',
+      studentTimezone: '',
+      teacherTimezone: '',
       duration: '30',
       customDuration: '',
     });

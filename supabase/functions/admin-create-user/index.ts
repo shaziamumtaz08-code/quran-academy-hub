@@ -152,6 +152,30 @@ serve(async (req) => {
     // forceNewProfile: when true, always create a new profile even if email exists (for siblings)
     const forceNewProfile = body?.forceNewProfile === true;
 
+    // Resolve timezone from city/country using timezone_mappings
+    let resolvedTimezone: string | null = null;
+    if (city && country) {
+      const { data: tzMapping } = await adminClient
+        .from("timezone_mappings")
+        .select("timezone")
+        .ilike("country", country)
+        .ilike("city", city)
+        .maybeSingle();
+      resolvedTimezone = tzMapping?.timezone || null;
+    }
+    // Fallback: country-level defaults
+    if (!resolvedTimezone) {
+      const countryLower = country.toLowerCase();
+      if (countryLower === 'pakistan') resolvedTimezone = 'Asia/Karachi';
+      else if (countryLower === 'canada') resolvedTimezone = 'America/Toronto';
+      else if (['uae', 'united arab emirates'].includes(countryLower)) resolvedTimezone = 'Asia/Dubai';
+      else if (['usa', 'united states'].includes(countryLower)) resolvedTimezone = 'America/New_York';
+      else if (['uk', 'united kingdom'].includes(countryLower)) resolvedTimezone = 'Europe/London';
+      else if (countryLower === 'saudi arabia') resolvedTimezone = 'Asia/Riyadh';
+      else if (countryLower === 'india') resolvedTimezone = 'Asia/Kolkata';
+      else if (countryLower === 'australia') resolvedTimezone = 'Australia/Sydney';
+    }
+
     // Validate all inputs
     const validationErrors: string[] = [];
 
@@ -278,6 +302,7 @@ serve(async (req) => {
           age: isValidAge(age) ? age : null,
           country,
           city,
+          timezone: resolvedTimezone,
         });
 
         if (profileErr) {
@@ -356,6 +381,7 @@ serve(async (req) => {
             age: isValidAge(age) ? age : null,
             country,
             city,
+            timezone: resolvedTimezone,
           }, { onConflict: "id" });
 
           if (profileUpsertErr) {
@@ -425,6 +451,7 @@ serve(async (req) => {
         age: isValidAge(age) ? age : null,
         country,
         city,
+        timezone: resolvedTimezone,
       },
       { onConflict: "id" },
     );
