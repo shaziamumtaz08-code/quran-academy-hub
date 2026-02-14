@@ -370,10 +370,10 @@ export default function Expenses() {
               </div>
               <div>
                 <Label>Link to Teacher (optional)</Label>
-                <Select value={form.teacher_id} onValueChange={v => setForm(p => ({ ...p, teacher_id: v }))}>
+                <Select value={form.teacher_id || "none"} onValueChange={v => setForm(p => ({ ...p, teacher_id: v === "none" ? "" : v }))}>
                   <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {teachers.map(t => <SelectItem key={t.id} value={t.id}>{t.full_name}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -383,10 +383,10 @@ export default function Expenses() {
               </div>
               <div>
                 <Label>Link to Student (optional)</Label>
-                <Select value={form.student_id} onValueChange={v => setForm(p => ({ ...p, student_id: v }))}>
+                <Select value={form.student_id || "none"} onValueChange={v => setForm(p => ({ ...p, student_id: v === "none" ? "" : v }))}>
                   <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {students.map(s => <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>)}
                   </SelectContent>
                 </Select>
