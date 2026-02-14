@@ -776,6 +776,89 @@ export type Database = {
           },
         ]
       }
+      fee_invoices: {
+        Row: {
+          amount: number
+          assignment_id: string | null
+          billing_month: string
+          branch_id: string | null
+          created_at: string
+          currency: string
+          division_id: string | null
+          due_date: string | null
+          id: string
+          paid_at: string | null
+          payment_method: string | null
+          remark: string | null
+          status: Database["public"]["Enums"]["invoice_status"]
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          assignment_id?: string | null
+          billing_month: string
+          branch_id?: string | null
+          created_at?: string
+          currency?: string
+          division_id?: string | null
+          due_date?: string | null
+          id?: string
+          paid_at?: string | null
+          payment_method?: string | null
+          remark?: string | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          assignment_id?: string | null
+          billing_month?: string
+          branch_id?: string | null
+          created_at?: string
+          currency?: string
+          division_id?: string | null
+          due_date?: string | null
+          id?: string
+          paid_at?: string | null
+          payment_method?: string | null
+          remark?: string | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fee_invoices_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "student_teacher_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fee_invoices_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fee_invoices_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fee_invoices_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fee_packages: {
         Row: {
           amount: number
@@ -2066,6 +2149,7 @@ export type Database = {
       division_model: "one_to_one" | "group"
       exam_tenure: "weekly" | "monthly" | "quarterly" | "yearly"
       grading_style: "numeric" | "rubric"
+      invoice_status: "pending" | "paid" | "overdue"
       permission_type:
         | "users.view"
         | "users.create"
@@ -2253,6 +2337,7 @@ export const Constants = {
       division_model: ["one_to_one", "group"],
       exam_tenure: ["weekly", "monthly", "quarterly", "yearly"],
       grading_style: ["numeric", "rubric"],
+      invoice_status: ["pending", "paid", "overdue"],
       permission_type: [
         "users.view",
         "users.create",
