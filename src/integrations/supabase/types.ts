@@ -2391,6 +2391,7 @@ export type Database = {
           division_id: string | null
           duration_minutes: number
           effective_from_date: string | null
+          effective_to_date: string | null
           fee_package_id: string | null
           first_month_prorated_fee: number | null
           id: string
@@ -2413,6 +2414,7 @@ export type Database = {
           division_id?: string | null
           duration_minutes?: number
           effective_from_date?: string | null
+          effective_to_date?: string | null
           fee_package_id?: string | null
           first_month_prorated_fee?: number | null
           id?: string
@@ -2435,6 +2437,7 @@ export type Database = {
           division_id?: string | null
           duration_minutes?: number
           effective_from_date?: string | null
+          effective_to_date?: string | null
           fee_package_id?: string | null
           first_month_prorated_fee?: number | null
           id?: string
