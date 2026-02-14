@@ -141,6 +141,9 @@ export default function Payments() {
   const [actionReason, setActionReason] = useState('');
   const [discountAmount, setDiscountAmount] = useState('');
   const [adjustmentHistory, setAdjustmentHistory] = useState<any[]>([]);
+  const [editPaymentData, setEditPaymentData] = useState<{ invoiceId: string; transaction: any; invoice: InvoiceRow } | null>(null);
+  const [editPaymentForm, setEditPaymentForm] = useState({ amount_foreign: '', amount_local: '', payment_date: '', payment_method: '', notes: '', reason: '' });
+  const [editPaymentLoading, setEditPaymentLoading] = useState(false);
 
   // Setup fee form - multi-select students
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
@@ -962,6 +965,24 @@ export default function Payments() {
                                       <ArrowRightLeft className="h-3.5 w-3.5 mr-2" /> Reverse Payment
                                     </DropdownMenuItem>
                                   )}
+                                  {(inv.status === 'paid' || inv.status === 'partially_paid') && (
+                                    <DropdownMenuItem onClick={async () => {
+                                      const { data: txns } = await supabase.from('payment_transactions').select('*').eq('invoice_id', inv.id).order('created_at', { ascending: false }).limit(1);
+                                      const tx = txns?.[0];
+                                      if (!tx) { toast({ title: 'No payment transaction found for this invoice', variant: 'destructive' }); return; }
+                                      setEditPaymentForm({
+                                        amount_foreign: String(tx.amount_foreign || ''),
+                                        amount_local: String(tx.amount_local || ''),
+                                        payment_date: tx.payment_date || '',
+                                        payment_method: tx.payment_method || '',
+                                        notes: tx.notes || '',
+                                        reason: '',
+                                      });
+                                      setEditPaymentData({ invoiceId: inv.id, transaction: tx, invoice: inv });
+                                    }}>
+                                      <Pencil className="h-3.5 w-3.5 mr-2" /> Edit Payment
+                                    </DropdownMenuItem>
+                                  )}
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem onClick={() => { setActionModal({ type: 'view_history', invoice: inv }); fetchHistory(inv.id); }}>
                                     <History className="h-3.5 w-3.5 mr-2" /> View History
@@ -1491,6 +1512,112 @@ export default function Payments() {
             </ScrollArea>
             <DialogFooter>
               <Button variant="outline" onClick={() => { setActionModal(null); setAdjustmentHistory([]); }}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* ─── Edit Payment Modal ────────────────────────────────────── */}
+        <Dialog open={!!editPaymentData} onOpenChange={() => setEditPaymentData(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2"><Pencil className="h-5 w-5" /> Edit Payment</DialogTitle>
+              <DialogDescription>
+                Correct payment details for {editPaymentData?.invoice.profiles?.full_name} — {editPaymentData?.invoice && formatBillingMonth(editPaymentData.invoice.billing_month)}. All changes are audit-trailed.
+              </DialogDescription>
+            </DialogHeader>
+            {editPaymentData && (
+              <div className="space-y-4 py-2">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Amount ({editPaymentData.invoice.currency})</Label>
+                    <Input type="number" placeholder="0.00" value={editPaymentForm.amount_foreign} onChange={e => setEditPaymentForm(f => ({ ...f, amount_foreign: e.target.value }))} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Realized (PKR)</Label>
+                    <Input type="number" placeholder="0.00" value={editPaymentForm.amount_local} onChange={e => setEditPaymentForm(f => ({ ...f, amount_local: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Payment Date</Label>
+                    <Input type="date" value={editPaymentForm.payment_date} onChange={e => setEditPaymentForm(f => ({ ...f, payment_date: e.target.value }))} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Receiving Channel</Label>
+                    <Select value={editPaymentForm.payment_method} onValueChange={v => setEditPaymentForm(f => ({ ...f, payment_method: v }))}>
+                      <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                      <SelectContent>{RECEIVING_CHANNELS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs">Notes</Label>
+                  <Textarea placeholder="Optional notes..." value={editPaymentForm.notes} onChange={e => setEditPaymentForm(f => ({ ...f, notes: e.target.value }))} className="h-16" />
+                </div>
+                <Separator />
+                <div>
+                  <Label className="text-xs">Reason for Correction <span className="text-destructive">*</span></Label>
+                  <Textarea placeholder="Why is this payment being corrected?" value={editPaymentForm.reason} onChange={e => setEditPaymentForm(f => ({ ...f, reason: e.target.value }))} className="h-20" />
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditPaymentData(null)}>Cancel</Button>
+              <Button
+                disabled={editPaymentLoading || !editPaymentForm.reason.trim() || !parseFloat(editPaymentForm.amount_foreign)}
+                onClick={async () => {
+                  if (!editPaymentData) return;
+                  setEditPaymentLoading(true);
+                  try {
+                    const tx = editPaymentData.transaction;
+                    const newAmountForeign = parseFloat(editPaymentForm.amount_foreign) || 0;
+                    const newAmountLocal = parseFloat(editPaymentForm.amount_local) || 0;
+                    const newEffectiveRate = newAmountForeign > 0 ? newAmountLocal / newAmountForeign : 0;
+
+                    // 1. Log adjustment
+                    await createAdjustment(editPaymentData.invoiceId, 'edit_payment',
+                      { amount_foreign: tx.amount_foreign, amount_local: tx.amount_local, payment_date: tx.payment_date, payment_method: tx.payment_method, notes: tx.notes },
+                      { amount_foreign: newAmountForeign, amount_local: newAmountLocal, payment_date: editPaymentForm.payment_date, payment_method: editPaymentForm.payment_method, notes: editPaymentForm.notes },
+                      editPaymentForm.reason
+                    );
+
+                    // 2. Update payment_transactions row
+                    await supabase.from('payment_transactions').update({
+                      amount_foreign: newAmountForeign,
+                      amount_local: newAmountLocal,
+                      effective_rate: newEffectiveRate || null,
+                      payment_date: editPaymentForm.payment_date || null,
+                      payment_method: editPaymentForm.payment_method || null,
+                      notes: editPaymentForm.notes || null,
+                    }).eq('id', tx.id);
+
+                    // 3. Recalculate invoice amount_paid & status
+                    const { data: allTxns } = await supabase.from('payment_transactions').select('amount_foreign').eq('invoice_id', editPaymentData.invoiceId);
+                    const totalPaid = (allTxns || []).reduce((s: number, t: any) => s + Number(t.amount_foreign || 0), 0);
+                    const invoiceAmount = Number(editPaymentData.invoice.amount);
+                    let newStatus: string;
+                    if (totalPaid >= invoiceAmount) newStatus = 'paid';
+                    else if (totalPaid > 0) newStatus = 'partially_paid';
+                    else newStatus = 'pending';
+
+                    await supabase.from('fee_invoices').update({
+                      amount_paid: totalPaid,
+                      status: newStatus as any,
+                    }).eq('id', editPaymentData.invoiceId);
+
+                    queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
+                    toast({ title: 'Payment corrected successfully' });
+                    trackActivity({ action: 'payment_edited', entityType: 'payment_transaction', entityId: tx.id, details: { invoice_id: editPaymentData.invoiceId, reason: editPaymentForm.reason } });
+                    setEditPaymentData(null);
+                  } catch (err: any) {
+                    toast({ title: 'Error', description: err.message, variant: 'destructive' });
+                  } finally {
+                    setEditPaymentLoading(false);
+                  }
+                }}
+              >
+                {editPaymentLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Save Correction
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
