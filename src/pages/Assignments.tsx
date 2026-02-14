@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Users, GraduationCap, Trash2, Loader2, UserPlus, BookOpen, Pencil, Upload, Filter, ArrowRightLeft } from 'lucide-react';
+import { TableToolbar } from '@/components/ui/table-toolbar';
 import {
   Dialog,
   DialogContent,
@@ -62,6 +63,8 @@ export default function Assignments() {
   const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<AssignmentStatus | 'all'>('active');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortMode, setSortMode] = useState<'az' | 'za' | 'newest'>('az');
   const [reassignDialog, setReassignDialog] = useState<Assignment | null>(null);
   const [reassignTeacherId, setReassignTeacherId] = useState('');
 
@@ -348,10 +351,34 @@ export default function Assignments() {
 
   const isLoading = loadingTeachers || loadingStudents || loadingAssignments;
 
-  // Filter assignments by status
-  const filteredAssignments = assignments.filter(a => 
-    statusFilter === 'all' ? true : a.status === statusFilter
-  );
+  // Filter and sort assignments
+  const filteredAssignments = useMemo(() => {
+    let result = assignments.filter(a => 
+      statusFilter === 'all' ? true : a.status === statusFilter
+    );
+    
+    // Apply search
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(a =>
+        a.teacher_name.toLowerCase().includes(term) ||
+        a.student_name.toLowerCase().includes(term) ||
+        (a.subject_name?.toLowerCase().includes(term) ?? false)
+      );
+    }
+
+    // Apply sort
+    result.sort((a, b) => {
+      switch (sortMode) {
+        case 'az': return a.student_name.localeCompare(b.student_name);
+        case 'za': return b.student_name.localeCompare(a.student_name);
+        case 'newest': return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        default: return 0;
+      }
+    });
+
+    return result;
+  }, [assignments, statusFilter, searchTerm, sortMode]);
 
   // Count by status for filter badges
   const statusCounts = {
@@ -360,7 +387,11 @@ export default function Assignments() {
     completed: assignments.filter(a => a.status === 'completed').length,
   };
 
-
+  const resetToolbar = () => {
+    setSearchTerm('');
+    setSortMode('az');
+    setStatusFilter('active');
+  };
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
@@ -536,46 +567,30 @@ export default function Assignments() {
 
         {/* Assignments Table */}
         <Card>
-          <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <CardHeader className="space-y-4">
             <CardTitle>Assignments</CardTitle>
-            {/* Status Filter */}
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <div className="flex gap-1">
-                <Button
-                  variant={statusFilter === 'active' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setStatusFilter('active')}
-                  className="h-7 text-xs"
-                >
-                  Active ({statusCounts.active})
-                </Button>
-                <Button
-                  variant={statusFilter === 'paused' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setStatusFilter('paused')}
-                  className="h-7 text-xs"
-                >
-                  Paused ({statusCounts.paused})
-                </Button>
-                <Button
-                  variant={statusFilter === 'completed' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setStatusFilter('completed')}
-                  className="h-7 text-xs"
-                >
-                  Completed ({statusCounts.completed})
-                </Button>
-                <Button
-                  variant={statusFilter === 'all' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setStatusFilter('all')}
-                  className="h-7 text-xs"
-                >
-                  All
-                </Button>
-              </div>
-            </div>
+            <TableToolbar
+              searchValue={searchTerm}
+              onSearchChange={setSearchTerm}
+              searchPlaceholder="Search by name or subject..."
+              sortValue={sortMode}
+              onSortChange={(v) => setSortMode(v as 'az' | 'za' | 'newest')}
+              sortOptions={[
+                { value: 'az', label: 'A → Z (Student)' },
+                { value: 'za', label: 'Z → A (Student)' },
+                { value: 'newest', label: 'Newest First' },
+              ]}
+              filterValue={statusFilter}
+              onFilterChange={(v) => setStatusFilter(v as AssignmentStatus | 'all')}
+              filterOptions={[
+                { value: 'all', label: 'All Statuses' },
+                { value: 'active', label: `Active (${statusCounts.active})` },
+                { value: 'paused', label: `Paused (${statusCounts.paused})` },
+                { value: 'completed', label: `Completed (${statusCounts.completed})` },
+              ]}
+              filterLabel="Status"
+              onReset={resetToolbar}
+            />
           </CardHeader>
           <CardContent>
             {isLoading ? (

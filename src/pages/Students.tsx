@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { Search, Mail, User, Loader2, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, RotateCcw } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,6 +14,7 @@ import { StudentDetailDrawer } from '@/components/students/StudentDetailDrawer';
 import { StudentHistoryDialog } from '@/components/students/StudentHistoryDialog';
 import { StudentScheduleDialog } from '@/components/students/StudentScheduleDialog';
 import { QuickAttendanceModal } from '@/components/attendance/QuickAttendanceModal';
+import { useSearchParams } from 'react-router-dom';
 
 interface Student {
   id: string;
@@ -23,6 +25,7 @@ interface Student {
   city: string | null;
   gender: string | null;
   age: number | null;
+  subjects: { id: string; name: string }[];
 }
 
 type AssignmentStatus = 'active' | 'paused' | 'completed';
@@ -51,6 +54,7 @@ export default function Students() {
   const [scheduleStudent, setScheduleStudent] = useState<TeacherStudent | null>(null);
   const [attendanceStudent, setAttendanceStudent] = useState<TeacherStudent | null>(null);
   const { user, activeRole } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   // Sorting & Filtering
   const [sortField, setSortField] = useState<SortField>('name');
@@ -58,6 +62,7 @@ export default function Students() {
   const [filterGender, setFilterGender] = useState('');
   const [filterCountry, setFilterCountry] = useState('');
   const [filterCity, setFilterCity] = useState('');
+  const [filterSubjectId, setFilterSubjectId] = useState(searchParams.get('subjectId') || '');
 
   // Determine role-based behavior
   const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_');
@@ -158,12 +163,23 @@ export default function Students() {
         const childIds = (links || []).map((l: any) => l.student_id);
         const { data: assignments } = await supabase
           .from('student_teacher_assignments')
-          .select(`student_id, teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name)`)
-          .in('student_id', childIds);
+          .select(`student_id, teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name), subject:subjects(id, name)`)
+          .in('student_id', childIds)
+          .eq('status', 'active');
 
         const teacherMap = new Map<string, string>();
+        const subjectMap = new Map<string, { id: string; name: string }[]>();
         assignments?.forEach((a: any) => {
-          teacherMap.set(a.student_id, a.teacher?.full_name || null);
+          if (!teacherMap.has(a.student_id)) {
+            teacherMap.set(a.student_id, a.teacher?.full_name || null);
+          }
+          if (a.subject?.id) {
+            const existing = subjectMap.get(a.student_id) || [];
+            if (!existing.find((s: any) => s.id === a.subject.id)) {
+              existing.push({ id: a.subject.id, name: a.subject.name });
+            }
+            subjectMap.set(a.student_id, existing);
+          }
         });
 
         return (links || []).map((l: any) => ({
@@ -171,10 +187,15 @@ export default function Students() {
           full_name: l.student?.full_name || 'Unknown',
           email: l.student?.email || null,
           teacher_name: teacherMap.get(l.student_id) || null,
+          country: null,
+          city: null,
+          gender: null,
+          age: null,
+          subjects: subjectMap.get(l.student_id) || [],
         })) as Student[];
       }
 
-      // For admins: show all students with location data
+      // For admins: show all students with location data and subjects
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('user_id')
@@ -196,15 +217,28 @@ export default function Students() {
         .from('student_teacher_assignments')
         .select(`
           student_id,
-          teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name)
+          subject_id,
+          teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name),
+          subject:subjects(id, name)
         `)
-        .in('student_id', studentIds);
+        .in('student_id', studentIds)
+        .eq('status', 'active');
 
       if (assignError) throw assignError;
 
       const teacherMap = new Map<string, string>();
+      const subjectMap = new Map<string, { id: string; name: string }[]>();
       assignments?.forEach((a: any) => {
-        teacherMap.set(a.student_id, a.teacher?.full_name || null);
+        if (!teacherMap.has(a.student_id)) {
+          teacherMap.set(a.student_id, a.teacher?.full_name || null);
+        }
+        if (a.subject?.id) {
+          const existing = subjectMap.get(a.student_id) || [];
+          if (!existing.find(s => s.id === a.subject.id)) {
+            existing.push({ id: a.subject.id, name: a.subject.name });
+          }
+          subjectMap.set(a.student_id, existing);
+        }
       });
 
       return (profiles || []).map(p => ({
@@ -216,6 +250,7 @@ export default function Students() {
         city: p.city || null,
         gender: p.gender || null,
         age: p.age || null,
+        subjects: subjectMap.get(p.id) || [],
       })) as Student[];
     },
     enabled: !!user?.id && !isTeacher,
@@ -223,7 +258,7 @@ export default function Students() {
 
   const isLoading = isTeacher ? isLoadingTeacher : isLoadingOther;
 
-  // Get unique countries and cities for filters
+  // Get unique values for filters
   const uniqueCountries = useMemo(() => {
     const countries = new Set(students.map(s => s.country).filter(Boolean) as string[]);
     return [...countries].sort();
@@ -236,6 +271,12 @@ export default function Students() {
       .filter(Boolean) as string[];
     return [...new Set(cities)].sort();
   }, [students, filterCountry]);
+
+  const uniqueSubjects = useMemo(() => {
+    const subjectMap = new Map<string, string>();
+    students.forEach(s => s.subjects?.forEach(sub => subjectMap.set(sub.id, sub.name)));
+    return [...subjectMap.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [students]);
 
   // Filter for teacher view
   const filteredTeacherStudents = teacherStudents.filter(student =>
@@ -251,7 +292,8 @@ export default function Students() {
       const matchesGender = !filterGender || student.gender === filterGender;
       const matchesCountry = !filterCountry || student.country === filterCountry;
       const matchesCity = !filterCity || student.city === filterCity;
-      return matchesSearch && matchesGender && matchesCountry && matchesCity;
+      const matchesSubject = !filterSubjectId || student.subjects?.some(s => s.id === filterSubjectId);
+      return matchesSearch && matchesGender && matchesCountry && matchesCity && matchesSubject;
     });
 
     // Sort
@@ -284,7 +326,7 @@ export default function Students() {
     });
 
     return filtered;
-  }, [students, searchTerm, filterGender, filterCountry, filterCity, sortField, sortOrder]);
+  }, [students, searchTerm, filterGender, filterCountry, filterCity, filterSubjectId, sortField, sortOrder]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -307,8 +349,10 @@ export default function Students() {
     setFilterGender('');
     setFilterCountry('');
     setFilterCity('');
+    setFilterSubjectId('');
     setSortField('name');
     setSortOrder('asc');
+    setSearchParams({});
   };
 
   // Get appropriate subtitle based on role
@@ -371,6 +415,17 @@ export default function Students() {
                   <SelectItem value="all">All Cities</SelectItem>
                   {uniqueCities.map(c => (
                     <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={filterSubjectId || "all"} onValueChange={(v) => { setFilterSubjectId(v === 'all' ? '' : v); }}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="Subject" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Subjects</SelectItem>
+                  {uniqueSubjects.map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -440,6 +495,7 @@ export default function Students() {
                     >
                       <span className="flex items-center">Assigned Teacher {getSortIcon('teacher')}</span>
                     </TableHead>
+                    <TableHead>Subject(s)</TableHead>
                     {isAdmin && (
                       <>
                         <TableHead 
@@ -493,6 +549,19 @@ export default function Students() {
                         ) : (
                           <span className="text-muted-foreground text-sm">Not assigned</span>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {student.subjects && student.subjects.length > 0 ? (
+                            student.subjects.map(sub => (
+                              <Badge key={sub.id} variant="secondary" className="text-xs">
+                                {sub.name}
+                              </Badge>
+                            ))
+                          ) : (
+                            <span className="text-muted-foreground text-sm">—</span>
+                          )}
+                        </div>
                       </TableCell>
                       {isAdmin && (
                         <>
