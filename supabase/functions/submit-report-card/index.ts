@@ -180,13 +180,19 @@ serve(async (req) => {
 
       return json(200, { id: examData?.id, updated: true, total_marks, max_total_marks, percentage }, requestOrigin);
     } else {
-      // Check for existing record (same student + template + exam_date) for overwrite
+      // Check for existing record (same student + template + same month/year) for overwrite
+      const examDateObj = new Date(exam_date);
+      const monthStart = `${examDateObj.getFullYear()}-${String(examDateObj.getMonth() + 1).padStart(2, '0')}-01`;
+      const monthEnd = new Date(examDateObj.getFullYear(), examDateObj.getMonth() + 1, 0);
+      const monthEndStr = `${monthEnd.getFullYear()}-${String(monthEnd.getMonth() + 1).padStart(2, '0')}-${String(monthEnd.getDate()).padStart(2, '0')}`;
+
       const { data: existingExam } = await adminClient
         .from("exams")
         .select("id")
         .eq("student_id", student_id)
         .eq("template_id", template_id)
-        .eq("exam_date", exam_date)
+        .gte("exam_date", monthStart)
+        .lte("exam_date", monthEndStr)
         .is("deleted_at", null)
         .maybeSingle();
 

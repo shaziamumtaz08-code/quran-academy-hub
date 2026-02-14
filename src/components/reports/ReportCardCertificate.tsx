@@ -111,13 +111,13 @@ export function ReportCardCertificate({ report, showInternalNotes = false }: Rep
   };
 
   const getGradeInfo = (pct: number) => {
-    if (isNaN(pct)) return { label: 'N/A', style: 'bg-muted text-muted-foreground' };
-    if (pct >= 90) return { label: 'Mastered', style: 'bg-cyan-500 text-white' };
-    if (pct >= 80) return { label: 'Excellent', style: 'bg-cyan-400 text-white' };
-    if (pct >= 70) return { label: 'Proficient', style: 'bg-blue-500 text-white' };
-    if (pct >= 60) return { label: 'Progressing', style: 'bg-amber-500 text-white' };
-    if (pct >= 50) return { label: 'Developing', style: 'bg-orange-500 text-white' };
-    return { label: 'Beginning', style: 'bg-gray-500 text-white' };
+    if (isNaN(pct)) return { code: 'N/A', label: 'N/A', arabic: '', style: 'bg-muted text-muted-foreground' };
+    if (pct >= 90) return { code: 'A+', label: 'A+', arabic: 'ممتاز مرتفع', style: 'bg-cyan-500 text-white' };
+    if (pct >= 80) return { code: 'A', label: 'A', arabic: 'ممتاز', style: 'bg-cyan-400 text-white' };
+    if (pct >= 70) return { code: 'B', label: 'B', arabic: 'جيد جداً', style: 'bg-blue-500 text-white' };
+    if (pct >= 60) return { code: 'C', label: 'C', arabic: 'جيد', style: 'bg-amber-500 text-white' };
+    if (pct >= 50) return { code: 'D', label: 'D', arabic: 'مقبول', style: 'bg-orange-500 text-white' };
+    return { code: 'F', label: 'F', arabic: 'راسب', style: 'bg-red-500 text-white' };
   };
 
   const gradeInfo = getGradeInfo(report.percentage);
@@ -255,9 +255,14 @@ export function ReportCardCertificate({ report, showInternalNotes = false }: Rep
                 </div>
                 <p className="text-sm text-muted-foreground">Grade</p>
               </div>
-              <Badge className={`self-start px-4 py-2 text-lg font-bold rounded-lg ${gradeInfo.style}`}>
-                {gradeInfo.label}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge className={`px-4 py-2 text-lg font-bold rounded-lg ${gradeInfo.style}`}>
+                  {gradeInfo.code}
+                </Badge>
+                {gradeInfo.arabic && (
+                  <span className="urdu-text text-lg font-bold text-navy-900">{gradeInfo.arabic}</span>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -270,16 +275,16 @@ export function ReportCardCertificate({ report, showInternalNotes = false }: Rep
               Assessment Breakdown
             </h3>
             
-            {/* Table Header */}
-            <div className="bg-gray-50 rounded-t-lg px-4 py-3 grid grid-cols-12 gap-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-gray-200">
+            {/* Desktop Table Header - hidden on mobile */}
+            <div className="hidden sm:grid bg-gray-50 rounded-t-lg px-4 py-3 grid-cols-12 gap-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-gray-200">
               <div className="col-span-5">Criteria</div>
               <div className="col-span-2 text-center">Obtained</div>
               <div className="col-span-2 text-center">Max</div>
-              <div className="col-span-3 text-center">Total</div>
+              <div className="col-span-3 text-center">Grade</div>
             </div>
 
             {/* Sections & Criteria */}
-            <div className="border border-gray-200 border-t-0 rounded-b-lg overflow-hidden">
+            <div className="border border-gray-200 sm:border-t-0 rounded-lg sm:rounded-t-none overflow-hidden">
               {(report.template?.structure_json?.sections ?? []).map((section, sIdx) => {
                 const sectionMax = calculateSectionMaxScore(section);
                 const sectionObtained = section.criteria?.reduce((sum, c) => {
@@ -313,31 +318,51 @@ export function ReportCardCertificate({ report, showInternalNotes = false }: Rep
                       const max = typeof row?.max_marks === 'number' ? row.max_marks : criterion.max_marks;
                       const pct = max > 0 ? Math.round((obtained / max) * 100) : 0;
                       const progressColor = pct >= 80 ? 'bg-cyan-500' : pct >= 60 ? 'bg-blue-500' : pct >= 40 ? 'bg-amber-500' : 'bg-red-400';
+                      const rowGrade = getGradeInfo(pct);
 
                       return (
-                        <div
-                          key={cIdx}
-                          className="grid grid-cols-12 gap-4 items-center px-4 py-3 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 transition-colors"
-                        >
-                          <div className="col-span-5 flex items-center gap-3">
-                            <div className={`w-24 h-2 rounded-full bg-gray-200 overflow-hidden`}>
-                              <div className={`h-full ${progressColor}`} style={{ width: `${pct}%` }} />
+                        <div key={cIdx}>
+                          {/* Desktop row */}
+                          <div className="hidden sm:grid grid-cols-12 gap-4 items-center px-4 py-3 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 transition-colors">
+                            <div className="col-span-5 flex items-center gap-3">
+                              <div className="w-24 h-2 rounded-full bg-gray-200 overflow-hidden">
+                                <div className={`h-full ${progressColor}`} style={{ width: `${pct}%` }} />
+                              </div>
+                              <p className={`text-sm font-medium text-navy-900 ${hasArabicUrdu(criterion.criteria_name) ? 'urdu-text' : ''}`}>
+                                {criterion.criteria_name}
+                              </p>
                             </div>
-                            <p className={`text-sm font-medium text-navy-900 ${hasArabicUrdu(criterion.criteria_name) ? 'urdu-text' : ''}`}>
+                            <div className="col-span-2 text-center">
+                              <span className="font-semibold text-navy-900">{obtained}</span>
+                              <span className="text-muted-foreground text-sm"> / {max}</span>
+                            </div>
+                            <div className="col-span-2 text-center text-muted-foreground">
+                              {max}
+                            </div>
+                            <div className="col-span-3 text-center">
+                              <Badge variant="outline" className="font-medium gap-1">
+                                {rowGrade.code} {pct}%
+                              </Badge>
+                            </div>
+                          </div>
+
+                          {/* Mobile stacked card */}
+                          <div className="sm:hidden border-b border-gray-100 last:border-b-0 px-4 py-3 space-y-2">
+                            <p className={`font-medium text-navy-900 ${hasArabicUrdu(criterion.criteria_name) ? 'urdu-text text-lg' : 'text-sm'}`}>
                               {criterion.criteria_name}
                             </p>
-                          </div>
-                          <div className="col-span-2 text-center">
-                            <span className="font-semibold text-navy-900">{obtained}</span>
-                            <span className="text-muted-foreground text-sm"> / {max}</span>
-                          </div>
-                          <div className="col-span-2 text-center text-muted-foreground">
-                            {max}
-                          </div>
-                          <div className="col-span-3 text-center">
-                            <Badge variant="outline" className="font-medium">
-                              {pct}%
-                            </Badge>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm">
+                                <span className="font-semibold text-navy-900">{obtained}</span>
+                                <span className="text-muted-foreground"> / {max}</span>
+                              </span>
+                              <Badge variant="outline" className="font-medium text-xs gap-1">
+                                {rowGrade.code} {rowGrade.arabic && <span className="urdu-text">{rowGrade.arabic}</span>} {pct}%
+                              </Badge>
+                            </div>
+                            <div className="w-full h-2 rounded-full bg-gray-200 overflow-hidden">
+                              <div className={`h-full ${progressColor}`} style={{ width: `${pct}%` }} />
+                            </div>
                           </div>
                         </div>
                       );
@@ -346,8 +371,8 @@ export function ReportCardCertificate({ report, showInternalNotes = false }: Rep
                 );
               })}
 
-              {/* Grand Total Row */}
-              <div className="bg-navy-900/5 grid grid-cols-12 gap-4 items-center px-4 py-4 border-t border-gray-200">
+              {/* Grand Total Row - Desktop */}
+              <div className="hidden sm:grid bg-navy-900/5 grid-cols-12 gap-4 items-center px-4 py-4 border-t border-gray-200">
                 <div className="col-span-5 font-bold text-navy-900">Total</div>
                 <div className="col-span-2 text-center">
                   <span className="font-bold text-navy-900">{report.total_marks}</span>
@@ -356,10 +381,28 @@ export function ReportCardCertificate({ report, showInternalNotes = false }: Rep
                 <div className="col-span-2 text-center font-semibold text-muted-foreground">
                   {report.max_total_marks}
                 </div>
-                <div className="col-span-3 text-center">
-                  <Badge className="bg-cyan-500 text-white font-bold px-3">
-                    {report.percentage}%
+                <div className="col-span-3 text-center flex items-center justify-center gap-2">
+                  <Badge className={`font-bold px-3 ${gradeInfo.style}`}>
+                    {gradeInfo.code} — {report.percentage}%
                   </Badge>
+                  {gradeInfo.arabic && <span className="urdu-text font-bold text-sm">{gradeInfo.arabic}</span>}
+                </div>
+              </div>
+
+              {/* Grand Total Row - Mobile */}
+              <div className="sm:hidden bg-navy-900/5 px-4 py-4 border-t border-gray-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-navy-900">Total</span>
+                  <span>
+                    <span className="font-bold text-navy-900">{report.total_marks}</span>
+                    <span className="text-muted-foreground"> / {report.max_total_marks}</span>
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <Badge className={`font-bold px-3 ${gradeInfo.style}`}>
+                    {gradeInfo.code} — {report.percentage}%
+                  </Badge>
+                  {gradeInfo.arabic && <span className="urdu-text font-bold text-lg">{gradeInfo.arabic}</span>}
                 </div>
               </div>
             </div>
