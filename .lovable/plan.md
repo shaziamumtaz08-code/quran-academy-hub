@@ -1,57 +1,32 @@
 
 
-## Composite Fee Builder: Individual vs Bulk Selection Mode
+## Add Per-Row "Record Payment" Button to Invoice Table
 
-### Overview
-Add a toggle in the "Set Up Student Fee" modal that switches between **Individual** mode (current search-based selection) and **Bulk** mode (full sortable/filterable student list with checkboxes). This makes it easy to apply the same fee package to groups of students based on country, subject, or name.
+### Problem
+The "Record Payment" button only appears after selecting invoices via checkboxes (bulk action pattern). There is no visible, per-row action button, making it unclear how to record a payment for a single invoice.
 
----
+### Solution
+Add an **Actions** column to the invoice table with a per-row "Record Payment" button for unpaid/partially paid invoices. Keep the existing bulk selection flow as well.
 
-### How It Works
+### Changes (single file: `src/pages/Payments.tsx`)
 
-**Individual Mode** (current behavior, unchanged):
-- Search students by name, click to add as badges.
+1. **Add an "Actions" column** to the invoice table header.
 
-**Bulk Mode** (new):
-- Shows a full scrollable table of all students with columns: Checkbox, Name, Country, Subject(s).
-- **Sorting**: Click column headers (Name, Country, Subject) to sort alphabetically.
-- **Filtering**: Search bar filters across name, country, and subject simultaneously.
-- **Selection**: Tick individual checkboxes or use "Select All (filtered)" to bulk-select visible rows.
-- Selected students feed into the same `selectedStudentIds` array used by the existing save logic.
+2. **Per-row button**: For each invoice where `status !== 'paid'`, show a small "Record Payment" button (or icon button with a tooltip). Clicking it will:
+   - Select only that invoice.
+   - Open the existing payment modal pre-filled for that single invoice.
 
----
+3. **New handler** `openSinglePay(invoiceId)`:
+   - Sets `selectedIds` to just that one invoice.
+   - Opens the bulk payment modal (reuses the same dialog — no new modal needed).
 
-### UI Layout in the Modal
+4. **Paid rows**: Show a checkmark or "Paid" indicator instead of the button.
 
-A segmented toggle ("Individual" | "Bulk Select") appears at the top of the Students section.
+### Visual Result
 
-- **Individual**: Shows the current search input + badge chips (no changes).
-- **Bulk Select**: Replaces the search area with:
-  - A search/filter input (filters by name, country, subject).
-  - A compact table inside a scroll area (~250px max height):
-    | Checkbox | Student Name | Country | Subject |
-  - A "Select All Filtered" checkbox in the header.
-  - A summary line: "X of Y students selected".
+| Checkbox | Student | Package | Month | Amount | Paid | Due Date | Status | Actions |
+|----------|---------|---------|-------|--------|------|----------|--------|---------|
+| [ ] | Ahmad | UK-3 | Feb 2026 | GBP 25 | -- | Feb 28 | Pending | [Record Payment] |
+| -- | Sara | USD-5 | Feb 2026 | USD 50 | USD 50 | Feb 28 | Paid | (checkmark) |
 
----
-
-### Technical Details
-
-**Data Fetching Changes:**
-- Expand the student query to also fetch `country` from `profiles`.
-- Add a secondary query to fetch each student's subject(s) via `student_teacher_assignments` joined with `subjects`.
-- These queries only fire when `setupOpen` is true (already the pattern).
-
-**New State:**
-- `selectionMode: 'individual' | 'bulk'` -- toggles the UI.
-- `bulkSearch: string` -- filter text for the bulk table.
-- `bulkSort: { column: 'name' | 'country' | 'subject', direction: 'asc' | 'desc' }` -- sort state.
-
-**Filtering Logic (Bulk Mode):**
-- Filter students where name, country, or any subject name matches the search term (case-insensitive).
-- Sort by the selected column and direction.
-
-**No Schema Changes Required** -- all data already exists in the database.
-
-**Files Modified:**
-- `src/pages/Payments.tsx` -- Add the toggle, bulk table UI, expanded student query, and sorting/filtering logic within the existing fee builder modal.
+The bulk checkbox + floating button workflow remains unchanged for multi-invoice payments.
