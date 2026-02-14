@@ -41,6 +41,50 @@ export type Database = {
         }
         Relationships: []
       }
+      assignment_history: {
+        Row: {
+          assignment_id: string
+          created_at: string
+          ended_at: string | null
+          id: string
+          reason: string | null
+          started_at: string
+          student_id: string
+          subject_id: string | null
+          teacher_id: string
+        }
+        Insert: {
+          assignment_id: string
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          reason?: string | null
+          started_at?: string
+          student_id: string
+          subject_id?: string | null
+          teacher_id: string
+        }
+        Update: {
+          assignment_id?: string
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          reason?: string | null
+          started_at?: string
+          student_id?: string
+          subject_id?: string | null
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignment_history_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "student_teacher_assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attendance: {
         Row: {
           absence_type: string | null
@@ -1953,10 +1997,13 @@ export type Database = {
           discount_id: string | null
           division_id: string | null
           duration_minutes: number
+          effective_from_date: string | null
           fee_package_id: string | null
           first_month_prorated_fee: number | null
           id: string
           is_custom_override: boolean
+          payout_amount: number | null
+          payout_type: string | null
           start_date: string | null
           status: Database["public"]["Enums"]["assignment_status"]
           student_id: string
@@ -1972,10 +2019,13 @@ export type Database = {
           discount_id?: string | null
           division_id?: string | null
           duration_minutes?: number
+          effective_from_date?: string | null
           fee_package_id?: string | null
           first_month_prorated_fee?: number | null
           id?: string
           is_custom_override?: boolean
+          payout_amount?: number | null
+          payout_type?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["assignment_status"]
           student_id: string
@@ -1991,10 +2041,13 @@ export type Database = {
           discount_id?: string | null
           division_id?: string | null
           duration_minutes?: number
+          effective_from_date?: string | null
           fee_package_id?: string | null
           first_month_prorated_fee?: number | null
           id?: string
           is_custom_override?: boolean
+          payout_amount?: number | null
+          payout_type?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["assignment_status"]
           student_id?: string
