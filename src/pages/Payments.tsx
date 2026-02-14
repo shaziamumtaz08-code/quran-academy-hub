@@ -1100,103 +1100,105 @@ export default function Payments() {
 
         {/* ─── Bulk Payment Modal ───────────────────────────────────── */}
         <Dialog open={bulkPayOpen} onOpenChange={setBulkPayOpen}>
-          <DialogContent className="sm:max-w-xl">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2"><ArrowRightLeft className="h-5 w-5" /> Record Payment</DialogTitle>
-              <DialogDescription>{unpaidSelected.length} invoice(s) selected • Expected: {bulkCurrency} {totalExpected.toLocaleString(undefined, { maximumFractionDigits: 2 })}</DialogDescription>
+          <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col p-0">
+            <DialogHeader className="px-4 pt-4 pb-2 sm:px-6 sm:pt-6 shrink-0">
+              <DialogTitle className="flex items-center gap-2 text-base"><ArrowRightLeft className="h-4 w-4" /> Record Payment</DialogTitle>
+              <DialogDescription className="text-xs">{unpaidSelected.length} invoice(s) • Expected: {bulkCurrency} {totalExpected.toLocaleString(undefined, { maximumFractionDigits: 2 })}</DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4 py-2">
-              <div className="bg-muted/50 rounded-lg border border-border p-3 max-h-32 overflow-y-auto space-y-1">
-                {unpaidSelected.map(inv => (
-                  <div key={inv.id} className="flex justify-between text-sm">
-                    <span>{inv.profiles?.full_name} — {formatBillingMonth(inv.billing_month)}</span>
-                    <span className="font-mono font-medium">{inv.currency} {(Number(inv.amount) - Number(inv.amount_paid || 0)).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payment Period</Label>
-                <div className="grid grid-cols-2 gap-4">
-                  <div><Label className="text-sm">From</Label><Input type="date" value={payForm.period_from} onChange={e => setPayForm(f => ({ ...f, period_from: e.target.value }))} /></div>
-                  <div><Label className="text-sm">To</Label><Input type="date" value={payForm.period_to} onChange={e => setPayForm(f => ({ ...f, period_to: e.target.value }))} /></div>
-                </div>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payment Details</Label>
-                <div className="grid grid-cols-2 gap-4">
-                  <div><Label className="text-sm">Payment Date</Label><Input type="date" value={payForm.payment_date} onChange={e => setPayForm(f => ({ ...f, payment_date: e.target.value }))} /></div>
-                  <div>
-                    <Label className="text-sm">Receiving Channel</Label>
-                    <Select value={payForm.payment_method} onValueChange={v => setPayForm(f => ({ ...f, payment_method: v }))}>
-                      <SelectTrigger><SelectValue placeholder="Select channel..." /></SelectTrigger>
-                      <SelectContent>{RECEIVING_CHANNELS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div><Label>Amount Received ({bulkCurrency})</Label><Input type="number" placeholder="0.00" value={payForm.amount_foreign} onChange={e => setPayForm(f => ({ ...f, amount_foreign: e.target.value }))} /></div>
-                <div><Label>Realized Amount (PKR)</Label><Input type="number" placeholder="0.00" value={payForm.amount_local} onChange={e => setPayForm(f => ({ ...f, amount_local: e.target.value }))} /></div>
-              </div>
-
-              {amountLocal > 0 && amountForeign > 0 && (
-                <div className="flex items-center gap-2 text-sm bg-primary/5 rounded-lg p-3 border border-primary/20">
-                  <ArrowRightLeft className="h-4 w-4 text-primary" />
-                  <span className="text-muted-foreground">Effective Rate:</span>
-                  <span className="font-mono font-bold text-foreground">1 {bulkCurrency} = {effectiveRate.toFixed(2)} PKR</span>
-                </div>
-              )}
-
-              {hasShortfall && (
-                <div className="space-y-3 bg-destructive/5 rounded-lg border border-destructive/20 p-4">
-                  <div className="flex items-center gap-2 text-sm font-medium text-destructive">
-                    <AlertTriangle className="h-4 w-4" /> Shortfall: {bulkCurrency} {shortfall.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                  </div>
-                  <div>
-                    <Label>Shortfall Resolution</Label>
-                    <Select value={payForm.resolution} onValueChange={v => setPayForm(f => ({ ...f, resolution: v as any }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="partial">Leave Open (Partially Paid)</SelectItem>
-                        <SelectItem value="writeoff">Write-Off / Forgive</SelectItem>
-                        <SelectItem value="arrears">Carry Forward (Arrears)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {payForm.resolution === 'partial' && 'Invoice will remain open with partial payment recorded.'}
-                    {payForm.resolution === 'writeoff' && 'Deficit will be forgiven and invoice marked as paid.'}
-                    {payForm.resolution === 'arrears' && 'Deficit will be carried forward as an arrears line-item for next month.'}
-                  </p>
-                </div>
-              )}
-
-              <div>
-                <Label>Proof of Payment (optional)</Label>
-                <input ref={receiptInputRef} type="file" accept="image/*,.pdf" className="hidden" onChange={e => setReceiptFile(e.target.files?.[0] || null)} />
-                <div onClick={() => receiptInputRef.current?.click()} className="mt-1 border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary/50 transition-colors">
-                  {receiptFile ? (
-                    <div className="flex items-center justify-center gap-2 text-sm text-foreground">
-                      <ImageIcon className="h-4 w-4 text-primary" /> <span>{receiptFile.name}</span> <Badge variant="secondary" className="text-xs">{(receiptFile.size / 1024).toFixed(0)} KB</Badge>
+            <ScrollArea className="flex-1 px-4 sm:px-6">
+              <div className="space-y-3 pb-4">
+                <div className="bg-muted/50 rounded-lg border border-border p-2 max-h-24 overflow-y-auto space-y-0.5">
+                  {unpaidSelected.map(inv => (
+                    <div key={inv.id} className="flex justify-between text-xs">
+                      <span className="truncate mr-2">{inv.profiles?.full_name} — {formatBillingMonth(inv.billing_month)}</span>
+                      <span className="font-mono font-medium shrink-0">{inv.currency} {(Number(inv.amount) - Number(inv.amount_paid || 0)).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                     </div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-1 text-muted-foreground"><Upload className="h-5 w-5" /><span className="text-xs">Click to upload receipt screenshot</span></div>
-                  )}
+                  ))}
                 </div>
+
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Payment Period</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div><Label className="text-xs">From</Label><Input type="date" value={payForm.period_from} onChange={e => setPayForm(f => ({ ...f, period_from: e.target.value }))} className="h-8 text-sm" /></div>
+                    <div><Label className="text-xs">To</Label><Input type="date" value={payForm.period_to} onChange={e => setPayForm(f => ({ ...f, period_to: e.target.value }))} className="h-8 text-sm" /></div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Payment Details</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div><Label className="text-xs">Payment Date</Label><Input type="date" value={payForm.payment_date} onChange={e => setPayForm(f => ({ ...f, payment_date: e.target.value }))} className="h-8 text-sm" /></div>
+                    <div>
+                      <Label className="text-xs">Receiving Channel</Label>
+                      <Select value={payForm.payment_method} onValueChange={v => setPayForm(f => ({ ...f, payment_method: v }))}>
+                        <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Select..." /></SelectTrigger>
+                        <SelectContent>{RECEIVING_CHANNELS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div><Label className="text-xs">Amount ({bulkCurrency})</Label><Input type="number" placeholder="0.00" value={payForm.amount_foreign} onChange={e => setPayForm(f => ({ ...f, amount_foreign: e.target.value }))} className="h-8 text-sm" /></div>
+                  <div><Label className="text-xs">Realized (PKR)</Label><Input type="number" placeholder="0.00" value={payForm.amount_local} onChange={e => setPayForm(f => ({ ...f, amount_local: e.target.value }))} className="h-8 text-sm" /></div>
+                </div>
+
+                {amountLocal > 0 && amountForeign > 0 && (
+                  <div className="flex items-center gap-2 text-xs bg-primary/5 rounded-lg p-2 border border-primary/20">
+                    <ArrowRightLeft className="h-3.5 w-3.5 text-primary" />
+                    <span className="text-muted-foreground">Rate:</span>
+                    <span className="font-mono font-bold text-foreground">1 {bulkCurrency} = {effectiveRate.toFixed(2)} PKR</span>
+                  </div>
+                )}
+
+                {hasShortfall && (
+                  <div className="space-y-2 bg-destructive/5 rounded-lg border border-destructive/20 p-3">
+                    <div className="flex items-center gap-2 text-xs font-medium text-destructive">
+                      <AlertTriangle className="h-3.5 w-3.5" /> Shortfall: {bulkCurrency} {shortfall.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    </div>
+                    <div>
+                      <Label className="text-xs">Resolution</Label>
+                      <Select value={payForm.resolution} onValueChange={v => setPayForm(f => ({ ...f, resolution: v as any }))}>
+                        <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="partial">Leave Open (Partially Paid)</SelectItem>
+                          <SelectItem value="writeoff">Write-Off / Forgive</SelectItem>
+                          <SelectItem value="arrears">Carry Forward (Arrears)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      {payForm.resolution === 'partial' && 'Invoice will remain open with partial payment recorded.'}
+                      {payForm.resolution === 'writeoff' && 'Deficit will be forgiven and invoice marked as paid.'}
+                      {payForm.resolution === 'arrears' && 'Deficit will be carried forward as an arrears line-item for next month.'}
+                    </p>
+                  </div>
+                )}
+
+                <div>
+                  <Label className="text-xs">Proof of Payment (optional)</Label>
+                  <input ref={receiptInputRef} type="file" accept="image/*,.pdf" className="hidden" onChange={e => setReceiptFile(e.target.files?.[0] || null)} />
+                  <div onClick={() => receiptInputRef.current?.click()} className="mt-1 border-2 border-dashed border-border rounded-lg p-2.5 text-center cursor-pointer hover:border-primary/50 transition-colors">
+                    {receiptFile ? (
+                      <div className="flex items-center justify-center gap-2 text-xs text-foreground">
+                        <ImageIcon className="h-3.5 w-3.5 text-primary" /> <span className="truncate">{receiptFile.name}</span> <Badge variant="secondary" className="text-[10px]">{(receiptFile.size / 1024).toFixed(0)} KB</Badge>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center gap-1.5 text-muted-foreground"><Upload className="h-4 w-4" /><span className="text-xs">Upload receipt</span></div>
+                    )}
+                  </div>
+                </div>
+
+                <div><Label className="text-xs">Notes (optional)</Label><Textarea placeholder="Any remarks..." value={payForm.notes} onChange={e => setPayForm(f => ({ ...f, notes: e.target.value }))} className="h-12 text-sm" /></div>
               </div>
+            </ScrollArea>
 
-              <div><Label>Notes (optional)</Label><Textarea placeholder="Any remarks about this payment..." value={payForm.notes} onChange={e => setPayForm(f => ({ ...f, notes: e.target.value }))} className="h-16" /></div>
-            </div>
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setBulkPayOpen(false)}>Cancel</Button>
-              <Button onClick={() => bulkPayMutation.mutate()} disabled={bulkPayMutation.isPending || !amountForeign}>
+            <DialogFooter className="px-4 pb-4 pt-2 sm:px-6 sm:pb-6 shrink-0 border-t border-border">
+              <Button variant="outline" size="sm" onClick={() => setBulkPayOpen(false)}>Cancel</Button>
+              <Button size="sm" onClick={() => bulkPayMutation.mutate()} disabled={bulkPayMutation.isPending || !amountForeign}>
                 {bulkPayMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Confirm Payment
               </Button>
             </DialogFooter>
