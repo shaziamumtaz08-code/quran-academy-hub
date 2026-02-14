@@ -263,47 +263,28 @@
 
   /* Print-optimized styles for report cards — single A4 page output */
   @media print {
-    /* Constrain body so browser sees exactly 1 page */
+    /* Reset page */
     html, body {
+      margin: 0 !important;
+      padding: 0 !important;
       width: 210mm !important;
-      height: 297mm !important;
-      margin: 0 !important;
-      padding: 0 !important;
       overflow: hidden !important;
     }
 
-    /* Hide EVERYTHING */
-    body * {
-      visibility: hidden;
-      margin: 0 !important;
-      padding: 0 !important;
-      height: 0 !important;
-      min-height: 0 !important;
-      max-height: 0 !important;
-      overflow: hidden !important;
-      border: none !important;
-      line-height: 0 !important;
-      font-size: 0 !important;
+    /* Hide ALL top-level layout: sidebar, header, nav, etc. */
+    body > #root > * {
+      display: none !important;
     }
 
-    /* Show ONLY the report */
-    .report-print,
-    .report-print * {
-      visibility: visible !important;
-      height: auto !important;
-      min-height: 0 !important;
-      max-height: none !important;
-      overflow: visible !important;
-      line-height: normal !important;
-      font-size: inherit !important;
-    }
-
+    /* The report-print container uses position:fixed so it renders
+       independently of the hidden layout tree */
     .report-print {
+      display: block !important;
       position: fixed !important;
       left: 0 !important;
       top: 0 !important;
       width: 210mm !important;
-      height: 297mm !important;
+      max-height: 297mm !important;
       padding: 0 !important;
       margin: 0 !important;
       background: white !important;
@@ -311,36 +292,34 @@
       z-index: 999999 !important;
     }
 
-    /* A4 container rules */
+    /* A4 container */
     .report-a4-container {
       width: 210mm !important;
       max-width: 210mm !important;
-      height: 297mm !important;
       max-height: 297mm !important;
       margin: 0 !important;
-      padding: 0 !important;
       border-radius: 0 !important;
       box-shadow: none !important;
       overflow: hidden !important;
     }
 
-    /* Hide action buttons & no-print elements */
+    /* Hide action buttons */
     .no-print {
       display: none !important;
     }
 
-    /* When printing student version, hide internal notes */
+    /* Student mode hides internal notes */
     #report-print-root[data-print-mode="student"] .internal-notes-section {
       display: none !important;
     }
 
-    /* Force print background colors */
+    /* Force background colors */
     .report-print, .report-print * {
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
     }
 
-    /* Compact print spacing */
+    /* Compact section spacing */
     .report-section {
       padding-top: 1mm !important;
       padding-bottom: 1mm !important;
