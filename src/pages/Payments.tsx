@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,10 +9,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Textarea } from '@/components/ui/textarea';
 import {
   DollarSign, CheckCircle, XCircle, Clock, User, Loader2, Zap, GraduationCap,
-  Plus, Receipt, Upload, ArrowRightLeft, AlertTriangle, ImageIcon, X, Search
+  Plus, Receipt, Upload, ArrowRightLeft, AlertTriangle, ImageIcon, X, Search, ArrowUpDown
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -53,8 +55,11 @@ interface InvoiceRow {
   student_teacher_assignments: { fee_packages: { name: string } | null } | null;
   student_billing_plans: { fee_packages: { name: string } | null; session_duration: number } | null;
 }
-interface StudentOption { id: string; full_name: string }
+interface StudentOption { id: string; full_name: string; country: string | null }
+interface StudentSubjects { [studentId: string]: string[] }
 interface PackageOption { id: string; name: string; amount: number; currency: string }
+type BulkSortColumn = 'name' | 'country' | 'subject';
+type BulkSortDir = 'asc' | 'desc';
 interface DiscountRule { id: string; name: string; type: string; value: number; is_active: boolean }
 
 // ─── Helpers ─────────────────────────────────────────────────────────
@@ -112,6 +117,11 @@ export default function Payments() {
     global_discount_id: '',
   });
 
+  // Bulk selection mode state
+  const [selectionMode, setSelectionMode] = useState<'individual' | 'bulk'>('individual');
+  const [bulkSearch, setBulkSearch] = useState('');
+  const [bulkSort, setBulkSort] = useState<{ column: BulkSortColumn; direction: BulkSortDir }>({ column: 'name', direction: 'asc' });
+
   // Bulk payment form
   const [payForm, setPayForm] = useState({
     amount_foreign: '',
@@ -135,11 +145,33 @@ export default function Payments() {
       if (studentUserIds.length === 0) return [];
       const { data } = await supabase
         .from('profiles')
-        .select('id, full_name')
+        .select('id, full_name, country')
         .in('id', studentUserIds)
         .is('archived_at', null)
         .order('full_name');
       return (data || []) as StudentOption[];
+    },
+    enabled: setupOpen,
+  });
+
+  // Fetch student subjects for bulk mode
+  const { data: studentSubjects = {} } = useQuery<StudentSubjects>({
+    queryKey: ['student-subjects-for-fees', branchId, divisionId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('student_teacher_assignments')
+        .select('student_id, subjects!student_teacher_assignments_subject_id_fkey(name)')
+        .eq('status', 'active');
+      const map: StudentSubjects = {};
+      (data || []).forEach((row: any) => {
+        const sid = row.student_id;
+        const subName = row.subjects?.name;
+        if (sid && subName) {
+          if (!map[sid]) map[sid] = [];
+          if (!map[sid].includes(subName)) map[sid].push(subName);
+        }
+      });
+      return map;
     },
     enabled: setupOpen,
   });
@@ -226,11 +258,58 @@ export default function Payments() {
   const flatDiscountNeedsReason = flatDiscount > 0 && !feeForm.manual_discount_reason.trim();
   const canSavePlan = selectedStudentIds.length > 0 && feeForm.base_package_id && !flatDiscountNeedsReason;
 
-  // Filtered students for search
+  // Filtered students for individual search
   const filteredStudents = useMemo(() => {
     const search = studentSearch.toLowerCase();
     return students.filter(s => !selectedStudentIds.includes(s.id) && s.full_name.toLowerCase().includes(search));
   }, [students, selectedStudentIds, studentSearch]);
+
+  // Bulk mode: filtered + sorted students
+  const bulkFilteredStudents = useMemo(() => {
+    const search = bulkSearch.toLowerCase();
+    let list = students.filter(s => {
+      if (!search) return true;
+      const nameMatch = s.full_name.toLowerCase().includes(search);
+      const countryMatch = s.country?.toLowerCase().includes(search);
+      const subjectMatch = (studentSubjects[s.id] || []).some(sub => sub.toLowerCase().includes(search));
+      return nameMatch || countryMatch || subjectMatch;
+    });
+    list.sort((a, b) => {
+      const dir = bulkSort.direction === 'asc' ? 1 : -1;
+      if (bulkSort.column === 'name') return dir * a.full_name.localeCompare(b.full_name);
+      if (bulkSort.column === 'country') return dir * (a.country || '').localeCompare(b.country || '');
+      if (bulkSort.column === 'subject') {
+        const aSubj = (studentSubjects[a.id] || []).join(', ');
+        const bSubj = (studentSubjects[b.id] || []).join(', ');
+        return dir * aSubj.localeCompare(bSubj);
+      }
+      return 0;
+    });
+    return list;
+  }, [students, bulkSearch, bulkSort, studentSubjects]);
+
+  const allBulkFiltered = bulkFilteredStudents.every(s => selectedStudentIds.includes(s.id));
+  const someBulkSelected = bulkFilteredStudents.some(s => selectedStudentIds.includes(s.id));
+
+  const toggleBulkSort = useCallback((col: BulkSortColumn) => {
+    setBulkSort(prev => prev.column === col ? { column: col, direction: prev.direction === 'asc' ? 'desc' : 'asc' } : { column: col, direction: 'asc' });
+  }, []);
+
+  const toggleSelectAllBulk = useCallback(() => {
+    if (allBulkFiltered && bulkFilteredStudents.length > 0) {
+      setSelectedStudentIds(prev => prev.filter(id => !bulkFilteredStudents.some(s => s.id === id)));
+    } else {
+      setSelectedStudentIds(prev => {
+        const newIds = new Set(prev);
+        bulkFilteredStudents.forEach(s => newIds.add(s.id));
+        return Array.from(newIds);
+      });
+    }
+  }, [allBulkFiltered, bulkFilteredStudents]);
+
+  const toggleBulkStudent = useCallback((id: string) => {
+    setSelectedStudentIds(prev => prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]);
+  }, []);
 
   // Bulk payment calculator
   const selectedInvoices = useMemo(() => invoices.filter(i => selectedIds.has(i.id)), [invoices, selectedIds]);
@@ -291,6 +370,9 @@ export default function Payments() {
   const resetFeeForm = () => {
     setSelectedStudentIds([]);
     setStudentSearch('');
+    setSelectionMode('individual');
+    setBulkSearch('');
+    setBulkSort({ column: 'name', direction: 'asc' });
     setFeeForm({ base_package_id: '', session_duration: '30', flat_discount: '0', manual_discount_reason: '', global_discount_id: '' });
   };
 
@@ -646,13 +728,29 @@ export default function Payments() {
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-0">
               {/* Left: Configuration (3 cols) */}
               <div className="lg:col-span-3 p-8 space-y-5">
-                {/* Multi-Select Students */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold">Students</Label>
-                  {/* Selected badges */}
+                {/* Student Selection with Mode Toggle */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-semibold">Students</Label>
+                    <ToggleGroup
+                      type="single"
+                      value={selectionMode}
+                      onValueChange={(v) => v && setSelectionMode(v as 'individual' | 'bulk')}
+                      className="border border-border rounded-lg p-0.5"
+                    >
+                      <ToggleGroupItem value="individual" className="text-xs px-3 h-7 rounded-md data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+                        Individual
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="bulk" className="text-xs px-3 h-7 rounded-md data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+                        Bulk Select
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                  </div>
+
+                  {/* Selected badges (shown in both modes) */}
                   {selectedStudentIds.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mb-2">
-                      {selectedStudentIds.map(sid => {
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedStudentIds.slice(0, selectionMode === 'bulk' ? 5 : 999).map(sid => {
                         const s = students.find(st => st.id === sid);
                         return (
                           <Badge key={sid} variant="secondary" className="gap-1 pr-1 text-xs">
@@ -668,36 +766,133 @@ export default function Payments() {
                           </Badge>
                         );
                       })}
+                      {selectionMode === 'bulk' && selectedStudentIds.length > 5 && (
+                        <Badge variant="outline" className="text-xs">+{selectedStudentIds.length - 5} more</Badge>
+                      )}
                     </div>
                   )}
-                  {/* Search input */}
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search students by name..."
-                      value={studentSearch}
-                      onChange={e => setStudentSearch(e.target.value)}
-                      className="pl-9"
-                    />
-                  </div>
-                  {/* Dropdown results */}
-                  {studentSearch && filteredStudents.length > 0 && (
-                    <div className="border border-border rounded-lg bg-card max-h-36 overflow-y-auto shadow-sm">
-                      {filteredStudents.slice(0, 20).map(s => (
-                        <button
-                          key={s.id}
-                          type="button"
-                          onClick={() => addStudent(s.id)}
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 transition-colors flex items-center gap-2"
-                        >
-                          <GraduationCap className="h-3.5 w-3.5 text-muted-foreground" />
-                          {s.full_name}
-                        </button>
-                      ))}
-                    </div>
+
+                  {/* Individual Mode */}
+                  {selectionMode === 'individual' && (
+                    <>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search students by name..."
+                          value={studentSearch}
+                          onChange={e => setStudentSearch(e.target.value)}
+                          className="pl-9"
+                        />
+                      </div>
+                      {studentSearch && filteredStudents.length > 0 && (
+                        <div className="border border-border rounded-lg bg-card max-h-36 overflow-y-auto shadow-sm">
+                          {filteredStudents.slice(0, 20).map(s => (
+                            <button
+                              key={s.id}
+                              type="button"
+                              onClick={() => addStudent(s.id)}
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 transition-colors flex items-center gap-2"
+                            >
+                              <GraduationCap className="h-3.5 w-3.5 text-muted-foreground" />
+                              {s.full_name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {studentSearch && filteredStudents.length === 0 && (
+                        <p className="text-xs text-muted-foreground py-2">No matching students found.</p>
+                      )}
+                    </>
                   )}
-                  {studentSearch && filteredStudents.length === 0 && (
-                    <p className="text-xs text-muted-foreground py-2">No matching students found.</p>
+
+                  {/* Bulk Mode */}
+                  {selectionMode === 'bulk' && (
+                    <div className="space-y-2">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Filter by name, country, or subject..."
+                          value={bulkSearch}
+                          onChange={e => setBulkSearch(e.target.value)}
+                          className="pl-9"
+                        />
+                      </div>
+                      <ScrollArea className="h-[250px] border border-border rounded-lg">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-muted/30">
+                              <TableHead className="w-10 h-9 px-3">
+                                <Checkbox
+                                  checked={bulkFilteredStudents.length > 0 && allBulkFiltered}
+                                  onCheckedChange={toggleSelectAllBulk}
+                                  aria-label="Select all filtered"
+                                />
+                              </TableHead>
+                              <TableHead
+                                className="h-9 px-3 cursor-pointer select-none text-xs"
+                                onClick={() => toggleBulkSort('name')}
+                              >
+                                Name {bulkSort.column === 'name' && (bulkSort.direction === 'asc' ? '↑' : '↓')}
+                              </TableHead>
+                              <TableHead
+                                className="h-9 px-3 cursor-pointer select-none text-xs"
+                                onClick={() => toggleBulkSort('country')}
+                              >
+                                Country {bulkSort.column === 'country' && (bulkSort.direction === 'asc' ? '↑' : '↓')}
+                              </TableHead>
+                              <TableHead
+                                className="h-9 px-3 cursor-pointer select-none text-xs"
+                                onClick={() => toggleBulkSort('subject')}
+                              >
+                                Subject {bulkSort.column === 'subject' && (bulkSort.direction === 'asc' ? '↑' : '↓')}
+                              </TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {bulkFilteredStudents.length === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-8">
+                                  No students match your filter.
+                                </TableCell>
+                              </TableRow>
+                            ) : (
+                              bulkFilteredStudents.map(s => (
+                                <TableRow
+                                  key={s.id}
+                                  className={selectedStudentIds.includes(s.id) ? 'bg-primary/5' : 'cursor-pointer'}
+                                  onClick={() => toggleBulkStudent(s.id)}
+                                >
+                                  <TableCell className="px-3 py-1.5">
+                                    <Checkbox
+                                      checked={selectedStudentIds.includes(s.id)}
+                                      onCheckedChange={() => toggleBulkStudent(s.id)}
+                                      onClick={e => e.stopPropagation()}
+                                    />
+                                  </TableCell>
+                                  <TableCell className="px-3 py-1.5 text-sm font-medium">{s.full_name}</TableCell>
+                                  <TableCell className="px-3 py-1.5 text-sm text-muted-foreground">{s.country || '—'}</TableCell>
+                                  <TableCell className="px-3 py-1.5">
+                                    {(studentSubjects[s.id] || []).length > 0 ? (
+                                      <div className="flex flex-wrap gap-1">
+                                        {(studentSubjects[s.id] || []).map(sub => (
+                                          <Badge key={sub} variant="outline" className="text-[10px] py-0 px-1.5">{sub}</Badge>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <span className="text-xs text-muted-foreground">—</span>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      </ScrollArea>
+                      <p className="text-xs text-muted-foreground">
+                        {selectedStudentIds.length} of {students.length} students selected
+                        {bulkSearch && ` (${bulkFilteredStudents.length} shown)`}
+                      </p>
+                    </div>
                   )}
                 </div>
 
