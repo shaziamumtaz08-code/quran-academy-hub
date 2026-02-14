@@ -15,7 +15,19 @@ export type ActionType =
   | 'assignment_updated'
   | 'exam_created'
   | 'login'
-  | 'logout';
+  | 'logout'
+  | 'billing_plan_created'
+  | 'billing_plan_updated'
+  | 'billing_plan_deleted'
+  | 'invoice_edited'
+  | 'invoice_deleted'
+  | 'payment_recorded'
+  | 'fee_package_created'
+  | 'fee_package_updated'
+  | 'fee_package_deleted'
+  | 'discount_created'
+  | 'discount_updated'
+  | 'discount_deleted';
 
 export type EntityType = 
   | 'attendance'
@@ -23,7 +35,11 @@ export type EntityType =
   | 'user'
   | 'assignment'
   | 'exam'
-  | 'session';
+  | 'session'
+  | 'billing_plan'
+  | 'invoice'
+  | 'fee_package'
+  | 'discount';
 
 interface LogActivityParams {
   action: ActionType;

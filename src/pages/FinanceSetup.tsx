@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
+import { trackActivity } from '@/lib/activityLogger';
 
 // ─── Types ───────────────────────────────────────────────────────────
 interface FeePackage {
@@ -133,7 +134,9 @@ function FeePackagesTab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fee-packages'] });
+      const action = editingPkg ? 'fee_package_updated' : 'fee_package_created';
       toast({ title: editingPkg ? 'Package updated' : 'Package created' });
+      trackActivity({ action, entityType: 'fee_package', entityId: editingPkg?.id, details: { name: form.name, amount: form.amount, currency: form.currency } });
       closeDialog();
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
@@ -155,6 +158,7 @@ function FeePackagesTab() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['fee-packages'] });
       toast({ title: 'Package deleted' });
+      trackActivity({ action: 'fee_package_deleted', entityType: 'fee_package' });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
@@ -449,7 +453,9 @@ function DiscountRulesTab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['discount-rules'] });
+      const action = editingRule ? 'discount_updated' : 'discount_created';
       toast({ title: editingRule ? 'Discount updated' : 'Discount created' });
+      trackActivity({ action, entityType: 'discount', entityId: editingRule?.id, details: { name: form.name, type: form.type, value: form.value } });
       closeDialog();
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
@@ -471,6 +477,7 @@ function DiscountRulesTab() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['discount-rules'] });
       toast({ title: 'Discount deleted' });
+      trackActivity({ action: 'discount_deleted', entityType: 'discount' });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
