@@ -38,33 +38,51 @@ const CURRENCIES = ['USD', 'GBP', 'PKR', 'EUR', 'AED', 'SAR', 'CAD', 'AUD', 'NZD
 const DAYS_PER_WEEK_OPTIONS = [2, 3, 4, 5, 6];
 
 const EXCEL_SEED_DATA = [
-  { name: 'USA & Canada - 4 Days', amount: 35, currency: 'USD', days_per_week: 4 },
-  { name: 'USA & Canada - 5 Days', amount: 45, currency: 'USD', days_per_week: 5 },
-  { name: 'USA & Canada - 6 Days', amount: 50, currency: 'USD', days_per_week: 6 },
-  { name: 'UAE - 4 Days', amount: 100, currency: 'AED', days_per_week: 4 },
-  { name: 'UAE - 5 Days', amount: 130, currency: 'AED', days_per_week: 5 },
-  { name: 'UAE - 6 Days', amount: 150, currency: 'AED', days_per_week: 6 },
-  { name: 'KSA - 4 Days', amount: 100, currency: 'SAR', days_per_week: 4 },
-  { name: 'KSA - 5 Days', amount: 130, currency: 'SAR', days_per_week: 5 },
-  { name: 'KSA - 6 Days', amount: 150, currency: 'SAR', days_per_week: 6 },
-  { name: 'UK - 4 Days', amount: 25, currency: 'GBP', days_per_week: 4 },
-  { name: 'UK - 5 Days', amount: 30, currency: 'GBP', days_per_week: 5 },
-  { name: 'UK - 6 Days', amount: 35, currency: 'GBP', days_per_week: 6 },
-  { name: 'Europe - 4 Days', amount: 30, currency: 'EUR', days_per_week: 4 },
-  { name: 'Europe - 5 Days', amount: 35, currency: 'EUR', days_per_week: 5 },
-  { name: 'Europe - 6 Days', amount: 40, currency: 'EUR', days_per_week: 6 },
-  { name: 'Australia - 4 Days', amount: 35, currency: 'AUD', days_per_week: 4 },
-  { name: 'Australia - 5 Days', amount: 45, currency: 'AUD', days_per_week: 5 },
-  { name: 'Australia - 6 Days', amount: 50, currency: 'AUD', days_per_week: 6 },
-  { name: 'New Zealand - 4 Days', amount: 40, currency: 'NZD', days_per_week: 4 },
-  { name: 'New Zealand - 5 Days', amount: 50, currency: 'NZD', days_per_week: 5 },
-  { name: 'New Zealand - 6 Days', amount: 60, currency: 'NZD', days_per_week: 6 },
-  { name: 'Pakistan - 4 Days', amount: 3500, currency: 'PKR', days_per_week: 4 },
-  { name: 'Pakistan - 5 Days', amount: 4500, currency: 'PKR', days_per_week: 5 },
-  { name: 'Pakistan - 6 Days', amount: 5000, currency: 'PKR', days_per_week: 6 },
-  { name: 'Rest of World - 4 Days', amount: 30, currency: 'USD', days_per_week: 4 },
-  { name: 'Rest of World - 5 Days', amount: 35, currency: 'USD', days_per_week: 5 },
-  { name: 'Rest of World - 6 Days', amount: 40, currency: 'USD', days_per_week: 6 },
+  // USA & Canada (USD)
+  { name: 'USA & Canada - 3 Days', amount: 35, currency: 'USD', days_per_week: 3 },
+  { name: 'USA & Canada - 4 Days', amount: 45, currency: 'USD', days_per_week: 4 },
+  { name: 'USA & Canada - 5 Days', amount: 50, currency: 'USD', days_per_week: 5 },
+  { name: 'USA & Canada - 6 Days', amount: 60, currency: 'USD', days_per_week: 6 },
+  // UAE (AED)
+  { name: 'UAE - 3 Days', amount: 100, currency: 'AED', days_per_week: 3 },
+  { name: 'UAE - 4 Days', amount: 130, currency: 'AED', days_per_week: 4 },
+  { name: 'UAE - 5 Days', amount: 150, currency: 'AED', days_per_week: 5 },
+  { name: 'UAE - 6 Days', amount: 180, currency: 'AED', days_per_week: 6 },
+  // KSA (SAR)
+  { name: 'KSA - 3 Days', amount: 100, currency: 'SAR', days_per_week: 3 },
+  { name: 'KSA - 4 Days', amount: 130, currency: 'SAR', days_per_week: 4 },
+  { name: 'KSA - 5 Days', amount: 150, currency: 'SAR', days_per_week: 5 },
+  { name: 'KSA - 6 Days', amount: 180, currency: 'SAR', days_per_week: 6 },
+  // United Kingdom (GBP)
+  { name: 'UK - 3 Days', amount: 25, currency: 'GBP', days_per_week: 3 },
+  { name: 'UK - 4 Days', amount: 30, currency: 'GBP', days_per_week: 4 },
+  { name: 'UK - 5 Days', amount: 35, currency: 'GBP', days_per_week: 5 },
+  { name: 'UK - 6 Days', amount: 40, currency: 'GBP', days_per_week: 6 },
+  // Europe (EUR)
+  { name: 'Europe - 3 Days', amount: 30, currency: 'EUR', days_per_week: 3 },
+  { name: 'Europe - 4 Days', amount: 35, currency: 'EUR', days_per_week: 4 },
+  { name: 'Europe - 5 Days', amount: 40, currency: 'EUR', days_per_week: 5 },
+  { name: 'Europe - 6 Days', amount: 45, currency: 'EUR', days_per_week: 6 },
+  // Australia (AUD)
+  { name: 'Australia - 3 Days', amount: 35, currency: 'AUD', days_per_week: 3 },
+  { name: 'Australia - 4 Days', amount: 45, currency: 'AUD', days_per_week: 4 },
+  { name: 'Australia - 5 Days', amount: 50, currency: 'AUD', days_per_week: 5 },
+  { name: 'Australia - 6 Days', amount: 60, currency: 'AUD', days_per_week: 6 },
+  // New Zealand (NZD)
+  { name: 'New Zealand - 3 Days', amount: 40, currency: 'NZD', days_per_week: 3 },
+  { name: 'New Zealand - 4 Days', amount: 50, currency: 'NZD', days_per_week: 4 },
+  { name: 'New Zealand - 5 Days', amount: 60, currency: 'NZD', days_per_week: 5 },
+  { name: 'New Zealand - 6 Days', amount: 70, currency: 'NZD', days_per_week: 6 },
+  // Pakistan (PKR)
+  { name: 'Pakistan - 3 Days', amount: 3500, currency: 'PKR', days_per_week: 3 },
+  { name: 'Pakistan - 4 Days', amount: 4500, currency: 'PKR', days_per_week: 4 },
+  { name: 'Pakistan - 5 Days', amount: 5000, currency: 'PKR', days_per_week: 5 },
+  { name: 'Pakistan - 6 Days', amount: 6000, currency: 'PKR', days_per_week: 6 },
+  // Rest of World (USD)
+  { name: 'Rest of World - 3 Days', amount: 30, currency: 'USD', days_per_week: 3 },
+  { name: 'Rest of World - 4 Days', amount: 35, currency: 'USD', days_per_week: 4 },
+  { name: 'Rest of World - 5 Days', amount: 40, currency: 'USD', days_per_week: 5 },
+  { name: 'Rest of World - 6 Days', amount: 50, currency: 'USD', days_per_week: 6 },
 ];
 
 // ─── Fee Packages Tab ────────────────────────────────────────────────
@@ -145,6 +163,12 @@ function FeePackagesTab() {
   const seedMutation = useMutation({
     mutationFn: async () => {
       setSeeding(true);
+      // Delete existing seeded packages for this branch/division to prevent duplicates
+      if (activeBranchId) {
+        let delQuery = supabase.from('fee_packages').delete().eq('branch_id', activeBranchId);
+        if (activeDivisionId) delQuery = delQuery.eq('division_id', activeDivisionId);
+        await delQuery;
+      }
       const rows = EXCEL_SEED_DATA.map((item) => ({
         ...item,
         billing_cycle: 'monthly' as any,
