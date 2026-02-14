@@ -817,10 +817,10 @@ export default function SalaryEngine() {
               </div>
               <div>
                 <Label>Student (optional)</Label>
-                <Select value={extraClassForm.student_id} onValueChange={v => setExtraClassForm(p => ({ ...p, student_id: v }))}>
+                <Select value={extraClassForm.student_id || "none"} onValueChange={v => setExtraClassForm(p => ({ ...p, student_id: v === "none" ? "" : v }))}>
                   <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {allStudents.map(s => <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>)}
                   </SelectContent>
                 </Select>
