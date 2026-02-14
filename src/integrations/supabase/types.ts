@@ -779,6 +779,7 @@ export type Database = {
       fee_invoices: {
         Row: {
           amount: number
+          amount_paid: number
           assignment_id: string | null
           billing_month: string
           branch_id: string | null
@@ -789,6 +790,7 @@ export type Database = {
           id: string
           paid_at: string | null
           payment_method: string | null
+          plan_id: string | null
           remark: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           student_id: string
@@ -796,6 +798,7 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          amount_paid?: number
           assignment_id?: string | null
           billing_month: string
           branch_id?: string | null
@@ -806,6 +809,7 @@ export type Database = {
           id?: string
           paid_at?: string | null
           payment_method?: string | null
+          plan_id?: string | null
           remark?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           student_id: string
@@ -813,6 +817,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          amount_paid?: number
           assignment_id?: string | null
           billing_month?: string
           branch_id?: string | null
@@ -823,6 +828,7 @@ export type Database = {
           id?: string
           paid_at?: string | null
           payment_method?: string | null
+          plan_id?: string | null
           remark?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           student_id?: string
@@ -848,6 +854,13 @@ export type Database = {
             columns: ["division_id"]
             isOneToOne: false
             referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fee_invoices_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "student_billing_plans"
             referencedColumns: ["id"]
           },
           {
@@ -1436,6 +1449,93 @@ export type Database = {
             columns: ["division_id"]
             isOneToOne: false
             referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_billing_plans: {
+        Row: {
+          assignment_id: string | null
+          base_package_id: string | null
+          branch_id: string | null
+          created_at: string
+          currency: string
+          division_id: string | null
+          duration_surcharge: number
+          flat_discount: number
+          id: string
+          is_active: boolean
+          net_recurring_fee: number
+          session_duration: number
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          assignment_id?: string | null
+          base_package_id?: string | null
+          branch_id?: string | null
+          created_at?: string
+          currency?: string
+          division_id?: string | null
+          duration_surcharge?: number
+          flat_discount?: number
+          id?: string
+          is_active?: boolean
+          net_recurring_fee?: number
+          session_duration?: number
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          assignment_id?: string | null
+          base_package_id?: string | null
+          branch_id?: string | null
+          created_at?: string
+          currency?: string
+          division_id?: string | null
+          duration_surcharge?: number
+          flat_discount?: number
+          id?: string
+          is_active?: boolean
+          net_recurring_fee?: number
+          session_duration?: number
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_billing_plans_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "student_teacher_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_billing_plans_base_package_id_fkey"
+            columns: ["base_package_id"]
+            isOneToOne: false
+            referencedRelation: "fee_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_billing_plans_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_billing_plans_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_billing_plans_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -2149,7 +2249,7 @@ export type Database = {
       division_model: "one_to_one" | "group"
       exam_tenure: "weekly" | "monthly" | "quarterly" | "yearly"
       grading_style: "numeric" | "rubric"
-      invoice_status: "pending" | "paid" | "overdue"
+      invoice_status: "pending" | "paid" | "overdue" | "partially_paid"
       permission_type:
         | "users.view"
         | "users.create"
@@ -2337,7 +2437,7 @@ export const Constants = {
       division_model: ["one_to_one", "group"],
       exam_tenure: ["weekly", "monthly", "quarterly", "yearly"],
       grading_style: ["numeric", "rubric"],
-      invoice_status: ["pending", "paid", "overdue"],
+      invoice_status: ["pending", "paid", "overdue", "partially_paid"],
       permission_type: [
         "users.view",
         "users.create",
