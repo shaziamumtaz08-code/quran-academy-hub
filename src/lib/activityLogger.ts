@@ -22,6 +22,7 @@ export type ActionType =
   | 'invoice_edited'
   | 'invoice_deleted'
   | 'payment_recorded'
+  | 'payment_edited'
   | 'fee_package_created'
   | 'fee_package_updated'
   | 'fee_package_deleted'
@@ -39,7 +40,8 @@ export type EntityType =
   | 'billing_plan'
   | 'invoice'
   | 'fee_package'
-  | 'discount';
+  | 'discount'
+  | 'payment_transaction';
 
 interface LogActivityParams {
   action: ActionType;
