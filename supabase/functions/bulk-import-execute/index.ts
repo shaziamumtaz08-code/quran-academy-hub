@@ -300,13 +300,37 @@ serve(async (req) => {
       for (const row of validRows) {
         const assignmentName = `${row.data.teacher_name} → ${row.data.student_name}`;
         try {
+          // Resolve timezones from profiles
+          let studentTz: string | null = null;
+          let teacherTz: string | null = null;
+
+          if (row.data.student_id) {
+            const { data: sp } = await supabase
+              .from("profiles")
+              .select("timezone")
+              .eq("id", row.data.student_id)
+              .maybeSingle();
+            studentTz = sp?.timezone || null;
+          }
+          if (row.data.teacher_id) {
+            const { data: tp } = await supabase
+              .from("profiles")
+              .select("timezone")
+              .eq("id", row.data.teacher_id)
+              .maybeSingle();
+            teacherTz = tp?.timezone || null;
+          }
+
           if (row.status === "update" && row.existingId) {
-            // Update existing assignment
+            const updateData: Record<string, any> = {
+              subject_id: row.data.subject_id,
+            };
+            if (studentTz) updateData.student_timezone = studentTz;
+            if (teacherTz) updateData.teacher_timezone = teacherTz;
+
             const { error } = await supabase
               .from("student_teacher_assignments")
-              .update({
-                subject_id: row.data.subject_id,
-              })
+              .update(updateData)
               .eq("id", row.existingId);
 
             if (error) throw error;
@@ -322,14 +346,17 @@ serve(async (req) => {
               userName: assignmentName,
             });
           } else if (row.status === "new" || row.status === "warning") {
-            // Create new assignment
+            const insertData: Record<string, any> = {
+              teacher_id: row.data.teacher_id,
+              student_id: row.data.student_id,
+              subject_id: row.data.subject_id,
+            };
+            if (studentTz) insertData.student_timezone = studentTz;
+            if (teacherTz) insertData.teacher_timezone = teacherTz;
+
             const { data, error } = await supabase
               .from("student_teacher_assignments")
-              .insert({
-                teacher_id: row.data.teacher_id,
-                student_id: row.data.student_id,
-                subject_id: row.data.subject_id,
-              })
+              .insert(insertData)
               .select("id")
               .single();
 

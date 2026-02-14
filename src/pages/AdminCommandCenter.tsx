@@ -214,10 +214,24 @@ export default function AdminCommandCenter() {
       });
       if (error) throw error;
 
-      // Also create student_teacher_assignment for backward compatibility
+      // Resolve timezones from profiles
+      const { data: studentProfile } = await supabase
+        .from('profiles')
+        .select('timezone')
+        .eq('id', data.student_id)
+        .maybeSingle();
+      const { data: teacherProfile } = await supabase
+        .from('profiles')
+        .select('timezone')
+        .eq('id', data.teacher_id)
+        .maybeSingle();
+
+      // Also create student_teacher_assignment with resolved timezones
       await supabase.from('student_teacher_assignments').upsert({
         student_id: data.student_id,
         teacher_id: data.teacher_id,
+        student_timezone: studentProfile?.timezone || null,
+        teacher_timezone: teacherProfile?.timezone || null,
       }, { onConflict: 'student_id,teacher_id' }).select();
     },
     onSuccess: () => {
