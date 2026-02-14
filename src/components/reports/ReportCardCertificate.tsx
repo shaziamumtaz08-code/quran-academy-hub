@@ -40,6 +40,7 @@ interface ReportCardCertificateProps {
   report: StudentReport;
   showInternalNotes?: boolean;
   viewMode?: ReportViewMode;
+  printMode?: boolean;
 }
 
 const hasArabicUrdu = (text: string): boolean =>
@@ -48,7 +49,7 @@ const hasArabicUrdu = (text: string): boolean =>
 const canSeeInternalNotes = (mode: ReportViewMode) =>
   mode === 'admin' || mode === 'examiner' || mode === 'teacher';
 
-export function ReportCardCertificate({ report, showInternalNotes = false, viewMode = 'admin' }: ReportCardCertificateProps) {
+export function ReportCardCertificate({ report, showInternalNotes = false, viewMode = 'admin', printMode = false }: ReportCardCertificateProps) {
   const showNotes = showInternalNotes && canSeeInternalNotes(viewMode);
 
   const examMonth = report.exam_date ? new Date(report.exam_date) : new Date();
@@ -115,17 +116,17 @@ export function ReportCardCertificate({ report, showInternalNotes = false, viewM
   const attendance = attendanceData || { present: 0, absent: 0, total: 0, percentage: 0 };
 
   const handlePrint = (mode: 'student' | 'staff' = 'staff') => {
-    const printRoot = document.getElementById('report-print-root');
-    if (printRoot) printRoot.setAttribute('data-print-mode', mode);
-    window.print();
-    if (printRoot) printRoot.removeAttribute('data-print-mode');
+    const roleParam = viewMode || 'admin';
+    const url = `/reports/print/${report.id}?mode=${mode}&view=${roleParam}`;
+    window.open(url, '_blank');
   };
 
   const isStaffView = canSeeInternalNotes(viewMode);
 
   return (
-    <div className="bg-slate-100 p-4 sm:p-6 print:bg-white print:p-0 print:m-0 report-print" id="report-print-root">
-      {/* Action Buttons - Hide on print */}
+    <div className={`${printMode ? '' : 'bg-slate-100 p-4 sm:p-6'} print:bg-white print:p-0 print:m-0`} id="report-print-root">
+      {/* Action Buttons - Hide on print and in printMode */}
+      {!printMode && (
       <div className="max-w-4xl mx-auto mb-3 flex justify-end gap-2 no-print">
         <Button variant="outline" size="sm" className="gap-2" onClick={() => handlePrint('student')}>
           <Printer className="h-4 w-4" /> Print
@@ -152,6 +153,7 @@ export function ReportCardCertificate({ report, showInternalNotes = false, viewM
           </Button>
         )}
       </div>
+      )}
 
       {/* A4 Certificate Container */}
       <div className="report-a4-container max-w-4xl mx-auto bg-white rounded-xl shadow-xl overflow-hidden print:rounded-none print:shadow-none print:overflow-hidden">
