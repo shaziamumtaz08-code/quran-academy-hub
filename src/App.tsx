@@ -233,7 +233,7 @@ function AppRoutes() {
       {/* Report Card pages (renamed from Exam) */}
       <Route path="/report-card-templates" element={<ProtectedRoute><AdminOrExaminerRoute><ReportCardTemplates /></AdminOrExaminerRoute></ProtectedRoute>} />
       <Route path="/generate-report-card" element={<ProtectedRoute><AdminOrExaminerRoute><GenerateReportCard /></AdminOrExaminerRoute></ProtectedRoute>} />
-      <Route path="/student-reports" element={<ProtectedRoute><AdminOrExaminerOrTeacherRoute><StudentReports /></AdminOrExaminerOrTeacherRoute></ProtectedRoute>} />
+      <Route path="/student-reports" element={<ProtectedRoute><StudentReports /></ProtectedRoute>} />
       {/* Legacy routes redirect */}
       <Route path="/exam-templates" element={<Navigate to="/report-card-templates" replace />} />
       <Route path="/exam-submission" element={<Navigate to="/generate-report-card" replace />} />
