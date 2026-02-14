@@ -278,28 +278,26 @@
       left: 0;
       top: 0;
       width: 210mm;
+      height: 297mm;
       padding: 0 !important;
-      margin: 0;
+      margin: 0 !important;
       background: white !important;
-      min-height: auto !important;
+      overflow: hidden !important;
     }
 
     /* A4 container rules */
     .report-a4-container {
-      width: 210mm;
-      max-width: 210mm;
-      min-height: auto !important;
-      max-height: 297mm;
-      margin: 0 auto;
+      width: 210mm !important;
+      max-width: 210mm !important;
+      height: 297mm !important;
+      max-height: 297mm !important;
+      margin: 0 !important;
+      padding: 0 !important;
       border-radius: 0 !important;
       box-shadow: none !important;
-      overflow: hidden;
+      overflow: hidden !important;
       page-break-inside: avoid;
-    }
-
-    /* Prevent page breaks inside logical sections */
-    .report-section {
-      page-break-inside: avoid;
+      page-break-after: avoid;
     }
 
     /* Hide action buttons & no-print elements */
@@ -320,13 +318,13 @@
 
     /* Compact print spacing */
     .report-section {
-      padding-top: 2mm !important;
-      padding-bottom: 2mm !important;
+      padding-top: 1mm !important;
+      padding-bottom: 1mm !important;
     }
 
     @page {
       size: A4;
-      margin: 5mm;
+      margin: 3mm;
     }
   }
 }
