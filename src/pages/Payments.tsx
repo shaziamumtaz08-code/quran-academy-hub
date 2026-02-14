@@ -14,8 +14,9 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Textarea } from '@/components/ui/textarea';
 import {
   DollarSign, CheckCircle, XCircle, Clock, User, Loader2, Zap, GraduationCap,
-  Plus, Receipt, Upload, ArrowRightLeft, AlertTriangle, ImageIcon, X, Search, ArrowUpDown
+  Plus, Receipt, Upload, ArrowRightLeft, AlertTriangle, ImageIcon, X, Search, ArrowUpDown, Users
 } from 'lucide-react';
+import { endOfMonth, startOfMonth, parseISO, format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,6 +37,19 @@ const now = new Date();
 const currentBillingMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 const currentMonthLabel = MONTHS[now.getMonth()]?.label ?? '';
 const DURATION_OPTIONS = [30, 45, 60, 90];
+const PAYMENT_METHODS = ['Bank Transfer', 'Western Union', 'Remitly', 'Cash', 'Other'];
+
+const getDefaultPeriodDates = (billingMonth: string) => {
+  try {
+    const d = parseISO(billingMonth + '-01');
+    return {
+      from: format(startOfMonth(d), 'yyyy-MM-dd'),
+      to: format(endOfMonth(d), 'yyyy-MM-dd'),
+    };
+  } catch {
+    return { from: '', to: '' };
+  }
+};
 
 // ─── Types ───────────────────────────────────────────────────────────
 interface InvoiceRow {
@@ -128,6 +142,10 @@ export default function Payments() {
     amount_local: '',
     resolution: 'full' as 'full' | 'partial' | 'writeoff' | 'arrears',
     notes: '',
+    payment_date: new Date().toISOString().split('T')[0],
+    period_from: '',
+    period_to: '',
+    payment_method: '',
   });
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const receiptInputRef = useRef<HTMLInputElement>(null);
@@ -233,6 +251,33 @@ export default function Payments() {
     },
     enabled: !!branchId,
   });
+
+  // Family (parent-student links) query
+  const { data: parentLinks = [] } = useQuery({
+    queryKey: ['parent-links-for-payments'],
+    queryFn: async () => {
+      const { data } = await supabase.from('student_parent_links').select('student_id, parent_id, profiles!student_parent_links_parent_id_fkey(full_name)');
+      return (data || []) as { student_id: string; parent_id: string; profiles: { full_name: string } | null }[];
+    },
+    enabled: !!branchId,
+  });
+
+  // Group families: parent_id -> { parentName, studentIds }
+  const familyGroups = useMemo(() => {
+    const map: Record<string, { parentName: string; studentIds: string[] }> = {};
+    parentLinks.forEach(link => {
+      if (!map[link.parent_id]) {
+        map[link.parent_id] = { parentName: link.profiles?.full_name || 'Unknown Parent', studentIds: [] };
+      }
+      if (!map[link.parent_id].studentIds.includes(link.student_id)) {
+        map[link.parent_id].studentIds.push(link.student_id);
+      }
+    });
+    // Only keep families with 1+ unpaid invoices
+    return Object.entries(map).filter(([_, fam]) =>
+      invoices.some(inv => fam.studentIds.includes(inv.student_id) && inv.status !== 'paid')
+    );
+  }, [parentLinks, invoices]);
 
   // ─── Computed Values ─────────────────────────────────────────────
   const selectedPkg = useMemo(() => packages.find(p => p.id === feeForm.base_package_id), [packages, feeForm.base_package_id]);
@@ -486,6 +531,10 @@ export default function Payments() {
           recorded_by: user?.id || null,
           branch_id: branchId,
           division_id: divisionId,
+          payment_date: payForm.payment_date || new Date().toISOString().split('T')[0],
+          period_from: payForm.period_from || null,
+          period_to: payForm.period_to || null,
+          payment_method: payForm.payment_method || null,
         });
 
         if (isShort && payForm.resolution === 'arrears') {
@@ -519,7 +568,7 @@ export default function Payments() {
       toast({ title: `${count} payment(s) recorded successfully` });
       setBulkPayOpen(false);
       setSelectedIds(new Set());
-      setPayForm({ amount_foreign: '', amount_local: '', resolution: 'full', notes: '' });
+      setPayForm({ amount_foreign: '', amount_local: '', resolution: 'full', notes: '', payment_date: new Date().toISOString().split('T')[0], period_from: '', period_to: '', payment_method: '' });
       setReceiptFile(null);
     },
     onError: (e: any) => toast({ title: 'Payment failed', description: e.message, variant: 'destructive' }),
@@ -547,7 +596,16 @@ export default function Payments() {
       toast({ title: 'Select pending invoices first', variant: 'destructive' });
       return;
     }
-    setPayForm({ amount_foreign: totalExpected.toString(), amount_local: '', resolution: 'full', notes: '' });
+    // Default period from earliest to latest billing month of selected invoices
+    const months = unpaidSelected.map(i => i.billing_month).sort();
+    const earliest = getDefaultPeriodDates(months[0]);
+    const latest = getDefaultPeriodDates(months[months.length - 1]);
+    setPayForm({
+      amount_foreign: totalExpected.toString(), amount_local: '', resolution: 'full', notes: '',
+      payment_date: new Date().toISOString().split('T')[0],
+      period_from: earliest.from, period_to: latest.to,
+      payment_method: '',
+    });
     setReceiptFile(null);
     setBulkPayOpen(true);
   };
@@ -557,7 +615,41 @@ export default function Payments() {
     if (!inv || inv.status === 'paid') return;
     setSelectedIds(new Set([invoiceId]));
     const due = Number(inv.amount) - Number(inv.amount_paid || 0);
-    setPayForm({ amount_foreign: due.toString(), amount_local: '', resolution: 'full', notes: '' });
+    const period = getDefaultPeriodDates(inv.billing_month);
+    setPayForm({
+      amount_foreign: due.toString(), amount_local: '', resolution: 'full', notes: '',
+      payment_date: new Date().toISOString().split('T')[0],
+      period_from: period.from, period_to: period.to,
+      payment_method: '',
+    });
+    setReceiptFile(null);
+    setBulkPayOpen(true);
+  };
+
+  const openFamilyPay = (parentId: string) => {
+    const family = familyGroups.find(([pid]) => pid === parentId);
+    if (!family) return;
+    const familyStudentIds = family[1].studentIds;
+    const familyInvoiceIds = invoices
+      .filter(inv => familyStudentIds.includes(inv.student_id) && inv.status !== 'paid')
+      .map(inv => inv.id);
+    if (familyInvoiceIds.length === 0) {
+      toast({ title: 'No unpaid invoices for this family', variant: 'destructive' });
+      return;
+    }
+    setSelectedIds(new Set(familyInvoiceIds));
+    // Recalculate after setting — use invoices directly
+    const familyUnpaid = invoices.filter(i => familyInvoiceIds.includes(i.id));
+    const total = familyUnpaid.reduce((s, i) => s + (Number(i.amount) - Number(i.amount_paid || 0)), 0);
+    const months = familyUnpaid.map(i => i.billing_month).sort();
+    const earliest = getDefaultPeriodDates(months[0]);
+    const latest = getDefaultPeriodDates(months[months.length - 1]);
+    setPayForm({
+      amount_foreign: total.toString(), amount_local: '', resolution: 'full', notes: '',
+      payment_date: new Date().toISOString().split('T')[0],
+      period_from: earliest.from, period_to: latest.to,
+      payment_method: '',
+    });
     setReceiptFile(null);
     setBulkPayOpen(true);
   };
@@ -646,6 +738,20 @@ export default function Payments() {
             <GraduationCap className="h-4 w-4" />
             <span>{invoices.length} invoice(s)</span>
           </div>
+          {familyGroups.length > 0 && (
+            <Select onValueChange={openFamilyPay}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Pay Family..." />
+              </SelectTrigger>
+              <SelectContent>
+                {familyGroups.map(([pid, fam]) => (
+                  <SelectItem key={pid} value={pid}>
+                    <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {fam.parentName}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <div className="flex-1" />
           {selectedIds.size > 0 && (
             <Button onClick={openBulkPay} className="gap-2 animate-fade-in">
@@ -1091,6 +1197,43 @@ export default function Payments() {
                     <span className="font-mono font-medium">{inv.currency} {(Number(inv.amount) - Number(inv.amount_paid || 0)).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                   </div>
                 ))}
+              </div>
+
+              {/* Payment Period */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payment Period</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm">From</Label>
+                    <Input type="date" value={payForm.period_from} onChange={e => setPayForm(f => ({ ...f, period_from: e.target.value }))} />
+                  </div>
+                  <div>
+                    <Label className="text-sm">To</Label>
+                    <Input type="date" value={payForm.period_to} onChange={e => setPayForm(f => ({ ...f, period_to: e.target.value }))} />
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Payment Details */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payment Details</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm">Payment Date</Label>
+                    <Input type="date" value={payForm.payment_date} onChange={e => setPayForm(f => ({ ...f, payment_date: e.target.value }))} />
+                  </div>
+                  <div>
+                    <Label className="text-sm">Payment Method</Label>
+                    <Select value={payForm.payment_method} onValueChange={v => setPayForm(f => ({ ...f, payment_method: v }))}>
+                      <SelectTrigger><SelectValue placeholder="Select method..." /></SelectTrigger>
+                      <SelectContent>
+                        {PAYMENT_METHODS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
