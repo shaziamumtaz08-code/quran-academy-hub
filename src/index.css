@@ -400,3 +400,11 @@
     animation: shimmer 2s ease-in-out infinite;
   }
 }
+
+/* Print styles for Salary Sheet */
+@media print {
+  body * { visibility: hidden; }
+  .salary-sheet-print, .salary-sheet-print * { visibility: visible; }
+  .salary-sheet-print { position: absolute; left: 0; top: 0; width: 100%; }
+  .print\\:hidden { display: none !important; }
+}

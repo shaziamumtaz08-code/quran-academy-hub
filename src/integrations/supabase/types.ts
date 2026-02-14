@@ -1579,6 +1579,10 @@ export type Database = {
         Row: {
           age: number | null
           archived_at: string | null
+          bank_account_number: string | null
+          bank_account_title: string | null
+          bank_iban: string | null
+          bank_name: string | null
           city: string | null
           country: string | null
           country_code: string | null
@@ -1601,6 +1605,10 @@ export type Database = {
         Insert: {
           age?: number | null
           archived_at?: string | null
+          bank_account_number?: string | null
+          bank_account_title?: string | null
+          bank_iban?: string | null
+          bank_name?: string | null
           city?: string | null
           country?: string | null
           country_code?: string | null
@@ -1623,6 +1631,10 @@ export type Database = {
         Update: {
           age?: number | null
           archived_at?: string | null
+          bank_account_number?: string | null
+          bank_account_title?: string | null
+          bank_iban?: string | null
+          bank_name?: string | null
           city?: string | null
           country?: string | null
           country_code?: string | null
