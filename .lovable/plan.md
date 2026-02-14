@@ -1,63 +1,69 @@
 
 
-## Fix Schedule Recovery and Timezone Sync
+## Salary Engine Redesign -- Professional Salary Sheet UI
 
-### Problem Summary
+### What Changes
 
-Two critical data integrity issues were found:
+**1. Remove "Extra Class" button from Salary Engine header**
+The top-bar buttons will be reduced to only "Leave" and "Adjustment". Extra classes are linked through assignments automatically. Replacement teacher logic stays exclusively in the Assignment Reassign workflow.
 
-1. **308 out of 340 schedules have identical student and teacher times** -- timezone conversion was never applied, so a student in Toronto and teacher in Karachi both show "18:00" instead of the correct offset times.
+**2. Replace expandable rows with a dedicated Salary Sheet view**
+Clicking a teacher name in the summary table opens a full-page styled salary report (dialog/modal) instead of an inline expandable row. This report is designed to be viewable by teachers and downloadable.
 
-2. **All assignment timezone fields default to hardcoded values** (`America/Toronto` for students, `Asia/Karachi` for teachers) regardless of actual user location. Users in Dubai, Chicago, Belgium, Australia all show wrong timezones.
+**3. Salary Sheet Layout (Professional Report Style)**
 
-### Root Causes
+```text
++---------------------------------------------------------------+
+| HEADER SECTION                                                |
+|  Left:  Teacher Name, ID, WhatsApp, Country/City              |
+|         Bank: Account Title, Bank Name, Account #, IBAN       |
+|  Right: Teacher's own attendance snapshot (mini stats)         |
+|         Total Present / Absent / Leave days this month         |
+|         Salary Period dropdown (month selector)                |
++---------------------------------------------------------------+
+| LEGEND BAR                                                    |
+|  Green=Present  Red=Absent  Yellow=Leave  Grey=Not Marked     |
++---------------------------------------------------------------+
+| PER-STUDENT ROWS (auto-generated from assignments)            |
+|  Student Name | FROM--TO | Monthly Fee | Due Amt | Final Amt  |
+|  [Attendance dot timeline with color coding]                  |
+|  15/25 days present | 3 absent | 1 leave | 6 not marked      |
+|  Fee Status: PAID or UNPAID (with last payment date)          |
++---------------------------------------------------------------+
+| ADJUSTMENTS SECTION                                           |
+|  + Add Manual Adjustment (Reason + Amount +/-)                |
+|  Auto-pulled from Expenses module                             |
+|  List: Description | Type | Amount                            |
++---------------------------------------------------------------+
+| NET SALARY FOOTER                                             |
+|  Base: $XXX | Additions: +$XX | Deductions: -$XX | Net: $XXX |
+|  [Mark Fully Paid] [Mark Partially Paid (with reason input)]  |
++---------------------------------------------------------------+
+```
 
-- The `student_teacher_assignments` table has column defaults: `student_timezone = 'America/Toronto'`, `teacher_timezone = 'Asia/Karachi'`
-- Assignment creation (bulk import and Admin Command Center) never passes timezone values
-- Profile timezones are often wrong because they rely on browser auto-detect at login, but many users were admin-created and never logged in
-- The `timezone_mappings` table exists with correct city-to-timezone data but is only used at schedule creation UI, not at assignment creation
+**4. Database: Add bank detail fields to profiles**
+New columns on `profiles` table:
+- `bank_name` (text, nullable)
+- `bank_account_title` (text, nullable)
+- `bank_account_number` (text, nullable)
+- `bank_iban` (text, nullable)
 
-### Solution (3 Parts)
+**5. Fix Expenses page empty-string Select bug**
+The Expenses page has `<SelectItem value="">None</SelectItem>` for teacher and student dropdowns which will crash on Radix. Fix to use `"none"` pattern.
 
----
-
-**Part 1: Database Fix -- Correct existing data**
-
-Run a migration that:
-
-- Updates `profiles.timezone` based on `city` + `country` using the `timezone_mappings` table for all profiles where the current timezone doesn't match their location
-- Updates `student_teacher_assignments.student_timezone` and `teacher_timezone` by pulling the correct timezone from the linked profile (which was just corrected)
-- Recalculates `schedules.teacher_local_time` for all 308 schedules where `student_local_time = teacher_local_time` using the corrected assignment timezones
-- Changes column defaults on `student_teacher_assignments` to `NULL` instead of hardcoded values
-
----
-
-**Part 2: Assignment creation -- Auto-resolve timezone**
-
-- **Bulk Import Edge Function** (`bulk-import-execute/index.ts`): When creating new assignments, look up each student's and teacher's profile timezone and set `student_timezone` / `teacher_timezone` accordingly
-- **Admin Command Center** (`AdminCommandCenter.tsx`): When upserting assignments, resolve timezone from the selected student/teacher profiles
-- **Schedules page** (`Schedules.tsx`): Change the hardcoded default timezones (`America/Toronto`, `Asia/Karachi`) in the form state to resolve from the assignment data instead. Remove the local TIMEZONES array and use the shared one from `src/lib/timezones.ts`
-
----
-
-**Part 3: Profile timezone accuracy**
-
-- Update the profile creation flow (in `admin-create-user` edge function) to resolve timezone from city/country at user creation time
-- Keep the existing browser auto-detect on login as a secondary update mechanism
-
----
+**6. Summary table stays clean**
+The main summary table keeps columns: Teacher | Base | Extras | Additions | Deductions | Net | Status | Actions (View Sheet / Save / Pay / Lock). Teacher name is clickable to open the sheet.
 
 ### Technical Details
 
-**Migration SQL** will use a PL/pgSQL function to:
-1. Join `profiles` to `timezone_mappings` on `country` + `city` and update `profiles.timezone`
-2. Join `student_teacher_assignments` to `profiles` and update `student_timezone` / `teacher_timezone`
-3. For schedules with matching times, calculate the offset difference and update `teacher_local_time`
-
 **Files to modify:**
-- `supabase/functions/bulk-import-execute/index.ts` -- add timezone resolution on assignment insert
-- `supabase/functions/admin-create-user/index.ts` -- set timezone from city/country at user creation
-- `src/pages/AdminCommandCenter.tsx` -- resolve timezone on assignment upsert
-- `src/pages/Schedules.tsx` -- use profile-resolved timezones instead of hardcoded defaults; use shared timezone list from `src/lib/timezones.ts`
-- Database migration -- fix existing data and change column defaults
+- `src/pages/SalaryEngine.tsx` -- Complete UI restructure: remove Extra Class button/modal, replace expandable rows with full salary sheet dialog, add teacher header with bank details, add partial payment support with reason field, downloadable layout
+- `src/pages/Expenses.tsx` -- Fix empty-string SelectItem values (lines 376, 389)
+- Database migration -- Add bank detail columns to `profiles`
 
+**Key UI decisions:**
+- Salary sheet opens as a large dialog (max-w-4xl) with print-friendly styling
+- Color legend uses the requested palette: green (present), red (absent), yellow (leave), grey (not marked)
+- Fee status per student row helps admin identify inactive/unpaid students before issuing salary
+- Partial payment requires mandatory reason text
+- Download button triggers browser print dialog with print-optimized CSS
