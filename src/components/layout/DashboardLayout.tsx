@@ -137,7 +137,7 @@ function buildNavGroups(modelType: string | null, branchType: string | null): Na
           items: [
             { label: 'Report Templates', href: '/report-card-templates', icon: FileText, roles: ['super_admin', 'admin', 'examiner'] },
             { label: 'Generate Reports', href: '/generate-report-card', icon: ClipboardCheck, roles: ['super_admin', 'admin', 'examiner'] },
-            { label: 'Student Reports', href: '/student-reports', icon: BarChart3, roles: ['super_admin', 'admin', 'examiner', 'teacher'] },
+            { label: 'Student Reports', href: '/student-reports', icon: BarChart3, roles: ['super_admin', 'admin', 'examiner', 'teacher', 'student', 'parent'] },
             { label: 'Reports', href: '/reports', icon: FileText, permission: 'reports.view' },
           ],
         },
