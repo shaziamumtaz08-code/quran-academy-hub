@@ -39,6 +39,7 @@ import {
   ClipboardList,
   Award,
   Cog,
+  Receipt,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -159,6 +160,8 @@ function buildNavGroups(modelType: string | null, branchType: string | null): Na
       icon: DollarSign,
       items: [
         { label: 'Fees', href: '/payments', icon: CreditCard, permission: 'payments.view' },
+        { label: 'Salary Engine', href: '/salary', icon: Wallet, roles: ['super_admin', 'admin', 'admin_fees'] },
+        { label: 'Expenses', href: '/expenses', icon: Receipt, roles: ['super_admin', 'admin', 'admin_fees'] },
         { label: 'Finance Setup', href: '/finance-setup', icon: Wallet, roles: ['super_admin'] },
         { label: 'KPI', href: '/kpi', icon: BarChart3, roles: ['super_admin', 'admin'] },
       ],

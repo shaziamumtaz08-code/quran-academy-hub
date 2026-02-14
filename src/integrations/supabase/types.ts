@@ -779,6 +779,109 @@ export type Database = {
           },
         ]
       }
+      expenses: {
+        Row: {
+          amount: number
+          approved_by: string | null
+          branch_id: string | null
+          category: string
+          created_at: string
+          created_by: string | null
+          currency: string
+          description: string
+          division_id: string | null
+          expense_date: string
+          id: string
+          notes: string | null
+          receipt_url: string | null
+          status: string
+          student_id: string | null
+          teacher_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          approved_by?: string | null
+          branch_id?: string | null
+          category: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description: string
+          division_id?: string | null
+          expense_date?: string
+          id?: string
+          notes?: string | null
+          receipt_url?: string | null
+          status?: string
+          student_id?: string | null
+          teacher_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          approved_by?: string | null
+          branch_id?: string | null
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          description?: string
+          division_id?: string | null
+          expense_date?: string
+          id?: string
+          notes?: string | null
+          receipt_url?: string | null
+          status?: string
+          student_id?: string | null
+          teacher_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       export_audit_logs: {
         Row: {
           admin_id: string
@@ -814,6 +917,80 @@ export type Database = {
           {
             foreignKeyName: "export_audit_logs_admin_id_fkey"
             columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      extra_classes: {
+        Row: {
+          approved_by: string | null
+          assignment_id: string | null
+          class_date: string
+          created_at: string
+          duration_minutes: number
+          id: string
+          rate: number
+          reason: string | null
+          status: string
+          student_id: string | null
+          teacher_id: string
+          updated_at: string
+        }
+        Insert: {
+          approved_by?: string | null
+          assignment_id?: string | null
+          class_date: string
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          rate?: number
+          reason?: string | null
+          status?: string
+          student_id?: string | null
+          teacher_id: string
+          updated_at?: string
+        }
+        Update: {
+          approved_by?: string | null
+          assignment_id?: string | null
+          class_date?: string
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          rate?: number
+          reason?: string | null
+          status?: string
+          student_id?: string | null
+          teacher_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extra_classes_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extra_classes_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "student_teacher_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extra_classes_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extra_classes_teacher_id_fkey"
+            columns: ["teacher_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1067,6 +1244,70 @@ export type Database = {
             columns: ["invoice_id"]
             isOneToOne: false
             referencedRelation: "fee_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leave_events: {
+        Row: {
+          approved_by: string | null
+          created_at: string
+          end_date: string
+          id: string
+          leave_type: string
+          reason: string | null
+          replacement_teacher_id: string | null
+          start_date: string
+          status: string
+          teacher_id: string
+          updated_at: string
+        }
+        Insert: {
+          approved_by?: string | null
+          created_at?: string
+          end_date: string
+          id?: string
+          leave_type?: string
+          reason?: string | null
+          replacement_teacher_id?: string | null
+          start_date: string
+          status?: string
+          teacher_id: string
+          updated_at?: string
+        }
+        Update: {
+          approved_by?: string | null
+          created_at?: string
+          end_date?: string
+          id?: string
+          leave_type?: string
+          reason?: string | null
+          replacement_teacher_id?: string | null
+          start_date?: string
+          status?: string
+          teacher_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_events_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_events_replacement_teacher_id_fkey"
+            columns: ["replacement_teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_events_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1524,6 +1765,158 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "surahs"
             referencedColumns: ["surah_number"]
+          },
+        ]
+      }
+      salary_adjustments: {
+        Row: {
+          adjustment_type: string
+          amount: number
+          created_at: string
+          created_by: string | null
+          expense_id: string | null
+          id: string
+          reason: string | null
+          salary_month: string
+          teacher_id: string
+        }
+        Insert: {
+          adjustment_type: string
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          expense_id?: string | null
+          id?: string
+          reason?: string | null
+          salary_month: string
+          teacher_id: string
+        }
+        Update: {
+          adjustment_type?: string
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          expense_id?: string | null
+          id?: string
+          reason?: string | null
+          salary_month?: string
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_adjustments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_adjustments_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_adjustments_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      salary_payouts: {
+        Row: {
+          adjustment_amount: number
+          base_salary: number
+          calculation_json: Json | null
+          created_at: string
+          deductions: number
+          expense_amount: number
+          extra_class_amount: number
+          gross_salary: number
+          id: string
+          locked_at: string | null
+          locked_by: string | null
+          net_salary: number
+          notes: string | null
+          paid_at: string | null
+          paid_by: string | null
+          payment_method: string | null
+          payment_reference: string | null
+          salary_month: string
+          status: string
+          teacher_id: string
+          updated_at: string
+        }
+        Insert: {
+          adjustment_amount?: number
+          base_salary?: number
+          calculation_json?: Json | null
+          created_at?: string
+          deductions?: number
+          expense_amount?: number
+          extra_class_amount?: number
+          gross_salary?: number
+          id?: string
+          locked_at?: string | null
+          locked_by?: string | null
+          net_salary?: number
+          notes?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          salary_month: string
+          status?: string
+          teacher_id: string
+          updated_at?: string
+        }
+        Update: {
+          adjustment_amount?: number
+          base_salary?: number
+          calculation_json?: Json | null
+          created_at?: string
+          deductions?: number
+          expense_amount?: number
+          extra_class_amount?: number
+          gross_salary?: number
+          id?: string
+          locked_at?: string | null
+          locked_by?: string | null
+          net_salary?: number
+          notes?: string | null
+          paid_at?: string | null
+          paid_by?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          salary_month?: string
+          status?: string
+          teacher_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_payouts_locked_by_fkey"
+            columns: ["locked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_payouts_paid_by_fkey"
+            columns: ["paid_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_payouts_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
         ]
       }
