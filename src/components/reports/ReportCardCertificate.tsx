@@ -124,7 +124,7 @@ export function ReportCardCertificate({ report, showInternalNotes = false, viewM
   const isStaffView = canSeeInternalNotes(viewMode);
 
   return (
-    <div className="bg-slate-100 p-4 sm:p-6 report-print" id="report-print-root">
+    <div className="bg-slate-100 p-4 sm:p-6 print:bg-white print:p-0 print:m-0 report-print" id="report-print-root">
       {/* Action Buttons - Hide on print */}
       <div className="max-w-4xl mx-auto mb-3 flex justify-end gap-2 no-print">
         <Button variant="outline" size="sm" className="gap-2" onClick={() => handlePrint('student')}>
@@ -154,7 +154,7 @@ export function ReportCardCertificate({ report, showInternalNotes = false, viewM
       </div>
 
       {/* A4 Certificate Container */}
-      <div className="report-a4-container max-w-4xl mx-auto bg-white rounded-xl shadow-xl overflow-hidden print:rounded-none print:shadow-none">
+      <div className="report-a4-container max-w-4xl mx-auto bg-white rounded-xl shadow-xl overflow-hidden print:rounded-none print:shadow-none print:overflow-hidden">
 
         {/* ===== HEADER ===== */}
         <div className="bg-navy-900 px-6 py-4 relative report-section">
