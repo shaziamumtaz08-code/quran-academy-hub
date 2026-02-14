@@ -263,26 +263,52 @@
 
   /* Print-optimized styles for report cards — single A4 page output */
   @media print {
-    /* Hide EVERYTHING except the report */
-    body * {
-      visibility: hidden;
+    /* Constrain body so browser sees exactly 1 page */
+    html, body {
+      width: 210mm !important;
+      height: 297mm !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: hidden !important;
     }
 
+    /* Hide EVERYTHING */
+    body * {
+      visibility: hidden;
+      margin: 0 !important;
+      padding: 0 !important;
+      height: 0 !important;
+      min-height: 0 !important;
+      max-height: 0 !important;
+      overflow: hidden !important;
+      border: none !important;
+      line-height: 0 !important;
+      font-size: 0 !important;
+    }
+
+    /* Show ONLY the report */
     .report-print,
     .report-print * {
-      visibility: visible;
+      visibility: visible !important;
+      height: auto !important;
+      min-height: 0 !important;
+      max-height: none !important;
+      overflow: visible !important;
+      line-height: normal !important;
+      font-size: inherit !important;
     }
 
     .report-print {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 210mm;
-      height: 297mm;
+      position: fixed !important;
+      left: 0 !important;
+      top: 0 !important;
+      width: 210mm !important;
+      height: 297mm !important;
       padding: 0 !important;
       margin: 0 !important;
       background: white !important;
       overflow: hidden !important;
+      z-index: 999999 !important;
     }
 
     /* A4 container rules */
@@ -296,8 +322,6 @@
       border-radius: 0 !important;
       box-shadow: none !important;
       overflow: hidden !important;
-      page-break-inside: avoid;
-      page-break-after: avoid;
     }
 
     /* Hide action buttons & no-print elements */
@@ -311,7 +335,7 @@
     }
 
     /* Force print background colors */
-    * {
+    .report-print, .report-print * {
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
     }
@@ -324,7 +348,7 @@
 
     @page {
       size: A4;
-      margin: 3mm;
+      margin: 0;
     }
   }
 }
