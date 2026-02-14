@@ -1,31 +1,56 @@
 
 
-## Add "Left" Status for Students/Teachers
+## Add Student Billing Plans List with Edit/Delete + Activity Logging
 
-### What It Does
-Adds a **"Left"** status option alongside the existing Active, Paused, and Completed statuses. Users marked as "Left" will have their data preserved but will not appear in active lists, student cards, or teacher dashboards.
+### Problem
+Currently, once a student billing plan is created via "Set Up Student Fee," there is no way to view, edit, or delete it. The admin must blindly manage fee setups without seeing what already exists.
 
 ### Changes
 
-**1. Database Migration**
-- Add `'left'` to the `assignment_status` enum type so assignments can be marked as "Left".
+**1. File: `src/pages/Payments.tsx` -- Add "Student Billing Plans" Tab/Section**
 
-**2. File: `src/pages/Students.tsx`**
-- Update the `AssignmentStatus` type to include `'left'`.
-- The teacher query already filters by `['active', 'paused']`, so "left" students are automatically excluded from the teacher's card view.
-- For the admin student list, add a status filter dropdown so admins can optionally view "left" students. By default, "left" students are hidden.
+Add a new section (or a third tab) between the summary cards and the invoice table that shows all existing `student_billing_plans` as a table with:
 
-**3. File: `src/components/students/StudentCard.tsx`**
-- Update the `AssignmentStatus` type to include `'left'`.
-- Add a `left` entry to `STATUS_CONFIG` with a red/muted badge style.
-- Treat `left` as inactive (same as `paused`/`completed` -- no attendance button shown).
+- Columns: Student Name, Package Name, Session Duration, Net Fee, Currency, Discount, Status (Active/Inactive), Created Date, Actions
+- **Edit button**: Opens the fee builder modal pre-populated with the plan's current values (student pre-selected and locked, package, duration, discounts filled in). On save, updates the existing row instead of inserting a new one.
+- **Delete button**: Confirmation dialog, then deletes the billing plan. Also deletes any linked `pending` invoices for that plan.
+- **Toggle Active/Inactive**: Quick switch to deactivate a plan without deleting it.
+- Search/filter by student name.
 
-**4. File: `src/pages/UserManagement.tsx`**
-- Where assignment status can be changed (if applicable), add "Left" as an option in any status dropdowns.
+**2. File: `src/pages/Payments.tsx` -- Edit Billing Plan Mutation**
 
-**5. File: `src/pages/Teachers.tsx`**
-- If teachers are listed via assignments, ensure "left" assignments are excluded from active teacher lists by default.
+- New `editPlanMutation` that updates an existing `student_billing_plans` row by ID with the recalculated values (package, duration, surcharge, discounts, net fee).
+- When editing, the student selector is disabled (locked to the existing student).
+- The modal title changes to "Edit Billing Plan" when in edit mode.
 
-### How "Left" Differs from "Archived"
-- **Archived** (`archived_at` on profiles): Hides the entire user profile system-wide.
-- **Left** (`assignment_status = 'left'`): Hides a specific student-teacher assignment from active views, but the student profile remains visible for other assignments or administrative purposes. A student can be "left" from one teacher but still active with another.
+**3. File: `src/pages/Payments.tsx` -- Delete Billing Plan Mutation**
+
+- New `deletePlanMutation` that:
+  1. Deletes any `pending` fee_invoices linked to the plan (`plan_id`).
+  2. Deletes the `student_billing_plans` row.
+  3. Logs the activity.
+
+**4. File: `src/pages/Payments.tsx` -- Invoice Edit and Delete**
+
+- Add Edit and Delete buttons to the invoice table Actions column (for pending invoices only).
+- **Edit**: Opens a small modal to adjust amount, due date, or billing month.
+- **Delete**: Confirmation then removes the invoice.
+
+**5. Activity Logging (`src/lib/activityLogger.ts`)**
+
+- Add new action types: `'billing_plan_created'`, `'billing_plan_updated'`, `'billing_plan_deleted'`, `'invoice_edited'`, `'invoice_deleted'`.
+- Add entity types: `'billing_plan'`, `'invoice'`.
+- Call `trackActivity()` in each mutation's `onSuccess` for: creating plans, editing plans, deleting plans, editing invoices, deleting invoices, and recording payments.
+
+**6. File: `src/pages/FinanceSetup.tsx` -- Activity Logging for Fee Packages and Discounts**
+
+- Add `trackActivity()` calls when fee packages or discount rules are created, updated, or deleted.
+- New action types: `'fee_package_created'`, `'fee_package_updated'`, `'fee_package_deleted'`, `'discount_created'`, `'discount_updated'`, `'discount_deleted'`.
+
+### Technical Details
+
+- The billing plans query joins `profiles` (for student name) and `fee_packages` (for package name).
+- Edit mode reuses the existing "Composite Fee Builder" modal but sets an `editingPlanId` state to switch between insert and update.
+- All `trackActivity()` calls include entity ID, action details (old/new values where applicable), and run in the background (non-blocking).
+- No database migration needed -- all tables and columns already exist.
+
