@@ -7,12 +7,13 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { UnifiedAttendanceForm, type StudentInfo } from '@/components/attendance/UnifiedAttendanceForm';
 
-type AssignmentStatus = 'active' | 'paused' | 'completed';
+type AssignmentStatus = 'active' | 'paused' | 'completed' | 'left';
 
 const STATUS_CONFIG = {
   active: { label: 'Active', badgeClass: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' },
   paused: { label: 'Paused', badgeClass: 'bg-amber-500/10 text-amber-600 border-amber-500/20' },
   completed: { label: 'Completed', badgeClass: 'bg-slate-400/10 text-slate-600 border-slate-400/20' },
+  left: { label: 'Left', badgeClass: 'bg-red-500/10 text-red-600 border-red-500/20' },
 } as const;
 
 interface StudentCardProps {
@@ -41,7 +42,8 @@ export function StudentCard({ student, onViewHistory, onViewSchedule }: StudentC
   const status = student.assignment_status || 'active';
   const isPaused = status === 'paused';
   const isCompleted = status === 'completed';
-  const isInactive = isPaused || isCompleted;
+  const isLeft = status === 'left';
+  const isInactive = isPaused || isCompleted || isLeft;
 
   // Check if we have any info to display
   const hasAge = student.age !== null && student.age !== undefined;

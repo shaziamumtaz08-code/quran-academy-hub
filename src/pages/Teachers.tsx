@@ -80,7 +80,8 @@ export default function Teachers() {
           student:profiles!student_teacher_assignments_student_id_fkey(id, full_name, gender, age),
           subject:subjects(name)
         `)
-        .in('teacher_id', teacherIds);
+        .in('teacher_id', teacherIds)
+        .in('status', ['active', 'paused']);
 
       if (assignError) throw assignError;
 
