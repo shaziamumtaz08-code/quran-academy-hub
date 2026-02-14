@@ -416,11 +416,12 @@ export default function StudentReports() {
 
   const getGradeBadge = (pct: number) => {
     if (isNaN(pct)) return <Badge className="rounded-full px-3 py-1 bg-gray-100 text-gray-600">N/A</Badge>;
-    if (pct >= 90) return <Badge className="rounded-full px-3 py-1 bg-cyan-500 text-white font-semibold">Mastered</Badge>;
-    if (pct >= 80) return <Badge className="rounded-full px-3 py-1 bg-cyan-400 text-white font-semibold">Excellent</Badge>;
-    if (pct >= 70) return <Badge className="rounded-full px-3 py-1 bg-blue-500 text-white font-semibold">Proficient</Badge>;
-    if (pct >= 60) return <Badge className="rounded-full px-3 py-1 bg-amber-500 text-white font-semibold">Progressing</Badge>;
-    return <Badge className="rounded-full px-3 py-1 bg-gray-400 text-white font-semibold">Beginning</Badge>;
+    if (pct >= 90) return <Badge className="rounded-full px-3 py-1 bg-cyan-500 text-white font-semibold">A+ ممتاز مرتفع</Badge>;
+    if (pct >= 80) return <Badge className="rounded-full px-3 py-1 bg-cyan-400 text-white font-semibold">A ممتاز</Badge>;
+    if (pct >= 70) return <Badge className="rounded-full px-3 py-1 bg-blue-500 text-white font-semibold">B جيد جداً</Badge>;
+    if (pct >= 60) return <Badge className="rounded-full px-3 py-1 bg-amber-500 text-white font-semibold">C جيد</Badge>;
+    if (pct >= 50) return <Badge className="rounded-full px-3 py-1 bg-orange-500 text-white font-semibold">D مقبول</Badge>;
+    return <Badge className="rounded-full px-3 py-1 bg-red-500 text-white font-semibold">F راسب</Badge>;
   };
 
   const formatDate = (dateString: string | null | undefined): string => {
