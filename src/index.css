@@ -261,15 +261,65 @@
     line-height: 2;
   }
 
-  /* Print-optimized styles for report cards */
+  /* Print-optimized styles for report cards — proper A4 output */
   @media print {
-    .print-certificate {
-      @apply shadow-none;
+    /* Hide EVERYTHING except the report */
+    body * {
+      visibility: hidden;
+    }
+
+    #report-print-root,
+    #report-print-root * {
+      visibility: visible;
+    }
+
+    #report-print-root {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      padding: 0;
+      margin: 0;
+      background: white;
+    }
+
+    /* A4 container rules */
+    .report-a4-container {
+      width: 210mm;
+      min-height: auto;
+      max-width: 210mm;
+      margin: 0 auto;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      overflow: visible;
+    }
+
+    /* Prevent page breaks inside logical sections */
+    .report-section {
       page-break-inside: avoid;
     }
-    
+
+    /* Hide action buttons & no-print elements */
     .no-print {
       display: none !important;
+    }
+
+    /* When printing student version, hide internal notes */
+    #report-print-root[data-print-mode="student"] .internal-notes-section {
+      display: none !important;
+    }
+
+    /* Prevent huge gaps from responsive containers */
+    .print-certificate {
+      padding: 0 !important;
+      min-height: auto !important;
+      background: white !important;
+    }
+
+    /* Force print background colors */
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
   }
 }

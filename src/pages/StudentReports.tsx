@@ -869,6 +869,15 @@ export default function StudentReports() {
             <ReportCardCertificate 
               report={selectedReport} 
               showInternalNotes={!isStudentOrParent}
+              viewMode={
+                isStudentOrParent 
+                  ? (activeRole === 'parent' ? 'parent' : 'student') 
+                  : isTeacher 
+                    ? 'teacher' 
+                    : activeRole === 'examiner' 
+                      ? 'examiner' 
+                      : 'admin'
+              }
             />
           )}
         </DialogContent>

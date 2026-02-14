@@ -3,10 +3,16 @@ import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Award, GraduationCap, PenLine, Printer, Download, Calendar, Users, TrendingUp } from 'lucide-react';
+import { Award, GraduationCap, PenLine, Printer, Download, Calendar, Users, TrendingUp, BookOpen, Target, Brain, ChevronDown } from 'lucide-react';
 import { TemplateStructure, StoredCriteriaEntry, calculateSectionMaxScore } from '@/types/reportCard';
 import { supabase } from '@/integrations/supabase/client';
 import logoLight from '@/assets/logo-light.png';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+
+// ─── Types ───────────────────────────────────────────────────────────
+export type ReportViewMode = 'admin' | 'teacher' | 'examiner' | 'student' | 'parent' | 'pdf';
 
 interface StudentReport {
   id: string;
@@ -34,6 +40,7 @@ interface StudentReport {
 interface ReportCardCertificateProps {
   report: StudentReport;
   showInternalNotes?: boolean;
+  viewMode?: ReportViewMode;
 }
 
 // Helper to detect if text contains Arabic/Urdu characters
@@ -41,7 +48,13 @@ const hasArabicUrdu = (text: string): boolean => {
   return /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/.test(text);
 };
 
-export function ReportCardCertificate({ report, showInternalNotes = false }: ReportCardCertificateProps) {
+const canSeeInternalNotes = (mode: ReportViewMode) =>
+  mode === 'admin' || mode === 'examiner' || mode === 'teacher';
+
+export function ReportCardCertificate({ report, showInternalNotes = false, viewMode = 'admin' }: ReportCardCertificateProps) {
+  // Derive effective internal notes visibility from both props
+  const showNotes = showInternalNotes && canSeeInternalNotes(viewMode);
+
   // Fetch attendance summary for the same student and month
   const examMonth = report.exam_date ? new Date(report.exam_date) : new Date();
   const monthStart = new Date(examMonth.getFullYear(), examMonth.getMonth(), 1).toISOString().split('T')[0];
@@ -123,34 +136,63 @@ export function ReportCardCertificate({ report, showInternalNotes = false }: Rep
   const gradeInfo = getGradeInfo(report.percentage);
   const attendance = attendanceData || { present: 0, absent: 0, total: 0, percentage: 0 };
 
-  const handlePrint = () => {
+  // ─── PDF Generation ─────────────────────────────────────────────
+  const handlePrint = (mode: 'student' | 'staff' = 'staff') => {
+    // Set a data attribute so print CSS can conditionally hide internal notes
+    const printRoot = document.getElementById('report-print-root');
+    if (printRoot) {
+      printRoot.setAttribute('data-print-mode', mode);
+    }
     window.print();
+    // Clean up
+    if (printRoot) {
+      printRoot.removeAttribute('data-print-mode');
+    }
   };
 
-  const handleDownloadPDF = () => {
-    // Use print dialog in PDF mode - browsers allow saving as PDF
-    window.print();
-  };
+  const isStaffView = canSeeInternalNotes(viewMode);
 
   return (
-    <div className="bg-slate-100 p-4 sm:p-8 min-h-screen print-certificate">
+    <div className="bg-slate-100 p-4 sm:p-8 min-h-screen print-certificate" id="report-print-root">
       {/* Action Buttons - Hide on print */}
       <div className="max-w-4xl mx-auto mb-4 flex justify-end gap-2 no-print">
-        <Button variant="outline" size="sm" className="gap-2" onClick={handlePrint}>
+        <Button variant="outline" size="sm" className="gap-2" onClick={() => handlePrint('student')}>
           <Printer className="h-4 w-4" />
           Print
         </Button>
-        <Button size="sm" className="gap-2 bg-cyan-500 hover:bg-cyan-600 text-white" onClick={handleDownloadPDF}>
-          <Download className="h-4 w-4" />
-          Download PDF
-        </Button>
+        {isStaffView ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" className="gap-2 bg-cyan-500 hover:bg-cyan-600 text-white">
+                <Download className="h-4 w-4" />
+                Download PDF
+                <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handlePrint('student')}>
+                <Users className="h-4 w-4 mr-2" />
+                Student Version
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handlePrint('staff')}>
+                <PenLine className="h-4 w-4 mr-2" />
+                Staff Version (with Internal Notes)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <Button size="sm" className="gap-2 bg-cyan-500 hover:bg-cyan-600 text-white" onClick={() => handlePrint('student')}>
+            <Download className="h-4 w-4" />
+            Download PDF
+          </Button>
+        )}
       </div>
 
       {/* The "Digital A4" Certificate Container */}
-      <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden">
+      <div className="report-a4-container max-w-4xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden print:rounded-none print:shadow-none">
         
         {/* ===== BRANDED HEADER ===== */}
-        <div className="bg-navy-900 px-6 sm:px-10 py-8 relative">
+        <div className="bg-navy-900 px-6 sm:px-10 py-8 relative print:py-6 report-section">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             {/* Logo & School Name */}
             <div className="flex items-center gap-4">
@@ -181,7 +223,7 @@ export function ReportCardCertificate({ report, showInternalNotes = false }: Rep
         </div>
 
         {/* ===== STUDENT DETAILS SECTION ===== */}
-        <div className="px-6 sm:px-10 py-6 border-b border-gray-100 bg-gray-50/50">
+        <div className="px-6 sm:px-10 py-6 border-b border-gray-100 bg-gray-50/50 report-section print:py-4">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
             <div>
               <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Student Name</p>
@@ -213,8 +255,8 @@ export function ReportCardCertificate({ report, showInternalNotes = false }: Rep
           </div>
         </div>
 
-        {/* ===== SCORE + ATTENDANCE CARDS ===== */}
-        <div className="px-6 sm:px-10 py-6">
+        {/* ===== SCORE + ATTENDANCE + GRADE CARDS ===== */}
+        <div className="px-6 sm:px-10 py-6 report-section print:py-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Overall Score Card */}
             <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-5 border border-slate-200">
@@ -269,7 +311,7 @@ export function ReportCardCertificate({ report, showInternalNotes = false }: Rep
 
         {/* ===== ASSESSMENT BREAKDOWN ===== */}
         {report.template?.structure_json?.sections && (
-          <div className="px-6 sm:px-10 py-6">
+          <div className="px-6 sm:px-10 py-6 report-section print:py-4">
             <h3 className="text-lg font-bold text-navy-900 mb-4 flex items-center gap-2">
               <Award className="h-5 w-5 text-cyan-500" />
               Assessment Breakdown
@@ -293,7 +335,7 @@ export function ReportCardCertificate({ report, showInternalNotes = false }: Rep
                 }, 0) ?? 0;
 
                 return (
-                  <div key={sIdx}>
+                  <div key={sIdx} className="report-section">
                     {/* Section Header */}
                     {section.title && (
                       <div className="bg-navy-900/5 px-4 py-2.5 flex items-center justify-between">
@@ -325,7 +367,7 @@ export function ReportCardCertificate({ report, showInternalNotes = false }: Rep
                           {/* Desktop row */}
                           <div className="hidden sm:grid grid-cols-12 gap-4 items-center px-4 py-3 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 transition-colors">
                             <div className="col-span-5 flex items-center gap-3">
-                              <div className="w-24 h-2 rounded-full bg-gray-200 overflow-hidden">
+                              <div className="w-24 h-2 rounded-full bg-gray-200 overflow-hidden print:w-16">
                                 <div className={`h-full ${progressColor}`} style={{ width: `${pct}%` }} />
                               </div>
                               <p className={`text-sm font-medium text-navy-900 ${hasArabicUrdu(criterion.criteria_name) ? 'urdu-text' : ''}`}>
@@ -410,7 +452,7 @@ export function ReportCardCertificate({ report, showInternalNotes = false }: Rep
         )}
 
         {/* ===== COMMENTS & REMARKS ===== */}
-        <div className="px-6 sm:px-10 py-6 border-t border-gray-100">
+        <div className="px-6 sm:px-10 py-6 border-t border-gray-100 report-section print:py-4">
           <h3 className="text-lg font-bold text-navy-900 mb-4 flex items-center gap-2">
             <PenLine className="h-5 w-5 text-cyan-500" />
             Examiner's Comments
@@ -426,8 +468,9 @@ export function ReportCardCertificate({ report, showInternalNotes = false }: Rep
             <p className="text-muted-foreground italic">No comments provided.</p>
           )}
           
-          {showInternalNotes && report.examiner_remarks && (
-            <div className="mt-4 bg-red-50 rounded-lg p-5 border-l-4 border-red-400">
+          {/* Internal Notes - NOT rendered in DOM for student/parent views */}
+          {showNotes && report.examiner_remarks && (
+            <div className="mt-4 bg-red-50 rounded-lg p-5 border-l-4 border-red-400 internal-notes-section">
               <p className="text-sm font-medium text-red-700 mb-2">Internal Notes (Staff Only)</p>
               <p className={`text-red-900 ${hasArabicUrdu(report.examiner_remarks) ? 'urdu-text' : ''}`}>
                 {report.examiner_remarks}
@@ -436,9 +479,45 @@ export function ReportCardCertificate({ report, showInternalNotes = false }: Rep
           )}
         </div>
 
+        {/* ===== PLANNING SNAPSHOT (Placeholder) ===== */}
+        <div className="px-6 sm:px-10 py-6 border-t border-gray-100 report-section print:py-4">
+          <h3 className="text-lg font-bold text-navy-900 mb-4 flex items-center gap-2">
+            <Target className="h-5 w-5 text-cyan-500" />
+            Planning Snapshot
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 text-center">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Monthly Target</p>
+              <p className="text-lg font-bold text-navy-900">—</p>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 text-center">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Completed</p>
+              <p className="text-lg font-bold text-navy-900">—</p>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 text-center">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Status</p>
+              <p className="text-lg font-bold text-navy-900">—</p>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2 italic">Planning data will be populated from monthly plans.</p>
+        </div>
+
+        {/* ===== OVERALL PROGRESS SUMMARY (AI Placeholder) ===== */}
+        <div className="px-6 sm:px-10 py-6 border-t border-gray-100 report-section print:py-4">
+          <h3 className="text-lg font-bold text-navy-900 mb-4 flex items-center gap-2">
+            <Brain className="h-5 w-5 text-cyan-500" />
+            Overall Progress Summary
+          </h3>
+          <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-lg p-6 border border-cyan-200/50 text-center">
+            <BookOpen className="h-8 w-8 mx-auto mb-3 text-cyan-400" />
+            <p className="text-sm font-medium text-navy-900">Automated academic analysis will appear here</p>
+            <p className="text-xs text-muted-foreground mt-1">AI-powered progress summary coming soon</p>
+          </div>
+        </div>
+
         {/* ===== PREVIOUS RESULTS ===== */}
         {previousReports.length > 0 && (
-          <div className="px-6 sm:px-10 py-6 border-t border-gray-100">
+          <div className="px-6 sm:px-10 py-6 border-t border-gray-100 report-section print:py-4">
             <h3 className="text-lg font-bold text-navy-900 mb-4 flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-cyan-500" />
               Previous Results
@@ -462,7 +541,7 @@ export function ReportCardCertificate({ report, showInternalNotes = false }: Rep
         )}
 
         {/* ===== SIGNATURES FOOTER ===== */}
-        <div className="px-6 sm:px-10 py-8 bg-gray-50 border-t border-gray-200">
+        <div className="px-6 sm:px-10 py-8 bg-gray-50 border-t border-gray-200 report-section print:py-6">
           <div className="grid grid-cols-2 gap-8">
             <div className="text-center">
               <div className="h-16 border-b-2 border-dotted border-gray-300 mb-2" />
