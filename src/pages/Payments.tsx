@@ -552,6 +552,16 @@ export default function Payments() {
     setBulkPayOpen(true);
   };
 
+  const openSinglePay = (invoiceId: string) => {
+    const inv = invoices.find(i => i.id === invoiceId);
+    if (!inv || inv.status === 'paid') return;
+    setSelectedIds(new Set([invoiceId]));
+    const due = Number(inv.amount) - Number(inv.amount_paid || 0);
+    setPayForm({ amount_foreign: due.toString(), amount_local: '', resolution: 'full', notes: '' });
+    setReceiptFile(null);
+    setBulkPayOpen(true);
+  };
+
   const addStudent = (id: string) => {
     setSelectedStudentIds(prev => [...prev, id]);
     setStudentSearch('');
@@ -668,6 +678,7 @@ export default function Payments() {
                   <TableHead className="text-right">Paid</TableHead>
                   <TableHead>Due Date</TableHead>
                   <TableHead className="text-center">Status</TableHead>
+                  <TableHead className="text-center w-[120px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -700,6 +711,20 @@ export default function Payments() {
                       </TableCell>
                       <TableCell>{inv.due_date || '—'}</TableCell>
                       <TableCell className="text-center">{getStatusBadge(inv.status)}</TableCell>
+                      <TableCell className="text-center">
+                        {isPaid ? (
+                          <CheckCircle className="h-4 w-4 text-primary mx-auto" />
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5 text-xs h-8"
+                            onClick={() => openSinglePay(inv.id)}
+                          >
+                            <Receipt className="h-3.5 w-3.5" /> Pay
+                          </Button>
+                        )}
+                      </TableCell>
                     </TableRow>
                   );
                 })}
