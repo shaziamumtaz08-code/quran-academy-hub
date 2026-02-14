@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Award, GraduationCap, PenLine, Printer, Download, Calendar, Users, TrendingUp, BookOpen, Target, Brain, ChevronDown } from 'lucide-react';
 import { TemplateStructure, StoredCriteriaEntry, calculateSectionMaxScore } from '@/types/reportCard';
 import { supabase } from '@/integrations/supabase/client';
@@ -43,19 +42,15 @@ interface ReportCardCertificateProps {
   viewMode?: ReportViewMode;
 }
 
-// Helper to detect if text contains Arabic/Urdu characters
-const hasArabicUrdu = (text: string): boolean => {
-  return /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/.test(text);
-};
+const hasArabicUrdu = (text: string): boolean =>
+  /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/.test(text);
 
 const canSeeInternalNotes = (mode: ReportViewMode) =>
   mode === 'admin' || mode === 'examiner' || mode === 'teacher';
 
 export function ReportCardCertificate({ report, showInternalNotes = false, viewMode = 'admin' }: ReportCardCertificateProps) {
-  // Derive effective internal notes visibility from both props
   const showNotes = showInternalNotes && canSeeInternalNotes(viewMode);
 
-  // Fetch attendance summary for the same student and month
   const examMonth = report.exam_date ? new Date(report.exam_date) : new Date();
   const monthStart = new Date(examMonth.getFullYear(), examMonth.getMonth(), 1).toISOString().split('T')[0];
   const monthEnd = new Date(examMonth.getFullYear(), examMonth.getMonth() + 1, 0).toISOString().split('T')[0];
@@ -69,20 +64,16 @@ export function ReportCardCertificate({ report, showInternalNotes = false, viewM
         .eq('student_id', report.student_id)
         .gte('class_date', monthStart)
         .lte('class_date', monthEnd);
-      
       if (error) return { present: 0, absent: 0, total: 0, percentage: 0 };
-      
       const present = (data || []).filter(a => a.status === 'present' || a.status === 'completed').length;
       const absent = (data || []).filter(a => a.status === 'absent' || a.status === 'absent_teacher' || a.status === 'absent_student').length;
       const total = (data || []).length;
       const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
-      
       return { present, absent, total, percentage };
     },
     enabled: !!report.student_id,
   });
 
-  // Fetch previous reports for trend display
   const { data: previousReports = [] } = useQuery({
     queryKey: ['previous-reports', report.student_id, report.template_id],
     queryFn: async () => {
@@ -94,7 +85,6 @@ export function ReportCardCertificate({ report, showInternalNotes = false, viewM
         .neq('id', report.id)
         .order('exam_date', { ascending: false })
         .limit(3);
-      
       if (error) return [];
       return data || [];
     },
@@ -103,24 +93,12 @@ export function ReportCardCertificate({ report, showInternalNotes = false, viewM
 
   const formatDate = (dateString: string | null | undefined): string => {
     if (!dateString) return '-';
-    try {
-      return new Date(dateString).toLocaleDateString('en-GB', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
-      });
-    } catch {
-      return '-';
-    }
+    try { return new Date(dateString).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }); } catch { return '-'; }
   };
 
   const getMonth = (dateString: string | null | undefined): string => {
     if (!dateString) return '-';
-    try {
-      return new Date(dateString).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-    } catch {
-      return '-';
-    }
+    try { return new Date(dateString).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }); } catch { return '-'; }
   };
 
   const getGradeInfo = (pct: number) => {
@@ -136,196 +114,139 @@ export function ReportCardCertificate({ report, showInternalNotes = false, viewM
   const gradeInfo = getGradeInfo(report.percentage);
   const attendance = attendanceData || { present: 0, absent: 0, total: 0, percentage: 0 };
 
-  // ─── PDF Generation ─────────────────────────────────────────────
   const handlePrint = (mode: 'student' | 'staff' = 'staff') => {
-    // Set a data attribute so print CSS can conditionally hide internal notes
     const printRoot = document.getElementById('report-print-root');
-    if (printRoot) {
-      printRoot.setAttribute('data-print-mode', mode);
-    }
+    if (printRoot) printRoot.setAttribute('data-print-mode', mode);
     window.print();
-    // Clean up
-    if (printRoot) {
-      printRoot.removeAttribute('data-print-mode');
-    }
+    if (printRoot) printRoot.removeAttribute('data-print-mode');
   };
 
   const isStaffView = canSeeInternalNotes(viewMode);
 
   return (
-    <div className="bg-slate-100 p-4 sm:p-8 min-h-screen print-certificate" id="report-print-root">
+    <div className="bg-slate-100 p-4 sm:p-6 report-print" id="report-print-root">
       {/* Action Buttons - Hide on print */}
-      <div className="max-w-4xl mx-auto mb-4 flex justify-end gap-2 no-print">
+      <div className="max-w-4xl mx-auto mb-3 flex justify-end gap-2 no-print">
         <Button variant="outline" size="sm" className="gap-2" onClick={() => handlePrint('student')}>
-          <Printer className="h-4 w-4" />
-          Print
+          <Printer className="h-4 w-4" /> Print
         </Button>
         {isStaffView ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="sm" className="gap-2 bg-cyan-500 hover:bg-cyan-600 text-white">
-                <Download className="h-4 w-4" />
-                Download PDF
-                <ChevronDown className="h-3 w-3" />
+                <Download className="h-4 w-4" /> Download PDF <ChevronDown className="h-3 w-3" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => handlePrint('student')}>
-                <Users className="h-4 w-4 mr-2" />
-                Student Version
+                <Users className="h-4 w-4 mr-2" /> Student Copy
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handlePrint('staff')}>
-                <PenLine className="h-4 w-4 mr-2" />
-                Staff Version (with Internal Notes)
+                <PenLine className="h-4 w-4 mr-2" /> Full Report (with Internal Notes)
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
           <Button size="sm" className="gap-2 bg-cyan-500 hover:bg-cyan-600 text-white" onClick={() => handlePrint('student')}>
-            <Download className="h-4 w-4" />
-            Download PDF
+            <Download className="h-4 w-4" /> Download PDF
           </Button>
         )}
       </div>
 
-      {/* The "Digital A4" Certificate Container */}
-      <div className="report-a4-container max-w-4xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden print:rounded-none print:shadow-none">
-        
-        {/* ===== BRANDED HEADER ===== */}
-        <div className="bg-navy-900 px-6 sm:px-10 py-8 relative print:py-6 report-section">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            {/* Logo & School Name */}
-            <div className="flex items-center gap-4">
-              <img 
-                src={logoLight} 
-                alt="Al-Quran Time Academy" 
-                className="h-14 w-14 rounded-lg object-contain bg-white/10 p-1"
-              />
+      {/* A4 Certificate Container */}
+      <div className="report-a4-container max-w-4xl mx-auto bg-white rounded-xl shadow-xl overflow-hidden print:rounded-none print:shadow-none">
+
+        {/* ===== HEADER ===== */}
+        <div className="bg-navy-900 px-6 py-4 relative report-section">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <img src={logoLight} alt="Academy" className="h-10 w-10 rounded-lg object-contain bg-white/10 p-0.5" />
               <div>
-                <h1 className="text-white font-serif text-xl sm:text-2xl font-bold">
-                  Al-Quran Time Academy
-                </h1>
-                <p className="text-cyan-400 text-sm">Excellence in Quranic Education</p>
+                <h1 className="text-white font-serif text-lg font-bold leading-tight">Al-Quran Time Academy</h1>
+                <p className="text-cyan-400 text-xs">Excellence in Quranic Education</p>
               </div>
             </div>
-            
-            {/* Report Title + Tenure Badge */}
-            <div className="text-center sm:text-right flex flex-col items-end gap-2">
-              <Badge className="bg-cyan-500 text-white px-4 py-1.5 text-sm font-semibold capitalize">
+            <div className="text-right flex flex-col items-end gap-1">
+              <Badge className="bg-cyan-500 text-white px-3 py-0.5 text-xs font-semibold capitalize">
                 {report.template?.tenure || 'Assessment'}
               </Badge>
-              <p className="text-white/60 text-sm">{getMonth(report.exam_date)}</p>
+              <p className="text-white/60 text-xs">{getMonth(report.exam_date)}</p>
             </div>
           </div>
-          
-          {/* Cyan Accent Strip */}
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-cyan-400 to-cyan-500" />
+          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-500 via-cyan-400 to-cyan-500" />
         </div>
 
-        {/* ===== STUDENT DETAILS SECTION ===== */}
-        <div className="px-6 sm:px-10 py-6 border-b border-gray-100 bg-gray-50/50 report-section print:py-4">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+        {/* ===== STUDENT DETAILS ===== */}
+        <div className="px-6 py-3 border-b border-gray-100 bg-gray-50/50 report-section">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Student Name</p>
-              <p className="text-lg font-bold text-navy-900">
-                {report.student?.full_name || '-'}
-              </p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Student</p>
+              <p className="text-sm font-bold text-navy-900">{report.student?.full_name || '-'}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Student ID</p>
-              <p className="text-sm font-semibold text-navy-900 font-mono">
-                ID{report.student_id?.slice(0, 8).toUpperCase() || '-'}
-              </p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Student ID</p>
+              <p className="text-xs font-semibold text-navy-900 font-mono">ID{report.student_id?.slice(0, 8).toUpperCase()}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Subject</p>
-              <p className="text-sm font-semibold text-navy-900">
-                {report.template?.subject?.name || 'General'}
-              </p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Subject</p>
+              <p className="text-xs font-semibold text-navy-900">{report.template?.subject?.name || 'General'}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Period</p>
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-cyan-500" />
-                <p className="text-sm font-semibold text-navy-900">
-                  {getMonth(report.exam_date)}
-                </p>
-              </div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Period</p>
+              <p className="text-xs font-semibold text-navy-900">{getMonth(report.exam_date)}</p>
             </div>
           </div>
         </div>
 
-        {/* ===== SCORE + ATTENDANCE + GRADE CARDS ===== */}
-        <div className="px-6 sm:px-10 py-6 report-section print:py-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {/* Overall Score Card */}
-            <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-5 border border-slate-200">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center">
-                  <Award className="h-5 w-5 text-amber-600" />
-                </div>
-                <p className="text-sm text-muted-foreground">Overall Score</p>
-              </div>
-              <p className="text-3xl font-bold text-navy-900">
-                {report.total_marks} <span className="text-lg text-muted-foreground font-normal">/ {report.max_total_marks}</span>
+        {/* ===== KPI STRIP (Compact Horizontal) ===== */}
+        <div className="px-6 py-3 report-section">
+          <div className="grid grid-cols-3 gap-3">
+            {/* Score */}
+            <div className="bg-slate-50 rounded-lg px-4 py-3 border border-slate-200 text-center">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Overall Score</p>
+              <p className="text-xl font-bold text-navy-900">
+                {report.total_marks}<span className="text-sm text-muted-foreground font-normal">/{report.max_total_marks}</span>
               </p>
-              <div className="mt-2">
-                <Progress value={report.percentage} className="h-2" />
-                <p className="text-right text-sm text-muted-foreground mt-1">{report.percentage}%</p>
-              </div>
+              <p className="text-xs text-muted-foreground">{report.percentage}%</p>
             </div>
-
-            {/* Attendance Card */}
-            <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-5 border border-slate-200">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="h-10 w-10 rounded-full bg-cyan-100 flex items-center justify-center">
-                  <Users className="h-5 w-5 text-cyan-600" />
-                </div>
-                <p className="text-sm text-muted-foreground">Attendance this Month</p>
-              </div>
-              <p className="text-3xl font-bold text-navy-900">
-                {attendance.present} <span className="text-lg text-muted-foreground font-normal">/ {attendance.total}</span>
-                <span className="text-lg text-muted-foreground font-normal"> = {attendance.percentage}%</span>
+            {/* Attendance */}
+            <div className="bg-slate-50 rounded-lg px-4 py-3 border border-slate-200 text-center">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Attendance</p>
+              <p className="text-xl font-bold text-navy-900">
+                {attendance.present}<span className="text-sm text-muted-foreground font-normal">/{attendance.total}</span>
               </p>
+              <p className="text-xs text-muted-foreground">{attendance.percentage}%</p>
             </div>
-
-            {/* Grade Badge Card */}
-            <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-5 border border-slate-200 flex flex-col justify-between">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-                  <GraduationCap className="h-5 w-5 text-green-600" />
-                </div>
-                <p className="text-sm text-muted-foreground">Grade</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge className={`px-4 py-2 text-lg font-bold rounded-lg ${gradeInfo.style}`}>
+            {/* Grade */}
+            <div className="bg-slate-50 rounded-lg px-4 py-3 border border-slate-200 text-center">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Grade</p>
+              <div className="flex items-center justify-center gap-1.5">
+                <Badge className={`px-2 py-0.5 text-sm font-bold rounded ${gradeInfo.style}`}>
                   {gradeInfo.code}
                 </Badge>
                 {gradeInfo.arabic && (
-                  <span className="urdu-text text-lg font-bold text-navy-900">{gradeInfo.arabic}</span>
+                  <span className="urdu-text text-sm font-bold text-navy-900">{gradeInfo.arabic}</span>
                 )}
               </div>
             </div>
           </div>
         </div>
 
-        {/* ===== ASSESSMENT BREAKDOWN ===== */}
+        {/* ===== ASSESSMENT BREAKDOWN (Compact Table) ===== */}
         {report.template?.structure_json?.sections && (
-          <div className="px-6 sm:px-10 py-6 report-section print:py-4">
-            <h3 className="text-lg font-bold text-navy-900 mb-4 flex items-center gap-2">
-              <Award className="h-5 w-5 text-cyan-500" />
-              Assessment Breakdown
+          <div className="px-6 py-3 report-section">
+            <h3 className="text-sm font-bold text-navy-900 mb-2 flex items-center gap-1.5">
+              <Award className="h-4 w-4 text-cyan-500" /> Assessment Breakdown
             </h3>
             
-            {/* Desktop Table Header - hidden on mobile */}
-            <div className="hidden sm:grid bg-gray-50 rounded-t-lg px-4 py-3 grid-cols-12 gap-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-gray-200">
+            {/* Desktop Table Header */}
+            <div className="hidden sm:grid bg-gray-50 rounded-t-lg px-3 py-2 grid-cols-12 gap-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider border-b border-gray-200">
               <div className="col-span-5">Criteria</div>
-              <div className="col-span-2 text-center">Obtained</div>
+              <div className="col-span-2 text-center">Score</div>
               <div className="col-span-2 text-center">Max</div>
               <div className="col-span-3 text-center">Grade</div>
             </div>
 
-            {/* Sections & Criteria */}
             <div className="border border-gray-200 sm:border-t-0 rounded-lg sm:rounded-t-none overflow-hidden">
               {(report.template?.structure_json?.sections ?? []).map((section, sIdx) => {
                 const sectionMax = calculateSectionMaxScore(section);
@@ -336,21 +257,17 @@ export function ReportCardCertificate({ report, showInternalNotes = false, viewM
 
                 return (
                   <div key={sIdx} className="report-section">
-                    {/* Section Header */}
                     {section.title && (
-                      <div className="bg-navy-900/5 px-4 py-2.5 flex items-center justify-between">
-                        <h4 className={`font-semibold text-navy-900 ${hasArabicUrdu(section.title) ? 'urdu-text' : ''}`}>
+                      <div className="bg-navy-900/5 px-3 py-1.5 flex items-center justify-between">
+                        <h4 className={`text-xs font-semibold text-navy-900 ${hasArabicUrdu(section.title) ? 'urdu-text text-sm' : ''}`}>
                           {section.title}
                         </h4>
                         {section.showSubtotal !== false && sectionMax > 0 && (
-                          <span className="text-sm text-muted-foreground">
-                            {sectionObtained} / {sectionMax}
-                          </span>
+                          <span className="text-xs text-muted-foreground">{sectionObtained}/{sectionMax}</span>
                         )}
                       </div>
                     )}
 
-                    {/* Criteria Rows */}
                     {section.criteria?.map((criterion, cIdx) => {
                       const row = (report.criteria_values_json ?? []).find(
                         (r) => r.criteria_name === criterion.criteria_name && r.max_marks === criterion.max_marks
@@ -365,44 +282,34 @@ export function ReportCardCertificate({ report, showInternalNotes = false, viewM
                       return (
                         <div key={cIdx}>
                           {/* Desktop row */}
-                          <div className="hidden sm:grid grid-cols-12 gap-4 items-center px-4 py-3 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 transition-colors">
-                            <div className="col-span-5 flex items-center gap-3">
-                              <div className="w-24 h-2 rounded-full bg-gray-200 overflow-hidden print:w-16">
+                          <div className="hidden sm:grid grid-cols-12 gap-3 items-center px-3 py-1.5 border-b border-gray-100 last:border-b-0 text-xs">
+                            <div className="col-span-5 flex items-center gap-2">
+                              <div className="w-16 h-1.5 rounded-full bg-gray-200 overflow-hidden shrink-0">
                                 <div className={`h-full ${progressColor}`} style={{ width: `${pct}%` }} />
                               </div>
-                              <p className={`text-sm font-medium text-navy-900 ${hasArabicUrdu(criterion.criteria_name) ? 'urdu-text' : ''}`}>
+                              <p className={`font-medium text-navy-900 leading-tight ${hasArabicUrdu(criterion.criteria_name) ? 'urdu-text text-sm' : ''}`}>
                                 {criterion.criteria_name}
                               </p>
                             </div>
                             <div className="col-span-2 text-center">
                               <span className="font-semibold text-navy-900">{obtained}</span>
-                              <span className="text-muted-foreground text-sm"> / {max}</span>
                             </div>
-                            <div className="col-span-2 text-center text-muted-foreground">
-                              {max}
-                            </div>
+                            <div className="col-span-2 text-center text-muted-foreground">{max}</div>
                             <div className="col-span-3 text-center">
-                              <Badge variant="outline" className="font-medium gap-1">
-                                {rowGrade.code} {pct}%
-                              </Badge>
+                              <span className="font-medium">{rowGrade.code} {rowGrade.arabic && <span className="urdu-text">{rowGrade.arabic}</span>}</span>
                             </div>
                           </div>
 
                           {/* Mobile stacked card */}
-                          <div className="sm:hidden border-b border-gray-100 last:border-b-0 px-4 py-3 space-y-2">
-                            <p className={`font-medium text-navy-900 ${hasArabicUrdu(criterion.criteria_name) ? 'urdu-text text-lg' : 'text-sm'}`}>
+                          <div className="sm:hidden border-b border-gray-100 last:border-b-0 px-3 py-2 space-y-1">
+                            <p className={`font-medium text-navy-900 ${hasArabicUrdu(criterion.criteria_name) ? 'urdu-text text-base' : 'text-xs'}`}>
                               {criterion.criteria_name}
                             </p>
                             <div className="flex items-center justify-between">
-                              <span className="text-sm">
-                                <span className="font-semibold text-navy-900">{obtained}</span>
-                                <span className="text-muted-foreground"> / {max}</span>
-                              </span>
-                              <Badge variant="outline" className="font-medium text-xs gap-1">
-                                {rowGrade.code} {rowGrade.arabic && <span className="urdu-text">{rowGrade.arabic}</span>} {pct}%
-                              </Badge>
+                              <span className="text-xs"><span className="font-semibold">{obtained}</span>/{max}</span>
+                              <span className="text-xs font-medium">{rowGrade.code} {rowGrade.arabic && <span className="urdu-text">{rowGrade.arabic}</span>}</span>
                             </div>
-                            <div className="w-full h-2 rounded-full bg-gray-200 overflow-hidden">
+                            <div className="w-full h-1.5 rounded-full bg-gray-200 overflow-hidden">
                               <div className={`h-full ${progressColor}`} style={{ width: `${pct}%` }} />
                             </div>
                           </div>
@@ -413,152 +320,128 @@ export function ReportCardCertificate({ report, showInternalNotes = false, viewM
                 );
               })}
 
-              {/* Grand Total Row - Desktop */}
-              <div className="hidden sm:grid bg-navy-900/5 grid-cols-12 gap-4 items-center px-4 py-4 border-t border-gray-200">
+              {/* Grand Total Row */}
+              <div className="hidden sm:grid bg-navy-900/5 grid-cols-12 gap-3 items-center px-3 py-2 border-t border-gray-200 text-xs">
                 <div className="col-span-5 font-bold text-navy-900">Total</div>
-                <div className="col-span-2 text-center">
-                  <span className="font-bold text-navy-900">{report.total_marks}</span>
-                  <span className="text-muted-foreground"> / {report.max_total_marks}</span>
-                </div>
-                <div className="col-span-2 text-center font-semibold text-muted-foreground">
-                  {report.max_total_marks}
-                </div>
-                <div className="col-span-3 text-center flex items-center justify-center gap-2">
-                  <Badge className={`font-bold px-3 ${gradeInfo.style}`}>
-                    {gradeInfo.code} — {report.percentage}%
-                  </Badge>
-                  {gradeInfo.arabic && <span className="urdu-text font-bold text-sm">{gradeInfo.arabic}</span>}
+                <div className="col-span-2 text-center font-bold text-navy-900">{report.total_marks}</div>
+                <div className="col-span-2 text-center font-semibold text-muted-foreground">{report.max_total_marks}</div>
+                <div className="col-span-3 text-center flex items-center justify-center gap-1">
+                  <Badge className={`font-bold px-2 py-0 text-xs ${gradeInfo.style}`}>{gradeInfo.code} — {report.percentage}%</Badge>
+                  {gradeInfo.arabic && <span className="urdu-text font-bold text-xs">{gradeInfo.arabic}</span>}
                 </div>
               </div>
-
-              {/* Grand Total Row - Mobile */}
-              <div className="sm:hidden bg-navy-900/5 px-4 py-4 border-t border-gray-200 space-y-2">
+              {/* Mobile total */}
+              <div className="sm:hidden bg-navy-900/5 px-3 py-2 border-t border-gray-200">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-navy-900">Total</span>
-                  <span>
-                    <span className="font-bold text-navy-900">{report.total_marks}</span>
-                    <span className="text-muted-foreground"> / {report.max_total_marks}</span>
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <Badge className={`font-bold px-3 ${gradeInfo.style}`}>
-                    {gradeInfo.code} — {report.percentage}%
-                  </Badge>
-                  {gradeInfo.arabic && <span className="urdu-text font-bold text-lg">{gradeInfo.arabic}</span>}
+                  <span className="font-bold text-navy-900 text-xs">Total: {report.total_marks}/{report.max_total_marks}</span>
+                  <div className="flex items-center gap-1">
+                    <Badge className={`font-bold px-2 py-0 text-xs ${gradeInfo.style}`}>{gradeInfo.code} {report.percentage}%</Badge>
+                    {gradeInfo.arabic && <span className="urdu-text font-bold text-sm">{gradeInfo.arabic}</span>}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* ===== COMMENTS & REMARKS ===== */}
-        <div className="px-6 sm:px-10 py-6 border-t border-gray-100 report-section print:py-4">
-          <h3 className="text-lg font-bold text-navy-900 mb-4 flex items-center gap-2">
-            <PenLine className="h-5 w-5 text-cyan-500" />
-            Examiner's Comments
+        {/* ===== EXAMINER'S COMMENTS ===== */}
+        <div className="px-6 py-3 border-t border-gray-100 report-section">
+          <h3 className="text-sm font-bold text-navy-900 mb-2 flex items-center gap-1.5">
+            <PenLine className="h-4 w-4 text-cyan-500" /> Examiner's Comments
           </h3>
-          
           {report.public_remarks ? (
-            <div className="bg-amber-50 rounded-lg p-5 border-l-4 border-amber-400">
-              <p className={`text-navy-900 leading-relaxed ${hasArabicUrdu(report.public_remarks) ? 'urdu-text' : ''}`}>
+            <div className="bg-amber-50 rounded-lg p-3 border-l-4 border-amber-400">
+              <p className={`text-xs text-navy-900 leading-relaxed ${hasArabicUrdu(report.public_remarks) ? 'urdu-text text-sm' : ''}`}>
                 {report.public_remarks}
               </p>
             </div>
           ) : (
-            <p className="text-muted-foreground italic">No comments provided.</p>
+            <p className="text-xs text-muted-foreground italic">No comments provided.</p>
           )}
-          
-          {/* Internal Notes - NOT rendered in DOM for student/parent views */}
+
+          {/* Internal Notes - NOT rendered for student/parent */}
           {showNotes && report.examiner_remarks && (
-            <div className="mt-4 bg-red-50 rounded-lg p-5 border-l-4 border-red-400 internal-notes-section">
-              <p className="text-sm font-medium text-red-700 mb-2">Internal Notes (Staff Only)</p>
-              <p className={`text-red-900 ${hasArabicUrdu(report.examiner_remarks) ? 'urdu-text' : ''}`}>
+            <div className="mt-2 bg-red-50 rounded-lg p-3 border-l-4 border-red-400 internal-notes-section">
+              <p className="text-[10px] font-medium text-red-700 mb-1">Internal Notes (Staff Only)</p>
+              <p className={`text-xs text-red-900 ${hasArabicUrdu(report.examiner_remarks) ? 'urdu-text text-sm' : ''}`}>
                 {report.examiner_remarks}
               </p>
             </div>
           )}
         </div>
 
-        {/* ===== PLANNING SNAPSHOT (Placeholder) ===== */}
-        <div className="px-6 sm:px-10 py-6 border-t border-gray-100 report-section print:py-4">
-          <h3 className="text-lg font-bold text-navy-900 mb-4 flex items-center gap-2">
-            <Target className="h-5 w-5 text-cyan-500" />
-            Planning Snapshot
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 text-center">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Monthly Target</p>
-              <p className="text-lg font-bold text-navy-900">—</p>
+        {/* ===== COMPACT 3-COLUMN: Attendance + Planning + Progress ===== */}
+        <div className="px-6 py-3 border-t border-gray-100 report-section">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Attendance Summary */}
+            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
+                <Users className="h-3 w-3" /> Attendance Snapshot
+              </p>
+              <div className="text-xs space-y-0.5">
+                <div className="flex justify-between"><span>Present</span><span className="font-semibold">{attendance.present}</span></div>
+                <div className="flex justify-between"><span>Absent</span><span className="font-semibold">{attendance.absent}</span></div>
+                <div className="flex justify-between"><span>Rate</span><span className="font-semibold">{attendance.percentage}%</span></div>
+              </div>
             </div>
-            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 text-center">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Completed</p>
-              <p className="text-lg font-bold text-navy-900">—</p>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 text-center">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Status</p>
-              <p className="text-lg font-bold text-navy-900">—</p>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground mt-2 italic">Planning data will be populated from monthly plans.</p>
-        </div>
 
-        {/* ===== OVERALL PROGRESS SUMMARY (AI Placeholder) ===== */}
-        <div className="px-6 sm:px-10 py-6 border-t border-gray-100 report-section print:py-4">
-          <h3 className="text-lg font-bold text-navy-900 mb-4 flex items-center gap-2">
-            <Brain className="h-5 w-5 text-cyan-500" />
-            Overall Progress Summary
-          </h3>
-          <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-lg p-6 border border-cyan-200/50 text-center">
-            <BookOpen className="h-8 w-8 mx-auto mb-3 text-cyan-400" />
-            <p className="text-sm font-medium text-navy-900">Automated academic analysis will appear here</p>
-            <p className="text-xs text-muted-foreground mt-1">AI-powered progress summary coming soon</p>
-          </div>
-        </div>
+            {/* Planning Placeholder */}
+            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
+                <Target className="h-3 w-3" /> Planning Snapshot
+              </p>
+              <div className="text-xs space-y-0.5 text-muted-foreground">
+                <div className="flex justify-between"><span>Target</span><span>—</span></div>
+                <div className="flex justify-between"><span>Completed</span><span>—</span></div>
+                <div className="flex justify-between"><span>Status</span><span>—</span></div>
+              </div>
+            </div>
 
-        {/* ===== PREVIOUS RESULTS ===== */}
-        {previousReports.length > 0 && (
-          <div className="px-6 sm:px-10 py-6 border-t border-gray-100 report-section print:py-4">
-            <h3 className="text-lg font-bold text-navy-900 mb-4 flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-cyan-500" />
-              Previous Results
-            </h3>
-            
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {previousReports.map((prev, idx) => (
-                <div key={idx} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                  <p className="text-sm font-semibold text-navy-900">{getMonth(prev.exam_date)}</p>
-                  <div className="mt-2">
-                    <Progress value={prev.percentage} className="h-1.5" />
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-xs text-muted-foreground">{prev.percentage}%</span>
-                      <span className="text-xs text-muted-foreground">{prev.total_marks}/{prev.max_total_marks}</span>
+            {/* Previous Results */}
+            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
+                <TrendingUp className="h-3 w-3" /> Previous Results
+              </p>
+              {previousReports.length > 0 ? (
+                <div className="text-xs space-y-0.5">
+                  {previousReports.slice(0, 3).map((prev, idx) => (
+                    <div key={idx} className="flex justify-between">
+                      <span className="truncate mr-2">{getMonth(prev.exam_date)}</span>
+                      <span className="font-semibold">{prev.percentage}%</span>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
+              ) : (
+                <p className="text-xs text-muted-foreground italic">No previous data</p>
+              )}
             </div>
           </div>
-        )}
+        </div>
 
-        {/* ===== SIGNATURES FOOTER ===== */}
-        <div className="px-6 sm:px-10 py-8 bg-gray-50 border-t border-gray-200 report-section print:py-6">
-          <div className="grid grid-cols-2 gap-8">
+        {/* ===== AI PROGRESS SUMMARY PLACEHOLDER ===== */}
+        <div className="px-6 py-3 border-t border-gray-100 report-section">
+          <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-lg p-3 border border-cyan-200/50 text-center">
+            <div className="flex items-center justify-center gap-2">
+              <Brain className="h-4 w-4 text-cyan-400" />
+              <p className="text-xs font-medium text-navy-900">Overall Progress Summary</p>
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-0.5">(Automated academic analysis will appear here)</p>
+          </div>
+        </div>
+
+        {/* ===== SIGNATURE FOOTER ===== */}
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 report-section">
+          <div className="grid grid-cols-2 gap-6">
             <div className="text-center">
-              <div className="h-16 border-b-2 border-dotted border-gray-300 mb-2" />
-              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                Examiner's Signature
-              </p>
+              <div className="h-10 border-b-2 border-dotted border-gray-300 mb-1" />
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Examiner's Signature</p>
             </div>
             <div className="text-center">
-              <div className="h-16 border-b-2 border-dotted border-gray-300 mb-2" />
-              <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                Principal's Signature
-              </p>
+              <div className="h-10 border-b-2 border-dotted border-gray-300 mb-1" />
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Principal's Signature</p>
             </div>
           </div>
-          
-          {/* Date & Footer */}
-          <div className="mt-8 flex items-center justify-between text-sm text-muted-foreground border-t border-gray-200 pt-4">
+          <div className="mt-3 flex items-center justify-between text-[10px] text-muted-foreground border-t border-gray-200 pt-2">
             <p>Date of Issue: {formatDate(report.exam_date)}</p>
             <p className="italic">Generated by Al-Quran Time Academy LMS</p>
           </div>
