@@ -14,8 +14,12 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   DollarSign, CheckCircle, XCircle, Clock, User, Loader2, Zap, GraduationCap,
-  Plus, Receipt, Upload, ArrowRightLeft, AlertTriangle, ImageIcon, X, Search, ArrowUpDown, Users, Pencil, Trash2, ListChecks
+  Plus, Receipt, Upload, ArrowRightLeft, AlertTriangle, ImageIcon, X, Search, ArrowUpDown, Users, Pencil, Trash2, ListChecks,
+  MoreHorizontal, Ban, Undo2, History, Tag, FileX
 } from 'lucide-react';
 import { endOfMonth, startOfMonth, parseISO, format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -93,6 +97,12 @@ const getStatusBadge = (status: string) => {
       return <Badge className="bg-accent/20 text-accent-foreground border-accent/30 gap-1"><Clock className="h-3 w-3" /> Partial</Badge>;
     case 'overdue':
       return <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" /> Overdue</Badge>;
+    case 'waived':
+      return <Badge className="bg-muted text-muted-foreground border-border gap-1"><Ban className="h-3 w-3" /> Waived</Badge>;
+    case 'adjusted':
+      return <Badge className="bg-secondary text-secondary-foreground border-border gap-1"><Tag className="h-3 w-3" /> Adjusted</Badge>;
+    case 'voided':
+      return <Badge className="bg-destructive/10 text-destructive border-destructive/20 gap-1"><FileX className="h-3 w-3" /> Voided</Badge>;
     default:
       return <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" /> Pending</Badge>;
   }
@@ -124,9 +134,12 @@ export default function Payments() {
   const [bulkPayOpen, setBulkPayOpen] = useState(false);
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
 
-  // Invoice edit/delete state
+  // Invoice action modals state
   const [editInvoiceData, setEditInvoiceData] = useState<{ id: string; amount: string; due_date: string; billing_month: string } | null>(null);
-  const [deleteInvoiceId, setDeleteInvoiceId] = useState<string | null>(null);
+  const [actionModal, setActionModal] = useState<{ type: 'mark_unpaid' | 'apply_discount' | 'waive_fee' | 'reverse_payment' | 'void_invoice' | 'view_history'; invoice: InvoiceRow } | null>(null);
+  const [actionReason, setActionReason] = useState('');
+  const [discountAmount, setDiscountAmount] = useState('');
+  const [adjustmentHistory, setAdjustmentHistory] = useState<any[]>([]);
 
   // Setup fee form - multi-select students
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
@@ -375,7 +388,7 @@ export default function Payments() {
     return { value: `${now.getFullYear()}-${m}`, label: `${MONTHS[i].label} ${now.getFullYear()}` };
   });
 
-  const selectableInvoices = useMemo(() => invoices.filter(i => i.status !== 'paid'), [invoices]);
+  const selectableInvoices = useMemo(() => invoices.filter(i => i.status !== 'voided'), [invoices]);
   const allSelectableChecked = selectableInvoices.length > 0 && selectableInvoices.every(i => selectedIds.has(i.id));
 
   // ─── Mutations ───────────────────────────────────────────────────
@@ -572,9 +585,32 @@ export default function Payments() {
     onError: (e: any) => toast({ title: 'Payment failed', description: e.message, variant: 'destructive' }),
   });
 
-  // Invoice edit mutation
+  // Helper to get current user profile for audit
+  const getAdminInfo = async () => {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) throw new Error('Not authenticated');
+    const { data: profile } = await supabase.from('profiles').select('full_name, email').eq('id', authUser.id).single();
+    return { id: authUser.id, name: profile?.full_name || 'Unknown', email: profile?.email || authUser.email || null };
+  };
+
+  // Create adjustment record
+  const createAdjustment = async (invoiceId: string, actionType: string, prevValues: any, newValues: any, reason: string) => {
+    const admin = await getAdminInfo();
+    await supabase.from('invoice_adjustments').insert({
+      invoice_id: invoiceId, action_type: actionType,
+      previous_values: prevValues, new_values: newValues,
+      reason, admin_id: admin.id, admin_name: admin.name, admin_email: admin.email,
+    });
+  };
+
+  // Invoice edit mutation (with audit trail)
   const editInvoiceMutation = useMutation({
-    mutationFn: async (data: { id: string; amount: number; due_date: string; billing_month: string }) => {
+    mutationFn: async (data: { id: string; amount: number; due_date: string; billing_month: string; originalAmount: number; originalDueDate: string; originalBillingMonth: string }) => {
+      await createAdjustment(data.id, 'edit_amount',
+        { amount: data.originalAmount, due_date: data.originalDueDate, billing_month: data.originalBillingMonth },
+        { amount: data.amount, due_date: data.due_date, billing_month: data.billing_month },
+        'Amount/details edited by admin'
+      );
       const { error } = await supabase.from('fee_invoices').update({
         amount: data.amount, due_date: data.due_date || null, billing_month: data.billing_month,
       }).eq('id', data.id);
@@ -590,21 +626,59 @@ export default function Payments() {
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
-  // Invoice delete mutation
-  const deleteInvoiceMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('fee_invoices').delete().eq('id', id);
-      if (error) throw error;
-      return id;
+  // Invoice action mutation (mark_unpaid, waive, void, reverse, discount)
+  const invoiceActionMutation = useMutation({
+    mutationFn: async ({ type, invoice, reason, discountAmt }: { type: string; invoice: InvoiceRow; reason: string; discountAmt?: number }) => {
+      const prev = { status: invoice.status, amount: invoice.amount, amount_paid: invoice.amount_paid, forgiven_amount: invoice.forgiven_amount };
+
+      switch (type) {
+        case 'mark_unpaid': {
+          await createAdjustment(invoice.id, 'mark_unpaid', prev, { status: 'pending', amount_paid: 0 }, reason);
+          await supabase.from('fee_invoices').update({ status: 'pending' as any, amount_paid: 0, paid_at: null }).eq('id', invoice.id);
+          break;
+        }
+        case 'apply_discount': {
+          const newAmount = Math.max(0, Number(invoice.amount) - (discountAmt || 0));
+          const newStatus = Number(invoice.amount_paid || 0) >= newAmount ? 'paid' : invoice.status;
+          await createAdjustment(invoice.id, 'apply_discount', prev, { amount: newAmount, status: newStatus, discount_applied: discountAmt }, reason);
+          await supabase.from('fee_invoices').update({ amount: newAmount, status: newStatus as any }).eq('id', invoice.id);
+          break;
+        }
+        case 'waive_fee': {
+          const outstanding = Number(invoice.amount) - Number(invoice.amount_paid || 0);
+          await createAdjustment(invoice.id, 'waive_fee', prev, { status: 'waived', forgiven_amount: outstanding }, reason);
+          await supabase.from('fee_invoices').update({ status: 'waived' as any, forgiven_amount: outstanding }).eq('id', invoice.id);
+          break;
+        }
+        case 'reverse_payment': {
+          await createAdjustment(invoice.id, 'reverse_payment', prev, { status: 'pending', amount_paid: 0 }, reason);
+          await supabase.from('fee_invoices').update({ status: 'pending' as any, amount_paid: 0, paid_at: null, forgiven_amount: 0 }).eq('id', invoice.id);
+          break;
+        }
+        case 'void_invoice': {
+          await createAdjustment(invoice.id, 'void_invoice', prev, { status: 'voided' }, reason);
+          await supabase.from('fee_invoices').update({ status: 'voided' as any }).eq('id', invoice.id);
+          break;
+        }
+      }
+      return invoice.id;
     },
     onSuccess: (id) => {
       queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
-      toast({ title: 'Invoice deleted' });
-      trackActivity({ action: 'invoice_deleted', entityType: 'invoice', entityId: id });
-      setDeleteInvoiceId(null);
+      toast({ title: 'Invoice updated successfully' });
+      trackActivity({ action: 'invoice_edited', entityType: 'invoice', entityId: id, details: { action: actionModal?.type } });
+      setActionModal(null);
+      setActionReason('');
+      setDiscountAmount('');
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
+
+  // Fetch history for an invoice
+  const fetchHistory = async (invoiceId: string) => {
+    const { data } = await supabase.from('invoice_adjustments').select('*').eq('invoice_id', invoiceId).order('created_at', { ascending: false });
+    setAdjustmentHistory(data || []);
+  };
 
   // ─── Selection Handlers ──────────────────────────────────────────
   const toggleSelect = (id: string) => {
@@ -765,6 +839,9 @@ export default function Payments() {
                   <SelectItem value="paid">Paid</SelectItem>
                   <SelectItem value="partially_paid">Partially Paid</SelectItem>
                   <SelectItem value="overdue">Overdue</SelectItem>
+                  <SelectItem value="waived">Waived</SelectItem>
+                  <SelectItem value="adjusted">Adjusted</SelectItem>
+                  <SelectItem value="voided">Voided</SelectItem>
                 </SelectContent>
               </Select>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -818,11 +895,10 @@ export default function Payments() {
                   </TableHeader>
                   <TableBody>
                     {invoices.map(inv => {
-                      const isPaid = inv.status === 'paid';
-                      const isPending = inv.status === 'pending';
+                      const isVoided = inv.status === 'voided';
                       return (
                         <TableRow key={inv.id} className={selectedIds.has(inv.id) ? 'bg-primary/5' : ''}>
-                          <TableCell><Checkbox checked={selectedIds.has(inv.id)} onCheckedChange={() => toggleSelect(inv.id)} disabled={isPaid} /></TableCell>
+                          <TableCell><Checkbox checked={selectedIds.has(inv.id)} onCheckedChange={() => toggleSelect(inv.id)} disabled={isVoided} /></TableCell>
                           <TableCell>
                             <span className="flex items-center gap-3">
                               <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center"><User className="h-4 w-4 text-secondary-foreground" /></div>
@@ -838,25 +914,55 @@ export default function Payments() {
                           <TableCell>{inv.due_date || '—'}</TableCell>
                           <TableCell className="text-center">{getStatusBadge(inv.status)}</TableCell>
                           <TableCell className="text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              {isPaid ? (
-                                <CheckCircle className="h-4 w-4 text-primary" />
-                              ) : (
-                                <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8" onClick={() => openSinglePay(inv.id)}>
-                                  <Receipt className="h-3.5 w-3.5" /> Pay
-                                </Button>
-                              )}
-                              {isPending && (
-                                <>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditInvoiceData({ id: inv.id, amount: String(inv.amount), due_date: inv.due_date || '', billing_month: inv.billing_month })} title="Edit">
-                                    <Pencil className="h-3.5 w-3.5" />
+                            {inv.status === 'voided' ? (
+                              <span className="text-xs text-muted-foreground">Voided</span>
+                            ) : (
+                              <div className="flex items-center justify-center gap-1">
+                                {inv.status !== 'paid' && inv.status !== 'waived' && (
+                                  <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8" onClick={() => openSinglePay(inv.id)}>
+                                    <Receipt className="h-3.5 w-3.5" /> Pay
                                   </Button>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteInvoiceId(inv.id)} title="Delete">
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                </>
-                              )}
-                            </div>
+                                )}
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-48">
+                                    <DropdownMenuItem onClick={() => setEditInvoiceData({ id: inv.id, amount: String(inv.amount), due_date: inv.due_date || '', billing_month: inv.billing_month })}>
+                                      <Pencil className="h-3.5 w-3.5 mr-2" /> Edit Amount
+                                    </DropdownMenuItem>
+                                    {(inv.status === 'paid' || inv.status === 'partially_paid') && (
+                                      <DropdownMenuItem onClick={() => setActionModal({ type: 'mark_unpaid', invoice: inv })}>
+                                        <Undo2 className="h-3.5 w-3.5 mr-2" /> Mark Unpaid
+                                      </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuItem onClick={() => setActionModal({ type: 'apply_discount', invoice: inv })}>
+                                      <Tag className="h-3.5 w-3.5 mr-2" /> Apply Discount
+                                    </DropdownMenuItem>
+                                    {inv.status !== 'waived' && (
+                                      <DropdownMenuItem onClick={() => setActionModal({ type: 'waive_fee', invoice: inv })}>
+                                        <Ban className="h-3.5 w-3.5 mr-2" /> Waive Fee
+                                      </DropdownMenuItem>
+                                    )}
+                                    {(inv.status === 'paid' || inv.status === 'partially_paid') && (
+                                      <DropdownMenuItem onClick={() => setActionModal({ type: 'reverse_payment', invoice: inv })}>
+                                        <ArrowRightLeft className="h-3.5 w-3.5 mr-2" /> Reverse Payment
+                                      </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => { setActionModal({ type: 'view_history', invoice: inv }); fetchHistory(inv.id); }}>
+                                      <History className="h-3.5 w-3.5 mr-2" /> View History
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setActionModal({ type: 'void_invoice', invoice: inv })}>
+                                      <FileX className="h-3.5 w-3.5 mr-2" /> Void Invoice
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            )}
                           </TableCell>
                         </TableRow>
                       );
@@ -1210,7 +1316,7 @@ export default function Payments() {
           <DialogContent className="sm:max-w-sm">
             <DialogHeader>
               <DialogTitle>Edit Invoice</DialogTitle>
-              <DialogDescription>Adjust amount, due date, or billing month for this pending invoice.</DialogDescription>
+              <DialogDescription>Adjust amount, due date, or billing month. Original values are preserved in audit trail.</DialogDescription>
             </DialogHeader>
             {editInvoiceData && (
               <div className="space-y-4 py-2">
@@ -1227,25 +1333,116 @@ export default function Payments() {
             )}
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditInvoiceData(null)}>Cancel</Button>
-              <Button onClick={() => editInvoiceData && editInvoiceMutation.mutate({ id: editInvoiceData.id, amount: parseFloat(editInvoiceData.amount) || 0, due_date: editInvoiceData.due_date, billing_month: editInvoiceData.billing_month })} disabled={editInvoiceMutation.isPending}>
+              <Button onClick={() => {
+                if (!editInvoiceData) return;
+                const inv = invoices.find(i => i.id === editInvoiceData.id);
+                editInvoiceMutation.mutate({
+                  id: editInvoiceData.id,
+                  amount: parseFloat(editInvoiceData.amount) || 0,
+                  due_date: editInvoiceData.due_date,
+                  billing_month: editInvoiceData.billing_month,
+                  originalAmount: inv?.amount || 0,
+                  originalDueDate: inv?.due_date || '',
+                  originalBillingMonth: inv?.billing_month || '',
+                });
+              }} disabled={editInvoiceMutation.isPending}>
                 {editInvoiceMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Save
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* ─── Delete Invoice Confirmation ────────────────────────── */}
-        <Dialog open={!!deleteInvoiceId} onOpenChange={() => setDeleteInvoiceId(null)}>
+        {/* ─── Invoice Action Modal ──────────────────────────────────── */}
+        <Dialog open={!!actionModal && actionModal.type !== 'view_history'} onOpenChange={() => { setActionModal(null); setActionReason(''); setDiscountAmount(''); }}>
           <DialogContent className="sm:max-w-sm">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-destructive"><AlertTriangle className="h-5 w-5" /> Delete Invoice</DialogTitle>
-              <DialogDescription>This will permanently delete this invoice. This action cannot be undone.</DialogDescription>
+              <DialogTitle className="flex items-center gap-2">
+                {actionModal?.type === 'mark_unpaid' && <><Undo2 className="h-5 w-5" /> Mark Unpaid</>}
+                {actionModal?.type === 'apply_discount' && <><Tag className="h-5 w-5" /> Apply Discount</>}
+                {actionModal?.type === 'waive_fee' && <><Ban className="h-5 w-5" /> Waive Fee</>}
+                {actionModal?.type === 'reverse_payment' && <><ArrowRightLeft className="h-5 w-5" /> Reverse Payment</>}
+                {actionModal?.type === 'void_invoice' && <><FileX className="h-5 w-5 text-destructive" /> Void Invoice</>}
+              </DialogTitle>
+              <DialogDescription>
+                {actionModal?.type === 'mark_unpaid' && 'Reset this invoice to unpaid status. Payment records are preserved.'}
+                {actionModal?.type === 'apply_discount' && 'Apply an additional discount to reduce the invoice amount.'}
+                {actionModal?.type === 'waive_fee' && 'Waive the remaining balance. This will mark the fee as forgiven.'}
+                {actionModal?.type === 'reverse_payment' && 'Reverse all payments on this invoice. Transaction records are preserved.'}
+                {actionModal?.type === 'void_invoice' && 'Void this invoice. It will remain in records but be inactive.'}
+              </DialogDescription>
             </DialogHeader>
+            <div className="space-y-4 py-2">
+              {actionModal?.type === 'apply_discount' && (
+                <div>
+                  <Label>Discount Amount ({actionModal.invoice.currency})</Label>
+                  <Input type="number" placeholder="0.00" value={discountAmount} onChange={e => setDiscountAmount(e.target.value)} />
+                  {actionModal.invoice && (
+                    <p className="text-xs text-muted-foreground mt-1">Current amount: {actionModal.invoice.currency} {Number(actionModal.invoice.amount).toLocaleString()}</p>
+                  )}
+                </div>
+              )}
+              <div>
+                <Label>Reason <span className="text-destructive">*</span></Label>
+                <Textarea placeholder="Provide a reason for this action..." value={actionReason} onChange={e => setActionReason(e.target.value)} className="h-20" />
+              </div>
+            </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setDeleteInvoiceId(null)}>Cancel</Button>
-              <Button variant="destructive" onClick={() => deleteInvoiceId && deleteInvoiceMutation.mutate(deleteInvoiceId)} disabled={deleteInvoiceMutation.isPending}>
-                {deleteInvoiceMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Delete
+              <Button variant="outline" onClick={() => { setActionModal(null); setActionReason(''); setDiscountAmount(''); }}>Cancel</Button>
+              <Button
+                variant={actionModal?.type === 'void_invoice' ? 'destructive' : 'default'}
+                disabled={!actionReason.trim() || invoiceActionMutation.isPending || (actionModal?.type === 'apply_discount' && !parseFloat(discountAmount))}
+                onClick={() => actionModal && invoiceActionMutation.mutate({
+                  type: actionModal.type,
+                  invoice: actionModal.invoice,
+                  reason: actionReason,
+                  discountAmt: parseFloat(discountAmount) || undefined,
+                })}
+              >
+                {invoiceActionMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Confirm
               </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* ─── View History Modal ────────────────────────────────────── */}
+        <Dialog open={actionModal?.type === 'view_history'} onOpenChange={() => { setActionModal(null); setAdjustmentHistory([]); }}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2"><History className="h-5 w-5" /> Invoice History</DialogTitle>
+              <DialogDescription>
+                {actionModal?.invoice.profiles?.full_name} — {actionModal?.invoice && formatBillingMonth(actionModal.invoice.billing_month)}
+              </DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="max-h-[400px]">
+              {adjustmentHistory.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">No adjustments recorded for this invoice.</p>
+              ) : (
+                <div className="space-y-3">
+                  {adjustmentHistory.map((adj: any) => (
+                    <div key={adj.id} className="border border-border rounded-lg p-3 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <Badge variant="outline" className="text-xs capitalize">{adj.action_type.replace(/_/g, ' ')}</Badge>
+                        <span className="text-xs text-muted-foreground">{new Date(adj.created_at).toLocaleString('en-US', { timeZone: 'Asia/Karachi', dateStyle: 'medium', timeStyle: 'short' })}</span>
+                      </div>
+                      <p className="text-sm"><span className="text-muted-foreground">By:</span> {adj.admin_name} {adj.admin_email && `(${adj.admin_email})`}</p>
+                      {adj.reason && <p className="text-sm"><span className="text-muted-foreground">Reason:</span> {adj.reason}</p>}
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="bg-destructive/5 rounded p-2">
+                          <span className="font-semibold text-destructive">Previous:</span>
+                          <pre className="mt-1 whitespace-pre-wrap text-muted-foreground">{JSON.stringify(adj.previous_values, null, 2)}</pre>
+                        </div>
+                        <div className="bg-primary/5 rounded p-2">
+                          <span className="font-semibold text-primary">New:</span>
+                          <pre className="mt-1 whitespace-pre-wrap text-muted-foreground">{JSON.stringify(adj.new_values, null, 2)}</pre>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setActionModal(null); setAdjustmentHistory([]); }}>Close</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
