@@ -1559,8 +1559,10 @@ export type Database = {
           division_id: string | null
           duration_surcharge: number
           flat_discount: number
+          global_discount_id: string | null
           id: string
           is_active: boolean
+          manual_discount_reason: string | null
           net_recurring_fee: number
           session_duration: number
           student_id: string
@@ -1575,8 +1577,10 @@ export type Database = {
           division_id?: string | null
           duration_surcharge?: number
           flat_discount?: number
+          global_discount_id?: string | null
           id?: string
           is_active?: boolean
+          manual_discount_reason?: string | null
           net_recurring_fee?: number
           session_duration?: number
           student_id: string
@@ -1591,8 +1595,10 @@ export type Database = {
           division_id?: string | null
           duration_surcharge?: number
           flat_discount?: number
+          global_discount_id?: string | null
           id?: string
           is_active?: boolean
+          manual_discount_reason?: string | null
           net_recurring_fee?: number
           session_duration?: number
           student_id?: string
@@ -1625,6 +1631,13 @@ export type Database = {
             columns: ["division_id"]
             isOneToOne: false
             referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_billing_plans_global_discount_id_fkey"
+            columns: ["global_discount_id"]
+            isOneToOne: false
+            referencedRelation: "discount_rules"
             referencedColumns: ["id"]
           },
           {

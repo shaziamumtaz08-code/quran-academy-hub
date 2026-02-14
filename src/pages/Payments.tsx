@@ -12,7 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import {
   DollarSign, CheckCircle, XCircle, Clock, User, Loader2, Zap, GraduationCap,
-  Plus, Receipt, Upload, ArrowRightLeft, AlertTriangle, ImageIcon
+  Plus, Receipt, Upload, ArrowRightLeft, AlertTriangle, ImageIcon, X, Search
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -55,6 +55,7 @@ interface InvoiceRow {
 }
 interface StudentOption { id: string; full_name: string }
 interface PackageOption { id: string; name: string; amount: number; currency: string }
+interface DiscountRule { id: string; name: string; type: string; value: number; is_active: boolean }
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 const formatBillingMonth = (bm: string) => {
@@ -100,8 +101,16 @@ export default function Payments() {
   const [setupOpen, setSetupOpen] = useState(false);
   const [bulkPayOpen, setBulkPayOpen] = useState(false);
 
-  // Setup fee form
-  const [feeForm, setFeeForm] = useState({ student_id: '', base_package_id: '', session_duration: '30', flat_discount: '0' });
+  // Setup fee form - multi-select students
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [studentSearch, setStudentSearch] = useState('');
+  const [feeForm, setFeeForm] = useState({
+    base_package_id: '',
+    session_duration: '30',
+    flat_discount: '0',
+    manual_discount_reason: '',
+    global_discount_id: '',
+  });
 
   // Bulk payment form
   const [payForm, setPayForm] = useState({
@@ -114,10 +123,22 @@ export default function Payments() {
   const receiptInputRef = useRef<HTMLInputElement>(null);
 
   // ─── Data Queries ────────────────────────────────────────────────
+  // BUG FIX: Only fetch students (role = 'student')
   const { data: students = [] } = useQuery({
     queryKey: ['students-for-fees', branchId],
     queryFn: async () => {
-      const { data } = await supabase.from('profiles').select('id, full_name').order('full_name');
+      const { data: roleRows } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'student');
+      const studentUserIds = (roleRows || []).map(r => r.user_id);
+      if (studentUserIds.length === 0) return [];
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', studentUserIds)
+        .is('archived_at', null)
+        .order('full_name');
       return (data || []) as StudentOption[];
     },
     enabled: setupOpen,
@@ -132,6 +153,20 @@ export default function Payments() {
       const { data, error } = await q;
       if (error) throw error;
       return (data || []) as PackageOption[];
+    },
+    enabled: setupOpen,
+  });
+
+  // Discount rules query
+  const { data: discountRules = [] } = useQuery({
+    queryKey: ['discount-rules-active', branchId, divisionId],
+    queryFn: async () => {
+      let q = supabase.from('discount_rules').select('id, name, type, value, is_active').eq('is_active', true);
+      if (branchId) q = q.eq('branch_id', branchId);
+      if (divisionId) q = q.eq('division_id', divisionId);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data || []) as DiscountRule[];
     },
     enabled: setupOpen,
   });
@@ -168,15 +203,34 @@ export default function Payments() {
   });
 
   // ─── Computed Values ─────────────────────────────────────────────
-  // Setup fee calculator
   const selectedPkg = useMemo(() => packages.find(p => p.id === feeForm.base_package_id), [packages, feeForm.base_package_id]);
   const baseAmount = selectedPkg?.amount || 0;
   const duration = parseInt(feeForm.session_duration) || 30;
   const durationSurcharge = baseAmount * (duration / 30 - 1);
   const subtotal = baseAmount + durationSurcharge;
+
+  // Global discount calculation
+  const selectedGlobalDiscount = useMemo(() => discountRules.find(d => d.id === feeForm.global_discount_id), [discountRules, feeForm.global_discount_id]);
+  const globalDiscountAmount = useMemo(() => {
+    if (!selectedGlobalDiscount) return 0;
+    if (selectedGlobalDiscount.type === 'percentage') return subtotal * (selectedGlobalDiscount.value / 100);
+    return selectedGlobalDiscount.value;
+  }, [selectedGlobalDiscount, subtotal]);
+
   const flatDiscount = parseFloat(feeForm.flat_discount) || 0;
-  const netRecurringFee = Math.max(0, subtotal - flatDiscount);
+  const totalDiscounts = globalDiscountAmount + flatDiscount;
+  const netRecurringFee = Math.max(0, subtotal - totalDiscounts);
   const feeCurrency = selectedPkg?.currency || 'USD';
+
+  // Validation: flat discount > 0 requires reason
+  const flatDiscountNeedsReason = flatDiscount > 0 && !feeForm.manual_discount_reason.trim();
+  const canSavePlan = selectedStudentIds.length > 0 && feeForm.base_package_id && !flatDiscountNeedsReason;
+
+  // Filtered students for search
+  const filteredStudents = useMemo(() => {
+    const search = studentSearch.toLowerCase();
+    return students.filter(s => !selectedStudentIds.includes(s.id) && s.full_name.toLowerCase().includes(search));
+  }, [students, selectedStudentIds, studentSearch]);
 
   // Bulk payment calculator
   const selectedInvoices = useMemo(() => invoices.filter(i => selectedIds.has(i.id)), [invoices, selectedIds]);
@@ -199,17 +253,16 @@ export default function Payments() {
     return { value: `${now.getFullYear()}-${m}`, label: `${MONTHS[i].label} ${now.getFullYear()}` };
   });
 
-  // Selectable (non-paid) invoices
   const selectableInvoices = useMemo(() => invoices.filter(i => i.status !== 'paid'), [invoices]);
   const allSelectableChecked = selectableInvoices.length > 0 && selectableInvoices.every(i => selectedIds.has(i.id));
 
   // ─── Mutations ───────────────────────────────────────────────────
-  // Save billing plan
+  // Save billing plan — BULK: one plan per selected student
   const savePlanMutation = useMutation({
     mutationFn: async () => {
-      if (!feeForm.student_id || !feeForm.base_package_id) throw new Error('Select student and package');
-      const { error } = await supabase.from('student_billing_plans').insert({
-        student_id: feeForm.student_id,
+      if (selectedStudentIds.length === 0 || !feeForm.base_package_id) throw new Error('Select student(s) and package');
+      const rows = selectedStudentIds.map(sid => ({
+        student_id: sid,
         base_package_id: feeForm.base_package_id,
         session_duration: duration,
         duration_surcharge: durationSurcharge,
@@ -219,17 +272,27 @@ export default function Payments() {
         is_active: true,
         branch_id: branchId,
         division_id: divisionId,
-      });
+        global_discount_id: feeForm.global_discount_id || null,
+        manual_discount_reason: feeForm.manual_discount_reason || null,
+      }));
+      const { error } = await supabase.from('student_billing_plans').insert(rows);
       if (error) throw error;
+      return rows.length;
     },
-    onSuccess: () => {
+    onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: ['billing-plans'] });
-      toast({ title: 'Student fee plan saved' });
+      toast({ title: `${count} billing plan(s) saved successfully` });
       setSetupOpen(false);
-      setFeeForm({ student_id: '', base_package_id: '', session_duration: '30', flat_discount: '0' });
+      resetFeeForm();
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
+
+  const resetFeeForm = () => {
+    setSelectedStudentIds([]);
+    setStudentSearch('');
+    setFeeForm({ base_package_id: '', session_duration: '30', flat_discount: '0', manual_discount_reason: '', global_discount_id: '' });
+  };
 
   // Generate invoices
   const generateMutation = useMutation({
@@ -239,7 +302,6 @@ export default function Payments() {
       const existingAssignmentIds = new Set((existing || []).filter(e => e.assignment_id).map(e => e.assignment_id));
       const newInvoices: any[] = [];
 
-      // From billing plans
       let pq = supabase.from('student_billing_plans').select('id, student_id, net_recurring_fee, currency, branch_id, division_id').eq('is_active', true);
       if (branchId) pq = pq.eq('branch_id', branchId);
       if (divisionId) pq = pq.eq('division_id', divisionId);
@@ -250,7 +312,6 @@ export default function Payments() {
         }
       });
 
-      // From assignments (fallback)
       let aq = supabase.from('student_teacher_assignments').select('id, student_id, calculated_monthly_fee, first_month_prorated_fee, start_date, fee_packages!student_teacher_assignments_fee_package_id_fkey(currency), branch_id, division_id').eq('status', 'active');
       if (branchId) aq = aq.eq('branch_id', branchId);
       if (divisionId) aq = aq.eq('division_id', divisionId);
@@ -282,7 +343,6 @@ export default function Payments() {
       if (unpaidSelected.length === 0) throw new Error('No unpaid invoices selected');
       if (!amountForeign) throw new Error('Enter the amount received');
 
-      // Upload receipt if provided
       let receiptUrl: string | null = null;
       if (receiptFile) {
         const ext = receiptFile.name.split('.').pop();
@@ -293,7 +353,6 @@ export default function Payments() {
         receiptUrl = urlData.publicUrl;
       }
 
-      // Process each selected invoice
       const transactions: any[] = [];
       let remainingAmount = amountForeign;
 
@@ -317,14 +376,12 @@ export default function Payments() {
               break;
             case 'arrears':
               newStatus = 'paid';
-              // Arrears handling: create a line item for next month below
               break;
             default:
               newStatus = 'partially_paid';
           }
         }
 
-        // Update invoice
         await supabase.from('fee_invoices').update({
           amount_paid: Number(inv.amount_paid || 0) + allocated,
           status: newStatus as any,
@@ -332,7 +389,6 @@ export default function Payments() {
           forgiven_amount: forgivenAmount,
         }).eq('id', inv.id);
 
-        // Create transaction record
         transactions.push({
           invoice_id: inv.id,
           student_id: inv.student_id,
@@ -350,7 +406,6 @@ export default function Payments() {
           division_id: divisionId,
         });
 
-        // Handle arrears: create next month arrears invoice
         if (isShort && payForm.resolution === 'arrears') {
           const arrearsAmount = outstanding - allocated;
           const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
@@ -370,7 +425,6 @@ export default function Payments() {
         }
       }
 
-      // Batch insert transactions
       if (transactions.length > 0) {
         const { error: txErr } = await supabase.from('payment_transactions').insert(transactions);
         if (txErr) throw txErr;
@@ -416,6 +470,15 @@ export default function Payments() {
     setBulkPayOpen(true);
   };
 
+  const addStudent = (id: string) => {
+    setSelectedStudentIds(prev => [...prev, id]);
+    setStudentSearch('');
+  };
+
+  const removeStudent = (id: string) => {
+    setSelectedStudentIds(prev => prev.filter(sid => sid !== id));
+  };
+
   // ─── Render ──────────────────────────────────────────────────────
   return (
     <DashboardLayout>
@@ -427,7 +490,7 @@ export default function Payments() {
             <p className="text-muted-foreground mt-1">Composite billing ledger with forex & arrears</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => setSetupOpen(true)} className="gap-2">
+            <Button variant="outline" onClick={() => { resetFeeForm(); setSetupOpen(true); }} className="gap-2">
               <Plus className="h-4 w-4" /> Set Up Student Fee
             </Button>
             <Button onClick={() => generateMutation.mutate()} disabled={generateMutation.isPending} className="gap-2">
@@ -563,60 +626,232 @@ export default function Payments() {
           )}
         </div>
 
-        {/* ─── Set Up Student Fee Modal ─────────────────────────────── */}
+        {/* ─── Set Up Student Fee Modal (Premium Redesign) ──────────── */}
         <Dialog open={setupOpen} onOpenChange={setSetupOpen}>
-          <DialogContent className="sm:max-w-2xl">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2"><Receipt className="h-5 w-5" /> Set Up Student Fee</DialogTitle>
-              <DialogDescription>Configure a composite billing plan with duration-based surcharges.</DialogDescription>
-            </DialogHeader>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
-              <div className="space-y-4">
-                <div>
-                  <Label>Student</Label>
-                  <Select value={feeForm.student_id} onValueChange={v => setFeeForm(f => ({ ...f, student_id: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Select student..." /></SelectTrigger>
-                    <SelectContent>{students.map(s => <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>)}</SelectContent>
-                  </Select>
+          <DialogContent className="sm:max-w-3xl p-0 overflow-hidden">
+            <div className="bg-[hsl(var(--sidebar-background))] px-8 py-6">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-3 text-lg text-primary-foreground font-serif">
+                  <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                    <Receipt className="h-5 w-5 text-primary" />
+                  </div>
+                  Composite Fee Builder
+                </DialogTitle>
+                <DialogDescription className="text-primary-foreground/60 mt-1">
+                  Configure billing plans for one or more students with duration surcharges and discounts.
+                </DialogDescription>
+              </DialogHeader>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-0">
+              {/* Left: Configuration (3 cols) */}
+              <div className="lg:col-span-3 p-8 space-y-5">
+                {/* Multi-Select Students */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">Students</Label>
+                  {/* Selected badges */}
+                  {selectedStudentIds.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {selectedStudentIds.map(sid => {
+                        const s = students.find(st => st.id === sid);
+                        return (
+                          <Badge key={sid} variant="secondary" className="gap-1 pr-1 text-xs">
+                            <GraduationCap className="h-3 w-3" />
+                            {s?.full_name || 'Unknown'}
+                            <button
+                              type="button"
+                              onClick={() => removeStudent(sid)}
+                              className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {/* Search input */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search students by name..."
+                      value={studentSearch}
+                      onChange={e => setStudentSearch(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                  {/* Dropdown results */}
+                  {studentSearch && filteredStudents.length > 0 && (
+                    <div className="border border-border rounded-lg bg-card max-h-36 overflow-y-auto shadow-sm">
+                      {filteredStudents.slice(0, 20).map(s => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => addStudent(s.id)}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 transition-colors flex items-center gap-2"
+                        >
+                          <GraduationCap className="h-3.5 w-3.5 text-muted-foreground" />
+                          {s.full_name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {studentSearch && filteredStudents.length === 0 && (
+                    <p className="text-xs text-muted-foreground py-2">No matching students found.</p>
+                  )}
                 </div>
-                <div>
-                  <Label>Base Package (30-min rate)</Label>
-                  <Select value={feeForm.base_package_id} onValueChange={v => setFeeForm(f => ({ ...f, base_package_id: v }))}>
-                    <SelectTrigger><SelectValue placeholder="Select package..." /></SelectTrigger>
-                    <SelectContent>{packages.map(p => <SelectItem key={p.id} value={p.id}>{p.name} — {p.currency} {p.amount}</SelectItem>)}</SelectContent>
-                  </Select>
+
+                <Separator />
+
+                {/* Package & Duration */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Base Package</Label>
+                    <Select value={feeForm.base_package_id} onValueChange={v => setFeeForm(f => ({ ...f, base_package_id: v }))}>
+                      <SelectTrigger><SelectValue placeholder="Select package..." /></SelectTrigger>
+                      <SelectContent>{packages.map(p => <SelectItem key={p.id} value={p.id}>{p.name} — {p.currency} {p.amount}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Session Duration</Label>
+                    <Select value={feeForm.session_duration} onValueChange={v => setFeeForm(f => ({ ...f, session_duration: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{DURATION_OPTIONS.map(d => <SelectItem key={d} value={d.toString()}>{d} min</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div>
-                  <Label>Session Duration</Label>
-                  <Select value={feeForm.session_duration} onValueChange={v => setFeeForm(f => ({ ...f, session_duration: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{DURATION_OPTIONS.map(d => <SelectItem key={d} value={d.toString()}>{d} min</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Flat Discount</Label>
-                  <Input type="number" placeholder="0" value={feeForm.flat_discount} onChange={e => setFeeForm(f => ({ ...f, flat_discount: e.target.value }))} />
+
+                <Separator />
+
+                {/* Discounts Section */}
+                <div className="space-y-4">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Discounts</h4>
+                  
+                  {/* Global Discount Rule */}
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Global Discount Rule</Label>
+                    <Select value={feeForm.global_discount_id} onValueChange={v => setFeeForm(f => ({ ...f, global_discount_id: v }))}>
+                      <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {discountRules.map(d => (
+                          <SelectItem key={d.id} value={d.id}>
+                            {d.name} ({d.type === 'percentage' ? `${d.value}%` : `${d.value} flat`})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Flat Discount */}
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Flat Discount</Label>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={feeForm.flat_discount}
+                      onChange={e => setFeeForm(f => ({ ...f, flat_discount: e.target.value }))}
+                    />
+                  </div>
+
+                  {/* Mandatory reason when flat discount > 0 */}
+                  {flatDiscount > 0 && (
+                    <div className="space-y-1.5 animate-fade-in">
+                      <Label className="text-sm flex items-center gap-1.5">
+                        Reason for Manual Discount
+                        <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        placeholder="e.g. Sibling discount, financial hardship..."
+                        value={feeForm.manual_discount_reason}
+                        onChange={e => setFeeForm(f => ({ ...f, manual_discount_reason: e.target.value }))}
+                        className={flatDiscountNeedsReason ? 'border-destructive' : ''}
+                      />
+                      {flatDiscountNeedsReason && (
+                        <p className="text-xs text-destructive flex items-center gap-1">
+                          <AlertTriangle className="h-3 w-3" /> A reason is required when applying a manual discount.
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className="bg-muted/50 rounded-xl border border-border p-5 space-y-3">
-                <h3 className="font-semibold text-foreground text-sm uppercase tracking-wider">Invoice Preview</h3>
-                <Separator />
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Base (30-min)</span><span className="font-mono font-medium">{feeCurrency} {baseAmount.toLocaleString()}</span></div>
-                  {durationSurcharge > 0 && <div className="flex justify-between text-primary"><span>Duration Premium ({duration} min)</span><span className="font-mono font-medium">+ {feeCurrency} {durationSurcharge.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span></div>}
-                  {flatDiscount > 0 && <div className="flex justify-between text-destructive"><span>Flat Discount</span><span className="font-mono font-medium">- {feeCurrency} {flatDiscount.toLocaleString()}</span></div>}
+
+              {/* Right: Invoice Preview (2 cols) */}
+              <div className="lg:col-span-2 bg-muted/40 border-l border-border p-8 flex flex-col justify-between">
+                <div className="space-y-4">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Invoice Preview</h3>
                   <Separator />
-                  <div className="flex justify-between text-lg font-bold"><span>Net Recurring Fee</span><span className="font-mono">{feeCurrency} {netRecurringFee.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span></div>
+                  
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">Base Fee (30 min)</span>
+                      <span className="font-mono font-semibold">{feeCurrency} {baseAmount.toLocaleString()}</span>
+                    </div>
+
+                    {durationSurcharge > 0 && (
+                      <div className="flex justify-between items-center text-sm text-primary">
+                        <span>Duration Premium ({duration} min)</span>
+                        <span className="font-mono font-semibold">+ {feeCurrency} {durationSurcharge.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                      </div>
+                    )}
+
+                    {durationSurcharge > 0 && (
+                      <div className="flex justify-between items-center text-sm border-t border-border/50 pt-2">
+                        <span className="text-muted-foreground font-medium">Subtotal</span>
+                        <span className="font-mono font-semibold">{feeCurrency} {subtotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                      </div>
+                    )}
+
+                    {globalDiscountAmount > 0 && (
+                      <div className="flex justify-between items-center text-sm text-destructive">
+                        <span>{selectedGlobalDiscount?.name}</span>
+                        <span className="font-mono font-semibold">- {feeCurrency} {globalDiscountAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                      </div>
+                    )}
+
+                    {flatDiscount > 0 && (
+                      <div className="flex justify-between items-center text-sm text-destructive">
+                        <span>Manual Discount</span>
+                        <span className="font-mono font-semibold">- {feeCurrency} {flatDiscount.toLocaleString()}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <Separator className="my-2" />
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-base font-bold text-foreground">Net Recurring Fee</span>
+                    <span className="text-xl font-mono font-black text-foreground">{feeCurrency} {netRecurringFee.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                  </div>
+
+                  {selectedStudentIds.length > 1 && (
+                    <div className="bg-primary/5 rounded-lg p-3 border border-primary/10 text-sm">
+                      <span className="text-muted-foreground">Applying to </span>
+                      <span className="font-bold text-primary">{selectedStudentIds.length} students</span>
+                    </div>
+                  )}
+
+                  <p className="text-xs text-muted-foreground">Billed monthly when invoices are generated.</p>
                 </div>
-                <p className="text-xs text-muted-foreground mt-4">Billed monthly when invoices are generated.</p>
+
+                {/* Save Button */}
+                <div className="mt-8 space-y-3">
+                  <Button
+                    onClick={() => savePlanMutation.mutate()}
+                    disabled={!canSavePlan || savePlanMutation.isPending}
+                    className="w-full gap-2"
+                    size="lg"
+                  >
+                    {savePlanMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                    Save Billing Plan{selectedStudentIds.length > 1 ? `s (${selectedStudentIds.length})` : ''}
+                  </Button>
+                  <Button variant="outline" onClick={() => setSetupOpen(false)} className="w-full">
+                    Cancel
+                  </Button>
+                </div>
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setSetupOpen(false)}>Cancel</Button>
-              <Button onClick={() => savePlanMutation.mutate()} disabled={!feeForm.student_id || !feeForm.base_package_id || savePlanMutation.isPending}>
-                {savePlanMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Save Billing Plan
-              </Button>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
 
@@ -629,7 +864,6 @@ export default function Payments() {
             </DialogHeader>
 
             <div className="space-y-4 py-2">
-              {/* Selected invoices summary */}
               <div className="bg-muted/50 rounded-lg border border-border p-3 max-h-32 overflow-y-auto space-y-1">
                 {unpaidSelected.map(inv => (
                   <div key={inv.id} className="flex justify-between text-sm">
@@ -639,7 +873,6 @@ export default function Payments() {
                 ))}
               </div>
 
-              {/* Forex inputs */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Amount Received ({bulkCurrency})</Label>
@@ -661,7 +894,6 @@ export default function Payments() {
                 </div>
               </div>
 
-              {/* Effective rate display */}
               {amountLocal > 0 && amountForeign > 0 && (
                 <div className="flex items-center gap-2 text-sm bg-primary/5 rounded-lg p-3 border border-primary/20">
                   <ArrowRightLeft className="h-4 w-4 text-primary" />
@@ -670,7 +902,6 @@ export default function Payments() {
                 </div>
               )}
 
-              {/* Shortfall resolution */}
               {hasShortfall && (
                 <div className="space-y-3 bg-destructive/5 rounded-lg border border-destructive/20 p-4">
                   <div className="flex items-center gap-2 text-sm font-medium text-destructive">
@@ -696,7 +927,6 @@ export default function Payments() {
                 </div>
               )}
 
-              {/* Receipt upload */}
               <div>
                 <Label>Proof of Payment (optional)</Label>
                 <input ref={receiptInputRef} type="file" accept="image/*,.pdf" className="hidden" onChange={e => setReceiptFile(e.target.files?.[0] || null)} />
@@ -719,7 +949,6 @@ export default function Payments() {
                 </div>
               </div>
 
-              {/* Notes */}
               <div>
                 <Label>Notes (optional)</Label>
                 <Textarea
