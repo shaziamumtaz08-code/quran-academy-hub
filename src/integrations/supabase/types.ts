@@ -787,6 +787,7 @@ export type Database = {
           currency: string
           division_id: string | null
           due_date: string | null
+          forgiven_amount: number
           id: string
           paid_at: string | null
           payment_method: string | null
@@ -806,6 +807,7 @@ export type Database = {
           currency?: string
           division_id?: string | null
           due_date?: string | null
+          forgiven_amount?: number
           id?: string
           paid_at?: string | null
           payment_method?: string | null
@@ -825,6 +827,7 @@ export type Database = {
           currency?: string
           division_id?: string | null
           due_date?: string | null
+          forgiven_amount?: number
           id?: string
           paid_at?: string | null
           payment_method?: string | null
@@ -1101,6 +1104,99 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      payment_transactions: {
+        Row: {
+          amount_foreign: number
+          amount_local: number
+          branch_id: string | null
+          created_at: string
+          currency_foreign: string
+          currency_local: string
+          division_id: string | null
+          effective_rate: number | null
+          id: string
+          invoice_id: string
+          notes: string | null
+          receipt_url: string | null
+          recorded_by: string | null
+          resolution_type: string
+          shortfall_amount: number
+          student_id: string
+        }
+        Insert: {
+          amount_foreign?: number
+          amount_local?: number
+          branch_id?: string | null
+          created_at?: string
+          currency_foreign?: string
+          currency_local?: string
+          division_id?: string | null
+          effective_rate?: number | null
+          id?: string
+          invoice_id: string
+          notes?: string | null
+          receipt_url?: string | null
+          recorded_by?: string | null
+          resolution_type?: string
+          shortfall_amount?: number
+          student_id: string
+        }
+        Update: {
+          amount_foreign?: number
+          amount_local?: number
+          branch_id?: string | null
+          created_at?: string
+          currency_foreign?: string
+          currency_local?: string
+          division_id?: string | null
+          effective_rate?: number | null
+          id?: string
+          invoice_id?: string
+          notes?: string | null
+          receipt_url?: string | null
+          recorded_by?: string | null
+          resolution_type?: string
+          shortfall_amount?: number
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_transactions_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_transactions_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_transactions_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "fee_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_transactions_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_transactions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       permission_exceptions: {
         Row: {
