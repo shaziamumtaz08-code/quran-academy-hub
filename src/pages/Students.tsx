@@ -28,7 +28,7 @@ interface Student {
   subjects: { id: string; name: string }[];
 }
 
-type AssignmentStatus = 'active' | 'paused' | 'completed';
+type AssignmentStatus = 'active' | 'paused' | 'completed' | 'left';
 
 interface TeacherStudent {
   id: string;
