@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react';
+import { Switch } from '@/components/ui/switch';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -150,6 +151,9 @@ export default function Payments() {
     flat_discount: '0',
     manual_discount_reason: '',
     global_discount_id: '',
+    manual_fee: false,
+    manual_amount: '',
+    manual_currency: 'USD',
   });
 
   // Bulk selection mode state
@@ -313,11 +317,12 @@ export default function Payments() {
 
   const flatDiscount = parseFloat(feeForm.flat_discount) || 0;
   const totalDiscounts = globalDiscountAmount + flatDiscount;
-  const netRecurringFee = Math.max(0, subtotal - totalDiscounts);
-  const feeCurrency = selectedPkg?.currency || 'USD';
+  const computedNetFee = Math.max(0, subtotal - totalDiscounts);
+  const netRecurringFee = feeForm.manual_fee ? (parseFloat(feeForm.manual_amount) || 0) : computedNetFee;
+  const feeCurrency = feeForm.manual_fee ? feeForm.manual_currency : (selectedPkg?.currency || 'USD');
 
-  const flatDiscountNeedsReason = flatDiscount > 0 && !feeForm.manual_discount_reason.trim();
-  const canSavePlan = (editingPlanId || selectedStudentIds.length > 0) && feeForm.base_package_id && !flatDiscountNeedsReason;
+  const flatDiscountNeedsReason = !feeForm.manual_fee && flatDiscount > 0 && !feeForm.manual_discount_reason.trim();
+  const canSavePlan = (editingPlanId || selectedStudentIds.length > 0) && (feeForm.base_package_id || (feeForm.manual_fee && parseFloat(feeForm.manual_amount) > 0)) && !flatDiscountNeedsReason;
 
   const filteredStudents = useMemo(() => {
     const search = studentSearch.toLowerCase();
@@ -394,35 +399,39 @@ export default function Payments() {
   // ─── Mutations ───────────────────────────────────────────────────
   const savePlanMutation = useMutation({
     mutationFn: async () => {
-      if (editingPlanId) {
-        // Update existing plan
-        const { error } = await supabase.from('student_billing_plans').update({
-          base_package_id: feeForm.base_package_id,
-          session_duration: duration,
-          duration_surcharge: durationSurcharge,
-          flat_discount: flatDiscount,
-          net_recurring_fee: netRecurringFee,
-          currency: feeCurrency,
-          global_discount_id: feeForm.global_discount_id || null,
-          manual_discount_reason: feeForm.manual_discount_reason || null,
-        }).eq('id', editingPlanId);
-        if (error) throw error;
-        return 1;
-      }
-      if (selectedStudentIds.length === 0 || !feeForm.base_package_id) throw new Error('Select student(s) and package');
-      const rows = selectedStudentIds.map(sid => ({
-        student_id: sid,
+      const isManual = feeForm.manual_fee;
+      const planFields = isManual ? {
+        base_package_id: null,
+        session_duration: 30,
+        duration_surcharge: 0,
+        flat_discount: 0,
+        net_recurring_fee: netRecurringFee,
+        currency: feeCurrency,
+        global_discount_id: null,
+        manual_discount_reason: null,
+      } : {
         base_package_id: feeForm.base_package_id,
         session_duration: duration,
         duration_surcharge: durationSurcharge,
         flat_discount: flatDiscount,
         net_recurring_fee: netRecurringFee,
         currency: feeCurrency,
+        global_discount_id: feeForm.global_discount_id || null,
+        manual_discount_reason: feeForm.manual_discount_reason || null,
+      };
+
+      if (editingPlanId) {
+        const { error } = await supabase.from('student_billing_plans').update(planFields).eq('id', editingPlanId);
+        if (error) throw error;
+        return 1;
+      }
+      if (selectedStudentIds.length === 0 || (!feeForm.base_package_id && !isManual)) throw new Error('Select student(s) and package');
+      const rows = selectedStudentIds.map(sid => ({
+        student_id: sid,
+        ...planFields,
         is_active: true,
         branch_id: branchId,
         division_id: divisionId,
-        global_discount_id: feeForm.global_discount_id || null,
-        manual_discount_reason: feeForm.manual_discount_reason || null,
       }));
       const { error } = await supabase.from('student_billing_plans').insert(rows);
       if (error) throw error;
@@ -450,7 +459,7 @@ export default function Payments() {
     setSelectionMode('individual');
     setBulkSearch('');
     setBulkSort({ column: 'name', direction: 'asc' });
-    setFeeForm({ base_package_id: '', session_duration: '30', flat_discount: '0', manual_discount_reason: '', global_discount_id: '' });
+    setFeeForm({ base_package_id: '', session_duration: '30', flat_discount: '0', manual_discount_reason: '', global_discount_id: '', manual_fee: false, manual_amount: '', manual_currency: 'USD' });
     setEditingPlanId(null);
   };
 
@@ -751,12 +760,16 @@ export default function Payments() {
   const handleEditPlan = (plan: any) => {
     setEditingPlanId(plan.id);
     setSelectedStudentIds([plan.student_id]);
+    const isManual = !plan.base_package_id && plan.net_recurring_fee > 0;
     setFeeForm({
       base_package_id: plan.base_package_id || '',
       session_duration: String(plan.session_duration || 30),
       flat_discount: String(plan.flat_discount || 0),
       manual_discount_reason: '',
-      global_discount_id: '',
+      global_discount_id: plan.global_discount_id || '',
+      manual_fee: isManual,
+      manual_amount: isManual ? String(plan.net_recurring_fee) : '',
+      manual_currency: plan.currency || 'USD',
     });
     setSelectionMode('individual');
     setSetupOpen(true);
@@ -1097,51 +1110,80 @@ export default function Payments() {
 
                 <Separator />
 
-                {/* Package & Duration */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Base Package</Label>
-                    <Select value={feeForm.base_package_id} onValueChange={v => setFeeForm(f => ({ ...f, base_package_id: v }))}>
-                      <SelectTrigger><SelectValue placeholder="Select package..." /></SelectTrigger>
-                      <SelectContent>{packages.map(p => <SelectItem key={p.id} value={p.id}>{p.name} — {p.currency} {p.amount}</SelectItem>)}</SelectContent>
-                    </Select>
+                {/* Manual Fee Toggle */}
+                <div className="flex items-center justify-between rounded-lg border border-border p-3 bg-muted/30">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium">Manual Fee</Label>
+                    <p className="text-xs text-muted-foreground">Bypass package & discounts, enter fee directly</p>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Session Duration</Label>
-                    <Select value={feeForm.session_duration} onValueChange={v => setFeeForm(f => ({ ...f, session_duration: v }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>{DURATION_OPTIONS.map(d => <SelectItem key={d} value={d.toString()}>{d} min</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
+                  <Switch checked={feeForm.manual_fee} onCheckedChange={v => setFeeForm(f => ({ ...f, manual_fee: v }))} />
                 </div>
 
-                <Separator />
-
-                {/* Discounts Section */}
-                <div className="space-y-4">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Discounts</h4>
-                  <div className="space-y-1.5">
-                    <Label className="text-sm">Global Discount Rule</Label>
-                    <Select value={feeForm.global_discount_id} onValueChange={v => setFeeForm(f => ({ ...f, global_discount_id: v }))}>
-                      <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        {discountRules.map(d => <SelectItem key={d.id} value={d.id}>{d.name} ({d.type === 'percentage' ? `${d.value}%` : `${d.value} flat`})</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-sm">Flat Discount</Label>
-                    <Input type="number" placeholder="0" value={feeForm.flat_discount} onChange={e => setFeeForm(f => ({ ...f, flat_discount: e.target.value }))} />
-                  </div>
-                  {flatDiscount > 0 && (
-                    <div className="space-y-1.5 animate-fade-in">
-                      <Label className="text-sm flex items-center gap-1.5">Reason for Manual Discount <span className="text-destructive">*</span></Label>
-                      <Input placeholder="e.g. Sibling discount, financial hardship..." value={feeForm.manual_discount_reason} onChange={e => setFeeForm(f => ({ ...f, manual_discount_reason: e.target.value }))} className={flatDiscountNeedsReason ? 'border-destructive' : ''} />
-                      {flatDiscountNeedsReason && <p className="text-xs text-destructive flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> A reason is required when applying a manual discount.</p>}
+                {feeForm.manual_fee ? (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Amount</Label>
+                      <Input type="number" placeholder="0" min="0" value={feeForm.manual_amount} onChange={e => setFeeForm(f => ({ ...f, manual_amount: e.target.value }))} />
                     </div>
-                  )}
-                </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Currency</Label>
+                      <Select value={feeForm.manual_currency} onValueChange={v => setFeeForm(f => ({ ...f, manual_currency: v }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {['USD', 'PKR', 'GBP', 'EUR', 'CAD', 'AUD', 'AED', 'SAR'].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Package & Duration */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Base Package</Label>
+                        <Select value={feeForm.base_package_id} onValueChange={v => setFeeForm(f => ({ ...f, base_package_id: v }))}>
+                          <SelectTrigger><SelectValue placeholder="Select package..." /></SelectTrigger>
+                          <SelectContent>{packages.map(p => <SelectItem key={p.id} value={p.id}>{p.name} — {p.currency} {p.amount}</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Session Duration</Label>
+                        <Select value={feeForm.session_duration} onValueChange={v => setFeeForm(f => ({ ...f, session_duration: v }))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>{DURATION_OPTIONS.map(d => <SelectItem key={d} value={d.toString()}>{d} min</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* Discounts Section */}
+                    <div className="space-y-4">
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Discounts</h4>
+                      <div className="space-y-1.5">
+                        <Label className="text-sm">Global Discount Rule</Label>
+                        <Select value={feeForm.global_discount_id} onValueChange={v => setFeeForm(f => ({ ...f, global_discount_id: v }))}>
+                          <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">None</SelectItem>
+                            {discountRules.map(d => <SelectItem key={d.id} value={d.id}>{d.name} ({d.type === 'percentage' ? `${d.value}%` : `${d.value} flat`})</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-sm">Flat Discount</Label>
+                        <Input type="number" placeholder="0" value={feeForm.flat_discount} onChange={e => setFeeForm(f => ({ ...f, flat_discount: e.target.value }))} />
+                      </div>
+                      {flatDiscount > 0 && (
+                        <div className="space-y-1.5 animate-fade-in">
+                          <Label className="text-sm flex items-center gap-1.5">Reason for Manual Discount <span className="text-destructive">*</span></Label>
+                          <Input placeholder="e.g. Sibling discount, financial hardship..." value={feeForm.manual_discount_reason} onChange={e => setFeeForm(f => ({ ...f, manual_discount_reason: e.target.value }))} className={flatDiscountNeedsReason ? 'border-destructive' : ''} />
+                          {flatDiscountNeedsReason && <p className="text-xs text-destructive flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> A reason is required when applying a manual discount.</p>}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Right: Invoice Preview (2 cols) */}
@@ -1149,36 +1191,45 @@ export default function Payments() {
                 <div className="space-y-4">
                   <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Invoice Preview</h3>
                   <Separator />
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-muted-foreground">Base Fee (30 min)</span>
-                      <span className="font-mono font-semibold">{feeCurrency} {baseAmount.toLocaleString()}</span>
+                  {feeForm.manual_fee ? (
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">Manual Fee</span>
+                        <span className="font-mono font-semibold">{feeCurrency} {netRecurringFee.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                      </div>
                     </div>
-                    {durationSurcharge > 0 && (
-                      <div className="flex justify-between items-center text-sm text-primary">
-                        <span>Duration Premium ({duration} min)</span>
-                        <span className="font-mono font-semibold">+ {feeCurrency} {durationSurcharge.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">Base Fee (30 min)</span>
+                        <span className="font-mono font-semibold">{feeCurrency} {baseAmount.toLocaleString()}</span>
                       </div>
-                    )}
-                    {durationSurcharge > 0 && (
-                      <div className="flex justify-between items-center text-sm border-t border-border/50 pt-2">
-                        <span className="text-muted-foreground font-medium">Subtotal</span>
-                        <span className="font-mono font-semibold">{feeCurrency} {subtotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-                      </div>
-                    )}
-                    {globalDiscountAmount > 0 && (
-                      <div className="flex justify-between items-center text-sm text-destructive">
-                        <span>{selectedGlobalDiscount?.name}</span>
-                        <span className="font-mono font-semibold">- {feeCurrency} {globalDiscountAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-                      </div>
-                    )}
-                    {flatDiscount > 0 && (
-                      <div className="flex justify-between items-center text-sm text-destructive">
-                        <span>Manual Discount</span>
-                        <span className="font-mono font-semibold">- {feeCurrency} {flatDiscount.toLocaleString()}</span>
-                      </div>
-                    )}
-                  </div>
+                      {durationSurcharge > 0 && (
+                        <div className="flex justify-between items-center text-sm text-primary">
+                          <span>Duration Premium ({duration} min)</span>
+                          <span className="font-mono font-semibold">+ {feeCurrency} {durationSurcharge.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                        </div>
+                      )}
+                      {durationSurcharge > 0 && (
+                        <div className="flex justify-between items-center text-sm border-t border-border/50 pt-2">
+                          <span className="text-muted-foreground font-medium">Subtotal</span>
+                          <span className="font-mono font-semibold">{feeCurrency} {subtotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                        </div>
+                      )}
+                      {globalDiscountAmount > 0 && (
+                        <div className="flex justify-between items-center text-sm text-destructive">
+                          <span>{selectedGlobalDiscount?.name}</span>
+                          <span className="font-mono font-semibold">- {feeCurrency} {globalDiscountAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                        </div>
+                      )}
+                      {flatDiscount > 0 && (
+                        <div className="flex justify-between items-center text-sm text-destructive">
+                          <span>Manual Discount</span>
+                          <span className="font-mono font-semibold">- {feeCurrency} {flatDiscount.toLocaleString()}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <Separator className="my-2" />
                   <div className="flex justify-between items-center">
                     <span className="text-base font-bold text-foreground">Net Recurring Fee</span>
