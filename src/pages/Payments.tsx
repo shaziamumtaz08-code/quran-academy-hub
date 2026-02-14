@@ -903,7 +903,7 @@ export default function Payments() {
                       <TableHead className="text-right">Paid</TableHead>
                       <TableHead>Due Date</TableHead>
                       <TableHead className="text-center">Status</TableHead>
-                      <TableHead className="text-center w-[160px]">Manage</TableHead>
+                      <TableHead className="w-12"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -925,56 +925,53 @@ export default function Payments() {
                             {Number(inv.amount_paid || 0) > 0 ? `${inv.currency} ${Number(inv.amount_paid).toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '—'}
                           </TableCell>
                           <TableCell>{inv.due_date || '—'}</TableCell>
-                          <TableCell className="text-center">{getStatusBadge(inv.status)}</TableCell>
                           <TableCell className="text-center">
-                            {inv.status === 'voided' ? (
-                              <span className="text-xs text-muted-foreground">Voided</span>
-                            ) : (
-                              <div className="flex items-center justify-center gap-1">
-                                {inv.status !== 'paid' && inv.status !== 'waived' && (
-                                  <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8" onClick={() => openSinglePay(inv.id)}>
-                                    <Receipt className="h-3.5 w-3.5" /> Pay
+                            {(inv.status === 'pending' || inv.status === 'partially_paid' || inv.status === 'overdue') ? (
+                              <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8" onClick={() => openSinglePay(inv.id)}>
+                                <Receipt className="h-3.5 w-3.5" /> {inv.status === 'partially_paid' ? 'Pay Rest' : 'Pay'}
+                              </Button>
+                            ) : getStatusBadge(inv.status)}
+                          </TableCell>
+                          <TableCell>
+                            {!isVoided && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <MoreHorizontal className="h-4 w-4" />
                                   </Button>
-                                )}
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                      <MoreHorizontal className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="w-48">
-                                    <DropdownMenuItem onClick={() => setEditInvoiceData({ id: inv.id, amount: String(inv.amount), due_date: inv.due_date || '', billing_month: inv.billing_month })}>
-                                      <Pencil className="h-3.5 w-3.5 mr-2" /> Edit Amount
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                  <DropdownMenuItem onClick={() => setEditInvoiceData({ id: inv.id, amount: String(inv.amount), due_date: inv.due_date || '', billing_month: inv.billing_month })}>
+                                    <Pencil className="h-3.5 w-3.5 mr-2" /> Edit Amount
+                                  </DropdownMenuItem>
+                                  {(inv.status === 'paid' || inv.status === 'partially_paid') && (
+                                    <DropdownMenuItem onClick={() => setActionModal({ type: 'mark_unpaid', invoice: inv })}>
+                                      <Undo2 className="h-3.5 w-3.5 mr-2" /> Mark Unpaid
                                     </DropdownMenuItem>
-                                    {(inv.status === 'paid' || inv.status === 'partially_paid') && (
-                                      <DropdownMenuItem onClick={() => setActionModal({ type: 'mark_unpaid', invoice: inv })}>
-                                        <Undo2 className="h-3.5 w-3.5 mr-2" /> Mark Unpaid
-                                      </DropdownMenuItem>
-                                    )}
-                                    <DropdownMenuItem onClick={() => setActionModal({ type: 'apply_discount', invoice: inv })}>
-                                      <Tag className="h-3.5 w-3.5 mr-2" /> Apply Discount
+                                  )}
+                                  <DropdownMenuItem onClick={() => setActionModal({ type: 'apply_discount', invoice: inv })}>
+                                    <Tag className="h-3.5 w-3.5 mr-2" /> Apply Discount
+                                  </DropdownMenuItem>
+                                  {inv.status !== 'waived' && (
+                                    <DropdownMenuItem onClick={() => setActionModal({ type: 'waive_fee', invoice: inv })}>
+                                      <Ban className="h-3.5 w-3.5 mr-2" /> Waive Fee
                                     </DropdownMenuItem>
-                                    {inv.status !== 'waived' && (
-                                      <DropdownMenuItem onClick={() => setActionModal({ type: 'waive_fee', invoice: inv })}>
-                                        <Ban className="h-3.5 w-3.5 mr-2" /> Waive Fee
-                                      </DropdownMenuItem>
-                                    )}
-                                    {(inv.status === 'paid' || inv.status === 'partially_paid') && (
-                                      <DropdownMenuItem onClick={() => setActionModal({ type: 'reverse_payment', invoice: inv })}>
-                                        <ArrowRightLeft className="h-3.5 w-3.5 mr-2" /> Reverse Payment
-                                      </DropdownMenuItem>
-                                    )}
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={() => { setActionModal({ type: 'view_history', invoice: inv }); fetchHistory(inv.id); }}>
-                                      <History className="h-3.5 w-3.5 mr-2" /> View History
+                                  )}
+                                  {(inv.status === 'paid' || inv.status === 'partially_paid') && (
+                                    <DropdownMenuItem onClick={() => setActionModal({ type: 'reverse_payment', invoice: inv })}>
+                                      <ArrowRightLeft className="h-3.5 w-3.5 mr-2" /> Reverse Payment
                                     </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setActionModal({ type: 'void_invoice', invoice: inv })}>
-                                      <FileX className="h-3.5 w-3.5 mr-2" /> Void Invoice
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </div>
+                                  )}
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => { setActionModal({ type: 'view_history', invoice: inv }); fetchHistory(inv.id); }}>
+                                    <History className="h-3.5 w-3.5 mr-2" /> View History
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setActionModal({ type: 'void_invoice', invoice: inv })}>
+                                    <FileX className="h-3.5 w-3.5 mr-2" /> Void Invoice
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             )}
                           </TableCell>
                         </TableRow>
