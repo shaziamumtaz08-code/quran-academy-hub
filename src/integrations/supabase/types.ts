@@ -980,6 +980,53 @@ export type Database = {
           },
         ]
       }
+      invoice_adjustments: {
+        Row: {
+          action_type: string
+          admin_email: string | null
+          admin_id: string | null
+          admin_name: string
+          created_at: string
+          id: string
+          invoice_id: string
+          new_values: Json
+          previous_values: Json
+          reason: string | null
+        }
+        Insert: {
+          action_type: string
+          admin_email?: string | null
+          admin_id?: string | null
+          admin_name: string
+          created_at?: string
+          id?: string
+          invoice_id: string
+          new_values?: Json
+          previous_values?: Json
+          reason?: string | null
+        }
+        Update: {
+          action_type?: string
+          admin_email?: string | null
+          admin_id?: string | null
+          admin_name?: string
+          created_at?: string
+          id?: string
+          invoice_id?: string
+          new_values?: Json
+          previous_values?: Json
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_adjustments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "fee_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       live_sessions: {
         Row: {
           actual_end: string | null
@@ -2370,7 +2417,14 @@ export type Database = {
       division_model: "one_to_one" | "group"
       exam_tenure: "weekly" | "monthly" | "quarterly" | "yearly"
       grading_style: "numeric" | "rubric"
-      invoice_status: "pending" | "paid" | "overdue" | "partially_paid"
+      invoice_status:
+        | "pending"
+        | "paid"
+        | "overdue"
+        | "partially_paid"
+        | "waived"
+        | "adjusted"
+        | "voided"
       permission_type:
         | "users.view"
         | "users.create"
@@ -2558,7 +2612,15 @@ export const Constants = {
       division_model: ["one_to_one", "group"],
       exam_tenure: ["weekly", "monthly", "quarterly", "yearly"],
       grading_style: ["numeric", "rubric"],
-      invoice_status: ["pending", "paid", "overdue", "partially_paid"],
+      invoice_status: [
+        "pending",
+        "paid",
+        "overdue",
+        "partially_paid",
+        "waived",
+        "adjusted",
+        "voided",
+      ],
       permission_type: [
         "users.view",
         "users.create",
