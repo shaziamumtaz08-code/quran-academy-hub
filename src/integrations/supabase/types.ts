@@ -783,6 +783,7 @@ export type Database = {
           branch_id: string | null
           created_at: string
           currency: string
+          days_per_week: number
           division_id: string | null
           id: string
           is_active: boolean
@@ -796,6 +797,7 @@ export type Database = {
           branch_id?: string | null
           created_at?: string
           currency?: string
+          days_per_week?: number
           division_id?: string | null
           id?: string
           is_active?: boolean
@@ -809,6 +811,7 @@ export type Database = {
           branch_id?: string | null
           created_at?: string
           currency?: string
+          days_per_week?: number
           division_id?: string | null
           id?: string
           is_active?: boolean
@@ -1594,9 +1597,16 @@ export type Database = {
       student_teacher_assignments: {
         Row: {
           branch_id: string | null
+          calculated_monthly_fee: number | null
           created_at: string
+          discount_id: string | null
           division_id: string | null
+          duration_minutes: number
+          fee_package_id: string | null
+          first_month_prorated_fee: number | null
           id: string
+          is_custom_override: boolean
+          start_date: string | null
           status: Database["public"]["Enums"]["assignment_status"]
           student_id: string
           student_timezone: string | null
@@ -1606,9 +1616,16 @@ export type Database = {
         }
         Insert: {
           branch_id?: string | null
+          calculated_monthly_fee?: number | null
           created_at?: string
+          discount_id?: string | null
           division_id?: string | null
+          duration_minutes?: number
+          fee_package_id?: string | null
+          first_month_prorated_fee?: number | null
           id?: string
+          is_custom_override?: boolean
+          start_date?: string | null
           status?: Database["public"]["Enums"]["assignment_status"]
           student_id: string
           student_timezone?: string | null
@@ -1618,9 +1635,16 @@ export type Database = {
         }
         Update: {
           branch_id?: string | null
+          calculated_monthly_fee?: number | null
           created_at?: string
+          discount_id?: string | null
           division_id?: string | null
+          duration_minutes?: number
+          fee_package_id?: string | null
+          first_month_prorated_fee?: number | null
           id?: string
+          is_custom_override?: boolean
+          start_date?: string | null
           status?: Database["public"]["Enums"]["assignment_status"]
           student_id?: string
           student_timezone?: string | null
@@ -1637,10 +1661,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "student_teacher_assignments_discount_id_fkey"
+            columns: ["discount_id"]
+            isOneToOne: false
+            referencedRelation: "discount_rules"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "student_teacher_assignments_division_id_fkey"
             columns: ["division_id"]
             isOneToOne: false
             referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_teacher_assignments_fee_package_id_fkey"
+            columns: ["fee_package_id"]
+            isOneToOne: false
+            referencedRelation: "fee_packages"
             referencedColumns: ["id"]
           },
           {
