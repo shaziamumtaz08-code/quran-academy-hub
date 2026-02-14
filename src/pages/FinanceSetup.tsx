@@ -34,8 +34,38 @@ interface DiscountRule {
   is_active: boolean;
 }
 
-const CURRENCIES = ['USD', 'GBP', 'PKR', 'EUR', 'AED', 'SAR', 'CAD', 'AUD'];
+const CURRENCIES = ['USD', 'GBP', 'PKR', 'EUR', 'AED', 'SAR', 'CAD', 'AUD', 'NZD'];
 const DAYS_PER_WEEK_OPTIONS = [2, 3, 4, 5, 6];
+
+const EXCEL_SEED_DATA = [
+  { name: 'USA & Canada - 4 Days', amount: 35, currency: 'USD', days_per_week: 4 },
+  { name: 'USA & Canada - 5 Days', amount: 45, currency: 'USD', days_per_week: 5 },
+  { name: 'USA & Canada - 6 Days', amount: 50, currency: 'USD', days_per_week: 6 },
+  { name: 'UAE - 4 Days', amount: 100, currency: 'AED', days_per_week: 4 },
+  { name: 'UAE - 5 Days', amount: 130, currency: 'AED', days_per_week: 5 },
+  { name: 'UAE - 6 Days', amount: 150, currency: 'AED', days_per_week: 6 },
+  { name: 'KSA - 4 Days', amount: 100, currency: 'SAR', days_per_week: 4 },
+  { name: 'KSA - 5 Days', amount: 130, currency: 'SAR', days_per_week: 5 },
+  { name: 'KSA - 6 Days', amount: 150, currency: 'SAR', days_per_week: 6 },
+  { name: 'UK - 4 Days', amount: 25, currency: 'GBP', days_per_week: 4 },
+  { name: 'UK - 5 Days', amount: 30, currency: 'GBP', days_per_week: 5 },
+  { name: 'UK - 6 Days', amount: 35, currency: 'GBP', days_per_week: 6 },
+  { name: 'Europe - 4 Days', amount: 30, currency: 'EUR', days_per_week: 4 },
+  { name: 'Europe - 5 Days', amount: 35, currency: 'EUR', days_per_week: 5 },
+  { name: 'Europe - 6 Days', amount: 40, currency: 'EUR', days_per_week: 6 },
+  { name: 'Australia - 4 Days', amount: 35, currency: 'AUD', days_per_week: 4 },
+  { name: 'Australia - 5 Days', amount: 45, currency: 'AUD', days_per_week: 5 },
+  { name: 'Australia - 6 Days', amount: 50, currency: 'AUD', days_per_week: 6 },
+  { name: 'New Zealand - 4 Days', amount: 40, currency: 'NZD', days_per_week: 4 },
+  { name: 'New Zealand - 5 Days', amount: 50, currency: 'NZD', days_per_week: 5 },
+  { name: 'New Zealand - 6 Days', amount: 60, currency: 'NZD', days_per_week: 6 },
+  { name: 'Pakistan - 4 Days', amount: 3500, currency: 'PKR', days_per_week: 4 },
+  { name: 'Pakistan - 5 Days', amount: 4500, currency: 'PKR', days_per_week: 5 },
+  { name: 'Pakistan - 6 Days', amount: 5000, currency: 'PKR', days_per_week: 6 },
+  { name: 'Rest of World - 4 Days', amount: 30, currency: 'USD', days_per_week: 4 },
+  { name: 'Rest of World - 5 Days', amount: 35, currency: 'USD', days_per_week: 5 },
+  { name: 'Rest of World - 6 Days', amount: 40, currency: 'USD', days_per_week: 6 },
+];
 
 // ─── Fee Packages Tab ────────────────────────────────────────────────
 function FeePackagesTab() {
@@ -111,6 +141,30 @@ function FeePackagesTab() {
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
+  const [seeding, setSeeding] = useState(false);
+  const seedMutation = useMutation({
+    mutationFn: async () => {
+      setSeeding(true);
+      const rows = EXCEL_SEED_DATA.map((item) => ({
+        ...item,
+        billing_cycle: 'monthly' as any,
+        branch_id: activeBranchId,
+        division_id: activeDivisionId,
+      }));
+      const { error } = await supabase.from('fee_packages').insert(rows);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['fee-packages'] });
+      toast({ title: `${EXCEL_SEED_DATA.length} packages loaded successfully!` });
+      setSeeding(false);
+    },
+    onError: (e: any) => {
+      toast({ title: 'Seed failed', description: e.message, variant: 'destructive' });
+      setSeeding(false);
+    },
+  });
+
   const openCreate = () => {
     setEditingPkg(null);
     setForm({ name: '', amount: '', currency: 'USD', days_per_week: '5' });
@@ -148,7 +202,12 @@ function FeePackagesTab() {
     <>
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-muted-foreground">{packages.length} package(s) configured</p>
-        <Button onClick={openCreate} size="sm" className="gap-2"><Plus className="h-4 w-4" /> Create Package</Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => seedMutation.mutate()} size="sm" variant="outline" className="gap-2 border-primary/50 text-primary hover:bg-primary/10" disabled={seeding || seedMutation.isPending}>
+            {seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <span>⚡</span>} Auto-Load Excel Matrix
+          </Button>
+          <Button onClick={openCreate} size="sm" className="gap-2"><Plus className="h-4 w-4" /> Create Package</Button>
+        </div>
       </div>
 
       {isLoading ? (
