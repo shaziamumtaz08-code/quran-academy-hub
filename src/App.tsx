@@ -31,6 +31,7 @@ import ZoomManagement from "./pages/ZoomManagement";
 import IntegrityAudit from "./pages/IntegrityAudit";
 import Courses from "./pages/Courses";
 import OrganizationSettings from "./pages/OrganizationSettings";
+import FinanceSetup from "./pages/FinanceSetup";
 import SelectDivision from "./pages/SelectDivision";
 import NotFound from "./pages/NotFound";
 
@@ -226,6 +227,7 @@ function AppRoutes() {
       <Route path="/integrity-audit" element={<ProtectedRoute><AdminRoute><IntegrityAudit /></AdminRoute></ProtectedRoute>} />
       <Route path="/courses" element={<ProtectedRoute><AdminRoute><Courses /></AdminRoute></ProtectedRoute>} />
       <Route path="/organization-settings" element={<ProtectedRoute><AdminRoute><OrganizationSettings /></AdminRoute></ProtectedRoute>} />
+      <Route path="/finance-setup" element={<ProtectedRoute><AdminRoute><FinanceSetup /></AdminRoute></ProtectedRoute>} />
       <Route path="/monthly-planning" element={<ProtectedRoute><AdminOrTeacherRoute><MonthlyPlanning /></AdminOrTeacherRoute></ProtectedRoute>} />
       {/* Report Card pages (renamed from Exam) */}
       <Route path="/report-card-templates" element={<ProtectedRoute><AdminOrExaminerRoute><ReportCardTemplates /></AdminOrExaminerRoute></ProtectedRoute>} />

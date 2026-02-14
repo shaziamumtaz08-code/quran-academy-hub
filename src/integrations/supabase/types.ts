@@ -381,6 +381,57 @@ export type Database = {
           },
         ]
       }
+      discount_rules: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          division_id: string | null
+          id: string
+          is_active: boolean
+          name: string
+          type: Database["public"]["Enums"]["discount_type"]
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          division_id?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          type?: Database["public"]["Enums"]["discount_type"]
+          updated_at?: string
+          value?: number
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          division_id?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          type?: Database["public"]["Enums"]["discount_type"]
+          updated_at?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discount_rules_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discount_rules_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       divisions: {
         Row: {
           branch_id: string
@@ -721,6 +772,70 @@ export type Database = {
             columns: ["admin_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fee_packages: {
+        Row: {
+          amount: number
+          billing_cycle: Database["public"]["Enums"]["billing_cycle"]
+          branch_id: string | null
+          created_at: string
+          currency: string
+          division_id: string | null
+          id: string
+          is_active: boolean
+          name: string
+          subject_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          billing_cycle?: Database["public"]["Enums"]["billing_cycle"]
+          branch_id?: string | null
+          created_at?: string
+          currency?: string
+          division_id?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          subject_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          billing_cycle?: Database["public"]["Enums"]["billing_cycle"]
+          branch_id?: string | null
+          created_at?: string
+          currency?: string
+          division_id?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          subject_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fee_packages_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fee_packages_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fee_packages_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
             referencedColumns: ["id"]
           },
         ]
@@ -1907,7 +2022,9 @@ export type Database = {
         | "admin_academic"
       assignment_status: "active" | "paused" | "completed"
       attendance_action: "join_intent" | "leave"
+      billing_cycle: "monthly" | "quarterly" | "one_time"
       branch_type: "online" | "onsite"
+      discount_type: "percentage" | "fixed_amount"
       division_model: "one_to_one" | "group"
       exam_tenure: "weekly" | "monthly" | "quarterly" | "yearly"
       grading_style: "numeric" | "rubric"
@@ -2092,7 +2209,9 @@ export const Constants = {
       ],
       assignment_status: ["active", "paused", "completed"],
       attendance_action: ["join_intent", "leave"],
+      billing_cycle: ["monthly", "quarterly", "one_time"],
       branch_type: ["online", "onsite"],
+      discount_type: ["percentage", "fixed_amount"],
       division_model: ["one_to_one", "group"],
       exam_tenure: ["weekly", "monthly", "quarterly", "yearly"],
       grading_style: ["numeric", "rubric"],

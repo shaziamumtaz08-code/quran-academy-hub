@@ -159,6 +159,7 @@ function buildNavGroups(modelType: string | null, branchType: string | null): Na
       icon: DollarSign,
       items: [
         { label: 'Fees', href: '/payments', icon: CreditCard, permission: 'payments.view' },
+        { label: 'Finance Setup', href: '/finance-setup', icon: Wallet, roles: ['super_admin'] },
         { label: 'KPI', href: '/kpi', icon: BarChart3, roles: ['super_admin', 'admin'] },
       ],
     },
