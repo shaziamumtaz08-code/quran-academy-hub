@@ -12,9 +12,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   DollarSign, CheckCircle, XCircle, Clock, User, Loader2, Zap, GraduationCap,
-  Plus, Receipt, Upload, ArrowRightLeft, AlertTriangle, ImageIcon, X, Search, ArrowUpDown, Users
+  Plus, Receipt, Upload, ArrowRightLeft, AlertTriangle, ImageIcon, X, Search, ArrowUpDown, Users, Pencil, Trash2, ListChecks
 } from 'lucide-react';
 import { endOfMonth, startOfMonth, parseISO, format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -22,6 +23,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { trackActivity } from '@/lib/activityLogger';
+import BillingPlansTable from '@/components/finance/BillingPlansTable';
 
 // ─── Constants ───────────────────────────────────────────────────────
 const MONTHS = [
@@ -119,6 +122,11 @@ export default function Payments() {
   // Modal state
   const [setupOpen, setSetupOpen] = useState(false);
   const [bulkPayOpen, setBulkPayOpen] = useState(false);
+  const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
+
+  // Invoice edit/delete state
+  const [editInvoiceData, setEditInvoiceData] = useState<{ id: string; amount: string; due_date: string; billing_month: string } | null>(null);
+  const [deleteInvoiceId, setDeleteInvoiceId] = useState<string | null>(null);
 
   // Setup fee form - multi-select students
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
@@ -150,8 +158,10 @@ export default function Payments() {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const receiptInputRef = useRef<HTMLInputElement>(null);
 
+  // Active tab
+  const [activeTab, setActiveTab] = useState('invoices');
+
   // ─── Data Queries ────────────────────────────────────────────────
-  // BUG FIX: Only fetch students (role = 'student')
   const { data: students = [] } = useQuery({
     queryKey: ['students-for-fees', branchId],
     queryFn: async () => {
@@ -172,7 +182,6 @@ export default function Payments() {
     enabled: setupOpen,
   });
 
-  // Fetch student subjects for bulk mode
   const { data: studentSubjects = {} } = useQuery<StudentSubjects>({
     queryKey: ['student-subjects-for-fees', branchId, divisionId],
     queryFn: async () => {
@@ -207,7 +216,6 @@ export default function Payments() {
     enabled: setupOpen,
   });
 
-  // Discount rules query
   const { data: discountRules = [] } = useQuery({
     queryKey: ['discount-rules-active', branchId, divisionId],
     queryFn: async () => {
@@ -252,7 +260,6 @@ export default function Payments() {
     enabled: !!branchId,
   });
 
-  // Family (parent-student links) query
   const { data: parentLinks = [] } = useQuery({
     queryKey: ['parent-links-for-payments'],
     queryFn: async () => {
@@ -262,7 +269,6 @@ export default function Payments() {
     enabled: !!branchId,
   });
 
-  // Group families: parent_id -> { parentName, studentIds }
   const familyGroups = useMemo(() => {
     const map: Record<string, { parentName: string; studentIds: string[] }> = {};
     parentLinks.forEach(link => {
@@ -273,7 +279,6 @@ export default function Payments() {
         map[link.parent_id].studentIds.push(link.student_id);
       }
     });
-    // Only keep families with 1+ unpaid invoices
     return Object.entries(map).filter(([_, fam]) =>
       invoices.some(inv => fam.studentIds.includes(inv.student_id) && inv.status !== 'paid')
     );
@@ -286,7 +291,6 @@ export default function Payments() {
   const durationSurcharge = baseAmount * (duration / 30 - 1);
   const subtotal = baseAmount + durationSurcharge;
 
-  // Global discount calculation
   const selectedGlobalDiscount = useMemo(() => discountRules.find(d => d.id === feeForm.global_discount_id), [discountRules, feeForm.global_discount_id]);
   const globalDiscountAmount = useMemo(() => {
     if (!selectedGlobalDiscount) return 0;
@@ -299,17 +303,14 @@ export default function Payments() {
   const netRecurringFee = Math.max(0, subtotal - totalDiscounts);
   const feeCurrency = selectedPkg?.currency || 'USD';
 
-  // Validation: flat discount > 0 requires reason
   const flatDiscountNeedsReason = flatDiscount > 0 && !feeForm.manual_discount_reason.trim();
-  const canSavePlan = selectedStudentIds.length > 0 && feeForm.base_package_id && !flatDiscountNeedsReason;
+  const canSavePlan = (editingPlanId || selectedStudentIds.length > 0) && feeForm.base_package_id && !flatDiscountNeedsReason;
 
-  // Filtered students for individual search
   const filteredStudents = useMemo(() => {
     const search = studentSearch.toLowerCase();
     return students.filter(s => !selectedStudentIds.includes(s.id) && s.full_name.toLowerCase().includes(search));
   }, [students, selectedStudentIds, studentSearch]);
 
-  // Bulk mode: filtered + sorted students
   const bulkFilteredStudents = useMemo(() => {
     const search = bulkSearch.toLowerCase();
     let list = students.filter(s => {
@@ -334,7 +335,6 @@ export default function Payments() {
   }, [students, bulkSearch, bulkSort, studentSubjects]);
 
   const allBulkFiltered = bulkFilteredStudents.every(s => selectedStudentIds.includes(s.id));
-  const someBulkSelected = bulkFilteredStudents.some(s => selectedStudentIds.includes(s.id));
 
   const toggleBulkSort = useCallback((col: BulkSortColumn) => {
     setBulkSort(prev => prev.column === col ? { column: col, direction: prev.direction === 'asc' ? 'desc' : 'asc' } : { column: col, direction: 'asc' });
@@ -356,7 +356,6 @@ export default function Payments() {
     setSelectedStudentIds(prev => prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]);
   }, []);
 
-  // Bulk payment calculator
   const selectedInvoices = useMemo(() => invoices.filter(i => selectedIds.has(i.id)), [invoices, selectedIds]);
   const unpaidSelected = useMemo(() => selectedInvoices.filter(i => i.status !== 'paid'), [selectedInvoices]);
   const totalExpected = unpaidSelected.reduce((s, i) => s + (Number(i.amount) - Number(i.amount_paid || 0)), 0);
@@ -367,7 +366,6 @@ export default function Payments() {
   const shortfall = totalExpected - amountForeign;
   const hasShortfall = amountForeign > 0 && amountForeign < totalExpected;
 
-  // Summary
   const totalFees = invoices.reduce((s, i) => s + Number(i.amount), 0);
   const collected = invoices.filter(i => i.status === 'paid').reduce((s, i) => s + Number(i.amount), 0);
   const pending = totalFees - collected;
@@ -381,9 +379,23 @@ export default function Payments() {
   const allSelectableChecked = selectableInvoices.length > 0 && selectableInvoices.every(i => selectedIds.has(i.id));
 
   // ─── Mutations ───────────────────────────────────────────────────
-  // Save billing plan — BULK: one plan per selected student
   const savePlanMutation = useMutation({
     mutationFn: async () => {
+      if (editingPlanId) {
+        // Update existing plan
+        const { error } = await supabase.from('student_billing_plans').update({
+          base_package_id: feeForm.base_package_id,
+          session_duration: duration,
+          duration_surcharge: durationSurcharge,
+          flat_discount: flatDiscount,
+          net_recurring_fee: netRecurringFee,
+          currency: feeCurrency,
+          global_discount_id: feeForm.global_discount_id || null,
+          manual_discount_reason: feeForm.manual_discount_reason || null,
+        }).eq('id', editingPlanId);
+        if (error) throw error;
+        return 1;
+      }
       if (selectedStudentIds.length === 0 || !feeForm.base_package_id) throw new Error('Select student(s) and package');
       const rows = selectedStudentIds.map(sid => ({
         student_id: sid,
@@ -405,7 +417,14 @@ export default function Payments() {
     },
     onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: ['billing-plans'] });
-      toast({ title: `${count} billing plan(s) saved successfully` });
+      queryClient.invalidateQueries({ queryKey: ['billing-plans-list'] });
+      const action = editingPlanId ? 'billing_plan_updated' : 'billing_plan_created';
+      toast({ title: editingPlanId ? 'Billing plan updated' : `${count} billing plan(s) saved successfully` });
+      if (editingPlanId) {
+        trackActivity({ action: 'billing_plan_updated', entityType: 'billing_plan', entityId: editingPlanId, details: { net_fee: netRecurringFee, currency: feeCurrency } });
+      } else {
+        trackActivity({ action: 'billing_plan_created', entityType: 'billing_plan', details: { count, net_fee: netRecurringFee, currency: feeCurrency } });
+      }
       setSetupOpen(false);
       resetFeeForm();
     },
@@ -419,9 +438,9 @@ export default function Payments() {
     setBulkSearch('');
     setBulkSort({ column: 'name', direction: 'asc' });
     setFeeForm({ base_package_id: '', session_duration: '30', flat_discount: '0', manual_discount_reason: '', global_discount_id: '' });
+    setEditingPlanId(null);
   };
 
-  // Generate invoices
   const generateMutation = useMutation({
     mutationFn: async () => {
       const { data: existing } = await supabase.from('fee_invoices').select('plan_id, assignment_id').eq('billing_month', currentBillingMonth);
@@ -464,7 +483,6 @@ export default function Payments() {
     onError: (e: any) => toast({ title: 'Generation failed', description: e.message, variant: 'destructive' }),
   });
 
-  // Bulk payment mutation
   const bulkPayMutation = useMutation({
     mutationFn: async () => {
       if (unpaidSelected.length === 0) throw new Error('No unpaid invoices selected');
@@ -494,18 +512,10 @@ export default function Payments() {
 
         if (isShort) {
           switch (payForm.resolution) {
-            case 'partial':
-              newStatus = 'partially_paid';
-              break;
-            case 'writeoff':
-              newStatus = 'paid';
-              forgivenAmount = outstanding - allocated;
-              break;
-            case 'arrears':
-              newStatus = 'paid';
-              break;
-            default:
-              newStatus = 'partially_paid';
+            case 'partial': newStatus = 'partially_paid'; break;
+            case 'writeoff': newStatus = 'paid'; forgivenAmount = outstanding - allocated; break;
+            case 'arrears': newStatus = 'paid'; break;
+            default: newStatus = 'partially_paid';
           }
         }
 
@@ -517,23 +527,16 @@ export default function Payments() {
         }).eq('id', inv.id);
 
         transactions.push({
-          invoice_id: inv.id,
-          student_id: inv.student_id,
-          amount_foreign: allocated,
-          currency_foreign: inv.currency,
+          invoice_id: inv.id, student_id: inv.student_id,
+          amount_foreign: allocated, currency_foreign: inv.currency,
           amount_local: amountLocal > 0 ? (allocated / amountForeign) * amountLocal : 0,
-          currency_local: 'PKR',
-          effective_rate: effectiveRate || null,
+          currency_local: 'PKR', effective_rate: effectiveRate || null,
           resolution_type: isShort ? payForm.resolution : 'full',
           shortfall_amount: isShort ? outstanding - allocated : 0,
-          receipt_url: receiptUrl,
-          notes: payForm.notes || null,
-          recorded_by: user?.id || null,
-          branch_id: branchId,
-          division_id: divisionId,
+          receipt_url: receiptUrl, notes: payForm.notes || null,
+          recorded_by: user?.id || null, branch_id: branchId, division_id: divisionId,
           payment_date: payForm.payment_date || new Date().toISOString().split('T')[0],
-          period_from: payForm.period_from || null,
-          period_to: payForm.period_to || null,
+          period_from: payForm.period_from || null, period_to: payForm.period_to || null,
           payment_method: payForm.payment_method || null,
         });
 
@@ -542,16 +545,10 @@ export default function Payments() {
           const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
           const nextBillingMonth = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}`;
           await supabase.from('fee_invoices').insert({
-            student_id: inv.student_id,
-            assignment_id: inv.assignment_id,
-            plan_id: inv.plan_id,
-            amount: arrearsAmount,
-            currency: inv.currency,
-            billing_month: nextBillingMonth,
-            due_date: `${nextBillingMonth}-10`,
-            remark: `Previous arrears from ${formatBillingMonth(inv.billing_month)}`,
-            branch_id: branchId,
-            division_id: divisionId,
+            student_id: inv.student_id, assignment_id: inv.assignment_id, plan_id: inv.plan_id,
+            amount: arrearsAmount, currency: inv.currency, billing_month: nextBillingMonth,
+            due_date: `${nextBillingMonth}-10`, remark: `Previous arrears from ${formatBillingMonth(inv.billing_month)}`,
+            branch_id: branchId, division_id: divisionId,
           });
         }
       }
@@ -566,12 +563,47 @@ export default function Payments() {
     onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
       toast({ title: `${count} payment(s) recorded successfully` });
+      trackActivity({ action: 'payment_recorded', entityType: 'invoice', details: { count, amount: amountForeign, currency: bulkCurrency } });
       setBulkPayOpen(false);
       setSelectedIds(new Set());
       setPayForm({ amount_foreign: '', amount_local: '', resolution: 'full', notes: '', payment_date: new Date().toISOString().split('T')[0], period_from: '', period_to: '', payment_method: '' });
       setReceiptFile(null);
     },
     onError: (e: any) => toast({ title: 'Payment failed', description: e.message, variant: 'destructive' }),
+  });
+
+  // Invoice edit mutation
+  const editInvoiceMutation = useMutation({
+    mutationFn: async (data: { id: string; amount: number; due_date: string; billing_month: string }) => {
+      const { error } = await supabase.from('fee_invoices').update({
+        amount: data.amount, due_date: data.due_date || null, billing_month: data.billing_month,
+      }).eq('id', data.id);
+      if (error) throw error;
+      return data.id;
+    },
+    onSuccess: (id) => {
+      queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
+      toast({ title: 'Invoice updated' });
+      trackActivity({ action: 'invoice_edited', entityType: 'invoice', entityId: id });
+      setEditInvoiceData(null);
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  // Invoice delete mutation
+  const deleteInvoiceMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('fee_invoices').delete().eq('id', id);
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: (id) => {
+      queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
+      toast({ title: 'Invoice deleted' });
+      trackActivity({ action: 'invoice_deleted', entityType: 'invoice', entityId: id });
+      setDeleteInvoiceId(null);
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
   // ─── Selection Handlers ──────────────────────────────────────────
@@ -584,27 +616,19 @@ export default function Payments() {
   };
 
   const toggleSelectAll = () => {
-    if (allSelectableChecked) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(selectableInvoices.map(i => i.id)));
-    }
+    if (allSelectableChecked) setSelectedIds(new Set());
+    else setSelectedIds(new Set(selectableInvoices.map(i => i.id)));
   };
 
   const openBulkPay = () => {
-    if (unpaidSelected.length === 0) {
-      toast({ title: 'Select pending invoices first', variant: 'destructive' });
-      return;
-    }
-    // Default period from earliest to latest billing month of selected invoices
+    if (unpaidSelected.length === 0) { toast({ title: 'Select pending invoices first', variant: 'destructive' }); return; }
     const months = unpaidSelected.map(i => i.billing_month).sort();
     const earliest = getDefaultPeriodDates(months[0]);
     const latest = getDefaultPeriodDates(months[months.length - 1]);
     setPayForm({
       amount_foreign: totalExpected.toString(), amount_local: '', resolution: 'full', notes: '',
       payment_date: new Date().toISOString().split('T')[0],
-      period_from: earliest.from, period_to: latest.to,
-      payment_method: '',
+      period_from: earliest.from, period_to: latest.to, payment_method: '',
     });
     setReceiptFile(null);
     setBulkPayOpen(true);
@@ -619,8 +643,7 @@ export default function Payments() {
     setPayForm({
       amount_foreign: due.toString(), amount_local: '', resolution: 'full', notes: '',
       payment_date: new Date().toISOString().split('T')[0],
-      period_from: period.from, period_to: period.to,
-      payment_method: '',
+      period_from: period.from, period_to: period.to, payment_method: '',
     });
     setReceiptFile(null);
     setBulkPayOpen(true);
@@ -630,15 +653,9 @@ export default function Payments() {
     const family = familyGroups.find(([pid]) => pid === parentId);
     if (!family) return;
     const familyStudentIds = family[1].studentIds;
-    const familyInvoiceIds = invoices
-      .filter(inv => familyStudentIds.includes(inv.student_id) && inv.status !== 'paid')
-      .map(inv => inv.id);
-    if (familyInvoiceIds.length === 0) {
-      toast({ title: 'No unpaid invoices for this family', variant: 'destructive' });
-      return;
-    }
+    const familyInvoiceIds = invoices.filter(inv => familyStudentIds.includes(inv.student_id) && inv.status !== 'paid').map(inv => inv.id);
+    if (familyInvoiceIds.length === 0) { toast({ title: 'No unpaid invoices for this family', variant: 'destructive' }); return; }
     setSelectedIds(new Set(familyInvoiceIds));
-    // Recalculate after setting — use invoices directly
     const familyUnpaid = invoices.filter(i => familyInvoiceIds.includes(i.id));
     const total = familyUnpaid.reduce((s, i) => s + (Number(i.amount) - Number(i.amount_paid || 0)), 0);
     const months = familyUnpaid.map(i => i.billing_month).sort();
@@ -647,20 +664,28 @@ export default function Payments() {
     setPayForm({
       amount_foreign: total.toString(), amount_local: '', resolution: 'full', notes: '',
       payment_date: new Date().toISOString().split('T')[0],
-      period_from: earliest.from, period_to: latest.to,
-      payment_method: '',
+      period_from: earliest.from, period_to: latest.to, payment_method: '',
     });
     setReceiptFile(null);
     setBulkPayOpen(true);
   };
 
-  const addStudent = (id: string) => {
-    setSelectedStudentIds(prev => [...prev, id]);
-    setStudentSearch('');
-  };
+  const addStudent = (id: string) => { setSelectedStudentIds(prev => [...prev, id]); setStudentSearch(''); };
+  const removeStudent = (id: string) => { setSelectedStudentIds(prev => prev.filter(sid => sid !== id)); };
 
-  const removeStudent = (id: string) => {
-    setSelectedStudentIds(prev => prev.filter(sid => sid !== id));
+  // Edit billing plan handler (called from BillingPlansTable)
+  const handleEditPlan = (plan: any) => {
+    setEditingPlanId(plan.id);
+    setSelectedStudentIds([plan.student_id]);
+    setFeeForm({
+      base_package_id: plan.base_package_id || '',
+      session_duration: String(plan.session_duration || 30),
+      flat_discount: String(plan.flat_discount || 0),
+      manual_discount_reason: '',
+      global_discount_id: '',
+    });
+    setSelectionMode('individual');
+    setSetupOpen(true);
   };
 
   // ─── Render ──────────────────────────────────────────────────────
@@ -670,8 +695,8 @@ export default function Payments() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="font-serif text-3xl font-bold text-foreground">Fee Invoices</h1>
-            <p className="text-muted-foreground mt-1">Composite billing ledger with forex & arrears</p>
+            <h1 className="font-serif text-3xl font-bold text-foreground">Fee Management</h1>
+            <p className="text-muted-foreground mt-1">Billing plans, invoices & payments</p>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={() => { resetFeeForm(); setSetupOpen(true); }} className="gap-2">
@@ -715,131 +740,139 @@ export default function Payments() {
           </div>
         </div>
 
-        {/* Filters + Bulk Action */}
-        <div className="flex flex-wrap items-center gap-4">
-          <Select value={monthFilter} onValueChange={setMonthFilter}>
-            <SelectTrigger className="w-[180px]"><SelectValue placeholder="Billing Month" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Months</SelectItem>
-              {monthOptions.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="paid">Paid</SelectItem>
-              <SelectItem value="partially_paid">Partially Paid</SelectItem>
-              <SelectItem value="overdue">Overdue</SelectItem>
-            </SelectContent>
-          </Select>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <GraduationCap className="h-4 w-4" />
-            <span>{invoices.length} invoice(s)</span>
-          </div>
-          {familyGroups.length > 0 && (
-            <Select onValueChange={openFamilyPay}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Pay Family..." />
-              </SelectTrigger>
-              <SelectContent>
-                {familyGroups.map(([pid, fam]) => (
-                  <SelectItem key={pid} value={pid}>
-                    <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {fam.parentName}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-          <div className="flex-1" />
-          {selectedIds.size > 0 && (
-            <Button onClick={openBulkPay} className="gap-2 animate-fade-in">
-              <Receipt className="h-4 w-4" /> Record Payment ({unpaidSelected.length})
-            </Button>
-          )}
-        </div>
+        {/* Tabs: Invoices | Billing Plans */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="invoices" className="gap-2"><Receipt className="h-4 w-4" /> Invoices</TabsTrigger>
+            <TabsTrigger value="plans" className="gap-2"><ListChecks className="h-4 w-4" /> Billing Plans</TabsTrigger>
+          </TabsList>
 
-        {/* Invoice Table */}
-        <div className="bg-card rounded-xl border border-border overflow-hidden">
-          {isLoading ? (
-            <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-          ) : invoices.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-              <DollarSign className="h-12 w-12 mb-4 opacity-40" />
-              <p className="font-medium">No invoices yet</p>
-              <p className="text-sm">Set up student fees then generate monthly invoices</p>
+          <TabsContent value="invoices" className="mt-4 space-y-4">
+            {/* Filters + Bulk Action */}
+            <div className="flex flex-wrap items-center gap-4">
+              <Select value={monthFilter} onValueChange={setMonthFilter}>
+                <SelectTrigger className="w-[180px]"><SelectValue placeholder="Billing Month" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Months</SelectItem>
+                  {monthOptions.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="partially_paid">Partially Paid</SelectItem>
+                  <SelectItem value="overdue">Overdue</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <GraduationCap className="h-4 w-4" />
+                <span>{invoices.length} invoice(s)</span>
+              </div>
+              {familyGroups.length > 0 && (
+                <Select onValueChange={openFamilyPay}>
+                  <SelectTrigger className="w-[180px]"><SelectValue placeholder="Pay Family..." /></SelectTrigger>
+                  <SelectContent>
+                    {familyGroups.map(([pid, fam]) => (
+                      <SelectItem key={pid} value={pid}>
+                        <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {fam.parentName}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <div className="flex-1" />
+              {selectedIds.size > 0 && (
+                <Button onClick={openBulkPay} className="gap-2 animate-fade-in">
+                  <Receipt className="h-4 w-4" /> Record Payment ({unpaidSelected.length})
+                </Button>
+              )}
             </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10">
-                    <Checkbox checked={allSelectableChecked} onCheckedChange={toggleSelectAll} />
-                  </TableHead>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Package</TableHead>
-                  <TableHead>Billing Month</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="text-right">Paid</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
-                  <TableHead className="text-center w-[120px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {invoices.map(inv => {
-                  const isPaid = inv.status === 'paid';
-                  return (
-                    <TableRow key={inv.id} className={selectedIds.has(inv.id) ? 'bg-primary/5' : ''}>
-                      <TableCell>
-                        <Checkbox
-                          checked={selectedIds.has(inv.id)}
-                          onCheckedChange={() => toggleSelect(inv.id)}
-                          disabled={isPaid}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <span className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
-                            <User className="h-4 w-4 text-secondary-foreground" />
-                          </div>
-                          <span className="font-medium">{inv.profiles?.full_name || 'Unknown'}</span>
-                        </span>
-                      </TableCell>
-                      <TableCell><Badge variant="outline" className="text-xs">{getPackageName(inv)}</Badge></TableCell>
-                      <TableCell>{formatBillingMonth(inv.billing_month)}</TableCell>
-                      <TableCell className="text-right font-mono font-semibold">
-                        {inv.currency} {Number(inv.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-muted-foreground">
-                        {Number(inv.amount_paid || 0) > 0 ? `${inv.currency} ${Number(inv.amount_paid).toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '—'}
-                      </TableCell>
-                      <TableCell>{inv.due_date || '—'}</TableCell>
-                      <TableCell className="text-center">{getStatusBadge(inv.status)}</TableCell>
-                      <TableCell className="text-center">
-                        {isPaid ? (
-                          <CheckCircle className="h-4 w-4 text-primary mx-auto" />
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="gap-1.5 text-xs h-8"
-                            onClick={() => openSinglePay(inv.id)}
-                          >
-                            <Receipt className="h-3.5 w-3.5" /> Pay
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </div>
 
-        {/* ─── Set Up Student Fee Modal (Premium Redesign) ──────────── */}
+            {/* Invoice Table */}
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
+              {isLoading ? (
+                <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+              ) : invoices.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                  <DollarSign className="h-12 w-12 mb-4 opacity-40" />
+                  <p className="font-medium">No invoices yet</p>
+                  <p className="text-sm">Set up student fees then generate monthly invoices</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10"><Checkbox checked={allSelectableChecked} onCheckedChange={toggleSelectAll} /></TableHead>
+                      <TableHead>Student</TableHead>
+                      <TableHead>Package</TableHead>
+                      <TableHead>Billing Month</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="text-right">Paid</TableHead>
+                      <TableHead>Due Date</TableHead>
+                      <TableHead className="text-center">Status</TableHead>
+                      <TableHead className="text-center w-[160px]">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {invoices.map(inv => {
+                      const isPaid = inv.status === 'paid';
+                      const isPending = inv.status === 'pending';
+                      return (
+                        <TableRow key={inv.id} className={selectedIds.has(inv.id) ? 'bg-primary/5' : ''}>
+                          <TableCell><Checkbox checked={selectedIds.has(inv.id)} onCheckedChange={() => toggleSelect(inv.id)} disabled={isPaid} /></TableCell>
+                          <TableCell>
+                            <span className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center"><User className="h-4 w-4 text-secondary-foreground" /></div>
+                              <span className="font-medium">{inv.profiles?.full_name || 'Unknown'}</span>
+                            </span>
+                          </TableCell>
+                          <TableCell><Badge variant="outline" className="text-xs">{getPackageName(inv)}</Badge></TableCell>
+                          <TableCell>{formatBillingMonth(inv.billing_month)}</TableCell>
+                          <TableCell className="text-right font-mono font-semibold">{inv.currency} {Number(inv.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="text-right font-mono text-muted-foreground">
+                            {Number(inv.amount_paid || 0) > 0 ? `${inv.currency} ${Number(inv.amount_paid).toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '—'}
+                          </TableCell>
+                          <TableCell>{inv.due_date || '—'}</TableCell>
+                          <TableCell className="text-center">{getStatusBadge(inv.status)}</TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              {isPaid ? (
+                                <CheckCircle className="h-4 w-4 text-primary" />
+                              ) : (
+                                <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8" onClick={() => openSinglePay(inv.id)}>
+                                  <Receipt className="h-3.5 w-3.5" /> Pay
+                                </Button>
+                              )}
+                              {isPending && (
+                                <>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditInvoiceData({ id: inv.id, amount: String(inv.amount), due_date: inv.due_date || '', billing_month: inv.billing_month })} title="Edit">
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteInvoiceId(inv.id)} title="Delete">
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="plans" className="mt-4">
+            <BillingPlansTable onEditPlan={handleEditPlan} />
+          </TabsContent>
+        </Tabs>
+
+        {/* ─── Set Up Student Fee Modal ──────────── */}
         <Dialog open={setupOpen} onOpenChange={setSetupOpen}>
           <DialogContent className="sm:max-w-3xl p-0 overflow-hidden">
             <div className="bg-[hsl(var(--sidebar-background))] px-8 py-6">
@@ -848,10 +881,10 @@ export default function Payments() {
                   <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
                     <Receipt className="h-5 w-5 text-primary" />
                   </div>
-                  Composite Fee Builder
+                  {editingPlanId ? 'Edit Billing Plan' : 'Composite Fee Builder'}
                 </DialogTitle>
                 <DialogDescription className="text-primary-foreground/60 mt-1">
-                  Configure billing plans for one or more students with duration surcharges and discounts.
+                  {editingPlanId ? 'Update the billing plan configuration.' : 'Configure billing plans for one or more students with duration surcharges and discounts.'}
                 </DialogDescription>
               </DialogHeader>
             </div>
@@ -859,26 +892,19 @@ export default function Payments() {
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-0">
               {/* Left: Configuration (3 cols) */}
               <div className="lg:col-span-3 p-8 space-y-5">
-                {/* Student Selection with Mode Toggle */}
+                {/* Student Selection */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <Label className="text-sm font-semibold">Students</Label>
-                    <ToggleGroup
-                      type="single"
-                      value={selectionMode}
-                      onValueChange={(v) => v && setSelectionMode(v as 'individual' | 'bulk')}
-                      className="border border-border rounded-lg p-0.5"
-                    >
-                      <ToggleGroupItem value="individual" className="text-xs px-3 h-7 rounded-md data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
-                        Individual
-                      </ToggleGroupItem>
-                      <ToggleGroupItem value="bulk" className="text-xs px-3 h-7 rounded-md data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
-                        Bulk Select
-                      </ToggleGroupItem>
-                    </ToggleGroup>
+                    {!editingPlanId && (
+                      <ToggleGroup type="single" value={selectionMode} onValueChange={(v) => v && setSelectionMode(v as 'individual' | 'bulk')} className="border border-border rounded-lg p-0.5">
+                        <ToggleGroupItem value="individual" className="text-xs px-3 h-7 rounded-md data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">Individual</ToggleGroupItem>
+                        <ToggleGroupItem value="bulk" className="text-xs px-3 h-7 rounded-md data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">Bulk Select</ToggleGroupItem>
+                      </ToggleGroup>
+                    )}
                   </div>
 
-                  {/* Selected badges (shown in both modes) */}
+                  {/* Selected badges */}
                   {selectedStudentIds.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                       {selectedStudentIds.slice(0, selectionMode === 'bulk' ? 5 : 999).map(sid => {
@@ -887,13 +913,11 @@ export default function Payments() {
                           <Badge key={sid} variant="secondary" className="gap-1 pr-1 text-xs">
                             <GraduationCap className="h-3 w-3" />
                             {s?.full_name || 'Unknown'}
-                            <button
-                              type="button"
-                              onClick={() => removeStudent(sid)}
-                              className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
+                            {!editingPlanId && (
+                              <button type="button" onClick={() => removeStudent(sid)} className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors">
+                                <X className="h-3 w-3" />
+                              </button>
+                            )}
                           </Badge>
                         );
                       })}
@@ -904,114 +928,55 @@ export default function Payments() {
                   )}
 
                   {/* Individual Mode */}
-                  {selectionMode === 'individual' && (
+                  {!editingPlanId && selectionMode === 'individual' && (
                     <>
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          placeholder="Search students by name..."
-                          value={studentSearch}
-                          onChange={e => setStudentSearch(e.target.value)}
-                          className="pl-9"
-                        />
+                        <Input placeholder="Search students by name..." value={studentSearch} onChange={e => setStudentSearch(e.target.value)} className="pl-9" />
                       </div>
                       {studentSearch && filteredStudents.length > 0 && (
                         <div className="border border-border rounded-lg bg-card max-h-36 overflow-y-auto shadow-sm">
                           {filteredStudents.slice(0, 20).map(s => (
-                            <button
-                              key={s.id}
-                              type="button"
-                              onClick={() => addStudent(s.id)}
-                              className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 transition-colors flex items-center gap-2"
-                            >
-                              <GraduationCap className="h-3.5 w-3.5 text-muted-foreground" />
-                              {s.full_name}
+                            <button key={s.id} type="button" onClick={() => addStudent(s.id)} className="w-full text-left px-3 py-2 text-sm hover:bg-muted/50 transition-colors flex items-center gap-2">
+                              <GraduationCap className="h-3.5 w-3.5 text-muted-foreground" /> {s.full_name}
                             </button>
                           ))}
                         </div>
                       )}
-                      {studentSearch && filteredStudents.length === 0 && (
-                        <p className="text-xs text-muted-foreground py-2">No matching students found.</p>
-                      )}
+                      {studentSearch && filteredStudents.length === 0 && <p className="text-xs text-muted-foreground py-2">No matching students found.</p>}
                     </>
                   )}
 
                   {/* Bulk Mode */}
-                  {selectionMode === 'bulk' && (
+                  {!editingPlanId && selectionMode === 'bulk' && (
                     <div className="space-y-2">
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          placeholder="Filter by name, country, or subject..."
-                          value={bulkSearch}
-                          onChange={e => setBulkSearch(e.target.value)}
-                          className="pl-9"
-                        />
+                        <Input placeholder="Filter by name, country, or subject..." value={bulkSearch} onChange={e => setBulkSearch(e.target.value)} className="pl-9" />
                       </div>
                       <ScrollArea className="h-[250px] border border-border rounded-lg">
                         <Table>
                           <TableHeader>
                             <TableRow className="bg-muted/30">
-                              <TableHead className="w-10 h-9 px-3">
-                                <Checkbox
-                                  checked={bulkFilteredStudents.length > 0 && allBulkFiltered}
-                                  onCheckedChange={toggleSelectAllBulk}
-                                  aria-label="Select all filtered"
-                                />
-                              </TableHead>
-                              <TableHead
-                                className="h-9 px-3 cursor-pointer select-none text-xs"
-                                onClick={() => toggleBulkSort('name')}
-                              >
-                                Name {bulkSort.column === 'name' && (bulkSort.direction === 'asc' ? '↑' : '↓')}
-                              </TableHead>
-                              <TableHead
-                                className="h-9 px-3 cursor-pointer select-none text-xs"
-                                onClick={() => toggleBulkSort('country')}
-                              >
-                                Country {bulkSort.column === 'country' && (bulkSort.direction === 'asc' ? '↑' : '↓')}
-                              </TableHead>
-                              <TableHead
-                                className="h-9 px-3 cursor-pointer select-none text-xs"
-                                onClick={() => toggleBulkSort('subject')}
-                              >
-                                Subject {bulkSort.column === 'subject' && (bulkSort.direction === 'asc' ? '↑' : '↓')}
-                              </TableHead>
+                              <TableHead className="w-10 h-9 px-3"><Checkbox checked={bulkFilteredStudents.length > 0 && allBulkFiltered} onCheckedChange={toggleSelectAllBulk} /></TableHead>
+                              <TableHead className="h-9 px-3 cursor-pointer select-none text-xs" onClick={() => toggleBulkSort('name')}>Name {bulkSort.column === 'name' && (bulkSort.direction === 'asc' ? '↑' : '↓')}</TableHead>
+                              <TableHead className="h-9 px-3 cursor-pointer select-none text-xs" onClick={() => toggleBulkSort('country')}>Country {bulkSort.column === 'country' && (bulkSort.direction === 'asc' ? '↑' : '↓')}</TableHead>
+                              <TableHead className="h-9 px-3 cursor-pointer select-none text-xs" onClick={() => toggleBulkSort('subject')}>Subject {bulkSort.column === 'subject' && (bulkSort.direction === 'asc' ? '↑' : '↓')}</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {bulkFilteredStudents.length === 0 ? (
-                              <TableRow>
-                                <TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-8">
-                                  No students match your filter.
-                                </TableCell>
-                              </TableRow>
+                              <TableRow><TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-8">No students match your filter.</TableCell></TableRow>
                             ) : (
                               bulkFilteredStudents.map(s => (
-                                <TableRow
-                                  key={s.id}
-                                  className={selectedStudentIds.includes(s.id) ? 'bg-primary/5' : 'cursor-pointer'}
-                                  onClick={() => toggleBulkStudent(s.id)}
-                                >
-                                  <TableCell className="px-3 py-1.5">
-                                    <Checkbox
-                                      checked={selectedStudentIds.includes(s.id)}
-                                      onCheckedChange={() => toggleBulkStudent(s.id)}
-                                      onClick={e => e.stopPropagation()}
-                                    />
-                                  </TableCell>
+                                <TableRow key={s.id} className={selectedStudentIds.includes(s.id) ? 'bg-primary/5' : 'cursor-pointer'} onClick={() => toggleBulkStudent(s.id)}>
+                                  <TableCell className="px-3 py-1.5"><Checkbox checked={selectedStudentIds.includes(s.id)} onCheckedChange={() => toggleBulkStudent(s.id)} onClick={e => e.stopPropagation()} /></TableCell>
                                   <TableCell className="px-3 py-1.5 text-sm font-medium">{s.full_name}</TableCell>
                                   <TableCell className="px-3 py-1.5 text-sm text-muted-foreground">{s.country || '—'}</TableCell>
                                   <TableCell className="px-3 py-1.5">
                                     {(studentSubjects[s.id] || []).length > 0 ? (
-                                      <div className="flex flex-wrap gap-1">
-                                        {(studentSubjects[s.id] || []).map(sub => (
-                                          <Badge key={sub} variant="outline" className="text-[10px] py-0 px-1.5">{sub}</Badge>
-                                        ))}
-                                      </div>
-                                    ) : (
-                                      <span className="text-xs text-muted-foreground">—</span>
-                                    )}
+                                      <div className="flex flex-wrap gap-1">{(studentSubjects[s.id] || []).map(sub => <Badge key={sub} variant="outline" className="text-[10px] py-0 px-1.5">{sub}</Badge>)}</div>
+                                    ) : <span className="text-xs text-muted-foreground">—</span>}
                                   </TableCell>
                                 </TableRow>
                               ))
@@ -1019,10 +984,7 @@ export default function Payments() {
                           </TableBody>
                         </Table>
                       </ScrollArea>
-                      <p className="text-xs text-muted-foreground">
-                        {selectedStudentIds.length} of {students.length} students selected
-                        {bulkSearch && ` (${bulkFilteredStudents.length} shown)`}
-                      </p>
+                      <p className="text-xs text-muted-foreground">{selectedStudentIds.length} of {students.length} students selected{bulkSearch && ` (${bulkFilteredStudents.length} shown)`}</p>
                     </div>
                   )}
                 </div>
@@ -1052,52 +1014,25 @@ export default function Payments() {
                 {/* Discounts Section */}
                 <div className="space-y-4">
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Discounts</h4>
-                  
-                  {/* Global Discount Rule */}
                   <div className="space-y-1.5">
                     <Label className="text-sm">Global Discount Rule</Label>
                     <Select value={feeForm.global_discount_id} onValueChange={v => setFeeForm(f => ({ ...f, global_discount_id: v }))}>
                       <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">None</SelectItem>
-                        {discountRules.map(d => (
-                          <SelectItem key={d.id} value={d.id}>
-                            {d.name} ({d.type === 'percentage' ? `${d.value}%` : `${d.value} flat`})
-                          </SelectItem>
-                        ))}
+                        {discountRules.map(d => <SelectItem key={d.id} value={d.id}>{d.name} ({d.type === 'percentage' ? `${d.value}%` : `${d.value} flat`})</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
-
-                  {/* Flat Discount */}
                   <div className="space-y-1.5">
                     <Label className="text-sm">Flat Discount</Label>
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      value={feeForm.flat_discount}
-                      onChange={e => setFeeForm(f => ({ ...f, flat_discount: e.target.value }))}
-                    />
+                    <Input type="number" placeholder="0" value={feeForm.flat_discount} onChange={e => setFeeForm(f => ({ ...f, flat_discount: e.target.value }))} />
                   </div>
-
-                  {/* Mandatory reason when flat discount > 0 */}
                   {flatDiscount > 0 && (
                     <div className="space-y-1.5 animate-fade-in">
-                      <Label className="text-sm flex items-center gap-1.5">
-                        Reason for Manual Discount
-                        <span className="text-destructive">*</span>
-                      </Label>
-                      <Input
-                        placeholder="e.g. Sibling discount, financial hardship..."
-                        value={feeForm.manual_discount_reason}
-                        onChange={e => setFeeForm(f => ({ ...f, manual_discount_reason: e.target.value }))}
-                        className={flatDiscountNeedsReason ? 'border-destructive' : ''}
-                      />
-                      {flatDiscountNeedsReason && (
-                        <p className="text-xs text-destructive flex items-center gap-1">
-                          <AlertTriangle className="h-3 w-3" /> A reason is required when applying a manual discount.
-                        </p>
-                      )}
+                      <Label className="text-sm flex items-center gap-1.5">Reason for Manual Discount <span className="text-destructive">*</span></Label>
+                      <Input placeholder="e.g. Sibling discount, financial hardship..." value={feeForm.manual_discount_reason} onChange={e => setFeeForm(f => ({ ...f, manual_discount_reason: e.target.value }))} className={flatDiscountNeedsReason ? 'border-destructive' : ''} />
+                      {flatDiscountNeedsReason && <p className="text-xs text-destructive flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> A reason is required when applying a manual discount.</p>}
                     </div>
                   )}
                 </div>
@@ -1108,34 +1043,29 @@ export default function Payments() {
                 <div className="space-y-4">
                   <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Invoice Preview</h3>
                   <Separator />
-                  
                   <div className="space-y-3">
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-muted-foreground">Base Fee (30 min)</span>
                       <span className="font-mono font-semibold">{feeCurrency} {baseAmount.toLocaleString()}</span>
                     </div>
-
                     {durationSurcharge > 0 && (
                       <div className="flex justify-between items-center text-sm text-primary">
                         <span>Duration Premium ({duration} min)</span>
                         <span className="font-mono font-semibold">+ {feeCurrency} {durationSurcharge.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                       </div>
                     )}
-
                     {durationSurcharge > 0 && (
                       <div className="flex justify-between items-center text-sm border-t border-border/50 pt-2">
                         <span className="text-muted-foreground font-medium">Subtotal</span>
                         <span className="font-mono font-semibold">{feeCurrency} {subtotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                       </div>
                     )}
-
                     {globalDiscountAmount > 0 && (
                       <div className="flex justify-between items-center text-sm text-destructive">
                         <span>{selectedGlobalDiscount?.name}</span>
                         <span className="font-mono font-semibold">- {feeCurrency} {globalDiscountAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                       </div>
                     )}
-
                     {flatDiscount > 0 && (
                       <div className="flex justify-between items-center text-sm text-destructive">
                         <span>Manual Discount</span>
@@ -1143,38 +1073,25 @@ export default function Payments() {
                       </div>
                     )}
                   </div>
-
                   <Separator className="my-2" />
-
                   <div className="flex justify-between items-center">
                     <span className="text-base font-bold text-foreground">Net Recurring Fee</span>
                     <span className="text-xl font-mono font-black text-foreground">{feeCurrency} {netRecurringFee.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                   </div>
-
-                  {selectedStudentIds.length > 1 && (
+                  {selectedStudentIds.length > 1 && !editingPlanId && (
                     <div className="bg-primary/5 rounded-lg p-3 border border-primary/10 text-sm">
                       <span className="text-muted-foreground">Applying to </span>
                       <span className="font-bold text-primary">{selectedStudentIds.length} students</span>
                     </div>
                   )}
-
                   <p className="text-xs text-muted-foreground">Billed monthly when invoices are generated.</p>
                 </div>
-
-                {/* Save Button */}
                 <div className="mt-8 space-y-3">
-                  <Button
-                    onClick={() => savePlanMutation.mutate()}
-                    disabled={!canSavePlan || savePlanMutation.isPending}
-                    className="w-full gap-2"
-                    size="lg"
-                  >
+                  <Button onClick={() => savePlanMutation.mutate()} disabled={!canSavePlan || savePlanMutation.isPending} className="w-full gap-2" size="lg">
                     {savePlanMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                    Save Billing Plan{selectedStudentIds.length > 1 ? `s (${selectedStudentIds.length})` : ''}
+                    {editingPlanId ? 'Update Billing Plan' : `Save Billing Plan${selectedStudentIds.length > 1 ? `s (${selectedStudentIds.length})` : ''}`}
                   </Button>
-                  <Button variant="outline" onClick={() => setSetupOpen(false)} className="w-full">
-                    Cancel
-                  </Button>
+                  <Button variant="outline" onClick={() => setSetupOpen(false)} className="w-full">Cancel</Button>
                 </div>
               </div>
             </div>
@@ -1199,62 +1116,33 @@ export default function Payments() {
                 ))}
               </div>
 
-              {/* Payment Period */}
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payment Period</Label>
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-sm">From</Label>
-                    <Input type="date" value={payForm.period_from} onChange={e => setPayForm(f => ({ ...f, period_from: e.target.value }))} />
-                  </div>
-                  <div>
-                    <Label className="text-sm">To</Label>
-                    <Input type="date" value={payForm.period_to} onChange={e => setPayForm(f => ({ ...f, period_to: e.target.value }))} />
-                  </div>
+                  <div><Label className="text-sm">From</Label><Input type="date" value={payForm.period_from} onChange={e => setPayForm(f => ({ ...f, period_from: e.target.value }))} /></div>
+                  <div><Label className="text-sm">To</Label><Input type="date" value={payForm.period_to} onChange={e => setPayForm(f => ({ ...f, period_to: e.target.value }))} /></div>
                 </div>
               </div>
 
               <Separator />
 
-              {/* Payment Details */}
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payment Details</Label>
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-sm">Payment Date</Label>
-                    <Input type="date" value={payForm.payment_date} onChange={e => setPayForm(f => ({ ...f, payment_date: e.target.value }))} />
-                  </div>
+                  <div><Label className="text-sm">Payment Date</Label><Input type="date" value={payForm.payment_date} onChange={e => setPayForm(f => ({ ...f, payment_date: e.target.value }))} /></div>
                   <div>
                     <Label className="text-sm">Receiving Channel</Label>
                     <Select value={payForm.payment_method} onValueChange={v => setPayForm(f => ({ ...f, payment_method: v }))}>
                       <SelectTrigger><SelectValue placeholder="Select channel..." /></SelectTrigger>
-                      <SelectContent>
-                        {RECEIVING_CHANNELS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                      </SelectContent>
+                      <SelectContent>{RECEIVING_CHANNELS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Amount Received ({bulkCurrency})</Label>
-                  <Input
-                    type="number"
-                    placeholder="0.00"
-                    value={payForm.amount_foreign}
-                    onChange={e => setPayForm(f => ({ ...f, amount_foreign: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <Label>Realized Amount (PKR)</Label>
-                  <Input
-                    type="number"
-                    placeholder="0.00"
-                    value={payForm.amount_local}
-                    onChange={e => setPayForm(f => ({ ...f, amount_local: e.target.value }))}
-                  />
-                </div>
+                <div><Label>Amount Received ({bulkCurrency})</Label><Input type="number" placeholder="0.00" value={payForm.amount_foreign} onChange={e => setPayForm(f => ({ ...f, amount_foreign: e.target.value }))} /></div>
+                <div><Label>Realized Amount (PKR)</Label><Input type="number" placeholder="0.00" value={payForm.amount_local} onChange={e => setPayForm(f => ({ ...f, amount_local: e.target.value }))} /></div>
               </div>
 
               {amountLocal > 0 && amountForeign > 0 && (
@@ -1268,8 +1156,7 @@ export default function Payments() {
               {hasShortfall && (
                 <div className="space-y-3 bg-destructive/5 rounded-lg border border-destructive/20 p-4">
                   <div className="flex items-center gap-2 text-sm font-medium text-destructive">
-                    <AlertTriangle className="h-4 w-4" />
-                    Shortfall: {bulkCurrency} {shortfall.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    <AlertTriangle className="h-4 w-4" /> Shortfall: {bulkCurrency} {shortfall.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </div>
                   <div>
                     <Label>Shortfall Resolution</Label>
@@ -1293,41 +1180,69 @@ export default function Payments() {
               <div>
                 <Label>Proof of Payment (optional)</Label>
                 <input ref={receiptInputRef} type="file" accept="image/*,.pdf" className="hidden" onChange={e => setReceiptFile(e.target.files?.[0] || null)} />
-                <div
-                  onClick={() => receiptInputRef.current?.click()}
-                  className="mt-1 border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary/50 transition-colors"
-                >
+                <div onClick={() => receiptInputRef.current?.click()} className="mt-1 border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary/50 transition-colors">
                   {receiptFile ? (
                     <div className="flex items-center justify-center gap-2 text-sm text-foreground">
-                      <ImageIcon className="h-4 w-4 text-primary" />
-                      <span>{receiptFile.name}</span>
-                      <Badge variant="secondary" className="text-xs">{(receiptFile.size / 1024).toFixed(0)} KB</Badge>
+                      <ImageIcon className="h-4 w-4 text-primary" /> <span>{receiptFile.name}</span> <Badge variant="secondary" className="text-xs">{(receiptFile.size / 1024).toFixed(0)} KB</Badge>
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center gap-1 text-muted-foreground">
-                      <Upload className="h-5 w-5" />
-                      <span className="text-xs">Click to upload receipt screenshot</span>
-                    </div>
+                    <div className="flex flex-col items-center gap-1 text-muted-foreground"><Upload className="h-5 w-5" /><span className="text-xs">Click to upload receipt screenshot</span></div>
                   )}
                 </div>
               </div>
 
-              <div>
-                <Label>Notes (optional)</Label>
-                <Textarea
-                  placeholder="Any remarks about this payment..."
-                  value={payForm.notes}
-                  onChange={e => setPayForm(f => ({ ...f, notes: e.target.value }))}
-                  className="h-16"
-                />
-              </div>
+              <div><Label>Notes (optional)</Label><Textarea placeholder="Any remarks about this payment..." value={payForm.notes} onChange={e => setPayForm(f => ({ ...f, notes: e.target.value }))} className="h-16" /></div>
             </div>
 
             <DialogFooter>
               <Button variant="outline" onClick={() => setBulkPayOpen(false)}>Cancel</Button>
               <Button onClick={() => bulkPayMutation.mutate()} disabled={bulkPayMutation.isPending || !amountForeign}>
-                {bulkPayMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                Confirm Payment
+                {bulkPayMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Confirm Payment
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* ─── Edit Invoice Modal ───────────────────────────────────── */}
+        <Dialog open={!!editInvoiceData} onOpenChange={() => setEditInvoiceData(null)}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Edit Invoice</DialogTitle>
+              <DialogDescription>Adjust amount, due date, or billing month for this pending invoice.</DialogDescription>
+            </DialogHeader>
+            {editInvoiceData && (
+              <div className="space-y-4 py-2">
+                <div><Label>Amount</Label><Input type="number" value={editInvoiceData.amount} onChange={e => setEditInvoiceData(d => d ? { ...d, amount: e.target.value } : null)} /></div>
+                <div><Label>Due Date</Label><Input type="date" value={editInvoiceData.due_date} onChange={e => setEditInvoiceData(d => d ? { ...d, due_date: e.target.value } : null)} /></div>
+                <div>
+                  <Label>Billing Month</Label>
+                  <Select value={editInvoiceData.billing_month} onValueChange={v => setEditInvoiceData(d => d ? { ...d, billing_month: v } : null)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{monthOptions.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditInvoiceData(null)}>Cancel</Button>
+              <Button onClick={() => editInvoiceData && editInvoiceMutation.mutate({ id: editInvoiceData.id, amount: parseFloat(editInvoiceData.amount) || 0, due_date: editInvoiceData.due_date, billing_month: editInvoiceData.billing_month })} disabled={editInvoiceMutation.isPending}>
+                {editInvoiceMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Save
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* ─── Delete Invoice Confirmation ────────────────────────── */}
+        <Dialog open={!!deleteInvoiceId} onOpenChange={() => setDeleteInvoiceId(null)}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-destructive"><AlertTriangle className="h-5 w-5" /> Delete Invoice</DialogTitle>
+              <DialogDescription>This will permanently delete this invoice. This action cannot be undone.</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeleteInvoiceId(null)}>Cancel</Button>
+              <Button variant="destructive" onClick={() => deleteInvoiceId && deleteInvoiceMutation.mutate(deleteInvoiceId)} disabled={deleteInvoiceMutation.isPending}>
+                {deleteInvoiceMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Delete
               </Button>
             </DialogFooter>
           </DialogContent>
