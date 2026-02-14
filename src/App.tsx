@@ -33,6 +33,7 @@ import Courses from "./pages/Courses";
 import OrganizationSettings from "./pages/OrganizationSettings";
 import FinanceSetup from "./pages/FinanceSetup";
 import SelectDivision from "./pages/SelectDivision";
+import PrintReport from "./pages/PrintReport";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -250,6 +251,8 @@ function AppRoutes() {
           })()}
         </ProtectedRoute>
       } />
+      {/* Printable Report Route - standalone, no layout */}
+      <Route path="/reports/print/:reportId" element={<ProtectedRoute><PrintReport /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
