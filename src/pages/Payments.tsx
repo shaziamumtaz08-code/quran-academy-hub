@@ -104,7 +104,7 @@ const getStatusBadge = (status: string) => {
     case 'voided':
       return <Badge className="bg-destructive/10 text-destructive border-destructive/20 gap-1"><FileX className="h-3 w-3" /> Voided</Badge>;
     default:
-      return <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" /> Pending</Badge>;
+      return <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" /> Pay</Badge>;
   }
 };
 
@@ -890,7 +890,7 @@ export default function Payments() {
                       <TableHead className="text-right">Paid</TableHead>
                       <TableHead>Due Date</TableHead>
                       <TableHead className="text-center">Status</TableHead>
-                      <TableHead className="text-center w-[160px]">Actions</TableHead>
+                      <TableHead className="text-center w-[160px]">Manage</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
