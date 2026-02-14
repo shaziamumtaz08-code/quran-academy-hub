@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Package, Percent, Plus, Pencil, Trash2, Loader2, DollarSign, Tag } from 'lucide-react';
+import { Package, Percent, Plus, Pencil, Trash2, Loader2, DollarSign, Tag, Copy } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,12 +19,11 @@ import { useDivision } from '@/contexts/DivisionContext';
 interface FeePackage {
   id: string;
   name: string;
-  subject_id: string | null;
   amount: number;
   currency: string;
   billing_cycle: string;
+  days_per_week: number;
   is_active: boolean;
-  subjects?: { name: string } | null;
 }
 
 interface DiscountRule {
@@ -36,11 +35,7 @@ interface DiscountRule {
 }
 
 const CURRENCIES = ['USD', 'GBP', 'PKR', 'EUR', 'AED', 'SAR', 'CAD', 'AUD'];
-const BILLING_CYCLES = [
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'quarterly', label: 'Quarterly' },
-  { value: 'one_time', label: 'One-time' },
-];
+const DAYS_PER_WEEK_OPTIONS = [2, 3, 4, 5, 6];
 
 // ─── Fee Packages Tab ────────────────────────────────────────────────
 function FeePackagesTab() {
@@ -51,14 +46,14 @@ function FeePackagesTab() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPkg, setEditingPkg] = useState<FeePackage | null>(null);
-  const [form, setForm] = useState({ name: '', subject_id: '', amount: '', currency: 'USD', billing_cycle: 'monthly' });
+  const [form, setForm] = useState({ name: '', amount: '', currency: 'USD', days_per_week: '5' });
 
   const { data: packages = [], isLoading } = useQuery({
     queryKey: ['fee-packages', activeBranchId, activeDivisionId],
     queryFn: async () => {
       let q = supabase
         .from('fee_packages')
-        .select('id, name, subject_id, amount, currency, billing_cycle, is_active, subjects(name)')
+        .select('id, name, amount, currency, billing_cycle, days_per_week, is_active')
         .order('created_at', { ascending: false });
       if (activeBranchId) q = q.eq('branch_id', activeBranchId);
       if (activeDivisionId) q = q.eq('division_id', activeDivisionId);
@@ -69,23 +64,14 @@ function FeePackagesTab() {
     enabled: !!activeBranchId,
   });
 
-  const { data: subjects = [] } = useQuery({
-    queryKey: ['subjects-list'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('subjects').select('id, name').eq('is_active', true).order('name');
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
   const saveMutation = useMutation({
     mutationFn: async () => {
       const payload = {
         name: form.name,
-        subject_id: form.subject_id || null,
         amount: parseFloat(form.amount) || 0,
         currency: form.currency,
-        billing_cycle: form.billing_cycle as any,
+        days_per_week: parseInt(form.days_per_week) || 5,
+        billing_cycle: 'monthly' as any,
         branch_id: activeBranchId,
         division_id: activeDivisionId,
       };
@@ -127,7 +113,7 @@ function FeePackagesTab() {
 
   const openCreate = () => {
     setEditingPkg(null);
-    setForm({ name: '', subject_id: '', amount: '', currency: 'USD', billing_cycle: 'monthly' });
+    setForm({ name: '', amount: '', currency: 'USD', days_per_week: '5' });
     setDialogOpen(true);
   };
 
@@ -135,10 +121,20 @@ function FeePackagesTab() {
     setEditingPkg(pkg);
     setForm({
       name: pkg.name,
-      subject_id: pkg.subject_id || '',
       amount: pkg.amount.toString(),
       currency: pkg.currency,
-      billing_cycle: pkg.billing_cycle,
+      days_per_week: (pkg.days_per_week || 5).toString(),
+    });
+    setDialogOpen(true);
+  };
+
+  const openDuplicate = (pkg: FeePackage) => {
+    setEditingPkg(null);
+    setForm({
+      name: `${pkg.name} (Copy)`,
+      amount: pkg.amount.toString(),
+      currency: pkg.currency,
+      days_per_week: (pkg.days_per_week || 5).toString(),
     });
     setDialogOpen(true);
   };
@@ -169,9 +165,9 @@ function FeePackagesTab() {
             <TableHeader>
               <TableRow>
                 <TableHead>Package Name</TableHead>
-                <TableHead>Subject</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead>Cycle</TableHead>
+                <TableHead>Days/Week</TableHead>
+                <TableHead className="text-right">Base Amount (30-Min)</TableHead>
+                <TableHead>Currency</TableHead>
                 <TableHead className="text-center">Active</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -181,17 +177,13 @@ function FeePackagesTab() {
                 <TableRow key={pkg.id}>
                   <TableCell className="font-medium">{pkg.name}</TableCell>
                   <TableCell>
-                    {pkg.subjects?.name ? (
-                      <Badge variant="secondary">{pkg.subjects.name}</Badge>
-                    ) : (
-                      <span className="text-muted-foreground text-sm">—</span>
-                    )}
+                    <Badge variant="outline">{pkg.days_per_week || 5} days</Badge>
                   </TableCell>
                   <TableCell className="text-right font-mono font-semibold">
-                    {pkg.currency} {Number(pkg.amount).toLocaleString()}
+                    {Number(pkg.amount).toLocaleString()}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="capitalize">{pkg.billing_cycle.replace('_', '-')}</Badge>
+                    <Badge variant="secondary">{pkg.currency}</Badge>
                   </TableCell>
                   <TableCell className="text-center">
                     <Switch
@@ -201,8 +193,9 @@ function FeePackagesTab() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(pkg)}><Pencil className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => deleteMutation.mutate(pkg.id)}><Trash2 className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => openDuplicate(pkg)} title="Duplicate"><Copy className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(pkg)} title="Edit"><Pencil className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => deleteMutation.mutate(pkg.id)} title="Delete"><Trash2 className="h-4 w-4" /></Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -212,7 +205,6 @@ function FeePackagesTab() {
         </div>
       )}
 
-      {/* Create / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -222,20 +214,11 @@ function FeePackagesTab() {
           <div className="space-y-4 py-2">
             <div>
               <Label>Package Name</Label>
-              <Input placeholder="e.g. Nazra Standard USD" value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} />
-            </div>
-            <div>
-              <Label>Subject</Label>
-              <Select value={form.subject_id} onValueChange={(v) => setForm(f => ({ ...f, subject_id: v }))}>
-                <SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger>
-                <SelectContent>
-                  {subjects.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Input placeholder="e.g. USA - 5 Days/Week" value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Amount</Label>
+                <Label>Base Amount (30-Min)</Label>
                 <Input type="number" placeholder="0.00" value={form.amount} onChange={(e) => setForm(f => ({ ...f, amount: e.target.value }))} />
               </div>
               <div>
@@ -249,11 +232,11 @@ function FeePackagesTab() {
               </div>
             </div>
             <div>
-              <Label>Billing Cycle</Label>
-              <Select value={form.billing_cycle} onValueChange={(v) => setForm(f => ({ ...f, billing_cycle: v }))}>
+              <Label>Days per Week</Label>
+              <Select value={form.days_per_week} onValueChange={(v) => setForm(f => ({ ...f, days_per_week: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {BILLING_CYCLES.map((bc) => <SelectItem key={bc.value} value={bc.value}>{bc.label}</SelectItem>)}
+                  {DAYS_PER_WEEK_OPTIONS.map((d) => <SelectItem key={d} value={d.toString()}>{d} days/week</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -355,6 +338,12 @@ function DiscountRulesTab() {
     setDialogOpen(true);
   };
 
+  const openDuplicate = (rule: DiscountRule) => {
+    setEditingRule(null);
+    setForm({ name: `${rule.name} (Copy)`, type: rule.type, value: rule.value.toString() });
+    setDialogOpen(true);
+  };
+
   const closeDialog = () => {
     setDialogOpen(false);
     setEditingRule(null);
@@ -408,8 +397,9 @@ function DiscountRulesTab() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(rule)}><Pencil className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => deleteMutation.mutate(rule.id)}><Trash2 className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => openDuplicate(rule)} title="Duplicate"><Copy className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => openEdit(rule)} title="Edit"><Pencil className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => deleteMutation.mutate(rule.id)} title="Delete"><Trash2 className="h-4 w-4" /></Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -419,7 +409,6 @@ function DiscountRulesTab() {
         </div>
       )}
 
-      {/* Create / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

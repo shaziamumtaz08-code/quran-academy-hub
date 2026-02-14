@@ -2,12 +2,15 @@ import React, { useState, useMemo } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Users, GraduationCap, Trash2, Loader2, UserPlus, BookOpen, Pencil, Upload, Filter, ArrowRightLeft } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { Users, GraduationCap, Trash2, Loader2, UserPlus, BookOpen, Pencil, Upload, Filter, ArrowRightLeft, Wallet } from 'lucide-react';
+import { BillingCalculator } from '@/components/finance/BillingCalculator';
 import { TableToolbar } from '@/components/ui/table-toolbar';
 import {
   Dialog,
@@ -67,6 +70,12 @@ export default function Assignments() {
   const [sortMode, setSortMode] = useState<'az' | 'za' | 'newest'>('az');
   const [reassignDialog, setReassignDialog] = useState<Assignment | null>(null);
   const [reassignTeacherId, setReassignTeacherId] = useState('');
+  // Billing state
+  const [selectedFeePackageId, setSelectedFeePackageId] = useState('');
+  const [selectedDuration, setSelectedDuration] = useState('30');
+  const [selectedDiscountId, setSelectedDiscountId] = useState('');
+  const [billingStartDate, setBillingStartDate] = useState('');
+  const [overriddenProrated, setOverriddenProrated] = useState<number | null>(null);
 
   // Fetch teachers
   const { data: teachers = [], isLoading: loadingTeachers } = useQuery({
@@ -135,6 +144,33 @@ export default function Assignments() {
     },
   });
 
+  // Fetch fee packages
+  const { data: feePackages = [] } = useQuery({
+    queryKey: ['fee-packages-active'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('fee_packages')
+        .select('id, name, amount, currency, days_per_week')
+        .eq('is_active', true)
+        .order('name');
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Fetch discount rules
+  const { data: discountRules = [] } = useQuery({
+    queryKey: ['discount-rules-active'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('discount_rules')
+        .select('id, name, type, value')
+        .eq('is_active', true)
+        .order('name');
+      if (error) throw error;
+      return data || [];
+    },
+  });
   // Fetch existing assignments
   const { data: assignments = [], isLoading: loadingAssignments } = useQuery({
     queryKey: ['student-teacher-assignments', activeDivision?.id],
@@ -173,6 +209,31 @@ export default function Assignments() {
     },
   });
 
+  // Derived billing objects
+  const selectedFeePackage = feePackages.find(p => p.id === selectedFeePackageId) || null;
+  const selectedDiscount = discountRules.find(d => d.id === selectedDiscountId) || null;
+
+  // Calculate fees for saving
+  const computedFees = useMemo(() => {
+    if (!selectedFeePackage) return { monthly: 0, prorated: 0 };
+    const durationMultiplier = parseInt(selectedDuration) / 30;
+    let monthly = selectedFeePackage.amount * durationMultiplier;
+    if (selectedDiscount) {
+      const disc = selectedDiscount.type === 'percentage'
+        ? monthly * (selectedDiscount.value / 100)
+        : selectedDiscount.value;
+      monthly = Math.max(0, monthly - disc);
+    }
+    let prorated = monthly;
+    if (billingStartDate) {
+      const start = new Date(billingStartDate);
+      const daysInMonth = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
+      const remaining = daysInMonth - start.getDate() + 1;
+      prorated = (monthly / daysInMonth) * remaining;
+    }
+    return { monthly: Math.round(monthly * 100) / 100, prorated: Math.round(prorated * 100) / 100 };
+  }, [selectedFeePackage, selectedDuration, selectedDiscount, billingStartDate]);
+
   // Create assignments mutation
   const createMutation = useMutation({
     mutationFn: async ({ 
@@ -188,6 +249,13 @@ export default function Assignments() {
         teacher_id: teacherId,
         student_id: studentId,
         subject_id: subjectId || null,
+        fee_package_id: selectedFeePackageId || null,
+        duration_minutes: parseInt(selectedDuration) || 30,
+        discount_id: selectedDiscountId || null,
+        start_date: billingStartDate || null,
+        calculated_monthly_fee: computedFees.monthly,
+        first_month_prorated_fee: overriddenProrated ?? computedFees.prorated,
+        is_custom_override: overriddenProrated !== null,
       }));
 
       const { error } = await supabase
@@ -206,6 +274,11 @@ export default function Assignments() {
       setSelectedTeacher('');
       setSelectedStudents([]);
       setSelectedSubject('');
+      setSelectedFeePackageId('');
+      setSelectedDuration('30');
+      setSelectedDiscountId('');
+      setBillingStartDate('');
+      setOverriddenProrated(null);
     },
     onError: (error: any) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -482,6 +555,75 @@ export default function Assignments() {
                 </div>
                 {selectedStudents.length > 0 && (
                   <p className="text-xs text-muted-foreground">{selectedStudents.length} student(s) selected</p>
+                )}
+              </div>
+
+              {/* Finance & Billing Section */}
+              <Separator />
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Wallet className="h-4 w-4" />
+                  Finance & Billing
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Fee Package</Label>
+                    <Select value={selectedFeePackageId} onValueChange={setSelectedFeePackageId}>
+                      <SelectTrigger><SelectValue placeholder="Select package..." /></SelectTrigger>
+                      <SelectContent>
+                        {feePackages.map((pkg) => (
+                          <SelectItem key={pkg.id} value={pkg.id}>
+                            {pkg.name} ({pkg.currency} {pkg.amount})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Session Duration</Label>
+                    <Select value={selectedDuration} onValueChange={setSelectedDuration}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="30">30 Minutes</SelectItem>
+                        <SelectItem value="45">45 Minutes</SelectItem>
+                        <SelectItem value="60">60 Minutes</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Apply Discount</Label>
+                    <Select value={selectedDiscountId} onValueChange={(v) => setSelectedDiscountId(v === 'none' ? '' : v)}>
+                      <SelectTrigger><SelectValue placeholder="No discount" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No Discount</SelectItem>
+                        {discountRules.map((d) => (
+                          <SelectItem key={d.id} value={d.id}>
+                            {d.name} ({d.type === 'percentage' ? `${d.value}%` : d.value})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Start Date</Label>
+                    <Input
+                      type="date"
+                      value={billingStartDate}
+                      onChange={(e) => setBillingStartDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+                {selectedFeePackage && (
+                  <BillingCalculator
+                    feePackage={selectedFeePackage}
+                    durationMinutes={parseInt(selectedDuration)}
+                    discount={selectedDiscount}
+                    startDate={billingStartDate}
+                    overriddenProrated={overriddenProrated}
+                    onOverrideChange={setOverriddenProrated}
+                  />
                 )}
               </div>
 
