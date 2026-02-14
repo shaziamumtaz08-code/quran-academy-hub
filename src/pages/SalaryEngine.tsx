@@ -48,6 +48,7 @@ interface StudentPayoutRow {
   absentCount: number;
   leaveCount: number;
   rescheduledCount: number;
+  holidayCount: number;
   missingCount: number;
   feeStatus: string;
   lastPaymentDate: string | null;
@@ -86,7 +87,10 @@ export default function SalaryEngine() {
 
   const [year, month] = salaryMonth.split('-').map(Number);
   const monthStart = `${salaryMonth}-01`;
-  const monthEnd = format(endOfMonth(parseISO(monthStart)), 'yyyy-MM-dd');
+  const fullMonthEnd = format(endOfMonth(parseISO(monthStart)), 'yyyy-MM-dd');
+  const today = format(new Date(), 'yyyy-MM-dd');
+  // For current/future months, cap at yesterday so we don't count future "not marked" days
+  const monthEnd = today < fullMonthEnd ? today : fullMonthEnd;
   const daysInMonth = new Date(year, month, 0).getDate();
   const allDatesInMonth = eachDayOfInterval({ start: parseISO(monthStart), end: parseISO(monthEnd) });
 
@@ -184,6 +188,17 @@ export default function SalaryEngine() {
     },
   });
 
+  const { data: schedules = [] } = useQuery({
+    queryKey: ['schedules-salary', salaryMonth],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('schedules')
+        .select('assignment_id, day_of_week')
+        .eq('is_active', true);
+      return data || [];
+    },
+  });
+
   // ── Calculation Engine ──
 
   const salaryData: TeacherSalaryRow[] = useMemo(() => {
@@ -228,16 +243,23 @@ export default function SalaryEngine() {
         const attendanceMap = new Map<string, string>();
         studentAttendance.forEach((a: any) => attendanceMap.set(a.class_date, a.status));
 
+        // Determine scheduled days of week for this assignment
+        const assignSchedules = schedules.filter((s: any) => s.assignment_id === assign.id);
+        const scheduledDays = new Set(assignSchedules.map((s: any) => s.day_of_week?.toLowerCase()));
+
         const attendanceDays = allDatesInMonth
           .filter(d => d >= fromDate && d <= toDate)
           .map(d => {
             const dateStr = format(d, 'yyyy-MM-dd');
             const attStatus = attendanceMap.get(dateStr);
+            const dayName = format(d, 'EEEE').toLowerCase();
             let status = 'none';
             if (attStatus === 'present' || attStatus === 'late') status = 'present';
             else if (attStatus === 'absent') status = 'absent';
             else if (attStatus === 'rescheduled') status = 'rescheduled';
             else if (leaveDateSet.has(dateStr)) status = 'leave';
+            else if (scheduledDays.size > 0 && !scheduledDays.has(dayName)) status = 'holiday';
+            // else remains 'none' (not marked on a scheduled day)
             return { date: dateStr, status };
           });
 
@@ -245,6 +267,7 @@ export default function SalaryEngine() {
         const absentCount = attendanceDays.filter(d => d.status === 'absent').length;
         const leaveCount = attendanceDays.filter(d => d.status === 'leave').length;
         const rescheduledCount = attendanceDays.filter(d => d.status === 'rescheduled').length;
+        const holidayCount = attendanceDays.filter(d => d.status === 'holiday').length;
         const missingCount = attendanceDays.filter(d => d.status === 'none').length;
 
         let calculatedAmount = 0;
@@ -273,6 +296,7 @@ export default function SalaryEngine() {
           absentCount,
           leaveCount,
           rescheduledCount,
+          holidayCount,
           missingCount,
           feeStatus: studentFee?.status || 'no_invoice',
           lastPaymentDate: studentFee?.paid_at || null,
@@ -300,7 +324,7 @@ export default function SalaryEngine() {
         payoutStatus: existingPayout?.status || 'draft',
       };
     }).filter(t => t.students.length > 0);
-  }, [teachers, assignments, attendance, leaveEvents, extraClasses, salaryAdjustments, existingPayouts, feeInvoices, salaryMonth, editAmounts, daysInMonth, allDatesInMonth, monthStart, monthEnd]);
+  }, [teachers, assignments, attendance, leaveEvents, extraClasses, salaryAdjustments, existingPayouts, feeInvoices, schedules, salaryMonth, editAmounts, daysInMonth, allDatesInMonth, monthStart, monthEnd]);
 
   const filteredData = useMemo(() => {
     if (!searchQuery) return salaryData;
