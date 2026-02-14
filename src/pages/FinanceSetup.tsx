@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Package, Percent, Plus, Pencil, Trash2, Loader2, DollarSign, Tag, Copy } from 'lucide-react';
+import { Package, Percent, Plus, Pencil, Trash2, Loader2, DollarSign, Tag, Copy, Upload, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -198,16 +198,82 @@ function FeePackagesTab() {
     setEditingPkg(null);
   };
 
+  // CSV Import logic
+  const csvInputRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+
+  const downloadTemplate = () => {
+    const csv = 'Name,Amount,Currency,Days Per Week\nUSA - 5 Days,45,USD,5\n';
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'fee_packages_template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCsvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const lines = text.split(/\r?\n/).filter((l) => l.trim());
+      if (lines.length < 2) throw new Error('CSV must have a header row and at least one data row.');
+
+      const rows = lines.slice(1).map((line) => {
+        const cols = line.split(',').map((c) => c.trim());
+        if (cols.length < 4) throw new Error(`Invalid row: "${line}". Expected 4 columns.`);
+        const amount = parseFloat(cols[1]);
+        const days = parseInt(cols[3], 10);
+        if (isNaN(amount) || isNaN(days)) throw new Error(`Invalid number in row: "${line}".`);
+        return {
+          name: cols[0],
+          amount,
+          currency: cols[2],
+          days_per_week: days,
+          billing_cycle: 'monthly' as any,
+          is_active: true,
+          branch_id: activeBranchId,
+          division_id: activeDivisionId,
+        };
+      }).filter((r) => r.name);
+
+      if (rows.length === 0) throw new Error('No valid rows found in CSV.');
+
+      const { error } = await supabase.from('fee_packages').insert(rows);
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ['fee-packages'] });
+      toast({ title: `Successfully imported ${rows.length} fee packages.` });
+    } catch (err: any) {
+      toast({ title: 'Import failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setImporting(false);
+      if (csvInputRef.current) csvInputRef.current.value = '';
+    }
+  };
+
   return (
     <>
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-muted-foreground">{packages.length} package(s) configured</p>
         <div className="flex items-center gap-2">
+          <input ref={csvInputRef} type="file" accept=".csv" className="hidden" onChange={handleCsvUpload} />
+          <Button onClick={() => csvInputRef.current?.click()} size="sm" variant="outline" className="gap-2" disabled={importing}>
+            {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Import CSV
+          </Button>
           <Button onClick={() => seedMutation.mutate()} size="sm" variant="outline" className="gap-2 border-primary/50 text-primary hover:bg-primary/10" disabled={seeding || seedMutation.isPending}>
             {seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <span>⚡</span>} Auto-Load Excel Matrix
           </Button>
           <Button onClick={openCreate} size="sm" className="gap-2"><Plus className="h-4 w-4" /> Create Package</Button>
         </div>
+      </div>
+      <div className="flex justify-end mb-2">
+        <button onClick={downloadTemplate} className="text-xs text-muted-foreground hover:text-primary underline flex items-center gap-1">
+          <Download className="h-3 w-3" /> Download CSV Template
+        </button>
       </div>
 
       {isLoading ? (
