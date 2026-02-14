@@ -37,7 +37,7 @@ const now = new Date();
 const currentBillingMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 const currentMonthLabel = MONTHS[now.getMonth()]?.label ?? '';
 const DURATION_OPTIONS = [30, 45, 60, 90];
-const PAYMENT_METHODS = ['Bank Transfer', 'Western Union', 'Remitly', 'Cash', 'Other'];
+const RECEIVING_CHANNELS = ['Bank Account', 'JazzCash', 'EasyPaisa', 'Western Union', 'Remitly', 'Cash', 'Other'];
 
 const getDefaultPeriodDates = (billingMonth: string) => {
   try {
@@ -1225,11 +1225,11 @@ export default function Payments() {
                     <Input type="date" value={payForm.payment_date} onChange={e => setPayForm(f => ({ ...f, payment_date: e.target.value }))} />
                   </div>
                   <div>
-                    <Label className="text-sm">Payment Method</Label>
+                    <Label className="text-sm">Receiving Channel</Label>
                     <Select value={payForm.payment_method} onValueChange={v => setPayForm(f => ({ ...f, payment_method: v }))}>
-                      <SelectTrigger><SelectValue placeholder="Select method..." /></SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder="Select channel..." /></SelectTrigger>
                       <SelectContent>
-                        {PAYMENT_METHODS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                        {RECEIVING_CHANNELS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
