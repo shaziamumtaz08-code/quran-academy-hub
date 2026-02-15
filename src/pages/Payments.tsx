@@ -468,7 +468,9 @@ export default function Payments() {
 
   const generateMutation = useMutation({
     mutationFn: async () => {
-      const { data: existing } = await supabase.from('fee_invoices').select('plan_id, assignment_id').eq('billing_month', currentBillingMonth);
+      const targetMonth = monthFilter;
+      const targetLabel = MONTHS.find(m => m.value === targetMonth)?.label || targetMonth;
+      const { data: existing } = await supabase.from('fee_invoices').select('plan_id, assignment_id').eq('billing_month', targetMonth);
       const existingPlanIds = new Set((existing || []).filter(e => e.plan_id).map(e => e.plan_id));
       const existingAssignmentIds = new Set((existing || []).filter(e => e.assignment_id).map(e => e.assignment_id));
       const newInvoices: any[] = [];
@@ -479,7 +481,7 @@ export default function Payments() {
       const { data: plans } = await pq;
       (plans || []).forEach((p: any) => {
         if (!existingPlanIds.has(p.id) && p.net_recurring_fee > 0) {
-          newInvoices.push({ plan_id: p.id, student_id: p.student_id, amount: p.net_recurring_fee, currency: p.currency, billing_month: currentBillingMonth, due_date: `${currentBillingMonth}-10`, branch_id: p.branch_id, division_id: p.division_id });
+          newInvoices.push({ plan_id: p.id, student_id: p.student_id, amount: p.net_recurring_fee, currency: p.currency, billing_month: targetMonth, due_date: `${targetMonth}-10`, branch_id: p.branch_id, division_id: p.division_id });
         }
       });
 
@@ -490,20 +492,20 @@ export default function Payments() {
       const planStudentIds = new Set(newInvoices.map(i => i.student_id));
       (assignments || []).forEach((a: any) => {
         if (!existingAssignmentIds.has(a.id) && a.calculated_monthly_fee && !planStudentIds.has(a.student_id)) {
-          const isFirstMonth = a.start_date && a.start_date.startsWith(currentBillingMonth);
+          const isFirstMonth = a.start_date && a.start_date.startsWith(targetMonth);
           const amount = isFirstMonth && a.first_month_prorated_fee ? a.first_month_prorated_fee : a.calculated_monthly_fee;
-          newInvoices.push({ assignment_id: a.id, student_id: a.student_id, amount, currency: a.fee_packages?.currency || 'USD', billing_month: currentBillingMonth, due_date: `${currentBillingMonth}-10`, branch_id: a.branch_id, division_id: a.division_id });
+          newInvoices.push({ assignment_id: a.id, student_id: a.student_id, amount, currency: a.fee_packages?.currency || 'USD', billing_month: targetMonth, due_date: `${targetMonth}-10`, branch_id: a.branch_id, division_id: a.division_id });
         }
       });
 
       if (newInvoices.length === 0) throw new Error('All invoices for this month already exist');
       const { error } = await supabase.from('fee_invoices').insert(newInvoices);
       if (error) throw error;
-      return newInvoices.length;
+      return { count: newInvoices.length, label: targetLabel };
     },
-    onSuccess: (count) => {
+    onSuccess: ({ count, label }) => {
       queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
-      toast({ title: `Successfully generated ${count} invoices for ${currentMonthLabel}.` });
+      toast({ title: `Successfully generated ${count} invoices for ${label}.` });
     },
     onError: (e: any) => toast({ title: 'Generation failed', description: e.message, variant: 'destructive' }),
   });
