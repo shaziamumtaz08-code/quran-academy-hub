@@ -9,7 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Users, GraduationCap, Trash2, Loader2, UserPlus, BookOpen, Pencil, Upload, ArrowRightLeft, Banknote, Eye } from 'lucide-react';
+import { Users, GraduationCap, Trash2, Loader2, UserPlus, BookOpen, Pencil, Upload, ArrowRightLeft, Banknote, Eye, Download } from 'lucide-react';
 import { TableToolbar } from '@/components/ui/table-toolbar';
 import {
   Dialog,
@@ -25,6 +25,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
 import { BulkAssignmentImportDialog } from '@/components/assignments/BulkAssignmentImportDialog';
 import { Textarea } from '@/components/ui/textarea';
+import { formatDisplayDate } from '@/lib/dateFormat';
 
 const STATUS_CONFIG = {
   active: { label: 'Active', color: 'bg-emerald-500', badgeClass: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' },
@@ -424,6 +425,35 @@ export default function Assignments() {
     setStatusFilter('active');
   };
 
+  const exportAssignments = () => {
+    if (filteredAssignments.length === 0) {
+      toast({ title: 'Nothing to export', description: 'No assignments match current filters.', variant: 'destructive' });
+      return;
+    }
+    const headers = ['Student', 'Teacher', 'Subject', 'Status', 'Payout Amount', 'Payout Type', 'Effective From', 'Created'];
+    const rows = filteredAssignments.map(a => [
+      a.student_name,
+      a.teacher_name,
+      a.subject_name || '',
+      a.status,
+      a.payout_amount,
+      a.payout_type,
+      a.effective_from_date || '',
+      a.created_at ? formatDisplayDate(a.created_at) : '',
+    ]);
+    const csvContent = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `assignments_export_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast({ title: `Exported ${filteredAssignments.length} assignments` });
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
@@ -433,10 +463,16 @@ export default function Assignments() {
             <h1 className="font-serif text-3xl font-bold text-foreground">Student–Teacher Assignment</h1>
             <p className="text-muted-foreground mt-1">Academic assignments & teacher payout configuration</p>
           </div>
-          <Button onClick={() => setIsBulkImportOpen(true)} variant="outline">
-            <Upload className="h-4 w-4 mr-2" />
-            Bulk Import
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={exportAssignments} variant="outline">
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </Button>
+            <Button onClick={() => setIsBulkImportOpen(true)} variant="outline">
+              <Upload className="h-4 w-4 mr-2" />
+              Bulk Import
+            </Button>
+          </div>
         </div>
 
         <BulkAssignmentImportDialog open={isBulkImportOpen} onOpenChange={setIsBulkImportOpen} />
