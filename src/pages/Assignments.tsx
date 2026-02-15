@@ -31,6 +31,7 @@ const STATUS_CONFIG = {
   active: { label: 'Active', color: 'bg-emerald-500', badgeClass: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' },
   paused: { label: 'Paused', color: 'bg-amber-500', badgeClass: 'bg-amber-500/10 text-amber-600 border-amber-500/20' },
   completed: { label: 'Completed', color: 'bg-slate-400', badgeClass: 'bg-slate-400/10 text-slate-600 border-slate-400/20' },
+  left: { label: 'Left', color: 'bg-rose-600', badgeClass: 'bg-rose-600/10 text-rose-600 border-rose-600/20' },
 } as const;
 
 interface Profile {
@@ -43,7 +44,7 @@ interface Subject {
   name: string;
 }
 
-type AssignmentStatus = 'active' | 'paused' | 'completed';
+type AssignmentStatus = 'active' | 'paused' | 'completed' | 'left';
 
 interface Assignment {
   id: string;
@@ -282,10 +283,20 @@ export default function Assignments() {
         .update({ status })
         .eq('id', id);
       if (error) throw error;
+
+      // If marking as 'left', also clear schedules and close assignment history
+      if (status === 'left') {
+        await supabase.from('schedules').delete().eq('assignment_id', id);
+        await supabase
+          .from('assignment_history')
+          .update({ ended_at: new Date().toISOString() })
+          .eq('assignment_id', id)
+          .is('ended_at', null);
+      }
     },
-    onSuccess: () => {
+    onSuccess: (_, { status }) => {
       queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
-      toast({ title: 'Updated', description: 'Assignment status updated' });
+      toast({ title: 'Updated', description: status === 'left' ? 'Assignment marked as Left. Schedules cleared.' : 'Assignment status updated' });
     },
     onError: (error: any) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -417,6 +428,7 @@ export default function Assignments() {
     active: assignments.filter(a => a.status === 'active').length,
     paused: assignments.filter(a => a.status === 'paused').length,
     completed: assignments.filter(a => a.status === 'completed').length,
+    left: assignments.filter(a => a.status === 'left').length,
   };
 
   const resetToolbar = () => {
@@ -673,6 +685,7 @@ export default function Assignments() {
                 { value: 'active', label: `Active (${statusCounts.active})` },
                 { value: 'paused', label: `Paused (${statusCounts.paused})` },
                 { value: 'completed', label: `Completed (${statusCounts.completed})` },
+                { value: 'left', label: `Left (${statusCounts.left})` },
               ]}
               filterLabel="Status"
               onReset={resetToolbar}
@@ -771,6 +784,11 @@ export default function Assignments() {
                               <SelectItem value="completed">
                                 <span className="flex items-center gap-2">
                                   <span className="h-2 w-2 rounded-full bg-slate-400" /> Completed
+                                </span>
+                              </SelectItem>
+                              <SelectItem value="left">
+                                <span className="flex items-center gap-2">
+                                  <span className="h-2 w-2 rounded-full bg-rose-600" /> Left
                                 </span>
                               </SelectItem>
                             </SelectContent>
