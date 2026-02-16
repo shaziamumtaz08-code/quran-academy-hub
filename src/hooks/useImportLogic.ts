@@ -158,12 +158,6 @@ export function useImportLogic(type: ImportType, onComplete?: () => void) {
   const executeImport = useCallback(async () => {
     if (!validationRows.length) return;
 
-    const hasErrors = validationRows.some((r) => r.status === "error");
-    if (hasErrors) {
-      toast.error("Cannot import: Please fix all errors first");
-      return;
-    }
-
     setStep("importing");
     setImportProgress(10);
 
@@ -171,6 +165,12 @@ export function useImportLogic(type: ImportType, onComplete?: () => void) {
       const rowsToImport = validationRows.filter(
         (r) => r.status === "new" || r.status === "update" || r.status === "warning"
       );
+
+      if (rowsToImport.length === 0) {
+        toast.error("No valid rows to import");
+        setStep("preview");
+        return;
+      }
 
       setImportProgress(30);
 
@@ -182,7 +182,6 @@ export function useImportLogic(type: ImportType, onComplete?: () => void) {
 
       setImportProgress(100);
       
-      // Extract failed rows for detailed display
       const failedRows = data.results?.filter((r: ImportResultRow) => !r.success) || [];
       
       setImportResults({
@@ -191,9 +190,10 @@ export function useImportLogic(type: ImportType, onComplete?: () => void) {
       });
       setStep("done");
 
-      if (data.summary.failed > 0) {
+      const skippedErrors = validationRows.filter((r) => r.status === "error").length;
+      if (data.summary.failed > 0 || skippedErrors > 0) {
         toast.warning(
-          `Import complete with errors: ${data.summary.created} created, ${data.summary.updated} updated, ${data.summary.failed} failed`
+          `Import complete: ${data.summary.created} created, ${data.summary.updated} updated${skippedErrors > 0 ? `, ${skippedErrors} error rows skipped` : ""}`
         );
       } else {
         toast.success(
@@ -223,12 +223,13 @@ export function useImportLogic(type: ImportType, onComplete?: () => void) {
 
   const canImport =
     validationSummary &&
-    validationSummary.errors === 0 &&
     (validationSummary.new > 0 || validationSummary.updates > 0);
 
   const importCount = validationSummary
     ? validationSummary.new + validationSummary.updates
     : 0;
+
+  const errorRows = validationRows.filter((r) => r.status === "error");
 
   return {
     // State
@@ -240,6 +241,7 @@ export function useImportLogic(type: ImportType, onComplete?: () => void) {
     importResults,
     canImport,
     importCount,
+    errorRows,
     // Actions
     downloadTemplate,
     validateFile,

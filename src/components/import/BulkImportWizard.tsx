@@ -47,6 +47,7 @@ export function BulkImportWizard({
     importResults,
     canImport,
     importCount,
+    errorRows,
     downloadTemplate,
     validateFile,
     executeImport,
@@ -130,8 +131,10 @@ export function BulkImportWizard({
               </Button>
               <Button onClick={executeImport} disabled={!canImport}>
                 {canImport
-                  ? `Import ${importCount} Records`
-                  : "Fix Errors to Import"}
+                  ? validationSummary && validationSummary.errors > 0
+                    ? `Import ${importCount} Valid Records (Skip ${validationSummary.errors} Errors)`
+                    : `Import ${importCount} Records`
+                  : "No Valid Records to Import"}
               </Button>
             </>
           )}
@@ -274,14 +277,36 @@ interface PreviewStepProps {
 }
 
 function PreviewStep({ type, validationSummary, validationRows }: PreviewStepProps) {
+  const errorRows = validationRows.filter((r: any) => r.status === "error");
+  
   return (
     <div className="space-y-4">
       <ImportSummaryCards summary={validationSummary} />
 
       {validationSummary.errors > 0 && (
-        <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 text-sm text-destructive">
-          <strong>⚠️ {validationSummary.errors} error(s) found.</strong> Fix these
-          issues in your CSV and re-upload, or they will be skipped.
+        <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 space-y-2">
+          <div className="text-sm text-destructive">
+            <strong>⚠️ {validationSummary.errors} error(s) found.</strong> These rows will be skipped during import. You can proceed with the {validationSummary.new + validationSummary.updates} valid records.
+          </div>
+          <div className="space-y-1 mt-2">
+            {errorRows.map((row: any) => (
+              <div key={row.rowNum} className="flex items-start gap-2 text-xs bg-background/80 rounded p-2 border border-destructive/20">
+                <span className="font-mono bg-destructive/10 text-destructive px-1.5 py-0.5 rounded shrink-0">
+                  Row {row.rowNum}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <span className="font-medium text-foreground">
+                    {row.data?.student_name || row.data?.full_name || row.data?.email || "Unknown"}
+                  </span>
+                  <div className="text-destructive mt-0.5">
+                    {row.errors?.map((e: string, i: number) => (
+                      <div key={i}>❌ {e}</div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
