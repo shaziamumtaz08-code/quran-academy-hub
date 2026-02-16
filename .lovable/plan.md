@@ -1,69 +1,82 @@
 
 
-## Salary Engine Redesign -- Professional Salary Sheet UI
+## Align Assignment Bulk Import with Export and Enable Partial Updates
+
+### Problem
+The assignment import template only has 4 fields (`student_name, teacher_name, subject_name, guardian_email`) while the export has 8 fields including `Payout Amount`, `Payout Type`, `Effective From`, and `Status`. The edge functions also don't process these fields during validation or execution, making it impossible to bulk-update teacher pay rates.
 
 ### What Changes
 
-**1. Remove "Extra Class" button from Salary Engine header**
-The top-bar buttons will be reduced to only "Leave" and "Adjustment". Extra classes are linked through assignments automatically. Replacement teacher logic stays exclusively in the Assignment Reassign workflow.
+**1. Expand the CSV template to match all importable fields**
 
-**2. Replace expandable rows with a dedicated Salary Sheet view**
-Clicking a teacher name in the summary table opens a full-page styled salary report (dialog/modal) instead of an inline expandable row. This report is designed to be viewable by teachers and downloadable.
-
-**3. Salary Sheet Layout (Professional Report Style)**
-
-```text
-+---------------------------------------------------------------+
-| HEADER SECTION                                                |
-|  Left:  Teacher Name, ID, WhatsApp, Country/City              |
-|         Bank: Account Title, Bank Name, Account #, IBAN       |
-|  Right: Teacher's own attendance snapshot (mini stats)         |
-|         Total Present / Absent / Leave days this month         |
-|         Salary Period dropdown (month selector)                |
-+---------------------------------------------------------------+
-| LEGEND BAR                                                    |
-|  Green=Present  Red=Absent  Yellow=Leave  Grey=Not Marked     |
-+---------------------------------------------------------------+
-| PER-STUDENT ROWS (auto-generated from assignments)            |
-|  Student Name | FROM--TO | Monthly Fee | Due Amt | Final Amt  |
-|  [Attendance dot timeline with color coding]                  |
-|  15/25 days present | 3 absent | 1 leave | 6 not marked      |
-|  Fee Status: PAID or UNPAID (with last payment date)          |
-+---------------------------------------------------------------+
-| ADJUSTMENTS SECTION                                           |
-|  + Add Manual Adjustment (Reason + Amount +/-)                |
-|  Auto-pulled from Expenses module                             |
-|  List: Description | Type | Amount                            |
-+---------------------------------------------------------------+
-| NET SALARY FOOTER                                             |
-|  Base: $XXX | Additions: +$XX | Deductions: -$XX | Net: $XXX |
-|  [Mark Fully Paid] [Mark Partially Paid (with reason input)]  |
-+---------------------------------------------------------------+
+New template format:
+```
+student_name,teacher_name,subject_name,status,payout_amount,payout_type,effective_from,guardian_email
+Fatima Ali,Mohammad Hassan,Hifz,active,2500,monthly,2026-01-01,parent@example.com
 ```
 
-**4. Database: Add bank detail fields to profiles**
-New columns on `profiles` table:
-- `bank_name` (text, nullable)
-- `bank_account_title` (text, nullable)
-- `bank_account_number` (text, nullable)
-- `bank_iban` (text, nullable)
+- `status` -- optional, defaults to "active" for new rows
+- `payout_amount` -- optional numeric field
+- `payout_type` -- optional, "monthly" or "per_class"
+- `effective_from` -- optional date (YYYY-MM-DD or D-Mon-YY format)
+- `guardian_email` -- stays optional, reference only
 
-**5. Fix Expenses page empty-string Select bug**
-The Expenses page has `<SelectItem value="">None</SelectItem>` for teacher and student dropdowns which will crash on Radix. Fix to use `"none"` pattern.
+**2. Update the validation edge function to handle new fields**
 
-**6. Summary table stays clean**
-The main summary table keeps columns: Teacher | Base | Extras | Additions | Deductions | Net | Status | Actions (View Sheet / Save / Pay / Lock). Teacher name is clickable to open the sheet.
+In `bulk-validate-import/index.ts`, the `validateAssignmentRow` function will:
+- Parse and validate `payout_amount` as a number (using locale-aware parsing)
+- Validate `payout_type` against allowed values ("monthly", "per_class")
+- Parse `effective_from` date in multiple formats (YYYY-MM-DD, D-Mon-YY, M/D/YYYY)
+- Validate `status` against allowed values ("active", "paused", "completed", "left")
+- Include these fields in the diff comparison for existing assignments (so updating just payout shows as an "update" row, not "no changes")
+
+**3. Update the execute edge function to write new fields**
+
+In `bulk-import-execute/index.ts`, the assignment section will:
+- Include `payout_amount`, `payout_type`, `effective_from_date`, and `status` in both INSERT (new) and UPDATE (existing) operations
+- Only update fields that are actually provided (non-empty) so admins can upload a CSV with just `student_name, teacher_name, payout_amount` to update pay rates without touching other fields
+
+**4. Update the client-side template generator**
+
+In `useImportLogic.ts`, update the `generateTemplate("assignments")` output to include the new columns with example data.
+
+### Partial Update Workflow
+
+The key user need: "I only want to update teacher pay and effective date for existing records."
+
+This is handled by the upsert logic already in place -- when a row matches an existing assignment (by teacher+student), it becomes an "update" row. The new fields will be included in the diff preview. Admins can:
+1. Export current assignments (already works)
+2. Edit only `payout_amount` and `effective_from` columns in the CSV
+3. Re-import -- the system detects all rows as "update" and shows diffs for changed fields only
+4. Confirm import -- only changed fields are written
 
 ### Technical Details
 
 **Files to modify:**
-- `src/pages/SalaryEngine.tsx` -- Complete UI restructure: remove Extra Class button/modal, replace expandable rows with full salary sheet dialog, add teacher header with bank details, add partial payment support with reason field, downloadable layout
-- `src/pages/Expenses.tsx` -- Fix empty-string SelectItem values (lines 376, 389)
-- Database migration -- Add bank detail columns to `profiles`
 
-**Key UI decisions:**
-- Salary sheet opens as a large dialog (max-w-4xl) with print-friendly styling
-- Color legend uses the requested palette: green (present), red (absent), yellow (leave), grey (not marked)
-- Fee status per student row helps admin identify inactive/unpaid students before issuing salary
-- Partial payment requires mandatory reason text
-- Download button triggers browser print dialog with print-optimized CSS
+1. **`src/hooks/useImportLogic.ts`** -- Update `generateTemplate("assignments")` to include `status, payout_amount, payout_type, effective_from, guardian_email`
+
+2. **`supabase/functions/bulk-validate-import/index.ts`** -- In `validateAssignmentRow`:
+   - Add parsing for `payout_amount` (numeric), `payout_type` (enum), `effective_from` (date), `status` (enum)
+   - Fetch existing assignments with `payout_amount, payout_type, effective_from_date, status` for diff comparison
+   - Include these fields in diff output
+
+3. **`supabase/functions/bulk-import-execute/index.ts`** -- In the assignments section:
+   - Add `payout_amount`, `payout_type`, `effective_from_date`, `status` to both insert and update payloads
+   - Only include fields that have non-null values to support partial updates
+
+**Date parsing helper** (added to validate function):
+```typescript
+function parseFlexibleDate(value: string): string | null {
+  // Supports: 2026-01-01, 1/1/2026, 1-Jan-26
+  // Returns ISO date string or null
+}
+```
+
+**Numeric parsing** (for payout_amount):
+```typescript
+function parseNumericValue(value: string): number | null {
+  // Handles commas, currency symbols, locale formats
+}
+```
+
