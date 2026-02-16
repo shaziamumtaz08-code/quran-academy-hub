@@ -215,6 +215,52 @@ async function validateUserRow(
   };
 }
 
+// Parse flexible date formats: YYYY-MM-DD, D-Mon-YY, M/D/YYYY
+function parseFlexibleDate(value: string): string | null {
+  if (!value || value.trim() === "") return null;
+  const v = value.trim();
+
+  // YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+    const d = new Date(v);
+    if (!isNaN(d.getTime())) return v;
+  }
+
+  // M/D/YYYY or MM/DD/YYYY
+  const slashMatch = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slashMatch) {
+    const [, m, d, y] = slashMatch;
+    const date = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+    if (!isNaN(date.getTime())) return date.toISOString().split("T")[0];
+  }
+
+  // D-Mon-YY or DD-Mon-YY (e.g. 1-Jan-26)
+  const monMatch = v.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{2,4})$/);
+  if (monMatch) {
+    const months: Record<string, number> = {
+      jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+      jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+    };
+    const day = parseInt(monMatch[1]);
+    const mon = months[monMatch[2].toLowerCase()];
+    let year = parseInt(monMatch[3]);
+    if (mon === undefined) return null;
+    if (year < 100) year += 2000;
+    const date = new Date(year, mon, day);
+    if (!isNaN(date.getTime())) return date.toISOString().split("T")[0];
+  }
+
+  return null;
+}
+
+// Parse numeric value (handles commas, currency symbols)
+function parseNumericValue(value: string): number | null {
+  if (!value || value.trim() === "") return null;
+  const cleaned = value.trim().replace(/[,$£€¥₹\s]/g, "");
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? null : num;
+}
+
 // Validate assignment row - NAME is REQUIRED (profile-based identity), email is OPTIONAL hint
 async function validateAssignmentRow(
   row: Record<string, any>,
@@ -233,17 +279,60 @@ async function validateAssignmentRow(
   const teacherName = row.teacher_name?.trim();
   const studentName = row.student_name?.trim();
   const subjectName = row.subject_name?.trim();
-  // Guardian email is OPTIONAL - only used as a reference hint, never for identity resolution
   const guardianEmail = row.guardian_email?.trim()?.toLowerCase();
 
-  // Validate teacher - NAME is REQUIRED (profile-based identity)
+  // Parse new optional fields
+  const rawStatus = row.status?.trim()?.toLowerCase();
+  const rawPayoutAmount = row.payout_amount?.toString()?.trim();
+  const rawPayoutType = row.payout_type?.trim()?.toLowerCase();
+  const rawEffectiveFrom = row.effective_from?.trim();
+
+  // Validate new fields
+  const validStatuses = ["active", "paused", "completed", "left"];
+  let parsedStatus: string | null = null;
+  if (rawStatus && rawStatus !== "" && rawStatus !== "nan") {
+    if (validStatuses.includes(rawStatus)) {
+      parsedStatus = rawStatus;
+    } else {
+      errors.push(`Invalid status: "${rawStatus}". Valid: ${validStatuses.join(", ")}`);
+    }
+  }
+
+  let parsedPayoutAmount: number | null = null;
+  if (rawPayoutAmount && rawPayoutAmount !== "" && rawPayoutAmount.toLowerCase() !== "nan") {
+    parsedPayoutAmount = parseNumericValue(rawPayoutAmount);
+    if (parsedPayoutAmount === null) {
+      errors.push(`Invalid payout_amount: "${rawPayoutAmount}". Must be a number`);
+    } else if (parsedPayoutAmount < 0) {
+      errors.push(`Payout amount cannot be negative: ${parsedPayoutAmount}`);
+    }
+  }
+
+  const validPayoutTypes = ["monthly", "per_class"];
+  let parsedPayoutType: string | null = null;
+  if (rawPayoutType && rawPayoutType !== "" && rawPayoutType !== "nan") {
+    if (validPayoutTypes.includes(rawPayoutType)) {
+      parsedPayoutType = rawPayoutType;
+    } else {
+      errors.push(`Invalid payout_type: "${rawPayoutType}". Valid: ${validPayoutTypes.join(", ")}`);
+    }
+  }
+
+  let parsedEffectiveFrom: string | null = null;
+  if (rawEffectiveFrom && rawEffectiveFrom !== "" && rawEffectiveFrom.toLowerCase() !== "nan") {
+    parsedEffectiveFrom = parseFlexibleDate(rawEffectiveFrom);
+    if (!parsedEffectiveFrom) {
+      errors.push(`Invalid effective_from date: "${rawEffectiveFrom}". Use YYYY-MM-DD, M/D/YYYY, or D-Mon-YY`);
+    }
+  }
+
+  // Validate teacher - NAME is REQUIRED
   let teacherId: string | null = null;
   let resolvedTeacherName: string | null = null;
   
   if (!teacherName) {
     errors.push("Teacher name is required");
   } else {
-    // Find teacher by full_name (profile-based identity)
     const matchingTeachers = allTeachers.filter(
       (t) => t.full_name?.toLowerCase() === teacherName.toLowerCase()
     );
@@ -254,19 +343,17 @@ async function validateAssignmentRow(
       teacherId = matchingTeachers[0].id;
       resolvedTeacherName = matchingTeachers[0].full_name;
     } else {
-      // Multiple teachers with same name - ambiguous
       errors.push(`Ambiguous teacher: Multiple profiles found with name "${teacherName}"`);
     }
   }
 
-  // Validate student - NAME is REQUIRED (profile-based identity)
+  // Validate student - NAME is REQUIRED
   let studentId: string | null = null;
   let resolvedStudentName: string | null = null;
   
   if (!studentName) {
     errors.push("Student name is required");
   } else {
-    // Find student by full_name (profile-based identity)
     const matchingStudents = allStudents.filter(
       (s) => s.full_name?.toLowerCase() === studentName.toLowerCase()
     );
@@ -277,13 +364,11 @@ async function validateAssignmentRow(
       studentId = matchingStudents[0].id;
       resolvedStudentName = matchingStudents[0].full_name;
     } else {
-      // Multiple students with same name - ambiguous (SaaS integrity requirement)
       const ids = matchingStudents.map(s => s.id.substring(0, 8)).join(", ");
       errors.push(`Ambiguous student: Multiple profiles found with name "${studentName}" (IDs: ${ids}...)`);
     }
   }
 
-  // Guardian email is just for reference/hint - log if provided
   if (guardianEmail) {
     warnings.push(`Guardian email "${guardianEmail}" noted for reference`);
   }
@@ -306,8 +391,20 @@ async function validateAssignmentRow(
       status = "update";
       diff = {};
 
-      if (existing.subject_id !== subjectId) {
+      if (existing.subject_id !== subjectId && subjectName) {
         diff.subject = { old: existing.subject_name || "(none)", new: subjectName || "(none)" };
+      }
+      if (parsedStatus !== null && existing.status !== parsedStatus) {
+        diff.status = { old: existing.status, new: parsedStatus };
+      }
+      if (parsedPayoutAmount !== null && existing.payout_amount !== parsedPayoutAmount) {
+        diff.payout_amount = { old: existing.payout_amount ?? "(none)", new: parsedPayoutAmount };
+      }
+      if (parsedPayoutType !== null && existing.payout_type !== parsedPayoutType) {
+        diff.payout_type = { old: existing.payout_type ?? "(none)", new: parsedPayoutType };
+      }
+      if (parsedEffectiveFrom !== null && existing.effective_from_date !== parsedEffectiveFrom) {
+        diff.effective_from = { old: existing.effective_from_date ?? "(none)", new: parsedEffectiveFrom };
       }
 
       if (Object.keys(diff).length === 0) {
@@ -336,6 +433,10 @@ async function validateAssignmentRow(
       subject_id: subjectId,
       subject_name: subjectName,
       guardian_email: guardianEmail,
+      status: parsedStatus,
+      payout_amount: parsedPayoutAmount,
+      payout_type: parsedPayoutType,
+      effective_from_date: parsedEffectiveFrom,
     },
     diff,
     existingId,
@@ -550,7 +651,7 @@ serve(async (req) => {
 
       const { data: existingAssignmentsData } = await supabase
         .from("student_teacher_assignments")
-        .select("id, teacher_id, student_id, subject_id, subjects(name)");
+        .select("id, teacher_id, student_id, subject_id, status, payout_amount, payout_type, effective_from_date, subjects(name)");
 
       // Keep full arrays for name+email matching (handles siblings with shared emails)
       const allTeachers = (teachers || []).map((t) => ({
@@ -574,6 +675,10 @@ serve(async (req) => {
           id: a.id,
           subject_id: a.subject_id,
           subject_name: a.subjects?.name,
+          status: a.status,
+          payout_amount: a.payout_amount,
+          payout_type: a.payout_type,
+          effective_from_date: a.effective_from_date,
         });
       });
 

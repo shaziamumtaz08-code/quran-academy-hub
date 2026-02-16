@@ -77,11 +77,12 @@ parent@example.com,Ahmed Khan,parent,+15108572790,ParentPass1,45,male`;
 
     case "assignments":
       // student_name and teacher_name are REQUIRED (primary identity)
+      // status, payout_amount, payout_type, effective_from are OPTIONAL (for partial updates)
       // guardian_email is OPTIONAL (hint only, not used for identity resolution)
-      return `student_name,teacher_name,subject_name,guardian_email
-Fatima Ali,Mohammad Hassan,Hifz,parent@example.com
-Yusuf Malik,Mohammad Hassan,Hifz,parent@example.com
-Ahmed Khan,Aisha Siddiqui,Tajweed,ahmed.parent@example.com`;
+      return `student_name,teacher_name,subject_name,status,payout_amount,payout_type,effective_from,guardian_email
+Fatima Ali,Mohammad Hassan,Hifz,active,2500,monthly,2026-01-01,parent@example.com
+Yusuf Malik,Mohammad Hassan,Hifz,active,3000,per_class,,parent@example.com
+Ahmed Khan,Aisha Siddiqui,Tajweed,,,,,ahmed.parent@example.com`;
 
     case "schedules":
       // Template with clear multi-day examples

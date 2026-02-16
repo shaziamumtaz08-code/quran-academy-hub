@@ -57,7 +57,7 @@ export function ImportPreviewTable({ rows, type }: ImportPreviewTableProps) {
       case "users":
         return ["Row", "Status", "Email", "Name", "Role", "Phone", "Issues"];
       case "assignments":
-        return ["Row", "Status", "Teacher", "Student", "Subject", "Issues"];
+        return ["Row", "Status", "Teacher", "Student", "Subject", "Payout", "Status_val", "Issues"];
       case "schedules":
         return ["Row", "Status", "Teacher", "Student", "Day", "Time", "Duration", "Issues"];
       default:
@@ -83,6 +83,10 @@ export function ImportPreviewTable({ rows, type }: ImportPreviewTableProps) {
         return row.data.teacher_name || "-";
       case "Student":
         return row.data.student_name || "-";
+      case "Payout":
+        return row.data.payout_amount ? `${row.data.payout_amount} (${row.data.payout_type || '-'})` : "-";
+      case "Status_val":
+        return row.data.status || "-";
       case "Subject":
         return row.data.subject_name || "-";
       case "Day":
