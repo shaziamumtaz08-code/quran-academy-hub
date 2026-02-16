@@ -322,9 +322,12 @@ serve(async (req) => {
           }
 
           if (row.status === "update" && row.existingId) {
-            const updateData: Record<string, any> = {
-              subject_id: row.data.subject_id,
-            };
+            const updateData: Record<string, any> = {};
+            if (row.data.subject_id !== undefined) updateData.subject_id = row.data.subject_id;
+            if (row.data.status) updateData.status = row.data.status;
+            if (row.data.payout_amount !== null && row.data.payout_amount !== undefined) updateData.payout_amount = row.data.payout_amount;
+            if (row.data.payout_type) updateData.payout_type = row.data.payout_type;
+            if (row.data.effective_from_date) updateData.effective_from_date = row.data.effective_from_date;
             if (studentTz) updateData.student_timezone = studentTz;
             if (teacherTz) updateData.teacher_timezone = teacherTz;
 
@@ -351,6 +354,10 @@ serve(async (req) => {
               student_id: row.data.student_id,
               subject_id: row.data.subject_id,
             };
+            if (row.data.status) insertData.status = row.data.status;
+            if (row.data.payout_amount !== null && row.data.payout_amount !== undefined) insertData.payout_amount = row.data.payout_amount;
+            if (row.data.payout_type) insertData.payout_type = row.data.payout_type;
+            if (row.data.effective_from_date) insertData.effective_from_date = row.data.effective_from_date;
             if (studentTz) insertData.student_timezone = studentTz;
             if (teacherTz) insertData.teacher_timezone = teacherTz;
 
