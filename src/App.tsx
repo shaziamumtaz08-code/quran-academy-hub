@@ -34,6 +34,7 @@ import OrganizationSettings from "./pages/OrganizationSettings";
 import FinanceSetup from "./pages/FinanceSetup";
 import SalaryEngine from "./pages/SalaryEngine";
 import Expenses from "./pages/Expenses";
+import CashAdvances from "./pages/CashAdvances";
 import SelectDivision from "./pages/SelectDivision";
 import PrintReport from "./pages/PrintReport";
 import NotFound from "./pages/NotFound";
@@ -233,6 +234,7 @@ function AppRoutes() {
       <Route path="/finance-setup" element={<ProtectedRoute><AdminRoute><FinanceSetup /></AdminRoute></ProtectedRoute>} />
       <Route path="/salary" element={<ProtectedRoute><AdminRoute><SalaryEngine /></AdminRoute></ProtectedRoute>} />
       <Route path="/expenses" element={<ProtectedRoute><AdminRoute><Expenses /></AdminRoute></ProtectedRoute>} />
+      <Route path="/cash-advances" element={<ProtectedRoute><AdminRoute><CashAdvances /></AdminRoute></ProtectedRoute>} />
       <Route path="/monthly-planning" element={<ProtectedRoute><AdminOrTeacherRoute><MonthlyPlanning /></AdminOrTeacherRoute></ProtectedRoute>} />
       {/* Report Card pages (renamed from Exam) */}
       <Route path="/report-card-templates" element={<ProtectedRoute><AdminOrExaminerRoute><ReportCardTemplates /></AdminOrExaminerRoute></ProtectedRoute>} />

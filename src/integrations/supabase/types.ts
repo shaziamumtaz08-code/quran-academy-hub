@@ -306,6 +306,144 @@ export type Database = {
           },
         ]
       }
+      cash_advance_transactions: {
+        Row: {
+          advance_id: string
+          amount: number
+          created_at: string
+          created_by: string | null
+          description: string
+          expense_id: string | null
+          id: string
+          transaction_date: string
+          transaction_type: string
+        }
+        Insert: {
+          advance_id: string
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          description: string
+          expense_id?: string | null
+          id?: string
+          transaction_date?: string
+          transaction_type: string
+        }
+        Update: {
+          advance_id?: string
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          expense_id?: string | null
+          id?: string
+          transaction_date?: string
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_advance_transactions_advance_id_fkey"
+            columns: ["advance_id"]
+            isOneToOne: false
+            referencedRelation: "cash_advances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_advance_transactions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_advance_transactions_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cash_advances: {
+        Row: {
+          amount: number
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          division_id: string | null
+          id: string
+          issue_date: string
+          issued_to: string
+          notes: string | null
+          purpose: string
+          remaining_balance: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          division_id?: string | null
+          id?: string
+          issue_date?: string
+          issued_to: string
+          notes?: string | null
+          purpose: string
+          remaining_balance?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          division_id?: string | null
+          id?: string
+          issue_date?: string
+          issued_to?: string
+          notes?: string | null
+          purpose?: string
+          remaining_balance?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_advances_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_advances_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_advances_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_advances_issued_to_fkey"
+            columns: ["issued_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_enrollments: {
         Row: {
           course_id: string
@@ -781,6 +919,7 @@ export type Database = {
       }
       expenses: {
         Row: {
+          advance_id: string | null
           amount: number
           approved_by: string | null
           branch_id: string | null
@@ -801,6 +940,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          advance_id?: string | null
           amount?: number
           approved_by?: string | null
           branch_id?: string | null
@@ -821,6 +961,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          advance_id?: string | null
           amount?: number
           approved_by?: string | null
           branch_id?: string | null
@@ -841,6 +982,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "expenses_advance_id_fkey"
+            columns: ["advance_id"]
+            isOneToOne: false
+            referencedRelation: "cash_advances"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "expenses_approved_by_fkey"
             columns: ["approved_by"]

@@ -63,7 +63,7 @@ export default function Expenses() {
     queryFn: async () => {
       let q = supabase
         .from('expenses')
-        .select('*, profiles_teacher:profiles!expenses_teacher_id_fkey(full_name), profiles_student:profiles!expenses_student_id_fkey(full_name), profiles_creator:profiles!expenses_created_by_fkey(full_name)')
+        .select('*, profiles_teacher:profiles!expenses_teacher_id_fkey(full_name), profiles_student:profiles!expenses_student_id_fkey(full_name), profiles_creator:profiles!expenses_created_by_fkey(full_name), cash_advance:cash_advances!expenses_advance_id_fkey(id, purpose, issued_to)')
         .order('expense_date', { ascending: false });
       if (branchId) q = q.eq('branch_id', branchId);
       if (divisionId) q = q.eq('division_id', divisionId);
@@ -308,7 +308,12 @@ export default function Expenses() {
                           {catInfo.label}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-sm max-w-[200px] truncate">{expense.description}</TableCell>
+                      <TableCell className="text-sm max-w-[200px] truncate">
+                        {expense.description}
+                        {expense.advance_id && (
+                          <Badge variant="outline" className="ml-2 text-[10px] border-amber-300 text-amber-600">From Advance</Badge>
+                        )}
+                      </TableCell>
                       <TableCell className="text-sm">
                         {expense.invoice_number ? (
                           <span className="font-mono text-xs">{expense.invoice_number}</span>
