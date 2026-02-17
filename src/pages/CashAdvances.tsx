@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,8 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Banknote, Plus, Search, Loader2, Pencil, Trash2, ArrowDownLeft, Receipt,
-  CheckCircle, AlertCircle, Wallet, Eye
+  Banknote, Plus, Search, Loader2, Trash2, ArrowDownLeft, Receipt,
+  CheckCircle, AlertCircle, Wallet, BookOpen
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -21,12 +22,28 @@ import { useAuth } from '@/contexts/AuthContext';
 import { formatDisplayDate } from '@/lib/dateFormat';
 
 const CURRENCIES = ['USD', 'PKR', 'GBP', 'EUR', 'CAD', 'AUD', 'AED'];
+const DISBURSEMENT_METHODS = [
+  { value: 'cash', label: 'Cash' },
+  { value: 'bank_transfer', label: 'Bank Transfer' },
+  { value: 'wallet', label: 'Wallet' },
+];
+
+const EXPENSE_CATEGORIES = [
+  { value: 'allowance', label: 'Allowance' },
+  { value: 'zoom', label: 'Zoom' },
+  { value: 'admin_cost', label: 'Admin Cost' },
+  { value: 'gifts', label: 'Gifts' },
+  { value: 'maternity', label: 'Maternity' },
+  { value: 'operational', label: 'Operational' },
+  { value: 'manual', label: 'Manual' },
+];
 
 export default function CashAdvances() {
   const { activeBranch, activeDivision } = useDivision();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const branchId = activeBranch?.id || null;
   const divisionId = activeDivision?.id || null;
 
@@ -37,7 +54,7 @@ export default function CashAdvances() {
   const [returnOpen, setReturnOpen] = useState(false);
   const [expenseFromAdvanceOpen, setExpenseFromAdvanceOpen] = useState(false);
   const [selectedAdvance, setSelectedAdvance] = useState<any>(null);
-  const [detailOpen, setDetailOpen] = useState(false);
+  const [ledgerOpen, setLedgerOpen] = useState(false);
 
   const [form, setForm] = useState({
     issued_to: '',
@@ -46,6 +63,7 @@ export default function CashAdvances() {
     issue_date: new Date().toISOString().split('T')[0],
     purpose: '',
     notes: '',
+    disbursement_method: 'cash',
   });
 
   const [returnForm, setReturnForm] = useState({
@@ -63,7 +81,7 @@ export default function CashAdvances() {
     receipt_url: '',
   });
 
-  // Fetch staff (teachers + admins)
+  // Fetch staff
   const { data: staff = [] } = useQuery({
     queryKey: ['advance-staff'],
     queryFn: async () => {
@@ -97,21 +115,76 @@ export default function CashAdvances() {
     enabled: !!branchId,
   });
 
-  // Fetch transactions for detail view
-  const { data: transactions = [] } = useQuery({
-    queryKey: ['advance-transactions', selectedAdvance?.id],
+  // Fetch ALL transactions grouped by advance for inline summaries
+  const advanceIds = useMemo(() => advances.map((a: any) => a.id), [advances]);
+  const { data: allTransactions = [] } = useQuery({
+    queryKey: ['all-advance-transactions', advanceIds],
+    queryFn: async () => {
+      if (!advanceIds.length) return [];
+      const { data, error } = await supabase
+        .from('cash_advance_transactions')
+        .select('*')
+        .in('advance_id', advanceIds)
+        .order('transaction_date', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: advanceIds.length > 0,
+  });
+
+  // Compute per-advance summaries
+  const advanceSummaries = useMemo(() => {
+    const map: Record<string, { spent: number; returned: number }> = {};
+    for (const tx of allTransactions) {
+      if (!map[tx.advance_id]) map[tx.advance_id] = { spent: 0, returned: 0 };
+      if (tx.transaction_type === 'expense') map[tx.advance_id].spent += Number(tx.amount);
+      else if (tx.transaction_type === 'return') map[tx.advance_id].returned += Number(tx.amount);
+    }
+    return map;
+  }, [allTransactions]);
+
+  // Fetch transactions for ledger view
+  const { data: ledgerTransactions = [] } = useQuery({
+    queryKey: ['advance-ledger', selectedAdvance?.id],
     queryFn: async () => {
       if (!selectedAdvance?.id) return [];
       const { data, error } = await supabase
         .from('cash_advance_transactions')
         .select('*')
         .eq('advance_id', selectedAdvance.id)
-        .order('transaction_date', { ascending: false });
+        .order('transaction_date', { ascending: true });
       if (error) throw error;
       return data || [];
     },
-    enabled: !!selectedAdvance?.id,
+    enabled: !!selectedAdvance?.id && ledgerOpen,
   });
+
+  // Build ledger with running balance
+  const ledgerWithBalance = useMemo(() => {
+    if (!selectedAdvance) return [];
+    let balance = Number(selectedAdvance.amount);
+    const issueRow = {
+      id: 'issue',
+      transaction_date: selectedAdvance.issue_date,
+      transaction_type: 'issue',
+      description: `Advance issued — ${selectedAdvance.purpose}`,
+      amount: Number(selectedAdvance.amount),
+      balance_after: balance,
+    };
+    const rows = [issueRow];
+    for (const tx of ledgerTransactions) {
+      balance -= Number(tx.amount);
+      rows.push({
+        id: tx.id,
+        transaction_date: tx.transaction_date,
+        transaction_type: tx.transaction_type,
+        description: tx.description,
+        amount: Number(tx.amount),
+        balance_after: balance,
+      });
+    }
+    return rows;
+  }, [selectedAdvance, ledgerTransactions]);
 
   const filtered = useMemo(() => {
     if (!searchQuery) return advances;
@@ -122,43 +195,80 @@ export default function CashAdvances() {
     );
   }, [advances, searchQuery]);
 
+  // Auto-open ledger from URL query param (e.g., ?ledger=<advance_id>)
+  useEffect(() => {
+    const ledgerId = searchParams.get('ledger');
+    if (ledgerId && advances.length > 0) {
+      const adv = advances.find((a: any) => a.id === ledgerId);
+      if (adv) {
+        setSelectedAdvance(adv);
+        setLedgerOpen(true);
+        setSearchParams({}, { replace: true });
+      }
+    }
+  }, [searchParams, advances]);
+
   // Dashboard stats
   const openAdvances = advances.filter((a: any) => a.status === 'open');
   const settledAdvances = advances.filter((a: any) => a.status === 'settled');
   const cashOutside = openAdvances.reduce((s: number, a: any) => s + Number(a.remaining_balance), 0);
 
-  // Save advance
+  // Save advance (issue or edit)
   const saveAdvance = useMutation({
     mutationFn: async () => {
       const amt = parseFloat(form.amount) || 0;
-      const payload: any = {
-        issued_to: form.issued_to,
-        amount: amt,
-        remaining_balance: amt,
-        currency: form.currency,
-        issue_date: form.issue_date,
-        purpose: form.purpose,
-        notes: form.notes || null,
-        branch_id: branchId,
-        division_id: divisionId,
-        created_by: user?.id,
-        status: 'open',
-      };
       if (editingId) {
-        // Recalculate remaining if amount changed
+        // Safe edit: recalculate remaining_balance based on transactions
+        const summary = advanceSummaries[editingId] || { spent: 0, returned: 0 };
+        const newRemaining = amt - summary.spent - summary.returned;
+        if (newRemaining < 0) throw new Error('New amount cannot be less than already spent/returned');
         const { error } = await supabase.from('cash_advances').update({
-          ...payload,
-          remaining_balance: undefined, // don't override on edit
+          issued_to: form.issued_to,
+          amount: amt,
+          remaining_balance: newRemaining,
+          currency: form.currency,
+          issue_date: form.issue_date,
+          purpose: form.purpose,
+          notes: form.notes || null,
+          disbursement_method: form.disbursement_method,
+          status: newRemaining <= 0 ? 'settled' : 'open',
         }).eq('id', editingId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('cash_advances').insert(payload);
+        // Create advance
+        const { data: inserted, error } = await supabase.from('cash_advances').insert({
+          issued_to: form.issued_to,
+          amount: amt,
+          remaining_balance: amt,
+          currency: form.currency,
+          issue_date: form.issue_date,
+          purpose: form.purpose,
+          notes: form.notes || null,
+          disbursement_method: form.disbursement_method,
+          branch_id: branchId,
+          division_id: divisionId,
+          created_by: user?.id,
+          status: 'open',
+        }).select('id').single();
         if (error) throw error;
+
+        // Create ISSUE transaction
+        if (inserted) {
+          await supabase.from('cash_advance_transactions').insert({
+            advance_id: inserted.id,
+            transaction_type: 'issue',
+            amount: amt,
+            description: `Cash advance issued: ${form.purpose}`,
+            transaction_date: form.issue_date,
+            created_by: user?.id,
+          });
+        }
       }
     },
     onSuccess: () => {
       toast({ title: editingId ? 'Advance updated' : 'Cash advance issued' });
       queryClient.invalidateQueries({ queryKey: ['cash-advances'] });
+      queryClient.invalidateQueries({ queryKey: ['all-advance-transactions'] });
       closeIssueForm();
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
@@ -171,18 +281,16 @@ export default function CashAdvances() {
       if (amt <= 0) throw new Error('Amount must be positive');
       if (amt > Number(selectedAdvance.remaining_balance)) throw new Error('Return exceeds remaining balance');
 
-      // Insert transaction
       const { error: txErr } = await supabase.from('cash_advance_transactions').insert({
         advance_id: selectedAdvance.id,
         transaction_type: 'return',
         amount: amt,
-        description: returnForm.description || 'Cash return',
+        description: returnForm.description || 'Cash returned',
         transaction_date: returnForm.transaction_date,
         created_by: user?.id,
       });
       if (txErr) throw txErr;
 
-      // Update remaining balance
       const newBalance = Number(selectedAdvance.remaining_balance) - amt;
       const { error: upErr } = await supabase.from('cash_advances').update({
         remaining_balance: newBalance,
@@ -193,7 +301,8 @@ export default function CashAdvances() {
     onSuccess: () => {
       toast({ title: 'Cash return recorded' });
       queryClient.invalidateQueries({ queryKey: ['cash-advances'] });
-      queryClient.invalidateQueries({ queryKey: ['advance-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['all-advance-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['advance-ledger'] });
       setReturnOpen(false);
       setReturnForm({ amount: '', description: '', transaction_date: new Date().toISOString().split('T')[0] });
     },
@@ -207,7 +316,6 @@ export default function CashAdvances() {
       if (amt <= 0) throw new Error('Amount must be positive');
       if (amt > Number(selectedAdvance.remaining_balance)) throw new Error('Expense exceeds remaining advance balance');
 
-      // Create expense record
       const { data: inserted, error: expErr } = await supabase.from('expenses').insert({
         category: expenseForm.category,
         description: expenseForm.description,
@@ -221,7 +329,7 @@ export default function CashAdvances() {
         created_by: user?.id,
         status: 'approved',
         advance_id: selectedAdvance.id,
-        teacher_id: selectedAdvance.issued_to, // link to person
+        teacher_id: selectedAdvance.issued_to,
       }).select('id').single();
       if (expErr) throw expErr;
 
@@ -246,7 +354,7 @@ export default function CashAdvances() {
       }
 
       // Create advance transaction
-      const { error: txErr } = await supabase.from('cash_advance_transactions').insert({
+      await supabase.from('cash_advance_transactions').insert({
         advance_id: selectedAdvance.id,
         transaction_type: 'expense',
         amount: amt,
@@ -255,20 +363,19 @@ export default function CashAdvances() {
         expense_id: inserted.id,
         created_by: user?.id,
       });
-      if (txErr) throw txErr;
 
       // Update remaining balance
       const newBalance = Number(selectedAdvance.remaining_balance) - amt;
-      const { error: upErr } = await supabase.from('cash_advances').update({
+      await supabase.from('cash_advances').update({
         remaining_balance: newBalance,
         status: newBalance <= 0 ? 'settled' : 'open',
       }).eq('id', selectedAdvance.id);
-      if (upErr) throw upErr;
     },
     onSuccess: () => {
       toast({ title: 'Expense recorded from advance' });
       queryClient.invalidateQueries({ queryKey: ['cash-advances'] });
-      queryClient.invalidateQueries({ queryKey: ['advance-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['all-advance-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['advance-ledger'] });
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
       queryClient.invalidateQueries({ queryKey: ['salary-adjustments'] });
       setExpenseFromAdvanceOpen(false);
@@ -277,8 +384,17 @@ export default function CashAdvances() {
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
+  // Delete with safety check
   const deleteAdvance = useMutation({
     mutationFn: async (id: string) => {
+      // Check for existing transactions
+      const { count } = await supabase
+        .from('cash_advance_transactions')
+        .select('id', { count: 'exact', head: true })
+        .eq('advance_id', id);
+      if (count && count > 0) {
+        throw new Error('Cannot delete advance with existing transactions. Settle it instead.');
+      }
       const { error } = await supabase.from('cash_advances').delete().eq('id', id);
       if (error) throw error;
     },
@@ -292,18 +408,37 @@ export default function CashAdvances() {
   const closeIssueForm = () => {
     setIssueOpen(false);
     setEditingId(null);
-    setForm({ issued_to: '', amount: '', currency: 'USD', issue_date: new Date().toISOString().split('T')[0], purpose: '', notes: '' });
+    setForm({ issued_to: '', amount: '', currency: 'USD', issue_date: new Date().toISOString().split('T')[0], purpose: '', notes: '', disbursement_method: 'cash' });
   };
 
-  const EXPENSE_CATEGORIES = [
-    { value: 'allowance', label: 'Allowance' },
-    { value: 'zoom', label: 'Zoom' },
-    { value: 'admin_cost', label: 'Admin Cost' },
-    { value: 'gifts', label: 'Gifts' },
-    { value: 'maternity', label: 'Maternity' },
-    { value: 'operational', label: 'Operational' },
-    { value: 'manual', label: 'Manual' },
-  ];
+  const openEdit = (adv: any) => {
+    setEditingId(adv.id);
+    setForm({
+      issued_to: adv.issued_to,
+      amount: String(adv.amount),
+      currency: adv.currency,
+      issue_date: adv.issue_date,
+      purpose: adv.purpose,
+      notes: adv.notes || '',
+      disbursement_method: adv.disbursement_method || 'cash',
+    });
+    setIssueOpen(true);
+  };
+
+  const openLedger = (adv: any) => {
+    setSelectedAdvance(adv);
+    setLedgerOpen(true);
+  };
+
+  const getTxTypeBadge = (type: string) => {
+    switch (type) {
+      case 'issue': return <Badge className="bg-blue-100 text-blue-700 border-0 text-xs">ISSUE</Badge>;
+      case 'expense': return <Badge className="bg-amber-100 text-amber-700 border-0 text-xs">EXPENSE</Badge>;
+      case 'return': return <Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs">RETURN</Badge>;
+      case 'adjustment': return <Badge className="bg-purple-100 text-purple-700 border-0 text-xs">ADJUSTMENT</Badge>;
+      default: return <Badge variant="outline" className="text-xs capitalize">{type}</Badge>;
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -386,7 +521,9 @@ export default function CashAdvances() {
                   <TableHead>Date</TableHead>
                   <TableHead>Issued To</TableHead>
                   <TableHead>Purpose</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="text-right">Issued</TableHead>
+                  <TableHead className="text-right">Spent</TableHead>
+                  <TableHead className="text-right">Returned</TableHead>
                   <TableHead className="text-right">Remaining</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -394,53 +531,64 @@ export default function CashAdvances() {
               </TableHeader>
               <TableBody>
                 {isLoading && (
-                  <TableRow><TableCell colSpan={7} className="text-center py-12"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="text-center py-12"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></TableCell></TableRow>
                 )}
                 {!isLoading && filtered.length === 0 && (
-                  <TableRow><TableCell colSpan={7} className="text-center py-12 text-muted-foreground">No cash advances found</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="text-center py-12 text-muted-foreground">No cash advances found</TableCell></TableRow>
                 )}
-                {filtered.map((adv: any) => (
-                  <TableRow key={adv.id}>
-                    <TableCell className="text-sm">{formatDisplayDate(adv.issue_date)}</TableCell>
-                    <TableCell className="text-sm font-medium">{adv.issued_to_profile?.full_name || '—'}</TableCell>
-                    <TableCell className="text-sm max-w-[200px] truncate">{adv.purpose}</TableCell>
-                    <TableCell className="text-right font-medium">{adv.currency} {Number(adv.amount).toFixed(2)}</TableCell>
-                    <TableCell className="text-right font-medium">
-                      <span className={Number(adv.remaining_balance) > 0 ? 'text-destructive' : 'text-emerald-600'}>
-                        {adv.currency} {Number(adv.remaining_balance).toFixed(2)}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={adv.status === 'open' ? 'destructive' : 'default'} className="text-xs capitalize">
-                        {adv.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex gap-1 justify-end">
-                        <Button size="icon" variant="ghost" className="h-7 w-7" title="View Details"
-                          onClick={() => { setSelectedAdvance(adv); setDetailOpen(true); }}>
-                          <Eye className="h-3.5 w-3.5" />
-                        </Button>
-                        {adv.status === 'open' && (
-                          <>
-                            <Button size="icon" variant="ghost" className="h-7 w-7" title="Record Expense"
-                              onClick={() => { setSelectedAdvance(adv); setExpenseFromAdvanceOpen(true); }}>
-                              <Receipt className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button size="icon" variant="ghost" className="h-7 w-7" title="Cash Return"
-                              onClick={() => { setSelectedAdvance(adv); setReturnOpen(true); }}>
-                              <ArrowDownLeft className="h-3.5 w-3.5" />
-                            </Button>
-                          </>
+                {filtered.map((adv: any) => {
+                  const summary = advanceSummaries[adv.id] || { spent: 0, returned: 0 };
+                  const remaining = Number(adv.remaining_balance);
+                  return (
+                    <TableRow key={adv.id}>
+                      <TableCell className="text-sm">{formatDisplayDate(adv.issue_date)}</TableCell>
+                      <TableCell className="text-sm font-medium">{adv.issued_to_profile?.full_name || '—'}</TableCell>
+                      <TableCell className="text-sm max-w-[180px] truncate">
+                        {adv.purpose}
+                        {adv.disbursement_method && adv.disbursement_method !== 'cash' && (
+                          <Badge variant="outline" className="ml-1.5 text-[10px] capitalize">{adv.disbursement_method.replace('_', ' ')}</Badge>
                         )}
-                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive"
-                          onClick={() => deleteAdvance.mutate(adv.id)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                      <TableCell className="text-right font-medium text-sm">{adv.currency} {Number(adv.amount).toFixed(2)}</TableCell>
+                      <TableCell className="text-right text-sm text-amber-600 font-medium">{summary.spent > 0 ? `${adv.currency} ${summary.spent.toFixed(2)}` : '—'}</TableCell>
+                      <TableCell className="text-right text-sm text-emerald-600 font-medium">{summary.returned > 0 ? `${adv.currency} ${summary.returned.toFixed(2)}` : '—'}</TableCell>
+                      <TableCell className="text-right font-bold text-sm">
+                        <span className={remaining > 0 ? 'text-destructive' : 'text-emerald-600'}>
+                          {adv.currency} {remaining.toFixed(2)}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={adv.status === 'open' ? 'destructive' : 'default'} className="text-xs capitalize">
+                          {adv.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex gap-1 justify-end flex-wrap">
+                          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1" title="View Ledger"
+                            onClick={() => openLedger(adv)}>
+                            <BookOpen className="h-3.5 w-3.5" /> Ledger
+                          </Button>
+                          {adv.status === 'open' && (
+                            <>
+                              <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1" title="Record Expense"
+                                onClick={() => { setSelectedAdvance(adv); setExpenseFromAdvanceOpen(true); }}>
+                                <Receipt className="h-3.5 w-3.5" /> Expense
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1" title="Record Return"
+                                onClick={() => { setSelectedAdvance(adv); setReturnOpen(true); }}>
+                                <ArrowDownLeft className="h-3.5 w-3.5" /> Return
+                              </Button>
+                            </>
+                          )}
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" title="Delete"
+                            onClick={() => deleteAdvance.mutate(adv.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>
@@ -479,9 +627,20 @@ export default function CashAdvances() {
                   </Select>
                 </div>
               </div>
-              <div>
-                <Label>Issue Date</Label>
-                <Input type="date" value={form.issue_date} onChange={e => setForm(p => ({ ...p, issue_date: e.target.value }))} />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Issue Date</Label>
+                  <Input type="date" value={form.issue_date} onChange={e => setForm(p => ({ ...p, issue_date: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>Disbursement Method</Label>
+                  <Select value={form.disbursement_method} onValueChange={v => setForm(p => ({ ...p, disbursement_method: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {DISBURSEMENT_METHODS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div>
                 <Label>Purpose</Label>
@@ -514,14 +673,15 @@ export default function CashAdvances() {
             <div className="space-y-4">
               <div>
                 <Label>Return Amount</Label>
-                <Input type="number" value={returnForm.amount} onChange={e => setReturnForm(p => ({ ...p, amount: e.target.value }))} />
+                <Input type="number" value={returnForm.amount} onChange={e => setReturnForm(p => ({ ...p, amount: e.target.value }))}
+                  max={Number(selectedAdvance?.remaining_balance || 0)} />
               </div>
               <div>
                 <Label>Date</Label>
                 <Input type="date" value={returnForm.transaction_date} onChange={e => setReturnForm(p => ({ ...p, transaction_date: e.target.value }))} />
               </div>
               <div>
-                <Label>Description</Label>
+                <Label>Notes</Label>
                 <Input value={returnForm.description} onChange={e => setReturnForm(p => ({ ...p, description: e.target.value }))} placeholder="Cash returned" />
               </div>
             </div>
@@ -541,7 +701,7 @@ export default function CashAdvances() {
             <DialogHeader>
               <DialogTitle>Record Expense from Advance</DialogTitle>
               <DialogDescription>
-                Remaining: {selectedAdvance?.currency} {Number(selectedAdvance?.remaining_balance || 0).toFixed(2)} — This creates a linked expense record
+                Remaining: {selectedAdvance?.currency} {Number(selectedAdvance?.remaining_balance || 0).toFixed(2)} — Creates linked expense record
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
@@ -561,7 +721,8 @@ export default function CashAdvances() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Amount</Label>
-                  <Input type="number" value={expenseForm.amount} onChange={e => setExpenseForm(p => ({ ...p, amount: e.target.value }))} />
+                  <Input type="number" value={expenseForm.amount} onChange={e => setExpenseForm(p => ({ ...p, amount: e.target.value }))}
+                    max={Number(selectedAdvance?.remaining_balance || 0)} />
                 </div>
                 <div>
                   <Label>Date</Label>
@@ -589,32 +750,40 @@ export default function CashAdvances() {
           </DialogContent>
         </Dialog>
 
-        {/* Detail View Dialog */}
-        <Dialog open={detailOpen} onOpenChange={v => { if (!v) { setDetailOpen(false); setSelectedAdvance(null); } }}>
-          <DialogContent className="max-w-lg">
+        {/* Ledger View Dialog */}
+        <Dialog open={ledgerOpen} onOpenChange={v => { if (!v) { setLedgerOpen(false); setSelectedAdvance(null); } }}>
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Advance Details</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <BookOpen className="h-5 w-5" /> Advance Ledger
+              </DialogTitle>
               <DialogDescription>
                 {selectedAdvance?.issued_to_profile?.full_name} — {selectedAdvance?.purpose}
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-3">
-              <div className="grid grid-cols-3 gap-3 text-sm">
-                <div className="p-3 rounded-lg bg-muted">
+            <div className="space-y-4">
+              {/* Summary cards */}
+              <div className="grid grid-cols-4 gap-3 text-sm">
+                <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30">
                   <p className="text-xs text-muted-foreground">Issued</p>
                   <p className="font-bold">{selectedAdvance?.currency} {Number(selectedAdvance?.amount || 0).toFixed(2)}</p>
                 </div>
-                <div className="p-3 rounded-lg bg-muted">
-                  <p className="text-xs text-muted-foreground">Spent/Returned</p>
-                  <p className="font-bold">{selectedAdvance?.currency} {(Number(selectedAdvance?.amount || 0) - Number(selectedAdvance?.remaining_balance || 0)).toFixed(2)}</p>
+                <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30">
+                  <p className="text-xs text-muted-foreground">Spent</p>
+                  <p className="font-bold text-amber-700">{selectedAdvance?.currency} {(advanceSummaries[selectedAdvance?.id]?.spent || 0).toFixed(2)}</p>
                 </div>
-                <div className="p-3 rounded-lg bg-muted">
+                <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/30">
+                  <p className="text-xs text-muted-foreground">Returned</p>
+                  <p className="font-bold text-emerald-700">{selectedAdvance?.currency} {(advanceSummaries[selectedAdvance?.id]?.returned || 0).toFixed(2)}</p>
+                </div>
+                <div className="p-3 rounded-lg bg-destructive/10">
                   <p className="text-xs text-muted-foreground">Remaining</p>
                   <p className="font-bold text-destructive">{selectedAdvance?.currency} {Number(selectedAdvance?.remaining_balance || 0).toFixed(2)}</p>
                 </div>
               </div>
 
-              <div className="border rounded-lg">
+              {/* Ledger table */}
+              <div className="border rounded-lg max-h-[400px] overflow-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -622,23 +791,25 @@ export default function CashAdvances() {
                       <TableHead>Type</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="text-right">Balance After</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {transactions.length === 0 && (
-                      <TableRow><TableCell colSpan={4} className="text-center py-6 text-muted-foreground">No transactions yet</TableCell></TableRow>
+                    {ledgerWithBalance.length === 0 && (
+                      <TableRow><TableCell colSpan={5} className="text-center py-6 text-muted-foreground">No transactions</TableCell></TableRow>
                     )}
-                    {transactions.map((tx: any) => (
-                      <TableRow key={tx.id}>
-                        <TableCell className="text-sm">{formatDisplayDate(tx.transaction_date)}</TableCell>
-                        <TableCell>
-                          <Badge variant={tx.transaction_type === 'return' ? 'default' : 'outline'} className="text-xs capitalize">
-                            {tx.transaction_type}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-sm">{tx.description}</TableCell>
+                    {ledgerWithBalance.map((row) => (
+                      <TableRow key={row.id}>
+                        <TableCell className="text-sm">{formatDisplayDate(row.transaction_date)}</TableCell>
+                        <TableCell>{getTxTypeBadge(row.transaction_type)}</TableCell>
+                        <TableCell className="text-sm max-w-[200px] truncate">{row.description}</TableCell>
                         <TableCell className="text-right font-medium text-sm">
-                          {selectedAdvance?.currency} {Number(tx.amount).toFixed(2)}
+                          {row.transaction_type === 'issue' ? '+' : '−'}{selectedAdvance?.currency} {row.amount.toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-right font-bold text-sm">
+                          <span className={row.balance_after > 0 ? 'text-destructive' : 'text-emerald-600'}>
+                            {selectedAdvance?.currency} {row.balance_after.toFixed(2)}
+                          </span>
                         </TableCell>
                       </TableRow>
                     ))}

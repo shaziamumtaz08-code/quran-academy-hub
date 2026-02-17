@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -32,6 +33,7 @@ const CATEGORIES = [
 
 export default function Expenses() {
   const { activeBranch, activeDivision } = useDivision();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -311,7 +313,10 @@ export default function Expenses() {
                       <TableCell className="text-sm max-w-[200px] truncate">
                         {expense.description}
                         {expense.advance_id && (
-                          <Badge variant="outline" className="ml-2 text-[10px] border-amber-300 text-amber-600">From Advance</Badge>
+                          <Badge variant="outline" className="ml-2 text-[10px] border-amber-300 text-amber-600 cursor-pointer hover:bg-amber-50"
+                            onClick={() => navigate(`/cash-advances?ledger=${expense.advance_id}`)}>
+                            From Advance
+                          </Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-sm">
