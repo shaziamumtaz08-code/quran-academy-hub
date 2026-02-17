@@ -1123,19 +1123,17 @@ export default function Attendance() {
           </div>
         )}
 
-        {/* Missing Attendance Section */}
-        {isAdmin && (
+        {/* Table - show main records or missing records based on filter */}
+        {showMissing && isAdmin ? (
           <MissingAttendanceSection
             monthFilter={monthFilter}
             dateMode={dateMode}
             dateFrom={dateFrom}
             dateTo={dateTo}
-            isVisible={showMissing}
+            isVisible={true}
             onClose={() => setShowMissing(false)}
           />
-        )}
-
-        {/* Table */}
+        ) : (
         <Card>
           <CardContent className="pt-6">
             {isLoading ? (
@@ -1331,6 +1329,7 @@ export default function Attendance() {
             )}
           </CardContent>
         </Card>
+        )}
 
           </TabsContent>
 
