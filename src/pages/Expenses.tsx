@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Textarea } from '@/components/ui/textarea';
 import {
   Receipt, Plus, Search, Loader2, CheckCircle, Clock, Pencil, Trash2,
-  DollarSign, Users, Briefcase, Gift, Baby, Settings, FileText
+  DollarSign, Users, Briefcase, Gift, Baby, Settings, FileText, Download
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -20,6 +20,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDisplayDate } from '@/lib/dateFormat';
+import { FileUploadField, AttachmentPreview } from '@/components/shared/FileUploadField';
+import { ExportDialog } from '@/components/export/ExportDialog';
 
 const CATEGORIES = [
   { value: 'allowance', label: 'Allowance', icon: DollarSign, color: 'bg-emerald-100 text-emerald-700' },
@@ -45,6 +47,7 @@ export default function Expenses() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
 
   const [form, setForm] = useState({
     category: 'operational',
@@ -221,9 +224,14 @@ export default function Expenses() {
             </h1>
             <p className="text-sm text-muted-foreground">Track organizational expenses and auto-link to salary</p>
           </div>
-          <Button onClick={() => setFormOpen(true)}>
-            <Plus className="h-4 w-4 mr-1" /> Add Expense
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setExportOpen(true)}>
+              <Download className="h-4 w-4 mr-1" /> Export
+            </Button>
+            <Button onClick={() => setFormOpen(true)}>
+              <Plus className="h-4 w-4 mr-1" /> Add Expense
+            </Button>
+          </div>
         </div>
 
         {/* Category Summary */}
@@ -324,7 +332,9 @@ export default function Expenses() {
                           <span className="font-mono text-xs">{expense.invoice_number}</span>
                         ) : '—'}
                         {expense.receipt_url && (
-                          <a href={expense.receipt_url} target="_blank" rel="noreferrer" className="ml-1 text-primary hover:underline text-xs">📎</a>
+                          <div className="mt-0.5">
+                            <AttachmentPreview url={expense.receipt_url} />
+                          </div>
                         )}
                       </TableCell>
                       <TableCell className="text-sm">{expense.profiles_teacher?.full_name || '—'}</TableCell>
@@ -421,11 +431,12 @@ export default function Expenses() {
                   <Label>Invoice Number</Label>
                   <Input value={form.invoice_number} onChange={e => setForm(p => ({ ...p, invoice_number: e.target.value }))} placeholder="INV-001" />
                 </div>
-                <div>
-                  <Label>Receipt / Attachment URL</Label>
-                  <Input value={form.receipt_url} onChange={e => setForm(p => ({ ...p, receipt_url: e.target.value }))} placeholder="https://..." />
-                  <p className="text-[10px] text-muted-foreground mt-0.5">PDF, JPEG, PNG link for proof</p>
-                </div>
+                <FileUploadField
+                  label="Receipt / Attachment"
+                  bucket="expense-receipts"
+                  value={form.receipt_url}
+                  onChange={(url) => setForm(p => ({ ...p, receipt_url: url }))}
+                />
               </div>
               <div>
                 <Label>Notes</Label>
@@ -441,6 +452,40 @@ export default function Expenses() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Export Dialog */}
+        <ExportDialog
+          open={exportOpen}
+          onOpenChange={setExportOpen}
+          title="Expenses"
+          filename="expenses"
+          fields={[
+            { key: 'date', label: 'Date' },
+            { key: 'category', label: 'Category' },
+            { key: 'description', label: 'Description' },
+            { key: 'amount', label: 'Amount' },
+            { key: 'currency', label: 'Currency' },
+            { key: 'invoice_number', label: 'Invoice #' },
+            { key: 'teacher', label: 'Teacher' },
+            { key: 'student', label: 'Student' },
+            { key: 'status', label: 'Status' },
+            { key: 'notes', label: 'Notes' },
+            { key: 'receipt_url', label: 'Receipt URL' },
+          ]}
+          data={filtered.map((e: any) => ({
+            date: e.expense_date,
+            category: e.category,
+            description: e.description,
+            amount: e.amount,
+            currency: e.currency,
+            invoice_number: e.invoice_number || '',
+            teacher: e.profiles_teacher?.full_name || '',
+            student: e.profiles_student?.full_name || '',
+            status: e.status,
+            notes: e.notes || '',
+            receipt_url: e.receipt_url || '',
+          }))}
+        />
       </div>
     </DashboardLayout>
   );

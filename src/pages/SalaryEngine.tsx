@@ -641,6 +641,8 @@ export default function SalaryEngine() {
           }}
           isPayingPending={markPaid.isPending}
           isLocked={selectedTeacher?.payoutStatus === 'locked'}
+          existingReceiptUrl={existingPayouts.find((p: any) => p.teacher_id === selectedTeacherId)?.receipt_url || null}
+          existingInvoiceNumber={existingPayouts.find((p: any) => p.teacher_id === selectedTeacherId)?.invoice_number || null}
         />
 
         {/* ── Leave Modal ── */}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,7 @@ import {
   User, Loader2
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { FileUploadField, AttachmentPreview } from '@/components/shared/FileUploadField';
 
 interface AttendanceDay {
   date: string;
@@ -88,17 +89,26 @@ interface SalarySheetDialogProps {
   onMarkPaid: (type: 'full' | 'partial', reason?: string, invoiceNumber?: string, receiptUrl?: string) => void;
   isPayingPending?: boolean;
   isLocked: boolean;
+  viewerRole?: 'admin' | 'teacher';
+  existingReceiptUrl?: string | null;
+  existingInvoiceNumber?: string | null;
 }
 
 export function SalarySheetDialog({
   open, onOpenChange, teacher, teacherProfile, teacherAttendance,
   adjustments, salaryMonth, year, month, editAmounts, onEditAmount,
-  onMarkPaid, isPayingPending, isLocked
+  onMarkPaid, isPayingPending, isLocked, viewerRole = 'admin',
+  existingReceiptUrl, existingInvoiceNumber
 }: SalarySheetDialogProps) {
   const [partialReason, setPartialReason] = useState('');
   const [showPartialInput, setShowPartialInput] = useState(false);
-  const [invoiceNumber, setInvoiceNumber] = useState('');
   const [receiptUrl, setReceiptUrl] = useState('');
+
+  // Auto-generate invoice number
+  const autoInvoiceNumber = `SAL-${salaryMonth.replace('-', '')}-${teacher?.teacherName?.substring(0, 3).toUpperCase() || 'XXX'}`;
+  const displayInvoice = existingInvoiceNumber || autoInvoiceNumber;
+
+  const isTeacherView = viewerRole === 'teacher';
 
   if (!teacher) return null;
 
@@ -179,21 +189,24 @@ export function SalarySheetDialog({
                   )}
                 </div>
 
-                {/* Right: Attendance Snapshot + Period */}
+                {/* Right: Attendance Snapshot + Period (admin only) */}
                 <div className="flex sm:flex-col items-start sm:items-end justify-between sm:justify-start gap-3 shrink-0">
                   <div className="sm:text-right">
                     <p className="text-[10px] uppercase tracking-widest opacity-70">Period</p>
                     <p className="text-base sm:text-lg font-semibold">{monthLabel}</p>
+                    <p className="text-[10px] opacity-60 mt-0.5">Invoice: {displayInvoice}</p>
                   </div>
-                  <div className="bg-white/10 rounded-lg p-2.5 space-y-1">
-                    <p className="text-[10px] uppercase tracking-wider opacity-60">Teacher Attendance</p>
-                    <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs sm:text-sm">
-                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block shrink-0" /> {teacherAttendance.present} Present</span>
-                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400 inline-block shrink-0" /> {teacherAttendance.absent} Absent</span>
-                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block shrink-0" /> {teacherAttendance.leave} Leave</span>
-                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gray-300 inline-block shrink-0" /> {teacherAttendance.notMarked} N/M</span>
+                  {!isTeacherView && (
+                    <div className="bg-white/10 rounded-lg p-2.5 space-y-1">
+                      <p className="text-[10px] uppercase tracking-wider opacity-60">Teacher Attendance</p>
+                      <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs sm:text-sm">
+                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block shrink-0" /> {teacherAttendance.present} Present</span>
+                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400 inline-block shrink-0" /> {teacherAttendance.absent} Absent</span>
+                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block shrink-0" /> {teacherAttendance.leave} Leave</span>
+                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gray-300 inline-block shrink-0" /> {teacherAttendance.notMarked} N/M</span>
+                      </div>
                     </div>
-                  </div>
+                  )}
                   <Button
                     size="sm"
                     variant="secondary"
@@ -207,25 +220,27 @@ export function SalarySheetDialog({
             </div>
 
             {/* ═══ LEGEND BAR ═══ */}
-            <div className="px-4 sm:px-6 py-2 bg-muted/50 border-b border-border flex flex-wrap items-center gap-3 sm:gap-5 text-[10px] sm:text-xs text-muted-foreground">
-              <span className="font-medium text-foreground mr-1">Legend:</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> Present</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> Absent</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /> Leave</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-sky-400 inline-block" /> Holiday</span>
-              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gray-300 inline-block" /> Not Marked</span>
-            </div>
+            {!isTeacherView && (
+              <div className="px-4 sm:px-6 py-2 bg-muted/50 border-b border-border flex flex-wrap items-center gap-3 sm:gap-5 text-[10px] sm:text-xs text-muted-foreground">
+                <span className="font-medium text-foreground mr-1">Legend:</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> Present</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> Absent</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /> Leave</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-sky-400 inline-block" /> Holiday</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gray-300 inline-block" /> Not Marked</span>
+              </div>
+            )}
 
             {/* ═══ STUDENT ROWS ═══ */}
             <div className="p-3 sm:p-6 space-y-3">
               {/* Column Headers - hidden on mobile */}
-              <div className="hidden sm:grid grid-cols-12 gap-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider px-4">
+              <div className={`hidden sm:grid gap-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider px-4 ${isTeacherView ? 'grid-cols-10' : 'grid-cols-12'}`}>
                 <div className="col-span-3">Student</div>
                 <div className="col-span-2">Period</div>
                 <div className="col-span-2 text-right">Monthly Fee</div>
-                <div className="col-span-2 text-right">Due Amount</div>
-                <div className="col-span-2 text-right">Final Amount</div>
-                <div className="col-span-1 text-right">Fee</div>
+                <div className="col-span-2 text-right">{isTeacherView ? 'Final Amount' : 'Due Amount'}</div>
+                {!isTeacherView && <div className="col-span-2 text-right">Final Amount</div>}
+                {!isTeacherView && <div className="col-span-1 text-right">Fee</div>}
               </div>
 
               {teacher.students.map(s => {
@@ -233,7 +248,7 @@ export function SalarySheetDialog({
                 return (
                   <div key={s.assignmentId} className="border border-border rounded-xl bg-card shadow-sm overflow-hidden">
                     {/* Desktop Row */}
-                    <div className="hidden sm:grid grid-cols-12 gap-3 items-center px-4 py-3">
+                    <div className={`hidden sm:grid gap-3 items-center px-4 py-3 ${isTeacherView ? 'grid-cols-10' : 'grid-cols-12'}`}>
                       <div className="col-span-3">
                         <p className="font-medium text-sm text-foreground">{s.studentName}</p>
                         <Badge variant="outline" className="text-[10px] mt-0.5 capitalize">{s.payoutType}</Badge>
@@ -248,18 +263,22 @@ export function SalarySheetDialog({
                         <span className="text-sm tabular-nums text-muted-foreground">${s.calculatedAmount.toFixed(2)}</span>
                         <p className="text-[10px] text-muted-foreground">{s.eligibleDays}/{s.totalDays} days</p>
                       </div>
-                      <div className="col-span-2 text-right">
-                        <Input
-                          type="number"
-                          className="h-8 w-28 text-right text-sm font-semibold ml-auto tabular-nums"
-                          value={finalAmt}
-                          onChange={e => onEditAmount(s.assignmentId, parseFloat(e.target.value) || 0)}
-                          disabled={isLocked}
-                        />
-                      </div>
-                      <div className="col-span-1 text-right">
-                        <FeeBadge status={s.feeStatus} />
-                      </div>
+                      {!isTeacherView && (
+                        <div className="col-span-2 text-right">
+                          <Input
+                            type="number"
+                            className="h-8 w-28 text-right text-sm font-semibold ml-auto tabular-nums"
+                            value={finalAmt}
+                            onChange={e => onEditAmount(s.assignmentId, parseFloat(e.target.value) || 0)}
+                            disabled={isLocked}
+                          />
+                        </div>
+                      )}
+                      {!isTeacherView && (
+                        <div className="col-span-1 text-right">
+                          <FeeBadge status={s.feeStatus} />
+                        </div>
+                      )}
                     </div>
 
                     {/* Mobile Row */}
@@ -272,7 +291,7 @@ export function SalarySheetDialog({
                             <Badge variant="outline" className="text-[9px] ml-1.5 capitalize">{s.payoutType}</Badge>
                           </p>
                         </div>
-                        <FeeBadge status={s.feeStatus} />
+                        {!isTeacherView && <FeeBadge status={s.feeStatus} />}
                       </div>
                       <div className="grid grid-cols-3 gap-2 text-xs">
                         <div>
@@ -297,41 +316,43 @@ export function SalarySheetDialog({
                       </div>
                     </div>
 
-                    {/* Attendance Timeline */}
-                    <div className="px-3 sm:px-4 pb-3 space-y-1.5">
-                      <TooltipProvider>
-                        <div className="flex items-center gap-[3px] flex-wrap">
-                          {s.attendanceDays.map((d) => (
-                            <Tooltip key={d.date}>
-                              <TooltipTrigger asChild>
-                                <div className="flex flex-col items-center gap-0.5">
-                                  <span className="text-[7px] sm:text-[8px] text-muted-foreground leading-none">
-                                    {format(parseISO(d.date), 'd')}
-                                  </span>
-                                  <span className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full ${dotColor(d.status)} inline-block transition-transform hover:scale-125 cursor-default`} />
-                                </div>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" className="text-xs">
-                                {format(parseISO(d.date), 'dd MMM yyyy')} — {dotLabel(d.status)}
-                              </TooltipContent>
-                            </Tooltip>
-                          ))}
+                    {/* Attendance Timeline - Admin only */}
+                    {!isTeacherView && (
+                      <div className="px-3 sm:px-4 pb-3 space-y-1.5">
+                        <TooltipProvider>
+                          <div className="flex items-center gap-[3px] flex-wrap">
+                            {s.attendanceDays.map((d) => (
+                              <Tooltip key={d.date}>
+                                <TooltipTrigger asChild>
+                                  <div className="flex flex-col items-center gap-0.5">
+                                    <span className="text-[7px] sm:text-[8px] text-muted-foreground leading-none">
+                                      {format(parseISO(d.date), 'd')}
+                                    </span>
+                                    <span className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full ${dotColor(d.status)} inline-block transition-transform hover:scale-125 cursor-default`} />
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="text-xs">
+                                  {format(parseISO(d.date), 'dd MMM yyyy')} — {dotLabel(d.status)}
+                                </TooltipContent>
+                              </Tooltip>
+                            ))}
+                          </div>
+                        </TooltipProvider>
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[10px] sm:text-[11px] text-muted-foreground">
+                          <span className="text-emerald-600 font-medium">{s.presentCount} present</span>
+                          <span className="text-red-600">{s.absentCount} absent</span>
+                          <span className="text-amber-600">{s.leaveCount} leave</span>
+                          {s.holidayCount > 0 && <span className="text-sky-600">{s.holidayCount} off</span>}
+                          {s.missingCount > 0 && <span className="text-gray-500">{s.missingCount} not marked</span>}
+                          {s.lastPaymentDate && (
+                            <>
+                              <Separator orientation="vertical" className="h-3 hidden sm:block" />
+                              <span className="text-muted-foreground">Last paid: {format(parseISO(s.lastPaymentDate), 'dd MMM')}</span>
+                            </>
+                          )}
                         </div>
-                      </TooltipProvider>
-                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[10px] sm:text-[11px] text-muted-foreground">
-                        <span className="text-emerald-600 font-medium">{s.presentCount} present</span>
-                        <span className="text-red-600">{s.absentCount} absent</span>
-                        <span className="text-amber-600">{s.leaveCount} leave</span>
-                        {s.holidayCount > 0 && <span className="text-sky-600">{s.holidayCount} off</span>}
-                        {s.missingCount > 0 && <span className="text-gray-500">{s.missingCount} not marked</span>}
-                        {s.lastPaymentDate && (
-                          <>
-                            <Separator orientation="vertical" className="h-3 hidden sm:block" />
-                            <span className="text-muted-foreground">Last paid: {format(parseISO(s.lastPaymentDate), 'dd MMM')}</span>
-                          </>
-                        )}
                       </div>
-                    </div>
+                    )}
                   </div>
                 );
               })}
@@ -392,33 +413,24 @@ export function SalarySheetDialog({
               </div>
 
               {/* Payment Actions */}
-              {!isLocked && teacher.payoutStatus !== 'paid' && (
+              {!isLocked && teacher.payoutStatus !== 'paid' && !isTeacherView && (
                 <div className="space-y-3 print:hidden">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-3">
                     <div className="space-y-1">
-                      <Label className="text-xs">Invoice Number</Label>
-                      <Input
-                        placeholder="INV-001"
-                        value={invoiceNumber}
-                        onChange={e => setInvoiceNumber(e.target.value)}
-                        className="h-8 text-sm"
-                      />
+                      <Label className="text-xs">Invoice #</Label>
+                      <Input value={displayInvoice} disabled className="h-8 text-sm bg-muted" />
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Receipt / Attachment URL</Label>
-                      <Input
-                        placeholder="https://..."
-                        value={receiptUrl}
-                        onChange={e => setReceiptUrl(e.target.value)}
-                        className="h-8 text-sm"
-                      />
-                      <p className="text-[9px] text-muted-foreground">PDF, JPEG, PNG link</p>
-                    </div>
+                    <FileUploadField
+                      label="Payment Proof (Screenshot / Receipt)"
+                      bucket="salary-receipts"
+                      value={receiptUrl}
+                      onChange={setReceiptUrl}
+                    />
                   </div>
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                     <Button
                       className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
-                      onClick={() => onMarkPaid('full', undefined, invoiceNumber, receiptUrl)}
+                      onClick={() => onMarkPaid('full', undefined, displayInvoice, receiptUrl)}
                       disabled={isPayingPending}
                     >
                       {isPayingPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
@@ -435,17 +447,30 @@ export function SalarySheetDialog({
                 </div>
               )}
               {teacher.payoutStatus === 'paid' && (
-                <div className="flex items-center gap-2 text-emerald-600 font-medium print:hidden">
-                  <CheckCircle className="h-5 w-5" /> Payment Completed
+                <div className="space-y-2 print:hidden">
+                  <div className="flex items-center gap-2 text-emerald-600 font-medium">
+                    <CheckCircle className="h-5 w-5" /> Payment Completed
+                  </div>
+                  {(existingReceiptUrl || receiptUrl) && (
+                    <AttachmentPreview url={existingReceiptUrl || receiptUrl} />
+                  )}
+                  {existingInvoiceNumber && (
+                    <p className="text-xs text-muted-foreground">Invoice: {existingInvoiceNumber}</p>
+                  )}
                 </div>
               )}
               {isLocked && (
-                <div className="flex items-center gap-2 text-muted-foreground font-medium print:hidden">
-                  <AlertCircle className="h-5 w-5" /> Salary Locked
+                <div className="space-y-2 print:hidden">
+                  <div className="flex items-center gap-2 text-muted-foreground font-medium">
+                    <AlertCircle className="h-5 w-5" /> Salary Locked
+                  </div>
+                  {(existingReceiptUrl || receiptUrl) && (
+                    <AttachmentPreview url={existingReceiptUrl || receiptUrl} />
+                  )}
                 </div>
               )}
 
-              {showPartialInput && !isLocked && (
+              {showPartialInput && !isLocked && !isTeacherView && (
                 <div className="mt-3 space-y-2 print:hidden">
                   <Textarea
                     placeholder="Reason for partial payment (mandatory)..."
@@ -456,7 +481,7 @@ export function SalarySheetDialog({
                   <Button
                     size="sm"
                     disabled={!partialReason.trim() || isPayingPending}
-                    onClick={() => { onMarkPaid('partial', partialReason, invoiceNumber, receiptUrl); setPartialReason(''); setShowPartialInput(false); }}
+                    onClick={() => { onMarkPaid('partial', partialReason, displayInvoice, receiptUrl); setPartialReason(''); setShowPartialInput(false); }}
                   >
                     {isPayingPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
                     Confirm Partial Payment
