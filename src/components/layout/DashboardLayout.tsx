@@ -29,20 +29,20 @@ import {
   Settings,
   MessageSquare,
   CreditCard,
-  Layers,
   UserCheck,
-  Bell,
   Wallet,
-  Archive,
   CalendarClock,
-  Megaphone,
-  ClipboardList,
   Award,
   Cog,
   Receipt,
+  PanelLeftClose,
+  PanelLeft,
+  Bell,
+  Megaphone,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import logoLight from '@/assets/logo-light.png';
 import logoDark from '@/assets/logo-dark.jpg';
 
@@ -81,11 +81,6 @@ interface NavGroup {
   subGroups?: NavSubGroup[];
 }
 
-// Standalone items (always top-level)
-const standaloneItems: NavItem[] = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: 'dashboard.admin' },
-];
-
 // Build navigation groups dynamically based on active division model type and branch type
 function buildNavGroups(modelType: string | null, branchType: string | null): NavGroup[] {
   const isOneToOne = modelType === 'one_to_one';
@@ -103,33 +98,17 @@ function buildNavGroups(modelType: string | null, branchType: string | null): Na
         { label: 'Schedules', href: '/schedules', icon: CalendarClock, roles: ['super_admin', 'admin'] },
       ];
 
-  // Context-aware academic items
-  const academicItems: NavItem[] = [
-    { label: 'Attendance', href: '/attendance', icon: ClipboardCheck, permission: 'attendance.view' },
-    { label: 'Planning', href: '/monthly-planning', icon: Target, roles: ['super_admin', 'admin', 'teacher'] },
-    { label: 'Subjects', href: '/subjects', icon: BookOpen, roles: ['super_admin', 'admin'] },
-  ];
-
-  // System items - hide Zoom for onsite
-  const systemItems: NavItem[] = [
-    { label: 'System Control', href: '/organization-settings', icon: Cog, roles: ['super_admin', 'admin'] },
-    ...(!isOnsite ? [{ label: 'Zoom Engine', href: '/zoom-management', icon: Video, roles: ['super_admin', 'admin'] as string[] }] : []),
-    { label: 'Integrity Audit', href: '/integrity-audit', icon: AlertTriangle, roles: ['super_admin', 'admin'] },
-    { label: 'Resources', href: '/resources', icon: FolderOpen, roles: ['super_admin'] },
-  ];
-
   return [
-    {
-      id: 'teaching',
-      label: isOneToOne ? 'Mentorship' : isGroup ? 'Batch Academy' : 'Teaching',
-      icon: isOneToOne ? UserCheck : GraduationCap,
-      items: teachingItems,
-    },
     {
       id: 'academics',
       label: 'Academics',
-      icon: BookOpen,
-      items: academicItems,
+      icon: GraduationCap,
+      items: [
+        ...teachingItems,
+        { label: 'Attendance', href: '/attendance', icon: ClipboardCheck, permission: 'attendance.view' },
+        { label: 'Planning', href: '/monthly-planning', icon: Target, roles: ['super_admin', 'admin', 'teacher'] },
+        { label: 'Subjects', href: '/subjects', icon: BookOpen, roles: ['super_admin', 'admin'] },
+      ],
       subGroups: [
         {
           id: 'exam-center',
@@ -168,15 +147,28 @@ function buildNavGroups(modelType: string | null, branchType: string | null): Na
       ],
     },
     {
-      id: 'system',
-      label: 'System',
+      id: 'communication',
+      label: 'Communication',
+      icon: MessageSquare,
+      items: [
+        ...(!isOnsite ? [{ label: 'Zoom Engine', href: '/zoom-management', icon: Video, roles: ['super_admin', 'admin'] as string[] }] : []),
+        { label: 'Integrity Audit', href: '/integrity-audit', icon: AlertTriangle, roles: ['super_admin', 'admin'] },
+      ],
+    },
+    {
+      id: 'settings',
+      label: 'Settings',
       icon: Settings,
-      items: systemItems,
+      items: [
+        { label: 'System Control', href: '/organization-settings', icon: Cog, roles: ['super_admin', 'admin'] },
+        { label: 'Resources', href: '/resources', icon: FolderOpen, roles: ['super_admin'] },
+      ],
     },
   ];
 }
 
 const SIDEBAR_STATE_KEY = 'sidebar-groups-state';
+const SIDEBAR_COLLAPSED_KEY = 'sidebar-collapsed';
 
 function useSidebarState() {
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => {
@@ -216,7 +208,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true'; } catch { return false; }
+  });
   const { expandedGroups, toggleGroup, expandGroup } = useSidebarState();
+
+  useEffect(() => {
+    localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed));
+  }, [collapsed]);
 
   // Build nav groups based on active division and branch
   const navGroups = useMemo(() => buildNavGroups(activeModelType, activeBranch?.type || null), [activeModelType, activeBranch?.type]);
@@ -227,7 +226,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     if (item.href === '/dashboard') return true;
     if (item.roles && activeRole && item.roles.includes(activeRole)) return true;
     if (item.permission && hasPermission(item.permission)) return true;
-    // Resources no longer has open access - it uses roles like other items
     return false;
   }, [activeRole, hasPermission]);
 
@@ -250,17 +248,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     })).filter(group => (group.items?.length ?? 0) > 0 || (group.subGroups?.length ?? 0) > 0);
   }, [isItemVisible, navGroups]);
 
-  const filteredStandaloneItems = useMemo(() => {
-    return standaloneItems.filter(isItemVisible);
-  }, [isItemVisible]);
-
   // Auto-expand group & sub-group containing the active route
   useEffect(() => {
     for (const group of navGroups) {
       const allItems = getAllGroupItems(group);
       if (allItems.some(item => location.pathname === item.href)) {
         expandGroup(group.id);
-        // Also expand any matching sub-group
         for (const sg of (group.subGroups ?? [])) {
           if (sg.items.some(item => location.pathname === item.href)) {
             expandGroup(sg.id);
@@ -318,8 +311,34 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     );
   }
 
+  const sidebarWidth = collapsed ? 'w-[68px]' : 'w-64';
+  const mainMargin = collapsed ? 'lg:ml-[68px]' : 'lg:ml-64';
+
   const renderNavLink = (item: NavItem, closeMobile?: boolean) => {
     const isActive = location.pathname === item.href;
+    if (collapsed) {
+      return (
+        <Tooltip key={item.href} delayDuration={0}>
+          <TooltipTrigger asChild>
+            <Link
+              to={item.href}
+              onClick={() => closeMobile && setSidebarOpen(false)}
+              className={cn(
+                "flex items-center justify-center w-10 h-10 rounded-lg mx-auto transition-all duration-200",
+                isActive
+                  ? "bg-accent text-accent-foreground shadow-glow"
+                  : "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              )}
+            >
+              <item.icon className="h-4 w-4" />
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent side="right" sideOffset={8}>
+            {item.label}
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
     return (
       <Link
         key={item.href}
@@ -328,38 +347,36 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         className={cn(
           "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
           isActive
-            ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-glow"
+            ? "bg-accent text-accent-foreground shadow-glow"
             : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         )}
       >
-        <item.icon className="h-4 w-4" />
-        {item.label}
+        <item.icon className="h-4 w-4 shrink-0" />
+        <span className="truncate">{item.label}</span>
       </Link>
     );
   };
 
   const renderSubGroup = (sg: NavSubGroup, closeMobile?: boolean) => {
+    if (collapsed) {
+      return (
+        <div key={sg.id} className="space-y-0.5">
+          {sg.items.map(item => renderNavLink(item, closeMobile))}
+        </div>
+      );
+    }
     const isOpen = expandedGroups[sg.id] ?? false;
     return (
-      <Collapsible
-        key={sg.id}
-        open={isOpen}
-        onOpenChange={() => toggleGroup(sg.id)}
-      >
+      <Collapsible key={sg.id} open={isOpen} onOpenChange={() => toggleGroup(sg.id)}>
         <CollapsibleTrigger className={cn(
           "flex items-center justify-between w-full px-3 py-1.5 rounded-md text-xs font-semibold uppercase tracking-wider transition-all duration-200",
-          isOpen
-            ? "text-sidebar-primary"
-            : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
+          isOpen ? "text-accent" : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
         )}>
           <span className="flex items-center gap-2">
             <sg.icon className="h-3.5 w-3.5" />
             {sg.label}
           </span>
-          <ChevronDown className={cn(
-            "h-3 w-3 transition-transform duration-200",
-            isOpen && "rotate-180"
-          )} />
+          <ChevronDown className={cn("h-3 w-3 transition-transform duration-200", isOpen && "rotate-180")} />
         </CollapsibleTrigger>
         <CollapsibleContent className="pl-2 mt-0.5 space-y-0.5">
           {sg.items.map(item => renderNavLink(item, closeMobile))}
@@ -370,38 +387,59 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const renderSidebarContent = (closeMobile?: boolean) => (
     <>
-      {/* Standalone items */}
-      {filteredStandaloneItems.map(item => renderNavLink(item, closeMobile))}
+      {/* Dashboard - always top */}
+      {renderNavLink({ label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: 'dashboard.admin' }, closeMobile)}
+
+      {/* Separator */}
+      {!collapsed && <div className="h-px bg-sidebar-border my-2" />}
+      {collapsed && <div className="h-px bg-sidebar-border my-1 mx-2" />}
 
       {/* Grouped items */}
       {visibleGroups.map(group => {
         const isOpen = expandedGroups[group.id] ?? false;
 
+        if (collapsed) {
+          // In collapsed mode, show group icon as a tooltip trigger
+          return (
+            <div key={group.id} className="space-y-0.5">
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => { setCollapsed(false); expandGroup(group.id); }}
+                    className={cn(
+                      "flex items-center justify-center w-10 h-10 rounded-lg mx-auto transition-all duration-200",
+                      isOpen
+                        ? "bg-accent/20 text-accent"
+                        : "text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    )}
+                  >
+                    <group.icon className="h-5 w-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={8}>
+                  {group.label}
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          );
+        }
+
         return (
-          <Collapsible
-            key={group.id}
-            open={isOpen}
-            onOpenChange={() => toggleGroup(group.id)}
-          >
+          <Collapsible key={group.id} open={isOpen} onOpenChange={() => toggleGroup(group.id)}>
             <CollapsibleTrigger className={cn(
               "flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group",
               isOpen
-                ? "bg-cyan text-white"
+                ? "bg-accent/15 text-accent"
                 : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             )}>
               <span className="flex items-center gap-3">
                 <group.icon className="h-5 w-5" />
                 {group.label}
               </span>
-              <ChevronDown className={cn(
-                "h-4 w-4 transition-transform duration-200",
-                isOpen && "rotate-180"
-              )} />
+              <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", isOpen && "rotate-180")} />
             </CollapsibleTrigger>
             <CollapsibleContent className="pl-3 mt-0.5 space-y-0.5">
-              {/* Direct items */}
               {(group.items ?? []).map(item => renderNavLink(item, closeMobile))}
-              {/* Sub-groups */}
               {(group.subGroups ?? []).map(sg => renderSubGroup(sg, closeMobile))}
             </CollapsibleContent>
           </Collapsible>
@@ -413,7 +451,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div className="min-h-screen bg-background islamic-pattern">
       {/* Mobile Header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 h-16 bg-card border-b border-border flex items-center justify-between px-4">
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 h-14 bg-card border-b border-border flex items-center justify-between px-4">
         <div className="flex items-center gap-3">
           <img src={logoLight} alt="Al-Quran Time Academy" className="h-8 w-8 object-contain" />
           <span className="font-serif text-lg font-bold text-foreground">Al-Quran Time</span>
@@ -429,52 +467,134 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed top-0 left-0 z-40 h-full w-64 bg-sidebar transition-transform duration-300 lg:translate-x-0",
-        sidebarOpen ? "translate-x-0" : "-translate-x-full"
-      )}>
-        <div className="flex flex-col h-full">
-          {/* Logo + Active Context */}
-          <div className="hidden lg:flex flex-col p-4 border-b border-sidebar-border">
-            <div className="flex items-center gap-3">
-              <img src={logoDark} alt="Al-Quran Time Academy" className="h-12 w-12 object-contain rounded-lg" />
-              <div>
-                <h1 className="font-serif text-sm font-bold text-sidebar-foreground">Al-Quran Time</h1>
-                <p className="text-xs text-sidebar-foreground/70">Academy LMS</p>
+        "fixed top-0 left-0 z-40 h-full bg-sidebar border-r border-sidebar-border transition-all duration-300 lg:translate-x-0",
+        sidebarOpen ? "translate-x-0 w-64" : "-translate-x-full",
+        `lg:${sidebarWidth}`
+      )} style={{ width: sidebarOpen ? undefined : undefined }}>
+        {/* Inline width for lg to work with dynamic collapsed state */}
+        <div className={cn("hidden lg:block fixed top-0 left-0 h-full bg-sidebar border-r border-sidebar-border transition-all duration-300", sidebarWidth)}>
+          <div className="flex flex-col h-full">
+            {/* Logo Area */}
+            <div className="flex items-center justify-between p-3 border-b border-sidebar-border">
+              <div className={cn("flex items-center gap-3 overflow-hidden", collapsed && "justify-center w-full")}>
+                <img src={logoDark} alt="Al-Quran Time Academy" className={cn("object-contain rounded-lg shrink-0", collapsed ? "h-9 w-9" : "h-10 w-10")} />
+                {!collapsed && (
+                  <div className="min-w-0">
+                    <h1 className="font-serif text-sm font-bold text-sidebar-foreground truncate">Al-Quran Time</h1>
+                    <p className="text-[10px] text-sidebar-foreground/60">Academy LMS</p>
+                  </div>
+                )}
               </div>
+              <button
+                onClick={() => setCollapsed(!collapsed)}
+                className={cn(
+                  "p-1.5 rounded-md text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors shrink-0",
+                  collapsed && "hidden"
+                )}
+              >
+                <PanelLeftClose className="h-4 w-4" />
+              </button>
             </div>
-            {activeBranch && activeDivision && (
-              <div className="mt-3 px-2 py-1.5 rounded-md bg-sidebar-accent/50 border border-sidebar-border">
-                <p className="text-[11px] font-semibold text-accent truncate">
-                  {activeBranch.name} — {activeDivision.name}
-                </p>
+
+            {/* Active Context Badge */}
+            {activeBranch && activeDivision && !collapsed && (
+              <div className="px-3 pt-2">
+                <div className="px-2.5 py-1.5 rounded-md bg-accent/10 border border-accent/20">
+                  <p className="text-[10px] font-semibold text-accent truncate">
+                    {activeBranch.name} · {activeDivision.name}
+                  </p>
+                </div>
               </div>
             )}
-          </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 p-3 space-y-1 mt-16 lg:mt-0 overflow-y-auto scrollbar-thin">
+            {/* Navigation */}
+            <nav className={cn("flex-1 overflow-y-auto scrollbar-thin", collapsed ? "p-2 space-y-0.5" : "p-3 space-y-0.5")}>
+              {renderSidebarContent(false)}
+            </nav>
+
+            {/* Collapse toggle at bottom for collapsed state */}
+            {collapsed && (
+              <div className="p-2 border-t border-sidebar-border">
+                <Tooltip delayDuration={0}>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setCollapsed(false)}
+                      className="flex items-center justify-center w-10 h-10 rounded-lg mx-auto text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+                    >
+                      <PanelLeft className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">Expand sidebar</TooltipContent>
+                </Tooltip>
+              </div>
+            )}
+
+            {/* User Section */}
+            <div className={cn("border-t border-sidebar-border", collapsed ? "p-2" : "p-3")}>
+              {collapsed ? (
+                <Tooltip delayDuration={0}>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center justify-center w-10 h-10 rounded-lg mx-auto text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+                    >
+                      <LogOut className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">{profile.full_name} · Sign Out</TooltipContent>
+                </Tooltip>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3 mb-2 px-2">
+                    <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center shrink-0">
+                      <User className="h-3.5 w-3.5 text-accent" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-sidebar-foreground truncate">{profile.full_name}</p>
+                      <p className="text-[10px] text-sidebar-foreground/50 capitalize">
+                        {activeRole ? ROLE_LABELS[activeRole] : 'User'}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start gap-2 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent h-8 text-xs"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                    Sign Out
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile sidebar content */}
+        <div className="lg:hidden flex flex-col h-full">
+          <nav className="flex-1 p-3 space-y-0.5 mt-14 overflow-y-auto scrollbar-thin">
             {renderSidebarContent(true)}
           </nav>
-
-          {/* User Section */}
           <div className="p-3 border-t border-sidebar-border">
-            <div className="flex items-center gap-3 mb-3 px-2">
-              <div className="w-9 h-9 rounded-full bg-sidebar-accent flex items-center justify-center">
-                <User className="h-4 w-4 text-sidebar-accent-foreground" />
+            <div className="flex items-center gap-3 mb-2 px-2">
+              <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center shrink-0">
+                <User className="h-3.5 w-3.5 text-accent" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-sidebar-foreground truncate">{profile.full_name}</p>
-                <p className="text-xs text-sidebar-foreground/60 capitalize">
+                <p className="text-[10px] text-sidebar-foreground/50 capitalize">
                   {activeRole ? ROLE_LABELS[activeRole] : 'User'}
                 </p>
               </div>
             </div>
             <Button
               variant="ghost"
-              className="w-full justify-start gap-2 text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+              size="sm"
+              className="w-full justify-start gap-2 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent h-8 text-xs"
               onClick={handleLogout}
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-3.5 w-3.5" />
               Sign Out
             </Button>
           </div>
@@ -490,11 +610,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       )}
 
       {/* Main Content */}
-      <main className="lg:ml-64 min-h-screen pt-16 lg:pt-0">
-        <header className="hidden lg:flex h-14 border-b border-border bg-card/50 backdrop-blur-sm items-center justify-between px-6">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <main className={cn("min-h-screen pt-14 lg:pt-0 transition-all duration-300", mainMargin)}>
+        <header className="hidden lg:flex h-12 border-b border-border bg-card/80 backdrop-blur-sm items-center justify-between px-6 sticky top-0 z-20">
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
             {activeBranch && activeDivision && (
-              <span className="font-medium text-foreground">
+              <span className="font-medium text-foreground text-xs">
                 {activeBranch.name} <span className="text-muted-foreground mx-1">›</span> {activeDivision.name}
               </span>
             )}
@@ -504,7 +624,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <RoleSwitcher />
           </div>
         </header>
-        <div className="p-6 lg:p-8">
+        <div className="p-4 lg:p-6">
           <PageBreadcrumb />
           {children}
         </div>
