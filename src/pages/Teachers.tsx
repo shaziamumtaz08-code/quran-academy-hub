@@ -6,12 +6,13 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, Mail, Users, MoreHorizontal, Pencil, Trash2, Loader2, AlertCircle, ChevronDown, ChevronRight, User, Clock, BookOpen, ArrowUpDown, ArrowUp, ArrowDown, RotateCcw } from 'lucide-react';
+import { Plus, Search, Mail, Users, MoreHorizontal, Pencil, Trash2, Loader2, AlertCircle, ChevronDown, ChevronRight, User, Clock, BookOpen, ArrowUpDown, ArrowUp, ArrowDown, RotateCcw, Download } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { ExportDialog } from '@/components/export/ExportDialog';
 
 interface StudentWithSchedule {
   id: string;
@@ -40,7 +41,7 @@ export default function Teachers() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
-  const [formData, setFormData] = useState({ name: '', email: '' });
+  const [formData, setFormData] = useState({ name: '', email: '', bank_name: '', bank_account_title: '', bank_account_number: '', bank_iban: '' });
   const [expandedTeachers, setExpandedTeachers] = useState<Set<string>>(new Set());
   
   // Sorting & Filtering
@@ -48,6 +49,7 @@ export default function Teachers() {
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const [filterCountry, setFilterCountry] = useState('');
   const [filterCity, setFilterCity] = useState('');
+  const [exportOpen, setExportOpen] = useState(false);
 
   // Fetch teachers from Supabase with assigned students and schedules
   const { data: teachers = [], isLoading } = useQuery({
@@ -256,7 +258,7 @@ export default function Teachers() {
   });
 
   const resetForm = () => {
-    setFormData({ name: '', email: '' });
+    setFormData({ name: '', email: '', bank_name: '', bank_account_title: '', bank_account_number: '', bank_iban: '' });
     setEditingTeacher(null);
     setIsDialogOpen(false);
   };
@@ -276,7 +278,7 @@ export default function Teachers() {
 
   const handleEdit = (teacher: Teacher) => {
     setEditingTeacher(teacher);
-    setFormData({ name: teacher.full_name, email: teacher.email || '' });
+    setFormData({ name: teacher.full_name, email: teacher.email || '', bank_name: '', bank_account_title: '', bank_account_number: '', bank_iban: '' });
     setIsDialogOpen(true);
   };
 
@@ -319,12 +321,17 @@ export default function Teachers() {
             <p className="text-muted-foreground mt-1">Manage your academy's teachers</p>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) resetForm(); else setIsDialogOpen(true); }}>
-            <DialogTrigger asChild>
-              <Button variant="hero">
-                <Plus className="h-4 w-4" />
-                Add Teacher
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setExportOpen(true)}>
+                <Download className="h-4 w-4 mr-1" /> Export
               </Button>
-            </DialogTrigger>
+              <DialogTrigger asChild>
+                <Button variant="hero">
+                  <Plus className="h-4 w-4" />
+                  Add Teacher
+                </Button>
+              </DialogTrigger>
+            </div>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle className="font-serif">
@@ -350,6 +357,24 @@ export default function Teachers() {
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="bank_name">Bank Name</Label>
+                    <Input id="bank_name" placeholder="Bank name" value={formData.bank_name} onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bank_account_title">Account Title</Label>
+                    <Input id="bank_account_title" placeholder="Account holder name" value={formData.bank_account_title} onChange={(e) => setFormData({ ...formData, bank_account_title: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bank_account_number">Account Number</Label>
+                    <Input id="bank_account_number" placeholder="Account #" value={formData.bank_account_number} onChange={(e) => setFormData({ ...formData, bank_account_number: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bank_iban">IBAN</Label>
+                    <Input id="bank_iban" placeholder="IBAN" value={formData.bank_iban} onChange={(e) => setFormData({ ...formData, bank_iban: e.target.value })} />
+                  </div>
                 </div>
               </div>
               <div className="flex justify-end gap-3">
@@ -557,6 +582,28 @@ export default function Teachers() {
             </Table>
           )}
         </div>
+
+        {/* Export Dialog */}
+        <ExportDialog
+          open={exportOpen}
+          onOpenChange={setExportOpen}
+          title="Teachers"
+          filename="teachers"
+          fields={[
+            { key: 'name', label: 'Name' },
+            { key: 'email', label: 'Email' },
+            { key: 'country', label: 'Country' },
+            { key: 'city', label: 'City' },
+            { key: 'student_count', label: 'Student Count' },
+          ]}
+          data={filteredTeachers.map(t => ({
+            name: t.full_name,
+            email: t.email || '',
+            country: t.country || '',
+            city: t.city || '',
+            student_count: t.student_count,
+          }))}
+        />
       </div>
     </DashboardLayout>
   );
