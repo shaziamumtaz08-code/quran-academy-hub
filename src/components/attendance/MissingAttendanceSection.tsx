@@ -232,22 +232,17 @@ export function MissingAttendanceSection({
   if (!isVisible) return null;
 
   return (
-    <Card className="border-destructive/30 bg-destructive/5">
+    <Card>
       <CardContent className="pt-6 space-y-4">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-destructive" />
-            <h3 className="font-serif text-lg font-semibold text-foreground">
-              Missing Attendance Records
-            </h3>
-            <Badge variant="destructive" className="ml-2">
-              {filteredAndSortedMissing.length}
-            </Badge>
-          </div>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="h-5 w-5 text-destructive" />
+          <h3 className="font-serif text-lg font-semibold text-foreground">
+            Missing Attendance Records
+          </h3>
+          <Badge variant="destructive" className="ml-2">
+            {filteredAndSortedMissing.length}
+          </Badge>
         </div>
 
         {/* Filters */}

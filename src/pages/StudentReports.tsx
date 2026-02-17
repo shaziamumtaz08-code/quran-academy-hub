@@ -63,7 +63,7 @@ export default function StudentReports() {
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<string | null>(null); // single delete
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   
   // Sorting
   const [sortField, setSortField] = useState<SortField>('date');
@@ -109,12 +109,9 @@ export default function StudentReports() {
     enabled: !!user?.id && activeRole === 'parent',
   });
 
-  // Recycle bin mode
-  const [showRecycleBin, setShowRecycleBin] = useState(false);
-
-  // Fetch reports
+  // Fetch reports (always exclude soft-deleted)
   const { data: reports, isLoading, error } = useQuery({
-    queryKey: ['student-reports', user?.id, activeRole, showRecycleBin],
+    queryKey: ['student-reports', user?.id, activeRole],
     queryFn: async () => {
       let query = supabase
         .from('exams')
@@ -141,14 +138,8 @@ export default function StudentReports() {
             subject:subjects(id, name)
           )
         `)
-        .order('exam_date', { ascending: false });
-
-      // Filter by soft-delete status
-      if (showRecycleBin) {
-        query = query.not('deleted_at', 'is', null);
-      } else {
-        query = query.is('deleted_at', null);
-      }
+        .order('exam_date', { ascending: false })
+        .is('deleted_at', null);
 
       if (isTeacher && teacherStudentIds && teacherStudentIds.length > 0) {
         query = query.in('student_id', teacherStudentIds);
@@ -294,48 +285,8 @@ export default function StudentReports() {
     return countMap;
   }, [reports]);
 
-  // Soft delete mutation (move to recycle bin)
+  // Delete mutation (permanent delete)
   const deleteMutation = useMutation({
-    mutationFn: async (ids: string[]) => {
-      const { error } = await supabase
-        .from('exams')
-        .update({ deleted_at: new Date().toISOString() })
-        .in('id', ids);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['student-reports'] });
-      toast({ title: 'Moved to Recycle Bin', description: 'Report card(s) moved to recycle bin. They will be permanently deleted after 3 days.' });
-      setSelectedIds(new Set());
-      setDeleteDialogOpen(false);
-      setDeleteTarget(null);
-    },
-    onError: (error: any) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    },
-  });
-
-  // Restore mutation
-  const restoreMutation = useMutation({
-    mutationFn: async (ids: string[]) => {
-      const { error } = await supabase
-        .from('exams')
-        .update({ deleted_at: null })
-        .in('id', ids);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['student-reports'] });
-      toast({ title: 'Restored', description: 'Report card(s) restored successfully' });
-      setSelectedIds(new Set());
-    },
-    onError: (error: any) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    },
-  });
-
-  // Permanent delete mutation
-  const permanentDeleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
       const { error } = await supabase
         .from('exams')
@@ -345,7 +296,7 @@ export default function StudentReports() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['student-reports'] });
-      toast({ title: 'Permanently Deleted', description: 'Report card(s) permanently deleted' });
+      toast({ title: 'Deleted', description: 'Report card(s) deleted successfully.' });
       setSelectedIds(new Set());
       setDeleteDialogOpen(false);
       setDeleteTarget(null);
@@ -507,20 +458,9 @@ export default function StudentReports() {
                 {isStudentOrParent ? 'View your official progress reports' : 'View and manage student report cards'}
               </p>
             </div>
-            {/* Recycle bin toggle + Progress tracking */}
+            {/* Progress tracking */}
             <div className="hidden sm:flex items-center gap-3">
-              {isAdminOrExaminer && (
-                <Button
-                  variant={showRecycleBin ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => { setShowRecycleBin(!showRecycleBin); setSelectedIds(new Set()); }}
-                  className={showRecycleBin ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-white/10 text-white border-white/20 hover:bg-white/20"}
-                >
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  Recycle Bin
-                </Button>
-              )}
-              {!showRecycleBin && !isStudentOrParent && reportsThisMonth.size > 0 && (
+              {!isStudentOrParent && reportsThisMonth.size > 0 && (
                 <div className="flex items-center gap-2 bg-white/10 rounded-lg px-4 py-2">
                   <TrendingUp className="h-5 w-5 text-cyan-400" />
                   <div className="text-white">
@@ -628,7 +568,7 @@ export default function StudentReports() {
                   <RotateCcw className="h-3.5 w-3.5" />
                   Reset
                 </Button>
-                {isAdminOrExaminer && selectedIds.size > 0 && !showRecycleBin && (
+                {isAdminOrExaminer && selectedIds.size > 0 && (
                   <Button 
                     variant="destructive" 
                     size="sm" 
@@ -636,31 +576,8 @@ export default function StudentReports() {
                     className="gap-1"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    Move to Bin ({selectedIds.size})
+                    Delete ({selectedIds.size})
                   </Button>
-                )}
-                {isAdminOrExaminer && selectedIds.size > 0 && showRecycleBin && (
-                  <>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => restoreMutation.mutate([...selectedIds])}
-                      disabled={restoreMutation.isPending}
-                      className="gap-1"
-                    >
-                      <RotateCcw className="h-3.5 w-3.5" />
-                      Restore ({selectedIds.size})
-                    </Button>
-                    <Button 
-                      variant="destructive" 
-                      size="sm" 
-                      onClick={() => handleDeleteClick()}
-                      className="gap-1"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      Delete Permanently ({selectedIds.size})
-                    </Button>
-                  </>
                 )}
               </div>
             </CardContent>
@@ -784,31 +701,6 @@ export default function StudentReports() {
                         </TableCell>
                         <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-end gap-1">
-                            {showRecycleBin ? (
-                              // Recycle bin actions: restore & permanent delete
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100"
-                                  onClick={() => restoreMutation.mutate([report.id])}
-                                  disabled={restoreMutation.isPending}
-                                  title="Restore"
-                                >
-                                  <RotateCcw className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                  onClick={() => handleDeleteClick(report.id)}
-                                  title="Delete permanently"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </>
-                            ) : (
-                              // Normal actions: view, edit, soft delete
                               <>
                                 <Button
                                   variant="ghost"
@@ -839,7 +731,6 @@ export default function StudentReports() {
                                   </>
                                 )}
                               </>
-                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -887,12 +778,9 @@ export default function StudentReports() {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{showRecycleBin ? 'Permanently Delete' : 'Move to Recycle Bin'}</DialogTitle>
+            <DialogTitle>Delete Report Card</DialogTitle>
             <DialogDescription>
-              {showRecycleBin 
-                ? `Are you sure you want to permanently delete ${deleteTarget ? 'this report card' : `${selectedIds.size} report card(s)`}? This action cannot be undone.`
-                : `Move ${deleteTarget ? 'this report card' : `${selectedIds.size} report card(s)`} to the recycle bin? Items will be permanently deleted after 3 days.`
-              }
+              Are you sure you want to delete {deleteTarget ? 'this report card' : `${selectedIds.size} report card(s)`}? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -904,17 +792,13 @@ export default function StudentReports() {
               onClick={() => {
                 const ids = deleteTarget ? [deleteTarget] : [...selectedIds];
                 if (ids.length > 0) {
-                  if (showRecycleBin) {
-                    permanentDeleteMutation.mutate(ids);
-                  } else {
-                    deleteMutation.mutate(ids);
-                  }
+                  deleteMutation.mutate(ids);
                 }
               }}
-              disabled={deleteMutation.isPending || permanentDeleteMutation.isPending}
+              disabled={deleteMutation.isPending}
             >
-              {(deleteMutation.isPending || permanentDeleteMutation.isPending) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {showRecycleBin ? 'Delete Permanently' : 'Move to Bin'}
+              {deleteMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Delete
             </Button>
           </DialogFooter>
         </DialogContent>

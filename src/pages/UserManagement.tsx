@@ -129,6 +129,7 @@ interface UserWithRoles {
   country: string | null;
   city: string | null;
   created_at: string;
+  archived_at: string | null;
   roles: AppRole[];
   exceptions: Array<{ permission: string; is_granted: boolean }>;
 }
@@ -238,6 +239,7 @@ export default function UserManagement() {
             country: profile.country,
             city: profile.city,
             created_at: profile.created_at,
+            archived_at: profile.archived_at,
             roles: (rolesData || []).map(r => r.role as AppRole),
             exceptions: exceptions || [],
           };
@@ -1133,7 +1135,14 @@ export default function UserManagement() {
                               />
                             </TableCell>
                           )}
-                          <TableCell className="font-medium">{user.full_name}</TableCell>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              {user.full_name}
+                              {user.archived_at && (
+                                <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-200">Archived</Badge>
+                              )}
+                            </div>
+                          </TableCell>
                           <TableCell>
                             {user.whatsapp_number ? (
                               <span className="text-sm">{user.whatsapp_number}</span>
@@ -1237,15 +1246,15 @@ export default function UserManagement() {
                                   </Button>
                               {user.id !== currentUser?.id && (
                                     <>
-                                      <Button
+                                       <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => archiveMutation.mutate({ userId: user.id, archive: !(user as any).archived_at })}
-                                        className={(user as any).archived_at ? "text-emerald-600 hover:text-emerald-700" : "text-amber-600 hover:text-amber-700"}
-                                        title={(user as any).archived_at ? "Unarchive user" : "Archive user"}
+                                        onClick={() => archiveMutation.mutate({ userId: user.id, archive: !user.archived_at })}
+                                        className={user.archived_at ? "text-emerald-600 hover:text-emerald-700" : "text-amber-600 hover:text-amber-700"}
+                                        title={user.archived_at ? "Unarchive user" : "Archive user"}
                                         disabled={archiveMutation.isPending}
                                       >
-                                        {(user as any).archived_at ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                                        {user.archived_at ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
                                       </Button>
                                       <Button
                                         variant="ghost"
