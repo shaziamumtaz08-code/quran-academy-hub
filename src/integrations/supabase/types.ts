@@ -792,6 +792,7 @@ export type Database = {
           division_id: string | null
           expense_date: string
           id: string
+          invoice_number: string | null
           notes: string | null
           receipt_url: string | null
           status: string
@@ -811,6 +812,7 @@ export type Database = {
           division_id?: string | null
           expense_date?: string
           id?: string
+          invoice_number?: string | null
           notes?: string | null
           receipt_url?: string | null
           status?: string
@@ -830,6 +832,7 @@ export type Database = {
           division_id?: string | null
           expense_date?: string
           id?: string
+          invoice_number?: string | null
           notes?: string | null
           receipt_url?: string | null
           status?: string
@@ -1849,6 +1852,7 @@ export type Database = {
           extra_class_amount: number
           gross_salary: number
           id: string
+          invoice_number: string | null
           locked_at: string | null
           locked_by: string | null
           net_salary: number
@@ -1857,6 +1861,7 @@ export type Database = {
           paid_by: string | null
           payment_method: string | null
           payment_reference: string | null
+          receipt_url: string | null
           salary_month: string
           status: string
           teacher_id: string
@@ -1872,6 +1877,7 @@ export type Database = {
           extra_class_amount?: number
           gross_salary?: number
           id?: string
+          invoice_number?: string | null
           locked_at?: string | null
           locked_by?: string | null
           net_salary?: number
@@ -1880,6 +1886,7 @@ export type Database = {
           paid_by?: string | null
           payment_method?: string | null
           payment_reference?: string | null
+          receipt_url?: string | null
           salary_month: string
           status?: string
           teacher_id: string
@@ -1895,6 +1902,7 @@ export type Database = {
           extra_class_amount?: number
           gross_salary?: number
           id?: string
+          invoice_number?: string | null
           locked_at?: string | null
           locked_by?: string | null
           net_salary?: number
@@ -1903,6 +1911,7 @@ export type Database = {
           paid_by?: string | null
           payment_method?: string | null
           payment_reference?: string | null
+          receipt_url?: string | null
           salary_month?: string
           status?: string
           teacher_id?: string
@@ -2412,6 +2421,7 @@ export type Database = {
           payout_type: string | null
           start_date: string | null
           status: Database["public"]["Enums"]["assignment_status"]
+          status_effective_date: string | null
           student_id: string
           student_timezone: string | null
           subject_id: string | null
@@ -2435,6 +2445,7 @@ export type Database = {
           payout_type?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["assignment_status"]
+          status_effective_date?: string | null
           student_id: string
           student_timezone?: string | null
           subject_id?: string | null
@@ -2458,6 +2469,7 @@ export type Database = {
           payout_type?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["assignment_status"]
+          status_effective_date?: string | null
           student_id?: string
           student_timezone?: string | null
           subject_id?: string | null

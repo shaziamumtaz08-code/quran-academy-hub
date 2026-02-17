@@ -53,6 +53,8 @@ export default function Expenses() {
     teacher_id: '',
     student_id: '',
     notes: '',
+    invoice_number: '',
+    receipt_url: '',
   });
 
   // Fetch expenses
@@ -126,6 +128,8 @@ export default function Expenses() {
         teacher_id: form.teacher_id || null,
         student_id: form.student_id || null,
         notes: form.notes || null,
+        invoice_number: form.invoice_number || null,
+        receipt_url: form.receipt_url || null,
         branch_id: branchId,
         division_id: divisionId,
         created_by: user?.id,
@@ -181,7 +185,7 @@ export default function Expenses() {
   const closeForm = () => {
     setFormOpen(false);
     setEditingId(null);
-    setForm({ category: 'operational', description: '', amount: '', currency: 'USD', expense_date: new Date().toISOString().split('T')[0], teacher_id: '', student_id: '', notes: '' });
+    setForm({ category: 'operational', description: '', amount: '', currency: 'USD', expense_date: new Date().toISOString().split('T')[0], teacher_id: '', student_id: '', notes: '', invoice_number: '', receipt_url: '' });
   };
 
   const openEdit = (expense: any) => {
@@ -195,6 +199,8 @@ export default function Expenses() {
       teacher_id: expense.teacher_id || '',
       student_id: expense.student_id || '',
       notes: expense.notes || '',
+      invoice_number: expense.invoice_number || '',
+      receipt_url: expense.receipt_url || '',
     });
     setFormOpen(true);
   };
@@ -276,6 +282,7 @@ export default function Expenses() {
                   <TableHead>Date</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Description</TableHead>
+                  <TableHead>Invoice #</TableHead>
                   <TableHead>Teacher</TableHead>
                   <TableHead>Student</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
@@ -285,10 +292,10 @@ export default function Expenses() {
               </TableHeader>
               <TableBody>
                 {isLoading && (
-                  <TableRow><TableCell colSpan={8} className="text-center py-12"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="text-center py-12"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></TableCell></TableRow>
                 )}
                 {!isLoading && filtered.length === 0 && (
-                  <TableRow><TableCell colSpan={8} className="text-center py-12 text-muted-foreground">No expenses found</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="text-center py-12 text-muted-foreground">No expenses found</TableCell></TableRow>
                 )}
                 {filtered.map((expense: any) => {
                   const catInfo = getCategoryInfo(expense.category);
@@ -302,6 +309,14 @@ export default function Expenses() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm max-w-[200px] truncate">{expense.description}</TableCell>
+                      <TableCell className="text-sm">
+                        {expense.invoice_number ? (
+                          <span className="font-mono text-xs">{expense.invoice_number}</span>
+                        ) : '—'}
+                        {expense.receipt_url && (
+                          <a href={expense.receipt_url} target="_blank" rel="noreferrer" className="ml-1 text-primary hover:underline text-xs">📎</a>
+                        )}
+                      </TableCell>
                       <TableCell className="text-sm">{expense.profiles_teacher?.full_name || '—'}</TableCell>
                       <TableCell className="text-sm">{expense.profiles_student?.full_name || '—'}</TableCell>
                       <TableCell className="text-right font-medium">{expense.currency} {Number(expense.amount).toFixed(2)}</TableCell>
@@ -390,6 +405,17 @@ export default function Expenses() {
                     {students.map(s => <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>)}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Invoice Number</Label>
+                  <Input value={form.invoice_number} onChange={e => setForm(p => ({ ...p, invoice_number: e.target.value }))} placeholder="INV-001" />
+                </div>
+                <div>
+                  <Label>Receipt / Attachment URL</Label>
+                  <Input value={form.receipt_url} onChange={e => setForm(p => ({ ...p, receipt_url: e.target.value }))} placeholder="https://..." />
+                  <p className="text-[10px] text-muted-foreground mt-0.5">PDF, JPEG, PNG link for proof</p>
+                </div>
               </div>
               <div>
                 <Label>Notes</Label>

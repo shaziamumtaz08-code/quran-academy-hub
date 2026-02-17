@@ -397,7 +397,7 @@ export default function SalaryEngine() {
   });
 
   const markPaid = useMutation({
-    mutationFn: async ({ teacherId, type, reason }: { teacherId: string; type: 'full' | 'partial'; reason?: string }) => {
+    mutationFn: async ({ teacherId, type, reason, invoiceNumber, receiptUrl }: { teacherId: string; type: 'full' | 'partial'; reason?: string; invoiceNumber?: string; receiptUrl?: string }) => {
       const payout = existingPayouts.find((p: any) => p.teacher_id === teacherId);
       if (!payout) {
         // Auto-save first
@@ -411,6 +411,8 @@ export default function SalaryEngine() {
         paid_at: new Date().toISOString(),
         paid_by: user?.id,
         payment_method: type === 'partial' ? `Partial: ${reason}` : 'Full Payment',
+        invoice_number: invoiceNumber || null,
+        receipt_url: receiptUrl || null,
       }).eq('id', payoutRefresh.id);
       if (error) throw error;
     },
@@ -632,9 +634,9 @@ export default function SalaryEngine() {
           month={month}
           editAmounts={editAmounts}
           onEditAmount={(id, amt) => setEditAmounts(prev => ({ ...prev, [id]: amt }))}
-          onMarkPaid={(type, reason) => {
+          onMarkPaid={(type, reason, invoiceNumber, receiptUrl) => {
             if (selectedTeacherId) {
-              markPaid.mutate({ teacherId: selectedTeacherId, type, reason });
+              markPaid.mutate({ teacherId: selectedTeacherId, type, reason, invoiceNumber, receiptUrl });
             }
           }}
           isPayingPending={markPaid.isPending}

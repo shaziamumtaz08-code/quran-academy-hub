@@ -76,6 +76,12 @@ export default function Assignments() {
   const [reassignDialog, setReassignDialog] = useState<Assignment | null>(null);
   const [reassignTeacherId, setReassignTeacherId] = useState('');
   const [reassignReason, setReassignReason] = useState('');
+  const [reassignPayoutAmount, setReassignPayoutAmount] = useState('');
+  const [reassignPayoutType, setReassignPayoutType] = useState('monthly');
+  const [reassignEffectiveDate, setReassignEffectiveDate] = useState('');
+  // Status change dialog
+  const [statusChangeDialog, setStatusChangeDialog] = useState<{ assignment: Assignment; newStatus: AssignmentStatus } | null>(null);
+  const [statusEffectiveDate, setStatusEffectiveDate] = useState(new Date().toISOString().split('T')[0]);
   // Payout fields
   const [payoutAmount, setPayoutAmount] = useState('');
   const [payoutType, setPayoutType] = useState('monthly');
@@ -277,10 +283,18 @@ export default function Assignments() {
 
   // Update status mutation
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: AssignmentStatus }) => {
+    mutationFn: async ({ id, status, effectiveDate }: { id: string; status: AssignmentStatus; effectiveDate?: string }) => {
+      const updatePayload: any = { status };
+      if (effectiveDate) {
+        updatePayload.status_effective_date = effectiveDate;
+        // For left/completed, also set effective_to_date for salary calculation
+        if (status === 'left' || status === 'completed') {
+          updatePayload.effective_to_date = effectiveDate;
+        }
+      }
       const { error } = await supabase
         .from('student_teacher_assignments')
-        .update({ status })
+        .update(updatePayload)
         .eq('id', id);
       if (error) throw error;
 
@@ -289,7 +303,7 @@ export default function Assignments() {
         await supabase.from('schedules').delete().eq('assignment_id', id);
         await supabase
           .from('assignment_history')
-          .update({ ended_at: new Date().toISOString() })
+          .update({ ended_at: effectiveDate ? new Date(effectiveDate).toISOString() : new Date().toISOString() })
           .eq('assignment_id', id)
           .is('ended_at', null);
       }
@@ -297,6 +311,7 @@ export default function Assignments() {
     onSuccess: (_, { status }) => {
       queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
       toast({ title: 'Updated', description: status === 'left' ? 'Assignment marked as Left. Schedules cleared.' : 'Assignment status updated' });
+      setStatusChangeDialog(null);
     },
     onError: (error: any) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -305,7 +320,7 @@ export default function Assignments() {
 
   // Reassign teacher mutation - NOW logs history instead of overwriting
   const reassignMutation = useMutation({
-    mutationFn: async ({ id, newTeacherId, reason }: { id: string; newTeacherId: string; reason?: string }) => {
+    mutationFn: async ({ id, newTeacherId, reason, payoutAmount: pa, payoutType: pt, effectiveDate }: { id: string; newTeacherId: string; reason?: string; payoutAmount?: number; payoutType?: string; effectiveDate?: string }) => {
       // Find the current assignment to log history
       const assignment = assignments.find(a => a.id === id);
       if (!assignment) throw new Error('Assignment not found');
@@ -317,10 +332,15 @@ export default function Assignments() {
         .eq('assignment_id', id)
         .is('ended_at', null);
 
-      // Update the assignment teacher
+      // Update the assignment teacher + payout details
+      const updatePayload: any = { teacher_id: newTeacherId };
+      if (pa !== undefined && pa > 0) updatePayload.payout_amount = pa;
+      if (pt) updatePayload.payout_type = pt;
+      if (effectiveDate) updatePayload.effective_from_date = effectiveDate;
+
       const { error } = await supabase
         .from('student_teacher_assignments')
-        .update({ teacher_id: newTeacherId })
+        .update(updatePayload)
         .eq('id', id);
       if (error) throw error;
 
@@ -335,10 +355,13 @@ export default function Assignments() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
-      toast({ title: 'Reassigned', description: 'Teacher reassigned. History recorded.' });
+      toast({ title: 'Reassigned', description: 'Teacher reassigned with payout details. History recorded.' });
       setReassignDialog(null);
       setReassignTeacherId('');
       setReassignReason('');
+      setReassignPayoutAmount('');
+      setReassignPayoutType('monthly');
+      setReassignEffectiveDate('');
     },
     onError: (error: any) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -762,9 +785,14 @@ export default function Assignments() {
                         <TableCell>
                           <Select
                             value={assignment.status}
-                            onValueChange={(value: AssignmentStatus) =>
-                              updateStatusMutation.mutate({ id: assignment.id, status: value })
-                            }
+                            onValueChange={(value: AssignmentStatus) => {
+                              if (value !== 'active' && value !== assignment.status) {
+                                setStatusChangeDialog({ assignment, newStatus: value });
+                                setStatusEffectiveDate(new Date().toISOString().split('T')[0]);
+                              } else if (value === 'active') {
+                                updateStatusMutation.mutate({ id: assignment.id, status: value });
+                              }
+                            }}
                             disabled={updateStatusMutation.isPending}
                           >
                             <SelectTrigger className="w-[120px] h-8">
@@ -797,7 +825,15 @@ export default function Assignments() {
                         <TableCell className="text-center">
                           <Button
                             variant="ghost" size="sm"
-                            onClick={(e) => { e.stopPropagation(); setReassignDialog(assignment); setReassignTeacherId(''); setReassignReason(''); }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setReassignDialog(assignment);
+                              setReassignTeacherId('');
+                              setReassignReason('');
+                              setReassignPayoutAmount(assignment.payout_amount?.toString() || '');
+                              setReassignPayoutType(assignment.payout_type || 'monthly');
+                              setReassignEffectiveDate('');
+                            }}
                             title="Reassign teacher"
                           >
                             <ArrowRightLeft className="h-4 w-4 text-primary" />
@@ -823,8 +859,8 @@ export default function Assignments() {
         </Card>
 
         {/* Teacher Reassignment Dialog */}
-        <Dialog open={!!reassignDialog} onOpenChange={(open) => { if (!open) { setReassignDialog(null); setReassignTeacherId(''); setReassignReason(''); } }}>
-          <DialogContent>
+        <Dialog open={!!reassignDialog} onOpenChange={(open) => { if (!open) { setReassignDialog(null); setReassignTeacherId(''); setReassignReason(''); setReassignPayoutAmount(''); setReassignPayoutType('monthly'); setReassignEffectiveDate(''); } }}>
+          <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>Reassign Teacher</DialogTitle>
               <DialogDescription>
@@ -850,6 +886,43 @@ export default function Assignments() {
                   </SelectContent>
                 </Select>
               </div>
+              <Separator />
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Banknote className="h-4 w-4" />
+                  New Teacher Payout Details
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Payout Amount</Label>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={reassignPayoutAmount}
+                      onChange={(e) => setReassignPayoutAmount(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Payout Type</Label>
+                    <Select value={reassignPayoutType} onValueChange={setReassignPayoutType}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                        <SelectItem value="per_class">Per Class</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Effective From</Label>
+                  <Input
+                    type="date"
+                    value={reassignEffectiveDate}
+                    onChange={(e) => setReassignEffectiveDate(e.target.value)}
+                  />
+                </div>
+              </div>
+              <Separator />
               <div className="space-y-2">
                 <Label>Reason for Reassignment</Label>
                 <Textarea
@@ -861,19 +934,69 @@ export default function Assignments() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => { setReassignDialog(null); setReassignTeacherId(''); setReassignReason(''); }}>
+              <Button variant="outline" onClick={() => { setReassignDialog(null); setReassignTeacherId(''); setReassignReason(''); setReassignPayoutAmount(''); setReassignPayoutType('monthly'); setReassignEffectiveDate(''); }}>
                 Cancel
               </Button>
               <Button
                 onClick={() => {
                   if (reassignDialog && reassignTeacherId) {
-                    reassignMutation.mutate({ id: reassignDialog.id, newTeacherId: reassignTeacherId, reason: reassignReason });
+                    reassignMutation.mutate({
+                      id: reassignDialog.id,
+                      newTeacherId: reassignTeacherId,
+                      reason: reassignReason,
+                      payoutAmount: parseFloat(reassignPayoutAmount) || 0,
+                      payoutType: reassignPayoutType,
+                      effectiveDate: reassignEffectiveDate || undefined,
+                    });
                   }
                 }}
                 disabled={!reassignTeacherId || reassignMutation.isPending}
               >
                 {reassignMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Reassign
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Status Change Confirmation Dialog */}
+        <Dialog open={!!statusChangeDialog} onOpenChange={(open) => { if (!open) setStatusChangeDialog(null); }}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Confirm Status Change</DialogTitle>
+              <DialogDescription>
+                Change <strong>{statusChangeDialog?.assignment.student_name}</strong>'s assignment status to <strong className="capitalize">{statusChangeDialog?.newStatus}</strong>.
+                {statusChangeDialog?.newStatus === 'left' && ' This will also clear all schedules.'}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Effective Date *</Label>
+                <Input
+                  type="date"
+                  value={statusEffectiveDate}
+                  onChange={(e) => setStatusEffectiveDate(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">This date will be used for salary calculations.</p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setStatusChangeDialog(null)}>Cancel</Button>
+              <Button
+                variant={statusChangeDialog?.newStatus === 'left' ? 'destructive' : 'default'}
+                onClick={() => {
+                  if (statusChangeDialog) {
+                    updateStatusMutation.mutate({
+                      id: statusChangeDialog.assignment.id,
+                      status: statusChangeDialog.newStatus,
+                      effectiveDate: statusEffectiveDate,
+                    });
+                  }
+                }}
+                disabled={!statusEffectiveDate || updateStatusMutation.isPending}
+              >
+                {updateStatusMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Confirm
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
@@ -84,7 +85,7 @@ interface SalarySheetDialogProps {
   month: number;
   editAmounts: Record<string, number>;
   onEditAmount: (assignmentId: string, amount: number) => void;
-  onMarkPaid: (type: 'full' | 'partial', reason?: string) => void;
+  onMarkPaid: (type: 'full' | 'partial', reason?: string, invoiceNumber?: string, receiptUrl?: string) => void;
   isPayingPending?: boolean;
   isLocked: boolean;
 }
@@ -96,6 +97,8 @@ export function SalarySheetDialog({
 }: SalarySheetDialogProps) {
   const [partialReason, setPartialReason] = useState('');
   const [showPartialInput, setShowPartialInput] = useState(false);
+  const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [receiptUrl, setReceiptUrl] = useState('');
 
   if (!teacher) return null;
 
@@ -389,12 +392,33 @@ export function SalarySheetDialog({
               </div>
 
               {/* Payment Actions */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 print:hidden">
-                {!isLocked && teacher.payoutStatus !== 'paid' && (
-                  <>
+              {!isLocked && teacher.payoutStatus !== 'paid' && (
+                <div className="space-y-3 print:hidden">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Invoice Number</Label>
+                      <Input
+                        placeholder="INV-001"
+                        value={invoiceNumber}
+                        onChange={e => setInvoiceNumber(e.target.value)}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Receipt / Attachment URL</Label>
+                      <Input
+                        placeholder="https://..."
+                        value={receiptUrl}
+                        onChange={e => setReceiptUrl(e.target.value)}
+                        className="h-8 text-sm"
+                      />
+                      <p className="text-[9px] text-muted-foreground">PDF, JPEG, PNG link</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                     <Button
                       className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
-                      onClick={() => onMarkPaid('full')}
+                      onClick={() => onMarkPaid('full', undefined, invoiceNumber, receiptUrl)}
                       disabled={isPayingPending}
                     >
                       {isPayingPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
@@ -407,19 +431,19 @@ export function SalarySheetDialog({
                     >
                       <AlertCircle className="h-4 w-4 mr-1.5" /> Partially Paid
                     </Button>
-                  </>
-                )}
-                {teacher.payoutStatus === 'paid' && (
-                  <div className="flex items-center gap-2 text-emerald-600 font-medium">
-                    <CheckCircle className="h-5 w-5" /> Payment Completed
                   </div>
-                )}
-                {isLocked && (
-                  <div className="flex items-center gap-2 text-muted-foreground font-medium">
-                    <AlertCircle className="h-5 w-5" /> Salary Locked
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
+              {teacher.payoutStatus === 'paid' && (
+                <div className="flex items-center gap-2 text-emerald-600 font-medium print:hidden">
+                  <CheckCircle className="h-5 w-5" /> Payment Completed
+                </div>
+              )}
+              {isLocked && (
+                <div className="flex items-center gap-2 text-muted-foreground font-medium print:hidden">
+                  <AlertCircle className="h-5 w-5" /> Salary Locked
+                </div>
+              )}
 
               {showPartialInput && !isLocked && (
                 <div className="mt-3 space-y-2 print:hidden">
@@ -432,7 +456,7 @@ export function SalarySheetDialog({
                   <Button
                     size="sm"
                     disabled={!partialReason.trim() || isPayingPending}
-                    onClick={() => { onMarkPaid('partial', partialReason); setPartialReason(''); setShowPartialInput(false); }}
+                    onClick={() => { onMarkPaid('partial', partialReason, invoiceNumber, receiptUrl); setPartialReason(''); setShowPartialInput(false); }}
                   >
                     {isPayingPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
                     Confirm Partial Payment
