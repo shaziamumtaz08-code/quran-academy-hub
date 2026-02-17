@@ -371,6 +371,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           currency: string
+          disbursement_method: string
           division_id: string | null
           id: string
           issue_date: string
@@ -387,6 +388,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           currency?: string
+          disbursement_method?: string
           division_id?: string | null
           id?: string
           issue_date?: string
@@ -403,6 +405,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           currency?: string
+          disbursement_method?: string
           division_id?: string | null
           id?: string
           issue_date?: string
