@@ -58,15 +58,15 @@ export function SuperAdminDashboard() {
   }
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-6 sm:space-y-8 animate-fade-in">
       {/* Header */}
       <div>
-        <h1 className="font-serif text-3xl font-bold text-foreground">Super Admin Dashboard</h1>
-        <p className="text-muted-foreground mt-1">Complete system overview and management</p>
+        <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">Super Admin Dashboard</h1>
+        <p className="text-muted-foreground text-sm mt-1">Complete system overview and management</p>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
         <StatCard
           title="Total Users"
           value={stats?.totalUsers || 0}
@@ -92,22 +92,22 @@ export function SuperAdminDashboard() {
       </div>
 
       {/* System Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <Card>
-          <CardHeader>
-            <CardTitle className="font-serif flex items-center gap-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="font-serif text-base sm:text-lg flex items-center gap-2">
               <Settings className="h-5 w-5" />
               System Statistics
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-6">
-              <div className="text-center p-4 bg-secondary/50 rounded-lg">
-                <p className="text-3xl font-serif font-bold text-primary">{stats?.attendanceRecords || 0}</p>
+            <div className="grid grid-cols-2 gap-3 sm:gap-6">
+              <div className="text-center p-3 sm:p-4 bg-secondary/50 rounded-lg">
+                <p className="text-xl sm:text-3xl font-serif font-bold text-primary">{stats?.attendanceRecords || 0}</p>
                 <p className="text-sm text-muted-foreground mt-1">Attendance Records</p>
               </div>
-              <div className="text-center p-4 bg-secondary/50 rounded-lg">
-                <p className="text-3xl font-serif font-bold text-accent">{stats?.examsCompleted || 0}</p>
+              <div className="text-center p-3 sm:p-4 bg-secondary/50 rounded-lg">
+                <p className="text-xl sm:text-3xl font-serif font-bold text-accent">{stats?.examsCompleted || 0}</p>
                 <p className="text-sm text-muted-foreground mt-1">Exams Completed</p>
               </div>
             </div>
@@ -123,7 +123,7 @@ export function SuperAdminDashboard() {
           <CardTitle className="font-serif">Quick Access</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             <Link to="/user-management" className="p-4 bg-secondary/50 rounded-lg text-center hover:bg-secondary transition-colors">
               <Users className="h-8 w-8 mx-auto text-primary mb-2" />
               <p className="font-medium text-foreground">User Management</p>

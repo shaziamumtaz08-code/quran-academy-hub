@@ -154,6 +154,40 @@
 }
 
 @layer components {
+  /* Mobile-first responsive table wrapper */
+  .table-responsive {
+    @apply w-full overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Safe area support for iOS */
+  .safe-area-inset {
+    padding-top: env(safe-area-inset-top, 0);
+  }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  /* Mobile card layout helper */
+  .mobile-stack {
+    @apply flex flex-col gap-3 sm:hidden;
+  }
+  .desktop-table {
+    @apply hidden sm:block;
+  }
+
+  /* Compact form fields for mobile */
+  @media (max-width: 639px) {
+    .dialog-compact .grid {
+      gap: 0.75rem;
+    }
+    .dialog-compact input,
+    .dialog-compact select,
+    .dialog-compact textarea,
+    .dialog-compact [role="combobox"] {
+      font-size: 16px; /* Prevents iOS zoom */
+    }
+  }
   .islamic-pattern {
     background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%230a192f' fill-opacity='0.03'%3E%3Cpath d='M30 0L60 30L30 60L0 30z M30 10L50 30L30 50L10 30z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
   }

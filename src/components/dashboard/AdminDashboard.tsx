@@ -151,7 +151,7 @@ export function AdminDashboard() {
           <CardTitle className="font-serif text-lg">Monthly Overview</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             <div className="text-center">
               <p className="text-2xl sm:text-3xl font-serif font-bold text-primary">{stats?.monthlyAttendanceRate || 0}%</p>
               <p className="text-xs text-muted-foreground mt-1">Attendance Rate</p>
