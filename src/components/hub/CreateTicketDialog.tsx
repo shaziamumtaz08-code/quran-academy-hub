@@ -15,6 +15,7 @@ import { LeaveRequestFields } from './LeaveRequestFields';
 interface CreateTicketDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  defaultCategory?: string;
 }
 
 const CATEGORIES = [
@@ -26,12 +27,19 @@ const CATEGORIES = [
   { value: 'general', label: 'General' },
 ];
 
-export function CreateTicketDialog({ open, onOpenChange }: CreateTicketDialogProps) {
+export function CreateTicketDialog({ open, onOpenChange, defaultCategory }: CreateTicketDialogProps) {
   const { profile } = useAuth();
   const { activeDivision, activeBranch } = useDivision();
   const queryClient = useQueryClient();
 
-  const [category, setCategory] = useState('general');
+  const [category, setCategory] = useState(defaultCategory || 'general');
+
+  // Sync defaultCategory when dialog opens
+  useEffect(() => {
+    if (open && defaultCategory) {
+      setCategory(defaultCategory);
+    }
+  }, [open, defaultCategory]);
   const [subcategoryId, setSubcategoryId] = useState<string>('');
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
