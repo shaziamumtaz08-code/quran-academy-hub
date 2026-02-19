@@ -148,10 +148,11 @@ function buildNavGroups(modelType: string | null, branchType: string | null): Na
       ],
     },
     {
-      id: 'communication',
-      label: 'Communication',
+      id: 'collaboration',
+      label: 'Collaboration',
       icon: MessageSquare,
       items: [
+        { label: 'Work Hub', href: '/hub', icon: Megaphone },
         ...(!isOnsite ? [{ label: 'Zoom Engine', href: '/zoom-management', icon: Video, roles: ['super_admin', 'admin'] as string[] }] : []),
         { label: 'Integrity Audit', href: '/integrity-audit', icon: AlertTriangle, roles: ['super_admin', 'admin'] },
       ],

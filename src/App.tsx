@@ -37,6 +37,7 @@ import Expenses from "./pages/Expenses";
 import CashAdvances from "./pages/CashAdvances";
 import SelectDivision from "./pages/SelectDivision";
 import PrintReport from "./pages/PrintReport";
+import WorkHub from "./pages/WorkHub";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -257,6 +258,8 @@ function AppRoutes() {
           })()}
         </ProtectedRoute>
       } />
+      {/* Work Hub - accessible by all authenticated users */}
+      <Route path="/hub" element={<ProtectedRoute><WorkHub /></ProtectedRoute>} />
       {/* Printable Report Route - standalone, no layout */}
       <Route path="/reports/print/:reportId" element={<ProtectedRoute><PrintReport /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />

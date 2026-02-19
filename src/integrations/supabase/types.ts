@@ -1810,6 +1810,57 @@ export type Database = {
         }
         Relationships: []
       }
+      projects: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          description: string | null
+          division_id: string | null
+          id: string
+          name: string
+          owner_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          description?: string | null
+          division_id?: string | null
+          id?: string
+          name: string
+          owner_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          description?: string | null
+          division_id?: string | null
+          id?: string
+          name?: string
+          owner_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       resources: {
         Row: {
           created_at: string
@@ -2779,6 +2830,251 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tat_defaults: {
+        Row: {
+          branch_id: string | null
+          category: string
+          created_at: string
+          id: string
+          priority: string
+          tat_hours: number
+        }
+        Insert: {
+          branch_id?: string | null
+          category: string
+          created_at?: string
+          id?: string
+          priority?: string
+          tat_hours?: number
+        }
+        Update: {
+          branch_id?: string | null
+          category?: string
+          created_at?: string
+          id?: string
+          priority?: string
+          tat_hours?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tat_defaults_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ticket_comments: {
+        Row: {
+          attachment_url: string | null
+          author_id: string
+          created_at: string
+          id: string
+          is_internal: boolean
+          marked_user_id: string | null
+          message: string
+          metadata: Json | null
+          ticket_id: string
+        }
+        Insert: {
+          attachment_url?: string | null
+          author_id: string
+          created_at?: string
+          id?: string
+          is_internal?: boolean
+          marked_user_id?: string | null
+          message: string
+          metadata?: Json | null
+          ticket_id: string
+        }
+        Update: {
+          attachment_url?: string | null
+          author_id?: string
+          created_at?: string
+          id?: string
+          is_internal?: boolean
+          marked_user_id?: string | null
+          message?: string
+          metadata?: Json | null
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_comments_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ticket_subcategories: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+          tat_override_hours: number | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          tat_override_hours?: number | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          tat_override_hours?: number | null
+        }
+        Relationships: []
+      }
+      ticket_watchers: {
+        Row: {
+          added_by: string | null
+          created_at: string
+          id: string
+          ticket_id: string
+          user_id: string
+        }
+        Insert: {
+          added_by?: string | null
+          created_at?: string
+          id?: string
+          ticket_id: string
+          user_id: string
+        }
+        Update: {
+          added_by?: string | null
+          created_at?: string
+          id?: string
+          ticket_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_watchers_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tickets: {
+        Row: {
+          assignee_id: string
+          branch_id: string | null
+          category: string
+          closed_at: string | null
+          created_at: string
+          creator_id: string
+          description: string | null
+          division_id: string | null
+          due_date: string | null
+          id: string
+          is_overdue: boolean
+          metadata: Json | null
+          priority: string
+          project_id: string | null
+          resolved_at: string | null
+          status: string
+          subcategory_id: string | null
+          subject: string
+          tat_deadline: string | null
+          tat_hours: number | null
+          ticket_number: number
+          updated_at: string
+        }
+        Insert: {
+          assignee_id: string
+          branch_id?: string | null
+          category?: string
+          closed_at?: string | null
+          created_at?: string
+          creator_id: string
+          description?: string | null
+          division_id?: string | null
+          due_date?: string | null
+          id?: string
+          is_overdue?: boolean
+          metadata?: Json | null
+          priority?: string
+          project_id?: string | null
+          resolved_at?: string | null
+          status?: string
+          subcategory_id?: string | null
+          subject: string
+          tat_deadline?: string | null
+          tat_hours?: number | null
+          ticket_number?: number
+          updated_at?: string
+        }
+        Update: {
+          assignee_id?: string
+          branch_id?: string | null
+          category?: string
+          closed_at?: string | null
+          created_at?: string
+          creator_id?: string
+          description?: string | null
+          division_id?: string | null
+          due_date?: string | null
+          id?: string
+          is_overdue?: boolean
+          metadata?: Json | null
+          priority?: string
+          project_id?: string | null
+          resolved_at?: string | null
+          status?: string
+          subcategory_id?: string | null
+          subject?: string
+          tat_deadline?: string | null
+          tat_hours?: number | null
+          ticket_number?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tickets_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_subcategory_id_fkey"
+            columns: ["subcategory_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_subcategories"
             referencedColumns: ["id"]
           },
         ]
