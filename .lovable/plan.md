@@ -1,82 +1,91 @@
 
 
-## Align Assignment Bulk Import with Export and Enable Partial Updates
+# Payment Module Enhancements
 
-### Problem
-The assignment import template only has 4 fields (`student_name, teacher_name, subject_name, guardian_email`) while the export has 8 fields including `Payout Amount`, `Payout Type`, `Effective From`, and `Status`. The edge functions also don't process these fields during validation or execution, making it impossible to bulk-update teacher pay rates.
+## Summary
+Four targeted improvements to the Fee Management page to support full receipt viewing, comprehensive editing, voided invoice recovery, realized amount visibility, and streamlined family payments.
 
-### What Changes
+---
 
-**1. Expand the CSV template to match all importable fields**
+## 1. View Full Payment Receipt Details (for Paid Invoices)
 
-New template format:
-```
-student_name,teacher_name,subject_name,status,payout_amount,payout_type,effective_from,guardian_email
-Fatima Ali,Mohammad Hassan,Hifz,active,2500,monthly,2026-01-01,parent@example.com
-```
+**Problem:** Clicking on a paid invoice shows no details about the payment transaction (amount received, date, channel, receipt proof, forex details).
 
-- `status` -- optional, defaults to "active" for new rows
-- `payout_amount` -- optional numeric field
-- `payout_type` -- optional, "monthly" or "per_class"
-- `effective_from` -- optional date (YYYY-MM-DD or D-Mon-YY format)
-- `guardian_email` -- stays optional, reference only
+**Solution:** Add a "View Receipt" option in the dropdown menu for paid/partially-paid invoices. This opens a read-only dialog showing:
+- Student name, billing month, invoice amount
+- Payment date, receiving channel, amount received (foreign + local/PKR)
+- Effective exchange rate
+- Receipt/proof image or PDF (clickable link using the existing `AttachmentPreview` component from `FileUploadField.tsx`)
+- Notes
 
-**2. Update the validation edge function to handle new fields**
+**Technical:** Query `payment_transactions` by `invoice_id` and display all linked transactions in a clean summary card.
 
-In `bulk-validate-import/index.ts`, the `validateAssignmentRow` function will:
-- Parse and validate `payout_amount` as a number (using locale-aware parsing)
-- Validate `payout_type` against allowed values ("monthly", "per_class")
-- Parse `effective_from` date in multiple formats (YYYY-MM-DD, D-Mon-YY, M/D/YYYY)
-- Validate `status` against allowed values ("active", "paused", "completed", "left")
-- Include these fields in the diff comparison for existing assignments (so updating just payout shows as an "update" row, not "no changes")
+---
 
-**3. Update the execute edge function to write new fields**
+## 2. Full Edit Capability on Invoices
 
-In `bulk-import-execute/index.ts`, the assignment section will:
-- Include `payout_amount`, `payout_type`, `effective_from_date`, and `status` in both INSERT (new) and UPDATE (existing) operations
-- Only update fields that are actually provided (non-empty) so admins can upload a CSV with just `student_name, teacher_name, payout_amount` to update pay rates without touching other fields
+**Problem:** The "Edit Amount" menu only allows editing amount, due date, and billing month. Users need to edit all invoice fields including currency, remark, status, and amount_paid.
 
-**4. Update the client-side template generator**
+**Solution:** Expand the Edit Invoice dialog to include:
+- Amount (existing)
+- Currency (new dropdown)
+- Due Date (existing)
+- Billing Month (existing)
+- Remark/Notes (new textarea)
+- Status (new dropdown -- all statuses)
+- Amount Paid (new number input)
 
-In `useImportLogic.ts`, update the `generateTemplate("assignments")` output to include the new columns with example data.
+All changes continue to go through the existing audit trail via `createAdjustment()`. The dropdown menu item label changes from "Edit Amount" to "Edit Invoice".
 
-### Partial Update Workflow
+---
 
-The key user need: "I only want to update teacher pay and effective date for existing records."
+## 3. Restore Voided Invoices to Pending
 
-This is handled by the upsert logic already in place -- when a row matches an existing assignment (by teacher+student), it becomes an "update" row. The new fields will be included in the diff preview. Admins can:
-1. Export current assignments (already works)
-2. Edit only `payout_amount` and `effective_from` columns in the CSV
-3. Re-import -- the system detects all rows as "update" and shows diffs for changed fields only
-4. Confirm import -- only changed fields are written
+**Problem:** Voided invoices cannot be edited or restored. Users voided invoices due to data entry errors (because insufficient edit fields were available), and now need to bring them back.
 
-### Technical Details
+**Solution:** For voided invoices, show the action dropdown menu (currently hidden) with two options:
+- **Restore to Pending** -- sets status back to `pending`, resets `amount_paid` to 0. Requires a reason (audit-trailed).
+- **Edit Invoice** -- same full edit dialog as above.
 
-**Files to modify:**
+**Technical:** Remove the `isVoided` guard that hides the dropdown. Add a `restore_to_pending` case to `invoiceActionMutation`. The voided row checkbox remains disabled (cannot be selected for payment).
 
-1. **`src/hooks/useImportLogic.ts`** -- Update `generateTemplate("assignments")` to include `status, payout_amount, payout_type, effective_from, guardian_email`
+---
 
-2. **`supabase/functions/bulk-validate-import/index.ts`** -- In `validateAssignmentRow`:
-   - Add parsing for `payout_amount` (numeric), `payout_type` (enum), `effective_from` (date), `status` (enum)
-   - Fetch existing assignments with `payout_amount, payout_type, effective_from_date, status` for diff comparison
-   - Include these fields in diff output
+## 4. Realised Amount Column in Invoice Table
 
-3. **`supabase/functions/bulk-import-execute/index.ts`** -- In the assignments section:
-   - Add `payout_amount`, `payout_type`, `effective_from_date`, `status` to both insert and update payloads
-   - Only include fields that have non-null values to support partial updates
+**Problem:** The table does not show the PKR-realized amount, which is critical for multi-currency operations.
 
-**Date parsing helper** (added to validate function):
-```typescript
-function parseFlexibleDate(value: string): string | null {
-  // Supports: 2026-01-01, 1/1/2026, 1-Jan-26
-  // Returns ISO date string or null
-}
-```
+**Solution:** Add a "Realised (PKR)" column after the "Paid" column. For each invoice, fetch the sum of `amount_local` from `payment_transactions` grouped by `invoice_id`.
 
-**Numeric parsing** (for payout_amount):
-```typescript
-function parseNumericValue(value: string): number | null {
-  // Handles commas, currency symbols, locale formats
-}
-```
+**Technical:** Extend the invoice query with a secondary lookup. Since joining `payment_transactions` aggregate from the invoice query is complex, use a separate lightweight query that fetches `invoice_id` + `SUM(amount_local)` for all invoices in the current view. Store in a map keyed by invoice_id for O(1) lookup during render.
+
+---
+
+## 5. Family Payment (Already Exists -- Visibility Fix)
+
+**Problem:** User asks "how to record in one go where a family fee is submitted."
+
+**Current State:** The "Pay Family..." dropdown already exists (line 870) and groups invoices by parent via `student_parent_links`. It auto-selects all pending invoices for that family's children.
+
+**Solution:** No code change needed for the core feature. However, the dropdown only appears when `familyGroups.length > 0` (families with unpaid invoices). If the user is filtering by "Paid" status (as shown in the screenshot), no families with unpaid invoices are visible, so the dropdown hides. This is correct behavior -- switching to "All Status" or "Pending" will reveal the family payment option.
+
+A small UX improvement: add a tooltip or helper text near the filters explaining the "Pay Family" feature availability.
+
+---
+
+## Technical Details
+
+### Files Modified
+- **`src/pages/Payments.tsx`** -- All changes are in this single file:
+  - New "View Receipt" dialog with transaction details and attachment preview
+  - Expanded edit invoice form (currency, remark, status, amount_paid fields)
+  - Remove voided-row dropdown guard; add `restore_to_pending` action
+  - New `payment_transactions` aggregate query for realized amounts
+  - New "Realised" table column
+
+### Database
+- No schema changes required. All data already exists in `payment_transactions` and `fee_invoices` tables.
+
+### Audit Trail
+- All edits and restorations go through the existing `createAdjustment()` function, maintaining full accountability.
 
