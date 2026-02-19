@@ -10,23 +10,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
+import { VisibilitySelect } from "@/components/resources/VisibilitySelect";
 
 interface NewFolderDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (name: string) => Promise<void>;
+  onSubmit: (name: string, visibility: string) => Promise<void>;
+  showVisibility?: boolean;
 }
 
-export function NewFolderDialog({ open, onOpenChange, onSubmit }: NewFolderDialogProps) {
+export function NewFolderDialog({ open, onOpenChange, onSubmit, showVisibility = true }: NewFolderDialogProps) {
   const [name, setName] = useState("");
+  const [visibility, setVisibility] = useState("all");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
     if (!name.trim()) return;
     setLoading(true);
     try {
-      await onSubmit(name.trim());
+      await onSubmit(name.trim(), visibility);
       setName("");
+      setVisibility("all");
       onOpenChange(false);
     } finally {
       setLoading(false);
@@ -51,6 +55,9 @@ export function NewFolderDialog({ open, onOpenChange, onSubmit }: NewFolderDialo
               autoFocus
             />
           </div>
+          {showVisibility && (
+            <VisibilitySelect value={visibility} onChange={setVisibility} />
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

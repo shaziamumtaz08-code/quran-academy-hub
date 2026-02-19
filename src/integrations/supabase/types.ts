@@ -1326,6 +1326,8 @@ export type Database = {
           name: string
           parent_id: string | null
           updated_at: string
+          visibility: string
+          visible_to_roles: string[] | null
         }
         Insert: {
           created_at?: string
@@ -1335,6 +1337,8 @@ export type Database = {
           name: string
           parent_id?: string | null
           updated_at?: string
+          visibility?: string
+          visible_to_roles?: string[] | null
         }
         Update: {
           created_at?: string
@@ -1344,6 +1348,8 @@ export type Database = {
           name?: string
           parent_id?: string | null
           updated_at?: string
+          visibility?: string
+          visible_to_roles?: string[] | null
         }
         Relationships: [
           {
@@ -1875,6 +1881,8 @@ export type Database = {
           updated_at: string
           uploaded_by: string | null
           url: string
+          visibility: string
+          visible_to_roles: string[] | null
         }
         Insert: {
           created_at?: string
@@ -1889,6 +1897,8 @@ export type Database = {
           updated_at?: string
           uploaded_by?: string | null
           url: string
+          visibility?: string
+          visible_to_roles?: string[] | null
         }
         Update: {
           created_at?: string
@@ -1903,6 +1913,8 @@ export type Database = {
           updated_at?: string
           uploaded_by?: string | null
           url?: string
+          visibility?: string
+          visible_to_roles?: string[] | null
         }
         Relationships: [
           {
@@ -3268,6 +3280,10 @@ export type Database = {
           _session_start: string
         }
         Returns: Json
+      }
+      can_view_resource_visibility: {
+        Args: { _visibility: string; _visible_to_roles: string[] }
+        Returns: boolean
       }
       get_and_reserve_license: {
         Args: { _session_id: string; _teacher_id: string }
