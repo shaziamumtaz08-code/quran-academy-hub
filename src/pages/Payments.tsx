@@ -20,7 +20,7 @@ import {
 import {
   DollarSign, CheckCircle, XCircle, Clock, User, Loader2, Zap, GraduationCap,
   Plus, Receipt, Upload, ArrowRightLeft, AlertTriangle, ImageIcon, X, Search, ArrowUpDown, Users, Pencil, Trash2, ListChecks,
-  MoreHorizontal, Ban, Undo2, History, Tag, FileX
+  MoreHorizontal, Ban, Undo2, History, Tag, FileX, Eye
 } from 'lucide-react';
 import { endOfMonth, startOfMonth, parseISO, format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -30,6 +30,7 @@ import { useDivision } from '@/contexts/DivisionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { trackActivity } from '@/lib/activityLogger';
 import BillingPlansTable from '@/components/finance/BillingPlansTable';
+import { AttachmentPreview } from '@/components/shared/FileUploadField';
 
 // ─── Constants ───────────────────────────────────────────────────────
 const MONTHS = [
@@ -136,8 +137,10 @@ export default function Payments() {
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
 
   // Invoice action modals state
-  const [editInvoiceData, setEditInvoiceData] = useState<{ id: string; amount: string; due_date: string; billing_month: string } | null>(null);
-  const [actionModal, setActionModal] = useState<{ type: 'mark_unpaid' | 'apply_discount' | 'waive_fee' | 'reverse_payment' | 'void_invoice' | 'view_history'; invoice: InvoiceRow } | null>(null);
+  const [editInvoiceData, setEditInvoiceData] = useState<{ id: string; amount: string; due_date: string; billing_month: string; currency: string; remark: string; status: string; amount_paid: string } | null>(null);
+  const [actionModal, setActionModal] = useState<{ type: 'mark_unpaid' | 'apply_discount' | 'waive_fee' | 'reverse_payment' | 'void_invoice' | 'view_history' | 'restore_to_pending'; invoice: InvoiceRow } | null>(null);
+  const [receiptViewInvoice, setReceiptViewInvoice] = useState<InvoiceRow | null>(null);
+  const [receiptTransactions, setReceiptTransactions] = useState<any[]>([]);
   const [actionReason, setActionReason] = useState('');
   const [discountAmount, setDiscountAmount] = useState('');
   const [adjustmentHistory, setAdjustmentHistory] = useState<any[]>([]);
@@ -278,6 +281,25 @@ export default function Payments() {
       return (data || []) as unknown as InvoiceRow[];
     },
     enabled: !!branchId,
+  });
+
+  // Realised amounts query (sum of amount_local per invoice)
+  const { data: realisedMap = {} } = useQuery({
+    queryKey: ['realised-amounts', branchId, divisionId, monthFilter, statusFilter],
+    queryFn: async () => {
+      const invoiceIds = invoices.map(i => i.id);
+      if (invoiceIds.length === 0) return {};
+      const { data } = await supabase
+        .from('payment_transactions')
+        .select('invoice_id, amount_local')
+        .in('invoice_id', invoiceIds);
+      const map: Record<string, number> = {};
+      (data || []).forEach((tx: any) => {
+        map[tx.invoice_id] = (map[tx.invoice_id] || 0) + Number(tx.amount_local || 0);
+      });
+      return map;
+    },
+    enabled: invoices.length > 0,
   });
 
   const { data: parentLinks = [] } = useQuery({
@@ -617,22 +639,25 @@ export default function Payments() {
     });
   };
 
-  // Invoice edit mutation (with audit trail)
+  // Invoice edit mutation (with audit trail) - full edit
   const editInvoiceMutation = useMutation({
-    mutationFn: async (data: { id: string; amount: number; due_date: string; billing_month: string; originalAmount: number; originalDueDate: string; originalBillingMonth: string }) => {
-      await createAdjustment(data.id, 'edit_amount',
-        { amount: data.originalAmount, due_date: data.originalDueDate, billing_month: data.originalBillingMonth },
-        { amount: data.amount, due_date: data.due_date, billing_month: data.billing_month },
-        'Amount/details edited by admin'
+    mutationFn: async (data: { id: string; amount: number; due_date: string; billing_month: string; currency: string; remark: string; status: string; amount_paid: number; originalInvoice: InvoiceRow }) => {
+      const orig = data.originalInvoice;
+      await createAdjustment(data.id, 'edit_invoice',
+        { amount: orig.amount, due_date: orig.due_date, billing_month: orig.billing_month, currency: orig.currency, status: orig.status, amount_paid: orig.amount_paid },
+        { amount: data.amount, due_date: data.due_date, billing_month: data.billing_month, currency: data.currency, remark: data.remark, status: data.status, amount_paid: data.amount_paid },
+        'Invoice edited by admin'
       );
       const { error } = await supabase.from('fee_invoices').update({
         amount: data.amount, due_date: data.due_date || null, billing_month: data.billing_month,
+        currency: data.currency, remark: data.remark || null, status: data.status as any, amount_paid: data.amount_paid,
       }).eq('id', data.id);
       if (error) throw error;
       return data.id;
     },
     onSuccess: (id) => {
       queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['realised-amounts'] });
       toast({ title: 'Invoice updated' });
       trackActivity({ action: 'invoice_edited', entityType: 'invoice', entityId: id });
       setEditInvoiceData(null);
@@ -649,6 +674,11 @@ export default function Payments() {
         case 'mark_unpaid': {
           await createAdjustment(invoice.id, 'mark_unpaid', prev, { status: 'pending', amount_paid: 0 }, reason);
           await supabase.from('fee_invoices').update({ status: 'pending' as any, amount_paid: 0, paid_at: null }).eq('id', invoice.id);
+          break;
+        }
+        case 'restore_to_pending': {
+          await createAdjustment(invoice.id, 'restore_to_pending', prev, { status: 'pending', amount_paid: 0 }, reason);
+          await supabase.from('fee_invoices').update({ status: 'pending' as any, amount_paid: 0, paid_at: null, forgiven_amount: 0 }).eq('id', invoice.id);
           break;
         }
         case 'apply_discount': {
@@ -906,6 +936,7 @@ export default function Payments() {
                       <TableHead>Billing Month</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
                       <TableHead className="text-right">Paid</TableHead>
+                      <TableHead className="text-right">Realised (PKR)</TableHead>
                       <TableHead>Due Date</TableHead>
                       <TableHead className="text-center">Status</TableHead>
                       <TableHead className="w-12"></TableHead>
@@ -929,6 +960,9 @@ export default function Payments() {
                           <TableCell className="text-right font-mono text-muted-foreground">
                             {Number(inv.amount_paid || 0) > 0 ? `${inv.currency} ${Number(inv.amount_paid).toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '—'}
                           </TableCell>
+                          <TableCell className="text-right font-mono text-muted-foreground">
+                            {realisedMap[inv.id] ? `PKR ${realisedMap[inv.id].toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}
+                          </TableCell>
                           <TableCell>{inv.due_date || '—'}</TableCell>
                           <TableCell className="text-center">
                             {(inv.status === 'pending' || inv.status === 'partially_paid' || inv.status === 'overdue') ? (
@@ -938,7 +972,6 @@ export default function Payments() {
                             ) : getStatusBadge(inv.status)}
                           </TableCell>
                           <TableCell>
-                            {!isVoided && (
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -946,56 +979,82 @@ export default function Payments() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-48">
-                                  <DropdownMenuItem onClick={() => setEditInvoiceData({ id: inv.id, amount: String(inv.amount), due_date: inv.due_date || '', billing_month: inv.billing_month })}>
-                                    <Pencil className="h-3.5 w-3.5 mr-2" /> Edit Amount
-                                  </DropdownMenuItem>
-                                  {(inv.status === 'paid' || inv.status === 'partially_paid') && (
-                                    <DropdownMenuItem onClick={() => setActionModal({ type: 'mark_unpaid', invoice: inv })}>
-                                      <Undo2 className="h-3.5 w-3.5 mr-2" /> Mark Unpaid
-                                    </DropdownMenuItem>
+                                  {isVoided ? (
+                                    <>
+                                      <DropdownMenuItem onClick={() => setActionModal({ type: 'restore_to_pending', invoice: inv })}>
+                                        <Undo2 className="h-3.5 w-3.5 mr-2" /> Restore to Pending
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => setEditInvoiceData({ id: inv.id, amount: String(inv.amount), due_date: inv.due_date || '', billing_month: inv.billing_month, currency: inv.currency, remark: '', status: inv.status, amount_paid: String(inv.amount_paid || 0) })}>
+                                        <Pencil className="h-3.5 w-3.5 mr-2" /> Edit Invoice
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem onClick={() => { setActionModal({ type: 'view_history', invoice: inv }); fetchHistory(inv.id); }}>
+                                        <History className="h-3.5 w-3.5 mr-2" /> View History
+                                      </DropdownMenuItem>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <DropdownMenuItem onClick={() => setEditInvoiceData({ id: inv.id, amount: String(inv.amount), due_date: inv.due_date || '', billing_month: inv.billing_month, currency: inv.currency, remark: '', status: inv.status, amount_paid: String(inv.amount_paid || 0) })}>
+                                        <Pencil className="h-3.5 w-3.5 mr-2" /> Edit Invoice
+                                      </DropdownMenuItem>
+                                      {(inv.status === 'paid' || inv.status === 'partially_paid') && (
+                                        <DropdownMenuItem onClick={async () => {
+                                          const { data: txns } = await supabase.from('payment_transactions').select('*').eq('invoice_id', inv.id).order('created_at', { ascending: false });
+                                          if (!txns?.length) { toast({ title: 'No payment transactions found', variant: 'destructive' }); return; }
+                                          setReceiptTransactions(txns);
+                                          setReceiptViewInvoice(inv);
+                                        }}>
+                                          <Eye className="h-3.5 w-3.5 mr-2" /> View Receipt
+                                        </DropdownMenuItem>
+                                      )}
+                                      {(inv.status === 'paid' || inv.status === 'partially_paid') && (
+                                        <DropdownMenuItem onClick={() => setActionModal({ type: 'mark_unpaid', invoice: inv })}>
+                                          <Undo2 className="h-3.5 w-3.5 mr-2" /> Mark Unpaid
+                                        </DropdownMenuItem>
+                                      )}
+                                      <DropdownMenuItem onClick={() => setActionModal({ type: 'apply_discount', invoice: inv })}>
+                                        <Tag className="h-3.5 w-3.5 mr-2" /> Apply Discount
+                                      </DropdownMenuItem>
+                                      {inv.status !== 'waived' && (
+                                        <DropdownMenuItem onClick={() => setActionModal({ type: 'waive_fee', invoice: inv })}>
+                                          <Ban className="h-3.5 w-3.5 mr-2" /> Waive Fee
+                                        </DropdownMenuItem>
+                                      )}
+                                      {(inv.status === 'paid' || inv.status === 'partially_paid') && (
+                                        <DropdownMenuItem onClick={() => setActionModal({ type: 'reverse_payment', invoice: inv })}>
+                                          <ArrowRightLeft className="h-3.5 w-3.5 mr-2" /> Reverse Payment
+                                        </DropdownMenuItem>
+                                      )}
+                                      {(inv.status === 'paid' || inv.status === 'partially_paid') && (
+                                        <DropdownMenuItem onClick={async () => {
+                                          const { data: txns } = await supabase.from('payment_transactions').select('*').eq('invoice_id', inv.id).order('created_at', { ascending: false }).limit(1);
+                                          const tx = txns?.[0];
+                                          if (!tx) { toast({ title: 'No payment transaction found for this invoice', variant: 'destructive' }); return; }
+                                          setEditPaymentForm({
+                                            amount_foreign: String(tx.amount_foreign || ''),
+                                            amount_local: String(tx.amount_local || ''),
+                                            payment_date: tx.payment_date || '',
+                                            payment_method: tx.payment_method || '',
+                                            notes: tx.notes || '',
+                                            reason: '',
+                                          });
+                                          setEditPaymentData({ invoiceId: inv.id, transaction: tx, invoice: inv });
+                                        }}>
+                                          <Pencil className="h-3.5 w-3.5 mr-2" /> Edit Payment
+                                        </DropdownMenuItem>
+                                      )}
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem onClick={() => { setActionModal({ type: 'view_history', invoice: inv }); fetchHistory(inv.id); }}>
+                                        <History className="h-3.5 w-3.5 mr-2" /> View History
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setActionModal({ type: 'void_invoice', invoice: inv })}>
+                                        <FileX className="h-3.5 w-3.5 mr-2" /> Void Invoice
+                                      </DropdownMenuItem>
+                                    </>
                                   )}
-                                  <DropdownMenuItem onClick={() => setActionModal({ type: 'apply_discount', invoice: inv })}>
-                                    <Tag className="h-3.5 w-3.5 mr-2" /> Apply Discount
-                                  </DropdownMenuItem>
-                                  {inv.status !== 'waived' && (
-                                    <DropdownMenuItem onClick={() => setActionModal({ type: 'waive_fee', invoice: inv })}>
-                                      <Ban className="h-3.5 w-3.5 mr-2" /> Waive Fee
-                                    </DropdownMenuItem>
-                                  )}
-                                  {(inv.status === 'paid' || inv.status === 'partially_paid') && (
-                                    <DropdownMenuItem onClick={() => setActionModal({ type: 'reverse_payment', invoice: inv })}>
-                                      <ArrowRightLeft className="h-3.5 w-3.5 mr-2" /> Reverse Payment
-                                    </DropdownMenuItem>
-                                  )}
-                                  {(inv.status === 'paid' || inv.status === 'partially_paid') && (
-                                    <DropdownMenuItem onClick={async () => {
-                                      const { data: txns } = await supabase.from('payment_transactions').select('*').eq('invoice_id', inv.id).order('created_at', { ascending: false }).limit(1);
-                                      const tx = txns?.[0];
-                                      if (!tx) { toast({ title: 'No payment transaction found for this invoice', variant: 'destructive' }); return; }
-                                      setEditPaymentForm({
-                                        amount_foreign: String(tx.amount_foreign || ''),
-                                        amount_local: String(tx.amount_local || ''),
-                                        payment_date: tx.payment_date || '',
-                                        payment_method: tx.payment_method || '',
-                                        notes: tx.notes || '',
-                                        reason: '',
-                                      });
-                                      setEditPaymentData({ invoiceId: inv.id, transaction: tx, invoice: inv });
-                                    }}>
-                                      <Pencil className="h-3.5 w-3.5 mr-2" /> Edit Payment
-                                    </DropdownMenuItem>
-                                  )}
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => { setActionModal({ type: 'view_history', invoice: inv }); fetchHistory(inv.id); }}>
-                                    <History className="h-3.5 w-3.5 mr-2" /> View History
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setActionModal({ type: 'void_invoice', invoice: inv })}>
-                                    <FileX className="h-3.5 w-3.5 mr-2" /> Void Invoice
-                                  </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
-                            )}
                           </TableCell>
                         </TableRow>
                       );
@@ -1382,23 +1441,56 @@ export default function Payments() {
           </DialogContent>
         </Dialog>
 
-        {/* ─── Edit Invoice Modal ───────────────────────────────────── */}
+        {/* ─── Edit Invoice Modal (Full) ──────────────────────────── */}
         <Dialog open={!!editInvoiceData} onOpenChange={() => setEditInvoiceData(null)}>
-          <DialogContent className="sm:max-w-sm">
+          <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Edit Invoice</DialogTitle>
-              <DialogDescription>Adjust amount, due date, or billing month. Original values are preserved in audit trail.</DialogDescription>
+              <DialogDescription>All changes are preserved in audit trail.</DialogDescription>
             </DialogHeader>
             {editInvoiceData && (
-              <div className="space-y-4 py-2">
-                <div><Label>Amount</Label><Input type="number" value={editInvoiceData.amount} onChange={e => setEditInvoiceData(d => d ? { ...d, amount: e.target.value } : null)} /></div>
-                <div><Label>Due Date</Label><Input type="date" value={editInvoiceData.due_date} onChange={e => setEditInvoiceData(d => d ? { ...d, due_date: e.target.value } : null)} /></div>
+              <div className="space-y-3 py-2">
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label className="text-xs">Amount</Label><Input type="number" value={editInvoiceData.amount} onChange={e => setEditInvoiceData(d => d ? { ...d, amount: e.target.value } : null)} /></div>
+                  <div>
+                    <Label className="text-xs">Currency</Label>
+                    <Select value={editInvoiceData.currency} onValueChange={v => setEditInvoiceData(d => d ? { ...d, currency: v } : null)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{['USD', 'PKR', 'GBP', 'EUR', 'CAD', 'AUD', 'AED', 'SAR'].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label className="text-xs">Due Date</Label><Input type="date" value={editInvoiceData.due_date} onChange={e => setEditInvoiceData(d => d ? { ...d, due_date: e.target.value } : null)} /></div>
+                  <div>
+                    <Label className="text-xs">Billing Month</Label>
+                    <Select value={editInvoiceData.billing_month} onValueChange={v => setEditInvoiceData(d => d ? { ...d, billing_month: v } : null)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{monthOptions.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Status</Label>
+                    <Select value={editInvoiceData.status} onValueChange={v => setEditInvoiceData(d => d ? { ...d, status: v } : null)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="paid">Paid</SelectItem>
+                        <SelectItem value="partially_paid">Partially Paid</SelectItem>
+                        <SelectItem value="overdue">Overdue</SelectItem>
+                        <SelectItem value="waived">Waived</SelectItem>
+                        <SelectItem value="adjusted">Adjusted</SelectItem>
+                        <SelectItem value="voided">Voided</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div><Label className="text-xs">Amount Paid</Label><Input type="number" value={editInvoiceData.amount_paid} onChange={e => setEditInvoiceData(d => d ? { ...d, amount_paid: e.target.value } : null)} /></div>
+                </div>
                 <div>
-                  <Label>Billing Month</Label>
-                  <Select value={editInvoiceData.billing_month} onValueChange={v => setEditInvoiceData(d => d ? { ...d, billing_month: v } : null)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{monthOptions.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
-                  </Select>
+                  <Label className="text-xs">Remark / Notes</Label>
+                  <Textarea placeholder="Optional notes..." value={editInvoiceData.remark} onChange={e => setEditInvoiceData(d => d ? { ...d, remark: e.target.value } : null)} className="h-16" />
                 </div>
               </div>
             )}
@@ -1407,14 +1499,17 @@ export default function Payments() {
               <Button onClick={() => {
                 if (!editInvoiceData) return;
                 const inv = invoices.find(i => i.id === editInvoiceData.id);
+                if (!inv) return;
                 editInvoiceMutation.mutate({
                   id: editInvoiceData.id,
                   amount: parseFloat(editInvoiceData.amount) || 0,
                   due_date: editInvoiceData.due_date,
                   billing_month: editInvoiceData.billing_month,
-                  originalAmount: inv?.amount || 0,
-                  originalDueDate: inv?.due_date || '',
-                  originalBillingMonth: inv?.billing_month || '',
+                  currency: editInvoiceData.currency,
+                  remark: editInvoiceData.remark,
+                  status: editInvoiceData.status,
+                  amount_paid: parseFloat(editInvoiceData.amount_paid) || 0,
+                  originalInvoice: inv,
                 });
               }} disabled={editInvoiceMutation.isPending}>
                 {editInvoiceMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Save
@@ -1429,6 +1524,7 @@ export default function Payments() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 {actionModal?.type === 'mark_unpaid' && <><Undo2 className="h-5 w-5" /> Mark Unpaid</>}
+                {actionModal?.type === 'restore_to_pending' && <><Undo2 className="h-5 w-5" /> Restore to Pending</>}
                 {actionModal?.type === 'apply_discount' && <><Tag className="h-5 w-5" /> Apply Discount</>}
                 {actionModal?.type === 'waive_fee' && <><Ban className="h-5 w-5" /> Waive Fee</>}
                 {actionModal?.type === 'reverse_payment' && <><ArrowRightLeft className="h-5 w-5" /> Reverse Payment</>}
@@ -1436,6 +1532,7 @@ export default function Payments() {
               </DialogTitle>
               <DialogDescription>
                 {actionModal?.type === 'mark_unpaid' && 'Reset this invoice to unpaid status. Payment records are preserved.'}
+                {actionModal?.type === 'restore_to_pending' && 'Restore this voided invoice back to pending. Amount paid will be reset to 0.'}
                 {actionModal?.type === 'apply_discount' && 'Apply an additional discount to reduce the invoice amount.'}
                 {actionModal?.type === 'waive_fee' && 'Waive the remaining balance. This will mark the fee as forgiven.'}
                 {actionModal?.type === 'reverse_payment' && 'Reverse all payments on this invoice. Transaction records are preserved.'}
@@ -1514,6 +1611,62 @@ export default function Payments() {
             </ScrollArea>
             <DialogFooter>
               <Button variant="outline" onClick={() => { setActionModal(null); setAdjustmentHistory([]); }}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* ─── View Receipt Dialog ────────────────────────────────────── */}
+        <Dialog open={!!receiptViewInvoice} onOpenChange={() => { setReceiptViewInvoice(null); setReceiptTransactions([]); }}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2"><Eye className="h-5 w-5" /> Payment Receipt</DialogTitle>
+              <DialogDescription>
+                {receiptViewInvoice?.profiles?.full_name} — {receiptViewInvoice && formatBillingMonth(receiptViewInvoice.billing_month)} • Invoice: {receiptViewInvoice?.currency} {Number(receiptViewInvoice?.amount || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              </DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="max-h-[400px]">
+              {receiptTransactions.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">No transactions found.</p>
+              ) : (
+                <div className="space-y-3">
+                  {receiptTransactions.map((tx: any, idx: number) => (
+                    <div key={tx.id} className="border border-border rounded-lg p-4 space-y-2">
+                      {receiptTransactions.length > 1 && <p className="text-xs font-semibold text-muted-foreground">Transaction #{idx + 1}</p>}
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+                        <div><span className="text-muted-foreground">Payment Date:</span></div>
+                        <div className="font-medium">{tx.payment_date || '—'}</div>
+                        <div><span className="text-muted-foreground">Receiving Channel:</span></div>
+                        <div className="font-medium">{tx.payment_method || '—'}</div>
+                        <div><span className="text-muted-foreground">Amount ({tx.currency_foreign}):</span></div>
+                        <div className="font-mono font-semibold">{Number(tx.amount_foreign).toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+                        <div><span className="text-muted-foreground">Realised (PKR):</span></div>
+                        <div className="font-mono font-semibold">{Number(tx.amount_local).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                        {tx.effective_rate && (
+                          <>
+                            <div><span className="text-muted-foreground">Exchange Rate:</span></div>
+                            <div className="font-mono">1 {tx.currency_foreign} = {Number(tx.effective_rate).toFixed(2)} PKR</div>
+                          </>
+                        )}
+                        {tx.notes && (
+                          <>
+                            <div><span className="text-muted-foreground">Notes:</span></div>
+                            <div>{tx.notes}</div>
+                          </>
+                        )}
+                      </div>
+                      {tx.receipt_url && (
+                        <div className="pt-1 border-t border-border">
+                          <span className="text-xs text-muted-foreground mr-2">Proof:</span>
+                          <AttachmentPreview url={tx.receipt_url} />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setReceiptViewInvoice(null); setReceiptTransactions([]); }}>Close</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
