@@ -41,6 +41,8 @@ type Folder = {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  visibility?: string;
+  visible_to_roles?: string[];
 };
 
 type Resource = {
@@ -53,6 +55,8 @@ type Resource = {
   sub_folder: string | null;
   created_at: string;
   updated_at: string;
+  visibility?: string;
+  visible_to_roles?: string[];
 };
 
 type ViewMode = "grid" | "list";
@@ -194,11 +198,12 @@ export default function Resources() {
 
   // Create folder mutation
   const createFolderMutation = useMutation({
-    mutationFn: async (name: string) => {
+    mutationFn: async ({ name, visibility }: { name: string; visibility: string }) => {
       const { error } = await supabase.from("folders").insert({
         name,
         parent_id: currentFolderId,
         created_by: user?.id,
+        visibility,
       });
       if (error) throw error;
     },
@@ -213,7 +218,7 @@ export default function Resources() {
 
   // Upload files mutation
   const uploadFilesMutation = useMutation({
-    mutationFn: async (files: FileList) => {
+    mutationFn: async ({ files, visibility }: { files: FileList; visibility: string }) => {
       const uploadPromises = Array.from(files).map(async (file) => {
         const fileType = getFileType(file.name);
         const fileExt = file.name.split(".").pop();
@@ -227,14 +232,14 @@ export default function Resources() {
 
         if (uploadError) throw uploadError;
 
-        // Store the file path as the URL (we'll generate signed URLs when accessing)
         return {
           title: file.name.replace(/\.[^/.]+$/, ""),
           type: fileType,
-          url: filePath, // Store path, not public URL
+          url: filePath,
           folder_id: currentFolderId,
           folder: "Uploads",
           uploaded_by: user?.id,
+          visibility,
         };
       });
 
@@ -352,7 +357,7 @@ export default function Resources() {
 
   // Add link mutation
   const addLinkMutation = useMutation({
-    mutationFn: async ({ title, url }: { title: string; url: string }) => {
+    mutationFn: async ({ title, url, visibility }: { title: string; url: string; visibility: string }) => {
       const { error } = await supabase.from("resources").insert({
         title,
         type: "link",
@@ -360,6 +365,7 @@ export default function Resources() {
         folder_id: currentFolderId,
         folder: "Links",
         uploaded_by: user?.id,
+        visibility,
       });
       if (error) throw error;
     },
@@ -584,6 +590,17 @@ export default function Resources() {
     setDeleteConfirmOpen(true);
   };
 
+  // Compute item counts per folder (subfolders + files)
+  const folderItemCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const f of currentFolders) {
+      const subFolders = folders.filter((sf) => sf.parent_id === f.id).length;
+      const files = resources.filter((r) => r.folder_id === f.id).length;
+      counts[f.id] = subFolders + files;
+    }
+    return counts;
+  }, [currentFolders, folders, resources]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -696,56 +713,100 @@ export default function Resources() {
           )}
         </div>
       ) : viewMode === "grid" ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-          {currentFolders.map((folder, index) => (
-            <div key={folder.id} className="animate-fade-in" style={{ animationDelay: `${index * 30}ms` }}>
-              <FolderItem
-                folder={folder}
-                viewMode="grid"
-                canManage={canManage}
-                onOpen={navigateToFolder}
-                onRename={openRenameFolder}
-                onDelete={openDeleteFolder}
-                onDrop={handleDropOnFolder}
-              />
+        <div className="space-y-6">
+          {/* Folders section */}
+          {currentFolders.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">
+                Folders ({currentFolders.length})
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+                {currentFolders.map((folder, index) => (
+                  <div key={folder.id} className="animate-fade-in" style={{ animationDelay: `${index * 30}ms` }}>
+                    <FolderItem
+                      folder={folder}
+                      viewMode="grid"
+                      canManage={canManage}
+                      itemCount={folderItemCounts[folder.id] ?? 0}
+                      onOpen={navigateToFolder}
+                      onRename={openRenameFolder}
+                      onDelete={openDeleteFolder}
+                      onDrop={handleDropOnFolder}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
-          {currentFiles.map((file, index) => (
-            <div key={file.id} className="animate-fade-in" style={{ animationDelay: `${(currentFolders.length + index) * 30}ms` }}>
-              <FileItem
-                resource={file}
-                viewMode="grid"
-                canManage={canManage}
-                onRename={openRenameFile}
-                onDelete={openDeleteFile}
-              />
+          )}
+
+          {/* Files section */}
+          {currentFiles.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">
+                Files ({currentFiles.length})
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+                {currentFiles.map((file, index) => (
+                  <div key={file.id} className="animate-fade-in" style={{ animationDelay: `${index * 30}ms` }}>
+                    <FileItem
+                      resource={file}
+                      viewMode="grid"
+                      canManage={canManage}
+                      onRename={openRenameFile}
+                      onDelete={openDeleteFile}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
+          )}
         </div>
       ) : (
-        <div className="premium-card divide-y divide-border/50">
-          {currentFolders.map((folder) => (
-            <FolderItem
-              key={folder.id}
-              folder={folder}
-              viewMode="list"
-              canManage={canManage}
-              onOpen={navigateToFolder}
-              onRename={openRenameFolder}
-              onDelete={openDeleteFolder}
-              onDrop={handleDropOnFolder}
-            />
-          ))}
-          {currentFiles.map((file) => (
-            <FileItem
-              key={file.id}
-              resource={file}
-              viewMode="list"
-              canManage={canManage}
-              onRename={openRenameFile}
-              onDelete={openDeleteFile}
-            />
-          ))}
+        <div className="space-y-4">
+          {/* Folders section - list */}
+          {currentFolders.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
+                Folders ({currentFolders.length})
+              </h3>
+              <div className="premium-card divide-y divide-border/50">
+                {currentFolders.map((folder) => (
+                  <FolderItem
+                    key={folder.id}
+                    folder={folder}
+                    viewMode="list"
+                    canManage={canManage}
+                    itemCount={folderItemCounts[folder.id] ?? 0}
+                    onOpen={navigateToFolder}
+                    onRename={openRenameFolder}
+                    onDelete={openDeleteFolder}
+                    onDrop={handleDropOnFolder}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Files section - list */}
+          {currentFiles.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
+                Files ({currentFiles.length})
+              </h3>
+              <div className="premium-card divide-y divide-border/50">
+                {currentFiles.map((file) => (
+                  <FileItem
+                    key={file.id}
+                    resource={file}
+                    viewMode="list"
+                    canManage={canManage}
+                    onRename={openRenameFile}
+                    onDelete={openDeleteFile}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -753,23 +814,25 @@ export default function Resources() {
       <NewFolderDialog
         open={newFolderOpen}
         onOpenChange={setNewFolderOpen}
-        onSubmit={async (name) => {
-          await createFolderMutation.mutateAsync(name);
+        onSubmit={async (name, visibility) => {
+          await createFolderMutation.mutateAsync({ name, visibility });
         }}
+        showVisibility={canManage}
       />
 
       <UploadFileDialog
         open={uploadOpen}
         onOpenChange={setUploadOpen}
-        onUploadFiles={async (files) => {
-          await uploadFilesMutation.mutateAsync(files);
+        onUploadFiles={async (files, visibility) => {
+          await uploadFilesMutation.mutateAsync({ files, visibility });
         }}
-        onUploadFolder={async (files, paths) => {
+        onUploadFolder={async (files, paths, visibility) => {
           await uploadFolderMutation.mutateAsync({ files, paths });
         }}
-        onAddLink={async (title, url) => {
-          await addLinkMutation.mutateAsync({ title, url });
+        onAddLink={async (title, url, visibility) => {
+          await addLinkMutation.mutateAsync({ title, url, visibility });
         }}
+        showVisibility={canManage}
       />
 
       <RenameDialog
