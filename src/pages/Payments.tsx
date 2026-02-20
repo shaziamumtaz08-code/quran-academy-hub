@@ -430,7 +430,7 @@ export default function Payments() {
   const hasShortfall = amountForeign > 0 && amountForeign < totalExpected;
 
   const totalFees = invoices.reduce((s, i) => s + Number(i.amount), 0);
-  const collected = invoices.filter(i => i.status === 'paid').reduce((s, i) => s + Number(i.amount), 0);
+  const collected = invoices.reduce((s, i) => s + Number(i.amount_paid || 0), 0);
   const pending = totalFees - collected;
 
   const monthOptions = Array.from({ length: 12 }, (_, i) => {
@@ -2121,6 +2121,8 @@ export default function Payments() {
                     }).eq('id', editPaymentData.invoiceId);
 
                     queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
+                    queryClient.invalidateQueries({ queryKey: ['realised-amounts'] });
+                    queryClient.invalidateQueries({ queryKey: ['payment_transactions'] });
                     toast({ title: 'Payment corrected successfully' });
                     trackActivity({ action: 'payment_edited', entityType: 'payment_transaction', entityId: tx.id, details: { invoice_id: editPaymentData.invoiceId, reason: editPaymentForm.reason } });
                     setEditPaymentData(null);
