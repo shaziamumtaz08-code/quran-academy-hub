@@ -1166,6 +1166,8 @@ export type Database = {
           id: string
           paid_at: string | null
           payment_method: string | null
+          period_from: string | null
+          period_to: string | null
           plan_id: string | null
           remark: string | null
           status: Database["public"]["Enums"]["invoice_status"]
@@ -1186,6 +1188,8 @@ export type Database = {
           id?: string
           paid_at?: string | null
           payment_method?: string | null
+          period_from?: string | null
+          period_to?: string | null
           plan_id?: string | null
           remark?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
@@ -1206,6 +1210,8 @@ export type Database = {
           id?: string
           paid_at?: string | null
           payment_method?: string | null
+          period_from?: string | null
+          period_to?: string | null
           plan_id?: string | null
           remark?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
