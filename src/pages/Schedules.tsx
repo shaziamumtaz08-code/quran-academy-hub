@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Calendar, Clock, User, ChevronDown, ChevronRight, Loader2, AlertCircle, Globe, Pencil, Trash2, Upload, ArrowUpDown, ArrowUp, ArrowDown, Search, X } from 'lucide-react';
+import { Plus, Calendar, CalendarDays, Clock, User, ChevronDown, ChevronRight, Loader2, AlertCircle, Globe, Pencil, Trash2, Upload, ArrowUpDown, ArrowUp, ArrowDown, Search, X, List } from 'lucide-react';
+import { MonthlyCalendarView } from '@/components/schedules/MonthlyCalendarView';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -39,16 +40,45 @@ const COUNTRY_CODES: Record<string, string> = {
   Pakistan: 'PK',
   Canada: 'CA',
   USA: 'US',
+  'United States': 'US',
+  'United States of America': 'US',
   UK: 'UK',
+  'United Kingdom': 'UK',
   UAE: 'AE',
+  'United Arab Emirates': 'AE',
   'Saudi Arabia': 'SA',
   India: 'IN',
   Australia: 'AU',
+  Bangladesh: 'BD',
+  'Sri Lanka': 'LK',
+  Egypt: 'EG',
+  Qatar: 'QA',
+  Kuwait: 'KW',
+  Bahrain: 'BH',
+  Oman: 'OM',
+  Jordan: 'JO',
+  Malaysia: 'MY',
+  Singapore: 'SG',
+  Indonesia: 'ID',
+  Turkey: 'TR',
+  'South Africa': 'ZA',
+  Nigeria: 'NG',
+  Kenya: 'KE',
+  Germany: 'DE',
+  France: 'FR',
+  'New Zealand': 'NZ',
 };
 
 const getCountryCode = (country: string | null | undefined) => {
   const c = country || 'Pakistan';
-  return COUNTRY_CODES[c] || c.slice(0, 2).toUpperCase() || 'PK';
+  // Exact match first, then try case-insensitive
+  if (COUNTRY_CODES[c]) return COUNTRY_CODES[c];
+  const lower = c.toLowerCase();
+  for (const [key, val] of Object.entries(COUNTRY_CODES)) {
+    if (key.toLowerCase() === lower) return val;
+  }
+  // Fallback: ISO-style 2-char from first word
+  return c.slice(0, 2).toUpperCase();
 };
 
 type AssignmentStatus = 'active' | 'paused' | 'completed';
@@ -185,6 +215,7 @@ export default function Schedules() {
   const [filterStatus, setFilterStatus] = useState<string>(''); // 'scheduled' | 'not_scheduled' | ''
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [showAllDivisions, setShowAllDivisions] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   
   // Sorting state
   type ScheduleSortField = 'student' | 'teacher' | 'subject' | 'status' | 'classes';
@@ -327,14 +358,56 @@ export default function Schedules() {
     return m;
   }, [timezoneMappings]);
 
+  // Common country → IANA timezone fallbacks (used when no city match in DB)
+  const COUNTRY_TZ_FALLBACKS: Record<string, string> = {
+    'United Arab Emirates': 'Asia/Dubai',
+    'UAE': 'Asia/Dubai',
+    'Pakistan': 'Asia/Karachi',
+    'India': 'Asia/Kolkata',
+    'Saudi Arabia': 'Asia/Riyadh',
+    'USA': 'America/New_York',
+    'United States': 'America/New_York',
+    'United States of America': 'America/New_York',
+    'Canada': 'America/Toronto',
+    'UK': 'Europe/London',
+    'United Kingdom': 'Europe/London',
+    'Australia': 'Australia/Sydney',
+    'Bangladesh': 'Asia/Dhaka',
+    'Sri Lanka': 'Asia/Colombo',
+    'Qatar': 'Asia/Qatar',
+    'Kuwait': 'Asia/Kuwait',
+    'Bahrain': 'Asia/Bahrain',
+    'Egypt': 'Africa/Cairo',
+    'Malaysia': 'Asia/Kuala_Lumpur',
+    'Singapore': 'Asia/Singapore',
+    'Turkey': 'Europe/Istanbul',
+    'South Africa': 'Africa/Johannesburg',
+    'New Zealand': 'Pacific/Auckland',
+    'Germany': 'Europe/Berlin',
+    'France': 'Europe/Paris',
+  };
+
   const resolveTimezone = (
     country: string | null | undefined,
     city: string | null | undefined,
     fallback: string | null | undefined
   ) => {
+    // 1. Try exact country+city match from DB
     if (country && city) {
       const tz = tzByLocation.get(`${country}|${city}`);
       if (tz) return tz;
+    }
+    // 2. Try the stored IANA fallback from assignment (if it looks like IANA)
+    if (fallback && fallback.includes('/')) return fallback;
+    // 3. Country-level IANA fallback
+    if (country) {
+      const countryTz = COUNTRY_TZ_FALLBACKS[country];
+      if (countryTz) return countryTz;
+      // Case-insensitive lookup
+      const lower = country.toLowerCase();
+      for (const [k, v] of Object.entries(COUNTRY_TZ_FALLBACKS)) {
+        if (k.toLowerCase() === lower) return v;
+      }
     }
     return fallback || 'Asia/Karachi';
   };
@@ -1194,6 +1267,28 @@ export default function Schedules() {
               <Globe className="h-4 w-4 mr-1" />
               {showAllDivisions ? 'All Divisions' : 'Current Division'}
             </Button>
+
+            {/* View Mode Toggle */}
+            <div className="flex border rounded-md overflow-hidden">
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+                className="h-10 rounded-none"
+              >
+                <List className="h-4 w-4 mr-1" />
+                List
+              </Button>
+              <Button
+                variant={viewMode === 'calendar' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('calendar')}
+                className="h-10 rounded-none"
+              >
+                <CalendarDays className="h-4 w-4 mr-1" />
+                Month
+              </Button>
+            </div>
             
             {/* Reset Filters */}
             {hasActiveFilters && (
@@ -1205,8 +1300,24 @@ export default function Schedules() {
           </div>
         )}
 
+        {/* Monthly Calendar View */}
+        {viewMode === 'calendar' && (
+          <div className="bg-card rounded-xl border border-border p-4">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : (
+              <MonthlyCalendarView
+                assignments={filteredAssignments}
+                schedules={schedules}
+              />
+            )}
+          </div>
+        )}
+
         {/* Master Schedule Table */}
-        <div className="bg-card rounded-xl border border-border overflow-hidden">
+        {viewMode === 'list' && <div className="bg-card rounded-xl border border-border overflow-hidden">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -1417,7 +1528,7 @@ export default function Schedules() {
               </TableBody>
             </Table>
           )}
-        </div>
+        </div>}
 
         {/* Delete Confirmation Dialog */}
         <AlertDialog open={!!deleteSchedule} onOpenChange={() => setDeleteSchedule(null)}>
