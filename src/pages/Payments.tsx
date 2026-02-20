@@ -721,8 +721,10 @@ export default function Payments() {
         { amount: data.amount, due_date: data.due_date, billing_month: data.billing_month, currency: data.currency, remark: data.remark, status: data.status, amount_paid: data.amount_paid, forgiven_amount: data.forgiven_amount, payment_method: data.payment_method, paid_at: data.paid_at, period_from: data.period_from, period_to: data.period_to },
         'Invoice edited by admin'
       );
+      // CRITICAL: billing_month is NEVER overwritten — it is immutable once generated.
+      // The update is strictly bound to data.id (the opened invoice's primary key).
       const { error } = await supabase.from('fee_invoices').update({
-        amount: data.amount, due_date: data.due_date || null, billing_month: data.billing_month,
+        amount: data.amount, due_date: data.due_date || null,
         currency: data.currency, remark: data.remark || null, status: data.status as any, amount_paid: data.amount_paid,
         forgiven_amount: data.forgiven_amount, payment_method: data.payment_method || null, paid_at: data.paid_at || null,
         period_from: data.period_from || null, period_to: data.period_to || null,
@@ -1801,11 +1803,8 @@ export default function Payments() {
 
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <Label className="text-xs">Billing Month</Label>
-                      <Select value={editInvoiceData.billing_month} onValueChange={v => setEditInvoiceData(d => d ? { ...d, billing_month: v } : null)}>
-                        <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                        <SelectContent>{monthOptions.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
-                      </Select>
+                      <Label className="text-xs">Billing Month <span className="text-muted-foreground">(locked)</span></Label>
+                      <Input value={formatBillingMonth(editInvoiceData.billing_month)} disabled className="h-8 text-sm bg-muted" />
                     </div>
                     <div>
                       <Label className="text-xs">Status</Label>
