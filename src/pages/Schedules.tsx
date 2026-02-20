@@ -184,6 +184,7 @@ export default function Schedules() {
   const [filterSubject, setFilterSubject] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>(''); // 'scheduled' | 'not_scheduled' | ''
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [showAllDivisions, setShowAllDivisions] = useState(false);
   
   // Sorting state
   type ScheduleSortField = 'student' | 'teacher' | 'subject' | 'status' | 'classes';
@@ -248,7 +249,7 @@ export default function Schedules() {
 
   // Fetch assignments with timezone info (only active assignments for scheduling)
   const { data: assignments = [], isLoading: loadingAssignments } = useQuery({
-    queryKey: ['assignments-with-tz', activeDivision?.id],
+    queryKey: ['assignments-with-tz', activeDivision?.id, showAllDivisions],
     queryFn: async () => {
       let query = supabase
         .from('student_teacher_assignments')
@@ -265,7 +266,7 @@ export default function Schedules() {
         `)
         .eq('status', 'active');
 
-      if (activeDivision?.id) {
+      if (!showAllDivisions && activeDivision?.id) {
         query = query.eq('division_id', activeDivision.id);
       }
 
@@ -290,7 +291,7 @@ export default function Schedules() {
 
   // Fetch schedules (1:1 only — exclude group/course schedules)
   const { data: schedules = [], isLoading: loadingSchedules } = useQuery({
-    queryKey: ['class-schedules', activeDivision?.id],
+    queryKey: ['class-schedules', activeDivision?.id, showAllDivisions],
     queryFn: async () => {
       let query = supabase
         .from('schedules')
@@ -298,7 +299,7 @@ export default function Schedules() {
         .eq('is_active', true)
         .not('assignment_id', 'is', null);
 
-      if (activeDivision?.id) {
+      if (!showAllDivisions && activeDivision?.id) {
         query = query.eq('division_id', activeDivision.id);
       }
 
@@ -536,13 +537,14 @@ export default function Schedules() {
       });
   }, [assignments, schedules, searchTerm, filterTeacher, filterSubject, filterStatus, sortField, sortDirection]);
 
-  const hasActiveFilters = !!filterTeacher || !!filterSubject || !!filterStatus || !!searchTerm;
+  const hasActiveFilters = !!filterTeacher || !!filterSubject || !!filterStatus || !!searchTerm || showAllDivisions;
 
   const resetFilters = () => {
     setFilterTeacher('');
     setFilterSubject('');
     setFilterStatus('');
     setSearchTerm('');
+    setShowAllDivisions(false);
   };
 
   // Get selected assignment info for displaying location labels
@@ -1181,6 +1183,17 @@ export default function Schedules() {
                 <SelectItem value="not_scheduled">Not Scheduled</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* All Divisions Toggle */}
+            <Button
+              variant={showAllDivisions ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowAllDivisions(!showAllDivisions)}
+              className="h-10"
+            >
+              <Globe className="h-4 w-4 mr-1" />
+              {showAllDivisions ? 'All Divisions' : 'Current Division'}
+            </Button>
             
             {/* Reset Filters */}
             {hasActiveFilters && (
