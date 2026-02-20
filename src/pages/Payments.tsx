@@ -173,6 +173,7 @@ export default function Payments() {
   });
 
   // Bulk selection mode state
+  const [effectiveFrom, setEffectiveFrom] = useState(currentBillingMonth);
   const [selectionMode, setSelectionMode] = useState<'individual' | 'bulk'>('individual');
   const [bulkSearch, setBulkSearch] = useState('');
   const [bulkSort, setBulkSort] = useState<{ column: BulkSortColumn; direction: BulkSortDir }>({ column: 'name', direction: 'asc' });
@@ -510,6 +511,14 @@ export default function Payments() {
       if (editingPlanId) {
         const { error } = await supabase.from('student_billing_plans').update(planFields).eq('id', editingPlanId);
         if (error) throw error;
+        // Cascade update pending invoices from the effective month onward
+        const { error: invoiceErr } = await supabase
+          .from('fee_invoices')
+          .update({ amount: netRecurringFee, currency: feeCurrency } as any)
+          .eq('plan_id', editingPlanId)
+          .eq('status', 'pending' as any)
+          .gte('billing_month', effectiveFrom);
+        if (invoiceErr) console.error('Invoice cascade error:', invoiceErr);
         return 1;
       }
       if (selectedStudentIds.length === 0 || (!feeForm.base_package_id && !isManual)) throw new Error('Select student(s) and package');
@@ -527,8 +536,8 @@ export default function Payments() {
     onSuccess: (count) => {
       queryClient.invalidateQueries({ queryKey: ['billing-plans'] });
       queryClient.invalidateQueries({ queryKey: ['billing-plans-list'] });
-      const action = editingPlanId ? 'billing_plan_updated' : 'billing_plan_created';
-      toast({ title: editingPlanId ? 'Billing plan updated' : `${count} billing plan(s) saved successfully` });
+      if (editingPlanId) queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
+      toast({ title: editingPlanId ? `Billing plan updated — pending invoices from ${formatBillingMonth(effectiveFrom)} updated` : `${count} billing plan(s) saved successfully` });
       if (editingPlanId) {
         trackActivity({ action: 'billing_plan_updated', entityType: 'billing_plan', entityId: editingPlanId, details: { net_fee: netRecurringFee, currency: feeCurrency } });
       } else {
@@ -548,6 +557,7 @@ export default function Payments() {
     setBulkSort({ column: 'name', direction: 'asc' });
     setFeeForm({ base_package_id: '', session_duration: '30', flat_discount: '0', manual_discount_reason: '', global_discount_id: '', manual_fee: false, manual_amount: '', manual_currency: 'USD' });
     setEditingPlanId(null);
+    setEffectiveFrom(currentBillingMonth);
   };
 
   const generateMutation = useMutation({
@@ -1474,6 +1484,23 @@ export default function Payments() {
                     </div>
                   )}
                   <p className="text-xs text-muted-foreground">Billed monthly when invoices are generated.</p>
+                  {editingPlanId && (
+                    <div className="mt-3 space-y-1.5 bg-muted/50 rounded-lg p-3 border border-border">
+                      <Label className="text-xs font-medium">Effective From</Label>
+                      <p className="text-xs text-muted-foreground">Pending invoices from this month onward will be updated to the new fee.</p>
+                      <Select value={effectiveFrom} onValueChange={setEffectiveFrom}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 12 }, (_, i) => {
+                            const year = now.getFullYear();
+                            const month = String(i + 1).padStart(2, '0');
+                            const val = `${year}-${month}`;
+                            return <SelectItem key={val} value={val}>{MONTHS[i].label} {year}</SelectItem>;
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
                 <div className="mt-8 space-y-3">
                   <Button onClick={() => savePlanMutation.mutate()} disabled={!canSavePlan || savePlanMutation.isPending} className="w-full gap-2" size="lg">
