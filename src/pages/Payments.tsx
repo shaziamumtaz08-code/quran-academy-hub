@@ -139,7 +139,7 @@ export default function Payments() {
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
 
   // Invoice action modals state
-  const [editInvoiceData, setEditInvoiceData] = useState<{ id: string; amount: string; due_date: string; billing_month: string; currency: string; remark: string; status: string; amount_paid: string; forgiven_amount: string; payment_method: string; paid_at: string } | null>(null);
+  const [editInvoiceData, setEditInvoiceData] = useState<{ id: string; amount: string; due_date: string; billing_month: string; currency: string; remark: string; status: string; amount_paid: string; forgiven_amount: string; payment_method: string; paid_at: string; period_from: string; period_to: string } | null>(null);
   const [actionModal, setActionModal] = useState<{ type: 'mark_unpaid' | 'apply_discount' | 'waive_fee' | 'reverse_payment' | 'void_invoice' | 'view_history' | 'restore_to_pending'; invoice: InvoiceRow } | null>(null);
   const [receiptViewInvoice, setReceiptViewInvoice] = useState<InvoiceRow | null>(null);
   const [receiptTransactions, setReceiptTransactions] = useState<any[]>([]);
@@ -643,18 +643,19 @@ export default function Payments() {
 
   // Invoice edit mutation (with audit trail) - full edit
   const editInvoiceMutation = useMutation({
-    mutationFn: async (data: { id: string; amount: number; due_date: string; billing_month: string; currency: string; remark: string; status: string; amount_paid: number; forgiven_amount: number; payment_method: string; paid_at: string; originalInvoice: InvoiceRow }) => {
+    mutationFn: async (data: { id: string; amount: number; due_date: string; billing_month: string; currency: string; remark: string; status: string; amount_paid: number; forgiven_amount: number; payment_method: string; paid_at: string; period_from: string; period_to: string; originalInvoice: InvoiceRow }) => {
       const orig = data.originalInvoice;
       await createAdjustment(data.id, 'edit_invoice',
         { amount: orig.amount, due_date: orig.due_date, billing_month: orig.billing_month, currency: orig.currency, status: orig.status, amount_paid: orig.amount_paid, forgiven_amount: orig.forgiven_amount, payment_method: orig.payment_method, paid_at: orig.paid_at },
-        { amount: data.amount, due_date: data.due_date, billing_month: data.billing_month, currency: data.currency, remark: data.remark, status: data.status, amount_paid: data.amount_paid, forgiven_amount: data.forgiven_amount, payment_method: data.payment_method, paid_at: data.paid_at },
+        { amount: data.amount, due_date: data.due_date, billing_month: data.billing_month, currency: data.currency, remark: data.remark, status: data.status, amount_paid: data.amount_paid, forgiven_amount: data.forgiven_amount, payment_method: data.payment_method, paid_at: data.paid_at, period_from: data.period_from, period_to: data.period_to },
         'Invoice edited by admin'
       );
       const { error } = await supabase.from('fee_invoices').update({
         amount: data.amount, due_date: data.due_date || null, billing_month: data.billing_month,
         currency: data.currency, remark: data.remark || null, status: data.status as any, amount_paid: data.amount_paid,
         forgiven_amount: data.forgiven_amount, payment_method: data.payment_method || null, paid_at: data.paid_at || null,
-      }).eq('id', data.id);
+        period_from: data.period_from || null, period_to: data.period_to || null,
+      } as any).eq('id', data.id);
       if (error) throw error;
       return data.id;
     },
@@ -987,7 +988,7 @@ export default function Payments() {
                                       <DropdownMenuItem onClick={() => setActionModal({ type: 'restore_to_pending', invoice: inv })}>
                                         <Undo2 className="h-3.5 w-3.5 mr-2" /> Restore to Pending
                                       </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => setEditInvoiceData({ id: inv.id, amount: String(inv.amount), due_date: inv.due_date || '', billing_month: inv.billing_month, currency: inv.currency, remark: inv.remark || '', status: inv.status, amount_paid: String(inv.amount_paid || 0), forgiven_amount: String(inv.forgiven_amount || 0), payment_method: inv.payment_method || '', paid_at: inv.paid_at || '' })}>
+                                      <DropdownMenuItem onClick={() => setEditInvoiceData({ id: inv.id, amount: String(inv.amount), due_date: inv.due_date || '', billing_month: inv.billing_month, currency: inv.currency, remark: inv.remark || '', status: inv.status, amount_paid: String(inv.amount_paid || 0), forgiven_amount: String(inv.forgiven_amount || 0), payment_method: inv.payment_method || '', paid_at: inv.paid_at || '', period_from: (inv as any).period_from || '', period_to: (inv as any).period_to || '' })}>
                                         <Pencil className="h-3.5 w-3.5 mr-2" /> Edit Invoice
                                       </DropdownMenuItem>
                                       <DropdownMenuSeparator />
@@ -997,7 +998,7 @@ export default function Payments() {
                                     </>
                                   ) : (
                                     <>
-                                      <DropdownMenuItem onClick={() => setEditInvoiceData({ id: inv.id, amount: String(inv.amount), due_date: inv.due_date || '', billing_month: inv.billing_month, currency: inv.currency, remark: inv.remark || '', status: inv.status, amount_paid: String(inv.amount_paid || 0), forgiven_amount: String(inv.forgiven_amount || 0), payment_method: inv.payment_method || '', paid_at: inv.paid_at || '' })}>
+                                      <DropdownMenuItem onClick={() => setEditInvoiceData({ id: inv.id, amount: String(inv.amount), due_date: inv.due_date || '', billing_month: inv.billing_month, currency: inv.currency, remark: inv.remark || '', status: inv.status, amount_paid: String(inv.amount_paid || 0), forgiven_amount: String(inv.forgiven_amount || 0), payment_method: inv.payment_method || '', paid_at: inv.paid_at || '', period_from: (inv as any).period_from || '', period_to: (inv as any).period_to || '' })}>
                                         <Pencil className="h-3.5 w-3.5 mr-2" /> Edit Invoice
                                       </DropdownMenuItem>
                                       {(inv.status === 'paid' || inv.status === 'partially_paid') && (
@@ -1446,77 +1447,95 @@ export default function Payments() {
 
         {/* ─── Edit Invoice Modal (Full) ──────────────────────────── */}
         <Dialog open={!!editInvoiceData} onOpenChange={() => setEditInvoiceData(null)}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Edit Invoice</DialogTitle>
-              <DialogDescription>All changes are preserved in audit trail.</DialogDescription>
+          <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col p-0">
+            <DialogHeader className="px-4 pt-4 pb-2 sm:px-6 sm:pt-6 shrink-0">
+              <DialogTitle className="flex items-center gap-2 text-base"><Pencil className="h-4 w-4" /> Edit Invoice</DialogTitle>
+              <DialogDescription className="text-xs">All changes are preserved in audit trail.</DialogDescription>
             </DialogHeader>
+
             {editInvoiceData && (
-              <div className="space-y-3 py-2">
-                <div className="grid grid-cols-2 gap-3">
-                  <div><Label className="text-xs">Amount</Label><Input type="number" value={editInvoiceData.amount} onChange={e => setEditInvoiceData(d => d ? { ...d, amount: e.target.value } : null)} /></div>
-                  <div>
-                    <Label className="text-xs">Currency</Label>
-                    <Select value={editInvoiceData.currency} onValueChange={v => setEditInvoiceData(d => d ? { ...d, currency: v } : null)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>{['USD', 'PKR', 'GBP', 'EUR', 'CAD', 'AUD', 'AED', 'SAR'].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-                    </Select>
+              <ScrollArea className="flex-1 px-4 sm:px-6">
+                <div className="space-y-3 pb-4">
+                  {/* Invoice Info */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs">Billing Month</Label>
+                      <Select value={editInvoiceData.billing_month} onValueChange={v => setEditInvoiceData(d => d ? { ...d, billing_month: v } : null)}>
+                        <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>{monthOptions.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Status</Label>
+                      <Select value={editInvoiceData.status} onValueChange={v => setEditInvoiceData(d => d ? { ...d, status: v } : null)}>
+                        <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="paid">Paid</SelectItem>
+                          <SelectItem value="partially_paid">Partially Paid</SelectItem>
+                          <SelectItem value="overdue">Overdue</SelectItem>
+                          <SelectItem value="waived">Waived</SelectItem>
+                          <SelectItem value="adjusted">Adjusted</SelectItem>
+                          <SelectItem value="voided">Voided</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><Label className="text-xs">Due Date</Label><Input type="date" value={editInvoiceData.due_date} onChange={e => setEditInvoiceData(d => d ? { ...d, due_date: e.target.value } : null)} /></div>
-                  <div>
-                    <Label className="text-xs">Billing Month</Label>
-                    <Select value={editInvoiceData.billing_month} onValueChange={v => setEditInvoiceData(d => d ? { ...d, billing_month: v } : null)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>{monthOptions.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
-                    </Select>
+
+                  {/* Payment Period */}
+                  <div className="space-y-1">
+                    <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Payment Period</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><Label className="text-xs">From</Label><Input type="date" value={editInvoiceData.period_from} onChange={e => setEditInvoiceData(d => d ? { ...d, period_from: e.target.value } : null)} className="h-8 text-sm" /></div>
+                      <div><Label className="text-xs">To</Label><Input type="date" value={editInvoiceData.period_to} onChange={e => setEditInvoiceData(d => d ? { ...d, period_to: e.target.value } : null)} className="h-8 text-sm" /></div>
+                    </div>
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs">Status</Label>
-                    <Select value={editInvoiceData.status} onValueChange={v => setEditInvoiceData(d => d ? { ...d, status: v } : null)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="paid">Paid</SelectItem>
-                        <SelectItem value="partially_paid">Partially Paid</SelectItem>
-                        <SelectItem value="overdue">Overdue</SelectItem>
-                        <SelectItem value="waived">Waived</SelectItem>
-                        <SelectItem value="adjusted">Adjusted</SelectItem>
-                        <SelectItem value="voided">Voided</SelectItem>
-                      </SelectContent>
-                    </Select>
+
+                  <Separator />
+
+                  {/* Payment Details */}
+                  <div className="space-y-1">
+                    <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Payment Details</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><Label className="text-xs">Paid At</Label><Input type="date" value={editInvoiceData.paid_at ? editInvoiceData.paid_at.substring(0, 10) : ''} onChange={e => setEditInvoiceData(d => d ? { ...d, paid_at: e.target.value ? `${e.target.value}T00:00:00Z` : '' } : null)} className="h-8 text-sm" /></div>
+                      <div>
+                        <Label className="text-xs">Receiving Channel</Label>
+                        <Select value={editInvoiceData.payment_method || '_none'} onValueChange={v => setEditInvoiceData(d => d ? { ...d, payment_method: v === '_none' ? '' : v } : null)}>
+                          <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Select..." /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="_none">None</SelectItem>
+                            {RECEIVING_CHANNELS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
                   </div>
-                  <div><Label className="text-xs">Amount Paid</Label><Input type="number" value={editInvoiceData.amount_paid} onChange={e => setEditInvoiceData(d => d ? { ...d, amount_paid: e.target.value } : null)} /></div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><Label className="text-xs">Forgiven Amount</Label><Input type="number" value={editInvoiceData.forgiven_amount} onChange={e => setEditInvoiceData(d => d ? { ...d, forgiven_amount: e.target.value } : null)} /></div>
-                  <div>
-                    <Label className="text-xs">Receiving Channel</Label>
-                    <Select value={editInvoiceData.payment_method || '_none'} onValueChange={v => setEditInvoiceData(d => d ? { ...d, payment_method: v === '_none' ? '' : v } : null)}>
-                      <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="_none">None</SelectItem>
-                        {RECEIVING_CHANNELS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div><Label className="text-xs">Amount ({editInvoiceData.currency})</Label><Input type="number" value={editInvoiceData.amount} onChange={e => setEditInvoiceData(d => d ? { ...d, amount: e.target.value } : null)} className="h-8 text-sm" /></div>
+                    <div><Label className="text-xs">Amount Paid</Label><Input type="number" value={editInvoiceData.amount_paid} onChange={e => setEditInvoiceData(d => d ? { ...d, amount_paid: e.target.value } : null)} className="h-8 text-sm" /></div>
                   </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs">Currency</Label>
+                      <Select value={editInvoiceData.currency} onValueChange={v => setEditInvoiceData(d => d ? { ...d, currency: v } : null)}>
+                        <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>{['USD', 'PKR', 'GBP', 'EUR', 'CAD', 'AUD', 'AED', 'SAR'].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div><Label className="text-xs">Forgiven Amount</Label><Input type="number" value={editInvoiceData.forgiven_amount} onChange={e => setEditInvoiceData(d => d ? { ...d, forgiven_amount: e.target.value } : null)} className="h-8 text-sm" /></div>
+                  </div>
+
+                  <div><Label className="text-xs">Due Date</Label><Input type="date" value={editInvoiceData.due_date} onChange={e => setEditInvoiceData(d => d ? { ...d, due_date: e.target.value } : null)} className="h-8 text-sm" /></div>
+
+                  <div><Label className="text-xs">Remark / Notes</Label><Textarea placeholder="Any remarks..." value={editInvoiceData.remark} onChange={e => setEditInvoiceData(d => d ? { ...d, remark: e.target.value } : null)} className="h-12 text-sm" /></div>
                 </div>
-                <div>
-                  <Label className="text-xs">Paid At</Label>
-                  <Input type="date" value={editInvoiceData.paid_at ? editInvoiceData.paid_at.substring(0, 10) : ''} onChange={e => setEditInvoiceData(d => d ? { ...d, paid_at: e.target.value ? `${e.target.value}T00:00:00Z` : '' } : null)} />
-                </div>
-                <div>
-                  <Label className="text-xs">Remark / Notes</Label>
-                  <Textarea placeholder="Optional notes..." value={editInvoiceData.remark} onChange={e => setEditInvoiceData(d => d ? { ...d, remark: e.target.value } : null)} className="h-16" />
-                </div>
-              </div>
+              </ScrollArea>
             )}
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setEditInvoiceData(null)}>Cancel</Button>
-              <Button onClick={() => {
+            <DialogFooter className="px-4 pb-4 pt-2 sm:px-6 sm:pb-6 shrink-0 border-t border-border">
+              <Button variant="outline" size="sm" onClick={() => setEditInvoiceData(null)}>Cancel</Button>
+              <Button size="sm" onClick={() => {
                 if (!editInvoiceData) return;
                 const inv = invoices.find(i => i.id === editInvoiceData.id);
                 if (!inv) return;
@@ -1532,6 +1551,8 @@ export default function Payments() {
                   forgiven_amount: parseFloat(editInvoiceData.forgiven_amount) || 0,
                   payment_method: editInvoiceData.payment_method,
                   paid_at: editInvoiceData.paid_at,
+                  period_from: editInvoiceData.period_from,
+                  period_to: editInvoiceData.period_to,
                   originalInvoice: inv,
                 });
               }} disabled={editInvoiceMutation.isPending}>
