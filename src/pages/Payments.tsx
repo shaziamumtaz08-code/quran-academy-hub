@@ -120,7 +120,10 @@ const getPackageName = (inv: InvoiceRow) =>
 // ─── Main Component ──────────────────────────────────────────────────
 export default function Payments() {
   const { activeBranch, activeDivision } = useDivision();
-  const { user } = useAuth();
+  const { user, activeRole, hasRole } = useAuth();
+  const isParentView = activeRole === 'parent';
+  const isStudentView = activeRole === 'student';
+  const isReadOnlyView = isParentView || isStudentView;
   const branchId = activeBranch?.id || null;
   const divisionId = activeDivision?.id || null;
   const { toast } = useToast();
@@ -260,7 +263,7 @@ export default function Payments() {
   });
 
   const { data: invoices = [], isLoading } = useQuery({
-    queryKey: ['fee-invoices', branchId, divisionId, monthFilter, statusFilter],
+    queryKey: ['fee-invoices', branchId, divisionId, monthFilter, statusFilter, isReadOnlyView],
     queryFn: async () => {
       let q = supabase
         .from('fee_invoices')
@@ -278,8 +281,11 @@ export default function Payments() {
         `)
         .order('created_at', { ascending: false });
 
-      if (branchId) q = q.eq('branch_id', branchId);
-      if (divisionId) q = q.eq('division_id', divisionId);
+      // For admin views, scope to branch/division
+      if (!isReadOnlyView) {
+        if (branchId) q = q.eq('branch_id', branchId);
+        if (divisionId) q = q.eq('division_id', divisionId);
+      }
       if (monthFilter !== 'all') q = q.eq('billing_month', monthFilter);
       if (statusFilter !== 'all') q = q.eq('status', statusFilter as any);
 
@@ -287,7 +293,8 @@ export default function Payments() {
       if (error) throw error;
       return (data || []) as unknown as InvoiceRow[];
     },
-    enabled: !!branchId,
+    // Parents/students don't need branch context; RLS handles scoping
+    enabled: isReadOnlyView || !!branchId,
   });
 
   // Realised amounts query (sum of amount_local per invoice)
@@ -899,18 +906,24 @@ export default function Payments() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="font-serif text-3xl font-bold text-foreground">Fee Management</h1>
-            <p className="text-muted-foreground mt-1">Billing plans, invoices & payments</p>
+            <h1 className="font-serif text-3xl font-bold text-foreground">
+              {isParentView ? 'Family Fees' : isStudentView ? 'My Fees' : 'Fee Management'}
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              {isParentView ? 'View and pay fees for your children' : isStudentView ? 'View your fee invoices' : 'Billing plans, invoices & payments'}
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => { resetFeeForm(); setSetupOpen(true); }} className="gap-2">
-              <Plus className="h-4 w-4" /> Set Up Student Fee
-            </Button>
-            <Button onClick={() => generateMutation.mutate()} disabled={generateMutation.isPending} className="gap-2">
-              {generateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-              Generate Monthly Invoices
-            </Button>
-          </div>
+          {!isReadOnlyView && (
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => { resetFeeForm(); setSetupOpen(true); }} className="gap-2">
+                <Plus className="h-4 w-4" /> Set Up Student Fee
+              </Button>
+              <Button onClick={() => generateMutation.mutate()} disabled={generateMutation.isPending} className="gap-2">
+                {generateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                Generate Monthly Invoices
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Summary Cards */}
@@ -946,10 +959,16 @@ export default function Payments() {
 
         {/* Tabs: Invoices | Billing Plans */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full max-w-md grid-cols-2">
-            <TabsTrigger value="invoices" className="gap-2"><Receipt className="h-4 w-4" /> Invoices</TabsTrigger>
-            <TabsTrigger value="plans" className="gap-2"><ListChecks className="h-4 w-4" /> Billing Plans</TabsTrigger>
-          </TabsList>
+          {!isReadOnlyView ? (
+            <TabsList className="grid w-full max-w-md grid-cols-2">
+              <TabsTrigger value="invoices" className="gap-2"><Receipt className="h-4 w-4" /> Invoices</TabsTrigger>
+              <TabsTrigger value="plans" className="gap-2"><ListChecks className="h-4 w-4" /> Billing Plans</TabsTrigger>
+            </TabsList>
+          ) : (
+            <TabsList className="grid w-full max-w-xs grid-cols-1">
+              <TabsTrigger value="invoices" className="gap-2"><Receipt className="h-4 w-4" /> Invoices</TabsTrigger>
+            </TabsList>
+          )}
 
           <TabsContent value="invoices" className="mt-4 space-y-4">
             {/* Filters + Bulk Action */}
@@ -978,7 +997,7 @@ export default function Payments() {
                 <GraduationCap className="h-4 w-4" />
                 <span>{invoices.length} invoice(s)</span>
               </div>
-              {familyGroups.length > 0 && (
+              {!isReadOnlyView && familyGroups.length > 0 && (
                 <Select onValueChange={openFamilyPay}>
                   <SelectTrigger className="w-[180px]"><SelectValue placeholder="Pay Family..." /></SelectTrigger>
                   <SelectContent>
@@ -990,6 +1009,33 @@ export default function Payments() {
                   </SelectContent>
                 </Select>
               )}
+              {isParentView && (() => {
+                const unpaidInvoices = invoices.filter(i => i.status !== 'paid' && i.status !== 'voided' && i.status !== 'waived');
+                const unpaidTotal = unpaidInvoices.reduce((s, i) => s + (Number(i.amount) - Number(i.amount_paid || 0)), 0);
+                if (unpaidInvoices.length === 0) return null;
+                return (
+                  <Button
+                    className="gap-2"
+                    onClick={() => {
+                      selectedInvoiceCacheRef.current.clear();
+                      unpaidInvoices.forEach(inv => selectedInvoiceCacheRef.current.set(inv.id, inv));
+                      setSelectedIds(new Set(unpaidInvoices.map(i => i.id)));
+                      const months = [...new Set(unpaidInvoices.map(i => i.billing_month))].sort();
+                      const earliest = getDefaultPeriodDates(months[0]);
+                      const latest = getDefaultPeriodDates(months[months.length - 1]);
+                      setPayForm({
+                        amount_foreign: unpaidTotal.toString(), amount_local: '', resolution: 'full', notes: '',
+                        payment_date: new Date().toISOString().split('T')[0],
+                        period_from: earliest.from, period_to: latest.to, payment_method: '',
+                      });
+                      setReceiptFile(null);
+                      setBulkPayOpen(true);
+                    }}
+                  >
+                    <Users className="h-4 w-4" /> Pay All ({unpaidInvoices.length}) — {unpaidInvoices[0]?.currency} {unpaidTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                  </Button>
+                );
+              })()}
               <div className="flex-1" />
             </div>
 
@@ -1031,16 +1077,16 @@ export default function Payments() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-10"><Checkbox checked={allSelectableChecked} onCheckedChange={toggleSelectAll} /></TableHead>
+                      {!isReadOnlyView && <TableHead className="w-10"><Checkbox checked={allSelectableChecked} onCheckedChange={toggleSelectAll} /></TableHead>}
                       <TableHead>Student</TableHead>
                       <TableHead>Package</TableHead>
                       <TableHead>Billing Month</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
                       <TableHead className="text-right">Paid</TableHead>
-                      <TableHead className="text-right">Realised (PKR)</TableHead>
+                      {!isReadOnlyView && <TableHead className="text-right">Realised (PKR)</TableHead>}
                       <TableHead>Due Date</TableHead>
                       <TableHead className="text-center">Status</TableHead>
-                      <TableHead className="w-12"></TableHead>
+                      {!isReadOnlyView && <TableHead className="w-12"></TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1048,7 +1094,7 @@ export default function Payments() {
                       const isVoided = inv.status === 'voided';
                       return (
                         <TableRow key={inv.id} className={selectedIds.has(inv.id) ? 'bg-primary/5' : ''}>
-                          <TableCell><Checkbox checked={selectedIds.has(inv.id)} onCheckedChange={() => toggleSelect(inv.id)} disabled={isVoided} /></TableCell>
+                          {!isReadOnlyView && <TableCell><Checkbox checked={selectedIds.has(inv.id)} onCheckedChange={() => toggleSelect(inv.id)} disabled={isVoided} /></TableCell>}
                           <TableCell>
                             <span className="flex items-center gap-3">
                               <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center"><User className="h-4 w-4 text-secondary-foreground" /></div>
@@ -1061,9 +1107,11 @@ export default function Payments() {
                           <TableCell className="text-right font-mono text-muted-foreground">
                             {Number(inv.amount_paid || 0) > 0 ? `${inv.currency} ${Number(inv.amount_paid).toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '—'}
                           </TableCell>
-                          <TableCell className="text-right font-mono text-muted-foreground">
-                            {realisedMap[inv.id] ? `PKR ${realisedMap[inv.id].toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}
-                          </TableCell>
+                          {!isReadOnlyView && (
+                            <TableCell className="text-right font-mono text-muted-foreground">
+                              {realisedMap[inv.id] ? `PKR ${realisedMap[inv.id].toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}
+                            </TableCell>
+                          )}
                           <TableCell>{inv.due_date || '—'}</TableCell>
                           <TableCell className="text-center">
                             {(inv.status === 'pending' || inv.status === 'partially_paid' || inv.status === 'overdue') ? (
@@ -1072,7 +1120,8 @@ export default function Payments() {
                               </Button>
                             ) : getStatusBadge(inv.status)}
                           </TableCell>
-                          <TableCell>
+                          {!isReadOnlyView && (
+                            <TableCell>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -1156,7 +1205,8 @@ export default function Payments() {
                                   )}
                                 </DropdownMenuContent>
                               </DropdownMenu>
-                          </TableCell>
+                            </TableCell>
+                          )}
                         </TableRow>
                       );
                     })}
@@ -1166,9 +1216,11 @@ export default function Payments() {
             </div>
           </TabsContent>
 
-          <TabsContent value="plans" className="mt-4">
-            <BillingPlansTable onEditPlan={handleEditPlan} />
-          </TabsContent>
+          {!isReadOnlyView && (
+            <TabsContent value="plans" className="mt-4">
+              <BillingPlansTable onEditPlan={handleEditPlan} />
+            </TabsContent>
+          )}
         </Tabs>
 
         {/* ─── Set Up Student Fee Modal ──────────── */}
