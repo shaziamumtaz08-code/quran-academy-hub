@@ -139,7 +139,9 @@ export default function Payments() {
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
 
   // Invoice action modals state
-  const [editInvoiceData, setEditInvoiceData] = useState<{ id: string; amount: string; due_date: string; billing_month: string; currency: string; remark: string; status: string; amount_paid: string; forgiven_amount: string; payment_method: string; paid_at: string; period_from: string; period_to: string } | null>(null);
+  const [editInvoiceData, setEditInvoiceData] = useState<{ id: string; amount: string; due_date: string; billing_month: string; currency: string; remark: string; status: string; amount_paid: string; forgiven_amount: string; payment_method: string; paid_at: string; period_from: string; period_to: string; amount_local: string; receipt_url: string } | null>(null);
+  const editReceiptInputRef = useRef<HTMLInputElement>(null);
+  const [editReceiptFile, setEditReceiptFile] = useState<File | null>(null);
   const [actionModal, setActionModal] = useState<{ type: 'mark_unpaid' | 'apply_discount' | 'waive_fee' | 'reverse_payment' | 'void_invoice' | 'view_history' | 'restore_to_pending'; invoice: InvoiceRow } | null>(null);
   const [receiptViewInvoice, setReceiptViewInvoice] = useState<InvoiceRow | null>(null);
   const [receiptTransactions, setReceiptTransactions] = useState<any[]>([]);
@@ -988,7 +990,7 @@ export default function Payments() {
                                       <DropdownMenuItem onClick={() => setActionModal({ type: 'restore_to_pending', invoice: inv })}>
                                         <Undo2 className="h-3.5 w-3.5 mr-2" /> Restore to Pending
                                       </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => setEditInvoiceData({ id: inv.id, amount: String(inv.amount), due_date: inv.due_date || '', billing_month: inv.billing_month, currency: inv.currency, remark: inv.remark || '', status: inv.status, amount_paid: String(inv.amount_paid || 0), forgiven_amount: String(inv.forgiven_amount || 0), payment_method: inv.payment_method || '', paid_at: inv.paid_at || '', period_from: (inv as any).period_from || '', period_to: (inv as any).period_to || '' })}>
+                                      <DropdownMenuItem onClick={() => { setEditReceiptFile(null); setEditInvoiceData({ id: inv.id, amount: String(inv.amount), due_date: inv.due_date || '', billing_month: inv.billing_month, currency: inv.currency, remark: inv.remark || '', status: inv.status, amount_paid: String(inv.amount_paid || 0), forgiven_amount: String(inv.forgiven_amount || 0), payment_method: inv.payment_method || '', paid_at: inv.paid_at || '', period_from: (inv as any).period_from || '', period_to: (inv as any).period_to || '', amount_local: String(realisedMap[inv.id] || ''), receipt_url: '' }); }}>
                                         <Pencil className="h-3.5 w-3.5 mr-2" /> Edit Invoice
                                       </DropdownMenuItem>
                                       <DropdownMenuSeparator />
@@ -998,7 +1000,7 @@ export default function Payments() {
                                     </>
                                   ) : (
                                     <>
-                                      <DropdownMenuItem onClick={() => setEditInvoiceData({ id: inv.id, amount: String(inv.amount), due_date: inv.due_date || '', billing_month: inv.billing_month, currency: inv.currency, remark: inv.remark || '', status: inv.status, amount_paid: String(inv.amount_paid || 0), forgiven_amount: String(inv.forgiven_amount || 0), payment_method: inv.payment_method || '', paid_at: inv.paid_at || '', period_from: (inv as any).period_from || '', period_to: (inv as any).period_to || '' })}>
+                                      <DropdownMenuItem onClick={() => { setEditReceiptFile(null); setEditInvoiceData({ id: inv.id, amount: String(inv.amount), due_date: inv.due_date || '', billing_month: inv.billing_month, currency: inv.currency, remark: inv.remark || '', status: inv.status, amount_paid: String(inv.amount_paid || 0), forgiven_amount: String(inv.forgiven_amount || 0), payment_method: inv.payment_method || '', paid_at: inv.paid_at || '', period_from: (inv as any).period_from || '', period_to: (inv as any).period_to || '', amount_local: String(realisedMap[inv.id] || ''), receipt_url: '' }); }}>
                                         <Pencil className="h-3.5 w-3.5 mr-2" /> Edit Invoice
                                       </DropdownMenuItem>
                                       {(inv.status === 'paid' || inv.status === 'partially_paid') && (
@@ -1348,6 +1350,10 @@ export default function Payments() {
 
             <ScrollArea className="flex-1 px-4 sm:px-6">
               <div className="space-y-3 pb-4">
+                <div className="flex items-center gap-2 text-xs bg-muted/50 rounded-lg p-2 border border-border">
+                  <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-muted-foreground">Amounts are allocated across selected invoices in order (oldest first).</span>
+                </div>
                 <div className="bg-muted/50 rounded-lg border border-border p-2 max-h-24 overflow-y-auto space-y-0.5">
                   {unpaidSelected.map(inv => (
                     <div key={inv.id} className="flex justify-between text-xs">
@@ -1450,38 +1456,23 @@ export default function Payments() {
           <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col p-0">
             <DialogHeader className="px-4 pt-4 pb-2 sm:px-6 sm:pt-6 shrink-0">
               <DialogTitle className="flex items-center gap-2 text-base"><Pencil className="h-4 w-4" /> Edit Invoice</DialogTitle>
-              <DialogDescription className="text-xs">All changes are preserved in audit trail.</DialogDescription>
+              {editInvoiceData && (() => {
+                const inv = invoices.find(i => i.id === editInvoiceData.id);
+                return <DialogDescription className="text-xs">{inv?.profiles?.full_name || 'Student'} • Expected: {editInvoiceData.currency} {Number(editInvoiceData.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })} • {formatBillingMonth(editInvoiceData.billing_month)}</DialogDescription>;
+              })()}
             </DialogHeader>
 
-            {editInvoiceData && (
+            {editInvoiceData && (() => {
+              const editAmountForeign = parseFloat(editInvoiceData.amount_paid) || 0;
+              const editAmountLocal = parseFloat(editInvoiceData.amount_local) || 0;
+              const editEffectiveRate = editAmountForeign > 0 ? editAmountLocal / editAmountForeign : 0;
+              const editExpected = parseFloat(editInvoiceData.amount) || 0;
+              const editShortfall = editExpected - editAmountForeign;
+              const editHasShortfall = editAmountForeign > 0 && editAmountForeign < editExpected;
+
+              return (
               <ScrollArea className="flex-1 px-4 sm:px-6">
                 <div className="space-y-3 pb-4">
-                  {/* Invoice Info */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label className="text-xs">Billing Month</Label>
-                      <Select value={editInvoiceData.billing_month} onValueChange={v => setEditInvoiceData(d => d ? { ...d, billing_month: v } : null)}>
-                        <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                        <SelectContent>{monthOptions.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs">Status</Label>
-                      <Select value={editInvoiceData.status} onValueChange={v => setEditInvoiceData(d => d ? { ...d, status: v } : null)}>
-                        <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="paid">Paid</SelectItem>
-                          <SelectItem value="partially_paid">Partially Paid</SelectItem>
-                          <SelectItem value="overdue">Overdue</SelectItem>
-                          <SelectItem value="waived">Waived</SelectItem>
-                          <SelectItem value="adjusted">Adjusted</SelectItem>
-                          <SelectItem value="voided">Voided</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
                   {/* Payment Period */}
                   <div className="space-y-1">
                     <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Payment Period</Label>
@@ -1511,9 +1502,60 @@ export default function Payments() {
                     </div>
                   </div>
 
+                  {/* Amount + Realized */}
                   <div className="grid grid-cols-2 gap-2">
                     <div><Label className="text-xs">Amount ({editInvoiceData.currency})</Label><Input type="number" value={editInvoiceData.amount} onChange={e => setEditInvoiceData(d => d ? { ...d, amount: e.target.value } : null)} className="h-8 text-sm" /></div>
+                    <div><Label className="text-xs">Realized (PKR)</Label><Input type="number" placeholder="0.00" value={editInvoiceData.amount_local} onChange={e => setEditInvoiceData(d => d ? { ...d, amount_local: e.target.value } : null)} className="h-8 text-sm" /></div>
+                  </div>
+
+                  {/* Exchange Rate */}
+                  {editAmountLocal > 0 && editAmountForeign > 0 && (
+                    <div className="flex items-center gap-2 text-xs bg-primary/5 rounded-lg p-2 border border-primary/20">
+                      <ArrowRightLeft className="h-3.5 w-3.5 text-primary" />
+                      <span className="text-muted-foreground">Rate:</span>
+                      <span className="font-mono font-bold text-foreground">1 {editInvoiceData.currency} = {editEffectiveRate.toFixed(2)} PKR</span>
+                    </div>
+                  )}
+
+                  {/* Shortfall / Resolution (informational) */}
+                  {editHasShortfall && (
+                    <div className="flex items-center gap-2 text-xs bg-destructive/5 rounded-lg border border-destructive/20 p-2">
+                      <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+                      <span className="text-destructive font-medium">Shortfall: {editInvoiceData.currency} {editShortfall.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                    </div>
+                  )}
+
+                  {/* Proof of Payment */}
+                  <div>
+                    <Label className="text-xs">Proof of Payment</Label>
+                    <input ref={editReceiptInputRef} type="file" accept="image/*,.pdf" className="hidden" onChange={e => setEditReceiptFile(e.target.files?.[0] || null)} />
+                    <div onClick={() => editReceiptInputRef.current?.click()} className="mt-1 border-2 border-dashed border-border rounded-lg p-2.5 text-center cursor-pointer hover:border-primary/50 transition-colors">
+                      {editReceiptFile ? (
+                        <div className="flex items-center justify-center gap-2 text-xs text-foreground">
+                          <ImageIcon className="h-3.5 w-3.5 text-primary" /> <span className="truncate">{editReceiptFile.name}</span> <Badge variant="secondary" className="text-[10px]">{(editReceiptFile.size / 1024).toFixed(0)} KB</Badge>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center gap-1.5 text-muted-foreground"><Upload className="h-4 w-4" /><span className="text-xs">Upload receipt</span></div>
+                      )}
+                    </div>
+                    {/* Show existing receipt if any */}
+                    {(() => {
+                      const existingReceipt = editInvoiceData.receipt_url;
+                      if (existingReceipt) return <AttachmentPreview url={existingReceipt} className="mt-1" />;
+                      return null;
+                    })()}
+                  </div>
+
+                  {/* Notes */}
+                  <div><Label className="text-xs">Remark / Notes</Label><Textarea placeholder="Any remarks..." value={editInvoiceData.remark} onChange={e => setEditInvoiceData(d => d ? { ...d, remark: e.target.value } : null)} className="h-12 text-sm" /></div>
+
+                  {/* Admin Overrides Section */}
+                  <Separator />
+                  <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Admin Overrides</Label>
+
+                  <div className="grid grid-cols-2 gap-2">
                     <div><Label className="text-xs">Amount Paid</Label><Input type="number" value={editInvoiceData.amount_paid} onChange={e => setEditInvoiceData(d => d ? { ...d, amount_paid: e.target.value } : null)} className="h-8 text-sm" /></div>
+                    <div><Label className="text-xs">Forgiven Amount</Label><Input type="number" value={editInvoiceData.forgiven_amount} onChange={e => setEditInvoiceData(d => d ? { ...d, forgiven_amount: e.target.value } : null)} className="h-8 text-sm" /></div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
@@ -1524,21 +1566,66 @@ export default function Payments() {
                         <SelectContent>{['USD', 'PKR', 'GBP', 'EUR', 'CAD', 'AUD', 'AED', 'SAR'].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
-                    <div><Label className="text-xs">Forgiven Amount</Label><Input type="number" value={editInvoiceData.forgiven_amount} onChange={e => setEditInvoiceData(d => d ? { ...d, forgiven_amount: e.target.value } : null)} className="h-8 text-sm" /></div>
+                    <div><Label className="text-xs">Due Date</Label><Input type="date" value={editInvoiceData.due_date} onChange={e => setEditInvoiceData(d => d ? { ...d, due_date: e.target.value } : null)} className="h-8 text-sm" /></div>
                   </div>
 
-                  <div><Label className="text-xs">Due Date</Label><Input type="date" value={editInvoiceData.due_date} onChange={e => setEditInvoiceData(d => d ? { ...d, due_date: e.target.value } : null)} className="h-8 text-sm" /></div>
-
-                  <div><Label className="text-xs">Remark / Notes</Label><Textarea placeholder="Any remarks..." value={editInvoiceData.remark} onChange={e => setEditInvoiceData(d => d ? { ...d, remark: e.target.value } : null)} className="h-12 text-sm" /></div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs">Billing Month</Label>
+                      <Select value={editInvoiceData.billing_month} onValueChange={v => setEditInvoiceData(d => d ? { ...d, billing_month: v } : null)}>
+                        <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>{monthOptions.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Status</Label>
+                      <Select value={editInvoiceData.status} onValueChange={v => setEditInvoiceData(d => d ? { ...d, status: v } : null)}>
+                        <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="paid">Paid</SelectItem>
+                          <SelectItem value="partially_paid">Partially Paid</SelectItem>
+                          <SelectItem value="overdue">Overdue</SelectItem>
+                          <SelectItem value="waived">Waived</SelectItem>
+                          <SelectItem value="adjusted">Adjusted</SelectItem>
+                          <SelectItem value="voided">Voided</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 </div>
               </ScrollArea>
-            )}
+              );
+            })()}
             <DialogFooter className="px-4 pb-4 pt-2 sm:px-6 sm:pb-6 shrink-0 border-t border-border">
               <Button variant="outline" size="sm" onClick={() => setEditInvoiceData(null)}>Cancel</Button>
-              <Button size="sm" onClick={() => {
+              <Button size="sm" onClick={async () => {
                 if (!editInvoiceData) return;
                 const inv = invoices.find(i => i.id === editInvoiceData.id);
                 if (!inv) return;
+
+                // Upload receipt if new file provided
+                let receiptUrl = editInvoiceData.receipt_url || null;
+                if (editReceiptFile) {
+                  const ext = editReceiptFile.name.split('.').pop();
+                  const path = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+                  const { error: upErr } = await supabase.storage.from('payment-receipts').upload(path, editReceiptFile);
+                  if (upErr) { toast({ title: 'Receipt upload failed', description: upErr.message, variant: 'destructive' }); return; }
+                  const { data: urlData } = supabase.storage.from('payment-receipts').getPublicUrl(path);
+                  receiptUrl = urlData.publicUrl;
+                }
+
+                // Update linked payment_transaction receipt_url and amount_local if changed
+                if (receiptUrl || editInvoiceData.amount_local) {
+                  const { data: txns } = await supabase.from('payment_transactions').select('id').eq('invoice_id', editInvoiceData.id).order('created_at', { ascending: false }).limit(1);
+                  if (txns?.length) {
+                    const updates: any = {};
+                    if (receiptUrl) updates.receipt_url = receiptUrl;
+                    if (editInvoiceData.amount_local) updates.amount_local = parseFloat(editInvoiceData.amount_local) || 0;
+                    await supabase.from('payment_transactions').update(updates).eq('id', txns[0].id);
+                  }
+                }
+
                 editInvoiceMutation.mutate({
                   id: editInvoiceData.id,
                   amount: parseFloat(editInvoiceData.amount) || 0,
