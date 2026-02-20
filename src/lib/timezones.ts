@@ -87,17 +87,31 @@ export function getTimezoneOffset(value: string): number {
 }
 
 /**
- * Convert time between timezones
+ * Convert time between timezones, returning both the converted time and day offset.
  * @param time - Time string in HH:MM format
  * @param fromTz - Source timezone
  * @param toTz - Target timezone
- * @returns Time in target timezone
+ * @returns Time in target timezone (HH:MM string)
  */
 export function convertTimeBetweenTimezones(
   time: string,
   fromTz: string,
   toTz: string
 ): string {
+  const result = convertTimeBetweenTimezonesWithDay(time, fromTz, toTz);
+  return result.time;
+}
+
+/**
+ * Convert time between timezones, returning both time and day offset (-1, 0, +1).
+ * Day offset indicates whether the converted time falls on the previous day (-1),
+ * the same day (0), or the next day (+1).
+ */
+export function convertTimeBetweenTimezonesWithDay(
+  time: string,
+  fromTz: string,
+  toTz: string
+): { time: string; dayOffset: number } {
   const fromOffset = getTimezoneOffset(fromTz);
   const toOffset = getTimezoneOffset(toTz);
   
@@ -107,14 +121,18 @@ export function convertTimeBetweenTimezones(
   const offsetDiffMinutes = (toOffset - fromOffset) * 60;
   let toMinutes = fromMinutes + offsetDiffMinutes;
   
-  // Handle day wraparound
-  if (toMinutes < 0) toMinutes += 24 * 60;
-  if (toMinutes >= 24 * 60) toMinutes -= 24 * 60;
+  // Handle day wraparound and track day shift
+  let dayOffset = 0;
+  if (toMinutes < 0) { toMinutes += 24 * 60; dayOffset = -1; }
+  if (toMinutes >= 24 * 60) { toMinutes -= 24 * 60; dayOffset = 1; }
   
   const toHours = Math.floor(toMinutes / 60);
   const toMins = toMinutes % 60;
   
-  return `${toHours.toString().padStart(2, '0')}:${toMins.toString().padStart(2, '0')}`;
+  return {
+    time: `${toHours.toString().padStart(2, '0')}:${toMins.toString().padStart(2, '0')}`,
+    dayOffset,
+  };
 }
 
 /**
