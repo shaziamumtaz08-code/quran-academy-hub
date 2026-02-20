@@ -20,7 +20,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Users, Eye, UserPlus, Archive, Search, Clock, Trash2, CheckCircle, XCircle, AlertCircle, ClipboardCheck } from 'lucide-react';
+import { Plus, Users, Eye, UserPlus, Archive, Search, Clock, Trash2, CheckCircle, XCircle, AlertCircle, ClipboardCheck, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { TableToolbar } from '@/components/ui/table-toolbar';
 import { format } from 'date-fns';
 
 // ─── Types ─────────────────────────────────────────────
@@ -82,6 +83,8 @@ export default function Courses() {
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [studentSearch, setStudentSearch] = useState('');
   const [activeTab, setActiveTab] = useState('students');
+  const [courseSearch, setCourseSearch] = useState('');
+  const [courseFilterTeacher, setCourseFilterTeacher] = useState('all');
 
   // Schedule form state
   const [scheduleDay, setScheduleDay] = useState('');
@@ -369,6 +372,29 @@ export default function Courses() {
   const activeCourses = courses.filter(c => c.status === 'active');
   const archivedCourses = courses.filter(c => c.status === 'archived');
 
+  const teacherFilterOptions = React.useMemo(() => {
+    const uniqueTeachers = new Map<string, string>();
+    courses.forEach(c => {
+      const name = (c as any).teacher?.full_name;
+      if (name) uniqueTeachers.set(c.teacher_id, name);
+    });
+    return [
+      { value: 'all', label: 'All Teachers' },
+      ...Array.from(uniqueTeachers.entries()).map(([id, name]) => ({ value: id, label: name })).sort((a, b) => a.label.localeCompare(b.label)),
+    ];
+  }, [courses]);
+
+  const filteredActiveCourses = React.useMemo(() => {
+    return activeCourses.filter(c => {
+      const matchesSearch = !courseSearch ||
+        c.name.toLowerCase().includes(courseSearch.toLowerCase()) ||
+        (c as any).teacher?.full_name?.toLowerCase().includes(courseSearch.toLowerCase()) ||
+        (c as any).subject?.name?.toLowerCase().includes(courseSearch.toLowerCase());
+      const matchesTeacher = courseFilterTeacher === 'all' || c.teacher_id === courseFilterTeacher;
+      return matchesSearch && matchesTeacher;
+    });
+  }, [activeCourses, courseSearch, courseFilterTeacher]);
+
   const enrolledIds = new Set(enrollments.filter(e => e.status === 'active').map(e => e.student_id));
   const activeEnrolled = enrollments.filter(e => e.status === 'active').length;
   const capacityReached = detailCourse?.max_students ? activeEnrolled >= detailCourse.max_students : false;
@@ -420,14 +446,24 @@ export default function Courses() {
 
         {/* Active Courses Table */}
         <Card>
-          <CardHeader>
+          <CardHeader className="space-y-4">
             <CardTitle className="text-lg">Active Courses ({activeCourses.length})</CardTitle>
+            <TableToolbar
+              searchValue={courseSearch}
+              onSearchChange={setCourseSearch}
+              searchPlaceholder="Search courses..."
+              filterValue={courseFilterTeacher}
+              onFilterChange={setCourseFilterTeacher}
+              filterOptions={teacherFilterOptions}
+              filterLabel="Teacher"
+              onReset={() => { setCourseSearch(''); setCourseFilterTeacher('all'); }}
+            />
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <p className="text-muted-foreground text-center py-8">Loading courses...</p>
-            ) : activeCourses.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">No active courses yet. Create one to get started.</p>
+            ) : filteredActiveCourses.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">No courses found.</p>
             ) : (
               <Table>
                 <TableHeader>
@@ -441,7 +477,7 @@ export default function Courses() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {activeCourses.map(course => (
+                  {filteredActiveCourses.map(course => (
                     <TableRow key={course.id}>
                       <TableCell className="font-medium">{course.name}</TableCell>
                       <TableCell>{(course as any).teacher?.full_name || '—'}</TableCell>
