@@ -74,6 +74,8 @@ interface InvoiceRow {
   paid_at: string | null;
   amount_paid: number;
   forgiven_amount: number;
+  remark: string | null;
+  payment_method: string | null;
   profiles: { full_name: string } | null;
   student_teacher_assignments: { fee_packages: { name: string } | null } | null;
   student_billing_plans: { fee_packages: { name: string } | null; session_duration: number } | null;
@@ -137,7 +139,7 @@ export default function Payments() {
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
 
   // Invoice action modals state
-  const [editInvoiceData, setEditInvoiceData] = useState<{ id: string; amount: string; due_date: string; billing_month: string; currency: string; remark: string; status: string; amount_paid: string } | null>(null);
+  const [editInvoiceData, setEditInvoiceData] = useState<{ id: string; amount: string; due_date: string; billing_month: string; currency: string; remark: string; status: string; amount_paid: string; forgiven_amount: string; payment_method: string; paid_at: string } | null>(null);
   const [actionModal, setActionModal] = useState<{ type: 'mark_unpaid' | 'apply_discount' | 'waive_fee' | 'reverse_payment' | 'void_invoice' | 'view_history' | 'restore_to_pending'; invoice: InvoiceRow } | null>(null);
   const [receiptViewInvoice, setReceiptViewInvoice] = useState<InvoiceRow | null>(null);
   const [receiptTransactions, setReceiptTransactions] = useState<any[]>([]);
@@ -259,7 +261,7 @@ export default function Payments() {
         .from('fee_invoices')
         .select(`
           id, assignment_id, plan_id, student_id, amount, currency, billing_month,
-          due_date, status, paid_at, amount_paid, forgiven_amount,
+          due_date, status, paid_at, amount_paid, forgiven_amount, remark, payment_method,
           profiles!fee_invoices_student_id_fkey(full_name),
           student_teacher_assignments!fee_invoices_assignment_id_fkey(
             fee_packages!student_teacher_assignments_fee_package_id_fkey(name)
@@ -641,16 +643,17 @@ export default function Payments() {
 
   // Invoice edit mutation (with audit trail) - full edit
   const editInvoiceMutation = useMutation({
-    mutationFn: async (data: { id: string; amount: number; due_date: string; billing_month: string; currency: string; remark: string; status: string; amount_paid: number; originalInvoice: InvoiceRow }) => {
+    mutationFn: async (data: { id: string; amount: number; due_date: string; billing_month: string; currency: string; remark: string; status: string; amount_paid: number; forgiven_amount: number; payment_method: string; paid_at: string; originalInvoice: InvoiceRow }) => {
       const orig = data.originalInvoice;
       await createAdjustment(data.id, 'edit_invoice',
-        { amount: orig.amount, due_date: orig.due_date, billing_month: orig.billing_month, currency: orig.currency, status: orig.status, amount_paid: orig.amount_paid },
-        { amount: data.amount, due_date: data.due_date, billing_month: data.billing_month, currency: data.currency, remark: data.remark, status: data.status, amount_paid: data.amount_paid },
+        { amount: orig.amount, due_date: orig.due_date, billing_month: orig.billing_month, currency: orig.currency, status: orig.status, amount_paid: orig.amount_paid, forgiven_amount: orig.forgiven_amount, payment_method: orig.payment_method, paid_at: orig.paid_at },
+        { amount: data.amount, due_date: data.due_date, billing_month: data.billing_month, currency: data.currency, remark: data.remark, status: data.status, amount_paid: data.amount_paid, forgiven_amount: data.forgiven_amount, payment_method: data.payment_method, paid_at: data.paid_at },
         'Invoice edited by admin'
       );
       const { error } = await supabase.from('fee_invoices').update({
         amount: data.amount, due_date: data.due_date || null, billing_month: data.billing_month,
         currency: data.currency, remark: data.remark || null, status: data.status as any, amount_paid: data.amount_paid,
+        forgiven_amount: data.forgiven_amount, payment_method: data.payment_method || null, paid_at: data.paid_at || null,
       }).eq('id', data.id);
       if (error) throw error;
       return data.id;
@@ -984,7 +987,7 @@ export default function Payments() {
                                       <DropdownMenuItem onClick={() => setActionModal({ type: 'restore_to_pending', invoice: inv })}>
                                         <Undo2 className="h-3.5 w-3.5 mr-2" /> Restore to Pending
                                       </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => setEditInvoiceData({ id: inv.id, amount: String(inv.amount), due_date: inv.due_date || '', billing_month: inv.billing_month, currency: inv.currency, remark: '', status: inv.status, amount_paid: String(inv.amount_paid || 0) })}>
+                                      <DropdownMenuItem onClick={() => setEditInvoiceData({ id: inv.id, amount: String(inv.amount), due_date: inv.due_date || '', billing_month: inv.billing_month, currency: inv.currency, remark: inv.remark || '', status: inv.status, amount_paid: String(inv.amount_paid || 0), forgiven_amount: String(inv.forgiven_amount || 0), payment_method: inv.payment_method || '', paid_at: inv.paid_at || '' })}>
                                         <Pencil className="h-3.5 w-3.5 mr-2" /> Edit Invoice
                                       </DropdownMenuItem>
                                       <DropdownMenuSeparator />
@@ -994,7 +997,7 @@ export default function Payments() {
                                     </>
                                   ) : (
                                     <>
-                                      <DropdownMenuItem onClick={() => setEditInvoiceData({ id: inv.id, amount: String(inv.amount), due_date: inv.due_date || '', billing_month: inv.billing_month, currency: inv.currency, remark: '', status: inv.status, amount_paid: String(inv.amount_paid || 0) })}>
+                                      <DropdownMenuItem onClick={() => setEditInvoiceData({ id: inv.id, amount: String(inv.amount), due_date: inv.due_date || '', billing_month: inv.billing_month, currency: inv.currency, remark: inv.remark || '', status: inv.status, amount_paid: String(inv.amount_paid || 0), forgiven_amount: String(inv.forgiven_amount || 0), payment_method: inv.payment_method || '', paid_at: inv.paid_at || '' })}>
                                         <Pencil className="h-3.5 w-3.5 mr-2" /> Edit Invoice
                                       </DropdownMenuItem>
                                       {(inv.status === 'paid' || inv.status === 'partially_paid') && (
@@ -1488,6 +1491,23 @@ export default function Payments() {
                   </div>
                   <div><Label className="text-xs">Amount Paid</Label><Input type="number" value={editInvoiceData.amount_paid} onChange={e => setEditInvoiceData(d => d ? { ...d, amount_paid: e.target.value } : null)} /></div>
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label className="text-xs">Forgiven Amount</Label><Input type="number" value={editInvoiceData.forgiven_amount} onChange={e => setEditInvoiceData(d => d ? { ...d, forgiven_amount: e.target.value } : null)} /></div>
+                  <div>
+                    <Label className="text-xs">Receiving Channel</Label>
+                    <Select value={editInvoiceData.payment_method || '_none'} onValueChange={v => setEditInvoiceData(d => d ? { ...d, payment_method: v === '_none' ? '' : v } : null)}>
+                      <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="_none">None</SelectItem>
+                        {RECEIVING_CHANNELS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs">Paid At</Label>
+                  <Input type="date" value={editInvoiceData.paid_at ? editInvoiceData.paid_at.substring(0, 10) : ''} onChange={e => setEditInvoiceData(d => d ? { ...d, paid_at: e.target.value ? `${e.target.value}T00:00:00Z` : '' } : null)} />
+                </div>
                 <div>
                   <Label className="text-xs">Remark / Notes</Label>
                   <Textarea placeholder="Optional notes..." value={editInvoiceData.remark} onChange={e => setEditInvoiceData(d => d ? { ...d, remark: e.target.value } : null)} className="h-16" />
@@ -1509,6 +1529,9 @@ export default function Payments() {
                   remark: editInvoiceData.remark,
                   status: editInvoiceData.status,
                   amount_paid: parseFloat(editInvoiceData.amount_paid) || 0,
+                  forgiven_amount: parseFloat(editInvoiceData.forgiven_amount) || 0,
+                  payment_method: editInvoiceData.payment_method,
+                  paid_at: editInvoiceData.paid_at,
                   originalInvoice: inv,
                 });
               }} disabled={editInvoiceMutation.isPending}>
