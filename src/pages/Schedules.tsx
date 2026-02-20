@@ -356,7 +356,13 @@ export default function Schedules() {
       handleCloseDialog();
     },
     onError: (error: any) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      const msg = error.message || 'Failed to create schedule';
+      const friendlyMsg = msg.includes('schedules_assignment_day_unique') 
+        ? 'This student already has a schedule for this day. Please edit the existing one or choose a different day.'
+        : msg.includes('Schedule conflict')
+        ? msg
+        : msg;
+      toast({ title: 'Error', description: friendlyMsg, variant: 'destructive' });
     },
   });
 
@@ -378,7 +384,11 @@ export default function Schedules() {
       handleCloseBulkDialog();
     },
     onError: (error: any) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      const msg = error.message || 'Failed to create schedules';
+      const friendlyMsg = msg.includes('schedules_assignment_day_unique') 
+        ? 'A schedule already exists for one of the selected days. Please edit the existing schedule instead.'
+        : msg;
+      toast({ title: 'Error', description: friendlyMsg, variant: 'destructive' });
     },
   });
 
