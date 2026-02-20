@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -132,6 +132,7 @@ export default function Payments() {
 
   // Selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const selectedInvoiceCacheRef = useRef<Map<string, InvoiceRow>>(new Map());
 
   // Modal state
   const [setupOpen, setSetupOpen] = useState(false);
@@ -151,6 +152,8 @@ export default function Payments() {
   const [editPaymentData, setEditPaymentData] = useState<{ invoiceId: string; transaction: any; invoice: InvoiceRow } | null>(null);
   const [editPaymentForm, setEditPaymentForm] = useState({ amount_foreign: '', amount_local: '', payment_date: '', payment_method: '', notes: '', reason: '' });
   const [editPaymentLoading, setEditPaymentLoading] = useState(false);
+  const [splitInvoices, setSplitInvoices] = useState<InvoiceRow[]>([]);
+  const [splitMode, setSplitMode] = useState(false);
 
   // Setup fee form - multi-select students
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
@@ -403,8 +406,13 @@ export default function Payments() {
     setSelectedStudentIds(prev => prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]);
   }, []);
 
-  const selectedInvoices = useMemo(() => invoices.filter(i => selectedIds.has(i.id)), [invoices, selectedIds]);
-  const unpaidSelected = useMemo(() => selectedInvoices.filter(i => i.status !== 'paid'), [selectedInvoices]);
+  const selectedInvoices = useMemo(() => {
+    const cached = Array.from(selectedIds).map(id => selectedInvoiceCacheRef.current.get(id)).filter(Boolean) as InvoiceRow[];
+    // Also include any from current invoices list that might have updated data
+    const currentMap = new Map(invoices.map(i => [i.id, i]));
+    return cached.map(c => currentMap.get(c.id) || c);
+  }, [invoices, selectedIds]);
+  const unpaidSelected = useMemo(() => selectedInvoices.filter(i => i.status !== 'paid' && i.status !== 'voided'), [selectedInvoices]);
   const totalExpected = unpaidSelected.reduce((s, i) => s + (Number(i.amount) - Number(i.amount_paid || 0)), 0);
   const bulkCurrency = unpaidSelected[0]?.currency || 'USD';
   const amountForeign = parseFloat(payForm.amount_foreign) || 0;
@@ -424,6 +432,49 @@ export default function Payments() {
 
   const selectableInvoices = useMemo(() => invoices.filter(i => i.status !== 'voided'), [invoices]);
   const allSelectableChecked = selectableInvoices.length > 0 && selectableInvoices.every(i => selectedIds.has(i.id));
+
+  // ─── Multi-month split detection for Edit Invoice ─────────────────
+  useEffect(() => {
+    if (!editInvoiceData?.period_from || !editInvoiceData?.period_to) {
+      setSplitInvoices([]);
+      setSplitMode(false);
+      return;
+    }
+    const from = editInvoiceData.period_from;
+    const to = editInvoiceData.period_to;
+    const fromMonth = from.substring(0, 7); // YYYY-MM
+    const toMonth = to.substring(0, 7);
+    if (fromMonth === toMonth) {
+      setSplitInvoices([]);
+      setSplitMode(false);
+      return;
+    }
+    // Generate all months in range
+    const months: string[] = [];
+    let cursor = parseISO(fromMonth + '-01');
+    const endDate = parseISO(toMonth + '-01');
+    while (cursor <= endDate) {
+      months.push(format(cursor, 'yyyy-MM'));
+      cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+    }
+    if (months.length <= 1) { setSplitInvoices([]); setSplitMode(false); return; }
+
+    // Fetch invoices for this student across those months
+    const inv = invoices.find(i => i.id === editInvoiceData.id);
+    if (!inv) return;
+    const fetchSplitInvoices = async () => {
+      const { data } = await supabase
+        .from('fee_invoices')
+        .select(`id, student_id, amount, currency, billing_month, status, amount_paid, forgiven_amount, profiles!fee_invoices_student_id_fkey(full_name)`)
+        .eq('student_id', inv.student_id)
+        .in('billing_month', months)
+        .neq('status', 'voided' as any)
+        .order('billing_month');
+      setSplitInvoices((data || []) as unknown as InvoiceRow[]);
+      setSplitMode(months.length > 1);
+    };
+    fetchSplitInvoices();
+  }, [editInvoiceData?.period_from, editInvoiceData?.period_to, editInvoiceData?.id]);
 
   // ─── Mutations ───────────────────────────────────────────────────
   const savePlanMutation = useMutation({
@@ -618,6 +669,7 @@ export default function Payments() {
       toast({ title: `${count} payment(s) recorded successfully` });
       trackActivity({ action: 'payment_recorded', entityType: 'invoice', details: { count, amount: amountForeign, currency: bulkCurrency } });
       setBulkPayOpen(false);
+      selectedInvoiceCacheRef.current.clear();
       setSelectedIds(new Set());
       setPayForm({ amount_foreign: '', amount_local: '', resolution: 'full', notes: '', payment_date: new Date().toISOString().split('T')[0], period_from: '', period_to: '', payment_method: '' });
       setReceiptFile(null);
@@ -732,16 +784,36 @@ export default function Payments() {
 
   // ─── Selection Handlers ──────────────────────────────────────────
   const toggleSelect = (id: string) => {
+    const inv = invoices.find(i => i.id === id);
     setSelectedIds(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+        selectedInvoiceCacheRef.current.delete(id);
+      } else {
+        next.add(id);
+        if (inv) selectedInvoiceCacheRef.current.set(id, inv);
+      }
       return next;
     });
   };
 
   const toggleSelectAll = () => {
-    if (allSelectableChecked) setSelectedIds(new Set());
-    else setSelectedIds(new Set(selectableInvoices.map(i => i.id)));
+    if (allSelectableChecked) {
+      // Remove only the currently visible ones from selection
+      const visibleIds = new Set(selectableInvoices.map(i => i.id));
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        visibleIds.forEach(id => { next.delete(id); selectedInvoiceCacheRef.current.delete(id); });
+        return next;
+      });
+    } else {
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        selectableInvoices.forEach(i => { next.add(i.id); selectedInvoiceCacheRef.current.set(i.id, i); });
+        return next;
+      });
+    }
   };
 
   const openBulkPay = () => {
@@ -761,6 +833,8 @@ export default function Payments() {
   const openSinglePay = (invoiceId: string) => {
     const inv = invoices.find(i => i.id === invoiceId);
     if (!inv || inv.status === 'paid') return;
+    selectedInvoiceCacheRef.current.clear();
+    selectedInvoiceCacheRef.current.set(invoiceId, inv);
     setSelectedIds(new Set([invoiceId]));
     const due = Number(inv.amount) - Number(inv.amount_paid || 0);
     const period = getDefaultPeriodDates(inv.billing_month);
@@ -779,6 +853,8 @@ export default function Payments() {
     const familyStudentIds = family[1].studentIds;
     const familyInvoiceIds = invoices.filter(inv => familyStudentIds.includes(inv.student_id) && inv.status !== 'paid').map(inv => inv.id);
     if (familyInvoiceIds.length === 0) { toast({ title: 'No unpaid invoices for this family', variant: 'destructive' }); return; }
+    selectedInvoiceCacheRef.current.clear();
+    invoices.filter(inv => familyInvoiceIds.includes(inv.id)).forEach(inv => selectedInvoiceCacheRef.current.set(inv.id, inv));
     setSelectedIds(new Set(familyInvoiceIds));
     const familyUnpaid = invoices.filter(i => familyInvoiceIds.includes(i.id));
     const total = familyUnpaid.reduce((s, i) => s + (Number(i.amount) - Number(i.amount_paid || 0)), 0);
@@ -915,12 +991,31 @@ export default function Payments() {
                 </Select>
               )}
               <div className="flex-1" />
-              {selectedIds.size > 0 && (
-                <Button onClick={openBulkPay} className="gap-2 animate-fade-in">
-                  <Receipt className="h-4 w-4" /> Record Payment ({unpaidSelected.length})
-                </Button>
-              )}
             </div>
+
+            {/* Cross-month selection bar */}
+            {selectedIds.size > 0 && (() => {
+              const currentVisibleIds = new Set(invoices.map(i => i.id));
+              const crossMonthCount = Array.from(selectedIds).filter(id => !currentVisibleIds.has(id)).length;
+              const months = [...new Set(selectedInvoices.map(i => i.billing_month))].sort();
+              return (
+                <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-lg px-4 py-2.5 animate-fade-in">
+                  <CheckCircle className="h-4 w-4 text-primary shrink-0" />
+                  <span className="text-sm font-medium text-foreground">
+                    {selectedIds.size} invoice{selectedIds.size > 1 ? 's' : ''} selected
+                    {months.length > 1 && <span className="text-muted-foreground"> across {months.length} months ({months.map(formatBillingMonth).join(', ')})</span>}
+                    {crossMonthCount > 0 && <span className="text-muted-foreground"> • {crossMonthCount} from other month{crossMonthCount > 1 ? 's' : ''}</span>}
+                  </span>
+                  <div className="flex-1" />
+                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { selectedInvoiceCacheRef.current.clear(); setSelectedIds(new Set()); }}>
+                    <X className="h-3 w-3 mr-1" /> Clear All
+                  </Button>
+                  <Button size="sm" className="h-7 text-xs gap-1.5" onClick={openBulkPay} disabled={unpaidSelected.length === 0}>
+                    <Receipt className="h-3 w-3" /> Record Payment ({unpaidSelected.length})
+                  </Button>
+                </div>
+              );
+            })()}
 
             {/* Invoice Table */}
             <div className="bg-card rounded-xl border border-border overflow-hidden">
@@ -1481,6 +1576,62 @@ export default function Payments() {
                       <div><Label className="text-xs">To</Label><Input type="date" value={editInvoiceData.period_to} onChange={e => setEditInvoiceData(d => d ? { ...d, period_to: e.target.value } : null)} className="h-8 text-sm" /></div>
                     </div>
                   </div>
+
+                  {/* Multi-month split preview */}
+                  {splitMode && splitInvoices.length > 0 && (
+                    <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 space-y-2 animate-fade-in">
+                      <div className="flex items-center gap-2 text-xs font-semibold text-accent-foreground">
+                        <ListChecks className="h-3.5 w-3.5" />
+                        <span>Multi-Month Split — {splitInvoices.length} invoice{splitInvoices.length > 1 ? 's' : ''} found</span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">The period spans multiple months. You can record payment for all matching invoices at once using the cart system:</p>
+                      <div className="space-y-1 max-h-32 overflow-y-auto">
+                        {splitInvoices.map(si => {
+                          const outstanding = Number(si.amount) - Number(si.amount_paid || 0);
+                          return (
+                            <div key={si.id} className="flex justify-between items-center text-xs py-1 border-b border-border/50 last:border-0">
+                              <span className="font-medium">{formatBillingMonth(si.billing_month)}</span>
+                              <span className="flex items-center gap-2">
+                                <span className="font-mono">{si.currency} {outstanding.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                                {getStatusBadge(si.status)}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="flex items-center justify-between pt-1 border-t border-accent/20">
+                        <span className="text-xs font-medium text-foreground">Total Outstanding</span>
+                        <span className="text-xs font-mono font-bold">{splitInvoices[0]?.currency || 'USD'} {splitInvoices.reduce((s, i) => s + Math.max(0, Number(i.amount) - Number(i.amount_paid || 0)), 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full h-7 text-xs gap-1.5"
+                        onClick={() => {
+                          // Select all split invoices in the cart and open bulk pay
+                          const unpaidSplit = splitInvoices.filter(si => si.status !== 'paid' && si.status !== 'voided');
+                          if (unpaidSplit.length === 0) { toast({ title: 'No unpaid invoices in this range', variant: 'destructive' }); return; }
+                          selectedInvoiceCacheRef.current.clear();
+                          unpaidSplit.forEach(si => selectedInvoiceCacheRef.current.set(si.id, si));
+                          setSelectedIds(new Set(unpaidSplit.map(si => si.id)));
+                          const total = unpaidSplit.reduce((s, i) => s + (Number(i.amount) - Number(i.amount_paid || 0)), 0);
+                          const months = unpaidSplit.map(i => i.billing_month).sort();
+                          const earliest = getDefaultPeriodDates(months[0]);
+                          const latest = getDefaultPeriodDates(months[months.length - 1]);
+                          setPayForm({
+                            amount_foreign: total.toString(), amount_local: '', resolution: 'full', notes: '',
+                            payment_date: new Date().toISOString().split('T')[0],
+                            period_from: earliest.from, period_to: latest.to, payment_method: '',
+                          });
+                          setReceiptFile(null);
+                          setEditInvoiceData(null);
+                          setBulkPayOpen(true);
+                        }}
+                      >
+                        <Receipt className="h-3 w-3" /> Record Payment for All {splitInvoices.filter(si => si.status !== 'paid' && si.status !== 'voided').length} Unpaid Invoices
+                      </Button>
+                    </div>
+                  )}
 
                   <Separator />
 
