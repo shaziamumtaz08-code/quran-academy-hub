@@ -62,6 +62,7 @@ export function TicketList({ view, userId }: TicketListProps) {
       // 'watching' and 'all' fetch all visible tickets (RLS handles filtering)
 
       const { data, error } = await query;
+      console.log('[TicketList] view=', view, 'userId=', userId, 'data=', data?.length, 'error=', error);
       if (error) throw error;
 
       // For watching view, we need to filter by watcher
