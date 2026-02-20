@@ -17,7 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
 import { format } from 'date-fns';
 import { BulkScheduleImportDialog } from '@/components/schedules/BulkScheduleImportDialog';
-import { TIMEZONES_SORTED as TIMEZONES, getTimezoneAbbr, convertTimeBetweenTimezones, formatTime12h as formatTime12hShared } from '@/lib/timezones';
+import { TIMEZONES_SORTED as TIMEZONES, getTimezoneAbbr, convertTimeBetweenTimezones, convertTimeBetweenTimezonesWithDay, formatTime12h as formatTime12hShared } from '@/lib/timezones';
 
 const DAYS_OF_WEEK = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const DAYS_LABELS: Record<string, string> = {
@@ -1350,12 +1350,34 @@ export default function Schedules() {
                               </div>
                               <div className="grid grid-cols-7 gap-2">
                                 {DAYS_OF_WEEK.map((day) => {
-                                  const daySchedule = assignmentSchedules.find(s => s.day_of_week === day);
+                                  // When in teacher view, a schedule's day may shift due to timezone offset
+                                  // e.g., Sunday 5PM student → Monday 4AM teacher
+                                  let daySchedule = assignmentSchedules.find(s => s.day_of_week === day);
+                                  let displayTime: string | null = null;
+                                  let displayTzAbbr = timeViewMode === 'teacher' ? teacherCode : studentCode;
+
+                                  if (timeViewMode === 'teacher') {
+                                    // Find any schedule whose teacher-day maps to this grid day
+                                    daySchedule = undefined; // reset
+                                    for (const s of assignmentSchedules) {
+                                      const studentTz = resolveTimezone(assignment.student_country, assignment.student_city, assignment.student_timezone);
+                                      const teacherTz = resolveTimezone(assignment.teacher_country, assignment.teacher_city, assignment.teacher_timezone);
+                                      const { dayOffset } = convertTimeBetweenTimezonesWithDay(
+                                        s.student_local_time, studentTz, teacherTz
+                                      );
+                                      const studentDayIdx = DAYS_OF_WEEK.indexOf(s.day_of_week);
+                                      const teacherDayIdx = (studentDayIdx + dayOffset + 7) % 7;
+                                      if (DAYS_OF_WEEK[teacherDayIdx] === day) {
+                                        daySchedule = s;
+                                        displayTime = s.teacher_local_time;
+                                        break;
+                                      }
+                                    }
+                                  } else {
+                                    displayTime = daySchedule ? daySchedule.student_local_time : null;
+                                  }
+
                                   const isToday = day === todayDayName;
-                                  const displayTime = daySchedule
-                                    ? (timeViewMode === 'teacher' ? daySchedule.teacher_local_time : daySchedule.student_local_time)
-                                    : null;
-                                  const displayTzAbbr = timeViewMode === 'teacher' ? teacherCode : studentCode;
 
                                   return (
                                     <Card
@@ -1365,15 +1387,15 @@ export default function Schedules() {
                                       <p className={`text-xs font-medium mb-1 ${isToday ? 'text-primary' : 'text-muted-foreground'}`}>
                                         {DAYS_LABELS[day].slice(0, 3)}
                                       </p>
-                                      {daySchedule ? (
+                                      {daySchedule && displayTime ? (
                                         <div className="space-y-1">
-                                          <p className="text-sm font-bold text-foreground">{formatTime12h(displayTime!)}</p>
+                                          <p className="text-sm font-bold text-foreground">{formatTime12h(displayTime)}</p>
                                           <p className="text-xs text-muted-foreground">{daySchedule.duration_minutes}min ({displayTzAbbr})</p>
                                           <div className="flex justify-center gap-1 mt-1">
-                                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => handleEditSchedule(daySchedule, assignment)}>
+                                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => handleEditSchedule(daySchedule!, assignment)}>
                                               <Pencil className="h-3 w-3" />
                                             </Button>
-                                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive hover:text-destructive" onClick={() => setDeleteSchedule(daySchedule)}>
+                                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive hover:text-destructive" onClick={() => setDeleteSchedule(daySchedule!)}>
                                               <Trash2 className="h-3 w-3" />
                                             </Button>
                                           </div>
