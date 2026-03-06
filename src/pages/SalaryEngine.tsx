@@ -576,7 +576,7 @@ export default function SalaryEngine() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Card><CardContent className="p-3 text-center">
               <p className="text-xs text-muted-foreground">Total Payroll</p>
-              <p className="text-lg font-bold">${totalPayroll.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              <p className="text-lg font-bold">PKR {totalPayroll.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
             </CardContent></Card>
             <Card><CardContent className="p-3 text-center">
               <p className="text-xs text-muted-foreground">Teachers</p>
@@ -624,11 +624,11 @@ export default function SalaryEngine() {
                       </button>
                       <p className="text-xs text-muted-foreground">{teacher.students.length} student{teacher.students.length !== 1 ? 's' : ''}</p>
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">${teacher.baseSalary.toFixed(2)}</TableCell>
-                    <TableCell className="text-right tabular-nums">${teacher.extraClassAmount.toFixed(2)}</TableCell>
-                    <TableCell className="text-right tabular-nums text-emerald-600">${teacher.adjustmentAmount.toFixed(2)}</TableCell>
-                    <TableCell className="text-right tabular-nums text-red-600">${teacher.deductions.toFixed(2)}</TableCell>
-                    <TableCell className="text-right font-bold tabular-nums">${teacher.netSalary.toFixed(2)}</TableCell>
+                    <TableCell className="text-right tabular-nums">PKR {teacher.baseSalary.toFixed(2)}</TableCell>
+                    <TableCell className="text-right tabular-nums">PKR {teacher.extraClassAmount.toFixed(2)}</TableCell>
+                    <TableCell className="text-right tabular-nums text-emerald-600">PKR {teacher.adjustmentAmount.toFixed(2)}</TableCell>
+                    <TableCell className="text-right tabular-nums text-red-600">PKR {teacher.deductions.toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-bold tabular-nums">PKR {teacher.netSalary.toFixed(2)}</TableCell>
                     <TableCell>{getStatusBadge(teacher.payoutStatus)}</TableCell>
                     {!isTeacherView && (
                       <TableCell className="text-right">

@@ -257,10 +257,10 @@ export function SalarySheetDialog({
                         {format(parseISO(s.dateFrom), 'dd MMM')} – {format(parseISO(s.dateTo), 'dd MMM')}
                       </div>
                       <div className="col-span-2 text-right">
-                        <span className="text-sm font-medium tabular-nums">${s.payoutRate.toFixed(2)}</span>
+                        <span className="text-sm font-medium tabular-nums">PKR {s.payoutRate.toFixed(2)}</span>
                       </div>
                       <div className="col-span-2 text-right">
-                        <span className="text-sm tabular-nums text-muted-foreground">${s.calculatedAmount.toFixed(2)}</span>
+                        <span className="text-sm tabular-nums text-muted-foreground">PKR {s.calculatedAmount.toFixed(2)}</span>
                         <p className="text-[10px] text-muted-foreground">{s.eligibleDays}/{s.totalDays} days</p>
                       </div>
                       {!isTeacherView && (
@@ -296,17 +296,17 @@ export function SalarySheetDialog({
                       <div className="grid grid-cols-3 gap-2 text-xs">
                         <div>
                           <p className="text-muted-foreground">Fee</p>
-                          <p className="font-medium tabular-nums">${s.payoutRate.toFixed(0)}</p>
+                          <p className="font-medium tabular-nums">PKR {s.payoutRate.toFixed(0)}</p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Due</p>
-                          <p className="tabular-nums">${s.calculatedAmount.toFixed(0)}</p>
+                          <p className="tabular-nums">PKR {s.calculatedAmount.toFixed(0)}</p>
                           <p className="text-[9px] text-muted-foreground">{s.eligibleDays}/{s.totalDays}d</p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Final</p>
                           {isTeacherView ? (
-                            <p className="font-semibold tabular-nums">${finalAmt.toFixed(0)}</p>
+                            <p className="font-semibold tabular-nums">PKR {finalAmt.toFixed(0)}</p>
                           ) : (
                             <Input
                               type="number"
@@ -377,7 +377,7 @@ export function SalarySheetDialog({
                       <div>
                         <p className="text-sm font-semibold text-foreground">Extra Classes</p>
                       </div>
-                      <span className="font-semibold text-sm text-emerald-700">+${teacher.extraClassAmount.toFixed(2)}</span>
+                      <span className="font-semibold text-sm text-emerald-700">+PKR {teacher.extraClassAmount.toFixed(2)}</span>
                     </div>
                   )}
                   {adjustments.map(adj => (
@@ -387,7 +387,7 @@ export function SalarySheetDialog({
                         {adj.reason && <p className="text-xs text-muted-foreground mt-0.5 italic">{adj.reason}</p>}
                       </div>
                       <span className={`font-semibold text-sm shrink-0 ${adj.adjustment_type === 'deduction' ? 'text-red-700' : 'text-emerald-700'}`}>
-                        {adj.adjustment_type === 'deduction' ? '-' : '+'}${Number(adj.amount).toFixed(2)}
+                        {adj.adjustment_type === 'deduction' ? '-' : '+'}PKR {Number(adj.amount).toFixed(2)}
                       </span>
                     </div>
                   ))}
@@ -400,19 +400,19 @@ export function SalarySheetDialog({
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-4">
                 <div className="text-center">
                   <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground">Base Salary</p>
-                  <p className="text-base sm:text-lg font-bold tabular-nums">${totalBase.toFixed(2)}</p>
+                  <p className="text-base sm:text-lg font-bold tabular-nums">PKR {totalBase.toFixed(2)}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground">Additions</p>
-                  <p className="text-base sm:text-lg font-bold tabular-nums text-emerald-600">+${(teacher.extraClassAmount + teacher.adjustmentAmount).toFixed(2)}</p>
+                  <p className="text-base sm:text-lg font-bold tabular-nums text-emerald-600">+PKR {(teacher.extraClassAmount + teacher.adjustmentAmount).toFixed(2)}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground">Deductions</p>
-                  <p className="text-base sm:text-lg font-bold tabular-nums text-red-600">-${teacher.deductions.toFixed(2)}</p>
+                  <p className="text-base sm:text-lg font-bold tabular-nums text-red-600">-PKR {teacher.deductions.toFixed(2)}</p>
                 </div>
                 <div className="text-center bg-[hsl(var(--primary))] text-primary-foreground rounded-xl py-2">
                   <p className="text-[9px] sm:text-[10px] uppercase tracking-wider opacity-70">Net Salary</p>
-                  <p className="text-xl sm:text-2xl font-bold tabular-nums">${grandNet.toFixed(2)}</p>
+                  <p className="text-xl sm:text-2xl font-bold tabular-nums">PKR {grandNet.toFixed(2)}</p>
                 </div>
               </div>
 
