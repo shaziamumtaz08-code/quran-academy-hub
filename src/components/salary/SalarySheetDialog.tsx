@@ -306,7 +306,7 @@ export function SalarySheetDialog({
                         <div>
                           <p className="text-muted-foreground">Final</p>
                           {isTeacherView ? (
-                            <p className="font-semibold tabular-nums">${finalAmt.toFixed(0)}</p>
+                            <p className="font-semibold tabular-nums">PKR {finalAmt.toFixed(0)}</p>
                           ) : (
                             <Input
                               type="number"
