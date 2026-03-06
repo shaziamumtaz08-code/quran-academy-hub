@@ -576,7 +576,7 @@ export default function SalaryEngine() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Card><CardContent className="p-3 text-center">
               <p className="text-xs text-muted-foreground">Total Payroll</p>
-              <p className="text-lg font-bold">${totalPayroll.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              <p className="text-lg font-bold">PKR {totalPayroll.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
             </CardContent></Card>
             <Card><CardContent className="p-3 text-center">
               <p className="text-xs text-muted-foreground">Teachers</p>
