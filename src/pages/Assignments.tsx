@@ -213,6 +213,8 @@ export default function Assignments() {
         payout_amount: parseFloat(payoutAmount) || 0,
         payout_type: payoutType,
         effective_from_date: effectiveFromDate || null,
+        division_id: activeDivision?.id || null,
+        branch_id: activeDivision?.branch_id || null,
       }));
       const { data, error } = await supabase
         .from('student_teacher_assignments')
