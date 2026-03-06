@@ -408,7 +408,7 @@ export function SalarySheetDialog({
                 </div>
                 <div className="text-center">
                   <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground">Deductions</p>
-                  <p className="text-base sm:text-lg font-bold tabular-nums text-red-600">-${teacher.deductions.toFixed(2)}</p>
+                  <p className="text-base sm:text-lg font-bold tabular-nums text-red-600">-PKR {teacher.deductions.toFixed(2)}</p>
                 </div>
                 <div className="text-center bg-[hsl(var(--primary))] text-primary-foreground rounded-xl py-2">
                   <p className="text-[9px] sm:text-[10px] uppercase tracking-wider opacity-70">Net Salary</p>
