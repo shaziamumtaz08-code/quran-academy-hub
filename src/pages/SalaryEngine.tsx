@@ -624,11 +624,11 @@ export default function SalaryEngine() {
                       </button>
                       <p className="text-xs text-muted-foreground">{teacher.students.length} student{teacher.students.length !== 1 ? 's' : ''}</p>
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">${teacher.baseSalary.toFixed(2)}</TableCell>
-                    <TableCell className="text-right tabular-nums">${teacher.extraClassAmount.toFixed(2)}</TableCell>
-                    <TableCell className="text-right tabular-nums text-emerald-600">${teacher.adjustmentAmount.toFixed(2)}</TableCell>
-                    <TableCell className="text-right tabular-nums text-red-600">${teacher.deductions.toFixed(2)}</TableCell>
-                    <TableCell className="text-right font-bold tabular-nums">${teacher.netSalary.toFixed(2)}</TableCell>
+                    <TableCell className="text-right tabular-nums">PKR {teacher.baseSalary.toFixed(2)}</TableCell>
+                    <TableCell className="text-right tabular-nums">PKR {teacher.extraClassAmount.toFixed(2)}</TableCell>
+                    <TableCell className="text-right tabular-nums text-emerald-600">PKR {teacher.adjustmentAmount.toFixed(2)}</TableCell>
+                    <TableCell className="text-right tabular-nums text-red-600">PKR {teacher.deductions.toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-bold tabular-nums">PKR {teacher.netSalary.toFixed(2)}</TableCell>
                     <TableCell>{getStatusBadge(teacher.payoutStatus)}</TableCell>
                     {!isTeacherView && (
                       <TableCell className="text-right">

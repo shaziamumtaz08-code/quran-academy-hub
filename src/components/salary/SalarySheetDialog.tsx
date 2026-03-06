@@ -412,7 +412,7 @@ export function SalarySheetDialog({
                 </div>
                 <div className="text-center bg-[hsl(var(--primary))] text-primary-foreground rounded-xl py-2">
                   <p className="text-[9px] sm:text-[10px] uppercase tracking-wider opacity-70">Net Salary</p>
-                  <p className="text-xl sm:text-2xl font-bold tabular-nums">${grandNet.toFixed(2)}</p>
+                  <p className="text-xl sm:text-2xl font-bold tabular-nums">PKR {grandNet.toFixed(2)}</p>
                 </div>
               </div>
 
