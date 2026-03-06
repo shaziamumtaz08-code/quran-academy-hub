@@ -328,10 +328,15 @@ export default function SalaryEngine() {
   }, [teachers, assignments, attendance, leaveEvents, extraClasses, salaryAdjustments, existingPayouts, feeInvoices, schedules, salaryMonth, editAmounts, daysInMonth, allDatesInMonth, monthStart, monthEnd]);
 
   const filteredData = useMemo(() => {
-    if (!searchQuery) return salaryData;
+    let data = salaryData;
+    // Teachers only see their own salary
+    if (isTeacherView && user?.id) {
+      data = data.filter(t => t.teacherId === user.id);
+    }
+    if (!searchQuery) return data;
     const q = searchQuery.toLowerCase();
-    return salaryData.filter(t => t.teacherName.toLowerCase().includes(q));
-  }, [salaryData, searchQuery]);
+    return data.filter(t => t.teacherName.toLowerCase().includes(q));
+  }, [salaryData, searchQuery, isTeacherView, user?.id]);
 
   const totalPayroll = salaryData.reduce((s, t) => s + t.netSalary, 0);
   const paidCount = salaryData.filter(t => t.payoutStatus === 'paid' || t.payoutStatus === 'locked').length;
