@@ -588,7 +588,7 @@ export default function SalaryEngine() {
               </TableHeader>
               <TableBody>
                 {filteredData.length === 0 && (
-                  <TableRow><TableCell colSpan={8} className="text-center py-12 text-muted-foreground">No salary data for this month</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={isTeacherView ? 7 : 8} className="text-center py-12 text-muted-foreground">No salary data for this month</TableCell></TableRow>
                 )}
                 {filteredData.map(teacher => (
                   <TableRow key={teacher.teacherId} className="group">
