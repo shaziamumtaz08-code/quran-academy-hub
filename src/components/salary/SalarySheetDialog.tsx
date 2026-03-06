@@ -404,7 +404,7 @@ export function SalarySheetDialog({
                 </div>
                 <div className="text-center">
                   <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground">Additions</p>
-                  <p className="text-base sm:text-lg font-bold tabular-nums text-emerald-600">+${(teacher.extraClassAmount + teacher.adjustmentAmount).toFixed(2)}</p>
+                  <p className="text-base sm:text-lg font-bold tabular-nums text-emerald-600">+PKR {(teacher.extraClassAmount + teacher.adjustmentAmount).toFixed(2)}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground">Deductions</p>
