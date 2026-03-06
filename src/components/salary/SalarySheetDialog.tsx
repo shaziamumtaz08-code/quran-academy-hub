@@ -400,7 +400,7 @@ export function SalarySheetDialog({
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-4">
                 <div className="text-center">
                   <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground">Base Salary</p>
-                  <p className="text-base sm:text-lg font-bold tabular-nums">${totalBase.toFixed(2)}</p>
+                  <p className="text-base sm:text-lg font-bold tabular-nums">PKR {totalBase.toFixed(2)}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground">Additions</p>
