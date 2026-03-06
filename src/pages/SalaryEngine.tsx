@@ -569,22 +569,8 @@ export default function SalaryEngine() {
             </div>
           </div>
         )}
-                  <SelectItem key={m.value} value={`${now.getFullYear()}-${m.value}`}>{m.label} {now.getFullYear()}</SelectItem>
-                ))}
-                {MONTHS.map(m => (
-                  <SelectItem key={`prev-${m.value}`} value={`${now.getFullYear() - 1}-${m.value}`}>{m.label} {now.getFullYear() - 1}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex-1 min-w-[200px]">
-            <Label className="text-xs">Search</Label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Teacher name..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
-            </div>
-          </div>
-        </div>
+
+
 
         {/* Summary Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
