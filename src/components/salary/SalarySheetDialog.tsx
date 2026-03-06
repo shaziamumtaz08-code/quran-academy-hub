@@ -300,7 +300,7 @@ export function SalarySheetDialog({
                         </div>
                         <div>
                           <p className="text-muted-foreground">Due</p>
-                          <p className="tabular-nums">${s.calculatedAmount.toFixed(0)}</p>
+                          <p className="tabular-nums">PKR {s.calculatedAmount.toFixed(0)}</p>
                           <p className="text-[9px] text-muted-foreground">{s.eligibleDays}/{s.totalDays}d</p>
                         </div>
                         <div>
