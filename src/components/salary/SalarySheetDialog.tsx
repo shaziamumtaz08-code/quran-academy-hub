@@ -296,7 +296,7 @@ export function SalarySheetDialog({
                       <div className="grid grid-cols-3 gap-2 text-xs">
                         <div>
                           <p className="text-muted-foreground">Fee</p>
-                          <p className="font-medium tabular-nums">${s.payoutRate.toFixed(0)}</p>
+                          <p className="font-medium tabular-nums">PKR {s.payoutRate.toFixed(0)}</p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Due</p>
