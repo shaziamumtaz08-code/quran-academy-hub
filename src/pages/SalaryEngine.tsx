@@ -305,7 +305,7 @@ export default function SalaryEngine() {
           feeStatus: studentFee?.status || 'no_invoice',
           lastPaymentDate: studentFee?.paid_at || null,
         };
-      });
+      }).filter((row): row is StudentPayoutRow => row !== null);
 
       const baseSalary = studentRows.reduce((sum, r) => sum + (r.editedAmount ?? r.calculatedAmount), 0);
       const teacherExtras = extraClasses.filter((e: any) => e.teacher_id === teacher.id);
