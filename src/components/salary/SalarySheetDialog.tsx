@@ -260,7 +260,7 @@ export function SalarySheetDialog({
                         <span className="text-sm font-medium tabular-nums">PKR {s.payoutRate.toFixed(2)}</span>
                       </div>
                       <div className="col-span-2 text-right">
-                        <span className="text-sm tabular-nums text-muted-foreground">${s.calculatedAmount.toFixed(2)}</span>
+                        <span className="text-sm tabular-nums text-muted-foreground">PKR {s.calculatedAmount.toFixed(2)}</span>
                         <p className="text-[10px] text-muted-foreground">{s.eligibleDays}/{s.totalDays} days</p>
                       </div>
                       {!isTeacherView && (
