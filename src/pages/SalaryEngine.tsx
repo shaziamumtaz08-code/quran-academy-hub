@@ -583,7 +583,7 @@ export default function SalaryEngine() {
                   <TableHead className="text-right">Deductions</TableHead>
                   <TableHead className="text-right font-bold">Net</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  {!isTeacherView && <TableHead className="text-right">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
