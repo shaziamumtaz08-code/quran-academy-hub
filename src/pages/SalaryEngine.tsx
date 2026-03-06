@@ -513,14 +513,16 @@ export default function SalaryEngine() {
             </h1>
             <p className="text-sm text-muted-foreground">Assignment-based automated payroll</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={() => setLeaveModalOpen(true)}>
-              <Plus className="h-4 w-4 mr-1" /> Leave
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setAdjustmentModalOpen(true)}>
-              <Plus className="h-4 w-4 mr-1" /> Adjustment
-            </Button>
-          </div>
+          {!isTeacherView && (
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={() => setLeaveModalOpen(true)}>
+                <Plus className="h-4 w-4 mr-1" /> Leave
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setAdjustmentModalOpen(true)}>
+                <Plus className="h-4 w-4 mr-1" /> Adjustment
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Filters */}
