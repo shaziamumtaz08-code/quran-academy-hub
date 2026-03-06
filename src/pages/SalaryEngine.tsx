@@ -216,6 +216,9 @@ export default function SalaryEngine() {
         const dateFrom = effectiveFrom > monthStart ? effectiveFrom : monthStart;
         const dateTo = effectiveTo < monthEnd ? effectiveTo : monthEnd;
 
+        // Skip assignments that don't overlap with the salary month
+        if (dateFrom > dateTo) return null;
+
         const fromDate = parseISO(dateFrom);
         const toDate = parseISO(dateTo);
         const totalDaysInRange = Math.max(1, Math.floor((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
