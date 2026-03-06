@@ -67,8 +67,9 @@ interface TeacherSalaryRow {
 }
 
 export default function SalaryEngine() {
-  const { user } = useAuth();
+  const { user, activeRole } = useAuth();
   const { toast } = useToast();
+  const isTeacherView = activeRole === 'teacher';
   const queryClient = useQueryClient();
 
   const [salaryMonth, setSalaryMonth] = useState(currentSalaryMonth);
