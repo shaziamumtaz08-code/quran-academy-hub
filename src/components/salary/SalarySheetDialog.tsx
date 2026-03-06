@@ -305,13 +305,17 @@ export function SalarySheetDialog({
                         </div>
                         <div>
                           <p className="text-muted-foreground">Final</p>
-                          <Input
-                            type="number"
-                            className="h-7 w-full text-right text-xs font-semibold tabular-nums"
-                            value={finalAmt}
-                            onChange={e => onEditAmount(s.assignmentId, parseFloat(e.target.value) || 0)}
-                            disabled={isLocked}
-                          />
+                          {isTeacherView ? (
+                            <p className="font-semibold tabular-nums">${finalAmt.toFixed(0)}</p>
+                          ) : (
+                            <Input
+                              type="number"
+                              className="h-7 w-full text-right text-xs font-semibold tabular-nums"
+                              value={finalAmt}
+                              onChange={e => onEditAmount(s.assignmentId, parseFloat(e.target.value) || 0)}
+                              disabled={isLocked}
+                            />
+                          )}
                         </div>
                       </div>
                     </div>
