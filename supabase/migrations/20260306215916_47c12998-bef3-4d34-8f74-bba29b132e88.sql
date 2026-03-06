@@ -1,0 +1,1 @@
+UPDATE student_teacher_assignments SET division_id = '00000000-0000-0000-0000-000000000003', branch_id = '00000000-0000-0000-0000-000000000002' WHERE id = 'd71c6587-39c6-4163-9f2f-e45592bf5905';
