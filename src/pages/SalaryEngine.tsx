@@ -572,25 +572,26 @@ export default function SalaryEngine() {
 
 
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Card><CardContent className="p-3 text-center">
-            <p className="text-xs text-muted-foreground">Total Payroll</p>
-            <p className="text-lg font-bold">${totalPayroll.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-          </CardContent></Card>
-          <Card><CardContent className="p-3 text-center">
-            <p className="text-xs text-muted-foreground">Teachers</p>
-            <p className="text-lg font-bold">{salaryData.length}</p>
-          </CardContent></Card>
-          <Card><CardContent className="p-3 text-center">
-            <p className="text-xs text-muted-foreground">Paid</p>
-            <p className="text-lg font-bold text-emerald-600">{paidCount}</p>
-          </CardContent></Card>
-          <Card><CardContent className="p-3 text-center">
-            <p className="text-xs text-muted-foreground">Pending</p>
-            <p className="text-lg font-bold text-amber-600">{draftCount}</p>
-          </CardContent></Card>
-        </div>
+        {!isTeacherView && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Card><CardContent className="p-3 text-center">
+              <p className="text-xs text-muted-foreground">Total Payroll</p>
+              <p className="text-lg font-bold">${totalPayroll.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+            </CardContent></Card>
+            <Card><CardContent className="p-3 text-center">
+              <p className="text-xs text-muted-foreground">Teachers</p>
+              <p className="text-lg font-bold">{salaryData.length}</p>
+            </CardContent></Card>
+            <Card><CardContent className="p-3 text-center">
+              <p className="text-xs text-muted-foreground">Paid</p>
+              <p className="text-lg font-bold text-emerald-600">{paidCount}</p>
+            </CardContent></Card>
+            <Card><CardContent className="p-3 text-center">
+              <p className="text-xs text-muted-foreground">Pending</p>
+              <p className="text-lg font-bold text-amber-600">{draftCount}</p>
+            </CardContent></Card>
+          </div>
+        )}
 
         {/* ── Summary Table ── */}
         <Card>
