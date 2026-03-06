@@ -377,7 +377,7 @@ export function SalarySheetDialog({
                       <div>
                         <p className="text-sm font-semibold text-foreground">Extra Classes</p>
                       </div>
-                      <span className="font-semibold text-sm text-emerald-700">+${teacher.extraClassAmount.toFixed(2)}</span>
+                      <span className="font-semibold text-sm text-emerald-700">+PKR {teacher.extraClassAmount.toFixed(2)}</span>
                     </div>
                   )}
                   {adjustments.map(adj => (
