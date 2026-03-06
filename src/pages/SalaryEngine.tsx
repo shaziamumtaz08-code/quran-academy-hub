@@ -67,8 +67,9 @@ interface TeacherSalaryRow {
 }
 
 export default function SalaryEngine() {
-  const { user } = useAuth();
+  const { user, activeRole } = useAuth();
   const { toast } = useToast();
+  const isTeacherView = activeRole === 'teacher';
   const queryClient = useQueryClient();
 
   const [salaryMonth, setSalaryMonth] = useState(currentSalaryMonth);
@@ -327,10 +328,15 @@ export default function SalaryEngine() {
   }, [teachers, assignments, attendance, leaveEvents, extraClasses, salaryAdjustments, existingPayouts, feeInvoices, schedules, salaryMonth, editAmounts, daysInMonth, allDatesInMonth, monthStart, monthEnd]);
 
   const filteredData = useMemo(() => {
-    if (!searchQuery) return salaryData;
+    let data = salaryData;
+    // Teachers only see their own salary
+    if (isTeacherView && user?.id) {
+      data = data.filter(t => t.teacherId === user.id);
+    }
+    if (!searchQuery) return data;
     const q = searchQuery.toLowerCase();
-    return salaryData.filter(t => t.teacherName.toLowerCase().includes(q));
-  }, [salaryData, searchQuery]);
+    return data.filter(t => t.teacherName.toLowerCase().includes(q));
+  }, [salaryData, searchQuery, isTeacherView, user?.id]);
 
   const totalPayroll = salaryData.reduce((s, t) => s + t.netSalary, 0);
   const paidCount = salaryData.filter(t => t.payoutStatus === 'paid' || t.payoutStatus === 'locked').length;
@@ -507,60 +513,85 @@ export default function SalaryEngine() {
             </h1>
             <p className="text-sm text-muted-foreground">Assignment-based automated payroll</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={() => setLeaveModalOpen(true)}>
-              <Plus className="h-4 w-4 mr-1" /> Leave
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setAdjustmentModalOpen(true)}>
-              <Plus className="h-4 w-4 mr-1" /> Adjustment
-            </Button>
-          </div>
+          {!isTeacherView && (
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={() => setLeaveModalOpen(true)}>
+                <Plus className="h-4 w-4 mr-1" /> Leave
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setAdjustmentModalOpen(true)}>
+                <Plus className="h-4 w-4 mr-1" /> Adjustment
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap gap-3 items-end">
-          <div className="w-48">
-            <Label className="text-xs">Salary Month</Label>
-            <Select value={salaryMonth} onValueChange={setSalaryMonth}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {MONTHS.map(m => (
-                  <SelectItem key={m.value} value={`${now.getFullYear()}-${m.value}`}>{m.label} {now.getFullYear()}</SelectItem>
-                ))}
-                {MONTHS.map(m => (
-                  <SelectItem key={`prev-${m.value}`} value={`${now.getFullYear() - 1}-${m.value}`}>{m.label} {now.getFullYear() - 1}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex-1 min-w-[200px]">
-            <Label className="text-xs">Search</Label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Teacher name..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
+        {!isTeacherView && (
+          <div className="flex flex-wrap gap-3 items-end">
+            <div className="w-48">
+              <Label className="text-xs">Salary Month</Label>
+              <Select value={salaryMonth} onValueChange={setSalaryMonth}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {MONTHS.map(m => (
+                    <SelectItem key={m.value} value={`${now.getFullYear()}-${m.value}`}>{m.label} {now.getFullYear()}</SelectItem>
+                  ))}
+                  {MONTHS.map(m => (
+                    <SelectItem key={`prev-${m.value}`} value={`${now.getFullYear() - 1}-${m.value}`}>{m.label} {now.getFullYear() - 1}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1 min-w-[200px]">
+              <Label className="text-xs">Search</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Teacher name..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
+              </div>
             </div>
           </div>
-        </div>
+        )}
+        {isTeacherView && (
+          <div className="flex flex-wrap gap-3 items-end">
+            <div className="w-48">
+              <Label className="text-xs">Salary Month</Label>
+              <Select value={salaryMonth} onValueChange={setSalaryMonth}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {MONTHS.map(m => (
+                    <SelectItem key={m.value} value={`${now.getFullYear()}-${m.value}`}>{m.label} {now.getFullYear()}</SelectItem>
+                  ))}
+                  {MONTHS.map(m => (
+                    <SelectItem key={`prev-${m.value}`} value={`${now.getFullYear() - 1}-${m.value}`}>{m.label} {now.getFullYear() - 1}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Card><CardContent className="p-3 text-center">
-            <p className="text-xs text-muted-foreground">Total Payroll</p>
-            <p className="text-lg font-bold">${totalPayroll.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-          </CardContent></Card>
-          <Card><CardContent className="p-3 text-center">
-            <p className="text-xs text-muted-foreground">Teachers</p>
-            <p className="text-lg font-bold">{salaryData.length}</p>
-          </CardContent></Card>
-          <Card><CardContent className="p-3 text-center">
-            <p className="text-xs text-muted-foreground">Paid</p>
-            <p className="text-lg font-bold text-emerald-600">{paidCount}</p>
-          </CardContent></Card>
-          <Card><CardContent className="p-3 text-center">
-            <p className="text-xs text-muted-foreground">Pending</p>
-            <p className="text-lg font-bold text-amber-600">{draftCount}</p>
-          </CardContent></Card>
-        </div>
+
+
+        {!isTeacherView && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Card><CardContent className="p-3 text-center">
+              <p className="text-xs text-muted-foreground">Total Payroll</p>
+              <p className="text-lg font-bold">${totalPayroll.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+            </CardContent></Card>
+            <Card><CardContent className="p-3 text-center">
+              <p className="text-xs text-muted-foreground">Teachers</p>
+              <p className="text-lg font-bold">{salaryData.length}</p>
+            </CardContent></Card>
+            <Card><CardContent className="p-3 text-center">
+              <p className="text-xs text-muted-foreground">Paid</p>
+              <p className="text-lg font-bold text-emerald-600">{paidCount}</p>
+            </CardContent></Card>
+            <Card><CardContent className="p-3 text-center">
+              <p className="text-xs text-muted-foreground">Pending</p>
+              <p className="text-lg font-bold text-amber-600">{draftCount}</p>
+            </CardContent></Card>
+          </div>
+        )}
 
         {/* ── Summary Table ── */}
         <Card>
@@ -575,12 +606,12 @@ export default function SalaryEngine() {
                   <TableHead className="text-right">Deductions</TableHead>
                   <TableHead className="text-right font-bold">Net</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  {!isTeacherView && <TableHead className="text-right">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredData.length === 0 && (
-                  <TableRow><TableCell colSpan={8} className="text-center py-12 text-muted-foreground">No salary data for this month</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={isTeacherView ? 7 : 8} className="text-center py-12 text-muted-foreground">No salary data for this month</TableCell></TableRow>
                 )}
                 {filteredData.map(teacher => (
                   <TableRow key={teacher.teacherId} className="group">
@@ -599,21 +630,30 @@ export default function SalaryEngine() {
                     <TableCell className="text-right tabular-nums text-red-600">${teacher.deductions.toFixed(2)}</TableCell>
                     <TableCell className="text-right font-bold tabular-nums">${teacher.netSalary.toFixed(2)}</TableCell>
                     <TableCell>{getStatusBadge(teacher.payoutStatus)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex gap-1 justify-end">
+                    {!isTeacherView && (
+                      <TableCell className="text-right">
+                        <div className="flex gap-1 justify-end">
+                          <Button size="sm" variant="outline" onClick={() => { setSelectedTeacherId(teacher.teacherId); setSheetOpen(true); }}>
+                            View Sheet
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => savePayout.mutate(teacher)} disabled={teacher.payoutStatus === 'locked'}>
+                            Save
+                          </Button>
+                          {teacher.payoutStatus === 'paid' && (
+                            <Button size="sm" variant="ghost" onClick={() => lockPayout.mutate(teacher.teacherId)}>
+                              <Lock className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    )}
+                    {isTeacherView && (
+                      <TableCell className="text-right">
                         <Button size="sm" variant="outline" onClick={() => { setSelectedTeacherId(teacher.teacherId); setSheetOpen(true); }}>
                           View Sheet
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => savePayout.mutate(teacher)} disabled={teacher.payoutStatus === 'locked'}>
-                          Save
-                        </Button>
-                        {teacher.payoutStatus === 'paid' && (
-                          <Button size="sm" variant="ghost" onClick={() => lockPayout.mutate(teacher.teacherId)}>
-                            <Lock className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
@@ -641,6 +681,7 @@ export default function SalaryEngine() {
           }}
           isPayingPending={markPaid.isPending}
           isLocked={selectedTeacher?.payoutStatus === 'locked'}
+          viewerRole={isTeacherView ? 'teacher' : 'admin'}
           existingReceiptUrl={existingPayouts.find((p: any) => p.teacher_id === selectedTeacherId)?.receipt_url || null}
           existingInvoiceNumber={existingPayouts.find((p: any) => p.teacher_id === selectedTeacherId)?.invoice_number || null}
         />
