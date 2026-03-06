@@ -387,7 +387,7 @@ export function SalarySheetDialog({
                         {adj.reason && <p className="text-xs text-muted-foreground mt-0.5 italic">{adj.reason}</p>}
                       </div>
                       <span className={`font-semibold text-sm shrink-0 ${adj.adjustment_type === 'deduction' ? 'text-red-700' : 'text-emerald-700'}`}>
-                        {adj.adjustment_type === 'deduction' ? '-' : '+'}${Number(adj.amount).toFixed(2)}
+                        {adj.adjustment_type === 'deduction' ? '-' : '+'}PKR {Number(adj.amount).toFixed(2)}
                       </span>
                     </div>
                   ))}
