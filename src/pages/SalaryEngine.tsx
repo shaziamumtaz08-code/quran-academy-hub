@@ -607,21 +607,30 @@ export default function SalaryEngine() {
                     <TableCell className="text-right tabular-nums text-red-600">${teacher.deductions.toFixed(2)}</TableCell>
                     <TableCell className="text-right font-bold tabular-nums">${teacher.netSalary.toFixed(2)}</TableCell>
                     <TableCell>{getStatusBadge(teacher.payoutStatus)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex gap-1 justify-end">
+                    {!isTeacherView && (
+                      <TableCell className="text-right">
+                        <div className="flex gap-1 justify-end">
+                          <Button size="sm" variant="outline" onClick={() => { setSelectedTeacherId(teacher.teacherId); setSheetOpen(true); }}>
+                            View Sheet
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => savePayout.mutate(teacher)} disabled={teacher.payoutStatus === 'locked'}>
+                            Save
+                          </Button>
+                          {teacher.payoutStatus === 'paid' && (
+                            <Button size="sm" variant="ghost" onClick={() => lockPayout.mutate(teacher.teacherId)}>
+                              <Lock className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    )}
+                    {isTeacherView && (
+                      <TableCell className="text-right">
                         <Button size="sm" variant="outline" onClick={() => { setSelectedTeacherId(teacher.teacherId); setSheetOpen(true); }}>
                           View Sheet
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => savePayout.mutate(teacher)} disabled={teacher.payoutStatus === 'locked'}>
-                          Save
-                        </Button>
-                        {teacher.payoutStatus === 'paid' && (
-                          <Button size="sm" variant="ghost" onClick={() => lockPayout.mutate(teacher.teacherId)}>
-                            <Lock className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
