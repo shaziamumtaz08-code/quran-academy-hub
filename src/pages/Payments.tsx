@@ -20,7 +20,7 @@ import {
 import {
   DollarSign, CheckCircle, XCircle, Clock, User, Loader2, Zap, GraduationCap,
   Plus, Receipt, Upload, ArrowRightLeft, AlertTriangle, ImageIcon, X, Search, ArrowUpDown, Users, Pencil, Trash2, ListChecks,
-  MoreHorizontal, Ban, Undo2, History, Tag, FileX, Eye
+  MoreHorizontal, Ban, Undo2, History, Tag, FileX, Eye, FileText, Printer
 } from 'lucide-react';
 import { endOfMonth, startOfMonth, parseISO, format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
