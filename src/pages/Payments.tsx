@@ -619,14 +619,33 @@ export default function Payments() {
       let planAssignmentMap: Record<string, any> = {};
       if (planAssignmentIds.length > 0) {
         const { data: planAssigns } = await supabase.from('student_teacher_assignments')
-          .select('id, effective_from_date, effective_to_date, status')
+          .select('id, student_id, effective_from_date, effective_to_date, status')
           .in('id', planAssignmentIds);
         (planAssigns || []).forEach((a: any) => { planAssignmentMap[a.id] = a; });
       }
 
+      // Fallback: for plans without assignment_id, look up by student_id
+      const plansWithoutAssignment = (plans || []).filter(p => !(p as any).assignment_id);
+      const fallbackStudentIds = plansWithoutAssignment.map(p => (p as any).student_id);
+      let studentAssignmentMap: Record<string, any> = {};
+      if (fallbackStudentIds.length > 0) {
+        const { data: studentAssigns } = await supabase.from('student_teacher_assignments')
+          .select('id, student_id, effective_from_date, effective_to_date, status')
+          .in('student_id', fallbackStudentIds)
+          .in('status', ['active']);
+        (studentAssigns || []).forEach((a: any) => {
+          if (!studentAssignmentMap[a.student_id]) studentAssignmentMap[a.student_id] = a;
+        });
+      }
+
       (plans || []).forEach((p: any) => {
         if (p.net_recurring_fee > 0) {
-          const assign = p.assignment_id ? planAssignmentMap[p.assignment_id] : null;
+          // Resolve assignment: direct link first, then fallback by student_id
+          const assign = p.assignment_id ? planAssignmentMap[p.assignment_id] : studentAssignmentMap[p.student_id] || null;
+          
+          // Skip paused assignments entirely - frozen students don't get invoices
+          if (assign?.status === 'paused') return;
+          
           const startDate = assign?.effective_from_date || null;
           const endDate = (assign?.status === 'active') ? null : (assign?.effective_to_date || null);
           
