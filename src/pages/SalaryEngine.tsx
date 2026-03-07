@@ -64,6 +64,7 @@ interface TeacherSalaryRow {
   deductions: number;
   netSalary: number;
   payoutStatus: string;
+  payoutId?: string | null;
 }
 
 export default function SalaryEngine() {
