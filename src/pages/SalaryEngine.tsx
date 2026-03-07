@@ -669,7 +669,7 @@ export default function SalaryEngine() {
         <SalarySheetDialog
           open={sheetOpen}
           onOpenChange={setSheetOpen}
-          teacher={selectedTeacher ? { ...selectedTeacher, payoutId: existingPayouts.find((p: any) => p.teacher_id === selectedTeacherId)?.id || null } : null}
+          teacher={selectedTeacher ? { ...selectedTeacher, payoutId: (existingPayouts.find((p: any) => p.teacher_id === selectedTeacherId)?.id || null) } as any : null}
           teacherProfile={selectedProfile}
           teacherAttendance={teacherAttendance}
           adjustments={selectedAdjustments}
