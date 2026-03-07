@@ -98,7 +98,8 @@ export function LiveClassQueue({ className }: LiveClassQueueProps) {
           )
         `)
         .eq('is_active', true)
-        .not('assignment_id', 'is', null);
+        .not('assignment_id', 'is', null)
+        .eq('student_teacher_assignments.status', 'active');
 
       if (error) throw error;
       if (!schedules) return [];

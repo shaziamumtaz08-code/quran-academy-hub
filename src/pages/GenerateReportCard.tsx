@@ -108,7 +108,8 @@ export default function GenerateReportCard() {
         const { data: assignments } = await supabase
           .from('student_teacher_assignments')
           .select('student_id')
-          .eq('teacher_id', user?.id);
+          .eq('teacher_id', user?.id)
+          .eq('status', 'active');
 
         if (!assignments || assignments.length === 0) return [];
 

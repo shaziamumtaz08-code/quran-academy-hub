@@ -87,7 +87,7 @@ export default function Students() {
           subject:subjects(name)
         `)
         .eq('teacher_id', user.id)
-        .in('status', ['active', 'paused']);
+        .eq('status', 'active');
 
       if (assignError) throw assignError;
       if (!assignments || assignments.length === 0) return [];
