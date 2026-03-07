@@ -1,14 +1,14 @@
-import React, { useEffect, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Video, Clock, User, BookOpen, ChevronRight, RefreshCw } from 'lucide-react';
-import { format, addDays, setHours, setMinutes, addMinutes, subMinutes, differenceInMinutes } from 'date-fns';
-import { cn } from '@/lib/utils';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Video, Clock, User, BookOpen, ChevronRight, RefreshCw } from "lucide-react";
+import { format, addDays, setHours, setMinutes, addMinutes, subMinutes, differenceInMinutes } from "date-fns";
+import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Link } from "react-router-dom";
 
 interface LiveClassQueueProps {
   className?: string;
@@ -16,7 +16,7 @@ interface LiveClassQueueProps {
 
 const GRACE_PERIOD_MINUTES = 15;
 
-type ClassStatus = 'waiting' | 'ready' | 'live';
+type ClassStatus = "waiting" | "ready" | "live";
 
 interface QueuedClass {
   id: string;
@@ -46,7 +46,7 @@ export function LiveClassQueue({ className }: LiveClassQueueProps) {
   // Auto-refresh data every 60 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      queryClient.invalidateQueries({ queryKey: ['live-class-queue'] });
+      queryClient.invalidateQueries({ queryKey: ["live-class-queue"] });
     }, 60000);
     return () => clearInterval(interval);
   }, [queryClient]);
@@ -54,17 +54,17 @@ export function LiveClassQueue({ className }: LiveClassQueueProps) {
   // Real-time subscription for live sessions
   useEffect(() => {
     const channel = supabase
-      .channel('live-sessions-queue')
+      .channel("live-sessions-queue")
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: '*',
-          schema: 'public',
-          table: 'live_sessions'
+          event: "*",
+          schema: "public",
+          table: "live_sessions",
         },
         () => {
-          queryClient.invalidateQueries({ queryKey: ['live-class-queue'] });
-        }
+          queryClient.invalidateQueries({ queryKey: ["live-class-queue"] });
+        },
       )
       .subscribe();
 
@@ -75,14 +75,15 @@ export function LiveClassQueue({ className }: LiveClassQueueProps) {
 
   // Fetch next 5 scheduled classes
   const { data: queuedClasses, isLoading } = useQuery({
-    queryKey: ['live-class-queue'],
+    queryKey: ["live-class-queue", format(now, "yyyy-MM-dd")],
     queryFn: async () => {
-      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-      
+      const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
       // Fetch schedules with assignments
       const { data: schedules, error } = await supabase
-        .from('schedules')
-        .select(`
+        .from("schedules")
+        .select(
+          `
           id,
           day_of_week,
           student_local_time,
@@ -96,51 +97,81 @@ export function LiveClassQueue({ className }: LiveClassQueueProps) {
             student:profiles!student_teacher_assignments_student_id_fkey(id, full_name),
             teacher:profiles!student_teacher_assignments_teacher_id_fkey(id, full_name)
           )
-        `)
-        .eq('is_active', true);
+        `,
+        )
+        .eq("is_active", true)
+        .not("assignment_id", "is", null);
 
       if (error) throw error;
       if (!schedules) return [];
 
-      // Fetch live sessions
+      // Fetch live sessions (only truly live ones)
       const { data: liveSessions } = await supabase
-        .from('live_sessions')
-        .select('id, teacher_id, status')
-        .eq('status', 'live');
+        .from("live_sessions")
+        .select("id, teacher_id, status")
+        .eq("status", "live");
 
-      const liveTeacherIds = new Set(liveSessions?.map(s => s.teacher_id) || []);
-      const liveSessionMap = new Map(liveSessions?.map(s => [s.teacher_id, s.id]) || []);
+      const liveTeacherIds = new Set(liveSessions?.map((s) => s.teacher_id) || []);
+      const liveSessionMap = new Map(liveSessions?.map((s) => [s.teacher_id, s.id]) || []);
 
+      // Use PKT (Asia/Karachi) as the reference timezone for schedule times
       const currentNow = new Date();
+      const pktNowStr = currentNow.toLocaleString("en-US", { timeZone: "Asia/Karachi" });
+      const pktNow = new Date(pktNowStr);
+      const pktDayIndex = pktNow.getDay();
 
       // Process schedules
       const processedClasses: QueuedClass[] = schedules
-        .filter(s => s.assignment)
-        .map(schedule => {
+        .filter((s) => s.assignment)
+        .map((schedule) => {
           const assignment = schedule.assignment as any;
           const scheduleTime = schedule.teacher_local_time;
-          const scheduleDayIndex = dayNames.indexOf(schedule.day_of_week);
-          const todayIndex = currentNow.getDay();
+          if (!scheduleTime) return null;
 
-          // Calculate days until this schedule
-          let daysUntil = scheduleDayIndex - todayIndex;
+          const scheduleDayIndex = dayNames.indexOf(schedule.day_of_week);
+
+          // Calculate days until this schedule using PKT day
+          let daysUntil = scheduleDayIndex - pktDayIndex;
           if (daysUntil < 0) daysUntil += 7;
+
+          // Build scheduled datetime in PKT then convert to local Date
+          const [hours, minutes] = scheduleTime.split(":").map(Number);
+          const pktDateStr = new Date(pktNow.getTime() + daysUntil * 86400000).toLocaleDateString("en-CA", {
+            timeZone: "Asia/Karachi",
+          }); // YYYY-MM-DD
+          const scheduledDateTime = new Date(
+            `${pktDateStr}T${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:00+05:00`,
+          );
 
           // Check if today's class has already ended
           if (daysUntil === 0) {
-            const [hours, minutes] = scheduleTime.split(':').map(Number);
-            const classEndTime = addMinutes(
-              setMinutes(setHours(currentNow, hours), minutes),
-              schedule.duration_minutes + GRACE_PERIOD_MINUTES
-            );
+            const classEndTime = addMinutes(scheduledDateTime, schedule.duration_minutes + GRACE_PERIOD_MINUTES);
             if (currentNow > classEndTime) {
-              daysUntil = 7;
+              // Move to next week
+              const nextWeek = new Date(pktNow.getTime() + 7 * 86400000).toLocaleDateString("en-CA", {
+                timeZone: "Asia/Karachi",
+              });
+              const rescheduled = new Date(
+                `${nextWeek}T${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:00+05:00`,
+              );
+              const windowStart2 = subMinutes(rescheduled, GRACE_PERIOD_MINUTES);
+              const classEnd2 = addMinutes(rescheduled, schedule.duration_minutes);
+              const minutesUntil2 = differenceInMinutes(rescheduled, currentNow);
+              return {
+                id: `${schedule.id}-${assignment.teacher_id}`,
+                scheduleId: schedule.id,
+                subjectName: assignment.subject?.name || "Quran",
+                teacherName: assignment.teacher?.full_name || "Unknown",
+                studentName: assignment.student?.full_name || "Unknown",
+                scheduledTime: scheduleTime,
+                scheduledDateTime: rescheduled,
+                status: "waiting" as ClassStatus,
+                minutesUntil: minutesUntil2,
+                teacherId: assignment.teacher_id,
+                studentId: assignment.student_id,
+              };
             }
           }
-
-          const scheduleDate = addDays(currentNow, daysUntil);
-          const [hours, minutes] = scheduleTime.split(':').map(Number);
-          const scheduledDateTime = setMinutes(setHours(scheduleDate, hours), minutes);
 
           // Calculate status
           const windowStart = subMinutes(scheduledDateTime, GRACE_PERIOD_MINUTES);
@@ -148,21 +179,19 @@ export function LiveClassQueue({ className }: LiveClassQueueProps) {
           const windowEnd = addMinutes(classEnd, GRACE_PERIOD_MINUTES);
           const minutesUntil = differenceInMinutes(scheduledDateTime, currentNow);
 
-          let status: ClassStatus = 'waiting';
-          
-          // Check if teacher is currently live
+          let status: ClassStatus = "waiting";
           if (liveTeacherIds.has(assignment.teacher_id)) {
-            status = 'live';
+            status = "live";
           } else if (currentNow >= windowStart && currentNow <= windowEnd) {
-            status = 'ready';
+            status = "ready";
           }
 
           return {
             id: `${schedule.id}-${assignment.teacher_id}`,
             scheduleId: schedule.id,
-            subjectName: assignment.subject?.name || 'Quran',
-            teacherName: assignment.teacher?.full_name || 'Unknown',
-            studentName: assignment.student?.full_name || 'Unknown',
+            subjectName: assignment.subject?.name || "Quran",
+            teacherName: assignment.teacher?.full_name || "Unknown",
+            studentName: assignment.student?.full_name || "Unknown",
             scheduledTime: scheduleTime,
             scheduledDateTime,
             status,
@@ -172,6 +201,7 @@ export function LiveClassQueue({ className }: LiveClassQueueProps) {
             sessionId: liveSessionMap.get(assignment.teacher_id),
           };
         })
+        .filter((item): item is QueuedClass => item !== null)
         .sort((a, b) => {
           // Live first, then ready, then waiting
           const statusOrder = { live: 0, ready: 1, waiting: 2 };
@@ -189,14 +219,14 @@ export function LiveClassQueue({ className }: LiveClassQueueProps) {
 
   const getStatusBadge = (status: ClassStatus, minutesUntil: number) => {
     switch (status) {
-      case 'live':
+      case "live":
         return (
           <Badge className="bg-emerald-500 text-white animate-pulse gap-1">
             <div className="w-2 h-2 rounded-full bg-white" />
             LIVE
           </Badge>
         );
-      case 'ready':
+      case "ready":
         return (
           <Badge className="bg-accent text-white animate-pulse-glow gap-1">
             <Video className="h-3 w-3" />
@@ -207,10 +237,7 @@ export function LiveClassQueue({ className }: LiveClassQueueProps) {
         return (
           <Badge variant="secondary" className="gap-1">
             <Clock className="h-3 w-3" />
-            {minutesUntil > 60 
-              ? `${Math.floor(minutesUntil / 60)}h ${minutesUntil % 60}m`
-              : `${minutesUntil}m`
-            }
+            {minutesUntil > 60 ? `${Math.floor(minutesUntil / 60)}h ${minutesUntil % 60}m` : `${minutesUntil}m`}
           </Badge>
         );
     }
@@ -218,7 +245,7 @@ export function LiveClassQueue({ className }: LiveClassQueueProps) {
 
   if (isLoading) {
     return (
-      <Card className={cn('', className)}>
+      <Card className={cn("", className)}>
         <CardHeader className="pb-3">
           <CardTitle className="font-serif flex items-center gap-2">
             <Video className="h-5 w-5 text-accent" />
@@ -235,7 +262,7 @@ export function LiveClassQueue({ className }: LiveClassQueueProps) {
   }
 
   return (
-    <Card className={cn('overflow-hidden', className)}>
+    <Card className={cn("overflow-hidden", className)}>
       <CardHeader className="pb-3 bg-gradient-to-r from-[hsl(var(--navy))]/5 to-transparent">
         <CardTitle className="font-serif flex items-center justify-between">
           <span className="flex items-center gap-2">
@@ -246,7 +273,7 @@ export function LiveClassQueue({ className }: LiveClassQueueProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => queryClient.invalidateQueries({ queryKey: ['live-class-queue'] })}
+              onClick={() => queryClient.invalidateQueries({ queryKey: ["live-class-queue"] })}
               className="h-8 w-8 p-0"
             >
               <RefreshCw className="h-4 w-4" />
@@ -267,30 +294,33 @@ export function LiveClassQueue({ className }: LiveClassQueueProps) {
               <div
                 key={classItem.id}
                 className={cn(
-                  'flex items-center justify-between p-3 rounded-lg border transition-all duration-300',
-                  classItem.status === 'live' && 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800',
-                  classItem.status === 'ready' && 'bg-accent/5 border-accent/30 ring-2 ring-accent/20 animate-pulse',
-                  classItem.status === 'waiting' && 'bg-secondary/50 border-border'
+                  "flex items-center justify-between p-3 rounded-lg border transition-all duration-300",
+                  classItem.status === "live" &&
+                    "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800",
+                  classItem.status === "ready" && "bg-accent/5 border-accent/30 ring-2 ring-accent/20 animate-pulse",
+                  classItem.status === "waiting" && "bg-secondary/50 border-border",
                 )}
               >
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className={cn(
-                    'w-10 h-10 rounded-full flex items-center justify-center shrink-0',
-                    classItem.status === 'live' && 'bg-emerald-100 dark:bg-emerald-800',
-                    classItem.status === 'ready' && 'bg-accent/10',
-                    classItem.status === 'waiting' && 'bg-muted'
-                  )}>
-                    <BookOpen className={cn(
-                      'h-5 w-5',
-                      classItem.status === 'live' && 'text-emerald-600 dark:text-emerald-400',
-                      classItem.status === 'ready' && 'text-accent',
-                      classItem.status === 'waiting' && 'text-muted-foreground'
-                    )} />
+                  <div
+                    className={cn(
+                      "w-10 h-10 rounded-full flex items-center justify-center shrink-0",
+                      classItem.status === "live" && "bg-emerald-100 dark:bg-emerald-800",
+                      classItem.status === "ready" && "bg-accent/10",
+                      classItem.status === "waiting" && "bg-muted",
+                    )}
+                  >
+                    <BookOpen
+                      className={cn(
+                        "h-5 w-5",
+                        classItem.status === "live" && "text-emerald-600 dark:text-emerald-400",
+                        classItem.status === "ready" && "text-accent",
+                        classItem.status === "waiting" && "text-muted-foreground",
+                      )}
+                    />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-foreground truncate">
-                      {classItem.subjectName}
-                    </p>
+                    <p className="text-sm font-semibold text-foreground truncate">{classItem.subjectName}</p>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <User className="h-3 w-3" />
                       <span className="truncate">{classItem.teacherName}</span>
@@ -301,12 +331,8 @@ export function LiveClassQueue({ className }: LiveClassQueueProps) {
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   <div className="text-right hidden sm:block">
-                    <p className="text-xs text-muted-foreground">
-                      {format(classItem.scheduledDateTime, 'EEE')}
-                    </p>
-                    <p className="text-sm font-medium text-foreground">
-                      {classItem.scheduledTime}
-                    </p>
+                    <p className="text-xs text-muted-foreground">{format(classItem.scheduledDateTime, "EEE")}</p>
+                    <p className="text-sm font-medium text-foreground">{classItem.scheduledTime}</p>
                   </div>
                   {getStatusBadge(classItem.status, classItem.minutesUntil)}
                 </div>
