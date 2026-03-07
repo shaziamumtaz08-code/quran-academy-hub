@@ -1158,8 +1158,8 @@ export default function Payments() {
                       <TableHead className="text-right">Paid</TableHead>
                       {!isReadOnlyView && <TableHead className="text-right">Realised (PKR)</TableHead>}
                       <TableHead>Due Date</TableHead>
-                      <TableHead className="text-center">Status</TableHead>
-                      {!isReadOnlyView && <TableHead className="w-12"></TableHead>}
+                       <TableHead className="text-center">Status</TableHead>
+                       <TableHead className="w-12"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
