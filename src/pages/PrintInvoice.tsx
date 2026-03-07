@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,6 +5,7 @@ import { InvoiceTemplate } from '@/components/finance/InvoiceTemplate';
 import { ReceiptTemplate } from '@/components/finance/ReceiptTemplate';
 import { Button } from '@/components/ui/button';
 import { Printer, Download, ArrowLeft } from 'lucide-react';
+import logoDark from '@/assets/logo-dark.jpg';
 
 export default function PrintInvoice() {
   const { invoiceId } = useParams<{ invoiceId: string }>();
