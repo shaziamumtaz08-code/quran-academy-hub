@@ -194,8 +194,8 @@ export function LiveClassQueue({ className }: LiveClassQueueProps) {
             sessionId: liveSessionMap.get(assignment.teacher_id),
           };
         })
-        .filter((item): item is QueuedClass => item !== null)
-        .sort((a, b) => {
+        .filter((item) => item !== null)
+        .sort((a: QueuedClass, b: QueuedClass) => {
           // Live first, then ready, then waiting
           const statusOrder = { live: 0, ready: 1, waiting: 2 };
           if (statusOrder[a.status] !== statusOrder[b.status]) {
