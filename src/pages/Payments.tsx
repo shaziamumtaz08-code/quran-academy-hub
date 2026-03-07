@@ -940,13 +940,12 @@ export default function Payments() {
     setSelectedIds(new Set(familyInvoiceIds));
     const familyUnpaid = invoices.filter(i => familyInvoiceIds.includes(i.id));
     const total = familyUnpaid.reduce((s, i) => s + (Number(i.amount) - Number(i.amount_paid || 0)), 0);
-    const months = familyUnpaid.map(i => i.billing_month).sort();
-    const earliest = getDefaultPeriodDates(months[0]);
-    const latest = getDefaultPeriodDates(months[months.length - 1]);
+    const allFroms = familyUnpaid.map(i => i.period_from || getDefaultPeriodDates(i.billing_month).from).sort();
+    const allTos = familyUnpaid.map(i => i.period_to || getDefaultPeriodDates(i.billing_month).to).sort();
     setPayForm({
       amount_foreign: total.toString(), amount_local: '', resolution: 'full', notes: '',
       payment_date: new Date().toISOString().split('T')[0],
-      period_from: earliest.from, period_to: latest.to, payment_method: '',
+      period_from: allFroms[0], period_to: allTos[allTos.length - 1], payment_method: '',
     });
     setReceiptFile(null);
     setBulkPayOpen(true);
