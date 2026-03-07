@@ -37,6 +37,8 @@ import Expenses from "./pages/Expenses";
 import CashAdvances from "./pages/CashAdvances";
 import SelectDivision from "./pages/SelectDivision";
 import PrintReport from "./pages/PrintReport";
+import PrintInvoice from "./pages/PrintInvoice";
+import PrintSalary from "./pages/PrintSalary";
 import WorkHub from "./pages/WorkHub";
 import NotFound from "./pages/NotFound";
 
