@@ -76,6 +76,8 @@ interface InvoiceRow {
   forgiven_amount: number;
   remark: string | null;
   payment_method: string | null;
+  period_from: string | null;
+  period_to: string | null;
   profiles: { full_name: string } | null;
   student_teacher_assignments: { fee_packages: { name: string } | null } | null;
   student_billing_plans: { fee_packages: { name: string } | null; session_duration: number } | null;
