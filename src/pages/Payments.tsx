@@ -1609,10 +1609,10 @@ export default function Payments() {
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Payment Period</Label>
+                  <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Billing Period <span className="text-muted-foreground font-normal normal-case">(auto-calculated from invoice)</span></Label>
                   <div className="grid grid-cols-2 gap-2">
-                    <div><Label className="text-xs">From</Label><Input type="date" value={payForm.period_from} onChange={e => setPayForm(f => ({ ...f, period_from: e.target.value }))} className="h-8 text-sm" /></div>
-                    <div><Label className="text-xs">To</Label><Input type="date" value={payForm.period_to} onChange={e => setPayForm(f => ({ ...f, period_to: e.target.value }))} className="h-8 text-sm" /></div>
+                    <div><Label className="text-xs">From</Label><Input type="date" value={payForm.period_from} disabled className="h-8 text-sm bg-muted" /></div>
+                    <div><Label className="text-xs">To</Label><Input type="date" value={payForm.period_to} disabled className="h-8 text-sm bg-muted" /></div>
                   </div>
                 </div>
 
