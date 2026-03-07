@@ -37,6 +37,8 @@ import Expenses from "./pages/Expenses";
 import CashAdvances from "./pages/CashAdvances";
 import SelectDivision from "./pages/SelectDivision";
 import PrintReport from "./pages/PrintReport";
+import PrintInvoice from "./pages/PrintInvoice";
+import PrintSalary from "./pages/PrintSalary";
 import WorkHub from "./pages/WorkHub";
 import NotFound from "./pages/NotFound";
 
@@ -260,8 +262,10 @@ function AppRoutes() {
       } />
       {/* Work Hub - accessible by all authenticated users */}
       <Route path="/hub" element={<ProtectedRoute><WorkHub /></ProtectedRoute>} />
-      {/* Printable Report Route - standalone, no layout */}
+      {/* Printable Routes - standalone, no layout */}
       <Route path="/reports/print/:reportId" element={<ProtectedRoute><PrintReport /></ProtectedRoute>} />
+      <Route path="/finance/print/invoice/:invoiceId" element={<ProtectedRoute><PrintInvoice /></ProtectedRoute>} />
+      <Route path="/finance/print/salary/:payoutId" element={<ProtectedRoute><PrintSalary /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
