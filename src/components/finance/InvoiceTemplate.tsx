@@ -1,6 +1,6 @@
 import React from 'react';
 import { format, parseISO } from 'date-fns';
-import { Badge } from '@/components/ui/badge';
+import logoDark from '@/assets/logo-dark.jpg';
 
 interface InvoiceTemplateProps {
   invoice: {
@@ -34,119 +34,143 @@ const formatBillingMonth = (bm: string) => {
 
 const getStatusLabel = (status: string) => {
   switch (status) {
-    case 'paid': return { label: 'PAID', color: 'bg-emerald-100 text-emerald-800' };
-    case 'partially_paid': return { label: 'PARTIAL', color: 'bg-amber-100 text-amber-800' };
-    case 'overdue': return { label: 'OVERDUE', color: 'bg-red-100 text-red-800' };
-    case 'waived': return { label: 'WAIVED', color: 'bg-gray-100 text-gray-600' };
-    case 'voided': return { label: 'VOIDED', color: 'bg-red-50 text-red-600' };
-    default: return { label: 'PENDING', color: 'bg-amber-50 text-amber-700' };
+    case 'paid': return { label: 'PAID', bg: '#dcfce7', color: '#166534' };
+    case 'partially_paid': return { label: 'PARTIAL', bg: '#fef3c7', color: '#92400e' };
+    case 'overdue': return { label: 'OVERDUE', bg: '#fee2e2', color: '#991b1b' };
+    case 'waived': return { label: 'WAIVED', bg: '#f3f4f6', color: '#4b5563' };
+    case 'voided': return { label: 'VOIDED', bg: '#fef2f2', color: '#dc2626' };
+    default: return { label: 'PENDING', bg: '#fff7ed', color: '#9a3412' };
   }
 };
 
 export function InvoiceTemplate({ invoice, invoiceNumber, orgName = 'Al-Quran Time Academy', orgLogo }: InvoiceTemplateProps) {
   const status = getStatusLabel(invoice.status);
   const outstanding = Math.max(0, invoice.amount - invoice.amount_paid - invoice.forgiven_amount);
+  const logoSrc = orgLogo || logoDark;
 
   return (
-    <div className="w-[794px] mx-auto bg-white text-gray-900 print:shadow-none" style={{ fontFamily: 'Inter, sans-serif' }}>
+    <div style={{ width: 794, margin: '0 auto', background: '#fff', color: '#111827', fontFamily: "'Inter', 'Segoe UI', sans-serif", position: 'relative', overflow: 'hidden' }}>
+      {/* Decorative top accent */}
+      <div style={{ height: 6, background: 'linear-gradient(90deg, #0a192f 0%, #00a8e8 50%, #0a192f 100%)' }} />
+
       {/* Header */}
-      <div className="flex items-start justify-between px-12 pt-10 pb-6 border-b-2 border-gray-200">
-        <div className="flex items-center gap-4">
-          {orgLogo && <img src={orgLogo} alt="Logo" className="h-14 w-14 object-contain rounded" />}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '32px 48px 24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <img src={logoSrc} alt="Logo" style={{ height: 56, width: 56, objectFit: 'contain', borderRadius: 8 }} />
           <div>
-            <h1 className="text-xl font-bold text-gray-900">{orgName}</h1>
-            <p className="text-xs text-gray-500 uppercase tracking-widest mt-0.5">Student Invoice</p>
+            <h1 style={{ fontSize: 20, fontWeight: 800, color: '#0a192f', margin: 0, letterSpacing: '-0.02em' }}>{orgName}</h1>
+            <p style={{ fontSize: 10, color: '#00a8e8', letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700, margin: '4px 0 0' }}>Student Invoice</p>
           </div>
         </div>
-        <div className="text-right">
-          <p className="text-2xl font-bold text-gray-900">{invoiceNumber}</p>
-          <span className={`inline-block mt-1 px-3 py-0.5 text-xs font-bold rounded-full ${status.color}`}>{status.label}</span>
+        <div style={{ textAlign: 'right' }}>
+          <p style={{ fontSize: 22, fontWeight: 800, color: '#0a192f', margin: 0, letterSpacing: '-0.02em' }}>{invoiceNumber}</p>
+          <span style={{
+            display: 'inline-block', marginTop: 6, padding: '3px 14px',
+            fontSize: 11, fontWeight: 700, borderRadius: 20,
+            background: status.bg, color: status.color, letterSpacing: '0.05em'
+          }}>
+            {status.label}
+          </span>
         </div>
       </div>
 
+      {/* Divider */}
+      <div style={{ margin: '0 48px', height: 1, background: 'linear-gradient(90deg, #e5e7eb, #d1d5db, #e5e7eb)' }} />
+
       {/* Student & Invoice Details */}
-      <div className="grid grid-cols-2 gap-8 px-12 py-6">
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32, padding: '24px 48px' }}>
         <div>
-          <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold mb-1">Bill To</p>
-          <p className="text-base font-semibold">{invoice.student_name}</p>
-          <p className="text-xs text-gray-500">Student ID: {invoice.student_id.substring(0, 8).toUpperCase()}</p>
-          {invoice.teacher_name && <p className="text-xs text-gray-500 mt-0.5">Teacher: {invoice.teacher_name}</p>}
+          <p style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.15em', color: '#9ca3af', fontWeight: 700, marginBottom: 6 }}>Bill To</p>
+          <p style={{ fontSize: 16, fontWeight: 700, color: '#0a192f', margin: 0 }}>{invoice.student_name}</p>
+          <p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>Student ID: {invoice.student_id.substring(0, 8).toUpperCase()}</p>
+          {invoice.teacher_name && <p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>Teacher: {invoice.teacher_name}</p>}
           {invoice.subjects && invoice.subjects.length > 0 && (
-            <p className="text-xs text-gray-500 mt-0.5">Subject(s): {invoice.subjects.join(', ')}</p>
+            <p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>Subject(s): {invoice.subjects.join(', ')}</p>
           )}
         </div>
-        <div className="text-right">
-          <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold mb-1">Invoice Details</p>
-          <p className="text-sm"><span className="text-gray-500">Billing Period:</span> {formatBillingMonth(invoice.billing_month)}</p>
+        <div style={{ textAlign: 'right' }}>
+          <p style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.15em', color: '#9ca3af', fontWeight: 700, marginBottom: 6 }}>Invoice Details</p>
+          <p style={{ fontSize: 14, margin: 0 }}><span style={{ color: '#6b7280' }}>Billing Period:</span> <strong>{formatBillingMonth(invoice.billing_month)}</strong></p>
           {invoice.period_from && invoice.period_to && (
-            <p className="text-xs text-gray-500">{format(parseISO(invoice.period_from), 'dd MMM yyyy')} – {format(parseISO(invoice.period_to), 'dd MMM yyyy')}</p>
+            <p style={{ fontSize: 11, color: '#00a8e8', fontWeight: 600, margin: '2px 0 0' }}>
+              {format(parseISO(invoice.period_from), 'dd MMM yyyy')} – {format(parseISO(invoice.period_to), 'dd MMM yyyy')}
+            </p>
           )}
-          {invoice.due_date && <p className="text-sm"><span className="text-gray-500">Due Date:</span> {format(parseISO(invoice.due_date), 'dd MMM yyyy')}</p>}
+          {invoice.due_date && <p style={{ fontSize: 13, margin: '4px 0 0' }}><span style={{ color: '#6b7280' }}>Due Date:</span> <strong>{format(parseISO(invoice.due_date), 'dd MMM yyyy')}</strong></p>}
         </div>
       </div>
 
       {/* Line Items Table */}
-      <div className="px-12 pb-6">
-        <table className="w-full text-sm">
+      <div style={{ padding: '0 48px 24px' }}>
+        <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
           <thead>
-            <tr className="border-b-2 border-gray-200">
-              <th className="text-left py-2 text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Description</th>
-              <th className="text-right py-2 text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Amount</th>
+            <tr style={{ borderBottom: '2px solid #0a192f' }}>
+              <th style={{ textAlign: 'left', padding: '10px 0', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.15em', color: '#6b7280', fontWeight: 700 }}>Description</th>
+              <th style={{ textAlign: 'center', padding: '10px 0', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.15em', color: '#6b7280', fontWeight: 700 }}>Period</th>
+              <th style={{ textAlign: 'right', padding: '10px 0', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.15em', color: '#6b7280', fontWeight: 700 }}>Amount</th>
             </tr>
           </thead>
           <tbody>
-            <tr className="border-b border-gray-100">
-              <td className="py-3">
-                <p className="font-medium">Monthly Tuition Fee — {formatBillingMonth(invoice.billing_month)}</p>
+            <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
+              <td style={{ padding: '14px 0' }}>
+                <p style={{ fontWeight: 600, margin: 0 }}>Monthly Tuition Fee</p>
                 {invoice.subjects && invoice.subjects.length > 0 && (
-                  <p className="text-xs text-gray-400">{invoice.subjects.join(', ')}</p>
+                  <p style={{ fontSize: 11, color: '#9ca3af', margin: '2px 0 0' }}>{invoice.subjects.join(', ')}</p>
                 )}
               </td>
-              <td className="py-3 text-right font-mono font-semibold">{invoice.currency} {invoice.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+              <td style={{ padding: '14px 0', textAlign: 'center', fontSize: 12, color: '#6b7280' }}>
+                {formatBillingMonth(invoice.billing_month)}
+              </td>
+              <td style={{ padding: '14px 0', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 14 }}>
+                {invoice.currency} {invoice.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </td>
             </tr>
           </tbody>
         </table>
       </div>
 
       {/* Summary */}
-      <div className="px-12 pb-8">
-        <div className="bg-gray-50 rounded-lg p-5 space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Subtotal</span>
-            <span className="font-mono">{invoice.currency} {invoice.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+      <div style={{ padding: '0 48px 32px' }}>
+        <div style={{ background: '#f8fafc', borderRadius: 12, padding: 24, border: '1px solid #e2e8f0' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 8 }}>
+            <span style={{ color: '#6b7280' }}>Subtotal</span>
+            <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>{invoice.currency} {invoice.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
           </div>
           {invoice.amount_paid > 0 && (
-            <div className="flex justify-between text-sm text-emerald-700">
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 8, color: '#059669' }}>
               <span>Amount Paid</span>
-              <span className="font-mono">- {invoice.currency} {invoice.amount_paid.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>- {invoice.currency} {invoice.amount_paid.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
             </div>
           )}
           {invoice.forgiven_amount > 0 && (
-            <div className="flex justify-between text-sm text-gray-500">
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 8, color: '#6b7280' }}>
               <span>Waived / Forgiven</span>
-              <span className="font-mono">- {invoice.currency} {invoice.forgiven_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>- {invoice.currency} {invoice.forgiven_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
             </div>
           )}
-          <div className="flex justify-between text-base font-bold border-t border-gray-200 pt-2 mt-2">
+          <div style={{ borderTop: '2px solid #0a192f', paddingTop: 12, marginTop: 8, display: 'flex', justifyContent: 'space-between', fontSize: 18, fontWeight: 800 }}>
             <span>Balance Due</span>
-            <span className="font-mono">{invoice.currency} {outstanding.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            <span style={{ fontFamily: "'JetBrains Mono', monospace", color: '#0a192f' }}>{invoice.currency} {outstanding.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
           </div>
         </div>
       </div>
 
       {/* Notes */}
       {invoice.remark && (
-        <div className="px-12 pb-6">
-          <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold mb-1">Notes</p>
-          <p className="text-xs text-gray-600">{invoice.remark}</p>
+        <div style={{ padding: '0 48px 24px' }}>
+          <p style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.15em', color: '#9ca3af', fontWeight: 700, marginBottom: 4 }}>Notes</p>
+          <p style={{ fontSize: 11, color: '#6b7280', margin: 0 }}>{invoice.remark}</p>
         </div>
       )}
 
       {/* Footer */}
-      <div className="px-12 py-4 border-t border-gray-200 text-center">
-        <p className="text-[10px] text-gray-400">This is a system-generated invoice. No signature required.</p>
-        <p className="text-[10px] text-gray-400">{orgName} • Generated on {format(new Date(), 'dd MMM yyyy')}</p>
+      <div style={{ padding: '16px 48px', borderTop: '1px solid #e5e7eb', textAlign: 'center', background: '#fafbfc' }}>
+        <p style={{ fontSize: 9, color: '#9ca3af', margin: 0 }}>This is a system-generated invoice. No signature required.</p>
+        <p style={{ fontSize: 9, color: '#9ca3af', margin: '2px 0 0' }}>{orgName} • Generated on {format(new Date(), 'dd MMM yyyy')}</p>
       </div>
+
+      {/* Decorative bottom accent */}
+      <div style={{ height: 4, background: 'linear-gradient(90deg, #0a192f 0%, #00a8e8 50%, #0a192f 100%)' }} />
     </div>
   );
 }

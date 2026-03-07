@@ -694,9 +694,12 @@ export default function Payments() {
       }
       return { count: newInvoices.length, updated: updatedInvoices.length, label: targetLabel };
     },
-    onSuccess: ({ count, label }) => {
+    onSuccess: ({ count, updated, label }) => {
       queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
-      toast({ title: `Successfully generated ${count} invoices for ${label}.` });
+      const parts = [];
+      if (count > 0) parts.push(`${count} new`);
+      if (updated > 0) parts.push(`${updated} updated`);
+      toast({ title: `${parts.join(' + ')} invoice(s) for ${label}.` });
     },
     onError: (e: any) => toast({ title: 'Generation failed', description: e.message, variant: 'destructive' }),
   });

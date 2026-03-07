@@ -114,7 +114,17 @@ export function SalarySheetDialog({
 
   const monthLabel = new Date(year, month - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => {
+    // Open dedicated print route in new tab (same strategy as exam report cards)
+    // First try to find existing salary_payout record
+    const payoutId = (teacher as any)?.payoutId;
+    if (payoutId) {
+      window.open(`/finance/print/salary/${payoutId}`, '_blank');
+    } else {
+      // Fallback: print current dialog
+      window.print();
+    }
+  };
 
   const dotColor = (status: string) => {
     switch (status) {
