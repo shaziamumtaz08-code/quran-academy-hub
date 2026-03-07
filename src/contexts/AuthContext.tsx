@@ -1,8 +1,17 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { User, Session } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 
-export type AppRole = 'super_admin' | 'admin' | 'admin_admissions' | 'admin_fees' | 'admin_academic' | 'teacher' | 'student' | 'parent' | 'examiner';
+export type AppRole =
+  | "super_admin"
+  | "admin"
+  | "admin_admissions"
+  | "admin_fees"
+  | "admin_academic"
+  | "teacher"
+  | "student"
+  | "parent"
+  | "examiner";
 
 // Role priority for determining primary role (lower = higher priority)
 const ROLE_PRIORITY: Record<AppRole, number> = {
@@ -75,15 +84,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Super admin has all permissions - no need to fetch
-      if (activeRole === 'super_admin') {
-        setActiveRolePermissions(['*']); // Special marker for all permissions
+      if (activeRole === "super_admin") {
+        setActiveRolePermissions(["*"]); // Special marker for all permissions
         return;
       }
 
       const { data: templateData } = await supabase
-        .from('role_templates')
-        .select('permissions')
-        .eq('role', activeRole)
+        .from("role_templates")
+        .select("permissions")
+        .eq("role", activeRole)
         .single();
 
       setActiveRolePermissions(templateData?.permissions || []);
@@ -101,74 +110,84 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       // Get profile
       const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
         .single();
 
-      if (profileError && profileError.code !== 'PGRST116') {
-        console.error('Error fetching profile:', profileError);
+      if (profileError && profileError.code !== "PGRST116") {
+        console.error("Error fetching profile:", profileError);
       }
 
       // Get ALL user roles (not just one)
       const { data: rolesData, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId);
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId);
 
-      if (rolesError && rolesError.code !== 'PGRST116') {
-        console.error('Error fetching roles:', rolesError);
+      if (rolesError && rolesError.code !== "PGRST116") {
+        console.error("Error fetching roles:", rolesError);
       }
 
-      const roles: AppRole[] = (rolesData || []).map(r => r.role as AppRole);
+      const roles: AppRole[] = (rolesData || []).map((r) => r.role as AppRole);
       const primaryRole = getPrimaryRole(roles);
 
       setProfile({
         id: userId,
         email: profileData?.email || null,
-        full_name: profileData?.full_name || 'User',
+        full_name: profileData?.full_name || "User",
         roles,
         role: primaryRole,
       });
     } catch (error) {
-      console.error('Error in fetchProfile:', error);
+      console.error("Error in fetchProfile:", error);
     }
   };
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        // Defer profile fetch with setTimeout to avoid deadlock
-        if (session?.user) {
-          setTimeout(() => {
-            fetchProfile(session.user.id);
-          }, 0);
-        } else {
-          setProfile(null);
-          setActiveRolePermissions([]);
-        }
-        
-        if (event === 'SIGNED_OUT') {
-          setIsLoading(false);
-        }
-      }
-    );
+    let initialised = false;
 
-    // THEN check for existing session
+    // THEN check for existing session first to set initial state
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      
+
       if (session?.user) {
         fetchProfile(session.user.id).finally(() => {
+          initialised = true;
           setIsLoading(false);
         });
       } else {
+        initialised = true;
         setIsLoading(false);
+      }
+    });
+
+    // Auth state listener handles subsequent changes (token refresh, sign out, etc.)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        // Defer to avoid Supabase deadlock on rapid state changes
+        setTimeout(() => {
+          fetchProfile(session.user.id).finally(() => {
+            // Ensure isLoading is resolved even if getSession didn't fire yet
+            if (!initialised) {
+              initialised = true;
+              setIsLoading(false);
+            }
+          });
+        }, 0);
+      } else {
+        setProfile(null);
+        setActiveRolePermissions([]);
+        if (!initialised) {
+          initialised = true;
+          setIsLoading(false);
+        }
       }
     });
 
@@ -182,16 +201,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!browserTimezone) return;
 
       // Update timezone in profile
-      const { error } = await supabase
-        .from('profiles')
-        .update({ timezone: browserTimezone })
-        .eq('id', userId);
+      const { error } = await supabase.from("profiles").update({ timezone: browserTimezone }).eq("id", userId);
 
       if (error) {
-        console.warn('Failed to update timezone:', error.message);
+        console.warn("Failed to update timezone:", error.message);
       }
     } catch (err) {
-      console.warn('Error detecting/updating timezone:', err);
+      console.warn("Error detecting/updating timezone:", err);
     }
   };
 
@@ -201,13 +217,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email,
         password,
       });
-      
+
       // On successful login, update the user's timezone silently
       if (!error && data?.user?.id) {
         // Don't await - update timezone in background
         updateUserTimezone(data.user.id);
       }
-      
+
       return { error: error ? new Error(error.message) : null };
     } catch (error) {
       return { error: error as Error };
@@ -217,7 +233,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = async (email: string, password: string, fullName: string) => {
     try {
       const redirectUrl = `${window.location.origin}/`;
-      
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -235,28 +251,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Create profile for new user
       if (data.user) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: data.user.id,
-            email: email,
-            full_name: fullName,
-          });
+        const { error: profileError } = await supabase.from("profiles").insert({
+          id: data.user.id,
+          email: email,
+          full_name: fullName,
+        });
 
         if (profileError) {
-          console.error('Error creating profile:', profileError);
+          console.error("Error creating profile:", profileError);
         }
 
         // Assign default student role
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert({
-            user_id: data.user.id,
-            role: 'student',
-          });
+        const { error: roleError } = await supabase.from("user_roles").insert({
+          user_id: data.user.id,
+          role: "student",
+        });
 
         if (roleError) {
-          console.error('Error assigning role:', roleError);
+          console.error("Error assigning role:", roleError);
         }
       }
 
@@ -269,11 +281,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     // Clear stored email history on logout for privacy
     try {
-      localStorage.removeItem('lms_recent_emails');
+      localStorage.removeItem("lms_recent_emails");
     } catch {
       // Ignore storage errors
     }
-    
+
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
@@ -284,7 +296,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const hasPermission = (permission: string): boolean => {
     // Check based on activeRole, not all roles
-    if (activeRole === 'super_admin') {
+    if (activeRole === "super_admin") {
       return true;
     }
     // Check if active role has this permission
@@ -296,24 +308,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // isSuperAdmin should check activeRole for consistency
-  const isSuperAdmin = activeRole === 'super_admin';
+  const isSuperAdmin = activeRole === "super_admin";
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      session,
-      profile,
-      isLoading, 
-      login, 
-      signUp,
-      logout, 
-      isAuthenticated: !!user,
-      hasPermission,
-      isSuperAdmin,
-      hasRole,
-      activeRole,
-      setActiveRole,
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        profile,
+        isLoading,
+        login,
+        signUp,
+        logout,
+        isAuthenticated: !!user,
+        hasPermission,
+        isSuperAdmin,
+        hasRole,
+        activeRole,
+        setActiveRole,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -322,7 +336,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 }
