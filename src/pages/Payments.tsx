@@ -272,7 +272,7 @@ export default function Payments() {
         .from('fee_invoices')
         .select(`
           id, assignment_id, plan_id, student_id, amount, currency, billing_month,
-          due_date, status, paid_at, amount_paid, forgiven_amount, remark, payment_method,
+          due_date, status, paid_at, amount_paid, forgiven_amount, remark, payment_method, period_from, period_to,
           profiles!fee_invoices_student_id_fkey(full_name),
           student_teacher_assignments!fee_invoices_assignment_id_fkey(
             fee_packages!student_teacher_assignments_fee_package_id_fkey(name)
