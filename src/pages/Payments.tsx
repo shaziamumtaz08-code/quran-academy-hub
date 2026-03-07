@@ -76,6 +76,8 @@ interface InvoiceRow {
   forgiven_amount: number;
   remark: string | null;
   payment_method: string | null;
+  period_from: string | null;
+  period_to: string | null;
   profiles: { full_name: string } | null;
   student_teacher_assignments: { fee_packages: { name: string } | null } | null;
   student_billing_plans: { fee_packages: { name: string } | null; session_duration: number } | null;
@@ -270,7 +272,7 @@ export default function Payments() {
         .from('fee_invoices')
         .select(`
           id, assignment_id, plan_id, student_id, amount, currency, billing_month,
-          due_date, status, paid_at, amount_paid, forgiven_amount, remark, payment_method,
+          due_date, status, paid_at, amount_paid, forgiven_amount, remark, payment_method, period_from, period_to,
           profiles!fee_invoices_student_id_fkey(full_name),
           student_teacher_assignments!fee_invoices_assignment_id_fkey(
             fee_packages!student_teacher_assignments_fee_package_id_fkey(name)
@@ -898,13 +900,13 @@ export default function Payments() {
 
   const openBulkPay = () => {
     if (unpaidSelected.length === 0) { toast({ title: 'Select pending invoices first', variant: 'destructive' }); return; }
-    const months = unpaidSelected.map(i => i.billing_month).sort();
-    const earliest = getDefaultPeriodDates(months[0]);
-    const latest = getDefaultPeriodDates(months[months.length - 1]);
+    // Use actual invoice period dates (prorated from assignment), fallback to billing month
+    const allFroms = unpaidSelected.map(i => i.period_from || getDefaultPeriodDates(i.billing_month).from).sort();
+    const allTos = unpaidSelected.map(i => i.period_to || getDefaultPeriodDates(i.billing_month).to).sort();
     setPayForm({
       amount_foreign: totalExpected.toString(), amount_local: '', resolution: 'full', notes: '',
       payment_date: new Date().toISOString().split('T')[0],
-      period_from: earliest.from, period_to: latest.to, payment_method: '',
+      period_from: allFroms[0], period_to: allTos[allTos.length - 1], payment_method: '',
     });
     setReceiptFile(null);
     setBulkPayOpen(true);
@@ -917,11 +919,11 @@ export default function Payments() {
     selectedInvoiceCacheRef.current.set(invoiceId, inv);
     setSelectedIds(new Set([invoiceId]));
     const due = Number(inv.amount) - Number(inv.amount_paid || 0);
-    const period = getDefaultPeriodDates(inv.billing_month);
+    const fallback = getDefaultPeriodDates(inv.billing_month);
     setPayForm({
       amount_foreign: due.toString(), amount_local: '', resolution: 'full', notes: '',
       payment_date: new Date().toISOString().split('T')[0],
-      period_from: period.from, period_to: period.to, payment_method: '',
+      period_from: inv.period_from || fallback.from, period_to: inv.period_to || fallback.to, payment_method: '',
     });
     setReceiptFile(null);
     setBulkPayOpen(true);
@@ -938,13 +940,12 @@ export default function Payments() {
     setSelectedIds(new Set(familyInvoiceIds));
     const familyUnpaid = invoices.filter(i => familyInvoiceIds.includes(i.id));
     const total = familyUnpaid.reduce((s, i) => s + (Number(i.amount) - Number(i.amount_paid || 0)), 0);
-    const months = familyUnpaid.map(i => i.billing_month).sort();
-    const earliest = getDefaultPeriodDates(months[0]);
-    const latest = getDefaultPeriodDates(months[months.length - 1]);
+    const allFroms = familyUnpaid.map(i => i.period_from || getDefaultPeriodDates(i.billing_month).from).sort();
+    const allTos = familyUnpaid.map(i => i.period_to || getDefaultPeriodDates(i.billing_month).to).sort();
     setPayForm({
       amount_foreign: total.toString(), amount_local: '', resolution: 'full', notes: '',
       payment_date: new Date().toISOString().split('T')[0],
-      period_from: earliest.from, period_to: latest.to, payment_method: '',
+      period_from: allFroms[0], period_to: allTos[allTos.length - 1], payment_method: '',
     });
     setReceiptFile(null);
     setBulkPayOpen(true);
