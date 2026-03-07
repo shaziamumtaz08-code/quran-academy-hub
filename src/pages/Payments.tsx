@@ -919,11 +919,11 @@ export default function Payments() {
     selectedInvoiceCacheRef.current.set(invoiceId, inv);
     setSelectedIds(new Set([invoiceId]));
     const due = Number(inv.amount) - Number(inv.amount_paid || 0);
-    const period = getDefaultPeriodDates(inv.billing_month);
+    const fallback = getDefaultPeriodDates(inv.billing_month);
     setPayForm({
       amount_foreign: due.toString(), amount_local: '', resolution: 'full', notes: '',
       payment_date: new Date().toISOString().split('T')[0],
-      period_from: period.from, period_to: period.to, payment_method: '',
+      period_from: inv.period_from || fallback.from, period_to: inv.period_to || fallback.to, payment_method: '',
     });
     setReceiptFile(null);
     setBulkPayOpen(true);
