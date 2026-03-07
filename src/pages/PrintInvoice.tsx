@@ -140,7 +140,7 @@ export default function PrintInvoice() {
         }}
         invoiceNumber={invoiceNumber}
         orgName={org?.name}
-        orgLogo={org?.logo_url}
+        orgLogo={org?.logo_url || logoDark}
       />
     </div>
   );
