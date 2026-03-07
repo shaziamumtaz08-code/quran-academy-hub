@@ -99,7 +99,7 @@ export default function PrintInvoice() {
             amount_local: Number(tx.amount_local),
           }))}
           orgName={org?.name}
-          orgLogo={org?.logo_url}
+          orgLogo={org?.logo_url || logoDark}
         />
       </div>
     );

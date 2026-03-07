@@ -105,7 +105,7 @@ export default function PrintSalary() {
         paymentMethod={payout.payment_method}
         receiptUrl={payout.receipt_url}
         orgName={org?.name}
-        orgLogo={org?.logo_url}
+        orgLogo={org?.logo_url || logoDark}
       />
     </div>
   );
