@@ -4,7 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { InvoiceTemplate } from '@/components/finance/InvoiceTemplate';
 import { ReceiptTemplate } from '@/components/finance/ReceiptTemplate';
-import { DocumentActions } from '@/components/finance/DocumentActions';
+import { Button } from '@/components/ui/button';
+import { Printer, Download, ArrowLeft } from 'lucide-react';
 
 export default function PrintInvoice() {
   const { invoiceId } = useParams<{ invoiceId: string }>();
@@ -20,7 +21,11 @@ export default function PrintInvoice() {
         .select(`
           id, student_id, amount, currency, billing_month, due_date, status,
           amount_paid, forgiven_amount, remark, payment_method, period_from, period_to,
-          profiles!fee_invoices_student_id_fkey(full_name)
+          profiles!fee_invoices_student_id_fkey(full_name),
+          student_teacher_assignments!fee_invoices_assignment_id_fkey(
+            subjects!student_teacher_assignments_subject_id_fkey(name),
+            profiles!student_teacher_assignments_teacher_id_fkey(full_name)
+          )
         `)
         .eq('id', invoiceId)
         .single();
@@ -51,14 +56,6 @@ export default function PrintInvoice() {
     },
   });
 
-  // Auto-print after load
-  useEffect(() => {
-    if (invoice && !loadingInvoice) {
-      const timer = setTimeout(() => window.print(), 800);
-      return () => clearTimeout(timer);
-    }
-  }, [invoice, loadingInvoice]);
-
   if (loadingInvoice) {
     return <div style={{ width: '794px', margin: '0 auto', padding: '40px', textAlign: 'center' }}><p>Loading...</p></div>;
   }
@@ -69,11 +66,25 @@ export default function PrintInvoice() {
   const invoiceNumber = `INV-${invoice.billing_month.replace('-', '')}-${(invoice as any).profiles?.full_name?.substring(0, 3).toUpperCase() || 'XXX'}`;
   const receiptNumber = `RCT-${invoice.billing_month.replace('-', '')}-${(invoice as any).profiles?.full_name?.substring(0, 3).toUpperCase() || 'XXX'}`;
 
+  const assignment = (invoice as any).student_teacher_assignments;
+  const subjectName = assignment?.subjects?.name;
+  const teacherName = assignment?.profiles?.full_name;
+
   if (mode === 'receipt' && transactions.length > 0) {
     return (
       <div id="print-root" style={{ margin: '0 auto' }}>
-        <div className="print:hidden flex items-center justify-end px-4 py-2 gap-2">
-          <DocumentActions onPrint={() => window.print()} onDownload={() => window.print()} />
+        <div className="print:hidden flex items-center justify-between px-4 py-3 bg-muted/50 border-b max-w-[794px] mx-auto">
+          <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => window.close()}>
+            <ArrowLeft className="h-3.5 w-3.5" /> Back
+          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => window.print()}>
+              <Download className="h-3.5 w-3.5" /> Download PDF
+            </Button>
+            <Button size="sm" className="gap-1.5" onClick={() => window.print()}>
+              <Printer className="h-3.5 w-3.5" /> Print
+            </Button>
+          </div>
         </div>
         <ReceiptTemplate
           receiptNumber={receiptNumber}
@@ -96,8 +107,18 @@ export default function PrintInvoice() {
 
   return (
     <div id="print-root" style={{ margin: '0 auto' }}>
-      <div className="print:hidden flex items-center justify-end px-4 py-2 gap-2">
-        <DocumentActions onPrint={() => window.print()} onDownload={() => window.print()} />
+      <div className="print:hidden flex items-center justify-between px-4 py-3 bg-muted/50 border-b max-w-[794px] mx-auto">
+        <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => window.close()}>
+          <ArrowLeft className="h-3.5 w-3.5" /> Back
+        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => window.print()}>
+            <Download className="h-3.5 w-3.5" /> Download PDF
+          </Button>
+          <Button size="sm" className="gap-1.5" onClick={() => window.print()}>
+            <Printer className="h-3.5 w-3.5" /> Print
+          </Button>
+        </div>
       </div>
       <InvoiceTemplate
         invoice={{
@@ -114,6 +135,8 @@ export default function PrintInvoice() {
           remark: invoice.remark,
           period_from: (invoice as any).period_from,
           period_to: (invoice as any).period_to,
+          subjects: subjectName ? [subjectName] : undefined,
+          teacher_name: teacherName || undefined,
         }}
         invoiceNumber={invoiceNumber}
         orgName={org?.name}

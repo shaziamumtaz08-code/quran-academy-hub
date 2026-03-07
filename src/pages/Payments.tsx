@@ -569,26 +569,87 @@ export default function Payments() {
       const existingAssignmentIds = new Set((existing || []).filter(e => e.assignment_id).map(e => e.assignment_id));
       const newInvoices: any[] = [];
 
-      let pq = supabase.from('student_billing_plans').select('id, student_id, net_recurring_fee, currency, branch_id, division_id').eq('is_active', true);
+      // Proration helper
+      const computeProration = (monthlyFee: number, assignmentStartDate: string | null, assignmentEndDate: string | null, billingMonth: string) => {
+        const monthFirstDay = parseISO(billingMonth + '-01');
+        const monthLastDay = endOfMonth(monthFirstDay);
+        const daysInMonth = monthLastDay.getDate();
+        
+        const activeFrom = assignmentStartDate && parseISO(assignmentStartDate) > monthFirstDay
+          ? parseISO(assignmentStartDate) : monthFirstDay;
+        const activeTo = assignmentEndDate && parseISO(assignmentEndDate) < monthLastDay
+          ? parseISO(assignmentEndDate) : monthLastDay;
+        
+        // Assignment doesn't overlap this month
+        if (activeFrom > monthLastDay || activeTo < monthFirstDay) return null;
+        
+        const activeDays = Math.floor((activeTo.getTime() - activeFrom.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        const proratedAmount = Math.round(((monthlyFee / daysInMonth) * activeDays) * 100) / 100;
+        
+        return {
+          amount: proratedAmount,
+          period_from: format(activeFrom, 'yyyy-MM-dd'),
+          period_to: format(activeTo, 'yyyy-MM-dd'),
+        };
+      };
+
+      // 1) Billing plans
+      let pq = supabase.from('student_billing_plans').select('id, student_id, assignment_id, net_recurring_fee, currency, branch_id, division_id').eq('is_active', true);
       if (branchId) pq = pq.eq('branch_id', branchId);
       if (divisionId) pq = pq.eq('division_id', divisionId);
       const { data: plans } = await pq;
+
+      // Get assignment dates for plans that have assignment_id
+      const planAssignmentIds = (plans || []).filter(p => (p as any).assignment_id).map(p => (p as any).assignment_id);
+      let planAssignmentMap: Record<string, any> = {};
+      if (planAssignmentIds.length > 0) {
+        const { data: planAssigns } = await supabase.from('student_teacher_assignments')
+          .select('id, effective_from_date, effective_to_date, status')
+          .in('id', planAssignmentIds);
+        (planAssigns || []).forEach((a: any) => { planAssignmentMap[a.id] = a; });
+      }
+
       (plans || []).forEach((p: any) => {
         if (!existingPlanIds.has(p.id) && p.net_recurring_fee > 0) {
-          newInvoices.push({ plan_id: p.id, student_id: p.student_id, amount: p.net_recurring_fee, currency: p.currency, billing_month: targetMonth, due_date: `${targetMonth}-10`, branch_id: p.branch_id, division_id: p.division_id });
+          const assign = p.assignment_id ? planAssignmentMap[p.assignment_id] : null;
+          const startDate = assign?.effective_from_date || null;
+          const endDate = (assign?.status === 'active') ? null : (assign?.effective_to_date || null);
+          
+          const prorated = computeProration(p.net_recurring_fee, startDate, endDate, targetMonth);
+          if (!prorated) return; // Assignment doesn't overlap this month
+
+          newInvoices.push({
+            plan_id: p.id, student_id: p.student_id,
+            amount: prorated.amount, currency: p.currency, billing_month: targetMonth,
+            due_date: `${targetMonth}-10`, branch_id: p.branch_id, division_id: p.division_id,
+            period_from: prorated.period_from, period_to: prorated.period_to,
+          });
         }
       });
 
-      let aq = supabase.from('student_teacher_assignments').select('id, student_id, calculated_monthly_fee, first_month_prorated_fee, start_date, fee_packages!student_teacher_assignments_fee_package_id_fkey(currency), branch_id, division_id').eq('status', 'active');
+      // 2) Legacy assignments (no billing plan)
+      let aq = supabase.from('student_teacher_assignments')
+        .select('id, student_id, calculated_monthly_fee, effective_from_date, effective_to_date, status, fee_packages!student_teacher_assignments_fee_package_id_fkey(currency), branch_id, division_id')
+        .in('status', ['active', 'paused', 'completed']);
       if (branchId) aq = aq.eq('branch_id', branchId);
       if (divisionId) aq = aq.eq('division_id', divisionId);
       const { data: assignments } = await aq;
       const planStudentIds = new Set(newInvoices.map(i => i.student_id));
       (assignments || []).forEach((a: any) => {
         if (!existingAssignmentIds.has(a.id) && a.calculated_monthly_fee && !planStudentIds.has(a.student_id)) {
-          const isFirstMonth = a.start_date && a.start_date.startsWith(targetMonth);
-          const amount = isFirstMonth && a.first_month_prorated_fee ? a.first_month_prorated_fee : a.calculated_monthly_fee;
-          newInvoices.push({ assignment_id: a.id, student_id: a.student_id, amount, currency: a.fee_packages?.currency || 'USD', billing_month: targetMonth, due_date: `${targetMonth}-10`, branch_id: a.branch_id, division_id: a.division_id });
+          const startDate = a.effective_from_date || null;
+          const endDate = (a.status === 'active') ? null : (a.effective_to_date || null);
+          
+          const prorated = computeProration(Number(a.calculated_monthly_fee), startDate, endDate, targetMonth);
+          if (!prorated) return;
+
+          newInvoices.push({
+            assignment_id: a.id, student_id: a.student_id,
+            amount: prorated.amount, currency: a.fee_packages?.currency || 'USD',
+            billing_month: targetMonth, due_date: `${targetMonth}-10`,
+            branch_id: a.branch_id, division_id: a.division_id,
+            period_from: prorated.period_from, period_to: prorated.period_to,
+          });
         }
       });
 
@@ -1097,8 +1158,8 @@ export default function Payments() {
                       <TableHead className="text-right">Paid</TableHead>
                       {!isReadOnlyView && <TableHead className="text-right">Realised (PKR)</TableHead>}
                       <TableHead>Due Date</TableHead>
-                      <TableHead className="text-center">Status</TableHead>
-                      {!isReadOnlyView && <TableHead className="w-12"></TableHead>}
+                       <TableHead className="text-center">Status</TableHead>
+                       <TableHead className="w-12"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1132,6 +1193,20 @@ export default function Payments() {
                               </Button>
                             ) : getStatusBadge(inv.status)}
                           </TableCell>
+                          {isReadOnlyView && (
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => window.open(`/finance/print/invoice/${inv.id}`, '_blank')} title="View Invoice">
+                                  <FileText className="h-3.5 w-3.5" />
+                                </Button>
+                                {(inv.status === 'paid' || inv.status === 'partially_paid') && (
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => window.open(`/finance/print/invoice/${inv.id}?mode=receipt`, '_blank')} title="View Receipt">
+                                    <Printer className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          )}
                           {!isReadOnlyView && (
                             <TableCell>
                               <DropdownMenu>
@@ -1156,6 +1231,9 @@ export default function Payments() {
                                     </>
                                   ) : (
                                     <>
+                                      <DropdownMenuItem onClick={() => window.open(`/finance/print/invoice/${inv.id}`, '_blank')}>
+                                        <FileText className="h-3.5 w-3.5 mr-2" /> View Invoice
+                                      </DropdownMenuItem>
                                       <DropdownMenuItem onClick={() => { setEditReceiptFile(null); setEditInvoiceData({ id: inv.id, amount: String(inv.amount), due_date: inv.due_date || '', billing_month: inv.billing_month, currency: inv.currency, remark: inv.remark || '', status: inv.status, amount_paid: String(inv.amount_paid || 0), forgiven_amount: String(inv.forgiven_amount || 0), payment_method: inv.payment_method || '', paid_at: inv.paid_at || '', period_from: (inv as any).period_from || '', period_to: (inv as any).period_to || '', amount_local: String(realisedMap[inv.id] || ''), receipt_url: '' }); }}>
                                         <Pencil className="h-3.5 w-3.5 mr-2" /> Edit Invoice
                                       </DropdownMenuItem>
@@ -1167,6 +1245,11 @@ export default function Payments() {
                                           setReceiptViewInvoice(inv);
                                         }}>
                                           <Eye className="h-3.5 w-3.5 mr-2" /> View Receipt
+                                        </DropdownMenuItem>
+                                      )}
+                                      {(inv.status === 'paid' || inv.status === 'partially_paid') && (
+                                        <DropdownMenuItem onClick={() => window.open(`/finance/print/invoice/${inv.id}?mode=receipt`, '_blank')}>
+                                          <Printer className="h-3.5 w-3.5 mr-2" /> Print Receipt
                                         </DropdownMenuItem>
                                       )}
                                       {(inv.status === 'paid' || inv.status === 'partially_paid') && (
@@ -1540,10 +1623,10 @@ export default function Payments() {
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Payment Period</Label>
+                  <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Billing Period <span className="text-muted-foreground font-normal normal-case">(auto-calculated from invoice)</span></Label>
                   <div className="grid grid-cols-2 gap-2">
-                    <div><Label className="text-xs">From</Label><Input type="date" value={payForm.period_from} onChange={e => setPayForm(f => ({ ...f, period_from: e.target.value }))} className="h-8 text-sm" /></div>
-                    <div><Label className="text-xs">To</Label><Input type="date" value={payForm.period_to} onChange={e => setPayForm(f => ({ ...f, period_to: e.target.value }))} className="h-8 text-sm" /></div>
+                    <div><Label className="text-xs">From</Label><Input type="date" value={payForm.period_from} disabled className="h-8 text-sm bg-muted" /></div>
+                    <div><Label className="text-xs">To</Label><Input type="date" value={payForm.period_to} disabled className="h-8 text-sm bg-muted" /></div>
                   </div>
                 </div>
 
