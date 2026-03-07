@@ -1,75 +1,95 @@
 
+# Plan: Synchronize Edit Invoice with Record Payment Form + Multi-Month Payment UX
 
-# Fix Invoice Proration + Paused Student Exclusion
+## Problem Summary
 
-## Problem Analysis
+1. **Edit Invoice form is missing fields** that the Record Payment form has: Realized (PKR), exchange rate display, Proof of Payment upload, and shortfall/resolution handling.
+2. **Multi-month payments** require clarity: if a student pays 40 AUD covering Dec (10) + Jan (30), can the system auto-split it?
 
-**1. Farhana Tabani Invoice Not Prorated**
+---
 
-Root cause identified: Her `student_billing_plans` record has `assignment_id = NULL`. The invoice generation code looks up `effective_from_date` via the billing plan's `assignment_id` -- since it's null, no assignment is found, so it defaults to full-month billing (March 1-31, full 4000).
+## Part 1: Make Edit Invoice Form Identical to Record Payment
 
-Her assignment (id: `d71c6587...`) has `effective_from_date = 2026-03-04`, but the billing plan isn't linked to it.
+The Edit Invoice dialog will be restructured to match Record Payment field-for-field:
 
-**Fix:** When a billing plan has no `assignment_id`, fall back to querying `student_teacher_assignments` by `student_id` to find the relevant assignment's effective dates.
+| Section | Record Payment | Edit Invoice (Current) | Action |
+|---|---|---|---|
+| Invoice summary bar | Student name + expected | Missing | **Add** |
+| Payment Period (From/To) | Yes | Yes | Keep |
+| Payment Date / Paid At | Yes | Yes | Keep (label: "Paid At") |
+| Receiving Channel | Yes | Yes | Keep |
+| Amount (currency) | Yes | Yes | Keep |
+| Realized (PKR) | Yes | **Missing** | **Add** |
+| Exchange Rate display | Yes | **Missing** | **Add** |
+| Shortfall + Resolution | Yes | **Missing** | **Add** (auto-calculated) |
+| Proof of Payment upload | Yes | **Missing** | **Add** |
+| Notes / Remark | Yes | Yes | Keep |
+| Amount Paid | N/A (auto) | Yes | Keep (admin override) |
+| Forgiven Amount | N/A (auto) | Yes | Keep (admin override) |
+| Currency | N/A (from invoice) | Yes | Keep |
+| Billing Month | N/A (from invoice) | Yes | Keep |
+| Status | N/A (auto) | Yes | Keep |
+| Due Date | N/A | Yes | Keep |
 
-**2. Paused Students Still Get Invoices**
+The Edit Invoice dialog will have the same visual layout and sections as Record Payment, plus the extra admin-only fields (Status, Due Date, Currency, Billing Month, Forgiven Amount) below a separator labeled "Admin Overrides".
 
-The legacy assignment query (line 654) explicitly includes `'paused'` in the status filter. Billing plans for paused students also have `is_active = true`, so they generate invoices too.
+---
 
-**Fix:** Exclude paused assignments from both paths. A paused student is frozen -- no billing, no salary, no activity.
+## Part 2: Multi-Month Payment Strategy
+
+### Current mechanism
+- The system is **invoice-based**: each month generates a separate invoice per student.
+- The bulk "Record Payment" (cart pattern) already supports selecting multiple invoices and paying them with a single receipt.
+- The payment is **allocated sequentially** to each selected invoice (oldest first), with shortfall handling for any remainder.
+
+### The easier solution (recommended)
+Rather than building complex date-range-to-invoice auto-splitting, the **existing cart system already solves this**:
+
+1. Admin selects invoices for Dec 2025 and Jan 2026 using checkboxes.
+2. Clicks "Record Payment" -- both invoices appear in the summary.
+3. Enters 40 AUD total, one receipt screenshot, one receiving channel.
+4. System auto-allocates: 10 AUD to Dec (outstanding), 30 AUD to Jan (outstanding).
+5. Both invoices update. Single receipt is linked to both transactions.
+
+**No new development needed** for this flow -- it already works. The From/To date range in the payment form captures the coverage period for reference, but the allocation is driven by the invoice amounts, not dates.
+
+### What WILL be improved
+- Add a **helper tooltip/info text** on the Record Payment dialog explaining: "Selected invoices are paid in order. Amount is allocated starting from the first invoice."
+- Ensure the **Edit Payment** form (on `payment_transactions`) also mirrors the Record Payment layout for consistency.
 
 ---
 
 ## Technical Changes
 
-### File: `src/pages/Payments.tsx` -- `generateMutation`
+### File: `src/pages/Payments.tsx`
 
-**A. Fix billing-plan proration fallback (lines 617-649)**
+1. **Add state for receipt file in edit mode** -- reuse `receiptInputRef` or add a second ref.
 
-After fetching assignment data for plans that have `assignment_id`, add a second lookup for plans where `assignment_id` is null -- query `student_teacher_assignments` by `student_id` to get the effective dates. Also skip plans whose linked assignment is paused.
+2. **Add `amount_local` (Realized PKR) field to `editInvoiceData` state** and persist it. This will require either:
+   - Storing realized amount on the invoice itself (new column), OR
+   - Looking up from `payment_transactions` and allowing override.
+   
+   Since `payment_transactions` already tracks `amount_local`, the Edit Invoice form will add a display-only "Realized (PKR)" field that shows the sum from linked transactions, plus an editable override field.
 
-```typescript
-// After planAssignmentMap is built, also build a student-level fallback map
-const plansWithoutAssignment = (plans || []).filter(p => !p.assignment_id);
-const fallbackStudentIds = plansWithoutAssignment.map(p => p.student_id);
-let studentAssignmentMap: Record<string, any> = {};
-if (fallbackStudentIds.length > 0) {
-  const { data: studentAssigns } = await supabase.from('student_teacher_assignments')
-    .select('id, student_id, effective_from_date, effective_to_date, status')
-    .in('student_id', fallbackStudentIds)
-    .in('status', ['active']);
-  (studentAssigns || []).forEach((a: any) => {
-    // Use first active assignment per student
-    if (!studentAssignmentMap[a.student_id]) studentAssignmentMap[a.student_id] = a;
-  });
-}
-```
+3. **Restructure the Edit Invoice dialog** to follow Record Payment's visual order:
+   - Top: Student name + invoice summary bar
+   - Billing Month + Status row
+   - Payment Period section (From / To)
+   - Separator
+   - Payment Details section (Paid At + Receiving Channel)
+   - Amount row: Amount (currency) + Realized (PKR)
+   - Exchange rate auto-calculated display
+   - Amount Paid + Forgiven Amount row
+   - Currency + Due Date row
+   - Proof of Payment upload area
+   - Remark / Notes textarea
 
-In the plan iteration loop, when `assign` is null, fall back to `studentAssignmentMap[p.student_id]`. Also skip if the resolved assignment status is `'paused'`.
+4. **Receipt upload in edit mode**: Allow uploading a new receipt that updates the latest `payment_transaction.receipt_url` for this invoice.
 
-**B. Exclude paused from legacy assignments (line 654)**
+5. **Add info text** to Record Payment dialog: "Amounts are allocated across selected invoices in order."
 
-Change `.in('status', ['active', 'paused', 'completed'])` to `.in('status', ['active', 'completed'])`.
+### Database
+- No new columns needed. The `fee_invoices` table already has `period_from`, `period_to`, `payment_method`, `paid_at`. The realized amount lives in `payment_transactions.amount_local`.
 
-**C. Data fix: Link Farhana's billing plan to her assignment**
-
-Run an UPDATE to set `assignment_id = 'd71c6587-39c6-4163-9f2f-e45592bf5905'` on billing plan `7b1333c0-0ee4-4820-8fae-97429bb9faf1`.
-
-### File: `src/pages/SalaryEngine.tsx`
-
-Verify paused assignments are already excluded from salary calculations (they should be based on prior fix filtering by effective date overlap, but explicitly skip `status = 'paused'` if not already done).
-
----
-
-## Summary of Paused Student Behavior
-
-| Area | Current | After Fix |
-|---|---|---|
-| Invoice Generation | Included (wrong) | Excluded |
-| Salary Engine | Already excluded via date overlap | Explicitly excluded |
-| Schedules | Kept (frozen) | No change |
-| Attendance | Not applicable | No change |
-| Assignment record | Preserved | Preserved |
-
-When a paused student resumes (status back to `active`), invoices can be generated for the resumed month with proper proration from the resume date.
-
+### No changes needed for multi-month payments
+- The existing cart/bulk payment system handles this correctly already. The plan is to add UX guidance text only.

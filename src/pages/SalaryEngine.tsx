@@ -114,7 +114,7 @@ export default function SalaryEngine() {
       const { data } = await supabase
         .from('student_teacher_assignments')
         .select('id, teacher_id, student_id, payout_amount, payout_type, effective_from_date, effective_to_date, status, profiles!student_teacher_assignments_student_id_fkey(full_name)')
-        .in('status', ['active', 'paused', 'completed']);
+        .in('status', ['active', 'completed']);
       return data || [];
     },
   });
