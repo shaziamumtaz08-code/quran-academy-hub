@@ -80,7 +80,8 @@ export default function TeacherNazraDashboard() {
       const { data: assignments, error: assignError } = await supabase
         .from('student_teacher_assignments')
         .select('student_id')
-        .eq('teacher_id', user.id);
+        .eq('teacher_id', user.id)
+        .eq('status', 'active');
 
       if (assignError) throw assignError;
       if (!assignments || assignments.length === 0) return [];

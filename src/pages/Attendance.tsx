@@ -236,22 +236,23 @@ export default function Attendance() {
           subject_id: d.subject?.id || null
         })).filter(Boolean) as Profile[];
       } else if (isAdmin) {
-        // Admin can see all students with their assignments
+        // Admin can see all students with active assignments only (excludes paused/left)
+        const { data: activeAssignments } = await supabase
+          .from('student_teacher_assignments')
+          .select('student_id')
+          .eq('status', 'active');
+
+        const activeStudentIds = [...new Set((activeAssignments || []).map(a => a.student_id))];
+        if (activeStudentIds.length === 0) return [];
+
         const { data, error } = await supabase
           .from('profiles')
           .select('id, full_name, mushaf_type, daily_target_lines, preferred_unit, daily_target_amount')
+          .in('id', activeStudentIds)
           .order('full_name');
         
         if (error) throw error;
-        
-        // Get role info to filter only students
-        const { data: rolesData } = await supabase
-          .from('user_roles')
-          .select('user_id, role')
-          .eq('role', 'student');
-        
-        const studentIds = new Set((rolesData || []).map(r => r.user_id));
-        return (data || []).filter(p => studentIds.has(p.id)) as Profile[];
+        return (data || []) as Profile[];
       }
       
       return [];

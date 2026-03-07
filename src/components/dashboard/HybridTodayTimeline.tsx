@@ -57,7 +57,8 @@ export function HybridTodayTimeline() {
         )
         .eq("day_of_week", todayDay)
         .eq("is_active", true)
-        .not("assignment_id", "is", null);
+        .not("assignment_id", "is", null)
+        .eq("student_teacher_assignments.status", "active");
 
       if (!isAdminRole && activeRole === "teacher") {
         // For teachers, filter by their assignments
@@ -79,7 +80,8 @@ export function HybridTodayTimeline() {
           .eq("day_of_week", todayDay)
           .eq("is_active", true)
           .not("assignment_id", "is", null)
-          .eq("student_teacher_assignments.teacher_id", user.id);
+          .eq("student_teacher_assignments.teacher_id", user.id)
+          .eq("student_teacher_assignments.status", "active");
       }
 
       // Fetch group class schedules

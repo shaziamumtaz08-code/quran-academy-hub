@@ -83,7 +83,7 @@ export default function Teachers() {
           subject:subjects(name)
         `)
         .in('teacher_id', teacherIds)
-        .in('status', ['active', 'paused']);
+        .eq('status', 'active');
 
       if (assignError) throw assignError;
 

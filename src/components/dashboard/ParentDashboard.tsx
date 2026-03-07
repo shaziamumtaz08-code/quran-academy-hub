@@ -64,6 +64,7 @@ export function ParentDashboard() {
             .from('student_teacher_assignments')
             .select('teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name)')
             .eq('student_id', studentId)
+            .eq('status', 'active')
             .limit(1)
             .single();
 

@@ -22,7 +22,7 @@ export function TeacherDashboard() {
       if (!user?.id) return null;
 
       const [assignmentsRes, attendanceRes] = await Promise.all([
-        supabase.from("student_teacher_assignments").select("student_id").eq("teacher_id", user.id),
+        supabase.from("student_teacher_assignments").select("student_id").eq("teacher_id", user.id).eq("status", "active"),
         supabase.from("attendance").select("status, class_date").eq("teacher_id", user.id),
       ]);
 
