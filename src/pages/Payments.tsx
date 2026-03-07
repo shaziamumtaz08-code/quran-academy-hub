@@ -670,7 +670,7 @@ export default function Payments() {
       // 2) Legacy assignments (no billing plan)
       let aq = supabase.from('student_teacher_assignments')
         .select('id, student_id, calculated_monthly_fee, effective_from_date, effective_to_date, status, fee_packages!student_teacher_assignments_fee_package_id_fkey(currency), branch_id, division_id')
-        .in('status', ['active', 'paused', 'completed']);
+        .in('status', ['active', 'completed']);
       if (branchId) aq = aq.eq('branch_id', branchId);
       if (divisionId) aq = aq.eq('division_id', divisionId);
       const { data: assignments } = await aq;
