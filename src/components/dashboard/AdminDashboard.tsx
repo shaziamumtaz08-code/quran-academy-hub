@@ -78,7 +78,7 @@ export function AdminDashboard() {
     description: string;
     time: string;
   }[] = [];
-  const { data: activeBatches } = useActiveBatchesCount(divisionId);
+  const { data: activeBatches } = useActiveBatchesCount();
 
   if (isLoading) {
     return (
