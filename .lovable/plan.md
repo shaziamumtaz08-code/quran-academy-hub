@@ -1,95 +1,99 @@
 
-# Plan: Synchronize Edit Invoice with Record Payment Form + Multi-Month Payment UX
 
-## Problem Summary
+# Comprehensive Pause/Freeze Feature for Student Assignments
 
-1. **Edit Invoice form is missing fields** that the Record Payment form has: Realized (PKR), exchange rate display, Proof of Payment upload, and shortfall/resolution handling.
-2. **Multi-month payments** require clarity: if a student pays 40 AUD covering Dec (10) + Jan (30), can the system auto-split it?
+## Problem
+When a student's assignment is set to `paused`, many downstream features still include them -- attendance dropdowns, teacher student counts, dashboard timelines, live class queues, reports, schedules display, and more. Only invoicing and monthly planning currently respect the paused status (partially).
 
----
+## All Touchpoints to Fix
 
-## Part 1: Make Edit Invoice Form Identical to Record Payment
+### 1. **Teacher Dashboard** (`src/components/dashboard/TeacherDashboard.tsx`)
+- Line 25: `student_teacher_assignments` query has NO status filter -- counts ALL assignments including paused
+- **Fix**: Add `.eq('status', 'active')` to the assignments query
 
-The Edit Invoice dialog will be restructured to match Record Payment field-for-field:
+### 2. **Students Page** (`src/pages/Students.tsx`)
+- Line 90: `.in('status', ['active', 'paused'])` -- shows paused students in teacher's student list
+- **Fix**: Change to `.eq('status', 'active')`. Paused students should not appear in the active student card grid. Add a separate "Paused" filter/tab so teachers can see them but clearly marked as frozen and non-actionable (no attendance marking button).
 
-| Section | Record Payment | Edit Invoice (Current) | Action |
-|---|---|---|---|
-| Invoice summary bar | Student name + expected | Missing | **Add** |
-| Payment Period (From/To) | Yes | Yes | Keep |
-| Payment Date / Paid At | Yes | Yes | Keep (label: "Paid At") |
-| Receiving Channel | Yes | Yes | Keep |
-| Amount (currency) | Yes | Yes | Keep |
-| Realized (PKR) | Yes | **Missing** | **Add** |
-| Exchange Rate display | Yes | **Missing** | **Add** |
-| Shortfall + Resolution | Yes | **Missing** | **Add** (auto-calculated) |
-| Proof of Payment upload | Yes | **Missing** | **Add** |
-| Notes / Remark | Yes | Yes | Keep |
-| Amount Paid | N/A (auto) | Yes | Keep (admin override) |
-| Forgiven Amount | N/A (auto) | Yes | Keep (admin override) |
-| Currency | N/A (from invoice) | Yes | Keep |
-| Billing Month | N/A (from invoice) | Yes | Keep |
-| Status | N/A (auto) | Yes | Keep |
-| Due Date | N/A | Yes | Keep |
+### 3. **Teachers Page** (`src/pages/Teachers.tsx`)
+- Line 86: `.in('status', ['active', 'paused'])` -- counts paused students in teacher's assigned student count
+- **Fix**: Change to `.eq('status', 'active')` so teacher cards show only active student counts
 
-The Edit Invoice dialog will have the same visual layout and sections as Record Payment, plus the extra admin-only fields (Status, Due Date, Currency, Billing Month, Forgiven Amount) below a separator labeled "Admin Overrides".
+### 4. **Attendance Page - Student Dropdown** (`src/pages/Attendance.tsx`)
+- Line 230: `.eq('status', 'active')` -- already correct for teacher view
+- Admin view (lines 240-254) fetches ALL students from profiles with no assignment status check
+- **Fix**: For admin view, cross-reference with active assignments to exclude paused students from the mark-attendance dropdown
 
----
+### 5. **Attendance - Missing Attendance Section** (`src/components/attendance/MissingAttendanceSection.tsx`)
+- Lines 84, 392: Already filters `.eq('student_teacher_assignments.status', 'active')` -- **OK, no change needed**
 
-## Part 2: Multi-Month Payment Strategy
+### 6. **Live Class Queue** (`src/components/dashboard/LiveClassQueue.tsx`)
+- Lines 83-101: Fetches schedules with assignments but has NO status filter on the assignment
+- **Fix**: Add `.eq('student_teacher_assignments.status', 'active')` to exclude paused students from the live class queue
 
-### Current mechanism
-- The system is **invoice-based**: each month generates a separate invoice per student.
-- The bulk "Record Payment" (cart pattern) already supports selecting multiple invoices and paying them with a single receipt.
-- The payment is **allocated sequentially** to each selected invoice (oldest first), with shortfall handling for any remainder.
+### 7. **Hybrid Today Timeline** (`src/components/dashboard/HybridTodayTimeline.tsx`)
+- Lines 44-60: Fetches today's 1:1 schedules with inner join on assignments but no status filter
+- **Fix**: Add `.eq('student_teacher_assignments.status', 'active')`
 
-### The easier solution (recommended)
-Rather than building complex date-range-to-invoice auto-splitting, the **existing cart system already solves this**:
+### 8. **Course Deck Carousel** (`src/components/dashboard/CourseDeckCarousel.tsx`)
+- Line 47: `.eq('status', 'active')` -- already correct for teacher view
+- Lines 98-105: Admin view also uses `.eq('status', 'active')` -- **OK**
 
-1. Admin selects invoices for Dec 2025 and Jan 2026 using checkboxes.
-2. Clicks "Record Payment" -- both invoices appear in the summary.
-3. Enters 40 AUD total, one receipt screenshot, one receiving channel.
-4. System auto-allocates: 10 AUD to Dec (outstanding), 30 AUD to Jan (outstanding).
-5. Both invoices update. Single receipt is linked to both transactions.
+### 9. **Monthly Planning** (`src/pages/MonthlyPlanning.tsx`)
+- Line 202: `.eq('status', 'active')` -- already correct for teacher
+- Line 248: `.eq('status', 'active')` -- already correct for admin
+- Line 283: Admin subject lookup -- need to verify status filter
+- **Fix**: Verify line 283 query also filters by active status. Add info banner about paused students being excluded.
 
-**No new development needed** for this flow -- it already works. The From/To date range in the payment form captures the coverage period for reference, but the allocation is driven by the invoice amounts, not dates.
+### 10. **Schedules Page** (`src/pages/Schedules.tsx`)
+- Line 298: `.eq('status', 'active')` -- already correct, only shows active assignments for scheduling
 
-### What WILL be improved
-- Add a **helper tooltip/info text** on the Record Payment dialog explaining: "Selected invoices are paid in order. Amount is allocated starting from the first invoice."
-- Ensure the **Edit Payment** form (on `payment_transactions`) also mirrors the Record Payment layout for consistency.
+### 11. **Salary Engine** (`src/pages/SalaryEngine.tsx`)
+- Line 117: `.in('status', ['active', 'completed'])` -- already excludes paused -- **OK**
 
----
+### 12. **Payments / Invoice Generation** (`src/pages/Payments.tsx`)
+- Already patched in prior messages to skip paused -- **OK**
 
-## Technical Changes
+### 13. **Student Detail Drawer** (`src/components/students/StudentDetailDrawer.tsx`)
+- Line 131: Fetches assignment with no status filter
+- **Fix**: Should still show data (read-only) but display a "Paused" indicator
 
-### File: `src/pages/Payments.tsx`
+### 14. **Report Card Generation** (`src/pages/GenerateReportCard.tsx`)
+- Line 109: No status filter on assignments query
+- **Fix**: Add `.eq('status', 'active')` to exclude paused students from report card generation
 
-1. **Add state for receipt file in edit mode** -- reuse `receiptInputRef` or add a second ref.
+### 15. **Teacher Nazra Dashboard** (`src/pages/TeacherNazraDashboard.tsx`)
+- Line 81: No status filter
+- **Fix**: Add `.eq('status', 'active')`
 
-2. **Add `amount_local` (Realized PKR) field to `editInvoiceData` state** and persist it. This will require either:
-   - Storing realized amount on the invoice itself (new column), OR
-   - Looking up from `payment_transactions` and allowing override.
-   
-   Since `payment_transactions` already tracks `amount_local`, the Edit Invoice form will add a display-only "Realized (PKR)" field that shows the sum from linked transactions, plus an editable override field.
+### 16. **Student Past Classes** (`src/components/dashboard/StudentPastClasses.tsx`)
+- Line 23: No status filter -- but this is OK as it shows historical data
 
-3. **Restructure the Edit Invoice dialog** to follow Record Payment's visual order:
-   - Top: Student name + invoice summary bar
-   - Billing Month + Status row
-   - Payment Period section (From / To)
-   - Separator
-   - Payment Details section (Paid At + Receiving Channel)
-   - Amount row: Amount (currency) + Realized (PKR)
-   - Exchange rate auto-calculated display
-   - Amount Paid + Forgiven Amount row
-   - Currency + Due Date row
-   - Proof of Payment upload area
-   - Remark / Notes textarea
+### 17. **Parent Dashboard** (`src/components/dashboard/ParentDashboard.tsx`)
+- Line 64: No status filter on teacher assignment lookup
+- **Fix**: Add `.eq('status', 'active')` or show a "Paused" visual indicator for the child
 
-4. **Receipt upload in edit mode**: Allow uploading a new receipt that updates the latest `payment_transaction.receipt_url` for this invoice.
+### 18. **Division Selection Counts** (`src/pages/SelectDivision.tsx`)
+- Line 95: `.eq('status', 'active')` -- already correct
 
-5. **Add info text** to Record Payment dialog: "Amounts are allocated across selected invoices in order."
+### 19. **Student Card** (`src/components/students/StudentCard.tsx`)
+- Lines 43-44: Already detects `isPaused` and shows status badge
+- **Fix**: Disable the "Mark Attendance" button when `isPaused` is true (currently only disables for `completed`)
 
-### Database
-- No new columns needed. The `fee_invoices` table already has `period_from`, `period_to`, `payment_method`, `paid_at`. The realized amount lives in `payment_transactions.amount_local`.
+## Summary of Changes
 
-### No changes needed for multi-month payments
-- The existing cart/bulk payment system handles this correctly already. The plan is to add UX guidance text only.
+| File | Current Behavior | Fix |
+|---|---|---|
+| `TeacherDashboard.tsx` | Counts all assignments | Filter to `active` only |
+| `Students.tsx` | Shows paused students | Default to `active`, add Paused filter tab (read-only) |
+| `Teachers.tsx` | Counts paused in totals | Filter to `active` only |
+| `LiveClassQueue.tsx` | Shows paused in queue | Filter assignment status to `active` |
+| `HybridTodayTimeline.tsx` | Shows paused in timeline | Filter assignment status to `active` |
+| `StudentCard.tsx` | Allows attendance for paused | Disable attendance button for paused |
+| `GenerateReportCard.tsx` | Includes paused students | Filter to `active` only |
+| `TeacherNazraDashboard.tsx` | Includes paused students | Filter to `active` only |
+| `ParentDashboard.tsx` | No paused indicator | Add paused visual indicator |
+| `MonthlyPlanning.tsx` | Already filtered | Verify admin subject query also filtered |
+
+All changes are query-level filters -- no database migrations needed. The principle: **paused = invisible in all operational views, preserved in data for resumption**.
+
