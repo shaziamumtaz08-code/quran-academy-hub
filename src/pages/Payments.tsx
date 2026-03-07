@@ -1217,6 +1217,9 @@ export default function Payments() {
                                     </>
                                   ) : (
                                     <>
+                                      <DropdownMenuItem onClick={() => window.open(`/finance/print/invoice/${inv.id}`, '_blank')}>
+                                        <FileText className="h-3.5 w-3.5 mr-2" /> View Invoice
+                                      </DropdownMenuItem>
                                       <DropdownMenuItem onClick={() => { setEditReceiptFile(null); setEditInvoiceData({ id: inv.id, amount: String(inv.amount), due_date: inv.due_date || '', billing_month: inv.billing_month, currency: inv.currency, remark: inv.remark || '', status: inv.status, amount_paid: String(inv.amount_paid || 0), forgiven_amount: String(inv.forgiven_amount || 0), payment_method: inv.payment_method || '', paid_at: inv.paid_at || '', period_from: (inv as any).period_from || '', period_to: (inv as any).period_to || '', amount_local: String(realisedMap[inv.id] || ''), receipt_url: '' }); }}>
                                         <Pencil className="h-3.5 w-3.5 mr-2" /> Edit Invoice
                                       </DropdownMenuItem>
