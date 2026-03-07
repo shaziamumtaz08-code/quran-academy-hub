@@ -1193,6 +1193,20 @@ export default function Payments() {
                               </Button>
                             ) : getStatusBadge(inv.status)}
                           </TableCell>
+                          {isReadOnlyView && (
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => window.open(`/finance/print/invoice/${inv.id}`, '_blank')} title="View Invoice">
+                                  <FileText className="h-3.5 w-3.5" />
+                                </Button>
+                                {(inv.status === 'paid' || inv.status === 'partially_paid') && (
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => window.open(`/finance/print/invoice/${inv.id}?mode=receipt`, '_blank')} title="View Receipt">
+                                    <Printer className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          )}
                           {!isReadOnlyView && (
                             <TableCell>
                               <DropdownMenu>
