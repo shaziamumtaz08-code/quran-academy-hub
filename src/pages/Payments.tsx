@@ -1234,6 +1234,11 @@ export default function Payments() {
                                         </DropdownMenuItem>
                                       )}
                                       {(inv.status === 'paid' || inv.status === 'partially_paid') && (
+                                        <DropdownMenuItem onClick={() => window.open(`/finance/print/invoice/${inv.id}?mode=receipt`, '_blank')}>
+                                          <Printer className="h-3.5 w-3.5 mr-2" /> Print Receipt
+                                        </DropdownMenuItem>
+                                      )}
+                                      {(inv.status === 'paid' || inv.status === 'partially_paid') && (
                                         <DropdownMenuItem onClick={() => setActionModal({ type: 'mark_unpaid', invoice: inv })}>
                                           <Undo2 className="h-3.5 w-3.5 mr-2" /> Mark Unpaid
                                         </DropdownMenuItem>
