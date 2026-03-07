@@ -1947,21 +1947,32 @@ export default function Payments() {
               ) : (
                 <div className="space-y-3">
                   {adjustmentHistory.map((adj: any) => (
-                    <div key={adj.id} className="border border-border rounded-lg p-3 space-y-1">
+                    <div key={adj.id} className="border border-border rounded-lg p-3 space-y-1.5">
                       <div className="flex items-center justify-between">
                         <Badge variant="outline" className="text-xs capitalize">{adj.action_type.replace(/_/g, ' ')}</Badge>
                         <span className="text-xs text-muted-foreground">{new Date(adj.created_at).toLocaleString('en-US', { timeZone: 'Asia/Karachi', dateStyle: 'medium', timeStyle: 'short' })}</span>
                       </div>
                       <p className="text-sm"><span className="text-muted-foreground">By:</span> {adj.admin_name} {adj.admin_email && `(${adj.admin_email})`}</p>
                       {adj.reason && <p className="text-sm"><span className="text-muted-foreground">Reason:</span> {adj.reason}</p>}
+                      {/* Clean key-value display instead of raw JSON */}
                       <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="bg-destructive/5 rounded p-2">
-                          <span className="font-semibold text-destructive">Previous:</span>
-                          <pre className="mt-1 whitespace-pre-wrap text-muted-foreground">{JSON.stringify(adj.previous_values, null, 2)}</pre>
+                        <div className="bg-destructive/5 rounded p-2 space-y-0.5">
+                          <span className="font-semibold text-destructive block mb-1">Previous</span>
+                          {Object.entries(adj.previous_values || {}).map(([key, val]) => (
+                            <div key={key} className="flex justify-between">
+                              <span className="text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</span>
+                              <span className="font-medium">{String(val ?? '—')}</span>
+                            </div>
+                          ))}
                         </div>
-                        <div className="bg-primary/5 rounded p-2">
-                          <span className="font-semibold text-primary">New:</span>
-                          <pre className="mt-1 whitespace-pre-wrap text-muted-foreground">{JSON.stringify(adj.new_values, null, 2)}</pre>
+                        <div className="bg-primary/5 rounded p-2 space-y-0.5">
+                          <span className="font-semibold text-primary block mb-1">Updated</span>
+                          {Object.entries(adj.new_values || {}).map(([key, val]) => (
+                            <div key={key} className="flex justify-between">
+                              <span className="text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</span>
+                              <span className="font-medium">{String(val ?? '—')}</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     </div>
