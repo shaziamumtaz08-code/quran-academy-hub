@@ -900,13 +900,13 @@ export default function Payments() {
 
   const openBulkPay = () => {
     if (unpaidSelected.length === 0) { toast({ title: 'Select pending invoices first', variant: 'destructive' }); return; }
-    const months = unpaidSelected.map(i => i.billing_month).sort();
-    const earliest = getDefaultPeriodDates(months[0]);
-    const latest = getDefaultPeriodDates(months[months.length - 1]);
+    // Use actual invoice period dates (prorated from assignment), fallback to billing month
+    const allFroms = unpaidSelected.map(i => i.period_from || getDefaultPeriodDates(i.billing_month).from).sort();
+    const allTos = unpaidSelected.map(i => i.period_to || getDefaultPeriodDates(i.billing_month).to).sort();
     setPayForm({
       amount_foreign: totalExpected.toString(), amount_local: '', resolution: 'full', notes: '',
       payment_date: new Date().toISOString().split('T')[0],
-      period_from: earliest.from, period_to: latest.to, payment_method: '',
+      period_from: allFroms[0], period_to: allTos[allTos.length - 1], payment_method: '',
     });
     setReceiptFile(null);
     setBulkPayOpen(true);
