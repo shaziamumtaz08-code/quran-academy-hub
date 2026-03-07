@@ -1,41 +1,44 @@
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { StatCard } from './StatCard';
-import { RecentActivity } from './RecentActivity';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, GraduationCap, Calendar, TrendingUp, Layers, BookOpen, UserCheck, ClipboardList } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { Skeleton } from '@/components/ui/skeleton';
-import { format } from 'date-fns';
-import { AdminLiveMonitor } from './AdminLiveMonitor';
-import { LiveClassQueue } from './LiveClassQueue';
-import { AccountabilityReport } from './AccountabilityReport';
-import { AccountabilityTrends } from './AccountabilityTrends';
-import { IntegrityEngine } from './IntegrityEngine';
-import { BehaviorAlerts } from './BehaviorAlerts';
-import { HybridTodayTimeline, useActiveBatchesCount } from './HybridTodayTimeline';
-import { useDivision } from '@/contexts/DivisionContext';
+import React from "react";
+import { useQuery } from "@tanstack/react-query";
+import { StatCard } from "./StatCard";
+import { RecentActivity } from "./RecentActivity";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Users, GraduationCap, Calendar, TrendingUp, Layers, BookOpen, UserCheck, ClipboardList } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Skeleton } from "@/components/ui/skeleton";
+import { format } from "date-fns";
+import { AdminLiveMonitor } from "./AdminLiveMonitor";
+import { LiveClassQueue } from "./LiveClassQueue";
+import { AccountabilityReport } from "./AccountabilityReport";
+import { AccountabilityTrends } from "./AccountabilityTrends";
+import { IntegrityEngine } from "./IntegrityEngine";
+import { BehaviorAlerts } from "./BehaviorAlerts";
+import { HybridTodayTimeline, useActiveBatchesCount } from "./HybridTodayTimeline";
+import { useDivision } from "@/contexts/DivisionContext";
 
 export function AdminDashboard() {
-  const today = format(new Date(), 'yyyy-MM-dd');
+  const today = format(new Date(), "yyyy-MM-dd");
   const { activeDivision, activeBranch, activeModelType } = useDivision();
-  const isOneToOne = activeModelType === 'one_to_one';
-  const isGroup = activeModelType === 'group';
+  const isOneToOne = activeModelType === "one_to_one";
+  const isGroup = activeModelType === "group";
   const divisionId = activeDivision?.id;
 
   // Fetch stats from database filtered by division
   const { data: stats, isLoading } = useQuery({
-    queryKey: ['admin-stats', divisionId],
+    queryKey: ["admin-stats", divisionId],
     queryFn: async () => {
-      let assignmentsQuery = supabase.from('student_teacher_assignments').select('student_id, teacher_id').eq('status', 'active');
-      let attendanceQuery = supabase.from('attendance').select('status, class_date');
-      let coursesQuery = supabase.from('courses').select('id, status').eq('status', 'active');
-      let enrollmentsQuery = supabase.from('course_enrollments').select('id').eq('status', 'active');
+      let assignmentsQuery = supabase
+        .from("student_teacher_assignments")
+        .select("student_id, teacher_id")
+        .eq("status", "active");
+      let attendanceQuery = supabase.from("attendance").select("status, class_date");
+      let coursesQuery = supabase.from("courses").select("id, status").eq("status", "active");
+      let enrollmentsQuery = supabase.from("course_enrollments").select("id").eq("status", "active");
 
       if (divisionId) {
-        assignmentsQuery = assignmentsQuery.eq('division_id', divisionId);
-        attendanceQuery = attendanceQuery.eq('division_id', divisionId);
-        coursesQuery = coursesQuery.eq('division_id', divisionId);
+        assignmentsQuery = assignmentsQuery.eq("division_id", divisionId);
+        attendanceQuery = attendanceQuery.eq("division_id", divisionId);
+        coursesQuery = coursesQuery.eq("division_id", divisionId);
       }
 
       const [assignmentsRes, attendanceRes, coursesResult, enrollmentsRes] = await Promise.all([
@@ -46,29 +49,36 @@ export function AdminDashboard() {
       ]);
 
       const assignments = assignmentsRes.data || [];
-      const todayAttendance = (attendanceRes.data || []).filter(a => a.class_date === today);
+      const todayAttendance = (attendanceRes.data || []).filter((a) => a.class_date === today);
       const allAttendance = attendanceRes.data || [];
       const courses = coursesResult.data || [];
       const enrollments = enrollmentsRes.data || [];
 
       return {
-        teachers: new Set(assignments.map(a => a.teacher_id)).size,
-        students: new Set(assignments.map(a => a.student_id)).size,
+        teachers: new Set(assignments.map((a) => a.teacher_id)).size,
+        students: new Set(assignments.map((a) => a.student_id)).size,
         activeAssignments: assignments.length,
         classesToday: todayAttendance.length,
-        presentToday: todayAttendance.filter(a => a.status === 'present').length,
+        presentToday: todayAttendance.filter((a) => a.status === "present").length,
         totalMonthClasses: allAttendance.length,
-        monthlyAttendanceRate: allAttendance.length > 0
-          ? Math.round((allAttendance.filter(a => a.status === 'present').length / allAttendance.length) * 100)
-          : 0,
+        monthlyAttendanceRate:
+          allAttendance.length > 0
+            ? Math.round((allAttendance.filter((a) => a.status === "present").length / allAttendance.length) * 100)
+            : 0,
         activeCourses: courses.length,
         totalEnrollments: enrollments.length,
       };
     },
   });
 
-  const activities: { id: string; type: 'attendance' | 'lesson' | 'schedule' | 'payment'; title: string; description: string; time: string }[] = [];
-  const { data: activeBatches } = useActiveBatchesCount();
+  const activities: {
+    id: string;
+    type: "attendance" | "lesson" | "schedule" | "payment";
+    title: string;
+    description: string;
+    time: string;
+  }[] = [];
+  const { data: activeBatches } = useActiveBatchesCount(divisionId);
 
   if (isLoading) {
     return (
@@ -86,16 +96,14 @@ export function AdminDashboard() {
     );
   }
 
-  const contextLabel = activeBranch && activeDivision
-    ? `${activeBranch.name} — ${activeDivision.name}`
-    : 'Dashboard';
+  const contextLabel = activeBranch && activeDivision ? `${activeBranch.name} — ${activeDivision.name}` : "Dashboard";
 
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div>
         <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">
-          {isOneToOne ? 'Mentorship Dashboard' : isGroup ? 'Academy Dashboard' : 'Admin Dashboard'}
+          {isOneToOne ? "Mentorship Dashboard" : isGroup ? "Academy Dashboard" : "Admin Dashboard"}
         </h1>
         <p className="text-muted-foreground text-sm mt-1">{contextLabel}</p>
       </div>
@@ -108,15 +116,30 @@ export function AdminDashboard() {
             <StatCard title="Teachers" value={stats?.teachers || 0} icon={Users} variant="primary" />
             <StatCard title="Assignments" value={stats?.activeAssignments || 0} icon={UserCheck} />
             <StatCard title="Sessions Today" value={stats?.classesToday || 0} icon={Calendar} />
-            <StatCard title="Attendance" value={`${stats?.monthlyAttendanceRate || 0}%`} icon={TrendingUp} variant="gold" />
+            <StatCard
+              title="Attendance"
+              value={`${stats?.monthlyAttendanceRate || 0}%`}
+              icon={TrendingUp}
+              variant="gold"
+            />
           </>
         ) : (
           <>
-            <StatCard title="Active Batches" value={stats?.activeCourses || activeBatches || 0} icon={Layers} variant="primary" />
+            <StatCard
+              title="Active Batches"
+              value={stats?.activeCourses || activeBatches || 0}
+              icon={Layers}
+              variant="primary"
+            />
             <StatCard title="Enrollments" value={stats?.totalEnrollments || 0} icon={ClipboardList} />
             <StatCard title="Teachers" value={stats?.teachers || 0} icon={Users} />
             <StatCard title="Classes Today" value={stats?.classesToday || 0} icon={Calendar} />
-            <StatCard title="Attendance" value={`${stats?.monthlyAttendanceRate || 0}%`} icon={TrendingUp} variant="gold" />
+            <StatCard
+              title="Attendance"
+              value={`${stats?.monthlyAttendanceRate || 0}%`}
+              icon={TrendingUp}
+              variant="gold"
+            />
           </>
         )}
       </div>
@@ -153,7 +176,9 @@ export function AdminDashboard() {
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             <div className="text-center">
-              <p className="text-2xl sm:text-3xl font-serif font-bold text-primary">{stats?.monthlyAttendanceRate || 0}%</p>
+              <p className="text-2xl sm:text-3xl font-serif font-bold text-primary">
+                {stats?.monthlyAttendanceRate || 0}%
+              </p>
               <p className="text-xs text-muted-foreground mt-1">Attendance Rate</p>
             </div>
             <div className="text-center">
