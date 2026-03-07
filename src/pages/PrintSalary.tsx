@@ -5,6 +5,7 @@ import { SalaryStatementTemplate } from '@/components/finance/SalaryStatementTem
 import { Button } from '@/components/ui/button';
 import { Printer, Download, ArrowLeft } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import logoDark from '@/assets/logo-dark.jpg';
 
 export default function PrintSalary() {
   const { payoutId } = useParams<{ payoutId: string }>();
@@ -104,7 +105,7 @@ export default function PrintSalary() {
         paymentMethod={payout.payment_method}
         receiptUrl={payout.receipt_url}
         orgName={org?.name}
-        orgLogo={org?.logo_url}
+        orgLogo={org?.logo_url || logoDark}
       />
     </div>
   );

@@ -566,10 +566,11 @@ export default function Payments() {
     mutationFn: async () => {
       const targetMonth = monthFilter;
       const targetLabel = MONTHS.find(m => m.value === targetMonth)?.label || targetMonth;
-      const { data: existing } = await supabase.from('fee_invoices').select('plan_id, assignment_id').eq('billing_month', targetMonth);
-      const existingPlanIds = new Set((existing || []).filter(e => e.plan_id).map(e => e.plan_id));
-      const existingAssignmentIds = new Set((existing || []).filter(e => e.assignment_id).map(e => e.assignment_id));
+      const { data: existing } = await supabase.from('fee_invoices').select('id, plan_id, assignment_id, amount, status, period_from, period_to').eq('billing_month', targetMonth);
+      const existingPlanMap = new Map((existing || []).filter(e => e.plan_id).map(e => [e.plan_id, e]));
+      const existingAssignmentMap = new Map((existing || []).filter(e => e.assignment_id).map(e => [e.assignment_id, e]));
       const newInvoices: any[] = [];
+      const updatedInvoices: { id: string; amount: number; period_from: string; period_to: string }[] = [];
 
       // Proration helper
       const computeProration = (monthlyFee: number, assignmentStartDate: string | null, assignmentEndDate: string | null, billingMonth: string) => {
@@ -595,6 +596,18 @@ export default function Payments() {
         };
       };
 
+      // Helper to check if existing invoice needs updating
+      const checkAndQueueUpdate = (existingInv: any, prorated: { amount: number; period_from: string; period_to: string }) => {
+        if (existingInv && existingInv.status === 'pending' &&
+            (Math.abs(existingInv.amount - prorated.amount) > 0.01 ||
+             existingInv.period_from !== prorated.period_from ||
+             existingInv.period_to !== prorated.period_to)) {
+          updatedInvoices.push({ id: existingInv.id, amount: prorated.amount, period_from: prorated.period_from, period_to: prorated.period_to });
+          return true; // was updated
+        }
+        return false;
+      };
+
       // 1) Billing plans
       let pq = supabase.from('student_billing_plans').select('id, student_id, assignment_id, net_recurring_fee, currency, branch_id, division_id').eq('is_active', true);
       if (branchId) pq = pq.eq('branch_id', branchId);
@@ -612,13 +625,19 @@ export default function Payments() {
       }
 
       (plans || []).forEach((p: any) => {
-        if (!existingPlanIds.has(p.id) && p.net_recurring_fee > 0) {
+        if (p.net_recurring_fee > 0) {
           const assign = p.assignment_id ? planAssignmentMap[p.assignment_id] : null;
           const startDate = assign?.effective_from_date || null;
           const endDate = (assign?.status === 'active') ? null : (assign?.effective_to_date || null);
           
           const prorated = computeProration(p.net_recurring_fee, startDate, endDate, targetMonth);
-          if (!prorated) return; // Assignment doesn't overlap this month
+          if (!prorated) return;
+
+          const existingInv = existingPlanMap.get(p.id);
+          if (existingInv) {
+            checkAndQueueUpdate(existingInv, prorated);
+            return; // skip insert
+          }
 
           newInvoices.push({
             plan_id: p.id, student_id: p.student_id,
@@ -636,14 +655,20 @@ export default function Payments() {
       if (branchId) aq = aq.eq('branch_id', branchId);
       if (divisionId) aq = aq.eq('division_id', divisionId);
       const { data: assignments } = await aq;
-      const planStudentIds = new Set(newInvoices.map(i => i.student_id));
+      const planStudentIds = new Set([...(plans || []).map((p: any) => p.student_id)]);
       (assignments || []).forEach((a: any) => {
-        if (!existingAssignmentIds.has(a.id) && a.calculated_monthly_fee && !planStudentIds.has(a.student_id)) {
+        if (a.calculated_monthly_fee && !planStudentIds.has(a.student_id)) {
           const startDate = a.effective_from_date || null;
           const endDate = (a.status === 'active') ? null : (a.effective_to_date || null);
           
           const prorated = computeProration(Number(a.calculated_monthly_fee), startDate, endDate, targetMonth);
           if (!prorated) return;
+
+          const existingInv = existingAssignmentMap.get(a.id);
+          if (existingInv) {
+            checkAndQueueUpdate(existingInv, prorated);
+            return;
+          }
 
           newInvoices.push({
             assignment_id: a.id, student_id: a.student_id,
@@ -655,14 +680,26 @@ export default function Payments() {
         }
       });
 
-      if (newInvoices.length === 0) throw new Error('All invoices for this month already exist');
-      const { error } = await supabase.from('fee_invoices').insert(newInvoices);
-      if (error) throw error;
-      return { count: newInvoices.length, label: targetLabel };
+      // Update existing pending invoices with corrected proration
+      for (const upd of updatedInvoices) {
+        await supabase.from('fee_invoices').update({
+          amount: upd.amount, period_from: upd.period_from, period_to: upd.period_to, updated_at: new Date().toISOString(),
+        }).eq('id', upd.id);
+      }
+
+      if (newInvoices.length === 0 && updatedInvoices.length === 0) throw new Error('All invoices for this month already exist and are up to date');
+      if (newInvoices.length > 0) {
+        const { error } = await supabase.from('fee_invoices').insert(newInvoices);
+        if (error) throw error;
+      }
+      return { count: newInvoices.length, updated: updatedInvoices.length, label: targetLabel };
     },
-    onSuccess: ({ count, label }) => {
+    onSuccess: ({ count, updated, label }) => {
       queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
-      toast({ title: `Successfully generated ${count} invoices for ${label}.` });
+      const parts = [];
+      if (count > 0) parts.push(`${count} new`);
+      if (updated > 0) parts.push(`${updated} updated`);
+      toast({ title: `${parts.join(' + ')} invoice(s) for ${label}.` });
     },
     onError: (e: any) => toast({ title: 'Generation failed', description: e.message, variant: 'destructive' }),
   });
