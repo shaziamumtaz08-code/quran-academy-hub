@@ -1,10 +1,10 @@
-import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { SalaryStatementTemplate } from '@/components/finance/SalaryStatementTemplate';
-import { DocumentActions } from '@/components/finance/DocumentActions';
-import { format, parseISO, endOfMonth, eachDayOfInterval } from 'date-fns';
+import { Button } from '@/components/ui/button';
+import { Printer, Download, ArrowLeft } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
 
 export default function PrintSalary() {
   const { payoutId } = useParams<{ payoutId: string }>();
@@ -45,14 +45,6 @@ export default function PrintSalary() {
     },
   });
 
-  // Auto-print
-  useEffect(() => {
-    if (payout && teacherProfile && !isLoading) {
-      const timer = setTimeout(() => window.print(), 800);
-      return () => clearTimeout(timer);
-    }
-  }, [payout, teacherProfile, isLoading]);
-
   if (isLoading || !payout) {
     return <div style={{ width: '794px', margin: '0 auto', padding: '40px', textAlign: 'center' }}><p>Loading salary statement...</p></div>;
   }
@@ -76,8 +68,18 @@ export default function PrintSalary() {
 
   return (
     <div id="print-root" style={{ margin: '0 auto' }}>
-      <div className="print:hidden flex items-center justify-end px-4 py-2 gap-2">
-        <DocumentActions onPrint={() => window.print()} onDownload={() => window.print()} />
+      <div className="print:hidden flex items-center justify-between px-4 py-3 bg-muted/50 border-b max-w-[794px] mx-auto">
+        <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => window.close()}>
+          <ArrowLeft className="h-3.5 w-3.5" /> Back
+        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => window.print()}>
+            <Download className="h-3.5 w-3.5" /> Download PDF
+          </Button>
+          <Button size="sm" className="gap-1.5" onClick={() => window.print()}>
+            <Printer className="h-3.5 w-3.5" /> Print
+          </Button>
+        </div>
       </div>
       <SalaryStatementTemplate
         teacherName={teacherProfile?.full_name || 'Unknown'}
