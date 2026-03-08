@@ -293,6 +293,10 @@ export default function Assignments() {
         if (status === 'left' || status === 'completed') {
           updatePayload.effective_to_date = effectiveDate;
         }
+        // For reactivation (active), reset billing start date to reactivation date
+        if (status === 'active') {
+          updatePayload.effective_from_date = effectiveDate;
+        }
       }
       const { error } = await supabase
         .from('student_teacher_assignments')
