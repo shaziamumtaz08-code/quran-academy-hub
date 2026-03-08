@@ -293,6 +293,10 @@ export default function Assignments() {
         if (status === 'left' || status === 'completed') {
           updatePayload.effective_to_date = effectiveDate;
         }
+        // For reactivation (active), reset billing start date to reactivation date
+        if (status === 'active') {
+          updatePayload.effective_from_date = effectiveDate;
+        }
       }
       const { error } = await supabase
         .from('student_teacher_assignments')
@@ -969,6 +973,7 @@ export default function Assignments() {
               <DialogDescription>
                 Change <strong>{statusChangeDialog?.assignment.student_name}</strong>'s assignment status to <strong className="capitalize">{statusChangeDialog?.newStatus}</strong>.
                 {statusChangeDialog?.newStatus === 'left' && ' This will also clear all schedules.'}
+                {statusChangeDialog?.newStatus === 'active' && ' The effective date will be used as the new billing start date (fees prorated from this date).'}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">

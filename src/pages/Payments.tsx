@@ -632,7 +632,7 @@ export default function Payments() {
         const { data: studentAssigns } = await supabase.from('student_teacher_assignments')
           .select('id, student_id, effective_from_date, effective_to_date, status')
           .in('student_id', fallbackStudentIds)
-          .in('status', ['active']);
+          .in('status', ['active', 'paused']);
         (studentAssigns || []).forEach((a: any) => {
           if (!studentAssignmentMap[a.student_id]) studentAssignmentMap[a.student_id] = a;
         });

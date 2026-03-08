@@ -1,59 +1,95 @@
 
+# Plan: Synchronize Edit Invoice with Record Payment Form + Multi-Month Payment UX
 
-# Fix Paused Student Invoice Leak + Reactivation Proration
+## Problem Summary
 
-## Problems Found
+1. **Edit Invoice form is missing fields** that the Record Payment form has: Realized (PKR), exchange rate display, Proof of Payment upload, and shortfall/resolution handling.
+2. **Multi-month payments** require clarity: if a student pays 40 AUD covering Dec (10) + Jan (30), can the system auto-split it?
 
-### 1. Invoice still generated for paused students without `assignment_id` on billing plan
-**Root cause**: In `Payments.tsx` line 628-639, the fallback query for plans without `assignment_id` only fetches `active` assignments. If ALL of a student's assignments are paused, `studentAssignmentMap` returns nothing, so `assign` is `null`. Line 647 checks `assign?.status === 'paused'` which evaluates to `undefined !== 'paused'` -- the plan passes through and generates a full-month invoice.
+---
 
-**Fix**: When `assign` is null but the student has paused assignments, skip the invoice. Change the logic to: if no assignment is resolved (null), also check if the student has ANY paused assignments and skip. Simpler approach: also fetch paused assignments in the fallback query, so the status check on line 647 can catch them.
+## Part 1: Make Edit Invoice Form Identical to Record Payment
 
-### 2. Reactivation doesn't update `effective_from_date`
-**Root cause**: In `Assignments.tsx` line 288-311, when status changes to `active` (reactivation from paused), only `status` and `status_effective_date` are updated. The `effective_from_date` is NOT updated to the reactivation date. This means when the student is reactivated, billing still uses the original start date instead of prorating from the reactivation date.
+The Edit Invoice dialog will be restructured to match Record Payment field-for-field:
 
-**Fix**: When status changes TO `active` (reactivation), set `effective_from_date = effectiveDate` so billing prorates from the reactivation day.
+| Section | Record Payment | Edit Invoice (Current) | Action |
+|---|---|---|---|
+| Invoice summary bar | Student name + expected | Missing | **Add** |
+| Payment Period (From/To) | Yes | Yes | Keep |
+| Payment Date / Paid At | Yes | Yes | Keep (label: "Paid At") |
+| Receiving Channel | Yes | Yes | Keep |
+| Amount (currency) | Yes | Yes | Keep |
+| Realized (PKR) | Yes | **Missing** | **Add** |
+| Exchange Rate display | Yes | **Missing** | **Add** |
+| Shortfall + Resolution | Yes | **Missing** | **Add** (auto-calculated) |
+| Proof of Payment upload | Yes | **Missing** | **Add** |
+| Notes / Remark | Yes | Yes | Keep |
+| Amount Paid | N/A (auto) | Yes | Keep (admin override) |
+| Forgiven Amount | N/A (auto) | Yes | Keep (admin override) |
+| Currency | N/A (from invoice) | Yes | Keep |
+| Billing Month | N/A (from invoice) | Yes | Keep |
+| Status | N/A (auto) | Yes | Keep |
+| Due Date | N/A | Yes | Keep |
 
-### 3. Billing plans without `assignment_id` need broader fallback
-For students like Areeba Afzaal and Muhammad Ammar, if their billing plans lack `assignment_id`, the system must check ALL assignments (including paused) to determine if invoicing should be blocked.
+The Edit Invoice dialog will have the same visual layout and sections as Record Payment, plus the extra admin-only fields (Status, Due Date, Currency, Billing Month, Forgiven Amount) below a separator labeled "Admin Overrides".
+
+---
+
+## Part 2: Multi-Month Payment Strategy
+
+### Current mechanism
+- The system is **invoice-based**: each month generates a separate invoice per student.
+- The bulk "Record Payment" (cart pattern) already supports selecting multiple invoices and paying them with a single receipt.
+- The payment is **allocated sequentially** to each selected invoice (oldest first), with shortfall handling for any remainder.
+
+### The easier solution (recommended)
+Rather than building complex date-range-to-invoice auto-splitting, the **existing cart system already solves this**:
+
+1. Admin selects invoices for Dec 2025 and Jan 2026 using checkboxes.
+2. Clicks "Record Payment" -- both invoices appear in the summary.
+3. Enters 40 AUD total, one receipt screenshot, one receiving channel.
+4. System auto-allocates: 10 AUD to Dec (outstanding), 30 AUD to Jan (outstanding).
+5. Both invoices update. Single receipt is linked to both transactions.
+
+**No new development needed** for this flow -- it already works. The From/To date range in the payment form captures the coverage period for reference, but the allocation is driven by the invoice amounts, not dates.
+
+### What WILL be improved
+- Add a **helper tooltip/info text** on the Record Payment dialog explaining: "Selected invoices are paid in order. Amount is allocated starting from the first invoice."
+- Ensure the **Edit Payment** form (on `payment_transactions`) also mirrors the Record Payment layout for consistency.
 
 ---
 
 ## Technical Changes
 
-### A. `src/pages/Payments.tsx` -- Fix fallback query to catch paused students
+### File: `src/pages/Payments.tsx`
 
-Change the fallback query (lines 632-635) from filtering only `active` to fetching both `active` and `paused`:
-```typescript
-.in('status', ['active', 'paused']);
-```
-This ensures `assign` is populated for paused students, and line 647's `assign?.status === 'paused'` check correctly blocks invoice generation.
+1. **Add state for receipt file in edit mode** -- reuse `receiptInputRef` or add a second ref.
 
-### B. `src/pages/Assignments.tsx` -- Update `effective_from_date` on reactivation
+2. **Add `amount_local` (Realized PKR) field to `editInvoiceData` state** and persist it. This will require either:
+   - Storing realized amount on the invoice itself (new column), OR
+   - Looking up from `payment_transactions` and allowing override.
+   
+   Since `payment_transactions` already tracks `amount_local`, the Edit Invoice form will add a display-only "Realized (PKR)" field that shows the sum from linked transactions, plus an editable override field.
 
-In `updateStatusMutation` (lines 288-311), add logic: when the new status is `active` and an effective date is provided, also update `effective_from_date` to that date. This ensures billing prorates from the reactivation date.
+3. **Restructure the Edit Invoice dialog** to follow Record Payment's visual order:
+   - Top: Student name + invoice summary bar
+   - Billing Month + Status row
+   - Payment Period section (From / To)
+   - Separator
+   - Payment Details section (Paid At + Receiving Channel)
+   - Amount row: Amount (currency) + Realized (PKR)
+   - Exchange rate auto-calculated display
+   - Amount Paid + Forgiven Amount row
+   - Currency + Due Date row
+   - Proof of Payment upload area
+   - Remark / Notes textarea
 
-```typescript
-if (status === 'active' && effectiveDate) {
-  updatePayload.effective_from_date = effectiveDate;
-}
-```
+4. **Receipt upload in edit mode**: Allow uploading a new receipt that updates the latest `payment_transaction.receipt_url` for this invoice.
 
-Also update the dialog description (line 971-972) to explain the reactivation date purpose when activating.
+5. **Add info text** to Record Payment dialog: "Amounts are allocated across selected invoices in order."
 
-### C. `src/pages/Assignments.tsx` -- Dialog label clarity
+### Database
+- No new columns needed. The `fee_invoices` table already has `period_from`, `period_to`, `payment_method`, `paid_at`. The realized amount lives in `payment_transactions.amount_local`.
 
-Update the status change dialog description to mention that for reactivation, the effective date will be used as the new billing start date.
-
----
-
-## Summary
-
-| Issue | Fix |
-|---|---|
-| Plans without `assignment_id` skip paused check | Fetch paused assignments in fallback query |
-| Reactivation doesn't reset billing start date | Set `effective_from_date` on reactivation |
-| Areeba & Ammar still getting invoices | Both fixes above resolve this |
-
-No database migrations needed -- all changes are code-level.
-
+### No changes needed for multi-month payments
+- The existing cart/bulk payment system handles this correctly already. The plan is to add UX guidance text only.
