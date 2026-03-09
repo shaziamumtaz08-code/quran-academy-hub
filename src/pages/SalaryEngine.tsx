@@ -423,29 +423,82 @@ export default function SalaryEngine() {
   });
 
   const markPaid = useMutation({
-    mutationFn: async ({ teacherId, type, reason, invoiceNumber, receiptUrls }: { teacherId: string; type: 'full' | 'partial'; reason?: string; invoiceNumber?: string; receiptUrls?: string[] }) => {
+    mutationFn: async ({ teacherId, type, reason, invoiceNumber, receiptUrls, amountPaid }: { teacherId: string; type: 'full' | 'partial'; reason?: string; invoiceNumber?: string; receiptUrls?: string[]; amountPaid?: number }) => {
       const payout = existingPayouts.find((p: any) => p.teacher_id === teacherId);
       if (!payout) {
         // Auto-save first
         const teacher = salaryData.find(t => t.teacherId === teacherId);
         if (teacher) await savePayout.mutateAsync(teacher);
       }
-      const payoutRefresh = (await supabase.from('salary_payouts').select('id').eq('teacher_id', teacherId).eq('salary_month', salaryMonth).single()).data;
+      const payoutRefresh = (await supabase.from('salary_payouts').select('id, net_salary').eq('teacher_id', teacherId).eq('salary_month', salaryMonth).single()).data;
       if (!payoutRefresh) throw new Error('Save payout first');
-      const { error } = await supabase.from('salary_payouts').update({
-        status: 'paid',
-        paid_at: new Date().toISOString(),
-        paid_by: user?.id,
-        payment_method: type === 'partial' ? `Partial: ${reason}` : 'Full Payment',
-        invoice_number: invoiceNumber || null,
-        receipt_urls: receiptUrls || [],
-        // Also maintain single receipt_url for backward compatibility
-        receipt_url: receiptUrls?.[0] || null,
-      }).eq('id', payoutRefresh.id);
-      if (error) throw error;
+
+      const netSalary = Number(payoutRefresh.net_salary) || 0;
+
+      if (type === 'partial') {
+        const paidAmount = amountPaid || 0;
+        // If amount paid >= net salary, auto-promote to paid
+        const finalStatus = paidAmount >= netSalary ? 'paid' : 'partially_paid';
+        const { error } = await supabase.from('salary_payouts').update({
+          status: finalStatus,
+          amount_paid: paidAmount,
+          partial_notes: reason || null,
+          paid_at: finalStatus === 'paid' ? new Date().toISOString() : null,
+          paid_by: finalStatus === 'paid' ? user?.id : null,
+          payment_method: 'Partial Payment',
+          invoice_number: invoiceNumber || null,
+          receipt_urls: receiptUrls || [],
+          receipt_url: receiptUrls?.[0] || null,
+        }).eq('id', payoutRefresh.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('salary_payouts').update({
+          status: 'paid',
+          amount_paid: netSalary,
+          paid_at: new Date().toISOString(),
+          paid_by: user?.id,
+          payment_method: 'Full Payment',
+          invoice_number: invoiceNumber || null,
+          receipt_urls: receiptUrls || [],
+          receipt_url: receiptUrls?.[0] || null,
+        }).eq('id', payoutRefresh.id);
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       toast({ title: 'Payment recorded' });
+      queryClient.invalidateQueries({ queryKey: ['salary-payouts'] });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const topUpPayment = useMutation({
+    mutationFn: async ({ teacherId, amount, notes, receiptUrls }: { teacherId: string; amount: number; notes: string; receiptUrls?: string[] }) => {
+      const payout = existingPayouts.find((p: any) => p.teacher_id === teacherId);
+      if (!payout) throw new Error('No payout record found');
+      const currentPaid = Number(payout.amount_paid) || 0;
+      const netSalary = Number(payout.net_salary) || 0;
+      const newTotal = currentPaid + amount;
+      const finalStatus = newTotal >= netSalary ? 'paid' : 'partially_paid';
+      const existingNotes = payout.partial_notes || '';
+      const combinedNotes = existingNotes ? `${existingNotes}\n---\nTop-up: ${notes}` : `Top-up: ${notes}`;
+      
+      // Merge receipt URLs
+      const existingReceipts = payout.receipt_urls || [];
+      const mergedReceipts = [...existingReceipts, ...(receiptUrls || [])].slice(0, 3);
+
+      const { error } = await supabase.from('salary_payouts').update({
+        status: finalStatus,
+        amount_paid: newTotal,
+        partial_notes: combinedNotes,
+        ...(finalStatus === 'paid' ? { paid_at: new Date().toISOString(), paid_by: user?.id } : {}),
+        receipt_urls: mergedReceipts,
+        receipt_url: mergedReceipts[0] || null,
+      }).eq('id', payout.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: 'Top-up payment recorded' });
       queryClient.invalidateQueries({ queryKey: ['salary-payouts'] });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
