@@ -781,8 +781,8 @@ export default function SalaryEngine() {
                 )}
                 {filteredData.map(teacher => {
                   const payout = existingPayouts.find((p: any) => p.teacher_id === teacher.teacherId);
-                  const canRevert = payout && (payout.status === 'confirmed' || payout.status === 'paid' || payout.status === 'locked');
-                  const canSave = teacher.payoutStatus !== 'locked' && teacher.payoutStatus !== 'paid';
+                  const canRevert = payout && (payout.status === 'confirmed' || payout.status === 'paid' || payout.status === 'locked' || payout.status === 'partially_paid');
+                  const canSave = teacher.payoutStatus !== 'locked' && teacher.payoutStatus !== 'paid' && teacher.payoutStatus !== 'partially_paid';
                   
                   return (
                     <TableRow key={teacher.teacherId} className="group">
