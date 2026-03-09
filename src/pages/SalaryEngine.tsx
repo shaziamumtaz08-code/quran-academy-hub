@@ -862,9 +862,14 @@ export default function SalaryEngine() {
           month={month}
           editAmounts={editAmounts}
           onEditAmount={(id, amt) => setEditAmounts(prev => ({ ...prev, [id]: amt }))}
-          onMarkPaid={(type, reason, invoiceNumber, receiptUrls) => {
+          onMarkPaid={(type, reason, invoiceNumber, receiptUrls, amountPaid) => {
             if (selectedTeacherId) {
-              markPaid.mutate({ teacherId: selectedTeacherId, type, reason, invoiceNumber, receiptUrls });
+              markPaid.mutate({ teacherId: selectedTeacherId, type, reason, invoiceNumber, receiptUrls, amountPaid });
+            }
+          }}
+          onTopUp={(amount, notes, receiptUrls) => {
+            if (selectedTeacherId) {
+              topUpPayment.mutate({ teacherId: selectedTeacherId, amount, notes, receiptUrls });
             }
           }}
           onUpdateProofs={(receiptUrls, invoiceNumber) => {
@@ -878,9 +883,12 @@ export default function SalaryEngine() {
             }
           }}
           isPayingPending={markPaid.isPending}
+          isTopUpPending={topUpPayment.isPending}
           isUpdatingProofs={updateProofs.isPending}
           isLocked={selectedTeacher?.payoutStatus === 'locked'}
           isPaid={selectedTeacher?.payoutStatus === 'paid'}
+          isPartiallyPaid={selectedTeacher?.payoutStatus === 'partially_paid'}
+          existingAmountPaid={Number(selectedPayout?.amount_paid) || 0}
           viewerRole={isTeacherView ? 'teacher' : 'admin'}
           existingReceiptUrls={selectedPayout?.receipt_urls || []}
           existingInvoiceNumber={selectedPayout?.invoice_number || null}
