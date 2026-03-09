@@ -61,7 +61,7 @@ interface SalaryStatementTemplateProps {
 export function SalaryStatementTemplate({
   teacherName, teacherId, email, phone, location,
   bankName, bankAccountTitle, bankAccountNumber, bankIban,
-  monthLabel, invoiceNumber, students, extraClassAmount,
+  monthLabel, invoiceNumber, students, roleSalaries = [], extraClassAmount,
   adjustments, baseSalary, additions, deductions, netSalary,
   paymentDate, paymentMethod, receiptUrl,
   orgName = 'Al-Quran Time Academy', orgLogo
