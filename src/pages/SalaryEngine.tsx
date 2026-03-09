@@ -55,10 +55,23 @@ interface StudentPayoutRow {
   lastPaymentDate: string | null;
 }
 
+export interface RoleSalaryRow {
+  role: string;
+  monthlyAmount: number;
+  effectiveFrom: string;
+  effectiveTo: string;
+  activeDays: number;
+  totalDays: number;
+  proratedAmount: number;
+  editedAmount: number | null;
+  staffSalaryId: string;
+}
+
 interface TeacherSalaryRow {
   teacherId: string;
   teacherName: string;
   students: StudentPayoutRow[];
+  roleSalaries: RoleSalaryRow[];
   baseSalary: number;
   extraClassAmount: number;
   adjustmentAmount: number;
@@ -66,6 +79,7 @@ interface TeacherSalaryRow {
   netSalary: number;
   payoutStatus: string;
   payoutId?: string | null;
+  staffType: 'teacher' | 'staff' | 'dual';
 }
 
 const REVERT_REASONS = [
@@ -76,6 +90,8 @@ const REVERT_REASONS = [
   'Other',
 ];
 
+type StaffFilter = 'all' | 'teachers' | 'staff';
+
 export default function SalaryEngine() {
   const { user, activeRole } = useAuth();
   const { toast } = useToast();
@@ -85,6 +101,8 @@ export default function SalaryEngine() {
   const [salaryMonth, setSalaryMonth] = useState(currentSalaryMonth);
   const [searchQuery, setSearchQuery] = useState('');
   const [editAmounts, setEditAmounts] = useState<Record<string, number>>({});
+  const [editRoleAmounts, setEditRoleAmounts] = useState<Record<string, number>>({});
+  const [staffFilter, setStaffFilter] = useState<StaffFilter>('all');
 
   // Modals
   const [leaveModalOpen, setLeaveModalOpen] = useState(false);
@@ -106,7 +124,6 @@ export default function SalaryEngine() {
   const monthStart = `${salaryMonth}-01`;
   const fullMonthEnd = format(endOfMonth(parseISO(monthStart)), 'yyyy-MM-dd');
   const today = format(new Date(), 'yyyy-MM-dd');
-  // For current/future months, cap at yesterday so we don't count future "not marked" days
   const monthEnd = today < fullMonthEnd ? today : fullMonthEnd;
   const daysInMonth = new Date(year, month, 0).getDate();
   const allDatesInMonth = eachDayOfInterval({ start: parseISO(monthStart), end: parseISO(monthEnd) });
@@ -122,6 +139,47 @@ export default function SalaryEngine() {
       return data || [];
     },
   });
+
+  // Query staff_salaries for the month
+  const { data: staffSalaries = [] } = useQuery({
+    queryKey: ['staff-salaries', salaryMonth],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('staff_salaries')
+        .select('*')
+        .lte('effective_from', fullMonthEnd)
+        .or(`effective_to.is.null,effective_to.gte.${monthStart}`);
+      return data || [];
+    },
+  });
+
+  // Query profiles for staff salary users (non-teachers who have staff_salaries)
+  const staffUserIds = useMemo(() => {
+    const teacherIds = new Set(teachers.map((t: any) => t.id));
+    return [...new Set(staffSalaries.map((s: any) => s.user_id).filter((id: string) => !teacherIds.has(id)))];
+  }, [staffSalaries, teachers]);
+
+  const { data: staffProfiles = [] } = useQuery({
+    queryKey: ['salary-staff-profiles', staffUserIds],
+    queryFn: async () => {
+      if (!staffUserIds.length) return [];
+      const { data } = await supabase.from('profiles')
+        .select('id, full_name, email, whatsapp_number, country, city, bank_name, bank_account_title, bank_account_number, bank_iban')
+        .in('id', staffUserIds)
+        .is('archived_at', null)
+        .order('full_name');
+      return data || [];
+    },
+    enabled: staffUserIds.length > 0,
+  });
+
+  // Combined profiles: teachers + staff-only profiles
+  const allSalariedProfiles = useMemo(() => {
+    const profileMap = new Map<string, any>();
+    teachers.forEach((t: any) => profileMap.set(t.id, t));
+    staffProfiles.forEach((s: any) => { if (!profileMap.has(s.id)) profileMap.set(s.id, s); });
+    return Array.from(profileMap.values());
+  }, [teachers, staffProfiles]);
 
   const { data: assignments = [] } = useQuery({
     queryKey: ['assignments-salary', salaryMonth],
@@ -216,11 +274,46 @@ export default function SalaryEngine() {
     },
   });
 
+  // ── Role Salary Calculation Helper ──
+
+  const calculateRoleSalaries = (userId: string): RoleSalaryRow[] => {
+    const userStaffSalaries = staffSalaries.filter((s: any) => s.user_id === userId);
+    return userStaffSalaries.map((ss: any) => {
+      const effFrom = ss.effective_from;
+      const effTo = ss.effective_to || fullMonthEnd;
+      const dateFrom = effFrom > monthStart ? effFrom : monthStart;
+      const dateTo = effTo < fullMonthEnd ? effTo : fullMonthEnd;
+
+      if (dateFrom > dateTo) return null;
+
+      const fromDate = parseISO(dateFrom);
+      const toDate = parseISO(dateTo);
+      const activeDays = Math.max(1, Math.floor((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+      
+      let proratedAmount = ss.monthly_amount;
+      if (ss.prorate_partial_months && activeDays < daysInMonth) {
+        proratedAmount = (ss.monthly_amount / daysInMonth) * activeDays;
+      }
+
+      return {
+        role: ss.role,
+        monthlyAmount: Number(ss.monthly_amount),
+        effectiveFrom: dateFrom,
+        effectiveTo: dateTo,
+        activeDays,
+        totalDays: daysInMonth,
+        proratedAmount: Math.round(proratedAmount * 100) / 100,
+        editedAmount: editRoleAmounts[ss.id] !== undefined ? editRoleAmounts[ss.id] : null,
+        staffSalaryId: ss.id,
+      } as RoleSalaryRow;
+    }).filter((r): r is RoleSalaryRow => r !== null);
+  };
+
   // ── Calculation Engine ──
 
   const salaryData: TeacherSalaryRow[] = useMemo(() => {
-    return teachers.map((teacher: any) => {
-      const teacherAssignments = assignments.filter((a: any) => a.teacher_id === teacher.id);
+    return allSalariedProfiles.map((profile: any) => {
+      const teacherAssignments = assignments.filter((a: any) => a.teacher_id === profile.id);
 
       const studentRows: StudentPayoutRow[] = teacherAssignments.map((assign: any) => {
         const payoutAmount = Number(assign.payout_amount) || 0;
@@ -232,14 +325,13 @@ export default function SalaryEngine() {
         const dateFrom = effectiveFrom > monthStart ? effectiveFrom : monthStart;
         const dateTo = effectiveTo < monthEnd ? effectiveTo : monthEnd;
 
-        // Skip assignments that don't overlap with the salary month
         if (dateFrom > dateTo) return null;
 
         const fromDate = parseISO(dateFrom);
         const toDate = parseISO(dateTo);
         const totalDaysInRange = Math.max(1, Math.floor((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
 
-        const teacherLeaves = leaveEvents.filter((l: any) => l.teacher_id === teacher.id);
+        const teacherLeaves = leaveEvents.filter((l: any) => l.teacher_id === profile.id);
         let unpaidLeaveDays = 0;
         const leaveDateSet = new Set<string>();
         teacherLeaves.forEach((leave: any) => {
@@ -259,11 +351,10 @@ export default function SalaryEngine() {
 
         const eligibleDays = totalDaysInRange - unpaidLeaveDays;
 
-        const studentAttendance = attendance.filter((a: any) => a.teacher_id === teacher.id && a.student_id === assign.student_id);
+        const studentAttendance = attendance.filter((a: any) => a.teacher_id === profile.id && a.student_id === assign.student_id);
         const attendanceMap = new Map<string, string>();
         studentAttendance.forEach((a: any) => attendanceMap.set(a.class_date, a.status));
 
-        // Determine scheduled days of week for this assignment
         const assignSchedules = schedules.filter((s: any) => s.assignment_id === assign.id);
         const scheduledDays = new Set(assignSchedules.map((s: any) => s.day_of_week?.toLowerCase()));
 
@@ -279,7 +370,6 @@ export default function SalaryEngine() {
             else if (attStatus === 'rescheduled') status = 'rescheduled';
             else if (leaveDateSet.has(dateStr)) status = 'leave';
             else if (scheduledDays.size > 0 && !scheduledDays.has(dayName)) status = 'holiday';
-            // else remains 'none' (not marked on a scheduled day)
             return { date: dateStr, status };
           });
 
@@ -323,54 +413,72 @@ export default function SalaryEngine() {
         };
       }).filter((row): row is StudentPayoutRow => row !== null);
 
-      const baseSalary = studentRows.reduce((sum, r) => sum + (r.editedAmount ?? r.calculatedAmount), 0);
-      const teacherExtras = extraClasses.filter((e: any) => e.teacher_id === teacher.id);
+      // Role-based salaries
+      const roleSalaries = calculateRoleSalaries(profile.id);
+
+      const hasStudents = studentRows.length > 0;
+      const hasRoleSalaries = roleSalaries.length > 0;
+
+      // Skip users with neither students nor role salaries
+      if (!hasStudents && !hasRoleSalaries) return null;
+
+      const teachingBase = studentRows.reduce((sum, r) => sum + (r.editedAmount ?? r.calculatedAmount), 0);
+      const roleBase = roleSalaries.reduce((sum, r) => sum + (r.editedAmount ?? r.proratedAmount), 0);
+      const baseSalary = teachingBase + roleBase;
+      
+      const teacherExtras = extraClasses.filter((e: any) => e.teacher_id === profile.id);
       const extraClassAmount = teacherExtras.reduce((sum: number, e: any) => sum + Number(e.rate), 0);
-      const teacherAdj = salaryAdjustments.filter((a: any) => a.teacher_id === teacher.id);
+      const teacherAdj = salaryAdjustments.filter((a: any) => a.teacher_id === profile.id);
       const additions = teacherAdj.filter((a: any) => ['bonus', 'allowance', 'expense'].includes(a.adjustment_type)).reduce((s: number, a: any) => s + Number(a.amount), 0);
       const deductions = teacherAdj.filter((a: any) => a.adjustment_type === 'deduction').reduce((s: number, a: any) => s + Number(a.amount), 0);
       const netSalary = baseSalary + extraClassAmount + additions - deductions;
-      const existingPayout = existingPayouts.find((p: any) => p.teacher_id === teacher.id);
+      const existingPayout = existingPayouts.find((p: any) => p.teacher_id === profile.id);
+
+      const staffType = hasStudents && hasRoleSalaries ? 'dual' : hasStudents ? 'teacher' : 'staff';
 
       return {
-        teacherId: teacher.id,
-        teacherName: teacher.full_name,
+        teacherId: profile.id,
+        teacherName: profile.full_name,
         students: studentRows,
+        roleSalaries,
         baseSalary: Math.round(baseSalary * 100) / 100,
         extraClassAmount: Math.round(extraClassAmount * 100) / 100,
         adjustmentAmount: Math.round(additions * 100) / 100,
         deductions: Math.round(deductions * 100) / 100,
         netSalary: Math.round(netSalary * 100) / 100,
         payoutStatus: existingPayout?.status || 'draft',
+        staffType,
       };
-    }).filter(t => t.students.length > 0);
-  }, [teachers, assignments, attendance, leaveEvents, extraClasses, salaryAdjustments, existingPayouts, feeInvoices, schedules, salaryMonth, editAmounts, daysInMonth, allDatesInMonth, monthStart, monthEnd]);
+    }).filter((t): t is TeacherSalaryRow => t !== null);
+  }, [allSalariedProfiles, assignments, attendance, leaveEvents, extraClasses, salaryAdjustments, existingPayouts, feeInvoices, schedules, staffSalaries, salaryMonth, editAmounts, editRoleAmounts, daysInMonth, allDatesInMonth, monthStart, monthEnd, fullMonthEnd]);
 
   const filteredData = useMemo(() => {
     let data = salaryData;
-    // Teachers only see their own salary
     if (isTeacherView && user?.id) {
       data = data.filter(t => t.teacherId === user.id);
+    }
+    // Apply staff filter
+    if (staffFilter === 'teachers') {
+      data = data.filter(t => t.staffType === 'teacher' || t.staffType === 'dual');
+    } else if (staffFilter === 'staff') {
+      data = data.filter(t => t.staffType === 'staff' || t.staffType === 'dual');
     }
     if (!searchQuery) return data;
     const q = searchQuery.toLowerCase();
     return data.filter(t => t.teacherName.toLowerCase().includes(q));
-  }, [salaryData, searchQuery, isTeacherView, user?.id]);
+  }, [salaryData, searchQuery, isTeacherView, user?.id, staffFilter]);
 
   const totalPayroll = salaryData.reduce((s, t) => s + t.netSalary, 0);
   const paidCount = salaryData.filter(t => t.payoutStatus === 'paid' || t.payoutStatus === 'locked' || t.payoutStatus === 'partially_paid').length;
   const partialCount = salaryData.filter(t => t.payoutStatus === 'partially_paid').length;
   const draftCount = salaryData.filter(t => t.payoutStatus === 'draft' || t.payoutStatus === 'confirmed').length;
 
-  // Selected teacher for sheet
   const selectedTeacher = salaryData.find(t => t.teacherId === selectedTeacherId) || null;
-  const selectedProfile = teachers.find((t: any) => t.id === selectedTeacherId) || null;
+  const selectedProfile = allSalariedProfiles.find((t: any) => t.id === selectedTeacherId) || null;
 
-  // Teacher's own attendance snapshot
   const teacherAttendance = useMemo(() => {
     if (!selectedTeacherId) return { present: 0, absent: 0, leave: 0, notMarked: 0 };
     const teacherAtt = attendance.filter((a: any) => a.teacher_id === selectedTeacherId);
-    const uniqueDates = new Set(teacherAtt.map((a: any) => a.class_date));
     const presentDates = new Set(teacherAtt.filter((a: any) => a.status === 'present' || a.status === 'late').map((a: any) => a.class_date));
     const absentDates = new Set(teacherAtt.filter((a: any) => a.status === 'absent').map((a: any) => a.class_date));
     const leaveDates = leaveEvents.filter((l: any) => l.teacher_id === selectedTeacherId).length;
@@ -382,7 +490,6 @@ export default function SalaryEngine() {
     };
   }, [selectedTeacherId, attendance, leaveEvents, daysInMonth]);
 
-  // Teacher adjustments for sheet
   const selectedAdjustments = useMemo(() => {
     if (!selectedTeacherId) return [];
     return salaryAdjustments.filter((a: any) => a.teacher_id === selectedTeacherId);
@@ -403,11 +510,15 @@ export default function SalaryEngine() {
         gross_salary: teacher.baseSalary + teacher.extraClassAmount + teacher.adjustmentAmount,
         deductions: teacher.deductions,
         net_salary: teacher.netSalary,
-        calculation_json: JSON.parse(JSON.stringify({ students: teacher.students, calculated_at: new Date().toISOString() })),
+        calculation_json: JSON.parse(JSON.stringify({
+          students: teacher.students,
+          roleSalaries: teacher.roleSalaries,
+          staffType: teacher.staffType,
+          calculated_at: new Date().toISOString(),
+        })),
         status: 'confirmed',
       };
       if (existing) {
-        // Block save when paid or locked
         if (existing.status === 'locked' || existing.status === 'paid') throw new Error('Payout is ' + existing.status + ', cannot edit calculations');
         const { error } = await supabase.from('salary_payouts').update(payload).eq('id', existing.id);
         if (error) throw error;
@@ -427,7 +538,6 @@ export default function SalaryEngine() {
     mutationFn: async ({ teacherId, type, reason, invoiceNumber, receiptUrls, amountPaid }: { teacherId: string; type: 'full' | 'partial'; reason?: string; invoiceNumber?: string; receiptUrls?: string[]; amountPaid?: number }) => {
       const payout = existingPayouts.find((p: any) => p.teacher_id === teacherId);
       if (!payout) {
-        // Auto-save first
         const teacher = salaryData.find(t => t.teacherId === teacherId);
         if (teacher) await savePayout.mutateAsync(teacher);
       }
@@ -438,7 +548,6 @@ export default function SalaryEngine() {
 
       if (type === 'partial') {
         const paidAmount = amountPaid || 0;
-        // If amount paid >= net salary, auto-promote to paid
         const finalStatus = paidAmount >= netSalary ? 'paid' : 'partially_paid';
         const { error } = await supabase.from('salary_payouts').update({
           status: finalStatus,
@@ -484,7 +593,6 @@ export default function SalaryEngine() {
       const existingNotes = payout.partial_notes || '';
       const combinedNotes = existingNotes ? `${existingNotes}\n---\nTop-up: ${notes}` : `Top-up: ${notes}`;
       
-      // Merge receipt URLs
       const existingReceipts = payout.receipt_urls || [];
       const mergedReceipts = [...existingReceipts, ...(receiptUrls || [])].slice(0, 3);
 
@@ -561,7 +669,6 @@ export default function SalaryEngine() {
       }).eq('id', payout.id);
       if (error) throw error;
       
-      // Log activity
       await trackActivity({
         action: 'payment_edited',
         entityType: 'payment_transaction',
@@ -649,6 +756,14 @@ export default function SalaryEngine() {
     }
   };
 
+  const getStaffTypeBadge = (staffType: string) => {
+    switch (staffType) {
+      case 'staff': return <Badge variant="outline" className="text-[10px] bg-purple-50 text-purple-700 border-purple-200">Staff</Badge>;
+      case 'dual': return <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">Dual Role</Badge>;
+      default: return null;
+    }
+  };
+
   const handleRevertClick = (teacherId: string) => {
     setRevertTeacherId(teacherId);
     setRevertReason('');
@@ -666,7 +781,6 @@ export default function SalaryEngine() {
     revertToDraft.mutate({ teacherId: revertTeacherId, reason: finalReason });
   };
 
-  // Get existing payout data for selected teacher
   const selectedPayout = existingPayouts.find((p: any) => p.teacher_id === selectedTeacherId);
 
   return (
@@ -710,11 +824,22 @@ export default function SalaryEngine() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="w-40">
+              <Label className="text-xs">Type</Label>
+              <Select value={staffFilter} onValueChange={(v) => setStaffFilter(v as StaffFilter)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="teachers">Teachers</SelectItem>
+                  <SelectItem value="staff">Staff</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex-1 min-w-[200px]">
               <Label className="text-xs">Search</Label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Teacher name..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
+                <Input placeholder="Name..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
               </div>
             </div>
           </div>
@@ -738,8 +863,6 @@ export default function SalaryEngine() {
           </div>
         )}
 
-
-
         {!isTeacherView && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Card><CardContent className="p-3 text-center">
@@ -747,7 +870,7 @@ export default function SalaryEngine() {
               <p className="text-lg font-bold">PKR {totalPayroll.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
             </CardContent></Card>
             <Card><CardContent className="p-3 text-center">
-              <p className="text-xs text-muted-foreground">Teachers</p>
+              <p className="text-xs text-muted-foreground">Staff</p>
               <p className="text-lg font-bold">{salaryData.length}</p>
             </CardContent></Card>
             <Card><CardContent className="p-3 text-center">
@@ -767,7 +890,7 @@ export default function SalaryEngine() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Teacher</TableHead>
+                  <TableHead>Name</TableHead>
                   <TableHead className="text-right">Base</TableHead>
                   <TableHead className="text-right">Extras</TableHead>
                   <TableHead className="text-right">Additions</TableHead>
@@ -795,7 +918,16 @@ export default function SalaryEngine() {
                         >
                           {teacher.teacherName}
                         </button>
-                        <p className="text-xs text-muted-foreground">{teacher.students.length} student{teacher.students.length !== 1 ? 's' : ''}</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          {teacher.staffType === 'staff' ? (
+                            <p className="text-xs text-muted-foreground">
+                              {teacher.roleSalaries.map(r => r.role).join(', ')}
+                            </p>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">{teacher.students.length} student{teacher.students.length !== 1 ? 's' : ''}</p>
+                          )}
+                          {getStaffTypeBadge(teacher.staffType)}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right tabular-nums">PKR {teacher.baseSalary.toFixed(2)}</TableCell>
                       <TableCell className="text-right tabular-nums">PKR {teacher.extraClassAmount.toFixed(2)}</TableCell>
@@ -863,7 +995,9 @@ export default function SalaryEngine() {
           year={year}
           month={month}
           editAmounts={editAmounts}
+          editRoleAmounts={editRoleAmounts}
           onEditAmount={(id, amt) => setEditAmounts(prev => ({ ...prev, [id]: amt }))}
+          onEditRoleAmount={(id, amt) => setEditRoleAmounts(prev => ({ ...prev, [id]: amt }))}
           onMarkPaid={(type, reason, invoiceNumber, receiptUrls, amountPaid) => {
             if (selectedTeacherId) {
               markPaid.mutate({ teacherId: selectedTeacherId, type, reason, invoiceNumber, receiptUrls, amountPaid });
@@ -954,10 +1088,10 @@ export default function SalaryEngine() {
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label>Teacher</Label>
+                <Label>Staff Member</Label>
                 <Select value={leaveForm.teacher_id} onValueChange={v => setLeaveForm(p => ({ ...p, teacher_id: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Select teacher" /></SelectTrigger>
-                  <SelectContent>{teachers.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.full_name}</SelectItem>)}</SelectContent>
+                  <SelectTrigger><SelectValue placeholder="Select staff" /></SelectTrigger>
+                  <SelectContent>{allSalariedProfiles.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.full_name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>
@@ -1004,10 +1138,10 @@ export default function SalaryEngine() {
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label>Teacher</Label>
+                <Label>Staff Member</Label>
                 <Select value={adjForm.teacher_id} onValueChange={v => setAdjForm(p => ({ ...p, teacher_id: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Select teacher" /></SelectTrigger>
-                  <SelectContent>{teachers.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.full_name}</SelectItem>)}</SelectContent>
+                  <SelectTrigger><SelectValue placeholder="Select staff" /></SelectTrigger>
+                  <SelectContent>{allSalariedProfiles.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.full_name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>

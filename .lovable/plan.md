@@ -1,119 +1,95 @@
 
+# Plan: Synchronize Edit Invoice with Record Payment Form + Multi-Month Payment UX
 
-# Non-Teaching Staff Salary Support
+## Problem Summary
 
-## Current State
+1. **Edit Invoice form is missing fields** that the Record Payment form has: Realized (PKR), exchange rate display, Proof of Payment upload, and shortfall/resolution handling.
+2. **Multi-month payments** require clarity: if a student pays 40 AUD covering Dec (10) + Jan (30), can the system auto-split it?
 
-The Salary Engine is tightly coupled to the **teacher** role — it queries `user_roles` for `role = 'teacher'`, fetches `student_teacher_assignments` to compute per-student breakdowns, and the `salary_payouts` table uses `teacher_id`. Non-teaching roles (admin, examiner, etc.) have no salary pathway.
+---
 
-Additionally, a person like Kulsoom who holds both `teacher` and `examiner` roles needs a **combined** statement showing teaching salary + role-based flat salary.
+## Part 1: Make Edit Invoice Form Identical to Record Payment
 
-## Design Approach
+The Edit Invoice dialog will be restructured to match Record Payment field-for-field:
 
-### Key Principle: Reuse existing `salary_payouts` + `salary_adjustments`
+| Section | Record Payment | Edit Invoice (Current) | Action |
+|---|---|---|---|
+| Invoice summary bar | Student name + expected | Missing | **Add** |
+| Payment Period (From/To) | Yes | Yes | Keep |
+| Payment Date / Paid At | Yes | Yes | Keep (label: "Paid At") |
+| Receiving Channel | Yes | Yes | Keep |
+| Amount (currency) | Yes | Yes | Keep |
+| Realized (PKR) | Yes | **Missing** | **Add** |
+| Exchange Rate display | Yes | **Missing** | **Add** |
+| Shortfall + Resolution | Yes | **Missing** | **Add** (auto-calculated) |
+| Proof of Payment upload | Yes | **Missing** | **Add** |
+| Notes / Remark | Yes | Yes | Keep |
+| Amount Paid | N/A (auto) | Yes | Keep (admin override) |
+| Forgiven Amount | N/A (auto) | Yes | Keep (admin override) |
+| Currency | N/A (from invoice) | Yes | Keep |
+| Billing Month | N/A (from invoice) | Yes | Keep |
+| Status | N/A (auto) | Yes | Keep |
+| Due Date | N/A | Yes | Keep |
 
-Rather than creating a parallel payroll system, we extend the current one:
+The Edit Invoice dialog will have the same visual layout and sections as Record Payment, plus the extra admin-only fields (Status, Due Date, Currency, Billing Month, Forgiven Amount) below a separator labeled "Admin Overrides".
 
-1. **`salary_payouts.teacher_id`** — keep the column name (renaming would break too much), but treat it as `staff_id` conceptually. Non-teaching staff get payout records here too.
+---
 
-2. **New table: `staff_salaries`** — stores flat monthly salary config per user per role.
+## Part 2: Multi-Month Payment Strategy
 
-### Database Changes
+### Current mechanism
+- The system is **invoice-based**: each month generates a separate invoice per student.
+- The bulk "Record Payment" (cart pattern) already supports selecting multiple invoices and paying them with a single receipt.
+- The payment is **allocated sequentially** to each selected invoice (oldest first), with shortfall handling for any remainder.
 
-```sql
--- Staff salary configuration (flat monthly amounts per role)
-CREATE TABLE public.staff_salaries (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL REFERENCES public.profiles(id),
-  role text NOT NULL, -- 'admin', 'examiner', etc.
-  monthly_amount numeric NOT NULL DEFAULT 0,
-  effective_from date NOT NULL DEFAULT CURRENT_DATE,
-  effective_to date, -- NULL = ongoing
-  prorate_partial_months boolean NOT NULL DEFAULT true,
-  notes text,
-  created_by uuid,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE(user_id, role, effective_from)
-);
+### The easier solution (recommended)
+Rather than building complex date-range-to-invoice auto-splitting, the **existing cart system already solves this**:
 
--- RLS: admin/super_admin manage, user can view own
-ALTER TABLE public.staff_salaries ENABLE ROW LEVEL SECURITY;
+1. Admin selects invoices for Dec 2025 and Jan 2026 using checkboxes.
+2. Clicks "Record Payment" -- both invoices appear in the summary.
+3. Enters 40 AUD total, one receipt screenshot, one receiving channel.
+4. System auto-allocates: 10 AUD to Dec (outstanding), 30 AUD to Jan (outstanding).
+5. Both invoices update. Single receipt is linked to both transactions.
 
-CREATE POLICY "Admins can manage staff_salaries" ON public.staff_salaries
-  FOR ALL USING (
-    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() 
-            AND role IN ('super_admin', 'admin', 'admin_fees'))
-  );
+**No new development needed** for this flow -- it already works. The From/To date range in the payment form captures the coverage period for reference, but the allocation is driven by the invoice amounts, not dates.
 
-CREATE POLICY "Users can view own staff_salaries" ON public.staff_salaries
-  FOR SELECT USING (user_id = auth.uid());
+### What WILL be improved
+- Add a **helper tooltip/info text** on the Record Payment dialog explaining: "Selected invoices are paid in order. Amount is allocated starting from the first invoice."
+- Ensure the **Edit Payment** form (on `payment_transactions`) also mirrors the Record Payment layout for consistency.
 
--- Update salary_payouts status CHECK to include 'partially_paid'
-ALTER TABLE public.salary_payouts DROP CONSTRAINT IF EXISTS salary_payouts_status_check;
-ALTER TABLE public.salary_payouts ADD CONSTRAINT salary_payouts_status_check 
-  CHECK (status IN ('draft', 'confirmed', 'paid', 'locked', 'partially_paid'));
-```
+---
 
-### How It Works
+## Technical Changes
 
-**For pure non-teaching staff (e.g., Ayesha — Admin only):**
-- Has a `staff_salaries` record: `role='admin'`, `monthly_amount=X`
-- No student assignments → no student breakdown rows
-- Salary = flat amount, pro-rated by days if partial month (using `effective_from`/`effective_to`)
-- Adjustments/deductions still apply via `salary_adjustments`
-- Same payment workflow: Draft → Confirmed → Paid → Locked
+### File: `src/pages/Payments.tsx`
 
-**For dual-role staff (e.g., Kulsoom — Teacher + Examiner):**
-- Appears once in the salary table (not duplicated)
-- Teaching salary: computed from student assignments (existing logic)
-- Examiner salary: computed from `staff_salaries` record for that role
-- Combined into a single `salary_payouts` record
-- Sheet shows two sections: "Teaching Breakdown" (students table) + "Role-Based Salary" (flat entries)
+1. **Add state for receipt file in edit mode** -- reuse `receiptInputRef` or add a second ref.
 
-### Code Changes
+2. **Add `amount_local` (Realized PKR) field to `editInvoiceData` state** and persist it. This will require either:
+   - Storing realized amount on the invoice itself (new column), OR
+   - Looking up from `payment_transactions` and allowing override.
+   
+   Since `payment_transactions` already tracks `amount_local`, the Edit Invoice form will add a display-only "Realized (PKR)" field that shows the sum from linked transactions, plus an editable override field.
 
-#### A. `src/pages/SalaryEngine.tsx`
+3. **Restructure the Edit Invoice dialog** to follow Record Payment's visual order:
+   - Top: Student name + invoice summary bar
+   - Billing Month + Status row
+   - Payment Period section (From / To)
+   - Separator
+   - Payment Details section (Paid At + Receiving Channel)
+   - Amount row: Amount (currency) + Realized (PKR)
+   - Exchange rate auto-calculated display
+   - Amount Paid + Forgiven Amount row
+   - Currency + Due Date row
+   - Proof of Payment upload area
+   - Remark / Notes textarea
 
-1. **Query `staff_salaries`** — new query alongside existing ones
-2. **Query ALL salaried users** — not just teachers. Fetch profiles where user has either a teacher role OR a `staff_salaries` record for the selected month
-3. **Calculation engine update:**
-   - For each salaried user, compute teaching base (from assignments, existing logic) + role-based amounts (from `staff_salaries`, pro-rated)
-   - `baseSalary` = teaching student rows total + role salary total
-   - Store role salary entries in `calculation_json` for audit
-4. **Filter: show "Staff" tab or "All" view** — add a filter toggle: "Teachers" | "Staff" | "All"
-5. **Table columns**: For staff-only rows, show "Flat Salary" instead of student count
+4. **Receipt upload in edit mode**: Allow uploading a new receipt that updates the latest `payment_transaction.receipt_url` for this invoice.
 
-#### B. `src/components/salary/SalarySheetDialog.tsx`
+5. **Add info text** to Record Payment dialog: "Amounts are allocated across selected invoices in order."
 
-1. **Add "Role-Based Salary" section** — displayed above or below student breakdown
-   - Shows: Role, Monthly Amount, Effective Period, Pro-rated Amount
-   - Editable amount (same as student row edit)
-2. **For staff-only users**: Hide student breakdown section entirely, show only role salary + adjustments
-3. **For dual-role users**: Show both sections with subtotals
+### Database
+- No new columns needed. The `fee_invoices` table already has `period_from`, `period_to`, `payment_method`, `paid_at`. The realized amount lives in `payment_transactions.amount_local`.
 
-#### C. `SalaryStatementTemplate` & Print
-
-- Add role salary rows to the breakdown table (with "Role: Examiner" label instead of student name)
-- Ensure print template handles zero-student case gracefully
-
-### State Permission Table (unchanged)
-
-| Status | Save | Mark Paid | Top Up | Lock | Proofs | Revert |
-|--------|------|-----------|--------|------|--------|--------|
-| Draft/Confirmed | Yes | Yes | No | No | Yes | Yes |
-| Partially Paid | No | Yes | Yes | No | Yes | Yes |
-| Paid | No | No | No | Yes | Yes | Yes |
-| Locked | No | No | No | No | No | Yes |
-
-### Summary
-
-| Change | Purpose |
-|--------|---------|
-| `staff_salaries` table | Configure flat monthly salary per user per role |
-| Extended user query | Include non-teaching salaried staff |
-| Pro-ration logic | `(monthly / days_in_month) * active_days` for partial months |
-| Combined statements | Dual-role users get one unified payout record |
-| Staff filter toggle | Separate views for Teachers / Staff / All |
-| Fix CHECK constraint | Add `partially_paid` to allowed statuses |
-
+### No changes needed for multi-month payments
+- The existing cart/bulk payment system handles this correctly already. The plan is to add UX guidance text only.

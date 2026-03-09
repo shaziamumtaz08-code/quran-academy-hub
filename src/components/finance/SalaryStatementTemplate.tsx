@@ -14,6 +14,17 @@ interface StudentRow {
   editedAmount: number | null;
 }
 
+interface RoleSalaryPrintRow {
+  role: string;
+  monthlyAmount: number;
+  effectiveFrom: string;
+  effectiveTo: string;
+  activeDays: number;
+  totalDays: number;
+  proratedAmount: number;
+  editedAmount: number | null;
+}
+
 interface Adjustment {
   adjustment_type: string;
   amount: number;
@@ -33,6 +44,7 @@ interface SalaryStatementTemplateProps {
   monthLabel: string;
   invoiceNumber: string;
   students: StudentRow[];
+  roleSalaries?: RoleSalaryPrintRow[];
   extraClassAmount: number;
   adjustments: Adjustment[];
   baseSalary: number;
@@ -49,7 +61,7 @@ interface SalaryStatementTemplateProps {
 export function SalaryStatementTemplate({
   teacherName, teacherId, email, phone, location,
   bankName, bankAccountTitle, bankAccountNumber, bankIban,
-  monthLabel, invoiceNumber, students, extraClassAmount,
+  monthLabel, invoiceNumber, students, roleSalaries = [], extraClassAmount,
   adjustments, baseSalary, additions, deductions, netSalary,
   paymentDate, paymentMethod, receiptUrl,
   orgName = 'Al-Quran Time Academy', orgLogo
@@ -142,6 +154,30 @@ export function SalaryStatementTemplate({
                   </td>
                   <td style={{ padding: '10px 0', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", color: '#6b7280' }}>
                     {s.calculatedAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </td>
+                  <td style={{ padding: '10px 0', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>
+                    {finalAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </td>
+                </tr>
+              );
+            })}
+            {/* Role-based salary rows */}
+            {roleSalaries.map((rs, idx) => {
+              const finalAmt = rs.editedAmount ?? rs.proratedAmount;
+              return (
+                <tr key={`role-${idx}`} style={{ borderBottom: '1px solid #f3f4f6', background: '#faf5ff' }}>
+                  <td style={{ padding: '10px 0' }}>
+                    <p style={{ fontWeight: 600, margin: 0 }}>Role: {rs.role.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</p>
+                    <p style={{ fontSize: 10, color: '#9ca3af', margin: '1px 0 0' }}>Flat • {rs.activeDays}/{rs.totalDays} days</p>
+                  </td>
+                  <td style={{ padding: '10px 0', color: '#6b7280' }}>
+                    {format(parseISO(rs.effectiveFrom), 'dd MMM')} – {format(parseISO(rs.effectiveTo), 'dd MMM')}
+                  </td>
+                  <td style={{ padding: '10px 0', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace" }}>
+                    {rs.monthlyAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </td>
+                  <td style={{ padding: '10px 0', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", color: '#6b7280' }}>
+                    {rs.proratedAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </td>
                   <td style={{ padding: '10px 0', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>
                     {finalAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}
