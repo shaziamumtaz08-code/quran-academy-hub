@@ -62,6 +62,16 @@ export default function PrintSalary() {
     calculatedAmount: s.calculatedAmount || 0,
     editedAmount: s.editedAmount ?? null,
   }));
+  const roleSalaries = (calcJson?.roleSalaries || []).map((r: any) => ({
+    role: r.role || 'unknown',
+    monthlyAmount: r.monthlyAmount || 0,
+    effectiveFrom: r.effectiveFrom || payout.salary_month + '-01',
+    effectiveTo: r.effectiveTo || payout.salary_month + '-28',
+    activeDays: r.activeDays || 0,
+    totalDays: r.totalDays || 0,
+    proratedAmount: r.proratedAmount || 0,
+    editedAmount: r.editedAmount ?? null,
+  }));
 
   const [y, m] = payout.salary_month.split('-').map(Number);
   const monthLabel = new Date(y, m - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
