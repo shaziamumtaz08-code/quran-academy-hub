@@ -2064,6 +2064,7 @@ export type Database = {
       salary_payouts: {
         Row: {
           adjustment_amount: number
+          amount_paid: number
           base_salary: number
           calculation_json: Json | null
           created_at: string
@@ -2079,6 +2080,7 @@ export type Database = {
           notes: string | null
           paid_at: string | null
           paid_by: string | null
+          partial_notes: string | null
           payment_method: string | null
           payment_reference: string | null
           receipt_url: string | null
@@ -2093,6 +2095,7 @@ export type Database = {
         }
         Insert: {
           adjustment_amount?: number
+          amount_paid?: number
           base_salary?: number
           calculation_json?: Json | null
           created_at?: string
@@ -2108,6 +2111,7 @@ export type Database = {
           notes?: string | null
           paid_at?: string | null
           paid_by?: string | null
+          partial_notes?: string | null
           payment_method?: string | null
           payment_reference?: string | null
           receipt_url?: string | null
@@ -2122,6 +2126,7 @@ export type Database = {
         }
         Update: {
           adjustment_amount?: number
+          amount_paid?: number
           base_salary?: number
           calculation_json?: Json | null
           created_at?: string
@@ -2137,6 +2142,7 @@ export type Database = {
           notes?: string | null
           paid_at?: string | null
           paid_by?: string | null
+          partial_notes?: string | null
           payment_method?: string | null
           payment_reference?: string | null
           receipt_url?: string | null

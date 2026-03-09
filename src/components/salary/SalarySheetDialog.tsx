@@ -22,6 +22,7 @@ import {
   RotateCcw,
   Upload,
   X,
+  Plus,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { FileUploadField, AttachmentPreview } from "@/components/shared/FileUploadField";
@@ -96,13 +97,17 @@ interface SalarySheetDialogProps {
   month: number;
   editAmounts: Record<string, number>;
   onEditAmount: (assignmentId: string, amount: number) => void;
-  onMarkPaid: (type: "full" | "partial", reason?: string, invoiceNumber?: string, receiptUrls?: string[]) => void;
+  onMarkPaid: (type: "full" | "partial", reason?: string, invoiceNumber?: string, receiptUrls?: string[], amountPaid?: number) => void;
+  onTopUp?: (amount: number, notes: string, receiptUrls: string[]) => void;
   onUpdateProofs?: (receiptUrls: string[], invoiceNumber?: string) => void;
   onRevert?: () => void;
   isPayingPending?: boolean;
+  isTopUpPending?: boolean;
   isUpdatingProofs?: boolean;
   isLocked: boolean;
   isPaid?: boolean;
+  isPartiallyPaid?: boolean;
+  existingAmountPaid?: number;
   viewerRole?: "admin" | "teacher";
   existingReceiptUrls?: string[];
   existingInvoiceNumber?: string | null;
@@ -123,26 +128,41 @@ export function SalarySheetDialog({
   editAmounts,
   onEditAmount,
   onMarkPaid,
+  onTopUp,
   onUpdateProofs,
   onRevert,
   isPayingPending,
+  isTopUpPending,
   isUpdatingProofs,
   isLocked,
   isPaid,
+  isPartiallyPaid,
+  existingAmountPaid = 0,
   viewerRole = "admin",
   existingReceiptUrls = [],
   existingInvoiceNumber,
 }: SalarySheetDialogProps) {
   const [partialReason, setPartialReason] = useState("");
+  const [partialAmount, setPartialAmount] = useState<string>("");
   const [showPartialInput, setShowPartialInput] = useState(false);
   const [receiptUrls, setReceiptUrls] = useState<string[]>([]);
+  // Top-up state
+  const [showTopUpInput, setShowTopUpInput] = useState(false);
+  const [topUpAmount, setTopUpAmount] = useState<string>("");
+  const [topUpNotes, setTopUpNotes] = useState("");
+  const [topUpReceipts, setTopUpReceipts] = useState<string[]>([]);
 
   // Reset local state every time the dialog opens for a (possibly different) teacher
   useEffect(() => {
     if (open) {
       setReceiptUrls(existingReceiptUrls || []);
       setPartialReason("");
+      setPartialAmount("");
       setShowPartialInput(false);
+      setShowTopUpInput(false);
+      setTopUpAmount("");
+      setTopUpNotes("");
+      setTopUpReceipts([]);
     }
   }, [open, teacher?.teacherId, existingReceiptUrls]);
 
@@ -235,12 +255,12 @@ export function SalarySheetDialog({
     }
   };
 
-  // Determine if proofs can be edited (paid but not locked)
-  const canEditProofs = isPaid && !isLocked && !isTeacherView;
+  // Determine if proofs can be edited (paid or partially_paid but not locked)
+  const canEditProofs = (isPaid || isPartiallyPaid) && !isLocked && !isTeacherView;
   // Determine if calculation fields can be edited (draft or confirmed only)
-  const canEditCalculations = !isPaid && !isLocked && !isTeacherView;
-  // Show revert button for paid or locked status
-  const canRevert = (isPaid || isLocked) && !isTeacherView && onRevert;
+  const canEditCalculations = !isPaid && !isPartiallyPaid && !isLocked && !isTeacherView;
+  // Show revert button for paid, partially_paid, or locked status
+  const canRevert = (isPaid || isPartiallyPaid || isLocked) && !isTeacherView && onRevert;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -596,7 +616,7 @@ export function SalarySheetDialog({
               </div>
 
               {/* Payment Actions - Draft/Confirmed status */}
-              {!isLocked && !isPaid && !isTeacherView && (
+              {!isLocked && !isPaid && !isPartiallyPaid && !isTeacherView && (
                 <div className="space-y-3 print:hidden">
                   <div className="space-y-3">
                     <div className="space-y-1">
@@ -652,6 +672,234 @@ export function SalarySheetDialog({
                       <AlertCircle className="h-4 w-4 mr-1.5" /> Partially Paid
                     </Button>
                   </div>
+
+                  {/* Partial Payment Input */}
+                  {showPartialInput && (
+                    <div className="mt-3 space-y-3 p-3 border border-amber-200 bg-amber-50/50 rounded-lg print:hidden">
+                      <p className="text-xs font-semibold text-amber-700 uppercase tracking-wider">Partial Payment Details</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Amount Paying (PKR)</Label>
+                          <Input
+                            type="number"
+                            placeholder="0.00"
+                            value={partialAmount}
+                            onChange={(e) => setPartialAmount(e.target.value)}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Balance Remaining</Label>
+                          <div className="h-8 flex items-center px-3 bg-muted rounded-md text-sm font-semibold tabular-nums">
+                            PKR {Math.max(0, grandNet - (parseFloat(partialAmount) || 0)).toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Notes / Reason</Label>
+                        <Textarea
+                          placeholder="Reason for partial payment..."
+                          value={partialReason}
+                          onChange={(e) => setPartialReason(e.target.value)}
+                          className="text-sm min-h-[60px]"
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        disabled={!partialAmount || parseFloat(partialAmount) <= 0 || isPayingPending}
+                        onClick={() => {
+                          const amt = parseFloat(partialAmount) || 0;
+                          onMarkPaid("partial", partialReason || undefined, displayInvoice, receiptUrls, amt);
+                          setPartialReason("");
+                          setPartialAmount("");
+                          setShowPartialInput(false);
+                        }}
+                        className="w-full"
+                      >
+                        {isPayingPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+                        Confirm Partial Payment — PKR {(parseFloat(partialAmount) || 0).toFixed(2)}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Partially Paid status */}
+              {isPartiallyPaid && !isLocked && (
+                <div className="space-y-3 print:hidden">
+                  <div className="flex items-center gap-2 text-amber-600 font-medium">
+                    <AlertCircle className="h-5 w-5" /> Partially Paid
+                  </div>
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">Amount Paid</span>
+                      <span className="font-semibold tabular-nums">PKR {existingAmountPaid.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">Net Salary</span>
+                      <span className="font-semibold tabular-nums">PKR {grandNet.toFixed(2)}</span>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-between items-center text-sm font-bold">
+                      <span className="text-amber-700">Balance Remaining</span>
+                      <span className="text-amber-700 tabular-nums">PKR {Math.max(0, grandNet - existingAmountPaid).toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  {existingInvoiceNumber && (
+                    <p className="text-xs text-muted-foreground">Invoice: {existingInvoiceNumber}</p>
+                  )}
+
+                  {!isTeacherView && (
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                      <Button
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                        onClick={() => {
+                          const remaining = Math.max(0, grandNet - existingAmountPaid);
+                          onMarkPaid("partial", "Marked fully paid", displayInvoice, receiptUrls, grandNet);
+                        }}
+                        disabled={isPayingPending}
+                      >
+                        {isPayingPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+                        <CheckCircle className="h-4 w-4 mr-1.5" /> Mark Fully Paid
+                      </Button>
+                      <Button variant="outline" className="flex-1" onClick={() => setShowTopUpInput(!showTopUpInput)}>
+                        <Plus className="h-4 w-4 mr-1.5" /> Top Up Payment
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Top-up input */}
+                  {showTopUpInput && !isTeacherView && (
+                    <div className="p-3 border border-border bg-muted/30 rounded-lg space-y-3">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Top-Up Payment</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Additional Amount (PKR)</Label>
+                          <Input
+                            type="number"
+                            placeholder="0.00"
+                            value={topUpAmount}
+                            onChange={(e) => setTopUpAmount(e.target.value)}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">New Balance</Label>
+                          <div className="h-8 flex items-center px-3 bg-muted rounded-md text-sm font-semibold tabular-nums">
+                            PKR {Math.max(0, grandNet - existingAmountPaid - (parseFloat(topUpAmount) || 0)).toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Notes</Label>
+                        <Textarea
+                          placeholder="Top-up reason or notes..."
+                          value={topUpNotes}
+                          onChange={(e) => setTopUpNotes(e.target.value)}
+                          className="text-sm min-h-[60px]"
+                        />
+                      </div>
+                      {/* Top-up receipt */}
+                      <div className="space-y-1">
+                        <Label className="text-xs">Receipt (optional)</Label>
+                        {topUpReceipts[0] ? (
+                          <div className="flex items-center gap-2 p-2 bg-background rounded-lg">
+                            <AttachmentPreview url={topUpReceipts[0]} />
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                              onClick={() => setTopUpReceipts([])}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <FileUploadField
+                            label=""
+                            bucket="salary-receipts"
+                            value=""
+                            onChange={(url) => setTopUpReceipts([url])}
+                            hint="Upload receipt"
+                          />
+                        )}
+                      </div>
+                      <Button
+                        size="sm"
+                        className="w-full"
+                        disabled={!topUpAmount || parseFloat(topUpAmount) <= 0 || isTopUpPending}
+                        onClick={() => {
+                          if (onTopUp) {
+                            onTopUp(parseFloat(topUpAmount) || 0, topUpNotes, topUpReceipts);
+                            setTopUpAmount("");
+                            setTopUpNotes("");
+                            setTopUpReceipts([]);
+                            setShowTopUpInput(false);
+                          }
+                        }}
+                      >
+                        {isTopUpPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+                        Confirm Top-Up — PKR {(parseFloat(topUpAmount) || 0).toFixed(2)}
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Editable proofs section for partially paid */}
+                  {!isTeacherView && (
+                    <div className="space-y-2 bg-muted/50 rounded-lg p-3">
+                      <Label className="text-xs font-medium">Payment Proofs (editable)</Label>
+                      <div className="space-y-2">
+                        {Array.from({ length: Math.min(receiptUrls.length + 1, MAX_RECEIPTS) }).map((_, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <div className="flex-1">
+                              {receiptUrls[idx] ? (
+                                <div className="flex items-center gap-2 p-2 bg-background rounded-lg">
+                                  <AttachmentPreview url={receiptUrls[idx]} />
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                                    onClick={() => removeReceipt(idx)}
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <FileUploadField
+                                  label=""
+                                  bucket="salary-receipts"
+                                  value=""
+                                  onChange={(url) => handleReceiptUpload(url, idx)}
+                                  hint={`Add proof ${idx + 1}`}
+                                />
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={handleUpdateProofs}
+                        disabled={isUpdatingProofs}
+                        className="mt-2"
+                      >
+                        {isUpdatingProofs && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+                        <Upload className="h-4 w-4 mr-1" /> Update Proofs
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Show existing proofs for teacher view */}
+                  {isTeacherView && receiptUrls.length > 0 && (
+                    <div className="space-y-1">
+                      {receiptUrls.map((url, idx) => (
+                        <AttachmentPreview key={idx} url={url} />
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -738,7 +986,7 @@ export function SalarySheetDialog({
                 </div>
               )}
 
-              {/* Revert button - visible for paid or locked */}
+              {/* Revert button - visible for paid, partially_paid, or locked */}
               {canRevert && (
                 <div className="mt-4 pt-3 border-t border-border print:hidden">
                   <Button
@@ -751,29 +999,6 @@ export function SalarySheetDialog({
                   <p className="text-[10px] text-muted-foreground mt-1">
                     This will reset the salary back to draft status for editing.
                   </p>
-                </div>
-              )}
-
-              {showPartialInput && !isLocked && !isPaid && !isTeacherView && (
-                <div className="mt-3 space-y-2 print:hidden">
-                  <Textarea
-                    placeholder="Reason for partial payment (mandatory)..."
-                    value={partialReason}
-                    onChange={(e) => setPartialReason(e.target.value)}
-                    className="text-sm"
-                  />
-                  <Button
-                    size="sm"
-                    disabled={!partialReason.trim() || isPayingPending}
-                    onClick={() => {
-                      onMarkPaid("partial", partialReason, displayInvoice, receiptUrls);
-                      setPartialReason("");
-                      setShowPartialInput(false);
-                    }}
-                  >
-                    {isPayingPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
-                    Confirm Partial Payment
-                  </Button>
                 </div>
               )}
             </div>

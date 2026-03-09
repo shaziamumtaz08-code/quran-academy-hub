@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Calculator, Lock, CheckCircle, Clock, Plus, Search, Loader2, RotateCcw
+  Calculator, Lock, CheckCircle, Clock, Plus, Search, Loader2, RotateCcw, AlertCircle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -358,7 +358,8 @@ export default function SalaryEngine() {
   }, [salaryData, searchQuery, isTeacherView, user?.id]);
 
   const totalPayroll = salaryData.reduce((s, t) => s + t.netSalary, 0);
-  const paidCount = salaryData.filter(t => t.payoutStatus === 'paid' || t.payoutStatus === 'locked').length;
+  const paidCount = salaryData.filter(t => t.payoutStatus === 'paid' || t.payoutStatus === 'locked' || t.payoutStatus === 'partially_paid').length;
+  const partialCount = salaryData.filter(t => t.payoutStatus === 'partially_paid').length;
   const draftCount = salaryData.filter(t => t.payoutStatus === 'draft' || t.payoutStatus === 'confirmed').length;
 
   // Selected teacher for sheet
@@ -423,29 +424,82 @@ export default function SalaryEngine() {
   });
 
   const markPaid = useMutation({
-    mutationFn: async ({ teacherId, type, reason, invoiceNumber, receiptUrls }: { teacherId: string; type: 'full' | 'partial'; reason?: string; invoiceNumber?: string; receiptUrls?: string[] }) => {
+    mutationFn: async ({ teacherId, type, reason, invoiceNumber, receiptUrls, amountPaid }: { teacherId: string; type: 'full' | 'partial'; reason?: string; invoiceNumber?: string; receiptUrls?: string[]; amountPaid?: number }) => {
       const payout = existingPayouts.find((p: any) => p.teacher_id === teacherId);
       if (!payout) {
         // Auto-save first
         const teacher = salaryData.find(t => t.teacherId === teacherId);
         if (teacher) await savePayout.mutateAsync(teacher);
       }
-      const payoutRefresh = (await supabase.from('salary_payouts').select('id').eq('teacher_id', teacherId).eq('salary_month', salaryMonth).single()).data;
+      const payoutRefresh = (await supabase.from('salary_payouts').select('id, net_salary').eq('teacher_id', teacherId).eq('salary_month', salaryMonth).single()).data;
       if (!payoutRefresh) throw new Error('Save payout first');
-      const { error } = await supabase.from('salary_payouts').update({
-        status: 'paid',
-        paid_at: new Date().toISOString(),
-        paid_by: user?.id,
-        payment_method: type === 'partial' ? `Partial: ${reason}` : 'Full Payment',
-        invoice_number: invoiceNumber || null,
-        receipt_urls: receiptUrls || [],
-        // Also maintain single receipt_url for backward compatibility
-        receipt_url: receiptUrls?.[0] || null,
-      }).eq('id', payoutRefresh.id);
-      if (error) throw error;
+
+      const netSalary = Number(payoutRefresh.net_salary) || 0;
+
+      if (type === 'partial') {
+        const paidAmount = amountPaid || 0;
+        // If amount paid >= net salary, auto-promote to paid
+        const finalStatus = paidAmount >= netSalary ? 'paid' : 'partially_paid';
+        const { error } = await supabase.from('salary_payouts').update({
+          status: finalStatus,
+          amount_paid: paidAmount,
+          partial_notes: reason || null,
+          paid_at: finalStatus === 'paid' ? new Date().toISOString() : null,
+          paid_by: finalStatus === 'paid' ? user?.id : null,
+          payment_method: 'Partial Payment',
+          invoice_number: invoiceNumber || null,
+          receipt_urls: receiptUrls || [],
+          receipt_url: receiptUrls?.[0] || null,
+        }).eq('id', payoutRefresh.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('salary_payouts').update({
+          status: 'paid',
+          amount_paid: netSalary,
+          paid_at: new Date().toISOString(),
+          paid_by: user?.id,
+          payment_method: 'Full Payment',
+          invoice_number: invoiceNumber || null,
+          receipt_urls: receiptUrls || [],
+          receipt_url: receiptUrls?.[0] || null,
+        }).eq('id', payoutRefresh.id);
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       toast({ title: 'Payment recorded' });
+      queryClient.invalidateQueries({ queryKey: ['salary-payouts'] });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const topUpPayment = useMutation({
+    mutationFn: async ({ teacherId, amount, notes, receiptUrls }: { teacherId: string; amount: number; notes: string; receiptUrls?: string[] }) => {
+      const payout = existingPayouts.find((p: any) => p.teacher_id === teacherId);
+      if (!payout) throw new Error('No payout record found');
+      const currentPaid = Number(payout.amount_paid) || 0;
+      const netSalary = Number(payout.net_salary) || 0;
+      const newTotal = currentPaid + amount;
+      const finalStatus = newTotal >= netSalary ? 'paid' : 'partially_paid';
+      const existingNotes = payout.partial_notes || '';
+      const combinedNotes = existingNotes ? `${existingNotes}\n---\nTop-up: ${notes}` : `Top-up: ${notes}`;
+      
+      // Merge receipt URLs
+      const existingReceipts = payout.receipt_urls || [];
+      const mergedReceipts = [...existingReceipts, ...(receiptUrls || [])].slice(0, 3);
+
+      const { error } = await supabase.from('salary_payouts').update({
+        status: finalStatus,
+        amount_paid: newTotal,
+        partial_notes: combinedNotes,
+        ...(finalStatus === 'paid' ? { paid_at: new Date().toISOString(), paid_by: user?.id } : {}),
+        receipt_urls: mergedReceipts,
+        receipt_url: mergedReceipts[0] || null,
+      }).eq('id', payout.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: 'Top-up payment recorded' });
       queryClient.invalidateQueries({ queryKey: ['salary-payouts'] });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
@@ -499,6 +553,8 @@ export default function SalaryEngine() {
         paid_by: null,
         locked_at: null,
         locked_by: null,
+        amount_paid: 0,
+        partial_notes: null,
         reverted_at: new Date().toISOString(),
         reverted_by: user?.id,
         revert_reason: reason,
@@ -574,10 +630,20 @@ export default function SalaryEngine() {
 
   // ── Helpers ──
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, payout?: any) => {
     switch (status) {
       case 'locked': return <Badge className="bg-muted text-muted-foreground border-border gap-1"><Lock className="h-3 w-3" /> Locked</Badge>;
       case 'paid': return <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 gap-1"><CheckCircle className="h-3 w-3" /> Paid</Badge>;
+      case 'partially_paid': {
+        const paid = Number(payout?.amount_paid) || 0;
+        const net = Number(payout?.net_salary) || 0;
+        return (
+          <Badge className="bg-amber-50 text-amber-700 border-amber-200 gap-1">
+            <AlertCircle className="h-3 w-3" /> Partial
+            {net > 0 && <span className="text-[10px] ml-1">{Math.round((paid/net)*100)}%</span>}
+          </Badge>
+        );
+      }
       case 'confirmed': return <Badge className="bg-sky-50 text-sky-700 border-sky-200 gap-1"><Clock className="h-3 w-3" /> Confirmed</Badge>;
       default: return <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" /> Draft</Badge>;
     }
@@ -717,8 +783,8 @@ export default function SalaryEngine() {
                 )}
                 {filteredData.map(teacher => {
                   const payout = existingPayouts.find((p: any) => p.teacher_id === teacher.teacherId);
-                  const canRevert = payout && (payout.status === 'confirmed' || payout.status === 'paid' || payout.status === 'locked');
-                  const canSave = teacher.payoutStatus !== 'locked' && teacher.payoutStatus !== 'paid';
+                  const canRevert = payout && (payout.status === 'confirmed' || payout.status === 'paid' || payout.status === 'locked' || payout.status === 'partially_paid');
+                  const canSave = teacher.payoutStatus !== 'locked' && teacher.payoutStatus !== 'paid' && teacher.payoutStatus !== 'partially_paid';
                   
                   return (
                     <TableRow key={teacher.teacherId} className="group">
@@ -736,7 +802,7 @@ export default function SalaryEngine() {
                       <TableCell className="text-right tabular-nums text-emerald-600">PKR {teacher.adjustmentAmount.toFixed(2)}</TableCell>
                       <TableCell className="text-right tabular-nums text-red-600">PKR {teacher.deductions.toFixed(2)}</TableCell>
                       <TableCell className="text-right font-bold tabular-nums">PKR {teacher.netSalary.toFixed(2)}</TableCell>
-                      <TableCell>{getStatusBadge(teacher.payoutStatus)}</TableCell>
+                      <TableCell>{getStatusBadge(teacher.payoutStatus, payout)}</TableCell>
                       {!isTeacherView && (
                         <TableCell className="text-right">
                           <div className="flex gap-1 justify-end">
@@ -798,9 +864,14 @@ export default function SalaryEngine() {
           month={month}
           editAmounts={editAmounts}
           onEditAmount={(id, amt) => setEditAmounts(prev => ({ ...prev, [id]: amt }))}
-          onMarkPaid={(type, reason, invoiceNumber, receiptUrls) => {
+          onMarkPaid={(type, reason, invoiceNumber, receiptUrls, amountPaid) => {
             if (selectedTeacherId) {
-              markPaid.mutate({ teacherId: selectedTeacherId, type, reason, invoiceNumber, receiptUrls });
+              markPaid.mutate({ teacherId: selectedTeacherId, type, reason, invoiceNumber, receiptUrls, amountPaid });
+            }
+          }}
+          onTopUp={(amount, notes, receiptUrls) => {
+            if (selectedTeacherId) {
+              topUpPayment.mutate({ teacherId: selectedTeacherId, amount, notes, receiptUrls });
             }
           }}
           onUpdateProofs={(receiptUrls, invoiceNumber) => {
@@ -814,9 +885,12 @@ export default function SalaryEngine() {
             }
           }}
           isPayingPending={markPaid.isPending}
+          isTopUpPending={topUpPayment.isPending}
           isUpdatingProofs={updateProofs.isPending}
           isLocked={selectedTeacher?.payoutStatus === 'locked'}
           isPaid={selectedTeacher?.payoutStatus === 'paid'}
+          isPartiallyPaid={selectedTeacher?.payoutStatus === 'partially_paid'}
+          existingAmountPaid={Number(selectedPayout?.amount_paid) || 0}
           viewerRole={isTeacherView ? 'teacher' : 'admin'}
           existingReceiptUrls={selectedPayout?.receipt_urls || []}
           existingInvoiceNumber={selectedPayout?.invoice_number || null}
