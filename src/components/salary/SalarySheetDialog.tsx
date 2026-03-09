@@ -22,6 +22,7 @@ import {
   RotateCcw,
   Upload,
   X,
+  Plus,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { FileUploadField, AttachmentPreview } from "@/components/shared/FileUploadField";
