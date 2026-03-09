@@ -160,6 +160,7 @@ export function SalaryStatementTemplate({
                   </td>
                 </tr>
               );
+            })}
             {/* Role-based salary rows */}
             {roleSalaries.map((rs, idx) => {
               const finalAmt = rs.editedAmount ?? rs.proratedAmount;
@@ -183,9 +184,9 @@ export function SalaryStatementTemplate({
                   </td>
                 </tr>
               );
-
+            })}
+          </tbody>
         </table>
-      </div>
       </div>
 
       {/* Adjustments */}
