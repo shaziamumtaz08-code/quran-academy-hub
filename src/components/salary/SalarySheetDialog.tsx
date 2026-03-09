@@ -96,13 +96,17 @@ interface SalarySheetDialogProps {
   month: number;
   editAmounts: Record<string, number>;
   onEditAmount: (assignmentId: string, amount: number) => void;
-  onMarkPaid: (type: "full" | "partial", reason?: string, invoiceNumber?: string, receiptUrls?: string[]) => void;
+  onMarkPaid: (type: "full" | "partial", reason?: string, invoiceNumber?: string, receiptUrls?: string[], amountPaid?: number) => void;
+  onTopUp?: (amount: number, notes: string, receiptUrls: string[]) => void;
   onUpdateProofs?: (receiptUrls: string[], invoiceNumber?: string) => void;
   onRevert?: () => void;
   isPayingPending?: boolean;
+  isTopUpPending?: boolean;
   isUpdatingProofs?: boolean;
   isLocked: boolean;
   isPaid?: boolean;
+  isPartiallyPaid?: boolean;
+  existingAmountPaid?: number;
   viewerRole?: "admin" | "teacher";
   existingReceiptUrls?: string[];
   existingInvoiceNumber?: string | null;
