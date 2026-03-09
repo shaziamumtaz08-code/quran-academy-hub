@@ -627,10 +627,20 @@ export default function SalaryEngine() {
 
   // ── Helpers ──
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, payout?: any) => {
     switch (status) {
       case 'locked': return <Badge className="bg-muted text-muted-foreground border-border gap-1"><Lock className="h-3 w-3" /> Locked</Badge>;
       case 'paid': return <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 gap-1"><CheckCircle className="h-3 w-3" /> Paid</Badge>;
+      case 'partially_paid': {
+        const paid = Number(payout?.amount_paid) || 0;
+        const net = Number(payout?.net_salary) || 0;
+        return (
+          <Badge className="bg-amber-50 text-amber-700 border-amber-200 gap-1">
+            <AlertCircle className="h-3 w-3" /> Partial
+            {net > 0 && <span className="text-[10px] ml-1">{Math.round((paid/net)*100)}%</span>}
+          </Badge>
+        );
+      }
       case 'confirmed': return <Badge className="bg-sky-50 text-sky-700 border-sky-200 gap-1"><Clock className="h-3 w-3" /> Confirmed</Badge>;
       default: return <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" /> Draft</Badge>;
     }
