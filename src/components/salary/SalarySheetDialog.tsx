@@ -19,6 +19,9 @@ import {
   Printer,
   User,
   Loader2,
+  RotateCcw,
+  Upload,
+  X,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { FileUploadField, AttachmentPreview } from "@/components/shared/FileUploadField";
@@ -93,13 +96,19 @@ interface SalarySheetDialogProps {
   month: number;
   editAmounts: Record<string, number>;
   onEditAmount: (assignmentId: string, amount: number) => void;
-  onMarkPaid: (type: "full" | "partial", reason?: string, invoiceNumber?: string, receiptUrl?: string) => void;
+  onMarkPaid: (type: "full" | "partial", reason?: string, invoiceNumber?: string, receiptUrls?: string[]) => void;
+  onUpdateProofs?: (receiptUrls: string[], invoiceNumber?: string) => void;
+  onRevert?: () => void;
   isPayingPending?: boolean;
+  isUpdatingProofs?: boolean;
   isLocked: boolean;
+  isPaid?: boolean;
   viewerRole?: "admin" | "teacher";
-  existingReceiptUrl?: string | null;
+  existingReceiptUrls?: string[];
   existingInvoiceNumber?: string | null;
 }
+
+const MAX_RECEIPTS = 3;
 
 export function SalarySheetDialog({
   open,
@@ -114,33 +123,28 @@ export function SalarySheetDialog({
   editAmounts,
   onEditAmount,
   onMarkPaid,
+  onUpdateProofs,
+  onRevert,
   isPayingPending,
+  isUpdatingProofs,
   isLocked,
+  isPaid,
   viewerRole = "admin",
-  existingReceiptUrl,
+  existingReceiptUrls = [],
   existingInvoiceNumber,
 }: SalarySheetDialogProps) {
   const [partialReason, setPartialReason] = useState("");
   const [showPartialInput, setShowPartialInput] = useState(false);
-  const [receiptUrl, setReceiptUrl] = useState("");
+  const [receiptUrls, setReceiptUrls] = useState<string[]>([]);
 
   // Reset local state every time the dialog opens for a (possibly different) teacher
   useEffect(() => {
     if (open) {
-      setReceiptUrl("");
+      setReceiptUrls(existingReceiptUrls || []);
       setPartialReason("");
       setShowPartialInput(false);
     }
-  }, [open, teacher?.teacherId]);
-
-  // Reset local state every time the dialog opens for a (possibly different) teacher
-  useEffect(() => {
-    if (open) {
-      setReceiptUrl("");
-      setPartialReason("");
-      setShowPartialInput(false);
-    }
-  }, [open, teacher?.teacherId]);
+  }, [open, teacher?.teacherId, existingReceiptUrls]);
 
   // Auto-generate invoice number
   const autoInvoiceNumber = `SAL-${salaryMonth.replace("-", "")}-${teacher?.teacherName?.substring(0, 3).toUpperCase() || "XXX"}`;
@@ -153,13 +157,10 @@ export function SalarySheetDialog({
   const monthLabel = new Date(year, month - 1).toLocaleString("default", { month: "long", year: "numeric" });
 
   const handlePrint = () => {
-    // Open dedicated print route in new tab (same strategy as exam report cards)
-    // First try to find existing salary_payout record
     const payoutId = (teacher as any)?.payoutId;
     if (payoutId) {
       window.open(`/finance/print/salary/${payoutId}`, "_blank");
     } else {
-      // Fallback: print current dialog
       window.print();
     }
   };
@@ -215,6 +216,31 @@ export function SalarySheetDialog({
         return type.charAt(0).toUpperCase() + type.slice(1);
     }
   };
+
+  const handleReceiptUpload = (url: string, index: number) => {
+    setReceiptUrls(prev => {
+      const updated = [...prev];
+      updated[index] = url;
+      return updated.filter(Boolean);
+    });
+  };
+
+  const removeReceipt = (index: number) => {
+    setReceiptUrls(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleUpdateProofs = () => {
+    if (onUpdateProofs) {
+      onUpdateProofs(receiptUrls, displayInvoice);
+    }
+  };
+
+  // Determine if proofs can be edited (paid but not locked)
+  const canEditProofs = isPaid && !isLocked && !isTeacherView;
+  // Determine if calculation fields can be edited (draft or confirmed only)
+  const canEditCalculations = !isPaid && !isLocked && !isTeacherView;
+  // Show revert button for paid or locked status
+  const canRevert = (isPaid || isLocked) && !isTeacherView && onRevert;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -398,7 +424,7 @@ export function SalarySheetDialog({
                             className="h-8 w-28 text-right text-sm font-semibold ml-auto tabular-nums"
                             value={finalAmt}
                             onChange={(e) => onEditAmount(s.assignmentId, parseFloat(e.target.value) || 0)}
-                            disabled={isLocked}
+                            disabled={!canEditCalculations}
                           />
                         </div>
                       )}
@@ -445,7 +471,7 @@ export function SalarySheetDialog({
                               className="h-7 w-full text-right text-xs font-semibold tabular-nums"
                               value={finalAmt}
                               onChange={(e) => onEditAmount(s.assignmentId, parseFloat(e.target.value) || 0)}
-                              disabled={isLocked}
+                              disabled={!canEditCalculations}
                             />
                           )}
                         </div>
@@ -569,25 +595,54 @@ export function SalarySheetDialog({
                 </div>
               </div>
 
-              {/* Payment Actions */}
-              {!isLocked && teacher.payoutStatus !== "paid" && !isTeacherView && (
+              {/* Payment Actions - Draft/Confirmed status */}
+              {!isLocked && !isPaid && !isTeacherView && (
                 <div className="space-y-3 print:hidden">
                   <div className="space-y-3">
                     <div className="space-y-1">
                       <Label className="text-xs">Invoice #</Label>
                       <Input value={displayInvoice} disabled className="h-8 text-sm bg-muted" />
                     </div>
-                    <FileUploadField
-                      label="Payment Proof (Screenshot / Receipt)"
-                      bucket="salary-receipts"
-                      value={receiptUrl}
-                      onChange={setReceiptUrl}
-                    />
+                    
+                    {/* Multi-attachment upload */}
+                    <div className="space-y-2">
+                      <Label className="text-xs">Payment Proofs (up to {MAX_RECEIPTS})</Label>
+                      <div className="space-y-2">
+                        {Array.from({ length: Math.min(receiptUrls.length + 1, MAX_RECEIPTS) }).map((_, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <div className="flex-1">
+                              {receiptUrls[idx] ? (
+                                <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+                                  <AttachmentPreview url={receiptUrls[idx]} />
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                                    onClick={() => removeReceipt(idx)}
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <FileUploadField
+                                  label=""
+                                  bucket="salary-receipts"
+                                  value=""
+                                  onChange={(url) => handleReceiptUpload(url, idx)}
+                                  hint={`Proof ${idx + 1}`}
+                                />
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                     <Button
                       className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
-                      onClick={() => onMarkPaid("full", undefined, displayInvoice, receiptUrl)}
+                      onClick={() => onMarkPaid("full", undefined, displayInvoice, receiptUrls)}
                       disabled={isPayingPending}
                     >
                       {isPayingPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
@@ -599,27 +654,107 @@ export function SalarySheetDialog({
                   </div>
                 </div>
               )}
-              {teacher.payoutStatus === "paid" && (
-                <div className="space-y-2 print:hidden">
+
+              {/* Paid status - can still edit proofs */}
+              {isPaid && !isLocked && (
+                <div className="space-y-3 print:hidden">
                   <div className="flex items-center gap-2 text-emerald-600 font-medium">
                     <CheckCircle className="h-5 w-5" /> Payment Completed
                   </div>
-                  {(existingReceiptUrl || receiptUrl) && <AttachmentPreview url={existingReceiptUrl || receiptUrl} />}
                   {existingInvoiceNumber && (
                     <p className="text-xs text-muted-foreground">Invoice: {existingInvoiceNumber}</p>
                   )}
+                  
+                  {/* Editable proofs section for paid status */}
+                  {!isTeacherView && (
+                    <div className="space-y-2 bg-muted/50 rounded-lg p-3">
+                      <Label className="text-xs font-medium">Payment Proofs (editable)</Label>
+                      <div className="space-y-2">
+                        {Array.from({ length: Math.min(receiptUrls.length + 1, MAX_RECEIPTS) }).map((_, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <div className="flex-1">
+                              {receiptUrls[idx] ? (
+                                <div className="flex items-center gap-2 p-2 bg-background rounded-lg">
+                                  <AttachmentPreview url={receiptUrls[idx]} />
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                                    onClick={() => removeReceipt(idx)}
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <FileUploadField
+                                  label=""
+                                  bucket="salary-receipts"
+                                  value=""
+                                  onChange={(url) => handleReceiptUpload(url, idx)}
+                                  hint={`Add proof ${idx + 1}`}
+                                />
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={handleUpdateProofs}
+                        disabled={isUpdatingProofs}
+                        className="mt-2"
+                      >
+                        {isUpdatingProofs && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+                        <Upload className="h-4 w-4 mr-1" /> Update Proofs
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {/* Show existing proofs for teacher view */}
+                  {isTeacherView && receiptUrls.length > 0 && (
+                    <div className="space-y-1">
+                      {receiptUrls.map((url, idx) => (
+                        <AttachmentPreview key={idx} url={url} />
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
+
+              {/* Locked status */}
               {isLocked && (
                 <div className="space-y-2 print:hidden">
                   <div className="flex items-center gap-2 text-muted-foreground font-medium">
                     <AlertCircle className="h-5 w-5" /> Salary Locked
                   </div>
-                  {(existingReceiptUrl || receiptUrl) && <AttachmentPreview url={existingReceiptUrl || receiptUrl} />}
+                  {receiptUrls.length > 0 && (
+                    <div className="space-y-1">
+                      {receiptUrls.map((url, idx) => (
+                        <AttachmentPreview key={idx} url={url} />
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
-              {showPartialInput && !isLocked && !isTeacherView && (
+              {/* Revert button - visible for paid or locked */}
+              {canRevert && (
+                <div className="mt-4 pt-3 border-t border-border print:hidden">
+                  <Button
+                    variant="outline"
+                    className="text-amber-600 border-amber-300 hover:bg-amber-50 hover:text-amber-700"
+                    onClick={onRevert}
+                  >
+                    <RotateCcw className="h-4 w-4 mr-1.5" /> Revert to Draft
+                  </Button>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    This will reset the salary back to draft status for editing.
+                  </p>
+                </div>
+              )}
+
+              {showPartialInput && !isLocked && !isPaid && !isTeacherView && (
                 <div className="mt-3 space-y-2 print:hidden">
                   <Textarea
                     placeholder="Reason for partial payment (mandatory)..."
@@ -631,7 +766,7 @@ export function SalarySheetDialog({
                     size="sm"
                     disabled={!partialReason.trim() || isPayingPending}
                     onClick={() => {
-                      onMarkPaid("partial", partialReason, displayInvoice, receiptUrl);
+                      onMarkPaid("partial", partialReason, displayInvoice, receiptUrls);
                       setPartialReason("");
                       setShowPartialInput(false);
                     }}

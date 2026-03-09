@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Calculator, Lock, CheckCircle, Clock, Plus, Search, Loader2
+  Calculator, Lock, CheckCircle, Clock, Plus, Search, Loader2, RotateCcw
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, parseISO, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { SalarySheetDialog } from '@/components/salary/SalarySheetDialog';
+import { trackActivity } from '@/lib/activityLogger';
 
 const MONTHS = [
   { value: '01', label: 'January' }, { value: '02', label: 'February' },
@@ -67,6 +68,14 @@ interface TeacherSalaryRow {
   payoutId?: string | null;
 }
 
+const REVERT_REASONS = [
+  'Incorrect amount',
+  'Wrong month',
+  'Duplicate entry',
+  'Payment not completed',
+  'Other',
+];
+
 export default function SalaryEngine() {
   const { user, activeRole } = useAuth();
   const { toast } = useToast();
@@ -82,6 +91,12 @@ export default function SalaryEngine() {
   const [adjustmentModalOpen, setAdjustmentModalOpen] = useState(false);
   const [selectedTeacherId, setSelectedTeacherId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  
+  // Revert modal state
+  const [revertModalOpen, setRevertModalOpen] = useState(false);
+  const [revertTeacherId, setRevertTeacherId] = useState<string | null>(null);
+  const [revertReason, setRevertReason] = useState('');
+  const [revertOtherText, setRevertOtherText] = useState('');
 
   // Forms
   const [leaveForm, setLeaveForm] = useState({ teacher_id: '', leave_type: 'unpaid', start_date: '', end_date: '', reason: '' });
@@ -344,7 +359,7 @@ export default function SalaryEngine() {
 
   const totalPayroll = salaryData.reduce((s, t) => s + t.netSalary, 0);
   const paidCount = salaryData.filter(t => t.payoutStatus === 'paid' || t.payoutStatus === 'locked').length;
-  const draftCount = salaryData.filter(t => t.payoutStatus === 'draft').length;
+  const draftCount = salaryData.filter(t => t.payoutStatus === 'draft' || t.payoutStatus === 'confirmed').length;
 
   // Selected teacher for sheet
   const selectedTeacher = salaryData.find(t => t.teacherId === selectedTeacherId) || null;
@@ -391,7 +406,8 @@ export default function SalaryEngine() {
         status: 'confirmed',
       };
       if (existing) {
-        if (existing.status === 'locked') throw new Error('Payout is locked');
+        // Block save when paid or locked
+        if (existing.status === 'locked' || existing.status === 'paid') throw new Error('Payout is ' + existing.status + ', cannot edit calculations');
         const { error } = await supabase.from('salary_payouts').update(payload).eq('id', existing.id);
         if (error) throw error;
       } else {
@@ -407,7 +423,7 @@ export default function SalaryEngine() {
   });
 
   const markPaid = useMutation({
-    mutationFn: async ({ teacherId, type, reason, invoiceNumber, receiptUrl }: { teacherId: string; type: 'full' | 'partial'; reason?: string; invoiceNumber?: string; receiptUrl?: string }) => {
+    mutationFn: async ({ teacherId, type, reason, invoiceNumber, receiptUrls }: { teacherId: string; type: 'full' | 'partial'; reason?: string; invoiceNumber?: string; receiptUrls?: string[] }) => {
       const payout = existingPayouts.find((p: any) => p.teacher_id === teacherId);
       if (!payout) {
         // Auto-save first
@@ -422,7 +438,9 @@ export default function SalaryEngine() {
         paid_by: user?.id,
         payment_method: type === 'partial' ? `Partial: ${reason}` : 'Full Payment',
         invoice_number: invoiceNumber || null,
-        receipt_url: receiptUrl || null,
+        receipt_urls: receiptUrls || [],
+        // Also maintain single receipt_url for backward compatibility
+        receipt_url: receiptUrls?.[0] || null,
       }).eq('id', payoutRefresh.id);
       if (error) throw error;
     },
@@ -433,10 +451,30 @@ export default function SalaryEngine() {
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
+  const updateProofs = useMutation({
+    mutationFn: async ({ teacherId, receiptUrls, invoiceNumber }: { teacherId: string; receiptUrls: string[]; invoiceNumber?: string }) => {
+      const payout = existingPayouts.find((p: any) => p.teacher_id === teacherId);
+      if (!payout) throw new Error('No payout record found');
+      if (payout.status === 'locked') throw new Error('Payout is locked');
+      const { error } = await supabase.from('salary_payouts').update({
+        receipt_urls: receiptUrls,
+        receipt_url: receiptUrls[0] || null,
+        ...(invoiceNumber ? { invoice_number: invoiceNumber } : {}),
+      }).eq('id', payout.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: 'Payment proofs updated' });
+      queryClient.invalidateQueries({ queryKey: ['salary-payouts'] });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
   const lockPayout = useMutation({
     mutationFn: async (teacherId: string) => {
       const payout = existingPayouts.find((p: any) => p.teacher_id === teacherId);
       if (!payout) throw new Error('Save payout first');
+      if (payout.status !== 'paid') throw new Error('Can only lock paid payouts');
       const { error } = await supabase.from('salary_payouts').update({
         status: 'locked',
         locked_at: new Date().toISOString(),
@@ -447,6 +485,46 @@ export default function SalaryEngine() {
     onSuccess: () => {
       toast({ title: 'Payout locked' });
       queryClient.invalidateQueries({ queryKey: ['salary-payouts'] });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const revertToDraft = useMutation({
+    mutationFn: async ({ teacherId, reason }: { teacherId: string; reason: string }) => {
+      const payout = existingPayouts.find((p: any) => p.teacher_id === teacherId);
+      if (!payout) throw new Error('No payout to revert');
+      const { error } = await supabase.from('salary_payouts').update({
+        status: 'draft',
+        paid_at: null,
+        paid_by: null,
+        locked_at: null,
+        locked_by: null,
+        reverted_at: new Date().toISOString(),
+        reverted_by: user?.id,
+        revert_reason: reason,
+      }).eq('id', payout.id);
+      if (error) throw error;
+      
+      // Log activity
+      await trackActivity({
+        action: 'payment_edited',
+        entityType: 'payment_transaction',
+        entityId: payout.id,
+        details: {
+          action: 'revert_to_draft',
+          teacher_id: teacherId,
+          previous_status: payout.status,
+          reason,
+        },
+      });
+    },
+    onSuccess: () => {
+      toast({ title: 'Reverted to draft' });
+      queryClient.invalidateQueries({ queryKey: ['salary-payouts'] });
+      setRevertModalOpen(false);
+      setRevertTeacherId(null);
+      setRevertReason('');
+      setRevertOtherText('');
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
@@ -504,6 +582,26 @@ export default function SalaryEngine() {
       default: return <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" /> Draft</Badge>;
     }
   };
+
+  const handleRevertClick = (teacherId: string) => {
+    setRevertTeacherId(teacherId);
+    setRevertReason('');
+    setRevertOtherText('');
+    setRevertModalOpen(true);
+  };
+
+  const confirmRevert = () => {
+    if (!revertTeacherId) return;
+    const finalReason = revertReason === 'Other' ? revertOtherText : revertReason;
+    if (!finalReason.trim()) {
+      toast({ title: 'Please select a reason', variant: 'destructive' });
+      return;
+    }
+    revertToDraft.mutate({ teacherId: revertTeacherId, reason: finalReason });
+  };
+
+  // Get existing payout data for selected teacher
+  const selectedPayout = existingPayouts.find((p: any) => p.teacher_id === selectedTeacherId);
 
   return (
     <DashboardLayout>
@@ -617,49 +715,71 @@ export default function SalaryEngine() {
                 {filteredData.length === 0 && (
                   <TableRow><TableCell colSpan={isTeacherView ? 7 : 8} className="text-center py-12 text-muted-foreground">No salary data for this month</TableCell></TableRow>
                 )}
-                {filteredData.map(teacher => (
-                  <TableRow key={teacher.teacherId} className="group">
-                    <TableCell>
-                      <button
-                        className="font-medium text-foreground hover:text-accent underline-offset-2 hover:underline transition-colors text-left"
-                        onClick={() => { setSelectedTeacherId(teacher.teacherId); setSheetOpen(true); }}
-                      >
-                        {teacher.teacherName}
-                      </button>
-                      <p className="text-xs text-muted-foreground">{teacher.students.length} student{teacher.students.length !== 1 ? 's' : ''}</p>
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">PKR {teacher.baseSalary.toFixed(2)}</TableCell>
-                    <TableCell className="text-right tabular-nums">PKR {teacher.extraClassAmount.toFixed(2)}</TableCell>
-                    <TableCell className="text-right tabular-nums text-emerald-600">PKR {teacher.adjustmentAmount.toFixed(2)}</TableCell>
-                    <TableCell className="text-right tabular-nums text-red-600">PKR {teacher.deductions.toFixed(2)}</TableCell>
-                    <TableCell className="text-right font-bold tabular-nums">PKR {teacher.netSalary.toFixed(2)}</TableCell>
-                    <TableCell>{getStatusBadge(teacher.payoutStatus)}</TableCell>
-                    {!isTeacherView && (
-                      <TableCell className="text-right">
-                        <div className="flex gap-1 justify-end">
+                {filteredData.map(teacher => {
+                  const payout = existingPayouts.find((p: any) => p.teacher_id === teacher.teacherId);
+                  const canRevert = payout && (payout.status === 'confirmed' || payout.status === 'paid' || payout.status === 'locked');
+                  const canSave = teacher.payoutStatus !== 'locked' && teacher.payoutStatus !== 'paid';
+                  
+                  return (
+                    <TableRow key={teacher.teacherId} className="group">
+                      <TableCell>
+                        <button
+                          className="font-medium text-foreground hover:text-accent underline-offset-2 hover:underline transition-colors text-left"
+                          onClick={() => { setSelectedTeacherId(teacher.teacherId); setSheetOpen(true); }}
+                        >
+                          {teacher.teacherName}
+                        </button>
+                        <p className="text-xs text-muted-foreground">{teacher.students.length} student{teacher.students.length !== 1 ? 's' : ''}</p>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">PKR {teacher.baseSalary.toFixed(2)}</TableCell>
+                      <TableCell className="text-right tabular-nums">PKR {teacher.extraClassAmount.toFixed(2)}</TableCell>
+                      <TableCell className="text-right tabular-nums text-emerald-600">PKR {teacher.adjustmentAmount.toFixed(2)}</TableCell>
+                      <TableCell className="text-right tabular-nums text-red-600">PKR {teacher.deductions.toFixed(2)}</TableCell>
+                      <TableCell className="text-right font-bold tabular-nums">PKR {teacher.netSalary.toFixed(2)}</TableCell>
+                      <TableCell>{getStatusBadge(teacher.payoutStatus)}</TableCell>
+                      {!isTeacherView && (
+                        <TableCell className="text-right">
+                          <div className="flex gap-1 justify-end">
+                            <Button size="sm" variant="outline" onClick={() => { setSelectedTeacherId(teacher.teacherId); setSheetOpen(true); }}>
+                              View Sheet
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={() => savePayout.mutate(teacher)} 
+                              disabled={!canSave || savePayout.isPending}
+                            >
+                              {savePayout.isPending && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+                              Save
+                            </Button>
+                            {teacher.payoutStatus === 'paid' && (
+                              <Button size="sm" variant="ghost" onClick={() => lockPayout.mutate(teacher.teacherId)}>
+                                <Lock className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {canRevert && (
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                onClick={() => handleRevertClick(teacher.teacherId)}
+                              >
+                                <RotateCcw className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      )}
+                      {isTeacherView && (
+                        <TableCell className="text-right">
                           <Button size="sm" variant="outline" onClick={() => { setSelectedTeacherId(teacher.teacherId); setSheetOpen(true); }}>
                             View Sheet
                           </Button>
-                          <Button size="sm" variant="outline" onClick={() => savePayout.mutate(teacher)} disabled={teacher.payoutStatus === 'locked'}>
-                            Save
-                          </Button>
-                          {teacher.payoutStatus === 'paid' && (
-                            <Button size="sm" variant="ghost" onClick={() => lockPayout.mutate(teacher.teacherId)}>
-                              <Lock className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    )}
-                    {isTeacherView && (
-                      <TableCell className="text-right">
-                        <Button size="sm" variant="outline" onClick={() => { setSelectedTeacherId(teacher.teacherId); setSheetOpen(true); }}>
-                          View Sheet
-                        </Button>
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))}
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>
@@ -678,17 +798,78 @@ export default function SalaryEngine() {
           month={month}
           editAmounts={editAmounts}
           onEditAmount={(id, amt) => setEditAmounts(prev => ({ ...prev, [id]: amt }))}
-          onMarkPaid={(type, reason, invoiceNumber, receiptUrl) => {
+          onMarkPaid={(type, reason, invoiceNumber, receiptUrls) => {
             if (selectedTeacherId) {
-              markPaid.mutate({ teacherId: selectedTeacherId, type, reason, invoiceNumber, receiptUrl });
+              markPaid.mutate({ teacherId: selectedTeacherId, type, reason, invoiceNumber, receiptUrls });
+            }
+          }}
+          onUpdateProofs={(receiptUrls, invoiceNumber) => {
+            if (selectedTeacherId) {
+              updateProofs.mutate({ teacherId: selectedTeacherId, receiptUrls, invoiceNumber });
+            }
+          }}
+          onRevert={() => {
+            if (selectedTeacherId) {
+              handleRevertClick(selectedTeacherId);
             }
           }}
           isPayingPending={markPaid.isPending}
+          isUpdatingProofs={updateProofs.isPending}
           isLocked={selectedTeacher?.payoutStatus === 'locked'}
+          isPaid={selectedTeacher?.payoutStatus === 'paid'}
           viewerRole={isTeacherView ? 'teacher' : 'admin'}
-          existingReceiptUrl={existingPayouts.find((p: any) => p.teacher_id === selectedTeacherId)?.receipt_url || null}
-          existingInvoiceNumber={existingPayouts.find((p: any) => p.teacher_id === selectedTeacherId)?.invoice_number || null}
+          existingReceiptUrls={selectedPayout?.receipt_urls || []}
+          existingInvoiceNumber={selectedPayout?.invoice_number || null}
         />
+
+        {/* ── Revert Confirmation Modal ── */}
+        <Dialog open={revertModalOpen} onOpenChange={setRevertModalOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-amber-600">
+                <RotateCcw className="h-5 w-5" />
+                Revert to Draft
+              </DialogTitle>
+              <DialogDescription>
+                This will reset the salary record back to draft status, clearing payment info. A reason is required for audit.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Reason for Revert</Label>
+                <Select value={revertReason} onValueChange={setRevertReason}>
+                  <SelectTrigger><SelectValue placeholder="Select a reason" /></SelectTrigger>
+                  <SelectContent>
+                    {REVERT_REASONS.map(r => (
+                      <SelectItem key={r} value={r}>{r}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {revertReason === 'Other' && (
+                <div>
+                  <Label>Please specify</Label>
+                  <Textarea 
+                    value={revertOtherText} 
+                    onChange={e => setRevertOtherText(e.target.value)}
+                    placeholder="Enter reason..."
+                  />
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setRevertModalOpen(false)}>Cancel</Button>
+              <Button 
+                variant="destructive"
+                onClick={confirmRevert}
+                disabled={!revertReason || (revertReason === 'Other' && !revertOtherText.trim()) || revertToDraft.isPending}
+              >
+                {revertToDraft.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+                Confirm Revert
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* ── Leave Modal ── */}
         <Dialog open={leaveModalOpen} onOpenChange={setLeaveModalOpen}>
