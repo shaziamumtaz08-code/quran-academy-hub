@@ -160,6 +160,29 @@ export function SalaryStatementTemplate({
                   </td>
                 </tr>
               );
+            {/* Role-based salary rows */}
+            {roleSalaries.map((rs, idx) => {
+              const finalAmt = rs.editedAmount ?? rs.proratedAmount;
+              return (
+                <tr key={`role-${idx}`} style={{ borderBottom: '1px solid #f3f4f6', background: '#faf5ff' }}>
+                  <td style={{ padding: '10px 0' }}>
+                    <p style={{ fontWeight: 600, margin: 0 }}>Role: {rs.role.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</p>
+                    <p style={{ fontSize: 10, color: '#9ca3af', margin: '1px 0 0' }}>Flat • {rs.activeDays}/{rs.totalDays} days</p>
+                  </td>
+                  <td style={{ padding: '10px 0', color: '#6b7280' }}>
+                    {format(parseISO(rs.effectiveFrom), 'dd MMM')} – {format(parseISO(rs.effectiveTo), 'dd MMM')}
+                  </td>
+                  <td style={{ padding: '10px 0', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace" }}>
+                    {rs.monthlyAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </td>
+                  <td style={{ padding: '10px 0', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", color: '#6b7280' }}>
+                    {rs.proratedAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </td>
+                  <td style={{ padding: '10px 0', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>
+                    {finalAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </td>
+                </tr>
+              );
             })}
           </tbody>
         </table>
