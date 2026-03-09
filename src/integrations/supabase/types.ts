@@ -2304,6 +2304,56 @@ export type Database = {
           },
         ]
       }
+      staff_salaries: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          effective_from: string
+          effective_to: string | null
+          id: string
+          monthly_amount: number
+          notes: string | null
+          prorate_partial_months: boolean
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          monthly_amount?: number
+          notes?: string | null
+          prorate_partial_months?: boolean
+          role: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          monthly_amount?: number
+          notes?: string | null
+          prorate_partial_months?: boolean
+          role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_salaries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_billing_plans: {
         Row: {
           assignment_id: string | null
