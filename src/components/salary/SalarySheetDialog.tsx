@@ -254,12 +254,12 @@ export function SalarySheetDialog({
     }
   };
 
-  // Determine if proofs can be edited (paid but not locked)
-  const canEditProofs = isPaid && !isLocked && !isTeacherView;
+  // Determine if proofs can be edited (paid or partially_paid but not locked)
+  const canEditProofs = (isPaid || isPartiallyPaid) && !isLocked && !isTeacherView;
   // Determine if calculation fields can be edited (draft or confirmed only)
-  const canEditCalculations = !isPaid && !isLocked && !isTeacherView;
-  // Show revert button for paid or locked status
-  const canRevert = (isPaid || isLocked) && !isTeacherView && onRevert;
+  const canEditCalculations = !isPaid && !isPartiallyPaid && !isLocked && !isTeacherView;
+  // Show revert button for paid, partially_paid, or locked status
+  const canRevert = (isPaid || isPartiallyPaid || isLocked) && !isTeacherView && onRevert;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
