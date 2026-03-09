@@ -127,26 +127,41 @@ export function SalarySheetDialog({
   editAmounts,
   onEditAmount,
   onMarkPaid,
+  onTopUp,
   onUpdateProofs,
   onRevert,
   isPayingPending,
+  isTopUpPending,
   isUpdatingProofs,
   isLocked,
   isPaid,
+  isPartiallyPaid,
+  existingAmountPaid = 0,
   viewerRole = "admin",
   existingReceiptUrls = [],
   existingInvoiceNumber,
 }: SalarySheetDialogProps) {
   const [partialReason, setPartialReason] = useState("");
+  const [partialAmount, setPartialAmount] = useState<string>("");
   const [showPartialInput, setShowPartialInput] = useState(false);
   const [receiptUrls, setReceiptUrls] = useState<string[]>([]);
+  // Top-up state
+  const [showTopUpInput, setShowTopUpInput] = useState(false);
+  const [topUpAmount, setTopUpAmount] = useState<string>("");
+  const [topUpNotes, setTopUpNotes] = useState("");
+  const [topUpReceipts, setTopUpReceipts] = useState<string[]>([]);
 
   // Reset local state every time the dialog opens for a (possibly different) teacher
   useEffect(() => {
     if (open) {
       setReceiptUrls(existingReceiptUrls || []);
       setPartialReason("");
+      setPartialAmount("");
       setShowPartialInput(false);
+      setShowTopUpInput(false);
+      setTopUpAmount("");
+      setTopUpNotes("");
+      setTopUpReceipts([]);
     }
   }, [open, teacher?.teacherId, existingReceiptUrls]);
 
