@@ -44,6 +44,7 @@ interface SalaryStatementTemplateProps {
   monthLabel: string;
   invoiceNumber: string;
   students: StudentRow[];
+  roleSalaries?: RoleSalaryPrintRow[];
   extraClassAmount: number;
   adjustments: Adjustment[];
   baseSalary: number;
