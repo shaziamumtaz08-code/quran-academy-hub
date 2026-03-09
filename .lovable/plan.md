@@ -1,95 +1,104 @@
 
-# Plan: Synchronize Edit Invoice with Record Payment Form + Multi-Month Payment UX
 
-## Problem Summary
+# Salary Engine State Machine Redesign
 
-1. **Edit Invoice form is missing fields** that the Record Payment form has: Realized (PKR), exchange rate display, Proof of Payment upload, and shortfall/resolution handling.
-2. **Multi-month payments** require clarity: if a student pays 40 AUD covering Dec (10) + Jan (30), can the system auto-split it?
+## Current Issues Identified
 
----
+1. **Single `receipt_url` column**: Only 1 attachment supported, no multi-part payment proofs
+2. **No status for "confirmed/saved"**: Draft → Paid → Locked, but "Save" just creates/updates the record without a distinct status
+3. **Once "Paid", no edits allowed**: Can't upload proofs after marking paid
+4. **No revert functionality**: Locked/Paid cannot be undone
+5. **Save button disabled only for "locked"**: Should also be disabled after "paid" unless specifically editing proofs
 
-## Part 1: Make Edit Invoice Form Identical to Record Payment
+## Proposed State Machine
 
-The Edit Invoice dialog will be restructured to match Record Payment field-for-field:
+```text
+┌─────────┐  Save   ┌───────────┐  Mark Paid  ┌────────┐  Lock   ┌────────┐
+│  DRAFT  │ ──────> │ CONFIRMED │ ──────────> │  PAID  │ ──────> │ LOCKED │
+└─────────┘         └───────────┘             └────────┘         └────────┘
+     ↑                    │                       │                   │
+     │                    │ Revert                │ Revert            │ Revert
+     └────────────────────┴───────────────────────┴───────────────────┘
+              (Admin only, with confirmation + audit log)
+```
 
-| Section | Record Payment | Edit Invoice (Current) | Action |
-|---|---|---|---|
-| Invoice summary bar | Student name + expected | Missing | **Add** |
-| Payment Period (From/To) | Yes | Yes | Keep |
-| Payment Date / Paid At | Yes | Yes | Keep (label: "Paid At") |
-| Receiving Channel | Yes | Yes | Keep |
-| Amount (currency) | Yes | Yes | Keep |
-| Realized (PKR) | Yes | **Missing** | **Add** |
-| Exchange Rate display | Yes | **Missing** | **Add** |
-| Shortfall + Resolution | Yes | **Missing** | **Add** (auto-calculated) |
-| Proof of Payment upload | Yes | **Missing** | **Add** |
-| Notes / Remark | Yes | Yes | Keep |
-| Amount Paid | N/A (auto) | Yes | Keep (admin override) |
-| Forgiven Amount | N/A (auto) | Yes | Keep (admin override) |
-| Currency | N/A (from invoice) | Yes | Keep |
-| Billing Month | N/A (from invoice) | Yes | Keep |
-| Status | N/A (auto) | Yes | Keep |
-| Due Date | N/A | Yes | Keep |
+**Status Definitions:**
+- **Draft**: Live calculation, no payout record or status='draft'. Fully editable.
+- **Confirmed**: Snapshot saved to `salary_payouts`. Admin can still edit amounts, add proofs.
+- **Paid**: Payment marked, `paid_at` set. Admin can upload/update up to 3 proofs, edit invoice number. Calculation locked, only proof metadata editable.
+- **Locked**: Final. No changes unless admin clicks "Revert to Draft" (with confirmation).
 
-The Edit Invoice dialog will have the same visual layout and sections as Record Payment, plus the extra admin-only fields (Status, Due Date, Currency, Billing Month, Forgiven Amount) below a separator labeled "Admin Overrides".
+## Database Changes
 
----
+### 1. Add `receipt_urls` array column (up to 3 attachments)
+```sql
+ALTER TABLE salary_payouts 
+ADD COLUMN receipt_urls text[] DEFAULT '{}';
+-- Migrate existing single receipt_url to array
+UPDATE salary_payouts SET receipt_urls = ARRAY[receipt_url] WHERE receipt_url IS NOT NULL;
+```
 
-## Part 2: Multi-Month Payment Strategy
+### 2. Add `reverted_at`, `reverted_by`, `revert_reason` for audit trail
+```sql
+ALTER TABLE salary_payouts 
+ADD COLUMN reverted_at timestamptz,
+ADD COLUMN reverted_by uuid,
+ADD COLUMN revert_reason text;
+```
 
-### Current mechanism
-- The system is **invoice-based**: each month generates a separate invoice per student.
-- The bulk "Record Payment" (cart pattern) already supports selecting multiple invoices and paying them with a single receipt.
-- The payment is **allocated sequentially** to each selected invoice (oldest first), with shortfall handling for any remainder.
+## Code Changes
 
-### The easier solution (recommended)
-Rather than building complex date-range-to-invoice auto-splitting, the **existing cart system already solves this**:
+### A. `src/pages/SalaryEngine.tsx`
 
-1. Admin selects invoices for Dec 2025 and Jan 2026 using checkboxes.
-2. Clicks "Record Payment" -- both invoices appear in the summary.
-3. Enters 40 AUD total, one receipt screenshot, one receiving channel.
-4. System auto-allocates: 10 AUD to Dec (outstanding), 30 AUD to Jan (outstanding).
-5. Both invoices update. Single receipt is linked to both transactions.
+1. **Add `revertToDraft` mutation**: Resets status to 'draft', clears paid_at/locked_at, sets reverted_at/reverted_by/revert_reason
+2. **Add Revert button**: Visible on `paid` or `locked` rows with confirmation dialog
+3. **Block Save for 'paid'**: `disabled={status === 'locked' || status === 'paid'}` — calculation edits blocked
+4. **Allow proof update after Paid**: Add "Update Proofs" button for `paid` status
 
-**No new development needed** for this flow -- it already works. The From/To date range in the payment form captures the coverage period for reference, but the allocation is driven by the invoice amounts, not dates.
+### B. `src/components/salary/SalarySheetDialog.tsx`
 
-### What WILL be improved
-- Add a **helper tooltip/info text** on the Record Payment dialog explaining: "Selected invoices are paid in order. Amount is allocated starting from the first invoice."
-- Ensure the **Edit Payment** form (on `payment_transactions`) also mirrors the Record Payment layout for consistency.
+1. **Multi-attachment support**: Replace single `FileUploadField` with array of 3 upload slots
+2. **Show all attachments in "Paid" state**: Display up to 3 proof previews
+3. **Allow proof editing when `paid` (not locked)**: Proofs-only section remains editable
+4. **Revert button in sheet**: With AlertDialog confirmation requiring reason input
 
----
+### C. State-Based UI Logic
 
-## Technical Changes
+| Status | Save | Mark Paid | Lock | Upload Proofs | Revert |
+|--------|------|-----------|------|---------------|--------|
+| Draft | ✓ | ✓ | ✗ | ✓ | ✗ |
+| Confirmed | ✓ | ✓ | ✗ | ✓ | ✓ (to Draft) |
+| Paid | ✗ | ✗ | ✓ | ✓ | ✓ (to Draft) |
+| Locked | ✗ | ✗ | ✗ | ✗ | ✓ (to Draft) |
 
-### File: `src/pages/Payments.tsx`
+### D. Revert Confirmation Dialog
+- Requires selecting a reason: "Incorrect amount", "Wrong month", "Duplicate entry", "Other"
+- If "Other", mandatory text input
+- Logged to `system_logs` table via `trackActivity()`
 
-1. **Add state for receipt file in edit mode** -- reuse `receiptInputRef` or add a second ref.
+## Migration Plan
 
-2. **Add `amount_local` (Realized PKR) field to `editInvoiceData` state** and persist it. This will require either:
-   - Storing realized amount on the invoice itself (new column), OR
-   - Looking up from `payment_transactions` and allowing override.
-   
-   Since `payment_transactions` already tracks `amount_local`, the Edit Invoice form will add a display-only "Realized (PKR)" field that shows the sum from linked transactions, plus an editable override field.
+```sql
+-- Add new columns
+ALTER TABLE salary_payouts 
+ADD COLUMN IF NOT EXISTS receipt_urls text[] DEFAULT '{}',
+ADD COLUMN IF NOT EXISTS reverted_at timestamptz,
+ADD COLUMN IF NOT EXISTS reverted_by uuid,
+ADD COLUMN IF NOT EXISTS revert_reason text;
 
-3. **Restructure the Edit Invoice dialog** to follow Record Payment's visual order:
-   - Top: Student name + invoice summary bar
-   - Billing Month + Status row
-   - Payment Period section (From / To)
-   - Separator
-   - Payment Details section (Paid At + Receiving Channel)
-   - Amount row: Amount (currency) + Realized (PKR)
-   - Exchange rate auto-calculated display
-   - Amount Paid + Forgiven Amount row
-   - Currency + Due Date row
-   - Proof of Payment upload area
-   - Remark / Notes textarea
+-- Migrate existing receipt_url to receipt_urls array
+UPDATE salary_payouts 
+SET receipt_urls = ARRAY[receipt_url] 
+WHERE receipt_url IS NOT NULL AND (receipt_urls IS NULL OR receipt_urls = '{}');
+```
 
-4. **Receipt upload in edit mode**: Allow uploading a new receipt that updates the latest `payment_transaction.receipt_url` for this invoice.
+## Summary
 
-5. **Add info text** to Record Payment dialog: "Amounts are allocated across selected invoices in order."
+| Change | Purpose |
+|--------|---------|
+| `receipt_urls` array | Support up to 3 proof attachments for partial payments |
+| Revert functionality | Allow admin to undo paid/locked mistakes |
+| Proof editing for Paid | Upload screenshots after marking paid |
+| Audit trail columns | Track who reverted and why |
+| Status-based button logic | Clear UX for what actions are available at each state |
 
-### Database
-- No new columns needed. The `fee_invoices` table already has `period_from`, `period_to`, `payment_method`, `paid_at`. The realized amount lives in `payment_transactions.amount_local`.
-
-### No changes needed for multi-month payments
-- The existing cart/bulk payment system handles this correctly already. The plan is to add UX guidance text only.
