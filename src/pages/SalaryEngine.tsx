@@ -553,6 +553,8 @@ export default function SalaryEngine() {
         paid_by: null,
         locked_at: null,
         locked_by: null,
+        amount_paid: 0,
+        partial_notes: null,
         reverted_at: new Date().toISOString(),
         reverted_by: user?.id,
         revert_reason: reason,
