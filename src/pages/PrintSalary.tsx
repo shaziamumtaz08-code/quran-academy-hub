@@ -105,6 +105,7 @@ export default function PrintSalary() {
         monthLabel={monthLabel}
         invoiceNumber={invoiceNumber}
         students={students}
+        roleSalaries={roleSalaries}
         extraClassAmount={Number(payout.extra_class_amount)}
         adjustments={[]}
         baseSalary={Number(payout.base_salary)}
