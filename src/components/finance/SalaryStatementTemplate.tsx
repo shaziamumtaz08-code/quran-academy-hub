@@ -183,9 +183,9 @@ export function SalaryStatementTemplate({
                   </td>
                 </tr>
               );
-            })}
-          </tbody>
+
         </table>
+      </div>
       </div>
 
       {/* Adjustments */}
