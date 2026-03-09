@@ -14,6 +14,17 @@ interface StudentRow {
   editedAmount: number | null;
 }
 
+interface RoleSalaryPrintRow {
+  role: string;
+  monthlyAmount: number;
+  effectiveFrom: string;
+  effectiveTo: string;
+  activeDays: number;
+  totalDays: number;
+  proratedAmount: number;
+  editedAmount: number | null;
+}
+
 interface Adjustment {
   adjustment_type: string;
   amount: number;
