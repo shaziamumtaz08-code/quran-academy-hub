@@ -358,7 +358,8 @@ export default function SalaryEngine() {
   }, [salaryData, searchQuery, isTeacherView, user?.id]);
 
   const totalPayroll = salaryData.reduce((s, t) => s + t.netSalary, 0);
-  const paidCount = salaryData.filter(t => t.payoutStatus === 'paid' || t.payoutStatus === 'locked').length;
+  const paidCount = salaryData.filter(t => t.payoutStatus === 'paid' || t.payoutStatus === 'locked' || t.payoutStatus === 'partially_paid').length;
+  const partialCount = salaryData.filter(t => t.payoutStatus === 'partially_paid').length;
   const draftCount = salaryData.filter(t => t.payoutStatus === 'draft' || t.payoutStatus === 'confirmed').length;
 
   // Selected teacher for sheet
