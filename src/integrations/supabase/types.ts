@@ -2082,6 +2082,10 @@ export type Database = {
           payment_method: string | null
           payment_reference: string | null
           receipt_url: string | null
+          receipt_urls: string[] | null
+          revert_reason: string | null
+          reverted_at: string | null
+          reverted_by: string | null
           salary_month: string
           status: string
           teacher_id: string
@@ -2107,6 +2111,10 @@ export type Database = {
           payment_method?: string | null
           payment_reference?: string | null
           receipt_url?: string | null
+          receipt_urls?: string[] | null
+          revert_reason?: string | null
+          reverted_at?: string | null
+          reverted_by?: string | null
           salary_month: string
           status?: string
           teacher_id: string
@@ -2132,6 +2140,10 @@ export type Database = {
           payment_method?: string | null
           payment_reference?: string | null
           receipt_url?: string | null
+          receipt_urls?: string[] | null
+          revert_reason?: string | null
+          reverted_at?: string | null
+          reverted_by?: string | null
           salary_month?: string
           status?: string
           teacher_id?: string
