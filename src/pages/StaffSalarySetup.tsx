@@ -238,8 +238,8 @@ export default function StaffSalarySetup() {
           </Card>
           <Card>
             <CardContent className="pt-6 flex items-center gap-4">
-              <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                <Calendar className="h-5 w-5 text-emerald-600" />
+              <div className="h-10 w-10 rounded-lg bg-accent flex items-center justify-center">
+                <Calendar className="h-5 w-5 text-accent-foreground" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Active Entries</p>
@@ -249,8 +249,8 @@ export default function StaffSalarySetup() {
           </Card>
           <Card>
             <CardContent className="pt-6 flex items-center gap-4">
-              <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                <DollarSign className="h-5 w-5 text-amber-600" />
+              <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center">
+                <DollarSign className="h-5 w-5 text-secondary-foreground" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Monthly</p>
