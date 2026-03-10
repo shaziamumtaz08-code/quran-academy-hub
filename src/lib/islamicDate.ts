@@ -1,7 +1,6 @@
 /**
  * AlAdhan API integration for accurate Hijri date + prayer times.
- * Fetches BOTH today and tomorrow to support Maghrib-based day flip.
- * Islamic day starts at Maghrib — after Maghrib, show tomorrow's Hijri date.
+ * Islamic day starts at Maghrib — after Maghrib, add +1 to today's Hijri day.
  */
 
 const TZ_MAP: Record<string, { city: string; country: string }> = {
@@ -45,6 +44,12 @@ function getSchool(country: string): number {
   const hanafiCountries = ['Pakistan', 'India', 'Bangladesh', 'Afghanistan', 'Turkey'];
   return hanafiCountries.includes(country) ? 1 : 0;
 }
+
+const HIJRI_MONTHS = [
+  "Muharram", "Safar", "Rabi al-Awwal", "Rabi al-Thani",
+  "Jumada al-Awwal", "Jumada al-Thani", "Rajab", "Sha'ban",
+  "Ramadan", "Shawwal", "Dhul Qi'dah", "Dhul Hijjah",
+];
 
 const CLEAN_MONTHS: Record<string, string> = {
   "Muḥarram": "Muharram",
@@ -91,6 +96,7 @@ interface DayData {
     monthName: string;
     monthNumber: number;
     year: number;
+    daysInMonth: number;
   };
   prayers: IslamicDateData['prayers'];
 }
@@ -105,6 +111,7 @@ function parseApiResponse(json: any): DayData | null {
       monthName: cleanMonth(hijri.month.en),
       monthNumber: hijri.month.number,
       year: parseInt(hijri.year),
+      daysInMonth: parseInt(hijri.month.days || '30'),
     },
     prayers: {
       Fajr: cleanTime(timings.Fajr),
@@ -128,8 +135,7 @@ function formatDateForApi(d: Date): string {
 function isPastMaghrib(maghribStr: string, timezone: string): boolean {
   if (!maghribStr) return false;
   const [mH, mM] = maghribStr.split(':').map(Number);
-  
-  // Get current time in the user's timezone
+
   const now = new Date();
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: timezone,
@@ -137,10 +143,10 @@ function isPastMaghrib(maghribStr: string, timezone: string): boolean {
     minute: '2-digit',
     hour12: false,
   }).formatToParts(now);
-  
+
   const nowH = parseInt(parts.find(p => p.type === 'hour')?.value || '0');
   const nowM = parseInt(parts.find(p => p.type === 'minute')?.value || '0');
-  
+
   return (nowH * 60 + nowM) >= (mH * 60 + mM);
 }
 
@@ -168,12 +174,6 @@ function localHijriFallback(): IslamicDateData {
   let hDay = l - Math.floor((709 * hMonth) / 24);
   let hYear = 30 * n + j - 30;
 
-  const HIJRI_MONTHS = [
-    "Muharram", "Safar", "Rabi al-Awwal", "Rabi al-Thani",
-    "Jumada al-Awwal", "Jumada al-Thani", "Rajab", "Sha'ban",
-    "Ramadan", "Shawwal", "Dhul Qi'dah", "Dhul Hijjah",
-  ];
-
   return {
     day: hDay,
     monthName: HIJRI_MONTHS[hMonth - 1] || 'Unknown',
@@ -186,7 +186,7 @@ function localHijriFallback(): IslamicDateData {
 }
 
 export async function fetchIslamicDate(timezone: string = 'Asia/Karachi'): Promise<IslamicDateData> {
-  const cacheKey = 'hijri_date_cache_v2';
+  const cacheKey = 'hijri_date_cache_v3';
   const now = new Date();
   const today = now.toISOString().split('T')[0];
 
@@ -195,9 +195,8 @@ export async function fetchIslamicDate(timezone: string = 'Asia/Karachi'): Promi
     const cached = localStorage.getItem(cacheKey);
     if (cached) {
       const parsed = JSON.parse(cached);
-      if (parsed.date === today && parsed.tz === timezone && parsed.todayData && parsed.tomorrowData) {
-        // Use cached data but still apply Maghrib flip logic
-        return applyMaghribFlip(parsed.todayData, parsed.tomorrowData, timezone);
+      if (parsed.date === today && parsed.tz === timezone && parsed.todayData) {
+        return applyMaghribFlip(parsed.todayData, timezone);
       }
     }
   } catch {}
@@ -207,40 +206,23 @@ export async function fetchIslamicDate(timezone: string = 'Asia/Karachi'): Promi
   const school = getSchool(country);
 
   const todayStr = formatDateForApi(now);
-  const tomorrow = new Date(now);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowStr = formatDateForApi(tomorrow);
-
   const baseUrl = `https://api.aladhan.com/v1/timingsByCity`;
   const params = `city=${encodeURIComponent(city)}&country=${encodeURIComponent(country)}&method=${method}&school=${school}`;
 
   try {
-    // Fetch both today and tomorrow in parallel
-    const [todayRes, tomorrowRes] = await Promise.all([
-      fetch(`${baseUrl}/${todayStr}?${params}`).then(r => r.json()),
-      fetch(`${baseUrl}/${tomorrowStr}?${params}`).then(r => r.json()),
-    ]);
-
+    const todayRes = await fetch(`${baseUrl}/${todayStr}?${params}`).then(r => r.json());
     const todayData = parseApiResponse(todayRes);
-    const tomorrowData = parseApiResponse(tomorrowRes);
 
-    if (todayData && tomorrowData) {
-      // Cache both days
+    if (todayData) {
       try {
         localStorage.setItem(cacheKey, JSON.stringify({
           date: today,
           tz: timezone,
           todayData,
-          tomorrowData,
         }));
       } catch {}
 
-      return applyMaghribFlip(todayData, tomorrowData, timezone);
-    }
-
-    // If only today succeeded
-    if (todayData) {
-      return buildResult(todayData);
+      return applyMaghribFlip(todayData, timezone);
     }
   } catch (err) {
     console.warn('AlAdhan API failed, using local fallback:', err);
@@ -249,33 +231,38 @@ export async function fetchIslamicDate(timezone: string = 'Asia/Karachi'): Promi
   return localHijriFallback();
 }
 
-/** Apply Maghrib-based Hijri day flip: after Maghrib, show tomorrow's Hijri */
-function applyMaghribFlip(todayData: DayData, tomorrowData: DayData, timezone: string): IslamicDateData {
+/**
+ * Maghrib-based Hijri day flip:
+ * The API returns the correct base Hijri date for the Gregorian day.
+ * After Maghrib, we simply add +1 to the day (with month rollover).
+ * Prayer times always stay as today's.
+ */
+function applyMaghribFlip(todayData: DayData, timezone: string): IslamicDateData {
   const pastMaghrib = isPastMaghrib(todayData.prayers.Maghrib, timezone);
 
-  // After Maghrib: show tomorrow's Hijri date but TODAY's prayer times
-  const hijriSource = pastMaghrib ? tomorrowData : todayData;
+  let { day, monthName, monthNumber, year, daysInMonth } = todayData.hijri;
+
+  if (pastMaghrib) {
+    day += 1;
+    // Handle month rollover
+    if (day > daysInMonth) {
+      day = 1;
+      monthNumber += 1;
+      if (monthNumber > 12) {
+        monthNumber = 1;
+        year += 1;
+      }
+      monthName = HIJRI_MONTHS[monthNumber - 1] || monthName;
+    }
+  }
 
   return {
-    day: hijriSource.hijri.day,
-    monthName: hijriSource.hijri.monthName,
-    monthNumber: hijriSource.hijri.monthNumber,
-    year: hijriSource.hijri.year,
-    formatted: `${hijriSource.hijri.day} ${hijriSource.hijri.monthName} ${hijriSource.hijri.year} AH`,
-    isRamadan: hijriSource.hijri.monthNumber === 9,
-    // Always use today's prayer times (they're for today's physical day)
+    day,
+    monthName,
+    monthNumber,
+    year,
+    formatted: `${day} ${monthName} ${year} AH`,
+    isRamadan: monthNumber === 9,
     prayers: todayData.prayers,
-  };
-}
-
-function buildResult(data: DayData): IslamicDateData {
-  return {
-    day: data.hijri.day,
-    monthName: data.hijri.monthName,
-    monthNumber: data.hijri.monthNumber,
-    year: data.hijri.year,
-    formatted: `${data.hijri.day} ${data.hijri.monthName} ${data.hijri.year} AH`,
-    isRamadan: data.hijri.monthNumber === 9,
-    prayers: data.prayers,
   };
 }

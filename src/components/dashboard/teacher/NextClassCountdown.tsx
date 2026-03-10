@@ -7,9 +7,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-/**
- * Get current wall-clock day/time in a given IANA timezone using Intl API.
- */
 function getNowInTimezone(tz: string) {
   const now = new Date();
   const formatter = new Intl.DateTimeFormat('en-US', {
@@ -49,17 +46,12 @@ function buildNextOccurrence(
   let daysUntil = targetDayIndex - tz.dayIndex;
   if (daysUntil < 0) daysUntil += 7;
 
-  // If today, check if class has ended
   if (daysUntil === 0) {
     const nowMins = tz.hours * 60 + tz.minutes;
     const classEndMins = targetH * 60 + targetM + durationMinutes;
-    if (nowMins >= classEndMins) {
-      daysUntil = 7;
-    }
+    if (nowMins >= classEndMins) daysUntil = 7;
   }
 
-  // Calculate ms from now to target:
-  // daysUntil full days from start of today, then adjust for current vs target time
   const nowSecsOfDay = tz.hours * 3600 + tz.minutes * 60 + tz.seconds;
   const targetSecsOfDay = targetH * 3600 + targetM * 60;
   const totalSecsDiff = daysUntil * 86400 + (targetSecsOfDay - nowSecsOfDay);
@@ -87,6 +79,12 @@ function useCountdown(target: Date | null) {
   return timeLeft;
 }
 
+// Short day labels
+const SHORT_DAYS: Record<string, string> = {
+  Sunday: 'Sun', Monday: 'Mon', Tuesday: 'Tue', Wednesday: 'Wed',
+  Thursday: 'Thu', Friday: 'Fri', Saturday: 'Sat',
+};
+
 export function NextClassCountdown() {
   const { user } = useAuth();
 
@@ -95,7 +93,6 @@ export function NextClassCountdown() {
     queryFn: async () => {
       if (!user?.id) return null;
 
-      // Step 1: Get teacher timezone
       const { data: profile } = await supabase
         .from('profiles')
         .select('timezone')
@@ -104,7 +101,6 @@ export function NextClassCountdown() {
 
       const teacherTz = profile?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-      // Step 2: Get active assignments for this teacher
       const { data: assignments } = await supabase
         .from('student_teacher_assignments')
         .select('id, student:profiles!student_teacher_assignments_student_id_fkey(id, full_name), subject:subjects(name)')
@@ -115,7 +111,6 @@ export function NextClassCountdown() {
 
       const assignmentIds = assignments.map(a => a.id);
 
-      // Step 3: Get active schedules for those assignments
       const { data: schedules } = await supabase
         .from('schedules')
         .select('id, day_of_week, teacher_local_time, duration_minutes, assignment_id')
@@ -124,27 +119,20 @@ export function NextClassCountdown() {
 
       if (!schedules?.length) return null;
 
-      // Step 4: Map schedules to assignment data and find nearest
       const assignmentMap = new Map(assignments.map(a => [a.id, a]));
 
       const upcoming = schedules.map(s => {
         const assignment = assignmentMap.get(s.assignment_id!);
         const student = assignment?.student as any;
         const subject = assignment?.subject as any;
-
-        const dateTime = buildNextOccurrence(
-          s.day_of_week,
-          s.teacher_local_time || '00:00',
-          s.duration_minutes,
-          teacherTz,
-        );
+        const normalizedDay = s.day_of_week ? s.day_of_week.charAt(0).toUpperCase() + s.day_of_week.slice(1).toLowerCase() : '';
 
         return {
           studentName: student?.full_name || 'Student',
           subjectName: subject?.name || 'Quran',
-          dateTime,
+          dateTime: buildNextOccurrence(s.day_of_week, s.teacher_local_time || '00:00', s.duration_minutes, teacherTz),
           scheduleTime: s.teacher_local_time || '00:00',
-          dayOfWeek: s.day_of_week ? s.day_of_week.charAt(0).toUpperCase() + s.day_of_week.slice(1).toLowerCase() : '',
+          dayOfWeek: normalizedDay,
         };
       }).sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
 
@@ -156,65 +144,49 @@ export function NextClassCountdown() {
 
   const t = useCountdown(nextClass?.dateTime || null);
 
-  if (isLoading) {
-    return <Skeleton className="h-28 rounded-2xl" />;
-  }
+  if (isLoading) return <Skeleton className="h-14 rounded-xl" />;
 
   if (!nextClass) {
     return (
-      <div className="bg-gradient-to-br from-[hsl(var(--navy-light))] to-primary rounded-2xl p-4 text-primary-foreground relative overflow-hidden">
-        <p className="text-xs opacity-75 font-semibold uppercase tracking-wider">No upcoming classes</p>
-        <p className="text-lg font-bold mt-1">Check your schedule</p>
+      <div className="bg-card rounded-xl border border-border px-3.5 py-2.5">
+        <p className="text-xs text-muted-foreground font-semibold">No upcoming classes</p>
       </div>
     );
   }
 
-  const isSameDay = t.days === 0;
+  // Format time to 12h
+  const [hh, mm] = nextClass.scheduleTime.split(':').map(Number);
+  const ampm = hh >= 12 ? 'PM' : 'AM';
+  const h12 = hh % 12 || 12;
+  const timeDisplay = `${h12}:${String(mm).padStart(2, '0')} ${ampm}`;
+
+  const shortDay = SHORT_DAYS[nextClass.dayOfWeek] || nextClass.dayOfWeek;
+
+  // Countdown text
+  const parts: string[] = [];
+  if (t.days > 0) parts.push(`${t.days}d`);
+  parts.push(`${t.hours}h`);
+  parts.push(`${String(t.mins).padStart(2, '0')}m`);
+  const countdownText = parts.join('  ');
 
   return (
-    <div>
-      <p className="text-[11px] text-muted-foreground font-bold tracking-wider uppercase mb-2">
-        Next Scheduled Class
+    <div className="bg-gradient-to-r from-primary to-[hsl(var(--navy-light))] rounded-xl px-3.5 py-2.5 text-primary-foreground">
+      {/* Row 1: label */}
+      <p className="text-[9px] opacity-60 font-bold tracking-wider uppercase mb-1">NEXT CLASS</p>
+
+      {/* Row 2: student · subject · day time */}
+      <p className="text-[13px] font-bold truncate mb-1.5">
+        {nextClass.studentName}
+        <span className="opacity-60 font-medium"> · {nextClass.subjectName} · {shortDay} {timeDisplay}</span>
       </p>
-      <div
-        className={`rounded-2xl p-4 text-primary-foreground relative overflow-hidden ${
-          isSameDay
-            ? 'bg-gradient-to-br from-teal to-teal-light'
-            : 'bg-gradient-to-br from-[hsl(var(--navy-light))] to-primary'
-        }`}
-      >
-        <div className="absolute -right-5 -top-5 w-24 h-24 rounded-full bg-white/[0.07]" />
 
-        <p className="text-[11px] opacity-75 font-semibold uppercase tracking-wider mb-1">
-          {isSameDay ? '🟢 Coming Up Soon' : '⏰ Next Class'}
-        </p>
-        <p className="text-lg font-bold mb-0.5">{nextClass.studentName}</p>
-        <p className="text-sm opacity-80 mb-3">
-          {nextClass.subjectName}
-          <span className="ml-2 opacity-60 text-xs">
-            {nextClass.dayOfWeek} · {nextClass.scheduleTime}
-          </span>
-        </p>
-
-        <div className="flex items-center gap-2">
-          {[
-            { val: t.days > 0 ? t.days : t.hours, label: t.days > 0 ? 'DAYS' : 'HRS' },
-            { val: t.days > 0 ? t.hours : t.mins, label: t.days > 0 ? 'HRS' : 'MINS' },
-            { val: t.days > 0 ? t.mins : t.secs, label: t.days > 0 ? 'MINS' : 'SECS' },
-          ].map((box, i) => (
-            <div key={i} className="bg-white/[0.15] rounded-xl px-3.5 py-1.5 text-center">
-              <div className="text-xl font-extrabold">{box.val}</div>
-              <div className="text-[10px] opacity-75">{box.label}</div>
-            </div>
-          ))}
-
-          <button className={`ml-auto bg-primary-foreground border-none rounded-xl px-3.5 py-2.5 font-extrabold text-sm cursor-pointer flex items-center gap-1.5 ${
-            isSameDay ? 'text-teal' : 'text-primary'
-          }`}>
-            <Video className="h-4 w-4" />
-            Start
-          </button>
-        </div>
+      {/* Row 3: countdown + start button */}
+      <div className="flex items-center justify-between">
+        <span className="text-lg font-extrabold font-mono tracking-wider">{countdownText}</span>
+        <button className="bg-primary-foreground text-primary border-none rounded-lg px-3 py-1.5 font-bold text-xs cursor-pointer flex items-center gap-1 hover:opacity-90 transition-opacity">
+          <Video className="h-3.5 w-3.5" />
+          Start
+        </button>
       </div>
     </div>
   );

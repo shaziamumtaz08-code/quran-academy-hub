@@ -3,18 +3,16 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { format, subDays } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { IslamicDateData } from "@/lib/islamicDate";
 
 import { TeacherTopBar } from "./teacher/TeacherTopBar";
-import { NextClassCountdown } from "./teacher/NextClassCountdown";
+import { IslamicDateCard } from "./teacher/IslamicDateCard";
 import { PrayerTimesWidget } from "./teacher/PrayerTimesWidget";
+import { NextClassCountdown } from "./teacher/NextClassCountdown";
 import { TeacherQuickActions } from "./teacher/TeacherQuickActions";
 import { TeacherStatsRow } from "./teacher/TeacherStatsRow";
 import { TeacherBottomNav } from "./teacher/TeacherBottomNav";
-
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 interface TodayFocusStudent {
   id: string;
@@ -42,7 +40,6 @@ export function TeacherDashboard() {
   const navigate = useNavigate();
   const [islamicDate, setIslamicDate] = useState<IslamicDateData | null>(null);
 
-  // Fetch students for Today's Focus
   const { data: focusStudents, isLoading } = useQuery({
     queryKey: ["teacher-today-focus", user?.id],
     queryFn: async (): Promise<TodayFocusStudent[]> => {
@@ -63,7 +60,6 @@ export function TeacherDashboard() {
 
       const studentIds = assignments.map(a => (a.student as any)?.id).filter(Boolean);
 
-      // Fetch recent attendance for last lesson info
       const { data: recentAttendance } = await supabase
         .from("attendance")
         .select("student_id, status, class_date, surah_name, ayah_from, lesson_covered")
@@ -111,11 +107,12 @@ export function TeacherDashboard() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <Skeleton className="h-28 rounded-b-2xl" />
-        <div className="p-4 space-y-4 max-w-[680px] mx-auto">
-          <Skeleton className="h-12 rounded-xl" />
-          <Skeleton className="h-28 rounded-2xl" />
-          <Skeleton className="h-32 rounded-2xl" />
+        <div className="h-12 bg-primary" />
+        <div className="p-4 space-y-3 max-w-[680px] mx-auto pt-16">
+          <Skeleton className="h-16 rounded-2xl" />
+          <Skeleton className="h-14 rounded-xl" />
+          <Skeleton className="h-14 rounded-xl" />
+          <Skeleton className="h-24 rounded-2xl" />
         </div>
       </div>
     );
@@ -123,60 +120,63 @@ export function TeacherDashboard() {
 
   return (
     <div className="min-h-screen bg-background relative font-sans">
-      {/* Islamic Header - scrolls with content */}
-      <TeacherTopBar onIslamicDateLoaded={setIslamicDate} />
+      {/* Fixed top bar — mobile only */}
+      <TeacherTopBar />
 
-      {/* Scrollable Content - padded for fixed bottom nav on mobile */}
-      <div className="p-4 pb-24 md:pb-8 space-y-4 max-w-[680px] mx-auto">
-        {/* Next Class Countdown */}
-        <NextClassCountdown />
+      {/* Scrollable content — padded for fixed top + bottom bars */}
+      <div className="p-4 pt-16 pb-24 md:pb-8 space-y-3 max-w-[680px] mx-auto">
+        {/* 1. Islamic date/time card (scrolls) */}
+        <IslamicDateCard onIslamicDateLoaded={setIslamicDate} />
 
-        {/* Prayer Times Widget */}
+        {/* 2. Prayer widget (compact, collapsible) */}
         <PrayerTimesWidget islamicDate={islamicDate} />
 
-        {/* Stats Row — above Quick Actions */}
-        <TeacherStatsRow />
+        {/* 3. Next Class (compact) */}
+        <NextClassCountdown />
 
-        {/* Quick Actions */}
+        {/* 4. Quick Actions 2×2 */}
         <TeacherQuickActions />
 
-        {/* Today's Focus — compact student list */}
+        {/* 5. My Stats */}
+        <TeacherStatsRow />
+
+        {/* 6. Today's Focus — compact student list */}
         <div>
-          <div className="flex items-center justify-between mb-2.5">
-            <p className="text-[15px] font-extrabold text-foreground">📋 Today's Focus</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[13px] font-extrabold text-foreground">📋 Today's Focus</p>
             <button
               onClick={() => navigate('/students')}
-              className="text-xs text-teal font-bold bg-transparent border-none cursor-pointer hover:underline"
+              className="text-[11px] text-teal font-bold bg-transparent border-none cursor-pointer hover:underline"
             >
               All Students →
             </button>
           </div>
 
           {(!focusStudents?.length) ? (
-            <div className="bg-card rounded-2xl border border-border p-6 text-center text-muted-foreground">
-              <p className="text-sm">No students assigned yet</p>
+            <div className="bg-card rounded-xl border border-border p-4 text-center text-muted-foreground">
+              <p className="text-xs">No students assigned yet</p>
             </div>
           ) : (
-            <div className="bg-card rounded-2xl border border-border overflow-hidden divide-y divide-border">
+            <div className="bg-card rounded-xl border border-border overflow-hidden divide-y divide-border">
               {focusStudents.map((s) => (
                 <div
                   key={s.id}
-                  className="px-3.5 py-3 flex items-center gap-3 hover:bg-secondary/30 cursor-pointer transition-colors"
+                  className="px-3 py-2.5 flex items-center gap-2.5 hover:bg-secondary/30 cursor-pointer transition-colors"
                   onClick={() => navigate('/attendance?tab=1on1')}
                 >
                   <div
-                    className="w-9 h-9 rounded-lg flex items-center justify-center text-primary-foreground font-bold text-xs flex-shrink-0"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-primary-foreground font-bold text-[10px] flex-shrink-0"
                     style={{ background: s.avatarColor }}
                   >
                     {s.initials}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-sm text-foreground truncate">{s.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {s.course} · Continue: {s.continueFrom}
+                    <p className="font-bold text-[13px] text-foreground truncate">{s.name}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      {s.course} · {s.continueFrom}
                     </p>
                   </div>
-                  <span className={`text-xs font-bold flex-shrink-0 ${s.attendanceRate >= 85 ? 'text-teal' : 'text-gold'}`}>
+                  <span className={`text-[11px] font-bold flex-shrink-0 ${s.attendanceRate >= 85 ? 'text-teal' : 'text-gold'}`}>
                     {s.attendanceRate}%
                   </span>
                 </div>
@@ -186,7 +186,7 @@ export function TeacherDashboard() {
         </div>
       </div>
 
-      {/* Bottom Nav — mobile only, hidden on md+ */}
+      {/* Fixed bottom nav — mobile only */}
       <TeacherBottomNav />
     </div>
   );
