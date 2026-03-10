@@ -1,6 +1,7 @@
 /**
  * AlAdhan API integration for accurate Hijri date + prayer times.
- * Uses city/country from teacher's timezone. Cached daily in localStorage.
+ * Fetches BOTH today and tomorrow to support Maghrib-based day flip.
+ * Islamic day starts at Maghrib — after Maghrib, show tomorrow's Hijri date.
  */
 
 const TZ_MAP: Record<string, { city: string; country: string }> = {
@@ -41,7 +42,6 @@ function getCalculationMethod(country: string): number {
 }
 
 function getSchool(country: string): number {
-  // 0 = Shafi (default), 1 = Hanafi
   const hanafiCountries = ['Pakistan', 'India', 'Bangladesh', 'Afghanistan', 'Turkey'];
   return hanafiCountries.includes(country) ? 1 : 0;
 }
@@ -65,6 +65,8 @@ function cleanMonth(name: string): string {
   return CLEAN_MONTHS[name] || name;
 }
 
+const cleanTime = (t: string) => t?.replace(/\s*\(.*\)/, '') || '';
+
 export interface IslamicDateData {
   day: number;
   monthName: string;
@@ -83,7 +85,66 @@ export interface IslamicDateData {
   };
 }
 
-// Local fallback (existing algorithm)
+interface DayData {
+  hijri: {
+    day: number;
+    monthName: string;
+    monthNumber: number;
+    year: number;
+  };
+  prayers: IslamicDateData['prayers'];
+}
+
+function parseApiResponse(json: any): DayData | null {
+  if (json?.code !== 200) return null;
+  const hijri = json.data.date.hijri;
+  const timings = json.data.timings;
+  return {
+    hijri: {
+      day: parseInt(hijri.day),
+      monthName: cleanMonth(hijri.month.en),
+      monthNumber: hijri.month.number,
+      year: parseInt(hijri.year),
+    },
+    prayers: {
+      Fajr: cleanTime(timings.Fajr),
+      Dhuhr: cleanTime(timings.Dhuhr),
+      Asr: cleanTime(timings.Asr),
+      Maghrib: cleanTime(timings.Maghrib),
+      Isha: cleanTime(timings.Isha),
+      Imsak: cleanTime(timings.Imsak),
+      Sunrise: cleanTime(timings.Sunrise),
+    },
+  };
+}
+
+function formatDateForApi(d: Date): string {
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  return `${dd}-${mm}-${d.getFullYear()}`;
+}
+
+/** Check if current time is past Maghrib */
+function isPastMaghrib(maghribStr: string, timezone: string): boolean {
+  if (!maghribStr) return false;
+  const [mH, mM] = maghribStr.split(':').map(Number);
+  
+  // Get current time in the user's timezone
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(now);
+  
+  const nowH = parseInt(parts.find(p => p.type === 'hour')?.value || '0');
+  const nowM = parseInt(parts.find(p => p.type === 'minute')?.value || '0');
+  
+  return (nowH * 60 + nowM) >= (mH * 60 + mM);
+}
+
+// Local fallback
 function localHijriFallback(): IslamicDateData {
   const date = new Date();
   const day = date.getDate();
@@ -125,14 +186,19 @@ function localHijriFallback(): IslamicDateData {
 }
 
 export async function fetchIslamicDate(timezone: string = 'Asia/Karachi'): Promise<IslamicDateData> {
-  const cacheKey = 'hijri_date_cache';
-  const today = new Date().toISOString().split('T')[0];
+  const cacheKey = 'hijri_date_cache_v2';
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
 
+  // Check cache
   try {
     const cached = localStorage.getItem(cacheKey);
     if (cached) {
-      const { date, tz, data } = JSON.parse(cached);
-      if (date === today && tz === timezone) return data;
+      const parsed = JSON.parse(cached);
+      if (parsed.date === today && parsed.tz === timezone && parsed.todayData && parsed.tomorrowData) {
+        // Use cached data but still apply Maghrib flip logic
+        return applyMaghribFlip(parsed.todayData, parsed.tomorrowData, timezone);
+      }
     }
   } catch {}
 
@@ -140,55 +206,76 @@ export async function fetchIslamicDate(timezone: string = 'Asia/Karachi'): Promi
   const method = getCalculationMethod(country);
   const school = getSchool(country);
 
-  const now = new Date();
-  const dd = String(now.getDate()).padStart(2, '0');
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const yyyy = now.getFullYear();
-  const dateStr = `${dd}-${mm}-${yyyy}`;
+  const todayStr = formatDateForApi(now);
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = formatDateForApi(tomorrow);
+
+  const baseUrl = `https://api.aladhan.com/v1/timingsByCity`;
+  const params = `city=${encodeURIComponent(city)}&country=${encodeURIComponent(country)}&method=${method}&school=${school}`;
 
   try {
-    const url = `https://api.aladhan.com/v1/timingsByCity/${dateStr}` +
-      `?city=${encodeURIComponent(city)}` +
-      `&country=${encodeURIComponent(country)}` +
-      `&method=${method}&school=${school}`;
+    // Fetch both today and tomorrow in parallel
+    const [todayRes, tomorrowRes] = await Promise.all([
+      fetch(`${baseUrl}/${todayStr}?${params}`).then(r => r.json()),
+      fetch(`${baseUrl}/${tomorrowStr}?${params}`).then(r => r.json()),
+    ]);
 
-    const response = await fetch(url);
-    const json = await response.json();
+    const todayData = parseApiResponse(todayRes);
+    const tomorrowData = parseApiResponse(tomorrowRes);
 
-    if (json.code === 200) {
-      const hijri = json.data.date.hijri;
-      const timings = json.data.timings;
-
-      // Strip " (PKT)" etc timezone abbreviations from times
-      const cleanTime = (t: string) => t?.replace(/\s*\(.*\)/, '') || '';
-
-      const result: IslamicDateData = {
-        day: parseInt(hijri.day),
-        monthName: cleanMonth(hijri.month.en),
-        monthNumber: hijri.month.number,
-        year: parseInt(hijri.year),
-        formatted: `${parseInt(hijri.day)} ${cleanMonth(hijri.month.en)} ${hijri.year} AH`,
-        isRamadan: parseInt(hijri.month.number) === 9,
-        prayers: {
-          Fajr: cleanTime(timings.Fajr),
-          Dhuhr: cleanTime(timings.Dhuhr),
-          Asr: cleanTime(timings.Asr),
-          Maghrib: cleanTime(timings.Maghrib),
-          Isha: cleanTime(timings.Isha),
-          Imsak: cleanTime(timings.Imsak),
-          Sunrise: cleanTime(timings.Sunrise),
-        },
-      };
-
+    if (todayData && tomorrowData) {
+      // Cache both days
       try {
-        localStorage.setItem(cacheKey, JSON.stringify({ date: today, tz: timezone, data: result }));
+        localStorage.setItem(cacheKey, JSON.stringify({
+          date: today,
+          tz: timezone,
+          todayData,
+          tomorrowData,
+        }));
       } catch {}
 
-      return result;
+      return applyMaghribFlip(todayData, tomorrowData, timezone);
+    }
+
+    // If only today succeeded
+    if (todayData) {
+      return buildResult(todayData);
     }
   } catch (err) {
     console.warn('AlAdhan API failed, using local fallback:', err);
   }
 
   return localHijriFallback();
+}
+
+/** Apply Maghrib-based Hijri day flip: after Maghrib, show tomorrow's Hijri */
+function applyMaghribFlip(todayData: DayData, tomorrowData: DayData, timezone: string): IslamicDateData {
+  const pastMaghrib = isPastMaghrib(todayData.prayers.Maghrib, timezone);
+
+  // After Maghrib: show tomorrow's Hijri date but TODAY's prayer times
+  const hijriSource = pastMaghrib ? tomorrowData : todayData;
+
+  return {
+    day: hijriSource.hijri.day,
+    monthName: hijriSource.hijri.monthName,
+    monthNumber: hijriSource.hijri.monthNumber,
+    year: hijriSource.hijri.year,
+    formatted: `${hijriSource.hijri.day} ${hijriSource.hijri.monthName} ${hijriSource.hijri.year} AH`,
+    isRamadan: hijriSource.hijri.monthNumber === 9,
+    // Always use today's prayer times (they're for today's physical day)
+    prayers: todayData.prayers,
+  };
+}
+
+function buildResult(data: DayData): IslamicDateData {
+  return {
+    day: data.hijri.day,
+    monthName: data.hijri.monthName,
+    monthNumber: data.hijri.monthNumber,
+    year: data.hijri.year,
+    formatted: `${data.hijri.day} ${data.hijri.monthName} ${data.hijri.year} AH`,
+    isRamadan: data.hijri.monthNumber === 9,
+    prayers: data.prayers,
+  };
 }

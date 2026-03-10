@@ -5,13 +5,23 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { fetchIslamicDate, type IslamicDateData } from '@/lib/islamicDate';
 
-function useLiveClock() {
+function useLiveClock(timezone: string) {
   const [now, setNow] = useState(new Date());
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
-  return now;
+
+  const timeStr = now.toLocaleTimeString("en-US", {
+    timeZone: timezone,
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true,
+  });
+  const adDate = now.toLocaleDateString("en-US", {
+    timeZone: timezone,
+    weekday: "short", day: "numeric", month: "long", year: "numeric",
+  });
+
+  return { timeStr, adDate };
 }
 
 interface TeacherTopBarProps {
@@ -20,12 +30,11 @@ interface TeacherTopBarProps {
 
 export function TeacherTopBar({ onIslamicDateLoaded }: TeacherTopBarProps) {
   const { profile, user } = useAuth();
-  const now = useLiveClock();
   const [islamicDate, setIslamicDate] = useState<IslamicDateData | null>(null);
   const [dateLoading, setDateLoading] = useState(true);
   const [timezone, setTimezone] = useState('Asia/Karachi');
 
-  // Fetch teacher's timezone from profiles table
+  // Fetch teacher's timezone from the same field used for scheduling
   useEffect(() => {
     if (!user?.id) return;
     supabase.from('profiles').select('timezone').eq('id', user.id).single()
@@ -34,7 +43,9 @@ export function TeacherTopBar({ onIslamicDateLoaded }: TeacherTopBarProps) {
       });
   }, [user?.id]);
 
-  // Fetch Hijri date from AlAdhan API (cached daily)
+  const { timeStr, adDate } = useLiveClock(timezone);
+
+  // Fetch Hijri date (with Maghrib flip logic)
   useEffect(() => {
     fetchIslamicDate(timezone)
       .then(data => {
@@ -45,12 +56,16 @@ export function TeacherTopBar({ onIslamicDateLoaded }: TeacherTopBarProps) {
       .catch(() => setDateLoading(false));
   }, [timezone]);
 
-  const timeStr = now.toLocaleTimeString("en-US", {
-    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true,
-  });
-  const adDate = now.toLocaleDateString("en-US", {
-    weekday: "short", day: "numeric", month: "long", year: "numeric",
-  });
+  // Re-fetch every 30 minutes to catch Maghrib flip
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchIslamicDate(timezone).then(data => {
+        setIslamicDate(data);
+        onIslamicDateLoaded?.(data);
+      }).catch(() => {});
+    }, 30 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [timezone]);
 
   const firstName = profile?.full_name?.split(' ')[0] || 'Teacher';
 
@@ -75,10 +90,9 @@ export function TeacherTopBar({ onIslamicDateLoaded }: TeacherTopBarProps) {
     : 'T';
 
   return (
-    <div className="bg-primary sticky top-0 z-50 rounded-b-2xl shadow-navy">
+    <div className="bg-primary rounded-b-2xl shadow-navy">
       {/* Row 1: Date/Time Strip */}
       <div className="border-b border-white/[0.07] px-4 py-2 flex items-center justify-between gap-2">
-        {/* Islamic date */}
         <div className="flex items-center gap-1.5">
           <span className="text-sm">☪️</span>
           {dateLoading ? (
@@ -92,12 +106,10 @@ export function TeacherTopBar({ onIslamicDateLoaded }: TeacherTopBarProps) {
           )}
         </div>
 
-        {/* Live clock */}
         <div className="bg-white/[0.08] rounded-lg px-2.5 py-1 font-mono text-xs font-bold text-teal-light tracking-wider text-center min-w-[100px]">
           {timeStr}
         </div>
 
-        {/* AD date */}
         <span className="text-[11px] font-bold text-muted-foreground/60 text-right">
           {adDate}
         </span>
