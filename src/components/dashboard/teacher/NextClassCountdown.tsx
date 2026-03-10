@@ -144,7 +144,7 @@ export function NextClassCountdown() {
           subjectName: subject?.name || 'Quran',
           dateTime,
           scheduleTime: s.teacher_local_time || '00:00',
-          dayOfWeek: s.day_of_week,
+          dayOfWeek: s.day_of_week ? s.day_of_week.charAt(0).toUpperCase() + s.day_of_week.slice(1).toLowerCase() : '',
         };
       }).sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
 
