@@ -8,24 +8,21 @@ import { Skeleton } from '@/components/ui/skeleton';
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 /**
- * Get the current wall-clock day index and time in a given IANA timezone.
+ * Get current wall-clock day/time in a given IANA timezone using Intl API.
  */
 function getNowInTimezone(tz: string) {
   const now = new Date();
-  const parts = new Intl.DateTimeFormat('en-US', {
+  const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: tz,
     weekday: 'short',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
     hour12: false,
-  }).formatToParts(now);
-
+  });
+  const parts = formatter.formatToParts(now);
   const get = (type: string) => parts.find(p => p.type === type)?.value || '0';
-  const weekday = get('weekday'); // "Sun", "Mon", etc.
+  const weekday = get('weekday');
   const dayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
 
   return {
@@ -37,10 +34,6 @@ function getNowInTimezone(tz: string) {
   };
 }
 
-/**
- * Calculate ms until the next occurrence of (dayName, timeStr) in teacherTz.
- * Returns the absolute Date when that instant occurs.
- */
 function buildNextOccurrence(
   dayName: string,
   timeStr: string,
@@ -49,26 +42,29 @@ function buildNextOccurrence(
 ): Date {
   const tz = getNowInTimezone(teacherTz);
   const targetDayIndex = DAY_NAMES.indexOf(dayName);
+  if (targetDayIndex === -1) return new Date(tz.absoluteMs + 7 * 86400000);
+
   const [targetH, targetM] = (timeStr || '00:00').split(':').map(Number);
 
   let daysUntil = targetDayIndex - tz.dayIndex;
   if (daysUntil < 0) daysUntil += 7;
 
-  // If it's today, check if class has already ended
+  // If today, check if class has ended
   if (daysUntil === 0) {
-    const nowMinutes = tz.hours * 60 + tz.minutes;
-    const classEndMinutes = targetH * 60 + targetM + durationMinutes;
-    if (nowMinutes >= classEndMinutes) {
-      daysUntil = 7; // next week
+    const nowMins = tz.hours * 60 + tz.minutes;
+    const classEndMins = targetH * 60 + targetM + durationMinutes;
+    if (nowMins >= classEndMins) {
+      daysUntil = 7;
     }
   }
 
-  // Calculate ms until the target time
-  const nowMinutesOfDay = tz.hours * 60 + tz.minutes + tz.seconds / 60;
-  const targetMinutesOfDay = targetH * 60 + targetM;
-  const minutesDiff = daysUntil * 24 * 60 + (targetMinutesOfDay - nowMinutesOfDay);
+  // Calculate ms from now to target:
+  // daysUntil full days from start of today, then adjust for current vs target time
+  const nowSecsOfDay = tz.hours * 3600 + tz.minutes * 60 + tz.seconds;
+  const targetSecsOfDay = targetH * 3600 + targetM * 60;
+  const totalSecsDiff = daysUntil * 86400 + (targetSecsOfDay - nowSecsOfDay);
 
-  return new Date(tz.absoluteMs + minutesDiff * 60000);
+  return new Date(tz.absoluteMs + totalSecsDiff * 1000);
 }
 
 function useCountdown(target: Date | null) {
@@ -76,8 +72,7 @@ function useCountdown(target: Date | null) {
   useEffect(() => {
     if (!target) return;
     const calc = () => {
-      const diff = target.getTime() - Date.now();
-      if (diff <= 0) return setTimeLeft({ days: 0, hours: 0, mins: 0, secs: 0 });
+      const diff = Math.max(0, target.getTime() - Date.now());
       setTimeLeft({
         days: Math.floor(diff / 86400000),
         hours: Math.floor((diff % 86400000) / 3600000),
@@ -100,6 +95,7 @@ export function NextClassCountdown() {
     queryFn: async () => {
       if (!user?.id) return null;
 
+      // Step 1: Get teacher timezone
       const { data: profile } = await supabase
         .from('profiles')
         .select('timezone')
@@ -108,27 +104,34 @@ export function NextClassCountdown() {
 
       const teacherTz = profile?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
+      // Step 2: Get active assignments for this teacher
+      const { data: assignments } = await supabase
+        .from('student_teacher_assignments')
+        .select('id, student:profiles!student_teacher_assignments_student_id_fkey(id, full_name), subject:subjects(name)')
+        .eq('teacher_id', user.id)
+        .eq('status', 'active');
+
+      if (!assignments?.length) return null;
+
+      const assignmentIds = assignments.map(a => a.id);
+
+      // Step 3: Get active schedules for those assignments
       const { data: schedules } = await supabase
         .from('schedules')
-        .select(`
-          id,
-          day_of_week,
-          teacher_local_time,
-          duration_minutes,
-          assignment:student_teacher_assignments!inner(
-            id,
-            student:profiles!student_teacher_assignments_student_id_fkey(id, full_name),
-            subject:subjects(name)
-          )
-        `)
-        .eq('is_active', true)
-        .eq('student_teacher_assignments.teacher_id', user.id)
-        .eq('student_teacher_assignments.status', 'active');
+        .select('id, day_of_week, teacher_local_time, duration_minutes, assignment_id')
+        .in('assignment_id', assignmentIds)
+        .eq('is_active', true);
 
       if (!schedules?.length) return null;
 
+      // Step 4: Map schedules to assignment data and find nearest
+      const assignmentMap = new Map(assignments.map(a => [a.id, a]));
+
       const upcoming = schedules.map(s => {
-        const assignment = s.assignment as any;
+        const assignment = assignmentMap.get(s.assignment_id!);
+        const student = assignment?.student as any;
+        const subject = assignment?.subject as any;
+
         const dateTime = buildNextOccurrence(
           s.day_of_week,
           s.teacher_local_time || '00:00',
@@ -137,9 +140,11 @@ export function NextClassCountdown() {
         );
 
         return {
-          studentName: assignment?.student?.full_name || 'Student',
-          subjectName: assignment?.subject?.name || 'Quran',
+          studentName: student?.full_name || 'Student',
+          subjectName: subject?.name || 'Quran',
           dateTime,
+          scheduleTime: s.teacher_local_time || '00:00',
+          dayOfWeek: s.day_of_week,
         };
       }).sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
 
@@ -157,7 +162,7 @@ export function NextClassCountdown() {
 
   if (!nextClass) {
     return (
-      <div className="bg-gradient-to-br from-navy-light to-primary rounded-2xl p-4 text-primary-foreground relative overflow-hidden">
+      <div className="bg-gradient-to-br from-[hsl(var(--navy-light))] to-primary rounded-2xl p-4 text-primary-foreground relative overflow-hidden">
         <p className="text-xs opacity-75 font-semibold uppercase tracking-wider">No upcoming classes</p>
         <p className="text-lg font-bold mt-1">Check your schedule</p>
       </div>
@@ -175,7 +180,7 @@ export function NextClassCountdown() {
         className={`rounded-2xl p-4 text-primary-foreground relative overflow-hidden ${
           isSameDay
             ? 'bg-gradient-to-br from-teal to-teal-light'
-            : 'bg-gradient-to-br from-navy-light to-primary'
+            : 'bg-gradient-to-br from-[hsl(var(--navy-light))] to-primary'
         }`}
       >
         <div className="absolute -right-5 -top-5 w-24 h-24 rounded-full bg-white/[0.07]" />
@@ -184,7 +189,12 @@ export function NextClassCountdown() {
           {isSameDay ? '🟢 Coming Up Soon' : '⏰ Next Class'}
         </p>
         <p className="text-lg font-bold mb-0.5">{nextClass.studentName}</p>
-        <p className="text-sm opacity-80 mb-3">{nextClass.subjectName}</p>
+        <p className="text-sm opacity-80 mb-3">
+          {nextClass.subjectName}
+          <span className="ml-2 opacity-60 text-xs">
+            {nextClass.dayOfWeek} · {nextClass.scheduleTime}
+          </span>
+        </p>
 
         <div className="flex items-center gap-2">
           {[

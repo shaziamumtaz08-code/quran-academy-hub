@@ -8,73 +8,73 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { IslamicDateData } from "@/lib/islamicDate";
 
 import { TeacherTopBar } from "./teacher/TeacherTopBar";
-import { MissedAttendanceBanner } from "./teacher/MissedAttendanceBanner";
 import { NextClassCountdown } from "./teacher/NextClassCountdown";
 import { PrayerTimesWidget } from "./teacher/PrayerTimesWidget";
-import { PlanReminderBanner } from "./teacher/PlanReminderBanner";
-import { TeacherStudentCard, getAvatarColor } from "./teacher/TeacherStudentCard";
-import type { StudentData } from "./teacher/TeacherStudentCard";
-import { TeacherAttendanceModal } from "./teacher/TeacherAttendanceModal";
 import { TeacherQuickActions } from "./teacher/TeacherQuickActions";
 import { TeacherStatsRow } from "./teacher/TeacherStatsRow";
 import { TeacherBottomNav } from "./teacher/TeacherBottomNav";
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+interface TodayFocusStudent {
+  id: string;
+  name: string;
+  initials: string;
+  avatarColor: string;
+  course: string;
+  continueFrom: string;
+  attendanceRate: number;
+}
+
+const AVATAR_COLORS = [
+  'hsl(250 60% 65%)', 'hsl(340 60% 60%)', 'hsl(200 70% 55%)',
+  'hsl(160 60% 45%)', 'hsl(30 70% 55%)', 'hsl(280 55% 60%)',
+];
+
+function getAvatarColor(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
 export function TeacherDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [activeModal, setActiveModal] = useState<StudentData | null>(null);
   const [islamicDate, setIslamicDate] = useState<IslamicDateData | null>(null);
 
-  // Fetch students with attendance data
-  const { data: students, isLoading } = useQuery({
-    queryKey: ["teacher-students", user?.id],
-    queryFn: async (): Promise<StudentData[]> => {
+  // Fetch students for Today's Focus
+  const { data: focusStudents, isLoading } = useQuery({
+    queryKey: ["teacher-today-focus", user?.id],
+    queryFn: async (): Promise<TodayFocusStudent[]> => {
       if (!user?.id) return [];
 
-      // Get active assignments
       const { data: assignments } = await supabase
         .from("student_teacher_assignments")
         .select(`
           id,
           student_id,
-          student:profiles!student_teacher_assignments_student_id_fkey(id, full_name, age, gender),
-          subject:subjects(name),
-          schedules(day_of_week, is_active)
+          student:profiles!student_teacher_assignments_student_id_fkey(id, full_name),
+          subject:subjects(name)
         `)
         .eq("teacher_id", user.id)
         .eq("status", "active");
 
       if (!assignments?.length) return [];
 
-      // Fetch attendance for all students in one query
       const studentIds = assignments.map(a => (a.student as any)?.id).filter(Boolean);
 
-      const { data: allAttendance } = await supabase
+      // Fetch recent attendance for last lesson info
+      const { data: recentAttendance } = await supabase
         .from("attendance")
-        .select("student_id, status, class_date, lesson_covered, surah_name, ayah_from, ayah_to")
-        .eq("teacher_id", user.id)
-        .in("student_id", studentIds);
-
-      const attendanceByStudent = new Map<string, any[]>();
-      (allAttendance || []).forEach(a => {
-        if (!attendanceByStudent.has(a.student_id)) attendanceByStudent.set(a.student_id, []);
-        attendanceByStudent.get(a.student_id)!.push(a);
-      });
-
-      // Get latest monthly plans
-      const { data: plans } = await supabase
-        .from("student_monthly_plans")
-        .select("student_id, daily_target, primary_marker")
+        .select("student_id, status, class_date, surah_name, ayah_from, lesson_covered")
         .eq("teacher_id", user.id)
         .in("student_id", studentIds)
-        .order("year", { ascending: false })
-        .order("month", { ascending: false });
+        .order("class_date", { ascending: false });
 
-      const planByStudent = new Map<string, any>();
-      (plans || []).forEach(p => {
-        if (!planByStudent.has(p.student_id)) planByStudent.set(p.student_id, p);
+      const attendanceByStudent = new Map<string, any[]>();
+      (recentAttendance || []).forEach(a => {
+        if (!attendanceByStudent.has(a.student_id)) attendanceByStudent.set(a.student_id, []);
+        attendanceByStudent.get(a.student_id)!.push(a);
       });
 
       return assignments.map(a => {
@@ -86,33 +86,10 @@ export function TeacherDashboard() {
         const total = records.length;
         const rate = total > 0 ? Math.round((present / total) * 100) : 0;
 
-        // Latest lesson
-        const sorted = [...records].filter((r: any) => r.status === 'present').sort((x: any, y: any) => y.class_date.localeCompare(x.class_date));
-        const latest = sorted[0];
-        const lastLesson = latest
-          ? `${latest.surah_name || latest.lesson_covered || 'N/A'}${latest.ayah_from ? ` Ayah ${latest.ayah_from}` : ''}`
-          : null;
-
-        // Current position from latest attendance
-        const currentPosition = latest
-          ? `${latest.surah_name || 'N/A'}${latest.ayah_from ? ` Ayah ${latest.ayah_from}` : ''}`
-          : subject?.name || 'Quran';
-
-        // Missed sessions: scheduled days in last 14 days with no attendance
-        const schedules = (a.schedules as any[]) || [];
-        const activeDays = schedules.filter((s: any) => s.is_active).map((s: any) => s.day_of_week);
-        const attendedDates = new Set(records.map((r: any) => r.class_date));
-        let missedCount = 0;
-        for (let i = 1; i <= 14; i++) {
-          const d = subDays(new Date(), i);
-          if (activeDays.includes(DAY_NAMES[d.getDay()])) {
-            if (!attendedDates.has(format(d, 'yyyy-MM-dd'))) missedCount++;
-          }
-        }
-
-        // Pace from plan
-        const plan = planByStudent.get(sid);
-        const pace = plan ? `${plan.daily_target} ${plan.primary_marker}/day` : null;
+        const latestPresent = records.find((r: any) => r.status === 'present');
+        const continueFrom = latestPresent
+          ? `${latestPresent.surah_name || latestPresent.lesson_covered || 'N/A'}${latestPresent.ayah_from ? ` Ayah ${latestPresent.ayah_from}` : ''}`
+          : subject?.name || 'Start';
 
         const name = student?.full_name || 'Student';
         const initials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
@@ -120,16 +97,11 @@ export function TeacherDashboard() {
         return {
           id: sid,
           name,
-          age: student?.age,
-          gender: student?.gender,
-          course: subject?.name || 'Quran',
-          currentPosition,
-          lastLesson,
-          pace,
-          attendanceRate: rate,
-          missedSessions: missedCount,
           initials,
           avatarColor: getAvatarColor(name),
+          course: subject?.name || 'Quran',
+          continueFrom,
+          attendanceRate: rate,
         };
       });
     },
@@ -138,12 +110,11 @@ export function TeacherDashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background max-w-[480px] mx-auto">
+      <div className="min-h-screen bg-background">
         <Skeleton className="h-28 rounded-b-2xl" />
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-4 max-w-[680px] mx-auto">
           <Skeleton className="h-12 rounded-xl" />
           <Skeleton className="h-28 rounded-2xl" />
-          <Skeleton className="h-32 rounded-2xl" />
           <Skeleton className="h-32 rounded-2xl" />
         </div>
       </div>
@@ -151,28 +122,28 @@ export function TeacherDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background max-w-[480px] mx-auto relative font-sans">
-      {/* Top Bar */}
+    <div className="min-h-screen bg-background relative font-sans">
+      {/* Islamic Header - scrolls with content */}
       <TeacherTopBar onIslamicDateLoaded={setIslamicDate} />
 
-      {/* Scrollable Content */}
-      <div className="p-4 pb-24 space-y-4">
-        {/* Missed Attendance Alert */}
-        <MissedAttendanceBanner />
-
+      {/* Scrollable Content - padded for fixed bottom nav on mobile */}
+      <div className="p-4 pb-24 md:pb-8 space-y-4 max-w-[680px] mx-auto">
         {/* Next Class Countdown */}
         <NextClassCountdown />
 
         {/* Prayer Times Widget */}
         <PrayerTimesWidget islamicDate={islamicDate} />
 
-        {/* Plan Reminder Banner */}
-        <PlanReminderBanner />
+        {/* Stats Row — above Quick Actions */}
+        <TeacherStatsRow />
 
-        {/* My Students — Smart Cards */}
+        {/* Quick Actions */}
+        <TeacherQuickActions />
+
+        {/* Today's Focus — compact student list */}
         <div>
           <div className="flex items-center justify-between mb-2.5">
-            <p className="text-[15px] font-extrabold text-foreground">👩‍🎓 My Students</p>
+            <p className="text-[15px] font-extrabold text-foreground">📋 Today's Focus</p>
             <button
               onClick={() => navigate('/students')}
               className="text-xs text-teal font-bold bg-transparent border-none cursor-pointer hover:underline"
@@ -180,40 +151,43 @@ export function TeacherDashboard() {
               All Students →
             </button>
           </div>
-          <div className="space-y-3">
-            {(students || []).length === 0 ? (
-              <div className="bg-card rounded-2xl border border-border p-8 text-center text-muted-foreground">
-                <p className="text-sm">No students assigned yet</p>
-              </div>
-            ) : (
-              (students || []).map((s) => (
-                <TeacherStudentCard
+
+          {(!focusStudents?.length) ? (
+            <div className="bg-card rounded-2xl border border-border p-6 text-center text-muted-foreground">
+              <p className="text-sm">No students assigned yet</p>
+            </div>
+          ) : (
+            <div className="bg-card rounded-2xl border border-border overflow-hidden divide-y divide-border">
+              {focusStudents.map((s) => (
+                <div
                   key={s.id}
-                  student={s}
-                  onMarkAttendance={setActiveModal}
-                />
-              ))
-            )}
-          </div>
+                  className="px-3.5 py-3 flex items-center gap-3 hover:bg-secondary/30 cursor-pointer transition-colors"
+                  onClick={() => navigate('/attendance?tab=1on1')}
+                >
+                  <div
+                    className="w-9 h-9 rounded-lg flex items-center justify-center text-primary-foreground font-bold text-xs flex-shrink-0"
+                    style={{ background: s.avatarColor }}
+                  >
+                    {s.initials}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm text-foreground truncate">{s.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {s.course} · Continue: {s.continueFrom}
+                    </p>
+                  </div>
+                  <span className={`text-xs font-bold flex-shrink-0 ${s.attendanceRate >= 85 ? 'text-teal' : 'text-gold'}`}>
+                    {s.attendanceRate}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-
-        {/* Quick Actions */}
-        <TeacherQuickActions />
-
-        {/* Stats Row */}
-        <TeacherStatsRow />
       </div>
 
-      {/* Bottom Nav (mobile only) */}
+      {/* Bottom Nav — mobile only, hidden on md+ */}
       <TeacherBottomNav />
-
-      {/* Attendance Modal */}
-      {activeModal && (
-        <TeacherAttendanceModal
-          student={activeModal}
-          onClose={() => setActiveModal(null)}
-        />
-      )}
     </div>
   );
 }
