@@ -170,37 +170,30 @@ export function NextClassCountdown() {
   const countdownText = parts.join('  ');
 
   return (
-    <div className="bg-gradient-to-br from-primary to-[hsl(var(--navy-light))] rounded-2xl px-3.5 py-3 text-primary-foreground shadow-card">
-      <p className="text-[10px] opacity-80 font-extrabold tracking-wide uppercase mb-1.5 flex items-center gap-1.5">
-        <span aria-hidden="true">⏰</span>
-        Next Class
-      </p>
-
-      <p className="text-[18px] leading-tight font-extrabold truncate">{nextClass.studentName}</p>
-      <p className="text-[12px] text-primary-foreground/75 font-semibold truncate mt-0.5">
-        {nextClass.subjectName} · {shortDay.toLowerCase()} · {timeDisplay}
-      </p>
-
-      <div className="mt-2.5 flex items-center gap-2">
-        <div className="grid grid-cols-3 gap-1.5 flex-1 min-w-0">
-          <div className="bg-primary-foreground/15 rounded-lg py-1.5 text-center">
-            <p className="text-[22px] leading-none font-extrabold">{t.days}</p>
-            <p className="text-[9px] text-primary-foreground/70 font-bold tracking-wide">DAYS</p>
-          </div>
-          <div className="bg-primary-foreground/15 rounded-lg py-1.5 text-center">
-            <p className="text-[22px] leading-none font-extrabold">{t.hours}</p>
-            <p className="text-[9px] text-primary-foreground/70 font-bold tracking-wide">HRS</p>
-          </div>
-          <div className="bg-primary-foreground/15 rounded-lg py-1.5 text-center">
-            <p className="text-[22px] leading-none font-extrabold">{String(t.mins).padStart(2, '0')}</p>
-            <p className="text-[9px] text-primary-foreground/70 font-bold tracking-wide">MINS</p>
-          </div>
-        </div>
-
-        <button className="bg-primary-foreground text-primary border-none rounded-xl px-3 py-2 font-extrabold text-sm cursor-pointer flex items-center gap-1.5 hover:opacity-90 transition-opacity shrink-0">
-          <Video className="h-4 w-4" />
+    <div className="bg-gradient-to-br from-primary to-[hsl(var(--navy-light))] rounded-2xl px-3 py-2.5 text-primary-foreground shadow-card">
+      {/* Row 1: Label + Name + Start */}
+      <div className="flex items-center gap-2">
+        <p className="text-[10px] opacity-80 font-extrabold tracking-wide uppercase flex items-center gap-1 shrink-0">
+          <span aria-hidden="true">⏰</span>
+          Next
+        </p>
+        <p className="text-[15px] leading-tight font-extrabold truncate flex-1 min-w-0">{nextClass.studentName}</p>
+        <button className="bg-primary-foreground text-primary border-none rounded-lg px-2.5 py-1.5 font-extrabold text-xs cursor-pointer flex items-center gap-1 hover:opacity-90 transition-opacity shrink-0">
+          <Video className="h-3.5 w-3.5" />
           Start
         </button>
+      </div>
+
+      {/* Row 2: Details + Countdown pills */}
+      <div className="flex items-center justify-between mt-1.5">
+        <p className="text-[11px] text-primary-foreground/75 font-semibold truncate">
+          {nextClass.subjectName} · {shortDay.toLowerCase()} · {timeDisplay}
+        </p>
+        <div className="flex items-center gap-1 shrink-0">
+          <span className="bg-primary-foreground/15 rounded-md px-2 py-0.5 text-[11px] font-bold">{t.days}d</span>
+          <span className="bg-primary-foreground/15 rounded-md px-2 py-0.5 text-[11px] font-bold">{t.hours}h</span>
+          <span className="bg-primary-foreground/15 rounded-md px-2 py-0.5 text-[11px] font-bold">{String(t.mins).padStart(2, '0')}m</span>
+        </div>
       </div>
     </div>
   );

@@ -141,9 +141,9 @@ export function TeacherDashboard() {
       <TeacherTopBar />
 
       {/* Scrollable content — padded for fixed top + bottom bars */}
-      <div className="p-4 pt-16 md:pt-4 pb-24 md:pb-8 space-y-3 max-w-[680px] mx-auto">
+      <div className="p-4 pt-14 md:pt-4 pb-20 md:pb-6 space-y-2 max-w-[680px] mx-auto">
         {/* Desktop greeting + notifications */}
-        <div className="hidden md:flex items-center justify-between bg-card border border-border rounded-xl px-3 py-2">
+        <div className="hidden md:flex items-center justify-between bg-card border border-border rounded-xl px-3 py-1.5">
           <p className="text-sm font-bold text-foreground truncate">Assalamu Alaikum, {firstName} 👋</p>
           <button className="relative bg-secondary border border-border rounded-lg w-9 h-9 flex items-center justify-center text-foreground shrink-0">
             <Bell className="h-4 w-4" />
