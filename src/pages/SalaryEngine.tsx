@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Calculator, Lock, CheckCircle, Clock, Plus, Search, Loader2, RotateCcw, AlertCircle
+  Calculator, Lock, CheckCircle, Clock, Plus, Search, Loader2, RotateCcw, AlertCircle, History, TrendingUp, TrendingDown
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -18,6 +18,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, parseISO, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { SalarySheetDialog } from '@/components/salary/SalarySheetDialog';
+import { BulkAdjustmentDialog } from '@/components/salary/BulkAdjustmentDialog';
+import { AdjustmentHistoryDialog } from '@/components/salary/AdjustmentHistoryDialog';
 import { trackActivity } from '@/lib/activityLogger';
 
 const MONTHS = [
