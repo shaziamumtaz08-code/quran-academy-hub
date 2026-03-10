@@ -79,7 +79,7 @@ export default function StaffSalarySetup() {
       const { data: staffRoles, error: rolesError } = await supabase
         .from('user_roles')
         .select('user_id')
-        .in('role', staffRoleValues);
+        .in('role', staffRoleValues as any);
       if (rolesError) throw rolesError;
       
       const staffUserIds = [...new Set((staffRoles || []).map((r: any) => r.user_id))];
