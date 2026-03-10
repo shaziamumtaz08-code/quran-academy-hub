@@ -459,12 +459,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     </>
   );
 
-  // Listen for teacher top bar menu toggle event
-  useEffect(() => {
-    const handler = () => setSidebarOpen(prev => !prev);
-    window.addEventListener('teacher-menu-toggle', handler);
-    return () => window.removeEventListener('teacher-menu-toggle', handler);
-  }, []);
 
   return (
     <div className="min-h-screen bg-background islamic-pattern">
