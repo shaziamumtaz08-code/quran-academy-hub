@@ -2,76 +2,73 @@ import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { addDays, addMinutes } from 'date-fns';
 import { Video } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 /**
- * Build a proper Date for "next occurrence of dayName at HH:MM in teacherTz".
- * Uses Intl to resolve the teacher's current UTC offset so the countdown
- * targets the correct instant regardless of the browser's own timezone.
+ * Get the current wall-clock day index and time in a given IANA timezone.
+ */
+function getNowInTimezone(tz: string) {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    weekday: 'short',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(now);
+
+  const get = (type: string) => parts.find(p => p.type === type)?.value || '0';
+  const weekday = get('weekday'); // "Sun", "Mon", etc.
+  const dayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
+  return {
+    dayIndex: dayMap[weekday] ?? 0,
+    hours: parseInt(get('hour'), 10),
+    minutes: parseInt(get('minute'), 10),
+    seconds: parseInt(get('second'), 10),
+    absoluteMs: now.getTime(),
+  };
+}
+
+/**
+ * Calculate ms until the next occurrence of (dayName, timeStr) in teacherTz.
+ * Returns the absolute Date when that instant occurs.
  */
 function buildNextOccurrence(
   dayName: string,
   timeStr: string,
+  durationMinutes: number,
   teacherTz: string,
 ): Date {
-  const now = new Date();
-  const todayIndex = now.getDay();
-  const scheduleDayIndex = DAY_NAMES.indexOf(dayName);
-  let daysUntil = scheduleDayIndex - todayIndex;
+  const tz = getNowInTimezone(teacherTz);
+  const targetDayIndex = DAY_NAMES.indexOf(dayName);
+  const [targetH, targetM] = (timeStr || '00:00').split(':').map(Number);
+
+  let daysUntil = targetDayIndex - tz.dayIndex;
   if (daysUntil < 0) daysUntil += 7;
 
-  const [hours, minutes] = (timeStr || '00:00').split(':').map(Number);
-
-  // Build an ISO-ish string for the target date in the teacher's timezone
-  const candidateDate = addDays(now, daysUntil);
-  const y = candidateDate.getFullYear();
-  const m = String(candidateDate.getMonth() + 1).padStart(2, '0');
-  const d = String(candidateDate.getDate()).padStart(2, '0');
-  const hh = String(hours).padStart(2, '0');
-  const mm = String(minutes).padStart(2, '0');
-
-  // Use Intl to find the UTC offset for the teacher's timezone on that date
-  // so we can construct the correct absolute instant.
-  const dtf = new Intl.DateTimeFormat('en-US', {
-    timeZone: teacherTz,
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit',
-    hour12: false,
-  });
-
-  // Get the teacher-tz "now" to figure out if today's class already passed
-  const teacherNowParts = dtf.formatToParts(now);
-  const getP = (parts: Intl.DateTimeFormatPart[], type: string) =>
-    parseInt(parts.find(p => p.type === type)?.value || '0', 10);
-  const teacherNowH = getP(teacherNowParts, 'hour');
-  const teacherNowM = getP(teacherNowParts, 'minute');
-  const teacherNowDay = now; // we use daysUntil relative to browser day which aligns with calendar
-
-  // Resolve offset: create a temp date in UTC matching the teacher's wall-clock,
-  // then compare with what the browser thinks that instant is.
-  const tempUtc = new Date(`${y}-${m}-${d}T${hh}:${mm}:00Z`);
-  const teacherParts = dtf.formatToParts(tempUtc);
-  const resolvedH = getP(teacherParts, 'hour');
-  const resolvedM = getP(teacherParts, 'minute');
-  const resolvedD = getP(teacherParts, 'day');
-
-  // The difference between what we wanted (hh:mm on day d) and what Intl says
-  // tells us the offset. Adjust the UTC time accordingly.
-  const wantedMinutes = hours * 60 + minutes;
-  const gotMinutes = resolvedH * 60 + resolvedM;
-  let diffMinutes = gotMinutes - wantedMinutes;
-  // Handle day boundary (offset pushed it to next/prev day)
-  const dayNum = parseInt(d, 10);
-  if (resolvedD !== dayNum) {
-    diffMinutes += (resolvedD > dayNum ? 1 : -1) * 24 * 60;
+  // If it's today, check if class has already ended
+  if (daysUntil === 0) {
+    const nowMinutes = tz.hours * 60 + tz.minutes;
+    const classEndMinutes = targetH * 60 + targetM + durationMinutes;
+    if (nowMinutes >= classEndMinutes) {
+      daysUntil = 7; // next week
+    }
   }
-  const corrected = new Date(tempUtc.getTime() - diffMinutes * 60000);
 
-  return corrected;
+  // Calculate ms until the target time
+  const nowMinutesOfDay = tz.hours * 60 + tz.minutes + tz.seconds / 60;
+  const targetMinutesOfDay = targetH * 60 + targetM;
+  const minutesDiff = daysUntil * 24 * 60 + (targetMinutesOfDay - nowMinutesOfDay);
+
+  return new Date(tz.absoluteMs + minutesDiff * 60000);
 }
 
 function useCountdown(target: Date | null) {
@@ -103,7 +100,6 @@ export function NextClassCountdown() {
     queryFn: async () => {
       if (!user?.id) return null;
 
-      // Fetch teacher's timezone
       const { data: profile } = await supabase
         .from('profiles')
         .select('timezone')
@@ -131,30 +127,19 @@ export function NextClassCountdown() {
 
       if (!schedules?.length) return null;
 
-      const now = new Date();
-
       const upcoming = schedules.map(s => {
         const assignment = s.assignment as any;
-        const fullDateTime = buildNextOccurrence(
+        const dateTime = buildNextOccurrence(
           s.day_of_week,
           s.teacher_local_time || '00:00',
+          s.duration_minutes,
           teacherTz,
         );
-
-        // If today's class has already ended, push to next week
-        if (now > addMinutes(fullDateTime, s.duration_minutes)) {
-          const nextWeekDateTime = new Date(fullDateTime.getTime() + 7 * 86400000);
-          return {
-            studentName: assignment?.student?.full_name || 'Student',
-            subjectName: assignment?.subject?.name || 'Quran',
-            dateTime: nextWeekDateTime,
-          };
-        }
 
         return {
           studentName: assignment?.student?.full_name || 'Student',
           subjectName: assignment?.subject?.name || 'Quran',
-          dateTime: fullDateTime,
+          dateTime,
         };
       }).sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
 
@@ -193,7 +178,6 @@ export function NextClassCountdown() {
             : 'bg-gradient-to-br from-navy-light to-primary'
         }`}
       >
-        {/* Decorative circle */}
         <div className="absolute -right-5 -top-5 w-24 h-24 rounded-full bg-white/[0.07]" />
 
         <p className="text-[11px] opacity-75 font-semibold uppercase tracking-wider mb-1">
@@ -203,7 +187,6 @@ export function NextClassCountdown() {
         <p className="text-sm opacity-80 mb-3">{nextClass.subjectName}</p>
 
         <div className="flex items-center gap-2">
-          {/* Countdown boxes */}
           {[
             { val: t.days > 0 ? t.days : t.hours, label: t.days > 0 ? 'DAYS' : 'HRS' },
             { val: t.days > 0 ? t.hours : t.mins, label: t.days > 0 ? 'HRS' : 'MINS' },
@@ -215,7 +198,6 @@ export function NextClassCountdown() {
             </div>
           ))}
 
-          {/* Start button - uses existing Zoom launch flow */}
           <button className={`ml-auto bg-primary-foreground border-none rounded-xl px-3.5 py-2.5 font-extrabold text-sm cursor-pointer flex items-center gap-1.5 ${
             isSameDay ? 'text-teal' : 'text-primary'
           }`}>
