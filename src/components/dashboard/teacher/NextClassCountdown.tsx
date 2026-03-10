@@ -41,7 +41,7 @@ function buildNextOccurrence(
   teacherTz: string,
 ): Date {
   const tz = getNowInTimezone(teacherTz);
-  const targetDayIndex = DAY_NAMES.indexOf(dayName);
+  const targetDayIndex = DAY_NAMES.indexOf(dayName.charAt(0).toUpperCase() + dayName.slice(1).toLowerCase());
   if (targetDayIndex === -1) return new Date(tz.absoluteMs + 7 * 86400000);
 
   const [targetH, targetM] = (timeStr || '00:00').split(':').map(Number);
@@ -144,7 +144,7 @@ export function NextClassCountdown() {
           subjectName: subject?.name || 'Quran',
           dateTime,
           scheduleTime: s.teacher_local_time || '00:00',
-          dayOfWeek: s.day_of_week,
+          dayOfWeek: s.day_of_week ? s.day_of_week.charAt(0).toUpperCase() + s.day_of_week.slice(1).toLowerCase() : '',
         };
       }).sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
 
