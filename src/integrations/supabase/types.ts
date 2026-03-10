@@ -2005,36 +2005,57 @@ export type Database = {
       }
       salary_adjustments: {
         Row: {
+          adjustment_mode: string
           adjustment_type: string
           amount: number
+          apply_to: string | null
+          bulk_batch_id: string | null
           created_at: string
           created_by: string | null
           expense_id: string | null
           id: string
+          is_bulk: boolean
+          percentage_value: number | null
           reason: string | null
+          resolved_amount: number | null
           salary_month: string
+          student_id: string | null
           teacher_id: string
         }
         Insert: {
+          adjustment_mode?: string
           adjustment_type: string
           amount?: number
+          apply_to?: string | null
+          bulk_batch_id?: string | null
           created_at?: string
           created_by?: string | null
           expense_id?: string | null
           id?: string
+          is_bulk?: boolean
+          percentage_value?: number | null
           reason?: string | null
+          resolved_amount?: number | null
           salary_month: string
+          student_id?: string | null
           teacher_id: string
         }
         Update: {
+          adjustment_mode?: string
           adjustment_type?: string
           amount?: number
+          apply_to?: string | null
+          bulk_batch_id?: string | null
           created_at?: string
           created_by?: string | null
           expense_id?: string | null
           id?: string
+          is_bulk?: boolean
+          percentage_value?: number | null
           reason?: string | null
+          resolved_amount?: number | null
           salary_month?: string
+          student_id?: string | null
           teacher_id?: string
         }
         Relationships: [
@@ -2050,6 +2071,13 @@ export type Database = {
             columns: ["expense_id"]
             isOneToOne: false
             referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_adjustments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
