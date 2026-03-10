@@ -123,7 +123,7 @@ export function BulkAdjustmentDialog({
                 />
                 <span className="text-xs font-medium">Select All ({selectedIds.size}/{staffMembers.length})</span>
               </div>
-              <ScrollArea className="max-h-48">
+              <div className="max-h-48 overflow-y-auto">
                 <div className="p-2 space-y-1">
                   {staffMembers.map(s => (
                     <label key={s.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/50 cursor-pointer">
@@ -132,7 +132,7 @@ export function BulkAdjustmentDialog({
                     </label>
                   ))}
                 </div>
-              </ScrollArea>
+              </div>
             </div>
           )}
         </div>
