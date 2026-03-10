@@ -141,6 +141,7 @@ function buildNavGroups(modelType: string | null, branchType: string | null): Na
       items: [
         { label: 'Fees', href: '/payments', icon: CreditCard, permission: 'payments.view' },
         { label: 'Salary Engine', href: '/salary', icon: Wallet, roles: ['super_admin', 'admin', 'admin_fees', 'teacher'] },
+        { label: 'Staff Salaries', href: '/staff-salaries', icon: Users, roles: ['super_admin', 'admin', 'admin_fees'] },
         { label: 'Expenses', href: '/expenses', icon: Receipt, roles: ['super_admin', 'admin', 'admin_fees'] },
         { label: 'Cash Advances', href: '/cash-advances', icon: Wallet, roles: ['super_admin', 'admin', 'admin_fees'] },
         { label: 'Finance Setup', href: '/finance-setup', icon: Wallet, roles: ['super_admin'] },
