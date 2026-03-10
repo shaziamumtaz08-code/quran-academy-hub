@@ -68,40 +68,33 @@ export function PrayerTimesWidget({ islamicDate }: PrayerTimesWidgetProps) {
   const countdownStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m ${secs}s`;
 
   return (
-    <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-card mb-3.5">
-      {/* Collapsed header */}
+    <div className="bg-card rounded-xl border border-border overflow-hidden shadow-card">
+      {/* Collapsed header — compact single row */}
       <div
         onClick={() => setExpanded(!expanded)}
-        className="px-4 py-3 flex items-center gap-2.5 cursor-pointer"
+        className="px-3 py-2 flex items-center gap-2 cursor-pointer"
       >
-        {/* Mosque icon */}
-        <div className="bg-gradient-to-br from-[hsl(var(--navy-light))] to-primary rounded-[10px] w-[38px] h-[38px] flex items-center justify-center text-lg shrink-0">
-          🕌
-        </div>
+        <span className="text-base shrink-0">🕌</span>
 
-        <div className="flex-1">
-          <div className="text-[11px] text-muted-foreground font-bold tracking-wider">NEXT PRAYER</div>
-          <div className="text-[15px] font-extrabold text-foreground">
+        <div className="flex-1 min-w-0">
+          <span className="text-[13px] font-extrabold text-foreground">
             {next.icon} {next.label}
-            <span className="font-medium text-muted-foreground text-[13px]"> · {next.time}</span>
-          </div>
+          </span>
+          <span className="font-medium text-muted-foreground text-[11px]"> · {next.time}</span>
         </div>
 
-        {/* Countdown pill */}
-        <div className="bg-sky/10 rounded-[10px] px-2.5 py-1 text-center min-w-[68px]">
-          <div className="text-[13px] font-extrabold text-sky font-mono">{countdownStr}</div>
-          <div className="text-[9px] text-muted-foreground font-semibold">remaining</div>
-        </div>
+        {/* Countdown */}
+        <span className="text-[12px] font-extrabold text-sky font-mono shrink-0">{countdownStr}</span>
 
-        <div className="text-muted-foreground">
-          {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        <div className="text-muted-foreground shrink-0">
+          {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
         </div>
       </div>
 
       {/* Ramadan Imsak strip */}
       {islamicDate.isRamadan && prayers.Imsak && (
-        <div className="mx-4 bg-gradient-to-r from-primary to-[hsl(var(--navy-light))] rounded-lg px-3 py-1.5 flex justify-between items-center mb-3">
-          <span className="text-[11px] text-[#8AACCC] font-semibold">
+        <div className="mx-3 mb-2 bg-gradient-to-r from-primary to-[hsl(var(--navy-light))] rounded-lg px-3 py-1 flex justify-between items-center">
+          <span className="text-[11px] text-[hsl(var(--cyan-light))] font-semibold">
             ☪️ Ramadan · Imsak (Suhoor ends)
           </span>
           <span className="text-xs font-extrabold text-gold-light">{prayers.Imsak}</span>
@@ -110,15 +103,15 @@ export function PrayerTimesWidget({ islamicDate }: PrayerTimesWidgetProps) {
 
       {/* Expanded — all 5 prayers */}
       {expanded && (
-        <div className="border-t border-border px-4 py-2.5 pb-3.5 bg-secondary/30">
-          <div className="flex gap-1.5">
+        <div className="border-t border-border px-3 py-2 bg-secondary/30">
+          <div className="flex gap-1">
             {PRAYERS.map((p) => {
               const isNext = p.key === next.key;
               const isCurrent = p.key === currentKey;
               return (
                 <div
                   key={p.key}
-                  className={`flex-1 text-center rounded-[10px] py-2 px-1 border-[1.5px] ${
+                  className={`flex-1 text-center rounded-lg py-1.5 px-0.5 border ${
                     isNext
                       ? 'bg-gradient-to-br from-[hsl(var(--navy-light))] to-primary border-transparent'
                       : isCurrent
@@ -126,19 +119,19 @@ export function PrayerTimesWidget({ islamicDate }: PrayerTimesWidgetProps) {
                       : 'bg-card border-border'
                   }`}
                 >
-                  <div className="text-sm">{p.icon}</div>
-                  <div className={`text-[10px] font-bold mt-0.5 ${
-                    isNext ? 'text-[#8AACCC]' : isCurrent ? 'text-teal' : 'text-muted-foreground'
+                  <div className="text-xs">{p.icon}</div>
+                  <div className={`text-[9px] font-bold ${
+                    isNext ? 'text-[hsl(var(--cyan-light))]' : isCurrent ? 'text-teal' : 'text-muted-foreground'
                   }`}>
                     {p.label}
                   </div>
-                  <div className={`text-xs font-extrabold mt-0.5 ${
+                  <div className={`text-[11px] font-extrabold ${
                     isNext ? 'text-primary-foreground' : isCurrent ? 'text-teal' : 'text-foreground'
                   }`}>
                     {prayers[p.key]}
                   </div>
-                  {isNext && <div className="text-[8px] text-teal-light font-semibold mt-0.5">NEXT</div>}
-                  {isCurrent && <div className="text-[8px] text-teal font-semibold mt-0.5">NOW</div>}
+                  {isNext && <div className="text-[7px] text-teal-light font-semibold">NEXT</div>}
+                  {isCurrent && <div className="text-[7px] text-teal font-semibold">NOW</div>}
                 </div>
               );
             })}
