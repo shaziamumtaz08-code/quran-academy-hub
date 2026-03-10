@@ -834,6 +834,15 @@ export default function SalaryEngine() {
           </div>
           {!isTeacherView && (
             <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" className="text-emerald-600 border-emerald-300 hover:bg-emerald-50" onClick={() => setBulkAddOpen(true)}>
+                <TrendingUp className="h-4 w-4 mr-1" /> Bulk Addition
+              </Button>
+              <Button size="sm" variant="outline" className="text-red-600 border-red-300 hover:bg-red-50" onClick={() => setBulkDeductOpen(true)}>
+                <TrendingDown className="h-4 w-4 mr-1" /> Bulk Deduction
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setHistoryOpen(true)}>
+                <History className="h-4 w-4 mr-1" /> History
+              </Button>
               <Button size="sm" variant="outline" onClick={() => setLeaveModalOpen(true)}>
                 <Plus className="h-4 w-4 mr-1" /> Leave
               </Button>
