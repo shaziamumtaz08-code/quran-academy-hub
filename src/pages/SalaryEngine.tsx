@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Calculator, Lock, CheckCircle, Clock, Plus, Search, Loader2, RotateCcw, AlertCircle
+  Calculator, Lock, CheckCircle, Clock, Plus, Search, Loader2, RotateCcw, AlertCircle, History, TrendingUp, TrendingDown
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -18,6 +18,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, parseISO, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { SalarySheetDialog } from '@/components/salary/SalarySheetDialog';
+import { BulkAdjustmentDialog } from '@/components/salary/BulkAdjustmentDialog';
+import { AdjustmentHistoryDialog } from '@/components/salary/AdjustmentHistoryDialog';
 import { trackActivity } from '@/lib/activityLogger';
 
 const MONTHS = [
@@ -109,6 +111,9 @@ export default function SalaryEngine() {
   const [adjustmentModalOpen, setAdjustmentModalOpen] = useState(false);
   const [selectedTeacherId, setSelectedTeacherId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [bulkAddOpen, setBulkAddOpen] = useState(false);
+  const [bulkDeductOpen, setBulkDeductOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   
   // Revert modal state
   const [revertModalOpen, setRevertModalOpen] = useState(false);
@@ -118,7 +123,7 @@ export default function SalaryEngine() {
 
   // Forms
   const [leaveForm, setLeaveForm] = useState({ teacher_id: '', leave_type: 'unpaid', start_date: '', end_date: '', reason: '' });
-  const [adjForm, setAdjForm] = useState({ teacher_id: '', adjustment_type: 'bonus', amount: '', reason: '' });
+  const [adjForm, setAdjForm] = useState({ teacher_id: '', adjustment_type: 'bonus', amount: '', reason: '', mode: 'flat' as 'flat' | 'percentage' });
 
   const [year, month] = salaryMonth.split('-').map(Number);
   const monthStart = `${salaryMonth}-01`;
@@ -716,21 +721,53 @@ export default function SalaryEngine() {
 
   const addAdjustment = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('salary_adjustments').insert({
+      const amountVal = parseFloat(adjForm.amount) || 0;
+      const payload: any = {
         teacher_id: adjForm.teacher_id,
         salary_month: salaryMonth,
         adjustment_type: adjForm.adjustment_type,
-        amount: parseFloat(adjForm.amount) || 0,
+        amount: adjForm.mode === 'percentage' ? 0 : amountVal,
         reason: adjForm.reason || null,
         created_by: user?.id,
-      });
+        adjustment_mode: adjForm.mode,
+        percentage_value: adjForm.mode === 'percentage' ? amountVal : null,
+      };
+      // For percentage mode, resolve amount at insert time (we'll compute against base later in display)
+      const { error } = await supabase.from('salary_adjustments').insert(payload);
       if (error) throw error;
     },
     onSuccess: () => {
       toast({ title: 'Adjustment added' });
       queryClient.invalidateQueries({ queryKey: ['salary-adjustments'] });
       setAdjustmentModalOpen(false);
-      setAdjForm({ teacher_id: '', adjustment_type: 'bonus', amount: '', reason: '' });
+      setAdjForm({ teacher_id: '', adjustment_type: 'bonus', amount: '', reason: '', mode: 'flat' });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const bulkAdjustment = useMutation({
+    mutationFn: async (data: { staffIds: string[]; adjustmentType: string; mode: 'flat' | 'percentage'; value: number; reason: string }) => {
+      const batchId = crypto.randomUUID();
+      const rows = data.staffIds.map(id => ({
+        teacher_id: id,
+        salary_month: salaryMonth,
+        adjustment_type: data.adjustmentType,
+        amount: data.mode === 'percentage' ? 0 : data.value,
+        reason: data.reason || null,
+        created_by: user?.id,
+        adjustment_mode: data.mode,
+        percentage_value: data.mode === 'percentage' ? data.value : null,
+        is_bulk: true,
+        bulk_batch_id: batchId,
+      }));
+      const { error } = await supabase.from('salary_adjustments').insert(rows);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: 'Bulk adjustment applied' });
+      queryClient.invalidateQueries({ queryKey: ['salary-adjustments'] });
+      setBulkAddOpen(false);
+      setBulkDeductOpen(false);
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
@@ -797,6 +834,15 @@ export default function SalaryEngine() {
           </div>
           {!isTeacherView && (
             <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" className="text-emerald-600 border-emerald-300 hover:bg-emerald-50" onClick={() => setBulkAddOpen(true)}>
+                <TrendingUp className="h-4 w-4 mr-1" /> Bulk Addition
+              </Button>
+              <Button size="sm" variant="outline" className="text-red-600 border-red-300 hover:bg-red-50" onClick={() => setBulkDeductOpen(true)}>
+                <TrendingDown className="h-4 w-4 mr-1" /> Bulk Deduction
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setHistoryOpen(true)}>
+                <History className="h-4 w-4 mr-1" /> History
+              </Button>
               <Button size="sm" variant="outline" onClick={() => setLeaveModalOpen(true)}>
                 <Plus className="h-4 w-4 mr-1" /> Leave
               </Button>
@@ -1144,20 +1190,32 @@ export default function SalaryEngine() {
                   <SelectContent>{allSalariedProfiles.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.full_name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label>Type</Label>
-                <Select value={adjForm.adjustment_type} onValueChange={v => setAdjForm(p => ({ ...p, adjustment_type: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="bonus">Bonus (+)</SelectItem>
-                    <SelectItem value="allowance">Allowance (+)</SelectItem>
-                    <SelectItem value="deduction">Deduction (−)</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Type</Label>
+                  <Select value={adjForm.adjustment_type} onValueChange={v => setAdjForm(p => ({ ...p, adjustment_type: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="bonus">Bonus (+)</SelectItem>
+                      <SelectItem value="allowance">Allowance (+)</SelectItem>
+                      <SelectItem value="deduction">Deduction (−)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Mode</Label>
+                  <Select value={adjForm.mode} onValueChange={v => setAdjForm(p => ({ ...p, mode: v as 'flat' | 'percentage' }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="flat">Flat Amount</SelectItem>
+                      <SelectItem value="percentage">Percentage (%)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div>
-                <Label>Amount</Label>
-                <Input type="number" value={adjForm.amount} onChange={e => setAdjForm(p => ({ ...p, amount: e.target.value }))} />
+                <Label>{adjForm.mode === 'percentage' ? 'Percentage (%)' : 'Amount (PKR)'}</Label>
+                <Input type="number" value={adjForm.amount} onChange={e => setAdjForm(p => ({ ...p, amount: e.target.value }))} placeholder={adjForm.mode === 'percentage' ? '10' : '5000'} />
               </div>
               <div>
                 <Label>Reason</Label>
@@ -1173,6 +1231,33 @@ export default function SalaryEngine() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* ── Bulk Adjustment Dialogs ── */}
+        <BulkAdjustmentDialog
+          open={bulkAddOpen}
+          onOpenChange={setBulkAddOpen}
+          type="addition"
+          staffMembers={allSalariedProfiles.map((p: any) => ({ id: p.id, full_name: p.full_name }))}
+          salaryMonth={salaryMonth}
+          onSubmit={(data) => bulkAdjustment.mutate(data)}
+          isPending={bulkAdjustment.isPending}
+        />
+        <BulkAdjustmentDialog
+          open={bulkDeductOpen}
+          onOpenChange={setBulkDeductOpen}
+          type="deduction"
+          staffMembers={allSalariedProfiles.map((p: any) => ({ id: p.id, full_name: p.full_name }))}
+          salaryMonth={salaryMonth}
+          onSubmit={(data) => bulkAdjustment.mutate({ ...data, adjustmentType: 'deduction' })}
+          isPending={bulkAdjustment.isPending}
+        />
+
+        {/* ── Adjustment History ── */}
+        <AdjustmentHistoryDialog
+          open={historyOpen}
+          onOpenChange={setHistoryOpen}
+          salaryMonth={salaryMonth}
+        />
       </div>
     </DashboardLayout>
   );

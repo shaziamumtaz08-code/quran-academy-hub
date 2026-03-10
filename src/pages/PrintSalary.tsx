@@ -46,6 +46,19 @@ export default function PrintSalary() {
     },
   });
 
+  const { data: adjustments = [] } = useQuery({
+    queryKey: ['print-salary-adjustments', payout?.salary_month, payout?.teacher_id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('salary_adjustments')
+        .select('*')
+        .eq('salary_month', payout!.salary_month)
+        .eq('teacher_id', payout!.teacher_id);
+      return data || [];
+    },
+    enabled: !!payout?.salary_month && !!payout?.teacher_id,
+  });
+
   if (isLoading || !payout) {
     return <div style={{ width: '794px', margin: '0 auto', padding: '40px', textAlign: 'center' }}><p>Loading salary statement...</p></div>;
   }
@@ -107,7 +120,14 @@ export default function PrintSalary() {
         students={students}
         roleSalaries={roleSalaries}
         extraClassAmount={Number(payout.extra_class_amount)}
-        adjustments={[]}
+        adjustments={adjustments.map((a: any) => ({
+          adjustment_type: a.adjustment_type,
+          adjustment_mode: a.adjustment_mode || 'flat',
+          amount: Number(a.amount),
+          percentage_value: a.percentage_value,
+          resolved_amount: a.resolved_amount,
+          reason: a.reason,
+        }))}
         baseSalary={Number(payout.base_salary)}
         additions={Number(payout.extra_class_amount) + Number(payout.adjustment_amount)}
         deductions={Number(payout.deductions)}
