@@ -40,7 +40,8 @@ export function PageBreadcrumb() {
   const isResources = pathname === '/resources';
 
   // Resources has its own Drive-style breadcrumb, don't show duplicate
-  if (isResources) {
+  // Dashboard home is redundant — each role dashboard has its own header
+  if (isResources || isHome) {
     return null;
   }
 

@@ -78,7 +78,7 @@ export function IslamicDateCard({ onIslamicDateLoaded }: IslamicDateCardProps) {
 
       {/* Gregorian + clock on one line */}
       <div className="flex items-center justify-center gap-2 mt-0.5">
-        <span className="text-[10px] text-muted-foreground/60 font-semibold">{adDate}</span>
+        <span className="text-[10px] text-cyan-light/70 font-semibold">{adDate}</span>
         <span className="text-[10px] font-mono font-bold text-teal-light tracking-wider">{timeStr}</span>
       </div>
     </div>
