@@ -651,7 +651,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <RoleSwitcher />
           </div>
         </header>
-        <div className="p-3 sm:p-4 lg:p-6">
+        <div className={activeRole === 'teacher' && location.pathname === '/dashboard' ? 'p-0' : 'p-3 sm:p-4 lg:p-6'}>
           <PageBreadcrumb />
           {children}
         </div>

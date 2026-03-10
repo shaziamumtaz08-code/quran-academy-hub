@@ -47,10 +47,11 @@ export function TeacherTopBar({ onMenuToggle }: TeacherTopBarProps) {
         {/* Logo mark */}
         <span className="text-[10px] text-sky/60 font-bold tracking-[1.5px] uppercase shrink-0">AQA</span>
 
-        {/* Greeting — fills remaining space */}
-        <p className="flex-1 text-sm font-bold text-primary-foreground truncate">
-          Assalamu Alaikum, {firstName} 👋
-        </p>
+        {/* Greeting — fills remaining space, two-line layout */}
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] text-primary-foreground/70 leading-tight">Assalamu Alaikum 👋</p>
+          <p className="text-sm font-bold text-primary-foreground truncate leading-tight">{profile?.full_name || 'Teacher'}</p>
+        </div>
 
         {/* Bell */}
         <button className="relative bg-white/[0.08] border-none rounded-lg w-9 h-9 flex items-center justify-center text-primary-foreground shrink-0">
