@@ -37,9 +37,25 @@ function getAvatarColor(name: string): string {
 }
 
 export function TeacherDashboard() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [islamicDate, setIslamicDate] = useState<IslamicDateData | null>(null);
+  const firstName = profile?.full_name?.split(" ")[0] || "Teacher";
+
+  const { data: unreadCount = 0 } = useQuery({
+    queryKey: ["teacher-unread-notifications", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return 0;
+      const { count } = await supabase
+        .from("notification_queue")
+        .select("*", { count: "exact", head: true })
+        .eq("recipient_id", user.id)
+        .eq("status", "pending");
+      return count || 0;
+    },
+    enabled: !!user?.id,
+    refetchInterval: 60000,
+  });
 
   const { data: focusStudents, isLoading } = useQuery({
     queryKey: ["teacher-today-focus", user?.id],
