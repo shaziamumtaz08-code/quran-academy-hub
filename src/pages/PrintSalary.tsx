@@ -46,6 +46,19 @@ export default function PrintSalary() {
     },
   });
 
+  const { data: adjustments = [] } = useQuery({
+    queryKey: ['print-salary-adjustments', payout?.salary_month, payout?.teacher_id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('salary_adjustments')
+        .select('*')
+        .eq('salary_month', payout!.salary_month)
+        .eq('teacher_id', payout!.teacher_id);
+      return data || [];
+    },
+    enabled: !!payout?.salary_month && !!payout?.teacher_id,
+  });
+
   if (isLoading || !payout) {
     return <div style={{ width: '794px', margin: '0 auto', padding: '40px', textAlign: 'center' }}><p>Loading salary statement...</p></div>;
   }
