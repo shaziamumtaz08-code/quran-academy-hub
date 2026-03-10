@@ -581,7 +581,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Mobile Sidebar - slide-over drawer */}
       <aside className={cn(
-        "lg:hidden fixed top-0 left-0 z-40 h-full w-[280px] max-w-[85vw] bg-sidebar border-r border-sidebar-border transition-transform duration-300 ease-in-out",
+        "lg:hidden fixed top-0 left-0 z-[210] h-full w-[280px] max-w-[85vw] bg-sidebar border-r border-sidebar-border transition-transform duration-300 ease-in-out",
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="flex flex-col h-full">
@@ -636,7 +636,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-30 bg-foreground/30 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-[205] bg-foreground/30 backdrop-blur-sm lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
