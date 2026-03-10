@@ -454,8 +454,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <div className="min-h-screen bg-background islamic-pattern">
-      {/* Mobile Header - larger touch targets */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 h-14 bg-card border-b border-border flex items-center justify-between px-3 safe-area-inset">
+      {/* Mobile Header - larger touch targets (hidden when teacher dashboard has its own top bar) */}
+      <header className={`lg:hidden fixed top-0 left-0 right-0 z-50 h-14 bg-card border-b border-border flex items-center justify-between px-3 safe-area-inset ${activeRole === 'teacher' && location.pathname === '/dashboard' ? 'hidden' : ''}`}>
         <div className="flex items-center gap-2 min-w-0">
           <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0" onClick={() => setSidebarOpen(!sidebarOpen)}>
             {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -635,7 +635,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Main Content */}
       <main
-        className="min-h-screen pt-14 lg:pt-0 transition-all duration-300"
+        className={`min-h-screen lg:pt-0 transition-all duration-300 ${activeRole === 'teacher' && location.pathname === '/dashboard' ? 'pt-0' : 'pt-14'}`}
         style={{ marginLeft: !isMobile ? sidebarWidthPx : 0 }}
       >
         <header className="hidden lg:flex h-12 border-b border-border bg-card/80 backdrop-blur-sm items-center justify-between px-6 sticky top-0 z-20">
@@ -651,7 +651,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <RoleSwitcher />
           </div>
         </header>
-        <div className="p-3 sm:p-4 lg:p-6">
+        <div className={activeRole === 'teacher' && location.pathname === '/dashboard' ? 'p-0' : 'p-3 sm:p-4 lg:p-6'}>
           <PageBreadcrumb />
           {children}
         </div>
