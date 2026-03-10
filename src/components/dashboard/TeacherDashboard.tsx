@@ -5,10 +5,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { format, subDays } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { IslamicDateData } from "@/lib/islamicDate";
 
 import { TeacherTopBar } from "./teacher/TeacherTopBar";
 import { MissedAttendanceBanner } from "./teacher/MissedAttendanceBanner";
 import { NextClassCountdown } from "./teacher/NextClassCountdown";
+import { PrayerTimesWidget } from "./teacher/PrayerTimesWidget";
+import { PlanReminderBanner } from "./teacher/PlanReminderBanner";
 import { TeacherStudentCard, getAvatarColor } from "./teacher/TeacherStudentCard";
 import type { StudentData } from "./teacher/TeacherStudentCard";
 import { TeacherAttendanceModal } from "./teacher/TeacherAttendanceModal";
@@ -22,6 +25,7 @@ export function TeacherDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [activeModal, setActiveModal] = useState<StudentData | null>(null);
+  const [islamicDate, setIslamicDate] = useState<IslamicDateData | null>(null);
 
   // Fetch students with attendance data
   const { data: students, isLoading } = useQuery({
@@ -46,8 +50,6 @@ export function TeacherDashboard() {
 
       // Fetch attendance for all students in one query
       const studentIds = assignments.map(a => (a.student as any)?.id).filter(Boolean);
-      const twoWeeksAgo = format(subDays(new Date(), 14), 'yyyy-MM-dd');
-      const today = format(new Date(), 'yyyy-MM-dd');
 
       const { data: allAttendance } = await supabase
         .from("attendance")
@@ -151,7 +153,7 @@ export function TeacherDashboard() {
   return (
     <div className="min-h-screen bg-background max-w-[480px] mx-auto relative font-sans">
       {/* Top Bar */}
-      <TeacherTopBar />
+      <TeacherTopBar onIslamicDateLoaded={setIslamicDate} />
 
       {/* Scrollable Content */}
       <div className="p-4 pb-24 space-y-4">
@@ -160,6 +162,12 @@ export function TeacherDashboard() {
 
         {/* Next Class Countdown */}
         <NextClassCountdown />
+
+        {/* Prayer Times Widget */}
+        <PrayerTimesWidget islamicDate={islamicDate} />
+
+        {/* Plan Reminder Banner */}
+        <PlanReminderBanner />
 
         {/* My Students — Smart Cards */}
         <div>

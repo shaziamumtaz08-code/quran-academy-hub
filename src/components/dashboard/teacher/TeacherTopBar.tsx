@@ -3,46 +3,7 @@ import { Bell } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-
-function toHijri(date: Date) {
-  const day = date.getDate();
-  const month = date.getMonth() + 1;
-  const year = date.getFullYear();
-
-  let jd = Math.floor((14 - month) / 12);
-  let y = year + 4800 - jd;
-  let m = month + 12 * jd - 3;
-  let jdn =
-    day +
-    Math.floor((153 * m + 2) / 5) +
-    365 * y +
-    Math.floor(y / 4) -
-    Math.floor(y / 100) +
-    Math.floor(y / 400) -
-    32045;
-
-  let l = jdn - 1948440 + 10632;
-  let n = Math.floor((l - 1) / 10631);
-  l = l - 10631 * n + 354;
-  let j =
-    Math.floor((10985 - l) / 5316) * Math.floor((50 * l) / 17719) +
-    Math.floor(l / 5670) * Math.floor((43 * l) / 15238);
-  l =
-    l -
-    Math.floor((30 - j) / 15) * Math.floor((17719 * j) / 50) -
-    Math.floor(j / 16) * Math.floor((15238 * j) / 43) +
-    29;
-  let hMonth = Math.floor((24 * l) / 709);
-  let hDay = l - Math.floor((709 * hMonth) / 24);
-  let hYear = 30 * n + j - 30;
-
-  const HIJRI_MONTHS = [
-    "Muharram", "Safar", "Rabi' al-Awwal", "Rabi' al-Thani",
-    "Jumada al-Awwal", "Jumada al-Thani", "Rajab", "Sha'ban",
-    "Ramadan", "Shawwal", "Dhul Qi'dah", "Dhul Hijjah",
-  ];
-  return { day: hDay, month: hMonth, year: hYear, monthName: HIJRI_MONTHS[hMonth - 1] };
-}
+import { fetchIslamicDate, type IslamicDateData } from '@/lib/islamicDate';
 
 function useLiveClock() {
   const [now, setNow] = useState(new Date());
@@ -53,10 +14,36 @@ function useLiveClock() {
   return now;
 }
 
-export function TeacherTopBar() {
+interface TeacherTopBarProps {
+  onIslamicDateLoaded?: (data: IslamicDateData) => void;
+}
+
+export function TeacherTopBar({ onIslamicDateLoaded }: TeacherTopBarProps) {
   const { profile, user } = useAuth();
   const now = useLiveClock();
-  const hijri = toHijri(now);
+  const [islamicDate, setIslamicDate] = useState<IslamicDateData | null>(null);
+  const [dateLoading, setDateLoading] = useState(true);
+  const [timezone, setTimezone] = useState('Asia/Karachi');
+
+  // Fetch teacher's timezone from profiles table
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase.from('profiles').select('timezone').eq('id', user.id).single()
+      .then(({ data }) => {
+        if (data?.timezone) setTimezone(data.timezone);
+      });
+  }, [user?.id]);
+
+  // Fetch Hijri date from AlAdhan API (cached daily)
+  useEffect(() => {
+    fetchIslamicDate(timezone)
+      .then(data => {
+        setIslamicDate(data);
+        setDateLoading(false);
+        onIslamicDateLoaded?.(data);
+      })
+      .catch(() => setDateLoading(false));
+  }, [timezone]);
 
   const timeStr = now.toLocaleTimeString("en-US", {
     hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true,
@@ -94,9 +81,15 @@ export function TeacherTopBar() {
         {/* Islamic date */}
         <div className="flex items-center gap-1.5">
           <span className="text-sm">☪️</span>
-          <span className="text-xs font-bold text-cyan-light tracking-wide">
-            {hijri.day} {hijri.monthName} {hijri.year} AH
-          </span>
+          {dateLoading ? (
+            <span className="text-xs text-cyan-light opacity-50">Loading...</span>
+          ) : islamicDate ? (
+            <span className="text-xs font-bold text-cyan-light tracking-wide">
+              {islamicDate.formatted}
+            </span>
+          ) : (
+            <span className="text-xs text-cyan-light opacity-50">Unavailable</span>
+          )}
         </div>
 
         {/* Live clock */}
