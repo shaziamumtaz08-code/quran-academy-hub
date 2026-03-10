@@ -237,6 +237,7 @@ function AppRoutes() {
       <Route path="/organization-settings" element={<ProtectedRoute><AdminRoute><OrganizationSettings /></AdminRoute></ProtectedRoute>} />
       <Route path="/finance-setup" element={<ProtectedRoute><AdminRoute><FinanceSetup /></AdminRoute></ProtectedRoute>} />
       <Route path="/salary" element={<ProtectedRoute><AdminOrTeacherRoute><SalaryEngine /></AdminOrTeacherRoute></ProtectedRoute>} />
+      <Route path="/staff-salaries" element={<ProtectedRoute><AdminRoute><StaffSalarySetup /></AdminRoute></ProtectedRoute>} />
       <Route path="/expenses" element={<ProtectedRoute><AdminRoute><Expenses /></AdminRoute></ProtectedRoute>} />
       <Route path="/cash-advances" element={<ProtectedRoute><AdminRoute><CashAdvances /></AdminRoute></ProtectedRoute>} />
       <Route path="/monthly-planning" element={<ProtectedRoute><AdminOrTeacherRoute><MonthlyPlanning /></AdminOrTeacherRoute></ProtectedRoute>} />
