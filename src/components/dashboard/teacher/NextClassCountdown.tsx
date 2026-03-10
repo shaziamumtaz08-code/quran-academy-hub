@@ -103,6 +103,15 @@ export function NextClassCountdown() {
     queryFn: async () => {
       if (!user?.id) return null;
 
+      // Fetch teacher's timezone
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('timezone')
+        .eq('id', user.id)
+        .single();
+
+      const teacherTz = profile?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+
       const { data: schedules } = await supabase
         .from('schedules')
         .select(`
@@ -123,27 +132,22 @@ export function NextClassCountdown() {
       if (!schedules?.length) return null;
 
       const now = new Date();
-      const todayIndex = now.getDay();
 
       const upcoming = schedules.map(s => {
         const assignment = s.assignment as any;
-        const scheduleDayIndex = DAY_NAMES.indexOf(s.day_of_week);
-        let daysUntil = scheduleDayIndex - todayIndex;
-        if (daysUntil < 0) daysUntil += 7;
+        const fullDateTime = buildNextOccurrence(
+          s.day_of_week,
+          s.teacher_local_time || '00:00',
+          teacherTz,
+        );
 
-        const [hours, minutes] = (s.teacher_local_time || '00:00').split(':').map(Number);
-        const scheduleDate = addDays(now, daysUntil);
-        const fullDateTime = setMinutes(setHours(scheduleDate, hours), minutes);
-
-        // If today's class has already passed, push to next week
-        if (daysUntil === 0 && now > addMinutes(fullDateTime, s.duration_minutes)) {
-          const nextWeek = addDays(now, 7);
-          const nextDateTime = setMinutes(setHours(nextWeek, hours), minutes);
+        // If today's class has already ended, push to next week
+        if (now > addMinutes(fullDateTime, s.duration_minutes)) {
+          const nextWeekDateTime = new Date(fullDateTime.getTime() + 7 * 86400000);
           return {
             studentName: assignment?.student?.full_name || 'Student',
             subjectName: assignment?.subject?.name || 'Quran',
-            dateTime: nextDateTime,
-            daysUntil: 7,
+            dateTime: nextWeekDateTime,
           };
         }
 
@@ -151,7 +155,6 @@ export function NextClassCountdown() {
           studentName: assignment?.student?.full_name || 'Student',
           subjectName: assignment?.subject?.name || 'Quran',
           dateTime: fullDateTime,
-          daysUntil,
         };
       }).sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
 
