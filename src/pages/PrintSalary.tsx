@@ -120,7 +120,14 @@ export default function PrintSalary() {
         students={students}
         roleSalaries={roleSalaries}
         extraClassAmount={Number(payout.extra_class_amount)}
-        adjustments={[]}
+        adjustments={adjustments.map((a: any) => ({
+          adjustment_type: a.adjustment_type,
+          adjustment_mode: a.adjustment_mode || 'flat',
+          amount: Number(a.amount),
+          percentage_value: a.percentage_value,
+          resolved_amount: a.resolved_amount,
+          reason: a.reason,
+        }))}
         baseSalary={Number(payout.base_salary)}
         additions={Number(payout.extra_class_amount) + Number(payout.adjustment_amount)}
         deductions={Number(payout.deductions)}
