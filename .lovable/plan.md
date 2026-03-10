@@ -1,95 +1,39 @@
 
-# Plan: Synchronize Edit Invoice with Record Payment Form + Multi-Month Payment UX
 
-## Problem Summary
+## Plan: Compact Next Class Block + Remove Dead Space
 
-1. **Edit Invoice form is missing fields** that the Record Payment form has: Realized (PKR), exchange rate display, Proof of Payment upload, and shortfall/resolution handling.
-2. **Multi-month payments** require clarity: if a student pays 40 AUD covering Dec (10) + Jan (30), can the system auto-split it?
+### Problem
+1. The **Next Class** card is too tall — the countdown tiles (Days/Hrs/Mins) are large squares stacked below the name, wasting vertical space.
+2. There is excessive grey/empty space on both desktop and mobile views between the breadcrumb area and the actual dashboard content.
 
----
+### Changes
 
-## Part 1: Make Edit Invoice Form Identical to Record Payment
+#### 1. Redesign NextClassCountdown (`src/components/dashboard/teacher/NextClassCountdown.tsx`)
 
-The Edit Invoice dialog will be restructured to match Record Payment field-for-field:
+New layout — everything in **two rows** max:
 
-| Section | Record Payment | Edit Invoice (Current) | Action |
-|---|---|---|---|
-| Invoice summary bar | Student name + expected | Missing | **Add** |
-| Payment Period (From/To) | Yes | Yes | Keep |
-| Payment Date / Paid At | Yes | Yes | Keep (label: "Paid At") |
-| Receiving Channel | Yes | Yes | Keep |
-| Amount (currency) | Yes | Yes | Keep |
-| Realized (PKR) | Yes | **Missing** | **Add** |
-| Exchange Rate display | Yes | **Missing** | **Add** |
-| Shortfall + Resolution | Yes | **Missing** | **Add** (auto-calculated) |
-| Proof of Payment upload | Yes | **Missing** | **Add** |
-| Notes / Remark | Yes | Yes | Keep |
-| Amount Paid | N/A (auto) | Yes | Keep (admin override) |
-| Forgiven Amount | N/A (auto) | Yes | Keep (admin override) |
-| Currency | N/A (from invoice) | Yes | Keep |
-| Billing Month | N/A (from invoice) | Yes | Keep |
-| Status | N/A (auto) | Yes | Keep |
-| Due Date | N/A | Yes | Keep |
+```text
+Row 1: ⏰ Next Class   |  Student Name  |  ▶ Start
+Row 2: Quran · sun · 3:00 PM  |  [2d] [5h] [09m]  (slim pill boxes)
+```
 
-The Edit Invoice dialog will have the same visual layout and sections as Record Payment, plus the extra admin-only fields (Status, Due Date, Currency, Billing Month, Forgiven Amount) below a separator labeled "Admin Overrides".
+- **Row 1**: Label + student name on the left, Start button on the right — all in one line.
+- **Row 2**: Subject/day/time info on the left, countdown in slim **rectangular pill** boxes (`px-2.5 py-1 rounded-md`) inline on the right. Each pill shows value + label side-by-side (e.g. `2d  5h  09m`) instead of stacked number+label.
+- Overall padding reduced to `px-3 py-2.5`, border-radius kept at `rounded-2xl`.
+- This cuts the block height roughly in half.
 
----
+#### 2. Remove dead space on desktop (`src/components/dashboard/TeacherDashboard.tsx`)
 
-## Part 2: Multi-Month Payment Strategy
+- Reduce `space-y-3` to `space-y-2` for tighter widget spacing.
+- The greeting bar already exists at the top — no structural changes needed there, but reduce its padding slightly (`py-1.5`).
 
-### Current mechanism
-- The system is **invoice-based**: each month generates a separate invoice per student.
-- The bulk "Record Payment" (cart pattern) already supports selecting multiple invoices and paying them with a single receipt.
-- The payment is **allocated sequentially** to each selected invoice (oldest first), with shortfall handling for any remainder.
+#### 3. Remove dead space on mobile
 
-### The easier solution (recommended)
-Rather than building complex date-range-to-invoice auto-splitting, the **existing cart system already solves this**:
+- The mobile top bar is `fixed` with `pt-16` content offset. Reduce to `pt-14` since the top bar is compact enough.
+- Reduce `pb-24` to `pb-20` for bottom nav clearance.
+- Tighten `space-y-3` to `space-y-2` on mobile as well.
 
-1. Admin selects invoices for Dec 2025 and Jan 2026 using checkboxes.
-2. Clicks "Record Payment" -- both invoices appear in the summary.
-3. Enters 40 AUD total, one receipt screenshot, one receiving channel.
-4. System auto-allocates: 10 AUD to Dec (outstanding), 30 AUD to Jan (outstanding).
-5. Both invoices update. Single receipt is linked to both transactions.
+### Files Modified
+- `src/components/dashboard/teacher/NextClassCountdown.tsx` — complete UI restructure of the render block (lines 172-206)
+- `src/components/dashboard/TeacherDashboard.tsx` — spacing/padding adjustments (line 144, 146)
 
-**No new development needed** for this flow -- it already works. The From/To date range in the payment form captures the coverage period for reference, but the allocation is driven by the invoice amounts, not dates.
-
-### What WILL be improved
-- Add a **helper tooltip/info text** on the Record Payment dialog explaining: "Selected invoices are paid in order. Amount is allocated starting from the first invoice."
-- Ensure the **Edit Payment** form (on `payment_transactions`) also mirrors the Record Payment layout for consistency.
-
----
-
-## Technical Changes
-
-### File: `src/pages/Payments.tsx`
-
-1. **Add state for receipt file in edit mode** -- reuse `receiptInputRef` or add a second ref.
-
-2. **Add `amount_local` (Realized PKR) field to `editInvoiceData` state** and persist it. This will require either:
-   - Storing realized amount on the invoice itself (new column), OR
-   - Looking up from `payment_transactions` and allowing override.
-   
-   Since `payment_transactions` already tracks `amount_local`, the Edit Invoice form will add a display-only "Realized (PKR)" field that shows the sum from linked transactions, plus an editable override field.
-
-3. **Restructure the Edit Invoice dialog** to follow Record Payment's visual order:
-   - Top: Student name + invoice summary bar
-   - Billing Month + Status row
-   - Payment Period section (From / To)
-   - Separator
-   - Payment Details section (Paid At + Receiving Channel)
-   - Amount row: Amount (currency) + Realized (PKR)
-   - Exchange rate auto-calculated display
-   - Amount Paid + Forgiven Amount row
-   - Currency + Due Date row
-   - Proof of Payment upload area
-   - Remark / Notes textarea
-
-4. **Receipt upload in edit mode**: Allow uploading a new receipt that updates the latest `payment_transaction.receipt_url` for this invoice.
-
-5. **Add info text** to Record Payment dialog: "Amounts are allocated across selected invoices in order."
-
-### Database
-- No new columns needed. The `fee_invoices` table already has `period_from`, `period_to`, `payment_method`, `paid_at`. The realized amount lives in `payment_transactions.amount_local`.
-
-### No changes needed for multi-month payments
-- The existing cart/bulk payment system handles this correctly already. The plan is to add UX guidance text only.
