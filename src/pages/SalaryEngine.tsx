@@ -111,6 +111,9 @@ export default function SalaryEngine() {
   const [adjustmentModalOpen, setAdjustmentModalOpen] = useState(false);
   const [selectedTeacherId, setSelectedTeacherId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [bulkAddOpen, setBulkAddOpen] = useState(false);
+  const [bulkDeductOpen, setBulkDeductOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   
   // Revert modal state
   const [revertModalOpen, setRevertModalOpen] = useState(false);
@@ -120,7 +123,7 @@ export default function SalaryEngine() {
 
   // Forms
   const [leaveForm, setLeaveForm] = useState({ teacher_id: '', leave_type: 'unpaid', start_date: '', end_date: '', reason: '' });
-  const [adjForm, setAdjForm] = useState({ teacher_id: '', adjustment_type: 'bonus', amount: '', reason: '' });
+  const [adjForm, setAdjForm] = useState({ teacher_id: '', adjustment_type: 'bonus', amount: '', reason: '', mode: 'flat' as 'flat' | 'percentage' });
 
   const [year, month] = salaryMonth.split('-').map(Number);
   const monthStart = `${salaryMonth}-01`;
