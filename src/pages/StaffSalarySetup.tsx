@@ -70,13 +70,25 @@ export default function StaffSalarySetup() {
     },
   });
 
-  // Fetch profiles that have non-teaching roles (for the user dropdown)
+  // Fetch profiles that have non-teaching/non-student roles (for the user dropdown)
+  const staffRoleValues = SALARY_ROLES.map(r => r.value);
   const { data: eligibleUsers = [] } = useQuery({
-    queryKey: ['staff-salary-eligible-users'],
+    queryKey: ['staff-salary-eligible-users', staffRoleValues],
     queryFn: async () => {
+      // First get user_ids that have any staff role
+      const { data: staffRoles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .in('role', staffRoleValues);
+      if (rolesError) throw rolesError;
+      
+      const staffUserIds = [...new Set((staffRoles || []).map((r: any) => r.user_id))];
+      if (staffUserIds.length === 0) return [];
+
       const { data, error } = await supabase
         .from('profiles')
         .select('id, full_name, email')
+        .in('id', staffUserIds)
         .is('archived_at', null)
         .order('full_name');
       if (error) throw error;
