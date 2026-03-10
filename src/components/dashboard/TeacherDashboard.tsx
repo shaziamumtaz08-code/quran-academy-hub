@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { Bell } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { IslamicDateData } from "@/lib/islamicDate";
 
