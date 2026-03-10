@@ -33,6 +33,7 @@ import Courses from "./pages/Courses";
 import OrganizationSettings from "./pages/OrganizationSettings";
 import FinanceSetup from "./pages/FinanceSetup";
 import SalaryEngine from "./pages/SalaryEngine";
+import StaffSalarySetup from "./pages/StaffSalarySetup";
 import Expenses from "./pages/Expenses";
 import CashAdvances from "./pages/CashAdvances";
 import SelectDivision from "./pages/SelectDivision";
