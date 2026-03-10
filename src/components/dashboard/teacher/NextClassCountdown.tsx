@@ -170,21 +170,35 @@ export function NextClassCountdown() {
   const countdownText = parts.join('  ');
 
   return (
-    <div className="bg-gradient-to-r from-primary to-[hsl(var(--navy-light))] rounded-xl px-3.5 py-2.5 text-primary-foreground">
-      {/* Row 1: label */}
-      <p className="text-[9px] opacity-60 font-bold tracking-wider uppercase mb-1">NEXT CLASS</p>
-
-      {/* Row 2: student · subject · day time */}
-      <p className="text-[13px] font-bold truncate mb-1.5">
-        {nextClass.studentName}
-        <span className="opacity-60 font-medium"> · {nextClass.subjectName} · {shortDay} {timeDisplay}</span>
+    <div className="bg-gradient-to-br from-primary to-[hsl(var(--navy-light))] rounded-2xl px-3.5 py-3 text-primary-foreground shadow-card">
+      <p className="text-[10px] opacity-80 font-extrabold tracking-wide uppercase mb-1.5 flex items-center gap-1.5">
+        <span aria-hidden="true">⏰</span>
+        Next Class
       </p>
 
-      {/* Row 3: countdown + start button */}
-      <div className="flex items-center justify-between">
-        <span className="text-lg font-extrabold font-mono tracking-wider">{countdownText}</span>
-        <button className="bg-primary-foreground text-primary border-none rounded-lg px-3 py-1.5 font-bold text-xs cursor-pointer flex items-center gap-1 hover:opacity-90 transition-opacity">
-          <Video className="h-3.5 w-3.5" />
+      <p className="text-[18px] leading-tight font-extrabold truncate">{nextClass.studentName}</p>
+      <p className="text-[12px] text-primary-foreground/75 font-semibold truncate mt-0.5">
+        {nextClass.subjectName} · {shortDay.toLowerCase()} · {timeDisplay}
+      </p>
+
+      <div className="mt-2.5 flex items-center gap-2">
+        <div className="grid grid-cols-3 gap-1.5 flex-1 min-w-0">
+          <div className="bg-primary-foreground/15 rounded-lg py-1.5 text-center">
+            <p className="text-[22px] leading-none font-extrabold">{t.days}</p>
+            <p className="text-[9px] text-primary-foreground/70 font-bold tracking-wide">DAYS</p>
+          </div>
+          <div className="bg-primary-foreground/15 rounded-lg py-1.5 text-center">
+            <p className="text-[22px] leading-none font-extrabold">{t.hours}</p>
+            <p className="text-[9px] text-primary-foreground/70 font-bold tracking-wide">HRS</p>
+          </div>
+          <div className="bg-primary-foreground/15 rounded-lg py-1.5 text-center">
+            <p className="text-[22px] leading-none font-extrabold">{String(t.mins).padStart(2, '0')}</p>
+            <p className="text-[9px] text-primary-foreground/70 font-bold tracking-wide">MINS</p>
+          </div>
+        </div>
+
+        <button className="bg-primary-foreground text-primary border-none rounded-xl px-3 py-2 font-extrabold text-sm cursor-pointer flex items-center gap-1.5 hover:opacity-90 transition-opacity shrink-0">
+          <Video className="h-4 w-4" />
           Start
         </button>
       </div>
