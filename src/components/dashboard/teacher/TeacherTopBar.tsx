@@ -23,8 +23,16 @@ export function TeacherTopBar({ onIslamicDateLoaded }: TeacherTopBarProps) {
   const now = useLiveClock();
   const [islamicDate, setIslamicDate] = useState<IslamicDateData | null>(null);
   const [dateLoading, setDateLoading] = useState(true);
+  const [timezone, setTimezone] = useState('Asia/Karachi');
 
-  const timezone = profile?.timezone || 'Asia/Karachi';
+  // Fetch teacher's timezone from profiles table
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase.from('profiles').select('timezone').eq('id', user.id).single()
+      .then(({ data }) => {
+        if (data?.timezone) setTimezone(data.timezone);
+      });
+  }, [user?.id]);
 
   // Fetch Hijri date from AlAdhan API (cached daily)
   useEffect(() => {
