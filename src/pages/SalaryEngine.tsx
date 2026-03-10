@@ -721,21 +721,53 @@ export default function SalaryEngine() {
 
   const addAdjustment = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('salary_adjustments').insert({
+      const amountVal = parseFloat(adjForm.amount) || 0;
+      const payload: any = {
         teacher_id: adjForm.teacher_id,
         salary_month: salaryMonth,
         adjustment_type: adjForm.adjustment_type,
-        amount: parseFloat(adjForm.amount) || 0,
+        amount: adjForm.mode === 'percentage' ? 0 : amountVal,
         reason: adjForm.reason || null,
         created_by: user?.id,
-      });
+        adjustment_mode: adjForm.mode,
+        percentage_value: adjForm.mode === 'percentage' ? amountVal : null,
+      };
+      // For percentage mode, resolve amount at insert time (we'll compute against base later in display)
+      const { error } = await supabase.from('salary_adjustments').insert(payload);
       if (error) throw error;
     },
     onSuccess: () => {
       toast({ title: 'Adjustment added' });
       queryClient.invalidateQueries({ queryKey: ['salary-adjustments'] });
       setAdjustmentModalOpen(false);
-      setAdjForm({ teacher_id: '', adjustment_type: 'bonus', amount: '', reason: '' });
+      setAdjForm({ teacher_id: '', adjustment_type: 'bonus', amount: '', reason: '', mode: 'flat' });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const bulkAdjustment = useMutation({
+    mutationFn: async (data: { staffIds: string[]; adjustmentType: string; mode: 'flat' | 'percentage'; value: number; reason: string }) => {
+      const batchId = crypto.randomUUID();
+      const rows = data.staffIds.map(id => ({
+        teacher_id: id,
+        salary_month: salaryMonth,
+        adjustment_type: data.adjustmentType,
+        amount: data.mode === 'percentage' ? 0 : data.value,
+        reason: data.reason || null,
+        created_by: user?.id,
+        adjustment_mode: data.mode,
+        percentage_value: data.mode === 'percentage' ? data.value : null,
+        is_bulk: true,
+        bulk_batch_id: batchId,
+      }));
+      const { error } = await supabase.from('salary_adjustments').insert(rows);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: 'Bulk adjustment applied' });
+      queryClient.invalidateQueries({ queryKey: ['salary-adjustments'] });
+      setBulkAddOpen(false);
+      setBulkDeductOpen(false);
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
