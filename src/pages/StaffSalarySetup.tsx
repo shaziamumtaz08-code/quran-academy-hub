@@ -18,12 +18,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 
 const SALARY_ROLES = [
+  { value: 'super_admin', label: 'Super Admin' },
   { value: 'admin', label: 'Admin' },
   { value: 'admin_admissions', label: 'Admissions Admin' },
   { value: 'admin_fees', label: 'Fees Admin' },
   { value: 'admin_academic', label: 'Academic Admin' },
   { value: 'examiner', label: 'Examiner' },
-  { value: 'teacher', label: 'Teacher' },
 ];
 
 interface StaffSalaryForm {
