@@ -1190,20 +1190,32 @@ export default function SalaryEngine() {
                   <SelectContent>{allSalariedProfiles.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.full_name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label>Type</Label>
-                <Select value={adjForm.adjustment_type} onValueChange={v => setAdjForm(p => ({ ...p, adjustment_type: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="bonus">Bonus (+)</SelectItem>
-                    <SelectItem value="allowance">Allowance (+)</SelectItem>
-                    <SelectItem value="deduction">Deduction (−)</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Type</Label>
+                  <Select value={adjForm.adjustment_type} onValueChange={v => setAdjForm(p => ({ ...p, adjustment_type: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="bonus">Bonus (+)</SelectItem>
+                      <SelectItem value="allowance">Allowance (+)</SelectItem>
+                      <SelectItem value="deduction">Deduction (−)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Mode</Label>
+                  <Select value={adjForm.mode} onValueChange={v => setAdjForm(p => ({ ...p, mode: v as 'flat' | 'percentage' }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="flat">Flat Amount</SelectItem>
+                      <SelectItem value="percentage">Percentage (%)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div>
-                <Label>Amount</Label>
-                <Input type="number" value={adjForm.amount} onChange={e => setAdjForm(p => ({ ...p, amount: e.target.value }))} />
+                <Label>{adjForm.mode === 'percentage' ? 'Percentage (%)' : 'Amount (PKR)'}</Label>
+                <Input type="number" value={adjForm.amount} onChange={e => setAdjForm(p => ({ ...p, amount: e.target.value }))} placeholder={adjForm.mode === 'percentage' ? '10' : '5000'} />
               </div>
               <div>
                 <Label>Reason</Label>
@@ -1219,6 +1231,33 @@ export default function SalaryEngine() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* ── Bulk Adjustment Dialogs ── */}
+        <BulkAdjustmentDialog
+          open={bulkAddOpen}
+          onOpenChange={setBulkAddOpen}
+          type="addition"
+          staffMembers={allSalariedProfiles.map((p: any) => ({ id: p.id, full_name: p.full_name }))}
+          salaryMonth={salaryMonth}
+          onSubmit={(data) => bulkAdjustment.mutate(data)}
+          isPending={bulkAdjustment.isPending}
+        />
+        <BulkAdjustmentDialog
+          open={bulkDeductOpen}
+          onOpenChange={setBulkDeductOpen}
+          type="deduction"
+          staffMembers={allSalariedProfiles.map((p: any) => ({ id: p.id, full_name: p.full_name }))}
+          salaryMonth={salaryMonth}
+          onSubmit={(data) => bulkAdjustment.mutate({ ...data, adjustmentType: 'deduction' })}
+          isPending={bulkAdjustment.isPending}
+        />
+
+        {/* ── Adjustment History ── */}
+        <AdjustmentHistoryDialog
+          open={historyOpen}
+          onOpenChange={setHistoryOpen}
+          salaryMonth={salaryMonth}
+        />
       </div>
     </DashboardLayout>
   );
