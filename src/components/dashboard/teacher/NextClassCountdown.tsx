@@ -41,7 +41,7 @@ function buildNextOccurrence(
   teacherTz: string,
 ): Date {
   const tz = getNowInTimezone(teacherTz);
-  const targetDayIndex = DAY_NAMES.indexOf(dayName);
+  const targetDayIndex = DAY_NAMES.indexOf(dayName.charAt(0).toUpperCase() + dayName.slice(1).toLowerCase());
   if (targetDayIndex === -1) return new Date(tz.absoluteMs + 7 * 86400000);
 
   const [targetH, targetM] = (timeStr || '00:00').split(':').map(Number);
