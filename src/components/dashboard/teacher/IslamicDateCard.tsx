@@ -64,32 +64,23 @@ export function IslamicDateCard({ onIslamicDateLoaded }: IslamicDateCardProps) {
   }, [timezone]);
 
   return (
-    <div className="bg-primary rounded-2xl px-3.5 py-2.5 shadow-navy">
-      <div className="flex items-center justify-between gap-2">
-        {/* Hijri date */}
-        <div className="flex items-center gap-1.5 min-w-0">
-          <span className="text-sm shrink-0">☪️</span>
-          {dateLoading ? (
-            <span className="text-xs text-cyan-light opacity-50">Loading...</span>
-          ) : islamicDate ? (
-            <span className="text-xs font-bold text-cyan-light tracking-wide truncate">
-              {islamicDate.formatted}
-            </span>
-          ) : (
-            <span className="text-xs text-cyan-light opacity-50">—</span>
-          )}
-        </div>
+    <div className="bg-primary rounded-2xl px-3 py-1.5 shadow-navy text-center">
+      {/* Hijri date — centered, prominent */}
+      {dateLoading ? (
+        <span className="text-xs text-cyan-light opacity-50">Loading...</span>
+      ) : islamicDate ? (
+        <p className="text-sm font-extrabold text-cyan-light tracking-wide">
+          ☪️ {islamicDate.formatted}
+        </p>
+      ) : (
+        <span className="text-xs text-cyan-light opacity-50">—</span>
+      )}
 
-        {/* Live clock */}
-        <div className="bg-white/[0.08] rounded-lg px-2 py-0.5 font-mono text-xs font-bold text-teal-light tracking-wider text-center shrink-0">
-          {timeStr}
-        </div>
+      {/* Gregorian + clock on one line */}
+      <div className="flex items-center justify-center gap-2 mt-0.5">
+        <span className="text-[10px] text-muted-foreground/60 font-semibold">{adDate}</span>
+        <span className="text-[10px] font-mono font-bold text-teal-light tracking-wider">{timeStr}</span>
       </div>
-
-      {/* Gregorian date — second line */}
-      <p className="text-[10px] font-bold text-muted-foreground/50 mt-1 text-right">
-        {adDate}
-      </p>
     </div>
   );
 }
