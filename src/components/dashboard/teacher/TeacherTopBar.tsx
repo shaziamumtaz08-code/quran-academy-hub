@@ -38,7 +38,10 @@ export function TeacherTopBar({ onMenuToggle }: TeacherTopBarProps) {
       <div className="px-3 py-2.5 flex items-center gap-2.5">
         {/* Hamburger */}
         <button
-          onClick={onMenuToggle}
+          onClick={() => {
+            onMenuToggle?.();
+            window.dispatchEvent(new Event('teacher-menu-toggle'));
+          }}
           className="bg-white/[0.08] border-none rounded-lg w-9 h-9 flex items-center justify-center text-primary-foreground shrink-0"
         >
           <Menu className="h-4 w-4" />

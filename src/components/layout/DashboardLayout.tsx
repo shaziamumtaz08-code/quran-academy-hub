@@ -211,6 +211,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Listen for teacher top bar menu toggle event
+  useEffect(() => {
+    const handler = () => setSidebarOpen(prev => !prev);
+    window.addEventListener('teacher-menu-toggle', handler);
+    return () => window.removeEventListener('teacher-menu-toggle', handler);
+  }, []);
   const [collapsed, setCollapsed] = useState(() => {
     try { return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true'; } catch { return false; }
   });
@@ -451,6 +458,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       })}
     </>
   );
+
 
   return (
     <div className="min-h-screen bg-background islamic-pattern">
