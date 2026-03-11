@@ -74,30 +74,35 @@ export function ReceiptTemplate({
       </div>
 
       {/* Transaction Details */}
-      <div className="px-12 pb-6">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b-2 border-gray-200">
-              <th className="text-left py-2 text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Date</th>
-              <th className="text-left py-2 text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Channel</th>
-              <th className="text-right py-2 text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Amount</th>
-              <th className="text-right py-2 text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Realised (PKR)</th>
-              <th className="text-right py-2 text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Rate</th>
-            </tr>
-          </thead>
-          <tbody>
-            {transactions.map((tx, idx) => (
-              <tr key={tx.id || idx} className="border-b border-gray-100">
-                <td className="py-3">{tx.payment_date ? format(parseISO(tx.payment_date), 'dd MMM yyyy') : '—'}</td>
-                <td className="py-3">{tx.payment_method || '—'}</td>
-                <td className="py-3 text-right font-mono font-semibold">{tx.currency_foreign} {tx.amount_foreign.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                <td className="py-3 text-right font-mono">{tx.amount_local > 0 ? `PKR ${tx.amount_local.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}</td>
-                <td className="py-3 text-right font-mono text-gray-500">{tx.effective_rate ? `${Number(tx.effective_rate).toFixed(2)}` : '—'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {(() => {
+        const isPKR = invoiceCurrency === 'PKR' || transactions.every(tx => tx.currency_foreign === 'PKR');
+        return (
+          <div className="px-12 pb-6">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b-2 border-gray-200">
+                  <th className="text-left py-2 text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Date</th>
+                  <th className="text-left py-2 text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Channel</th>
+                  <th className="text-right py-2 text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Amount</th>
+                  {!isPKR && <th className="text-right py-2 text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Realised (PKR)</th>}
+                  {!isPKR && <th className="text-right py-2 text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Rate</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {transactions.map((tx, idx) => (
+                  <tr key={tx.id || idx} className="border-b border-gray-100">
+                    <td className="py-3">{tx.payment_date ? format(parseISO(tx.payment_date), 'dd MMM yyyy') : '—'}</td>
+                    <td className="py-3">{tx.payment_method || '—'}</td>
+                    <td className="py-3 text-right font-mono font-semibold">{tx.currency_foreign} {tx.amount_foreign.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    {!isPKR && <td className="py-3 text-right font-mono">{tx.amount_local > 0 ? `PKR ${tx.amount_local.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}</td>}
+                    {!isPKR && <td className="py-3 text-right font-mono text-gray-500">{tx.effective_rate ? `${Number(tx.effective_rate).toFixed(2)}` : '—'}</td>}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      })()}
 
       {/* Total */}
       <div className="px-12 pb-6">
