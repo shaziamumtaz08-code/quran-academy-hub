@@ -1,42 +1,47 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { BookOpen, User, AlertCircle, Target, MessageSquare, Youtube, ExternalLink } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
-import { WeeklyProgressChart } from '@/components/progress/WeeklyProgressChart';
+import { Video } from 'lucide-react';
+
+import { DashboardShell } from './shared/DashboardShell';
+import { QuickActionsGrid } from './shared/QuickActionsGrid';
+import { StatsRowCompact } from './shared/StatsRowCompact';
 import { ProgressRing } from '@/components/progress/ProgressRing';
-import { SmartSessionRibbon } from './SmartSessionRibbon';
-import { CourseDeckCarousel } from './CourseDeckCarousel';
-import { QuickStatusWidgets } from './QuickStatusWidgets';
-import { StudentPastClasses } from './StudentPastClasses';
+
+const STUDENT_TABS = [
+  { id: 'home', icon: '🏠', label: 'Home', path: '/dashboard' },
+  { id: 'lessons', icon: '📖', label: 'Lessons', path: '/attendance' },
+  { id: 'progress', icon: '📊', label: 'Progress', path: '/student-reports' },
+  { id: 'schedule', icon: '📅', label: 'Schedule', path: '/schedules' },
+];
 
 export function StudentDashboard() {
   const { profile, user } = useAuth();
+  const navigate = useNavigate();
   const currentMonth = new Date();
 
-  // Fetch student stats
   const { data: stats, isLoading } = useQuery({
-    queryKey: ['student-stats', user?.id],
+    queryKey: ['student-dashboard-v2', user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
 
       // Fetch attendance
       const attendanceRes = await supabase.from('attendance')
-        .select('status, class_date, lesson_covered, homework, surah_name, ayah_from, ayah_to, raw_input_amount, lines_completed')
+        .select('status, class_date, lesson_covered, homework, surah_name, ayah_from, ayah_to, raw_input_amount, lines_completed, teacher_id')
         .eq('student_id', user.id)
         .order('class_date', { ascending: false });
 
-      // Fetch teacher assignment from student_teacher_assignments first
+      // Fetch teacher assignment
       const assignmentRes = await supabase.from('student_teacher_assignments')
         .select('teacher_id, subject:subjects(name)')
         .eq('student_id', user.id)
+        .eq('status', 'active')
         .limit(1);
 
-      // If no assignment, fallback to enrollments table
       let teacherId: string | null = null;
       let subjectName: string | null = 'Quran';
 
@@ -44,13 +49,11 @@ export function StudentDashboard() {
         teacherId = assignmentRes.data[0].teacher_id;
         subjectName = (assignmentRes.data[0] as any).subject?.name || 'Quran';
       } else {
-        // Fallback to enrollments
         const enrollmentRes = await supabase.from('enrollments')
           .select('teacher_id, subject:subjects(name)')
           .eq('student_id', user.id)
           .eq('status', 'active')
           .limit(1);
-        
         if (enrollmentRes.data?.[0]) {
           teacherId = enrollmentRes.data[0].teacher_id;
           subjectName = (enrollmentRes.data[0] as any).subject?.name || 'Quran';
@@ -66,289 +69,250 @@ export function StudentDashboard() {
         .eq('status', 'approved')
         .limit(1);
 
-      // Fetch teacher profile separately (RLS allows student -> assigned teacher)
-      let teacher: { id: string; full_name: string; email: string | null } | null = null;
+      // Fetch teacher profile
+      let teacher: { id: string; full_name: string } | null = null;
       if (teacherId) {
         const { data: teacherData } = await supabase
           .from('profiles')
-          .select('id, full_name, email')
+          .select('id, full_name')
           .eq('id', teacherId)
           .maybeSingle();
         teacher = teacherData || null;
       }
 
+      // Fetch next class schedule
+      let nextClass: { dayOfWeek: string; time: string; duration: number } | null = null;
+      if (assignmentRes.data?.[0]) {
+        const { data: schedules } = await supabase
+          .from('schedules')
+          .select('day_of_week, teacher_local_time, duration_minutes, assignment_id')
+          .eq('assignment_id', assignmentRes.data[0].teacher_id ? undefined : '')
+          .eq('is_active', true);
+        // Get schedule from assignment
+        const assignmentId = assignmentRes.data[0].teacher_id;
+        const { data: assignmentSchedules } = await supabase
+          .from('student_teacher_assignments')
+          .select('id')
+          .eq('student_id', user.id)
+          .eq('status', 'active')
+          .limit(1);
+        
+        if (assignmentSchedules?.[0]) {
+          const { data: scheds } = await supabase
+            .from('schedules')
+            .select('day_of_week, teacher_local_time, duration_minutes')
+            .eq('assignment_id', assignmentSchedules[0].id)
+            .eq('is_active', true)
+            .limit(1);
+          if (scheds?.[0]) {
+            nextClass = {
+              dayOfWeek: scheds[0].day_of_week,
+              time: scheds[0].teacher_local_time || '00:00',
+              duration: scheds[0].duration_minutes,
+            };
+          }
+        }
+      }
+
       const attendance = attendanceRes.data || [];
       const activePlan = planRes.data?.[0];
       const present = attendance.filter(a => a.status === 'present').length;
-      
-      // Get latest lesson details
+
       const latestPresent = attendance.find(a => a.status === 'present');
-      const currentLesson = latestPresent 
+      const currentPosition = latestPresent
         ? `${latestPresent.surah_name || 'N/A'}${latestPresent.ayah_from ? `, Ayah ${latestPresent.ayah_from}` : ''}${latestPresent.ayah_to ? `-${latestPresent.ayah_to}` : ''}`
         : 'No lessons recorded';
       const currentHomework = latestPresent?.homework || 'No homework assigned';
 
-      // Calculate monthly progress
+      // Monthly progress
       const startDate = startOfMonth(currentMonth);
       const endDate = endOfMonth(currentMonth);
       const monthlyAttendance = attendance.filter(a => {
         const date = new Date(a.class_date);
         return date >= startDate && date <= endDate && a.status === 'present';
       });
-      
       const totalAchieved = monthlyAttendance.reduce((sum, a) => {
         return sum + (Number(a.raw_input_amount) || Number(a.lines_completed) || 0);
       }, 0);
-      
       const monthlyTarget = activePlan?.monthly_target || 30;
       const monthlyProgress = Math.min(100, Math.round((totalAchieved / monthlyTarget) * 100));
+      const markerLabel = activePlan?.primary_marker === 'rukus' ? 'Rukus' : activePlan?.primary_marker === 'pages' ? 'Pages' : 'Lines';
 
       return {
         totalClasses: attendance.length,
         attended: present,
         attendanceRate: attendance.length > 0 ? Math.round((present / attendance.length) * 100) : 0,
-        teacher: teacher?.full_name || 'Not assigned',
-        teacherEmail: teacher?.email || null,
+        teacherName: teacher?.full_name || 'Not assigned',
         subject: subjectName,
-        currentLesson,
+        currentPosition,
         currentHomework,
-        activePlan,
         monthlyProgress,
         monthlyTarget,
         totalAchieved,
-        dailyTarget: activePlan?.daily_target || 1,
-        markerLabel: activePlan?.primary_marker === 'rukus' ? 'Rukus' : activePlan?.primary_marker === 'pages' ? 'Pages' : 'Lines',
+        markerLabel,
+        nextClass,
         recentLessons: attendance.slice(0, 3).map(a => ({
           date: format(new Date(a.class_date), 'MMM dd'),
           lesson: a.lesson_covered || 'No lesson recorded',
           homework: a.homework || 'No homework',
+          status: a.status,
         })),
       };
     },
     enabled: !!user?.id,
   });
 
-  // Fetch live group sessions with stream URLs for student's teacher
-  const { data: liveStreams } = useQuery({
-    queryKey: ['student-live-streams', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return [];
-
-      // Get student's assigned teacher
-      const { data: assignment } = await supabase
-        .from('student_teacher_assignments')
-        .select('teacher_id')
-        .eq('student_id', user.id)
-        .eq('status', 'active')
-        .limit(1);
-
-      if (!assignment?.[0]?.teacher_id) return [];
-
-      // Check for live group sessions from their teacher with stream URLs
-      const { data: sessions } = await supabase
-        .from('live_sessions')
-        .select('id, stream_url, group_id, teacher_id')
-        .eq('teacher_id', assignment[0].teacher_id)
-        .eq('status', 'live')
-        .not('stream_url', 'is', null);
-
-      return sessions || [];
-    },
-    enabled: !!user?.id,
-    refetchInterval: 30000,
-  });
-
   if (isLoading) {
     return (
-      <div className="space-y-6 animate-fade-in">
-        <Skeleton className="h-20 rounded-xl" />
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Skeleton className="h-28 rounded-xl" />
-          <Skeleton className="h-28 rounded-xl" />
+      <div className="min-h-screen bg-background">
+        <div className="h-12 bg-primary md:hidden" />
+        <div className="p-4 space-y-3 max-w-[680px] mx-auto pt-16">
+          <Skeleton className="h-16 rounded-2xl" />
+          <Skeleton className="h-14 rounded-xl" />
+          <Skeleton className="h-14 rounded-xl" />
+          <Skeleton className="h-24 rounded-2xl" />
         </div>
       </div>
     );
   }
 
+  const quickActions = [
+    { icon: '🎥', label: 'Join Class', bg: 'bg-primary', textColor: 'text-primary-foreground', border: 'border-transparent', onClick: () => navigate('/zoom-management') },
+    { icon: '📖', label: 'My Lessons', bg: 'bg-teal/10', textColor: 'text-teal', border: 'border-teal/15', onClick: () => navigate('/attendance') },
+    { icon: '📊', label: 'My Progress', bg: 'bg-sky/10', textColor: 'text-sky', border: 'border-sky/15', onClick: () => navigate('/student-reports') },
+    { icon: '📅', label: 'Schedule', bg: 'bg-gold/10', textColor: 'text-gold', border: 'border-gold/15', onClick: () => navigate('/schedules') },
+  ];
+
+  const leftContent = (
+    <>
+      {/* Next Class Card */}
+      <div className="bg-gradient-to-br from-primary to-[hsl(var(--navy-light))] rounded-2xl px-3 py-2.5 text-primary-foreground shadow-card">
+        <div className="flex items-center gap-2">
+          <p className="text-[10px] opacity-80 font-extrabold tracking-wide uppercase flex items-center gap-1 shrink-0">
+            <span>📚</span> Next Class
+          </p>
+          <p className="text-[15px] leading-tight font-extrabold truncate flex-1 min-w-0">
+            {stats?.teacherName || 'Not assigned'}
+          </p>
+          <button
+            onClick={() => navigate('/zoom-management')}
+            className="bg-primary-foreground text-primary border-none rounded-lg px-2.5 py-1.5 font-extrabold text-xs cursor-pointer flex items-center gap-1 hover:opacity-90 transition-opacity shrink-0"
+          >
+            <Video className="h-3.5 w-3.5" />
+            Join
+          </button>
+        </div>
+        <p className="text-[11px] text-primary-foreground/75 font-semibold truncate mt-1.5">
+          {stats?.subject} · {stats?.nextClass ? `${stats.nextClass.dayOfWeek} · ${stats.nextClass.time}` : 'No schedule set'}
+        </p>
+      </div>
+
+      {/* Today's Lesson — Continue from */}
+      <div className="bg-card rounded-2xl border border-border p-3.5 shadow-card">
+        <p className="text-[11px] text-muted-foreground font-bold tracking-wider uppercase mb-1.5">📖 Today's Lesson</p>
+        <p className="text-[15px] font-extrabold text-foreground">Continue from: {stats?.currentPosition}</p>
+        <p className="text-[11px] text-muted-foreground mt-1 truncate">📝 {stats?.currentHomework}</p>
+      </div>
+
+      {/* Recent Lessons (last 3) */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-[13px] font-extrabold text-foreground">📋 Recent Lessons</p>
+          <button
+            onClick={() => navigate('/attendance')}
+            className="text-[11px] text-teal font-bold bg-transparent border-none cursor-pointer hover:underline"
+          >
+            All Lessons →
+          </button>
+        </div>
+        {(!stats?.recentLessons?.length) ? (
+          <div className="bg-card rounded-xl border border-border p-4 text-center text-muted-foreground">
+            <p className="text-xs">No lessons recorded yet</p>
+          </div>
+        ) : (
+          <div className="bg-card rounded-xl border border-border overflow-hidden divide-y divide-border">
+            {stats.recentLessons.map((lesson, idx) => (
+              <div key={idx} className="px-3 py-2.5 flex items-center gap-2.5">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${lesson.status === 'present' ? 'bg-teal/10 text-teal' : 'bg-destructive/10 text-destructive'}`}>
+                  {lesson.status === 'present' ? '✅' : '❌'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-[13px] text-foreground truncate">{lesson.lesson}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">📝 {lesson.homework}</p>
+                </div>
+                <span className="text-[11px] text-muted-foreground flex-shrink-0">{lesson.date}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+
+  const rightContent = (
+    <>
+      {/* Monthly Goal Ring */}
+      <div className="bg-card rounded-2xl border border-border p-4 shadow-card">
+        <p className="text-[13px] font-extrabold text-foreground mb-3">🎯 Monthly Goal</p>
+        <div className="flex items-center gap-4">
+          <ProgressRing percentage={stats?.monthlyProgress || 0} size={80} />
+          <div>
+            <p className="text-2xl font-black text-foreground">{stats?.monthlyProgress || 0}%</p>
+            <p className="text-[11px] text-muted-foreground">
+              {stats?.totalAchieved || 0} / {stats?.monthlyTarget || 30} {stats?.markerLabel}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Attendance Badge */}
+      <div className="bg-card rounded-2xl border border-border p-4 shadow-card">
+        <p className="text-[13px] font-extrabold text-foreground mb-2">📊 Attendance</p>
+        <div className="flex items-center gap-3">
+          <span className={`text-3xl font-black ${(stats?.attendanceRate || 0) >= 85 ? 'text-teal' : (stats?.attendanceRate || 0) >= 60 ? 'text-gold' : 'text-destructive'}`}>
+            {stats?.attendanceRate || 0}%
+          </span>
+          <div>
+            <p className="text-xs text-muted-foreground">{stats?.attended || 0} of {stats?.totalClasses || 0} classes</p>
+          </div>
+        </div>
+      </div>
+
+      {/* My Teacher Card */}
+      <div className="bg-card rounded-2xl border border-border p-3.5 shadow-card">
+        <p className="text-[11px] text-muted-foreground font-bold tracking-wider uppercase mb-2">👨‍🏫 My Teacher</p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+            {(stats?.teacherName || 'N')[0]}
+          </div>
+          <div>
+            <p className="font-bold text-[15px] text-foreground">{stats?.teacherName}</p>
+            <p className="text-[11px] text-muted-foreground">{stats?.subject}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <QuickActionsGrid actions={quickActions} />
+
+      {/* Stats Row */}
+      <StatsRowCompact
+        title={`📈 My Stats — ${format(new Date(), 'MMMM')}`}
+        stats={[
+          { value: stats?.totalClasses || 0, label: 'Total', sub: 'Classes', color: 'text-teal' },
+          { value: stats?.attended || 0, label: 'Attended', sub: 'Present', color: 'text-sky' },
+          { value: `${stats?.attendanceRate || 0}%`, label: 'Rate', sub: 'Attendance', color: 'text-gold' },
+        ]}
+      />
+    </>
+  );
+
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Header with Quick Status */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">
-            Welcome, {profile?.full_name || 'Student'}
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">Track your Quran learning progress</p>
-        </div>
-        <QuickStatusWidgets />
-      </div>
-
-      {/* Smart Session Ribbon - Top Priority */}
-      <SmartSessionRibbon />
-
-      {/* Live Stream Banner - Show if teacher has a live group class with stream URL */}
-      {liveStreams && liveStreams.length > 0 && (
-        <Card className="bg-gradient-to-r from-red-500/10 via-red-500/5 to-transparent border-red-500/30 animate-pulse">
-          <CardContent className="py-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
-                  <Youtube className="h-5 w-5 text-red-500" />
-                </div>
-                <div>
-                  <p className="font-semibold text-foreground">Live Class Streaming Now!</p>
-                  <p className="text-sm text-muted-foreground">Can't join via Zoom? Watch the live stream instead.</p>
-                </div>
-              </div>
-              <Button
-                variant="destructive"
-                size="sm"
-                className="gap-2"
-                onClick={() => window.open(liveStreams[0].stream_url!, '_blank')}
-              >
-                <Youtube className="h-4 w-4" />
-                Watch Stream
-                <ExternalLink className="h-3 w-3" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Current Lesson & Homework - Mobile First */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-primary/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="font-serif text-base flex items-center gap-2 text-primary">
-              <BookOpen className="h-4 w-4" />
-              Current Lesson
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xl sm:text-2xl font-serif font-bold text-foreground">
-              {stats?.currentLesson || 'No lesson recorded'}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-accent/10 via-accent/5 to-transparent border-accent/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="font-serif text-base flex items-center gap-2 text-accent">
-              <MessageSquare className="h-4 w-4" />
-              Homework
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-base sm:text-lg font-medium text-foreground">
-              {stats?.currentHomework || 'No homework assigned'}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Course Deck Carousel */}
-      <CourseDeckCarousel />
-
-      {/* Progress Ring & Teacher Info */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Monthly Progress Ring */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="font-serif text-base flex items-center gap-2">
-              <Target className="h-4 w-4" />
-              Monthly Goal
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center pb-4">
-            <ProgressRing percentage={stats?.monthlyProgress || 0} size={120} />
-            <div className="text-center mt-3">
-              <p className="text-sm text-muted-foreground">
-                {stats?.totalAchieved || 0} / {stats?.monthlyTarget || 30} {stats?.markerLabel}
-              </p>
-              {stats?.activePlan && (
-                <p className="text-xs text-primary mt-1">
-                  {stats.dailyTarget} {stats.markerLabel}/day target
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Teacher Info */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="pb-2">
-            <CardTitle className="font-serif text-base">Your Teacher</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <User className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-lg font-serif font-bold text-foreground">{stats?.teacher}</p>
-                <p className="text-sm text-muted-foreground">{stats?.subject}</p>
-              </div>
-            </div>
-
-            {/* Stats Row - Compact */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="text-center p-2 bg-secondary/50 rounded-lg">
-                <p className="text-lg font-bold text-foreground">{stats?.totalClasses || 0}</p>
-                <p className="text-xs text-muted-foreground">Total</p>
-              </div>
-              <div className="text-center p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
-                <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{stats?.attended || 0}</p>
-                <p className="text-xs text-muted-foreground">Attended</p>
-              </div>
-              <div className="text-center p-2 bg-primary/10 rounded-lg">
-                <p className="text-lg font-bold text-primary">{stats?.attendanceRate || 0}%</p>
-                <p className="text-xs text-muted-foreground">Rate</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Weekly Progress Chart & Past Classes */}
-      {user?.id && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <WeeklyProgressChart 
-            studentId={user.id} 
-            dailyTarget={stats?.dailyTarget || 1}
-            markerLabel={stats?.markerLabel}
-          />
-          <StudentPastClasses studentId={user.id} />
-        </div>
-      )}
-
-      {/* Recent Lessons */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="font-serif text-base">Recent Lessons</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {!stats?.recentLessons || stats.recentLessons.length === 0 ? (
-            <div className="text-center py-6 text-muted-foreground">
-              <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">No lessons recorded yet</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-border">
-              {stats.recentLessons.map((lesson, idx) => (
-                <div key={idx} className="py-3 first:pt-0 last:pb-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground text-sm truncate">{lesson.lesson}</p>
-                      <p className="text-xs text-muted-foreground mt-1 truncate">📝 {lesson.homework}</p>
-                    </div>
-                    <span className="text-xs text-muted-foreground flex-shrink-0">{lesson.date}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+    <DashboardShell
+      tabs={STUDENT_TABS}
+      leftContent={leftContent}
+      rightContent={rightContent}
+      brandLabel="AQA"
+    />
   );
 }
