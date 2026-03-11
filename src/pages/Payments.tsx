@@ -828,7 +828,7 @@ export default function Payments() {
         transactions.push({
           invoice_id: inv.id, student_id: inv.student_id,
           amount_foreign: allocated, currency_foreign: inv.currency,
-          amount_local: amountLocal > 0 ? (allocated / amountForeign) * amountLocal : 0,
+          amount_local: inv.currency === 'PKR' ? allocated : (amountLocal > 0 ? (allocated / amountForeign) * amountLocal : 0),
           currency_local: 'PKR', effective_rate: effectiveRate || null,
           resolution_type: isShort ? payForm.resolution : 'full',
           shortfall_amount: isShort ? outstanding - allocated : 0,
