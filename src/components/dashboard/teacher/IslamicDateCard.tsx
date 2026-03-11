@@ -37,7 +37,12 @@ export function IslamicDateCard({ onIslamicDateLoaded, onTimezoneResolved }: Isl
     if (!user?.id) return;
     supabase.from('profiles').select('timezone').eq('id', user.id).single()
       .then(({ data }) => {
-        if (data?.timezone) setTimezone(data.timezone);
+        if (data?.timezone) {
+          setTimezone(data.timezone);
+          onTimezoneResolved?.(data.timezone);
+        } else {
+          onTimezoneResolved?.('Asia/Karachi');
+        }
       });
   }, [user?.id]);
 

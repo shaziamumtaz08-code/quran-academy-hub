@@ -63,10 +63,10 @@ export function DashboardShell({ tabs, leftContent, rightContent, brandLabel }: 
         </div>
 
         {/* Islamic header — full width on both mobile & desktop */}
-        <IslamicDateCard onIslamicDateLoaded={setIslamicDate} />
+        <IslamicDateCard onIslamicDateLoaded={setIslamicDate} onTimezoneResolved={setTimezone} />
 
         {/* Prayer widget */}
-        <PrayerTimesWidget islamicDate={islamicDate} />
+        <PrayerTimesWidget islamicDate={islamicDate} timezone={timezone} />
 
         {/* Mobile: single column stacked (left then right) */}
         {/* Desktop: 2-col grid 55/45 */}

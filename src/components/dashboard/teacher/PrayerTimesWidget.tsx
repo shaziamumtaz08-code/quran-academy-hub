@@ -40,18 +40,26 @@ function getCurrentPrayerKey(prayers: IslamicDateData['prayers'], now: Date): st
   return current;
 }
 
-interface PrayerTimesWidgetProps {
-  islamicDate: IslamicDateData | null;
+/** Get a Date-like object whose getHours/getMinutes reflect the given IANA timezone */
+function getNowInTimezone(tz: string): Date {
+  const str = new Date().toLocaleString('en-US', { timeZone: tz });
+  return new Date(str);
 }
 
-export function PrayerTimesWidget({ islamicDate }: PrayerTimesWidgetProps) {
+interface PrayerTimesWidgetProps {
+  islamicDate: IslamicDateData | null;
+  timezone?: string;
+}
+
+export function PrayerTimesWidget({ islamicDate, timezone }: PrayerTimesWidgetProps) {
+  const tz = timezone || 'Asia/Karachi';
   const [expanded, setExpanded] = useState(false);
-  const [now, setNow] = useState(new Date());
+  const [now, setNow] = useState(() => getNowInTimezone(tz));
 
   useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 1000);
+    const t = setInterval(() => setNow(getNowInTimezone(tz)), 1000);
     return () => clearInterval(t);
-  }, []);
+  }, [tz]);
 
   if (!islamicDate?.prayers?.Fajr) return null;
 
