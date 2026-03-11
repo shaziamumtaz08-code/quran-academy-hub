@@ -30,6 +30,7 @@ import Subjects from "./pages/Subjects";
 import ZoomManagement from "./pages/ZoomManagement";
 import IntegrityAudit from "./pages/IntegrityAudit";
 import Courses from "./pages/Courses";
+import CourseAssetLibrary from "./pages/CourseAssetLibrary";
 import OrganizationSettings from "./pages/OrganizationSettings";
 import FinanceSetup from "./pages/FinanceSetup";
 import SalaryEngine from "./pages/SalaryEngine";
