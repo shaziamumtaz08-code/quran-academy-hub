@@ -234,7 +234,7 @@ export function StudentDashboard() {
   }
 
   const quickActions = [
-    { icon: '🎥', label: 'Join Class', bg: 'bg-primary', textColor: 'text-primary-foreground', border: 'border-transparent', onClick: () => navigate('/zoom-management') },
+    { icon: '🎥', label: 'Join Class', bg: 'bg-primary', textColor: 'text-primary-foreground', border: 'border-transparent', customRender: () => <JoinClassButton /> },
     { icon: '📖', label: 'My Lessons', bg: 'bg-teal/10', textColor: 'text-teal', border: 'border-teal/15', onClick: () => navigate('/attendance') },
     { icon: '📊', label: 'My Progress', bg: 'bg-sky/10', textColor: 'text-sky', border: 'border-sky/15', onClick: () => navigate('/student-reports') },
     { icon: '📅', label: 'Schedule', bg: 'bg-gold/10', textColor: 'text-gold', border: 'border-gold/15', onClick: () => navigate('/schedules') },
