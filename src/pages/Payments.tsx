@@ -706,7 +706,7 @@ export default function Payments() {
 
           const existingInv = existingPlanMap.get(p.id);
           if (existingInv) {
-            checkAndQueueUpdate(existingInv, prorated);
+            checkAndQueueUpdate(existingInv, prorated, p.currency);
             return; // skip insert
           }
 
