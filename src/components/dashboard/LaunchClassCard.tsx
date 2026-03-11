@@ -170,14 +170,18 @@ export function LaunchClassCard({ className }: LaunchClassCardProps) {
         throw licenseError;
       }
 
+      // ✅ ATTENDANCE AUTOMATION: Mark all today's students as present
+      await markAttendanceForTodaysStudents(user.id);
+
       return { session, license: licenseData[0] };
     },
     onSuccess: (data) => {
       if (data.license?.meeting_link) {
         window.open(data.license.meeting_link, '_blank');
-        toast.success('Class started! Zoom room opened.');
+        toast.success('✅ Class started & attendance marked! Zoom room opened.');
       }
       queryClient.invalidateQueries({ queryKey: ['teacher-active-session'] });
+      queryClient.invalidateQueries({ queryKey: ['attendance'] });
     },
     onError: (error: Error) => {
       if (error.message.includes('All Zoom rooms are currently occupied')) {
