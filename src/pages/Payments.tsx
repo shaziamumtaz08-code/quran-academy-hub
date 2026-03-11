@@ -1094,7 +1094,7 @@ export default function Payments() {
     invoices.filter(inv => familyInvoiceIds.includes(inv.id)).forEach(inv => selectedInvoiceCacheRef.current.set(inv.id, inv));
     setSelectedIds(new Set(familyInvoiceIds));
     const familyUnpaid = invoices.filter(i => familyInvoiceIds.includes(i.id));
-    const total = familyUnpaid.reduce((s, i) => s + (Number(i.amount) - Number(i.amount_paid || 0)), 0);
+    const total = familyUnpaid.reduce((s, i) => s + Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0)), 0);
     const allFroms = familyUnpaid.map(i => i.period_from || getDefaultPeriodDates(i.billing_month).from).sort();
     const allTos = familyUnpaid.map(i => i.period_to || getDefaultPeriodDates(i.billing_month).to).sort();
     setPayForm({
