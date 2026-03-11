@@ -11,6 +11,7 @@ import { TeacherTopBar } from "./teacher/TeacherTopBar";
 import { IslamicDateCard } from "./teacher/IslamicDateCard";
 import { PrayerTimesWidget } from "./teacher/PrayerTimesWidget";
 import { NextClassCountdown } from "./teacher/NextClassCountdown";
+import { StartClassButton } from "@/components/zoom/StartClassButton";
 import { TeacherQuickActions } from "./teacher/TeacherQuickActions";
 import { TeacherStatsRow } from "./teacher/TeacherStatsRow";
 import { TeacherBottomNav } from "./teacher/TeacherBottomNav";
@@ -27,8 +28,12 @@ interface TodayFocusStudent {
 }
 
 const AVATAR_COLORS = [
-  'hsl(250 60% 65%)', 'hsl(340 60% 60%)', 'hsl(200 70% 55%)',
-  'hsl(160 60% 45%)', 'hsl(30 70% 55%)', 'hsl(280 55% 60%)',
+  "hsl(250 60% 65%)",
+  "hsl(340 60% 60%)",
+  "hsl(200 70% 55%)",
+  "hsl(160 60% 45%)",
+  "hsl(30 70% 55%)",
+  "hsl(280 55% 60%)",
 ];
 
 function getAvatarColor(name: string): string {
@@ -41,7 +46,7 @@ export function TeacherDashboard() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [islamicDate, setIslamicDate] = useState<IslamicDateData | null>(null);
-  const [timezone, setTimezone] = useState<string>('Asia/Karachi');
+  const [timezone, setTimezone] = useState<string>("Asia/Karachi");
   const firstName = profile?.full_name?.split(" ")[0] || "Teacher";
 
   const { data: unreadCount = 0 } = useQuery({
@@ -66,18 +71,20 @@ export function TeacherDashboard() {
 
       const { data: assignments } = await supabase
         .from("student_teacher_assignments")
-        .select(`
+        .select(
+          `
           id,
           student_id,
           student:profiles!student_teacher_assignments_student_id_fkey(id, full_name),
           subject:subjects(name)
-        `)
+        `,
+        )
         .eq("teacher_id", user.id)
         .eq("status", "active");
 
       if (!assignments?.length) return [];
 
-      const studentIds = assignments.map(a => (a.student as any)?.id).filter(Boolean);
+      const studentIds = assignments.map((a) => (a.student as any)?.id).filter(Boolean);
 
       const { data: recentAttendance } = await supabase
         .from("attendance")
@@ -87,34 +94,39 @@ export function TeacherDashboard() {
         .order("class_date", { ascending: false });
 
       const attendanceByStudent = new Map<string, any[]>();
-      (recentAttendance || []).forEach(a => {
+      (recentAttendance || []).forEach((a) => {
         if (!attendanceByStudent.has(a.student_id)) attendanceByStudent.set(a.student_id, []);
         attendanceByStudent.get(a.student_id)!.push(a);
       });
 
-      return assignments.map(a => {
+      return assignments.map((a) => {
         const student = a.student as any;
         const subject = a.subject as any;
         const sid = student?.id;
         const records = attendanceByStudent.get(sid) || [];
-        const present = records.filter((r: any) => r.status === 'present').length;
+        const present = records.filter((r: any) => r.status === "present").length;
         const total = records.length;
         const rate = total > 0 ? Math.round((present / total) * 100) : 0;
 
-        const latestPresent = records.find((r: any) => r.status === 'present');
+        const latestPresent = records.find((r: any) => r.status === "present");
         const continueFrom = latestPresent
-          ? `${latestPresent.surah_name || latestPresent.lesson_covered || 'N/A'}${latestPresent.ayah_from ? ` Ayah ${latestPresent.ayah_from}` : ''}`
-          : subject?.name || 'Start';
+          ? `${latestPresent.surah_name || latestPresent.lesson_covered || "N/A"}${latestPresent.ayah_from ? ` Ayah ${latestPresent.ayah_from}` : ""}`
+          : subject?.name || "Start";
 
-        const name = student?.full_name || 'Student';
-        const initials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+        const name = student?.full_name || "Student";
+        const initials = name
+          .split(" ")
+          .map((n: string) => n[0])
+          .join("")
+          .toUpperCase()
+          .slice(0, 2);
 
         return {
           id: sid,
           name,
           initials,
           avatarColor: getAvatarColor(name),
-          course: subject?.name || 'Quran',
+          course: subject?.name || "Quran",
           continueFrom,
           attendanceRate: rate,
         };
@@ -165,7 +177,9 @@ export function TeacherDashboard() {
 
         {/* 3. Next Class (compact) + Start Class */}
         <div className="flex items-center justify-between gap-3">
-          <div className="flex-1 min-w-0"><NextClassCountdown /></div>
+          <div className="flex-1 min-w-0">
+            <NextClassCountdown />
+          </div>
           <StartClassButton />
         </div>
 
@@ -180,14 +194,14 @@ export function TeacherDashboard() {
           <div className="flex items-center justify-between mb-2">
             <p className="text-[13px] font-extrabold text-foreground">📋 Today's Focus</p>
             <button
-              onClick={() => navigate('/students')}
+              onClick={() => navigate("/students")}
               className="text-[11px] text-teal font-bold bg-transparent border-none cursor-pointer hover:underline"
             >
               All Students →
             </button>
           </div>
 
-          {(!focusStudents?.length) ? (
+          {!focusStudents?.length ? (
             <div className="bg-card rounded-xl border border-border p-4 text-center text-muted-foreground">
               <p className="text-xs">No students assigned yet</p>
             </div>
@@ -197,7 +211,7 @@ export function TeacherDashboard() {
                 <div
                   key={s.id}
                   className="px-3 py-2.5 flex items-center gap-2.5 hover:bg-secondary/30 cursor-pointer transition-colors"
-                  onClick={() => navigate('/attendance?tab=1on1')}
+                  onClick={() => navigate("/attendance?tab=1on1")}
                 >
                   <div
                     className="w-8 h-8 rounded-lg flex items-center justify-center text-primary-foreground font-bold text-[10px] flex-shrink-0"
@@ -211,7 +225,9 @@ export function TeacherDashboard() {
                       {s.course} · {s.continueFrom}
                     </p>
                   </div>
-                  <span className={`text-[11px] font-bold flex-shrink-0 ${s.attendanceRate >= 85 ? 'text-teal' : 'text-gold'}`}>
+                  <span
+                    className={`text-[11px] font-bold flex-shrink-0 ${s.attendanceRate >= 85 ? "text-teal" : "text-gold"}`}
+                  >
                     {s.attendanceRate}%
                   </span>
                 </div>
