@@ -792,30 +792,30 @@ export default function Payments() {
       const transactions: any[] = [];
       let remainingAmount = amountForeign;
 
+      // Guardrail #4: ONLY insert into payment_transactions. Never increment invoice.amount_paid directly.
+      const forgivenAmounts: Record<string, number> = {};
+
       for (const inv of unpaidSelected) {
-        const outstanding = Number(inv.amount) - Number(inv.amount_paid || 0);
+        // Guardrail #8: balance = invoice.amount - paid_total - forgiven_amount
+        const paidSoFar = ledgerPaidMap[inv.id] || 0;
+        const outstanding = Math.max(0, Number(inv.amount) - paidSoFar - Number(inv.forgiven_amount || 0));
         const allocated = Math.min(remainingAmount, outstanding);
         remainingAmount -= allocated;
 
         const isShort = allocated < outstanding;
-        let newStatus: string = 'paid';
         let forgivenAmount = 0;
 
         if (isShort) {
           switch (payForm.resolution) {
-            case 'partial': newStatus = 'partially_paid'; break;
-            case 'writeoff': newStatus = 'paid'; forgivenAmount = outstanding - allocated; break;
-            case 'arrears': newStatus = 'paid'; break;
-            default: newStatus = 'partially_paid';
+            case 'writeoff': forgivenAmount = outstanding - allocated; break;
+            case 'arrears': break;
+            default: break; // partial - leave open
           }
         }
 
-        // Preliminary update for forgiven_amount and paid_at (amount_paid recalculated after insert)
-        await supabase.from('fee_invoices').update({
-          paid_at: newStatus === 'paid' || newStatus === 'partially_paid' ? new Date().toISOString() : inv.paid_at,
-          forgiven_amount: forgivenAmount,
-        }).eq('id', inv.id);
+        forgivenAmounts[inv.id] = forgivenAmount;
 
+        // Guardrail #4: ONLY insert into payment_transactions
         transactions.push({
           invoice_id: inv.id, student_id: inv.student_id,
           amount_foreign: allocated, currency_foreign: inv.currency,
@@ -848,14 +848,15 @@ export default function Payments() {
         if (txErr) throw txErr;
       }
 
-      // Fix: Recalculate amount_paid from transaction ledger (not additive)
+      // Guardrail #7: After transaction insert, refresh invoice totals from ledger
       const affectedInvoiceIds = [...new Set(transactions.map(t => t.invoice_id))];
       for (const invId of affectedInvoiceIds) {
         const { data: allTxns } = await supabase.from('payment_transactions').select('amount_foreign').eq('invoice_id', invId);
         const totalPaid = (allTxns || []).reduce((s: number, t: any) => s + Number(t.amount_foreign || 0), 0);
         const inv = unpaidSelected.find(i => i.id === invId);
         const invoiceAmount = Number(inv?.amount || 0);
-        const forgivenAmt = Number(inv?.forgiven_amount || 0);
+        const forgivenAmt = Number(inv?.forgiven_amount || 0) + (forgivenAmounts[invId] || 0);
+        // Guardrail #9: status logic
         let recalcStatus: string;
         if (totalPaid + forgivenAmt >= invoiceAmount) recalcStatus = 'paid';
         else if (totalPaid > 0) recalcStatus = 'partially_paid';
@@ -863,6 +864,8 @@ export default function Payments() {
         await supabase.from('fee_invoices').update({
           amount_paid: totalPaid,
           status: recalcStatus as any,
+          forgiven_amount: forgivenAmt,
+          paid_at: recalcStatus === 'paid' || recalcStatus === 'partially_paid' ? new Date().toISOString() : null,
         }).eq('id', invId);
       }
 
