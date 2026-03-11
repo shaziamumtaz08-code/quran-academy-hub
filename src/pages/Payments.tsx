@@ -300,24 +300,67 @@ export default function Payments() {
     enabled: isReadOnlyView || !!branchId,
   });
 
-  // Realised amounts query (sum of amount_local per invoice)
-  const { data: realisedMap = {} } = useQuery({
-    queryKey: ['realised-amounts', branchId, divisionId, monthFilter, statusFilter],
+  // Realised amounts + paid sums query (sum of amount_local and amount_foreign per invoice from ledger)
+  const { data: txnSumsMap = {} } = useQuery({
+    queryKey: ['txn-sums', branchId, divisionId, monthFilter, statusFilter],
     queryFn: async () => {
       const invoiceIds = invoices.map(i => i.id);
       if (invoiceIds.length === 0) return {};
       const { data } = await supabase
         .from('payment_transactions')
-        .select('invoice_id, amount_local')
+        .select('invoice_id, amount_local, amount_foreign')
         .in('invoice_id', invoiceIds);
-      const map: Record<string, number> = {};
+      const map: Record<string, { realised: number; paid: number }> = {};
       (data || []).forEach((tx: any) => {
-        map[tx.invoice_id] = (map[tx.invoice_id] || 0) + Number(tx.amount_local || 0);
+        if (!map[tx.invoice_id]) map[tx.invoice_id] = { realised: 0, paid: 0 };
+        map[tx.invoice_id].realised += Number(tx.amount_local || 0);
+        map[tx.invoice_id].paid += Number(tx.amount_foreign || 0);
       });
       return map;
     },
     enabled: invoices.length > 0,
   });
+
+  // Derived maps for backward-compat
+  const realisedMap = useMemo(() => {
+    const m: Record<string, number> = {};
+    Object.entries(txnSumsMap).forEach(([id, v]) => { m[id] = (v as any).realised; });
+    return m;
+  }, [txnSumsMap]);
+
+  const ledgerPaidMap = useMemo(() => {
+    const m: Record<string, number> = {};
+    Object.entries(txnSumsMap).forEach(([id, v]) => { m[id] = (v as any).paid; });
+    return m;
+  }, [txnSumsMap]);
+
+  // Self-healing: fix amount_paid drift by comparing invoice.amount_paid vs ledger sum
+  useEffect(() => {
+    if (!invoices.length || !Object.keys(ledgerPaidMap).length) return;
+    const drifted = invoices.filter(inv => {
+      const ledgerPaid = ledgerPaidMap[inv.id];
+      if (ledgerPaid === undefined) return false;
+      return Math.abs(Number(inv.amount_paid || 0) - ledgerPaid) > 0.01;
+    });
+    if (drifted.length === 0) return;
+    // Silently fix drifted invoices
+    (async () => {
+      for (const inv of drifted) {
+        const totalPaid = ledgerPaidMap[inv.id];
+        const invoiceAmount = Number(inv.amount || 0);
+        const forgivenAmt = Number(inv.forgiven_amount || 0);
+        let status: string;
+        if (totalPaid + forgivenAmt >= invoiceAmount) status = 'paid';
+        else if (totalPaid > 0) status = 'partially_paid';
+        else status = 'pending';
+        await supabase.from('fee_invoices').update({
+          amount_paid: totalPaid,
+          status: status as any,
+        }).eq('id', inv.id);
+      }
+      queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
+    })();
+  }, [invoices, ledgerPaidMap]);
 
   const { data: parentLinks = [] } = useQuery({
     queryKey: ['parent-links-for-payments'],
@@ -904,7 +947,7 @@ export default function Payments() {
     },
     onSuccess: (id) => {
       queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
-      queryClient.invalidateQueries({ queryKey: ['realised-amounts'] });
+      queryClient.invalidateQueries({ queryKey: ['txn-sums'] });
       toast({ title: 'Invoice updated' });
       trackActivity({ action: 'invoice_edited', entityType: 'invoice', entityId: id });
       setEditInvoiceData(null);
@@ -2323,7 +2366,7 @@ export default function Payments() {
                     }).eq('id', editPaymentData.invoiceId);
 
                     queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
-                    queryClient.invalidateQueries({ queryKey: ['realised-amounts'] });
+                    queryClient.invalidateQueries({ queryKey: ['txn-sums'] });
                     queryClient.invalidateQueries({ queryKey: ['payment_transactions'] });
                     toast({ title: 'Payment corrected successfully' });
                     trackActivity({ action: 'payment_edited', entityType: 'payment_transaction', entityId: tx.id, details: { invoice_id: editPaymentData.invoiceId, reason: editPaymentForm.reason } });
