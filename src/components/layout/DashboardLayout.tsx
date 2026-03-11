@@ -643,7 +643,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Main Content */}
       <main
-        className={`min-h-screen lg:pt-0 transition-all duration-300 ${activeRole === 'teacher' && location.pathname === '/dashboard' ? 'pt-0' : 'pt-14'}`}
+        className={`min-h-screen lg:pt-0 transition-all duration-300 ${location.pathname === '/dashboard' ? 'pt-0' : 'pt-14'}`}
         style={{ marginLeft: !isMobile ? sidebarWidthPx : 0 }}
       >
         <header className="hidden lg:flex h-12 border-b border-border bg-card/80 backdrop-blur-sm items-center justify-between px-6 sticky top-0 z-20">
