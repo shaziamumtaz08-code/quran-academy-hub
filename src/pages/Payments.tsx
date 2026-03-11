@@ -558,7 +558,7 @@ export default function Payments() {
       if (editingPlanId) {
         const { error } = await supabase.from('student_billing_plans').update(planFields).eq('id', editingPlanId);
         if (error) throw error;
-        // Cascade update pending invoices from the effective month onward
+        // Cascade update pending invoices: amount + currency from the effective month onward
         const { error: invoiceErr } = await supabase
           .from('fee_invoices')
           .update({ amount: netRecurringFee, currency: feeCurrency } as any)
@@ -566,6 +566,14 @@ export default function Payments() {
           .eq('status', 'pending' as any)
           .gte('billing_month', effectiveFrom);
         if (invoiceErr) console.error('Invoice cascade error:', invoiceErr);
+        // Also cascade CURRENCY to paid/partially_paid invoices (currency is fundamental, not just amount)
+        const { error: currErr } = await supabase
+          .from('fee_invoices')
+          .update({ amount: netRecurringFee, currency: feeCurrency } as any)
+          .eq('plan_id', editingPlanId)
+          .in('status', ['paid', 'partially_paid'] as any)
+          .gte('billing_month', effectiveFrom);
+        if (currErr) console.error('Invoice currency cascade error:', currErr);
         return 1;
       }
       if (selectedStudentIds.length === 0 || (!feeForm.base_package_id && !isManual)) throw new Error('Select student(s) and package');
