@@ -265,13 +265,7 @@ export function StudentDashboard() {
           <p className="text-[15px] leading-tight font-extrabold truncate flex-1 min-w-0">
             {hasTeacher ? stats!.teacherName : <span className="opacity-60 font-semibold">Teacher will be assigned soon</span>}
           </p>
-          <button
-            onClick={() => navigate('/zoom-management')}
-            className="bg-primary-foreground text-primary border-none rounded-lg px-2.5 py-1.5 font-extrabold text-xs cursor-pointer flex items-center gap-1 hover:opacity-90 transition-opacity shrink-0"
-          >
-            <Video className="h-3.5 w-3.5" />
-            Join
-          </button>
+          <JoinClassButton />
         </div>
         <div className="flex items-center justify-between mt-1.5">
           <p className="text-[11px] text-primary-foreground/75 font-semibold truncate">
