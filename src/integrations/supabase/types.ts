@@ -127,8 +127,10 @@ export type Database = {
           sabqi_notes: string | null
           status: string
           student_id: string
+          student_join_time: string | null
           surah_name: string | null
           teacher_id: string
+          teacher_join_time: string | null
           updated_at: string
           variance_reason: string | null
         }
@@ -173,8 +175,10 @@ export type Database = {
           sabqi_notes?: string | null
           status: string
           student_id: string
+          student_join_time?: string | null
           surah_name?: string | null
           teacher_id: string
+          teacher_join_time?: string | null
           updated_at?: string
           variance_reason?: string | null
         }
@@ -219,8 +223,10 @@ export type Database = {
           sabqi_notes?: string | null
           status?: string
           student_id?: string
+          student_join_time?: string | null
           surah_name?: string | null
           teacher_id?: string
+          teacher_join_time?: string | null
           updated_at?: string
           variance_reason?: string | null
         }
