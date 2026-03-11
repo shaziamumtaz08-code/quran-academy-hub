@@ -1,95 +1,81 @@
 
-# Plan: Synchronize Edit Invoice with Record Payment Form + Multi-Month Payment UX
 
-## Problem Summary
+# Data Sync Fix Across All Role Dashboards
 
-1. **Edit Invoice form is missing fields** that the Record Payment form has: Realized (PKR), exchange rate display, Proof of Payment upload, and shortfall/resolution handling.
-2. **Multi-month payments** require clarity: if a student pays 40 AUD covering Dec (10) + Jan (30), can the system auto-split it?
+## Issues Found
 
----
+### A. Timezone bug — affects ALL 9 dashboards
+`PrayerTimesWidget` uses browser-local `new Date()` to compare against prayer times that are in the user's profile timezone. If a Dubai student opens the app on a London laptop, "next prayer" and countdown are wrong. `IslamicDateCard` fetches the profile timezone but never exposes it.
 
-## Part 1: Make Edit Invoice Form Identical to Record Payment
+### B. Student Dashboard — static schedule display, dead fallback
+- Lines 50-61: `enrollments` table fallback — this table doesn't exist in the schema, silently fails
+- Schedule displays static `"Monday · 14:00"` — no countdown logic like Teacher's `NextClassCountdown`
+- Uses `student_local_time` correctly but doesn't compute next occurrence
 
-The Edit Invoice dialog will be restructured to match Record Payment field-for-field:
+### C. Parent Dashboard — missing next class & fee amount
+- No "Next Class" card showing child's upcoming session
+- Fee Status card shows hardcoded "Pending" instead of querying `fee_invoices`
 
-| Section | Record Payment | Edit Invoice (Current) | Action |
-|---|---|---|---|
-| Invoice summary bar | Student name + expected | Missing | **Add** |
-| Payment Period (From/To) | Yes | Yes | Keep |
-| Payment Date / Paid At | Yes | Yes | Keep (label: "Paid At") |
-| Receiving Channel | Yes | Yes | Keep |
-| Amount (currency) | Yes | Yes | Keep |
-| Realized (PKR) | Yes | **Missing** | **Add** |
-| Exchange Rate display | Yes | **Missing** | **Add** |
-| Shortfall + Resolution | Yes | **Missing** | **Add** (auto-calculated) |
-| Proof of Payment upload | Yes | **Missing** | **Add** |
-| Notes / Remark | Yes | Yes | Keep |
-| Amount Paid | N/A (auto) | Yes | Keep (admin override) |
-| Forgiven Amount | N/A (auto) | Yes | Keep (admin override) |
-| Currency | N/A (from invoice) | Yes | Keep |
-| Billing Month | N/A (from invoice) | Yes | Keep |
-| Status | N/A (auto) | Yes | Keep |
-| Due Date | N/A | Yes | Keep |
+### D. Examiner Dashboard — no user filter
+- Exams query (line 29-34) fetches ALL exams system-wide, not filtered by `examiner_id`
 
-The Edit Invoice dialog will have the same visual layout and sections as Record Payment, plus the extra admin-only fields (Status, Due Date, Currency, Billing Month, Forgiven Amount) below a separator labeled "Admin Overrides".
+### E. Academic Admin Dashboard — all hardcoded zeros
+- No DB queries at all — stalled students, course count, teacher performance all show `0`
+
+### F. Admissions Admin — no admissions-specific tables
+- Pipeline and stats are placeholders — no tables to query. Will keep as placeholder with clear messaging.
 
 ---
 
-## Part 2: Multi-Month Payment Strategy
+## Plan (7 file edits)
 
-### Current mechanism
-- The system is **invoice-based**: each month generates a separate invoice per student.
-- The bulk "Record Payment" (cart pattern) already supports selecting multiple invoices and paying them with a single receipt.
-- The payment is **allocated sequentially** to each selected invoice (oldest first), with shortfall handling for any remainder.
+### 1. IslamicDateCard — expose timezone (1 new callback)
+Add `onTimezoneResolved?: (tz: string) => void` prop. Call it when timezone is fetched from profile. No visual changes.
 
-### The easier solution (recommended)
-Rather than building complex date-range-to-invoice auto-splitting, the **existing cart system already solves this**:
+### 2. PrayerTimesWidget — accept timezone prop
+Add optional `timezone?: string` prop. Replace `new Date()` with timezone-aware current time using `Intl.DateTimeFormat` (same pattern as `getNowInTimezone` in NextClassCountdown). This fixes the bug for ALL dashboards since they all render this widget.
 
-1. Admin selects invoices for Dec 2025 and Jan 2026 using checkboxes.
-2. Clicks "Record Payment" -- both invoices appear in the summary.
-3. Enters 40 AUD total, one receipt screenshot, one receiving channel.
-4. System auto-allocates: 10 AUD to Dec (outstanding), 30 AUD to Jan (outstanding).
-5. Both invoices update. Single receipt is linked to both transactions.
+### 3. DashboardShell — capture & forward timezone
+Capture timezone from `IslamicDateCard` via new callback, pass to `PrayerTimesWidget`. This automatically fixes Student, Parent, Admin, SuperAdmin, FeesAdmin, AdmissionsAdmin, AcademicAdmin, and Examiner dashboards.
 
-**No new development needed** for this flow -- it already works. The From/To date range in the payment form captures the coverage period for reference, but the allocation is driven by the invoice amounts, not dates.
+### 4. TeacherDashboard — same timezone forwarding
+Teacher renders its own layout (not DashboardShell). Capture timezone from `IslamicDateCard`, pass to `PrayerTimesWidget`.
 
-### What WILL be improved
-- Add a **helper tooltip/info text** on the Record Payment dialog explaining: "Selected invoices are paid in order. Amount is allocated starting from the first invoice."
-- Ensure the **Edit Payment** form (on `payment_transactions`) also mirrors the Record Payment layout for consistency.
+### 5. StudentDashboard — real next class countdown
+- Remove dead `enrollments` fallback (lines 50-61)
+- Fetch ALL active assignments and ALL their schedules
+- Reuse `buildNextOccurrence` + `useCountdown` pattern from `NextClassCountdown.tsx`
+- Use `student_local_time` and student's profile timezone
+- Show live countdown pills matching Teacher card pattern
+- Fetch student timezone from profile for countdown calculations
+
+### 6. ParentDashboard — add child's next class + real fee data
+- For active child: fetch assignments → schedules → compute next class with `student_local_time`
+- Query `fee_invoices` for each child to show actual amount due and due date instead of hardcoded "Pending"
+
+### 7. ExaminerDashboard — filter by examiner_id
+- Add `useAuth()` to get `user.id`
+- Add `.eq('examiner_id', user.id)` to exams query
+
+### 8. AcademicAdminDashboard — real DB queries
+- Query `courses` table for active course count
+- Query `attendance` (last 7 days) to calculate teacher lesson log rate and attendance marking rate
+- Query `student_teacher_assignments` + `attendance` to find stalled students (no attendance record in 7+ days)
 
 ---
 
-## Technical Changes
+## Files to modify
 
-### File: `src/pages/Payments.tsx`
+| File | Change |
+|------|--------|
+| `IslamicDateCard.tsx` | Add `onTimezoneResolved` callback |
+| `PrayerTimesWidget.tsx` | Accept `timezone` prop, use timezone-aware "now" |
+| `DashboardShell.tsx` | Capture timezone, pass to PrayerTimesWidget |
+| `TeacherDashboard.tsx` | Forward timezone to PrayerTimesWidget |
+| `StudentDashboard.tsx` | Real countdown + remove enrollments fallback |
+| `ParentDashboard.tsx` | Child next class + real fee data |
+| `ExaminerDashboard.tsx` | Filter by examiner_id |
+| `AcademicAdminDashboard.tsx` | Real DB queries |
 
-1. **Add state for receipt file in edit mode** -- reuse `receiptInputRef` or add a second ref.
+No database migrations needed. No new tables.
 
-2. **Add `amount_local` (Realized PKR) field to `editInvoiceData` state** and persist it. This will require either:
-   - Storing realized amount on the invoice itself (new column), OR
-   - Looking up from `payment_transactions` and allowing override.
-   
-   Since `payment_transactions` already tracks `amount_local`, the Edit Invoice form will add a display-only "Realized (PKR)" field that shows the sum from linked transactions, plus an editable override field.
-
-3. **Restructure the Edit Invoice dialog** to follow Record Payment's visual order:
-   - Top: Student name + invoice summary bar
-   - Billing Month + Status row
-   - Payment Period section (From / To)
-   - Separator
-   - Payment Details section (Paid At + Receiving Channel)
-   - Amount row: Amount (currency) + Realized (PKR)
-   - Exchange rate auto-calculated display
-   - Amount Paid + Forgiven Amount row
-   - Currency + Due Date row
-   - Proof of Payment upload area
-   - Remark / Notes textarea
-
-4. **Receipt upload in edit mode**: Allow uploading a new receipt that updates the latest `payment_transaction.receipt_url` for this invoice.
-
-5. **Add info text** to Record Payment dialog: "Amounts are allocated across selected invoices in order."
-
-### Database
-- No new columns needed. The `fee_invoices` table already has `period_from`, `period_to`, `payment_method`, `paid_at`. The realized amount lives in `payment_transactions.amount_local`.
-
-### No changes needed for multi-month payments
-- The existing cart/bulk payment system handles this correctly already. The plan is to add UX guidance text only.
