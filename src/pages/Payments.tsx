@@ -737,7 +737,7 @@ export default function Payments() {
 
           const existingInv = existingAssignmentMap.get(a.id);
           if (existingInv) {
-            checkAndQueueUpdate(existingInv, prorated);
+            checkAndQueueUpdate(existingInv, prorated, a.fee_packages?.currency || 'USD');
             return;
           }
 
