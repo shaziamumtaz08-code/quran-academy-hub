@@ -25,43 +25,83 @@ export function StudentDashboard() {
   const currentMonth = new Date();
 
   const { data: stats, isLoading } = useQuery({
-    queryKey: ['student-dashboard-v2', user?.id],
+    queryKey: ['student-dashboard-v3', user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
 
-      // Fetch attendance
-      const attendanceRes = await supabase.from('attendance')
-        .select('status, class_date, lesson_covered, homework, surah_name, ayah_from, ayah_to, raw_input_amount, lines_completed, teacher_id')
+      // 1) Find active assignment (primary link to teacher + schedule)
+      const { data: assignments } = await supabase
+        .from('student_teacher_assignments')
+        .select('id, teacher_id, subject:subjects(name)')
         .eq('student_id', user.id)
-        .order('class_date', { ascending: false });
+        .eq('status', 'active');
 
-      // Fetch teacher assignment
-      const assignmentRes = await supabase.from('student_teacher_assignments')
-        .select('teacher_id, subject:subjects(name)')
-        .eq('student_id', user.id)
-        .eq('status', 'active')
-        .limit(1);
-
+      let assignmentId: string | null = null;
       let teacherId: string | null = null;
-      let subjectName: string | null = 'Quran';
+      let subjectName: string | null = null;
 
-      if (assignmentRes.data?.[0]) {
-        teacherId = assignmentRes.data[0].teacher_id;
-        subjectName = (assignmentRes.data[0] as any).subject?.name || 'Quran';
-      } else {
-        const enrollmentRes = await supabase.from('enrollments')
+      if (assignments?.length) {
+        assignmentId = assignments[0].id;
+        teacherId = assignments[0].teacher_id;
+        subjectName = (assignments[0] as any).subject?.name || null;
+      }
+
+      // Fallback: check enrollments table
+      if (!teacherId) {
+        const { data: enrollments } = await supabase
+          .from('enrollments')
           .select('teacher_id, subject:subjects(name)')
           .eq('student_id', user.id)
           .eq('status', 'active')
           .limit(1);
-        if (enrollmentRes.data?.[0]) {
-          teacherId = enrollmentRes.data[0].teacher_id;
-          subjectName = (enrollmentRes.data[0] as any).subject?.name || 'Quran';
+        if (enrollments?.[0]) {
+          teacherId = enrollments[0].teacher_id;
+          subjectName = (enrollments[0] as any).subject?.name || null;
         }
       }
 
-      // Fetch monthly plan
-      const planRes = await supabase.from('student_monthly_plans')
+      // 2) Fetch teacher profile
+      let teacherName: string | null = null;
+      if (teacherId) {
+        const { data: t } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', teacherId)
+          .maybeSingle();
+        teacherName = t?.full_name || null;
+      }
+
+      // 3) Fetch schedule via assignment_id
+      let nextClass: { dayOfWeek: string; time: string; duration: number } | null = null;
+      if (assignmentId) {
+        const { data: scheds } = await supabase
+          .from('schedules')
+          .select('day_of_week, student_local_time, teacher_local_time, duration_minutes')
+          .eq('assignment_id', assignmentId)
+          .eq('is_active', true)
+          .limit(1);
+        if (scheds?.[0]) {
+          nextClass = {
+            dayOfWeek: scheds[0].day_of_week,
+            time: scheds[0].student_local_time || scheds[0].teacher_local_time || '00:00',
+            duration: scheds[0].duration_minutes,
+          };
+        }
+      }
+
+      // 4) Attendance
+      const { data: attendance } = await supabase
+        .from('attendance')
+        .select('status, class_date, lesson_covered, homework, surah_name, ayah_from, ayah_to, raw_input_amount, lines_completed')
+        .eq('student_id', user.id)
+        .order('class_date', { ascending: false });
+
+      const allAttendance = attendance || [];
+      const present = allAttendance.filter(a => a.status === 'present').length;
+
+      // 5) Monthly plan
+      const { data: plans } = await supabase
+        .from('student_monthly_plans')
         .select('*')
         .eq('student_id', user.id)
         .eq('month', format(currentMonth, 'MM'))
@@ -69,65 +109,18 @@ export function StudentDashboard() {
         .eq('status', 'approved')
         .limit(1);
 
-      // Fetch teacher profile
-      let teacher: { id: string; full_name: string } | null = null;
-      if (teacherId) {
-        const { data: teacherData } = await supabase
-          .from('profiles')
-          .select('id, full_name')
-          .eq('id', teacherId)
-          .maybeSingle();
-        teacher = teacherData || null;
-      }
+      const activePlan = plans?.[0];
 
-      // Fetch next class schedule
-      let nextClass: { dayOfWeek: string; time: string; duration: number } | null = null;
-      if (assignmentRes.data?.[0]) {
-        const { data: schedules } = await supabase
-          .from('schedules')
-          .select('day_of_week, teacher_local_time, duration_minutes, assignment_id')
-          .eq('assignment_id', assignmentRes.data[0].teacher_id ? undefined : '')
-          .eq('is_active', true);
-        // Get schedule from assignment
-        const assignmentId = assignmentRes.data[0].teacher_id;
-        const { data: assignmentSchedules } = await supabase
-          .from('student_teacher_assignments')
-          .select('id')
-          .eq('student_id', user.id)
-          .eq('status', 'active')
-          .limit(1);
-        
-        if (assignmentSchedules?.[0]) {
-          const { data: scheds } = await supabase
-            .from('schedules')
-            .select('day_of_week, teacher_local_time, duration_minutes')
-            .eq('assignment_id', assignmentSchedules[0].id)
-            .eq('is_active', true)
-            .limit(1);
-          if (scheds?.[0]) {
-            nextClass = {
-              dayOfWeek: scheds[0].day_of_week,
-              time: scheds[0].teacher_local_time || '00:00',
-              duration: scheds[0].duration_minutes,
-            };
-          }
-        }
-      }
-
-      const attendance = attendanceRes.data || [];
-      const activePlan = planRes.data?.[0];
-      const present = attendance.filter(a => a.status === 'present').length;
-
-      const latestPresent = attendance.find(a => a.status === 'present');
+      const latestPresent = allAttendance.find(a => a.status === 'present');
       const currentPosition = latestPresent
         ? `${latestPresent.surah_name || 'N/A'}${latestPresent.ayah_from ? `, Ayah ${latestPresent.ayah_from}` : ''}${latestPresent.ayah_to ? `-${latestPresent.ayah_to}` : ''}`
-        : 'No lessons recorded';
-      const currentHomework = latestPresent?.homework || 'No homework assigned';
+        : null;
+      const currentHomework = latestPresent?.homework || null;
 
       // Monthly progress
       const startDate = startOfMonth(currentMonth);
       const endDate = endOfMonth(currentMonth);
-      const monthlyAttendance = attendance.filter(a => {
+      const monthlyAttendance = allAttendance.filter(a => {
         const date = new Date(a.class_date);
         return date >= startDate && date <= endDate && a.status === 'present';
       });
@@ -139,11 +132,11 @@ export function StudentDashboard() {
       const markerLabel = activePlan?.primary_marker === 'rukus' ? 'Rukus' : activePlan?.primary_marker === 'pages' ? 'Pages' : 'Lines';
 
       return {
-        totalClasses: attendance.length,
+        totalClasses: allAttendance.length,
         attended: present,
-        attendanceRate: attendance.length > 0 ? Math.round((present / attendance.length) * 100) : 0,
-        teacherName: teacher?.full_name || 'Not assigned',
-        subject: subjectName,
+        attendanceRate: allAttendance.length > 0 ? Math.round((present / allAttendance.length) * 100) : 0,
+        teacherName,
+        subject: subjectName || 'Quran',
         currentPosition,
         currentHomework,
         monthlyProgress,
@@ -151,7 +144,7 @@ export function StudentDashboard() {
         totalAchieved,
         markerLabel,
         nextClass,
-        recentLessons: attendance.slice(0, 3).map(a => ({
+        recentLessons: allAttendance.slice(0, 3).map(a => ({
           date: format(new Date(a.class_date), 'MMM dd'),
           lesson: a.lesson_covered || 'No lesson recorded',
           homework: a.homework || 'No homework',
@@ -183,6 +176,9 @@ export function StudentDashboard() {
     { icon: '📅', label: 'Schedule', bg: 'bg-gold/10', textColor: 'text-gold', border: 'border-gold/15', onClick: () => navigate('/schedules') },
   ];
 
+  const hasTeacher = !!stats?.teacherName;
+  const hasSchedule = !!stats?.nextClass;
+
   const leftContent = (
     <>
       {/* Next Class Card */}
@@ -192,7 +188,7 @@ export function StudentDashboard() {
             <span>📚</span> Next Class
           </p>
           <p className="text-[15px] leading-tight font-extrabold truncate flex-1 min-w-0">
-            {stats?.teacherName || 'Not assigned'}
+            {hasTeacher ? stats.teacherName : <span className="opacity-60 font-semibold">Teacher will be assigned soon</span>}
           </p>
           <button
             onClick={() => navigate('/zoom-management')}
@@ -203,15 +199,26 @@ export function StudentDashboard() {
           </button>
         </div>
         <p className="text-[11px] text-primary-foreground/75 font-semibold truncate mt-1.5">
-          {stats?.subject} · {stats?.nextClass ? `${stats.nextClass.dayOfWeek} · ${stats.nextClass.time}` : 'No schedule set'}
+          {stats?.subject} · {hasSchedule
+            ? `${stats!.nextClass!.dayOfWeek} · ${stats!.nextClass!.time}`
+            : <span className="opacity-60">No class scheduled yet</span>}
         </p>
+      </div>
+
+      {/* Quick Actions — immediately after Next Class on mobile */}
+      <div className="md:hidden">
+        <QuickActionsGrid actions={quickActions} />
       </div>
 
       {/* Today's Lesson — Continue from */}
       <div className="bg-card rounded-2xl border border-border p-3.5 shadow-card">
         <p className="text-[11px] text-muted-foreground font-bold tracking-wider uppercase mb-1.5">📖 Today's Lesson</p>
-        <p className="text-[15px] font-extrabold text-foreground">Continue from: {stats?.currentPosition}</p>
-        <p className="text-[11px] text-muted-foreground mt-1 truncate">📝 {stats?.currentHomework}</p>
+        <p className="text-[15px] font-extrabold text-foreground">
+          {stats?.currentPosition ? `Continue from: ${stats.currentPosition}` : <span className="text-muted-foreground font-semibold">No lessons recorded yet</span>}
+        </p>
+        <p className="text-[11px] text-muted-foreground mt-1 truncate">
+          📝 {stats?.currentHomework || 'No homework assigned'}
+        </p>
       </div>
 
       {/* Recent Lessons (last 3) */}
@@ -245,6 +252,18 @@ export function StudentDashboard() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Stats Row — mobile only, at the bottom */}
+      <div className="md:hidden">
+        <StatsRowCompact
+          title={`📈 My Stats — ${format(new Date(), 'MMMM')}`}
+          stats={[
+            { value: stats?.totalClasses || 0, label: 'Total', sub: 'Classes', color: 'text-teal' },
+            { value: stats?.attended || 0, label: 'Attended', sub: 'Present', color: 'text-sky' },
+            { value: `${stats?.attendanceRate || 0}%`, label: 'Rate', sub: 'Attendance', color: 'text-gold' },
+          ]}
+        />
       </div>
     </>
   );
@@ -283,27 +302,33 @@ export function StudentDashboard() {
         <p className="text-[11px] text-muted-foreground font-bold tracking-wider uppercase mb-2">👨‍🏫 My Teacher</p>
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
-            {(stats?.teacherName || 'N')[0]}
+            {hasTeacher ? stats!.teacherName![0] : '?'}
           </div>
           <div>
-            <p className="font-bold text-[15px] text-foreground">{stats?.teacherName}</p>
+            <p className="font-bold text-[15px] text-foreground">
+              {hasTeacher ? stats!.teacherName : <span className="text-muted-foreground font-semibold">Teacher will be assigned soon</span>}
+            </p>
             <p className="text-[11px] text-muted-foreground">{stats?.subject}</p>
           </div>
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <QuickActionsGrid actions={quickActions} />
+      {/* Quick Actions — desktop only */}
+      <div className="hidden md:block">
+        <QuickActionsGrid actions={quickActions} />
+      </div>
 
-      {/* Stats Row */}
-      <StatsRowCompact
-        title={`📈 My Stats — ${format(new Date(), 'MMMM')}`}
-        stats={[
-          { value: stats?.totalClasses || 0, label: 'Total', sub: 'Classes', color: 'text-teal' },
-          { value: stats?.attended || 0, label: 'Attended', sub: 'Present', color: 'text-sky' },
-          { value: `${stats?.attendanceRate || 0}%`, label: 'Rate', sub: 'Attendance', color: 'text-gold' },
-        ]}
-      />
+      {/* Stats Row — desktop only */}
+      <div className="hidden md:block">
+        <StatsRowCompact
+          title={`📈 My Stats — ${format(new Date(), 'MMMM')}`}
+          stats={[
+            { value: stats?.totalClasses || 0, label: 'Total', sub: 'Classes', color: 'text-teal' },
+            { value: stats?.attended || 0, label: 'Attended', sub: 'Present', color: 'text-sky' },
+            { value: `${stats?.attendanceRate || 0}%`, label: 'Rate', sub: 'Attendance', color: 'text-gold' },
+          ]}
+        />
+      </div>
     </>
   );
 
