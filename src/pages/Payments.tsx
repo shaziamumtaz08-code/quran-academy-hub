@@ -598,12 +598,18 @@ export default function Payments() {
 
       // Helper to check if existing invoice needs updating
       const checkAndQueueUpdate = (existingInv: any, prorated: { amount: number; period_from: string; period_to: string }) => {
-        if (existingInv && existingInv.status === 'pending' &&
-            (Math.abs(existingInv.amount - prorated.amount) > 0.01 ||
-             existingInv.period_from !== prorated.period_from ||
-             existingInv.period_to !== prorated.period_to)) {
+        if (!existingInv) return false;
+        const amountChanged = Math.abs(existingInv.amount - prorated.amount) > 0.01;
+        const periodChanged = existingInv.period_from !== prorated.period_from || existingInv.period_to !== prorated.period_to;
+        
+        if (existingInv.status === 'pending' && (amountChanged || periodChanged)) {
           updatedInvoices.push({ id: existingInv.id, amount: prorated.amount, period_from: prorated.period_from, period_to: prorated.period_to });
-          return true; // was updated
+          return true;
+        }
+        // For paid/partially_paid invoices, only update amount if fee changed (preserve payment state)
+        if ((existingInv.status === 'paid' || existingInv.status === 'partially_paid') && amountChanged) {
+          updatedInvoices.push({ id: existingInv.id, amount: prorated.amount, period_from: prorated.period_from, period_to: prorated.period_to });
+          return true;
         }
         return false;
       };
@@ -759,9 +765,8 @@ export default function Payments() {
           }
         }
 
+        // Preliminary update for forgiven_amount and paid_at (amount_paid recalculated after insert)
         await supabase.from('fee_invoices').update({
-          amount_paid: Number(inv.amount_paid || 0) + allocated,
-          status: newStatus as any,
           paid_at: newStatus === 'paid' || newStatus === 'partially_paid' ? new Date().toISOString() : inv.paid_at,
           forgiven_amount: forgivenAmount,
         }).eq('id', inv.id);
@@ -798,6 +803,24 @@ export default function Payments() {
         if (txErr) throw txErr;
       }
 
+      // Fix: Recalculate amount_paid from transaction ledger (not additive)
+      const affectedInvoiceIds = [...new Set(transactions.map(t => t.invoice_id))];
+      for (const invId of affectedInvoiceIds) {
+        const { data: allTxns } = await supabase.from('payment_transactions').select('amount_foreign').eq('invoice_id', invId);
+        const totalPaid = (allTxns || []).reduce((s: number, t: any) => s + Number(t.amount_foreign || 0), 0);
+        const inv = unpaidSelected.find(i => i.id === invId);
+        const invoiceAmount = Number(inv?.amount || 0);
+        const forgivenAmt = Number(inv?.forgiven_amount || 0);
+        let recalcStatus: string;
+        if (totalPaid + forgivenAmt >= invoiceAmount) recalcStatus = 'paid';
+        else if (totalPaid > 0) recalcStatus = 'partially_paid';
+        else recalcStatus = 'pending';
+        await supabase.from('fee_invoices').update({
+          amount_paid: totalPaid,
+          status: recalcStatus as any,
+        }).eq('id', invId);
+      }
+
       return transactions.length;
     },
     onSuccess: (count) => {
@@ -812,6 +835,34 @@ export default function Payments() {
     },
     onError: (e: any) => toast({ title: 'Payment failed', description: e.message, variant: 'destructive' }),
   });
+
+  // Self-healing: recalculate amount_paid from transaction ledger when opening Edit Invoice
+  const openEditInvoiceWithRecalc = async (inv: any) => {
+    setEditReceiptFile(null);
+    // Query actual transaction sum
+    const { data: txns } = await supabase.from('payment_transactions').select('amount_foreign, amount_local').eq('invoice_id', inv.id);
+    const recalcPaid = (txns || []).reduce((s: number, t: any) => s + Number(t.amount_foreign || 0), 0);
+    const recalcLocal = (txns || []).reduce((s: number, t: any) => s + Number(t.amount_local || 0), 0);
+    // If amount_paid drifted, fix it in DB silently
+    if (Math.abs(recalcPaid - Number(inv.amount_paid || 0)) > 0.01) {
+      const invoiceAmount = Number(inv.amount);
+      const forgivenAmt = Number(inv.forgiven_amount || 0);
+      let fixStatus: string;
+      if (recalcPaid + forgivenAmt >= invoiceAmount) fixStatus = 'paid';
+      else if (recalcPaid > 0) fixStatus = 'partially_paid';
+      else fixStatus = 'pending';
+      await supabase.from('fee_invoices').update({ amount_paid: recalcPaid, status: fixStatus as any }).eq('id', inv.id);
+      queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
+    }
+    setEditInvoiceData({
+      id: inv.id, amount: String(inv.amount), due_date: inv.due_date || '', billing_month: inv.billing_month,
+      currency: inv.currency, remark: inv.remark || '', status: inv.status,
+      amount_paid: String(recalcPaid), forgiven_amount: String(inv.forgiven_amount || 0),
+      payment_method: inv.payment_method || '', paid_at: inv.paid_at || '',
+      period_from: (inv as any).period_from || '', period_to: (inv as any).period_to || '',
+      amount_local: String(recalcLocal || ''), receipt_url: '',
+    });
+  };
 
   // Helper to get current user profile for audit
   const getAdminInfo = async () => {
@@ -1278,7 +1329,7 @@ export default function Payments() {
                                       <DropdownMenuItem onClick={() => setActionModal({ type: 'restore_to_pending', invoice: inv })}>
                                         <Undo2 className="h-3.5 w-3.5 mr-2" /> Restore to Pending
                                       </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => { setEditReceiptFile(null); setEditInvoiceData({ id: inv.id, amount: String(inv.amount), due_date: inv.due_date || '', billing_month: inv.billing_month, currency: inv.currency, remark: inv.remark || '', status: inv.status, amount_paid: String(inv.amount_paid || 0), forgiven_amount: String(inv.forgiven_amount || 0), payment_method: inv.payment_method || '', paid_at: inv.paid_at || '', period_from: (inv as any).period_from || '', period_to: (inv as any).period_to || '', amount_local: String(realisedMap[inv.id] || ''), receipt_url: '' }); }}>
+                                      <DropdownMenuItem onClick={() => openEditInvoiceWithRecalc(inv)}>
                                         <Pencil className="h-3.5 w-3.5 mr-2" /> Edit Invoice
                                       </DropdownMenuItem>
                                       <DropdownMenuSeparator />
@@ -1291,7 +1342,7 @@ export default function Payments() {
                                       <DropdownMenuItem onClick={() => window.open(`/finance/print/invoice/${inv.id}`, '_blank')}>
                                         <FileText className="h-3.5 w-3.5 mr-2" /> View Invoice
                                       </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => { setEditReceiptFile(null); setEditInvoiceData({ id: inv.id, amount: String(inv.amount), due_date: inv.due_date || '', billing_month: inv.billing_month, currency: inv.currency, remark: inv.remark || '', status: inv.status, amount_paid: String(inv.amount_paid || 0), forgiven_amount: String(inv.forgiven_amount || 0), payment_method: inv.payment_method || '', paid_at: inv.paid_at || '', period_from: (inv as any).period_from || '', period_to: (inv as any).period_to || '', amount_local: String(realisedMap[inv.id] || ''), receipt_url: '' }); }}>
+                                      <DropdownMenuItem onClick={() => openEditInvoiceWithRecalc(inv)}>
                                         <Pencil className="h-3.5 w-3.5 mr-2" /> Edit Invoice
                                       </DropdownMenuItem>
                                       {(inv.status === 'paid' || inv.status === 'partially_paid') && (
@@ -1779,7 +1830,7 @@ export default function Payments() {
             </DialogHeader>
 
             {editInvoiceData && (() => {
-              const editAmountForeign = parseFloat(editInvoiceData.amount_paid) || 0;
+              const editAmountForeign = parseFloat(editInvoiceData.amount) || 0;
               const editAmountLocal = parseFloat(editInvoiceData.amount_local) || 0;
               const editEffectiveRate = editAmountForeign > 0 ? editAmountLocal / editAmountForeign : 0;
               const editExpected = parseFloat(editInvoiceData.amount) || 0;

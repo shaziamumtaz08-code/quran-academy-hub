@@ -1,65 +1,95 @@
 
+# Plan: Synchronize Edit Invoice with Record Payment Form + Multi-Month Payment UX
 
-## Analysis of Payment System Bugs
+## Problem Summary
 
-After investigating the database and code, here is what is happening with Muhammad Subhan's January 2026 invoice:
-
-**Invoice state**: amount=225, amount_paid=288.1, status=paid
-
-**Transactions on this invoice** (4 total):
-1. 38.1 AED (duplicate entry)
-2. 38.1 AED (duplicate entry)
-3. -38.1 AED (correction attempt)
-4. 250 AED (the actual payment — but user intended 225)
-
-Sum = 38.1 + 38.1 + (-38.1) + 250 = **288.1** — this is why the "Paid" column shows 288.1.
+1. **Edit Invoice form is missing fields** that the Record Payment form has: Realized (PKR), exchange rate display, Proof of Payment upload, and shortfall/resolution handling.
+2. **Multi-month payments** require clarity: if a student pays 40 AUD covering Dec (10) + Jan (30), can the system auto-split it?
 
 ---
 
-### Root Causes Identified
+## Part 1: Make Edit Invoice Form Identical to Record Payment
 
-**Bug 1: Record Payment adds to `amount_paid` instead of recalculating from transactions**
-Line 763: `amount_paid: Number(inv.amount_paid || 0) + allocated`. Each new payment adds to the running total. If there are corrections or duplicate transactions, the total drifts. The "Edit Payment" flow correctly recalculates from the transaction sum (lines 2260-2272), but the initial "Record Payment" does not.
+The Edit Invoice dialog will be restructured to match Record Payment field-for-field:
 
-**Bug 2: "Pay" button pre-fills with outstanding amount, which was 250 (the old fee) when the user clicked it**
-The user updated the fee from 250 to 225 AFTER the invoice was already generated at 250. When they clicked "Pay", line 977 pre-filled `due = inv.amount - inv.amount_paid = 250 - 0 = 250`. The transaction was recorded at 250, not the intended 225.
+| Section | Record Payment | Edit Invoice (Current) | Action |
+|---|---|---|---|
+| Invoice summary bar | Student name + expected | Missing | **Add** |
+| Payment Period (From/To) | Yes | Yes | Keep |
+| Payment Date / Paid At | Yes | Yes | Keep (label: "Paid At") |
+| Receiving Channel | Yes | Yes | Keep |
+| Amount (currency) | Yes | Yes | Keep |
+| Realized (PKR) | Yes | **Missing** | **Add** |
+| Exchange Rate display | Yes | **Missing** | **Add** |
+| Shortfall + Resolution | Yes | **Missing** | **Add** (auto-calculated) |
+| Proof of Payment upload | Yes | **Missing** | **Add** |
+| Notes / Remark | Yes | Yes | Keep |
+| Amount Paid | N/A (auto) | Yes | Keep (admin override) |
+| Forgiven Amount | N/A (auto) | Yes | Keep (admin override) |
+| Currency | N/A (from invoice) | Yes | Keep |
+| Billing Month | N/A (from invoice) | Yes | Keep |
+| Status | N/A (auto) | Yes | Keep |
+| Due Date | N/A | Yes | Keep |
 
-**Bug 3: Edit Invoice exchange rate uses wrong field**
-Line 1782: `editAmountForeign = parseFloat(editInvoiceData.amount_paid)` — uses `amount_paid` (288.1) for the rate denominator instead of the invoice `amount` (225). Result: 13916 / 288.1 = 48.30 PKR instead of the correct rate.
-
-**Bug 4: Invoice regeneration skips non-pending invoices**
-Line 601: `checkAndQueueUpdate` only processes invoices with status `pending`. When the user updated the fee to 225 and regenerated, the paid invoice at 250 was skipped. Error "already generated" is thrown because all invoices exist.
-
-**Bug 5: Realised PKR column sums ALL transactions including duplicates/corrections**
-The `realisedMap` query (lines 304-318) sums all `amount_local` values without filtering, resulting in inflated PKR totals (18288 + 18249.9 + 18432.5 + 13916 = 68,886).
+The Edit Invoice dialog will have the same visual layout and sections as Record Payment, plus the extra admin-only fields (Status, Due Date, Currency, Billing Month, Forgiven Amount) below a separator labeled "Admin Overrides".
 
 ---
 
-### Plan
+## Part 2: Multi-Month Payment Strategy
 
-#### Fix 1: Recalculate `amount_paid` from transaction sum after recording payment
-In `bulkPayMutation` (after inserting transactions), query all transactions for each affected invoice and set `amount_paid` = sum of `amount_foreign`. This matches the pattern already used in "Edit Payment" (lines 2260-2272).
+### Current mechanism
+- The system is **invoice-based**: each month generates a separate invoice per student.
+- The bulk "Record Payment" (cart pattern) already supports selecting multiple invoices and paying them with a single receipt.
+- The payment is **allocated sequentially** to each selected invoice (oldest first), with shortfall handling for any remainder.
 
-#### Fix 2: Fix Edit Invoice exchange rate calculation
-Change line 1782 from:
-```
-const editAmountForeign = parseFloat(editInvoiceData.amount_paid) || 0;
-```
-to:
-```
-const editAmountForeign = parseFloat(editInvoiceData.amount) || 0;
-```
-The rate should be based on the invoice amount, not the cumulative paid amount.
+### The easier solution (recommended)
+Rather than building complex date-range-to-invoice auto-splitting, the **existing cart system already solves this**:
 
-#### Fix 3: Allow invoice regeneration to update paid invoices' amounts
-Modify `checkAndQueueUpdate` to also update invoices in `paid` or `partially_paid` status when the fee amount has changed. Add a flag to only update the `amount` field (not reset payment status). This way, when a billing plan fee changes and invoices are regenerated, the invoice amount reflects the corrected fee while preserving payment records.
+1. Admin selects invoices for Dec 2025 and Jan 2026 using checkboxes.
+2. Clicks "Record Payment" -- both invoices appear in the summary.
+3. Enters 40 AUD total, one receipt screenshot, one receiving channel.
+4. System auto-allocates: 10 AUD to Dec (outstanding), 30 AUD to Jan (outstanding).
+5. Both invoices update. Single receipt is linked to both transactions.
 
-#### Fix 4: Net the Realised PKR calculation
-Update the `realisedMap` query to properly handle negative transaction amounts (corrections) so the PKR total reflects the true net realised amount. The current sum is mathematically correct (it nets negatives), but duplicate entries still inflate it. The real fix is #1 above — preventing bad `amount_paid` values from accumulating.
+**No new development needed** for this flow -- it already works. The From/To date range in the payment form captures the coverage period for reference, but the allocation is driven by the invoice amounts, not dates.
 
-#### Fix 5: Add a "Recalculate from Transactions" safeguard
-Add a utility function that, when viewing/editing an invoice, recalculates `amount_paid` from the sum of all linked transactions. This serves as a self-healing mechanism for existing corrupted data. Run this recalculation when opening the Edit Invoice dialog.
+### What WILL be improved
+- Add a **helper tooltip/info text** on the Record Payment dialog explaining: "Selected invoices are paid in order. Amount is allocated starting from the first invoice."
+- Ensure the **Edit Payment** form (on `payment_transactions`) also mirrors the Record Payment layout for consistency.
 
-### Files to modify
-- `src/pages/Payments.tsx` — all five fixes in one file
+---
 
+## Technical Changes
+
+### File: `src/pages/Payments.tsx`
+
+1. **Add state for receipt file in edit mode** -- reuse `receiptInputRef` or add a second ref.
+
+2. **Add `amount_local` (Realized PKR) field to `editInvoiceData` state** and persist it. This will require either:
+   - Storing realized amount on the invoice itself (new column), OR
+   - Looking up from `payment_transactions` and allowing override.
+   
+   Since `payment_transactions` already tracks `amount_local`, the Edit Invoice form will add a display-only "Realized (PKR)" field that shows the sum from linked transactions, plus an editable override field.
+
+3. **Restructure the Edit Invoice dialog** to follow Record Payment's visual order:
+   - Top: Student name + invoice summary bar
+   - Billing Month + Status row
+   - Payment Period section (From / To)
+   - Separator
+   - Payment Details section (Paid At + Receiving Channel)
+   - Amount row: Amount (currency) + Realized (PKR)
+   - Exchange rate auto-calculated display
+   - Amount Paid + Forgiven Amount row
+   - Currency + Due Date row
+   - Proof of Payment upload area
+   - Remark / Notes textarea
+
+4. **Receipt upload in edit mode**: Allow uploading a new receipt that updates the latest `payment_transaction.receipt_url` for this invoice.
+
+5. **Add info text** to Record Payment dialog: "Amounts are allocated across selected invoices in order."
+
+### Database
+- No new columns needed. The `fee_invoices` table already has `period_from`, `period_to`, `payment_method`, `paid_at`. The realized amount lives in `payment_transactions.amount_local`.
+
+### No changes needed for multi-month payments
+- The existing cart/bulk payment system handles this correctly already. The plan is to add UX guidance text only.
