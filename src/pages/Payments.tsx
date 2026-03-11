@@ -759,9 +759,8 @@ export default function Payments() {
           }
         }
 
+        // Preliminary update for forgiven_amount and paid_at (amount_paid recalculated after insert)
         await supabase.from('fee_invoices').update({
-          amount_paid: Number(inv.amount_paid || 0) + allocated,
-          status: newStatus as any,
           paid_at: newStatus === 'paid' || newStatus === 'partially_paid' ? new Date().toISOString() : inv.paid_at,
           forgiven_amount: forgivenAmount,
         }).eq('id', inv.id);
