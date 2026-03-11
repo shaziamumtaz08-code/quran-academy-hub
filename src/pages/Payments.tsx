@@ -1934,7 +1934,7 @@ export default function Payments() {
                           selectedInvoiceCacheRef.current.clear();
                           unpaidSplit.forEach(si => selectedInvoiceCacheRef.current.set(si.id, si));
                           setSelectedIds(new Set(unpaidSplit.map(si => si.id)));
-                          const total = unpaidSplit.reduce((s, i) => s + (Number(i.amount) - Number(i.amount_paid || 0)), 0);
+                          const total = unpaidSplit.reduce((s, i) => s + Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0)), 0);
                           const months = unpaidSplit.map(i => i.billing_month).sort();
                           const earliest = getDefaultPeriodDates(months[0]);
                           const latest = getDefaultPeriodDates(months[months.length - 1]);
