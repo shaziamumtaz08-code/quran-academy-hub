@@ -163,8 +163,11 @@ export function TeacherDashboard() {
         {/* 2. Prayer widget (compact, collapsible) */}
         <PrayerTimesWidget islamicDate={islamicDate} timezone={timezone} />
 
-        {/* 3. Next Class (compact) */}
-        <NextClassCountdown />
+        {/* 3. Next Class (compact) + Start Class */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex-1 min-w-0"><NextClassCountdown /></div>
+          <StartClassButton />
+        </div>
 
         {/* 4. Quick Actions 2×2 */}
         <TeacherQuickActions />
