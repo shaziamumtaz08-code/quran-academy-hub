@@ -963,7 +963,9 @@ export default function Payments() {
   // Invoice action mutation (mark_unpaid, waive, void, reverse, discount)
   const invoiceActionMutation = useMutation({
     mutationFn: async ({ type, invoice, reason, discountAmt }: { type: string; invoice: InvoiceRow; reason: string; discountAmt?: number }) => {
-      const prev = { status: invoice.status, amount: invoice.amount, amount_paid: invoice.amount_paid, forgiven_amount: invoice.forgiven_amount };
+      // Guardrail #10: read paid_total from ledger
+      const paidTotal = ledgerPaidMap[invoice.id] || 0;
+      const prev = { status: invoice.status, amount: invoice.amount, amount_paid: paidTotal, forgiven_amount: invoice.forgiven_amount };
 
       switch (type) {
         case 'mark_unpaid': {
@@ -978,13 +980,15 @@ export default function Payments() {
         }
         case 'apply_discount': {
           const newAmount = Math.max(0, Number(invoice.amount) - (discountAmt || 0));
-          const newStatus = Number(invoice.amount_paid || 0) >= newAmount ? 'paid' : invoice.status;
+          // Guardrail #9: derive status from ledger
+          const newStatus = paidTotal >= newAmount ? 'paid' : (paidTotal > 0 ? 'partially_paid' : 'pending');
           await createAdjustment(invoice.id, 'apply_discount', prev, { amount: newAmount, status: newStatus, discount_applied: discountAmt }, reason);
           await supabase.from('fee_invoices').update({ amount: newAmount, status: newStatus as any }).eq('id', invoice.id);
           break;
         }
         case 'waive_fee': {
-          const outstanding = Number(invoice.amount) - Number(invoice.amount_paid || 0);
+          // Guardrail #8: balance = amount - paid_total - forgiven
+          const outstanding = Math.max(0, Number(invoice.amount) - paidTotal);
           await createAdjustment(invoice.id, 'waive_fee', prev, { status: 'waived', forgiven_amount: outstanding }, reason);
           await supabase.from('fee_invoices').update({ status: 'waived' as any, forgiven_amount: outstanding }).eq('id', invoice.id);
           break;
