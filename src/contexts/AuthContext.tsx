@@ -194,13 +194,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Update user's timezone in profile (silently, on login)
+  // Update user's timezone in profile ONLY if not already set
   const updateUserTimezone = async (userId: string) => {
     try {
       const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       if (!browserTimezone) return;
 
-      // Update timezone in profile
+      // Only set timezone if the profile doesn't already have one
+      const { data: existing } = await supabase
+        .from("profiles")
+        .select("timezone")
+        .eq("id", userId)
+        .single();
+
+      if (existing?.timezone) return; // Already has a timezone, don't overwrite
+
       const { error } = await supabase.from("profiles").update({ timezone: browserTimezone }).eq("id", userId);
 
       if (error) {
