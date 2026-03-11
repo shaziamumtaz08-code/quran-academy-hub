@@ -1998,13 +1998,15 @@ export default function Payments() {
                   </div>
 
                   {/* Amount + Realized */}
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className={`grid ${editInvoiceData.currency === 'PKR' ? 'grid-cols-1' : 'grid-cols-2'} gap-2`}>
                     <div><Label className="text-xs">Fee Amount ({editInvoiceData.currency}) <span className="text-muted-foreground font-normal">(from billing plan)</span></Label><Input type="number" value={editInvoiceData.amount} disabled className="h-8 text-sm bg-muted" /></div>
-                    <div><Label className="text-xs">Realized (PKR)</Label><Input type="number" placeholder="0.00" value={editInvoiceData.amount_local} onChange={e => setEditInvoiceData(d => d ? { ...d, amount_local: e.target.value } : null)} className="h-8 text-sm" /></div>
+                    {editInvoiceData.currency !== 'PKR' && (
+                      <div><Label className="text-xs">Realized (PKR)</Label><Input type="number" placeholder="0.00" value={editInvoiceData.amount_local} onChange={e => setEditInvoiceData(d => d ? { ...d, amount_local: e.target.value } : null)} className="h-8 text-sm" /></div>
+                    )}
                   </div>
 
                   {/* Exchange Rate */}
-                  {editAmountLocal > 0 && editAmountForeign > 0 && (
+                  {editInvoiceData.currency !== 'PKR' && editAmountLocal > 0 && editAmountForeign > 0 && (
                     <div className="flex items-center gap-2 text-xs bg-primary/5 rounded-lg p-2 border border-primary/20">
                       <ArrowRightLeft className="h-3.5 w-3.5 text-primary" />
                       <span className="text-muted-foreground">Rate:</span>

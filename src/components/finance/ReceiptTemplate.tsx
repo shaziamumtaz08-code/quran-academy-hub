@@ -105,14 +105,25 @@ export function ReceiptTemplate({
       })()}
 
       {/* Total */}
-      <div className="px-12 pb-6">
-        <div className="bg-emerald-50 rounded-lg p-5">
-          <div className="flex justify-between text-base font-bold">
-            <span>Total Received</span>
-            <span className="font-mono">{transactions[0]?.currency_foreign || invoiceCurrency} {totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+      {(() => {
+        const balance = invoiceAmount - totalPaid;
+        return (
+          <div className="px-12 pb-6">
+            <div className="bg-emerald-50 rounded-lg p-5 space-y-2">
+              <div className="flex justify-between text-base font-bold">
+                <span>Total Received</span>
+                <span className="font-mono">{transactions[0]?.currency_foreign || invoiceCurrency} {totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              </div>
+              {balance !== 0 && (
+                <div className={`flex justify-between text-sm font-semibold pt-2 border-t border-emerald-200 ${balance < 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                  <span>{balance < 0 ? 'Credit (Overpayment)' : 'Outstanding Balance'}</span>
+                  <span className="font-mono">{balance < 0 ? `−${invoiceCurrency} ${Math.abs(balance).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : `${invoiceCurrency} ${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}</span>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* Proof Attachments */}
       {transactions.some(tx => tx.receipt_url) && (
