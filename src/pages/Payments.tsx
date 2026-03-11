@@ -836,6 +836,34 @@ export default function Payments() {
     onError: (e: any) => toast({ title: 'Payment failed', description: e.message, variant: 'destructive' }),
   });
 
+  // Self-healing: recalculate amount_paid from transaction ledger when opening Edit Invoice
+  const openEditInvoiceWithRecalc = async (inv: any) => {
+    setEditReceiptFile(null);
+    // Query actual transaction sum
+    const { data: txns } = await supabase.from('payment_transactions').select('amount_foreign, amount_local').eq('invoice_id', inv.id);
+    const recalcPaid = (txns || []).reduce((s: number, t: any) => s + Number(t.amount_foreign || 0), 0);
+    const recalcLocal = (txns || []).reduce((s: number, t: any) => s + Number(t.amount_local || 0), 0);
+    // If amount_paid drifted, fix it in DB silently
+    if (Math.abs(recalcPaid - Number(inv.amount_paid || 0)) > 0.01) {
+      const invoiceAmount = Number(inv.amount);
+      const forgivenAmt = Number(inv.forgiven_amount || 0);
+      let fixStatus: string;
+      if (recalcPaid + forgivenAmt >= invoiceAmount) fixStatus = 'paid';
+      else if (recalcPaid > 0) fixStatus = 'partially_paid';
+      else fixStatus = 'pending';
+      await supabase.from('fee_invoices').update({ amount_paid: recalcPaid, status: fixStatus as any }).eq('id', inv.id);
+      queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
+    }
+    setEditInvoiceData({
+      id: inv.id, amount: String(inv.amount), due_date: inv.due_date || '', billing_month: inv.billing_month,
+      currency: inv.currency, remark: inv.remark || '', status: inv.status,
+      amount_paid: String(recalcPaid), forgiven_amount: String(inv.forgiven_amount || 0),
+      payment_method: inv.payment_method || '', paid_at: inv.paid_at || '',
+      period_from: (inv as any).period_from || '', period_to: (inv as any).period_to || '',
+      amount_local: String(recalcLocal || ''), receipt_url: '',
+    });
+  };
+
   // Helper to get current user profile for audit
   const getAdminInfo = async () => {
     const { data: { user: authUser } } = await supabase.auth.getUser();
