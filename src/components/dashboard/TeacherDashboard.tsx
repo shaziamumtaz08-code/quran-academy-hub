@@ -40,6 +40,7 @@ export function TeacherDashboard() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [islamicDate, setIslamicDate] = useState<IslamicDateData | null>(null);
+  const [timezone, setTimezone] = useState<string>('Asia/Karachi');
   const firstName = profile?.full_name?.split(" ")[0] || "Teacher";
 
   const { data: unreadCount = 0 } = useQuery({
@@ -156,10 +157,10 @@ export function TeacherDashboard() {
         </div>
 
         {/* 1. Islamic date/time card (scrolls) */}
-        <IslamicDateCard onIslamicDateLoaded={setIslamicDate} />
+        <IslamicDateCard onIslamicDateLoaded={setIslamicDate} onTimezoneResolved={setTimezone} />
 
         {/* 2. Prayer widget (compact, collapsible) */}
-        <PrayerTimesWidget islamicDate={islamicDate} />
+        <PrayerTimesWidget islamicDate={islamicDate} timezone={timezone} />
 
         {/* 3. Next Class (compact) */}
         <NextClassCountdown />

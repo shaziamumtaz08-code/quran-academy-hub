@@ -24,9 +24,10 @@ function useLiveClock(timezone: string) {
 
 interface IslamicDateCardProps {
   onIslamicDateLoaded?: (data: IslamicDateData) => void;
+  onTimezoneResolved?: (tz: string) => void;
 }
 
-export function IslamicDateCard({ onIslamicDateLoaded }: IslamicDateCardProps) {
+export function IslamicDateCard({ onIslamicDateLoaded, onTimezoneResolved }: IslamicDateCardProps) {
   const { user } = useAuth();
   const [islamicDate, setIslamicDate] = useState<IslamicDateData | null>(null);
   const [dateLoading, setDateLoading] = useState(true);
@@ -36,7 +37,12 @@ export function IslamicDateCard({ onIslamicDateLoaded }: IslamicDateCardProps) {
     if (!user?.id) return;
     supabase.from('profiles').select('timezone').eq('id', user.id).single()
       .then(({ data }) => {
-        if (data?.timezone) setTimezone(data.timezone);
+        if (data?.timezone) {
+          setTimezone(data.timezone);
+          onTimezoneResolved?.(data.timezone);
+        } else {
+          onTimezoneResolved?.('Asia/Karachi');
+        }
       });
   }, [user?.id]);
 
