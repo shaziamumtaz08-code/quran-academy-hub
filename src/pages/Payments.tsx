@@ -611,11 +611,11 @@ export default function Payments() {
     mutationFn: async () => {
       const targetMonth = monthFilter;
       const targetLabel = MONTHS.find(m => m.value === targetMonth)?.label || targetMonth;
-      const { data: existing } = await supabase.from('fee_invoices').select('id, plan_id, assignment_id, amount, status, period_from, period_to').eq('billing_month', targetMonth);
+      const { data: existing } = await supabase.from('fee_invoices').select('id, plan_id, assignment_id, amount, currency, status, period_from, period_to').eq('billing_month', targetMonth);
       const existingPlanMap = new Map((existing || []).filter(e => e.plan_id).map(e => [e.plan_id, e]));
       const existingAssignmentMap = new Map((existing || []).filter(e => e.assignment_id).map(e => [e.assignment_id, e]));
       const newInvoices: any[] = [];
-      const updatedInvoices: { id: string; amount: number; period_from: string; period_to: string }[] = [];
+      const updatedInvoices: { id: string; amount: number; currency: string; period_from: string; period_to: string }[] = [];
 
       // Proration helper
       const computeProration = (monthlyFee: number, assignmentStartDate: string | null, assignmentEndDate: string | null, billingMonth: string) => {
@@ -642,18 +642,19 @@ export default function Payments() {
       };
 
       // Helper to check if existing invoice needs updating
-      const checkAndQueueUpdate = (existingInv: any, prorated: { amount: number; period_from: string; period_to: string }) => {
+      const checkAndQueueUpdate = (existingInv: any, prorated: { amount: number; period_from: string; period_to: string }, currency: string) => {
         if (!existingInv) return false;
         const amountChanged = Math.abs(existingInv.amount - prorated.amount) > 0.01;
         const periodChanged = existingInv.period_from !== prorated.period_from || existingInv.period_to !== prorated.period_to;
+        const currencyChanged = existingInv.currency !== currency;
         
-        if (existingInv.status === 'pending' && (amountChanged || periodChanged)) {
-          updatedInvoices.push({ id: existingInv.id, amount: prorated.amount, period_from: prorated.period_from, period_to: prorated.period_to });
+        if (existingInv.status === 'pending' && (amountChanged || periodChanged || currencyChanged)) {
+          updatedInvoices.push({ id: existingInv.id, amount: prorated.amount, currency, period_from: prorated.period_from, period_to: prorated.period_to });
           return true;
         }
-        // For paid/partially_paid invoices, only update amount if fee changed (preserve payment state)
-        if ((existingInv.status === 'paid' || existingInv.status === 'partially_paid') && amountChanged) {
-          updatedInvoices.push({ id: existingInv.id, amount: prorated.amount, period_from: prorated.period_from, period_to: prorated.period_to });
+        // For paid/partially_paid invoices, update amount/currency if changed (preserve payment state)
+        if ((existingInv.status === 'paid' || existingInv.status === 'partially_paid') && (amountChanged || currencyChanged)) {
+          updatedInvoices.push({ id: existingInv.id, amount: prorated.amount, currency, period_from: prorated.period_from, period_to: prorated.period_to });
           return true;
         }
         return false;
@@ -705,7 +706,7 @@ export default function Payments() {
 
           const existingInv = existingPlanMap.get(p.id);
           if (existingInv) {
-            checkAndQueueUpdate(existingInv, prorated);
+            checkAndQueueUpdate(existingInv, prorated, p.currency);
             return; // skip insert
           }
 
@@ -736,7 +737,7 @@ export default function Payments() {
 
           const existingInv = existingAssignmentMap.get(a.id);
           if (existingInv) {
-            checkAndQueueUpdate(existingInv, prorated);
+            checkAndQueueUpdate(existingInv, prorated, a.fee_packages?.currency || 'USD');
             return;
           }
 
@@ -753,7 +754,7 @@ export default function Payments() {
       // Update existing pending invoices with corrected proration
       for (const upd of updatedInvoices) {
         await supabase.from('fee_invoices').update({
-          amount: upd.amount, period_from: upd.period_from, period_to: upd.period_to, updated_at: new Date().toISOString(),
+          amount: upd.amount, currency: upd.currency, period_from: upd.period_from, period_to: upd.period_to, updated_at: new Date().toISOString(),
         }).eq('id', upd.id);
       }
 
