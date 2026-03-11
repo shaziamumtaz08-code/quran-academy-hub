@@ -1073,7 +1073,7 @@ export default function Payments() {
     selectedInvoiceCacheRef.current.clear();
     selectedInvoiceCacheRef.current.set(invoiceId, inv);
     setSelectedIds(new Set([invoiceId]));
-    const due = Number(inv.amount) - Number(inv.amount_paid || 0);
+    const due = Math.max(0, Number(inv.amount) - (ledgerPaidMap[inv.id] || 0) - Number(inv.forgiven_amount || 0));
     const fallback = getDefaultPeriodDates(inv.billing_month);
     setPayForm({
       amount_foreign: due.toString(), amount_local: '', resolution: 'full', notes: '',
