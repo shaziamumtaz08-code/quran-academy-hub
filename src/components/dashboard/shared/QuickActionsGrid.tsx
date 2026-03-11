@@ -6,7 +6,8 @@ export interface QuickAction {
   bg: string;
   textColor: string;
   border: string;
-  onClick: () => void;
+  onClick?: () => void;
+  customRender?: () => React.ReactNode;
 }
 
 interface QuickActionsGridProps {
