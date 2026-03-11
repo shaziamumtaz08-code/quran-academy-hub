@@ -340,7 +340,12 @@ export function LaunchClassCard({ className }: LaunchClassCardProps) {
             <Button
               className="w-full gap-2"
               size="lg"
-              onClick={() => window.open(fallbackLink.link, '_blank')}
+              onClick={async () => {
+                if (user?.id) await markAttendanceForTodaysStudents(user.id);
+                window.open(fallbackLink.link, '_blank');
+                toast.success('✅ Class started & attendance marked!');
+                queryClient.invalidateQueries({ queryKey: ['attendance'] });
+              }}
             >
               <Video className="h-5 w-5" />
               Start Class
