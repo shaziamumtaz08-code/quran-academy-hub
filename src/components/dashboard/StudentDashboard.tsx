@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,77 +19,138 @@ const STUDENT_TABS = [
   { id: 'schedule', icon: '📅', label: 'Schedule', path: '/schedules' },
 ];
 
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const SHORT_DAYS: Record<string, string> = {
+  Sunday: 'Sun', Monday: 'Mon', Tuesday: 'Tue', Wednesday: 'Wed',
+  Thursday: 'Thu', Friday: 'Fri', Saturday: 'Sat',
+};
+
+function getNowInTimezone(tz: string) {
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+  const parts = formatter.formatToParts(now);
+  const get = (type: string) => parts.find(p => p.type === type)?.value || '0';
+  const weekday = get('weekday');
+  const dayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  return {
+    dayIndex: dayMap[weekday] ?? 0,
+    hours: parseInt(get('hour'), 10),
+    minutes: parseInt(get('minute'), 10),
+    seconds: parseInt(get('second'), 10),
+    absoluteMs: now.getTime(),
+  };
+}
+
+function buildNextOccurrence(dayName: string, timeStr: string, durationMinutes: number, tz: string): Date {
+  const tzNow = getNowInTimezone(tz);
+  const targetDayIndex = DAY_NAMES.indexOf(dayName.charAt(0).toUpperCase() + dayName.slice(1).toLowerCase());
+  if (targetDayIndex === -1) return new Date(tzNow.absoluteMs + 7 * 86400000);
+  const [targetH, targetM] = (timeStr || '00:00').split(':').map(Number);
+  let daysUntil = targetDayIndex - tzNow.dayIndex;
+  if (daysUntil < 0) daysUntil += 7;
+  if (daysUntil === 0) {
+    const nowMins = tzNow.hours * 60 + tzNow.minutes;
+    const classEndMins = targetH * 60 + targetM + durationMinutes;
+    if (nowMins >= classEndMins) daysUntil = 7;
+  }
+  const nowSecsOfDay = tzNow.hours * 3600 + tzNow.minutes * 60 + tzNow.seconds;
+  const targetSecsOfDay = targetH * 3600 + targetM * 60;
+  const totalSecsDiff = daysUntil * 86400 + (targetSecsOfDay - nowSecsOfDay);
+  return new Date(tzNow.absoluteMs + totalSecsDiff * 1000);
+}
+
+function useCountdown(target: Date | null) {
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, mins: 0, secs: 0 });
+  useEffect(() => {
+    if (!target) return;
+    const calc = () => {
+      const diff = Math.max(0, target.getTime() - Date.now());
+      setTimeLeft({
+        days: Math.floor(diff / 86400000),
+        hours: Math.floor((diff % 86400000) / 3600000),
+        mins: Math.floor((diff % 3600000) / 60000),
+        secs: Math.floor((diff % 60000) / 1000),
+      });
+    };
+    calc();
+    const t = setInterval(calc, 1000);
+    return () => clearInterval(t);
+  }, [target]);
+  return timeLeft;
+}
+
 export function StudentDashboard() {
   const { profile, user } = useAuth();
   const navigate = useNavigate();
   const currentMonth = new Date();
 
   const { data: stats, isLoading } = useQuery({
-    queryKey: ['student-dashboard-v3', user?.id],
+    queryKey: ['student-dashboard-v4', user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
 
-      // 1) Find active assignment (primary link to teacher + schedule)
+      // Fetch student timezone
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('timezone')
+        .eq('id', user.id)
+        .single();
+      const studentTz = profileData?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+      // 1) Find ALL active assignments
       const { data: assignments } = await supabase
         .from('student_teacher_assignments')
-        .select('id, teacher_id, subject:subjects(name)')
+        .select('id, teacher_id, subject:subjects(name), teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name)')
         .eq('student_id', user.id)
         .eq('status', 'active');
 
-      let assignmentId: string | null = null;
-      let teacherId: string | null = null;
+      let teacherName: string | null = null;
       let subjectName: string | null = null;
 
       if (assignments?.length) {
-        assignmentId = assignments[0].id;
-        teacherId = assignments[0].teacher_id;
+        teacherName = (assignments[0] as any).teacher?.full_name || null;
         subjectName = (assignments[0] as any).subject?.name || null;
       }
 
-      // Fallback: check enrollments table
-      if (!teacherId) {
-        const { data: enrollments } = await supabase
-          .from('enrollments')
-          .select('teacher_id, subject:subjects(name)')
-          .eq('student_id', user.id)
-          .eq('status', 'active')
-          .limit(1);
-        if (enrollments?.[0]) {
-          teacherId = enrollments[0].teacher_id;
-          subjectName = (enrollments[0] as any).subject?.name || null;
-        }
-      }
+      // 2) Fetch ALL schedules for all assignments
+      const assignmentIds = (assignments || []).map(a => a.id);
+      let nextClassData: { dayOfWeek: string; time: string; duration: number; dateTime: Date; teacherName: string; subject: string } | null = null;
 
-      // 2) Fetch teacher profile
-      let teacherName: string | null = null;
-      if (teacherId) {
-        const { data: t } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('id', teacherId)
-          .maybeSingle();
-        teacherName = t?.full_name || null;
-      }
-
-      // 3) Fetch schedule via assignment_id
-      let nextClass: { dayOfWeek: string; time: string; duration: number } | null = null;
-      if (assignmentId) {
-        const { data: scheds } = await supabase
+      if (assignmentIds.length) {
+        const { data: schedules } = await supabase
           .from('schedules')
-          .select('day_of_week, student_local_time, teacher_local_time, duration_minutes')
-          .eq('assignment_id', assignmentId)
-          .eq('is_active', true)
-          .limit(1);
-        if (scheds?.[0]) {
-          nextClass = {
-            dayOfWeek: scheds[0].day_of_week,
-            time: scheds[0].student_local_time || scheds[0].teacher_local_time || '00:00',
-            duration: scheds[0].duration_minutes,
-          };
+          .select('day_of_week, student_local_time, duration_minutes, assignment_id')
+          .in('assignment_id', assignmentIds)
+          .eq('is_active', true);
+
+        if (schedules?.length) {
+          const assignmentMap = new Map((assignments || []).map(a => [a.id, a]));
+
+          const upcoming = schedules.map(s => {
+            const assignment = assignmentMap.get(s.assignment_id!);
+            const normalizedDay = s.day_of_week ? s.day_of_week.charAt(0).toUpperCase() + s.day_of_week.slice(1).toLowerCase() : '';
+            return {
+              dayOfWeek: normalizedDay,
+              time: s.student_local_time || '00:00',
+              duration: s.duration_minutes,
+              dateTime: buildNextOccurrence(s.day_of_week, s.student_local_time || '00:00', s.duration_minutes, studentTz),
+              teacherName: (assignment as any)?.teacher?.full_name || 'Teacher',
+              subject: (assignment as any)?.subject?.name || 'Quran',
+            };
+          }).sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
+
+          nextClassData = upcoming[0] || null;
         }
       }
 
-      // 4) Attendance
+      // 3) Attendance
       const { data: attendance } = await supabase
         .from('attendance')
         .select('status, class_date, lesson_covered, homework, surah_name, ayah_from, ayah_to, raw_input_amount, lines_completed')
@@ -99,7 +160,7 @@ export function StudentDashboard() {
       const allAttendance = attendance || [];
       const present = allAttendance.filter(a => a.status === 'present').length;
 
-      // 5) Monthly plan
+      // 4) Monthly plan
       const { data: plans } = await supabase
         .from('student_monthly_plans')
         .select('*')
@@ -135,15 +196,15 @@ export function StudentDashboard() {
         totalClasses: allAttendance.length,
         attended: present,
         attendanceRate: allAttendance.length > 0 ? Math.round((present / allAttendance.length) * 100) : 0,
-        teacherName,
-        subject: subjectName || 'Quran',
+        teacherName: nextClassData?.teacherName || teacherName,
+        subject: nextClassData?.subject || subjectName || 'Quran',
         currentPosition,
         currentHomework,
         monthlyProgress,
         monthlyTarget,
         totalAchieved,
         markerLabel,
-        nextClass,
+        nextClass: nextClassData,
         recentLessons: allAttendance.slice(0, 3).map(a => ({
           date: format(new Date(a.class_date), 'MMM dd'),
           lesson: a.lesson_covered || 'No lesson recorded',
@@ -154,6 +215,8 @@ export function StudentDashboard() {
     },
     enabled: !!user?.id,
   });
+
+  const countdown = useCountdown(stats?.nextClass?.dateTime || null);
 
   if (isLoading) {
     return (
@@ -177,18 +240,29 @@ export function StudentDashboard() {
   ];
 
   const hasTeacher = !!stats?.teacherName;
-  const hasSchedule = !!stats?.nextClass;
+  const nc = stats?.nextClass;
+
+  // Format time for display
+  let timeDisplay = '';
+  let shortDay = '';
+  if (nc) {
+    const [hh, mm] = nc.time.split(':').map(Number);
+    const ampm = hh >= 12 ? 'PM' : 'AM';
+    const h12 = hh % 12 || 12;
+    timeDisplay = `${h12}:${String(mm).padStart(2, '0')} ${ampm}`;
+    shortDay = SHORT_DAYS[nc.dayOfWeek] || nc.dayOfWeek;
+  }
 
   const leftContent = (
     <>
-      {/* Next Class Card */}
+      {/* Next Class Card with live countdown */}
       <div className="bg-gradient-to-br from-primary to-[hsl(var(--navy-light))] rounded-2xl px-3 py-2.5 text-primary-foreground shadow-card">
         <div className="flex items-center gap-2">
           <p className="text-[10px] opacity-80 font-extrabold tracking-wide uppercase flex items-center gap-1 shrink-0">
             <span>📚</span> Next Class
           </p>
           <p className="text-[15px] leading-tight font-extrabold truncate flex-1 min-w-0">
-            {hasTeacher ? stats.teacherName : <span className="opacity-60 font-semibold">Teacher will be assigned soon</span>}
+            {hasTeacher ? stats!.teacherName : <span className="opacity-60 font-semibold">Teacher will be assigned soon</span>}
           </p>
           <button
             onClick={() => navigate('/zoom-management')}
@@ -198,11 +272,20 @@ export function StudentDashboard() {
             Join
           </button>
         </div>
-        <p className="text-[11px] text-primary-foreground/75 font-semibold truncate mt-1.5">
-          {stats?.subject} · {hasSchedule
-            ? `${stats!.nextClass!.dayOfWeek} · ${stats!.nextClass!.time}`
-            : <span className="opacity-60">No class scheduled yet</span>}
-        </p>
+        <div className="flex items-center justify-between mt-1.5">
+          <p className="text-[11px] text-primary-foreground/75 font-semibold truncate">
+            {stats?.subject} · {nc
+              ? `${shortDay.toLowerCase()} · ${timeDisplay}`
+              : <span className="opacity-60">No class scheduled yet</span>}
+          </p>
+          {nc && (
+            <div className="flex items-center gap-1 shrink-0">
+              <span className="bg-primary-foreground/15 rounded-md px-2 py-0.5 text-[11px] font-bold">{countdown.days}d</span>
+              <span className="bg-primary-foreground/15 rounded-md px-2 py-0.5 text-[11px] font-bold">{countdown.hours}h</span>
+              <span className="bg-primary-foreground/15 rounded-md px-2 py-0.5 text-[11px] font-bold">{String(countdown.mins).padStart(2, '0')}m</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Quick Actions — immediately after Next Class on mobile */}
@@ -254,7 +337,7 @@ export function StudentDashboard() {
         )}
       </div>
 
-      {/* Stats Row — mobile only, at the bottom */}
+      {/* Stats Row — mobile only */}
       <div className="md:hidden">
         <StatsRowCompact
           title={`📈 My Stats — ${format(new Date(), 'MMMM')}`}

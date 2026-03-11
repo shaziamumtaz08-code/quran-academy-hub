@@ -1,6 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
@@ -18,10 +19,13 @@ const EXAMINER_TABS = [
 
 export function ExaminerDashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const { data: stats, isLoading } = useQuery({
-    queryKey: ['examiner-dashboard'],
+    queryKey: ['examiner-dashboard', user?.id],
     queryFn: async () => {
+      if (!user?.id) return { conducted: 0, passed: 0, failed: 0, avgScore: 0 };
+
       const now = new Date();
       const startDate = format(startOfMonth(now), 'yyyy-MM-dd');
       const endDate = format(endOfMonth(now), 'yyyy-MM-dd');
@@ -29,6 +33,7 @@ export function ExaminerDashboard() {
       const { data: exams } = await supabase
         .from('exams')
         .select('id, exam_date, total_marks, max_total_marks, percentage')
+        .eq('examiner_id', user.id)
         .gte('exam_date', startDate)
         .lte('exam_date', endDate)
         .is('deleted_at', null);
@@ -41,6 +46,7 @@ export function ExaminerDashboard() {
 
       return { conducted, passed, failed, avgScore };
     },
+    enabled: !!user?.id,
   });
 
   if (isLoading) {
