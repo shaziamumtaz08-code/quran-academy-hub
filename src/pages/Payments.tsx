@@ -2366,7 +2366,7 @@ export default function Payments() {
                     }).eq('id', editPaymentData.invoiceId);
 
                     queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
-                    queryClient.invalidateQueries({ queryKey: ['realised-amounts'] });
+                    queryClient.invalidateQueries({ queryKey: ['txn-sums'] });
                     queryClient.invalidateQueries({ queryKey: ['payment_transactions'] });
                     toast({ title: 'Payment corrected successfully' });
                     trackActivity({ action: 'payment_edited', entityType: 'payment_transaction', entityId: tx.id, details: { invoice_id: editPaymentData.invoiceId, reason: editPaymentForm.reason } });
