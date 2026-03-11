@@ -1907,7 +1907,7 @@ export default function Payments() {
                       <p className="text-[10px] text-muted-foreground">The period spans multiple months. You can record payment for all matching invoices at once using the cart system:</p>
                       <div className="space-y-1 max-h-32 overflow-y-auto">
                         {splitInvoices.map(si => {
-                          const outstanding = Number(si.amount) - Number(si.amount_paid || 0);
+                          const outstanding = Math.max(0, Number(si.amount) - (ledgerPaidMap[si.id] || 0) - Number(si.forgiven_amount || 0));
                           return (
                             <div key={si.id} className="flex justify-between items-center text-xs py-1 border-b border-border/50 last:border-0">
                               <span className="font-medium">{formatBillingMonth(si.billing_month)}</span>
