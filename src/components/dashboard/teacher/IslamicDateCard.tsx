@@ -24,6 +24,7 @@ function useLiveClock(timezone: string) {
 
 interface IslamicDateCardProps {
   onIslamicDateLoaded?: (data: IslamicDateData) => void;
+  onTimezoneResolved?: (tz: string) => void;
 }
 
 export function IslamicDateCard({ onIslamicDateLoaded }: IslamicDateCardProps) {
