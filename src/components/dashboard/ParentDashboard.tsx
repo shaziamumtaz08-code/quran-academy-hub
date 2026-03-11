@@ -1,15 +1,21 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { StatCard } from './StatCard';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, CheckCircle, BookOpen, DollarSign, User, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
-import { SmartSessionRibbon } from './SmartSessionRibbon';
-import { CourseDeckCarousel } from './CourseDeckCarousel';
-import { QuickStatusWidgets } from './QuickStatusWidgets';
+
+import { DashboardShell } from './shared/DashboardShell';
+import { QuickActionsGrid } from './shared/QuickActionsGrid';
+import { StatsRowCompact } from './shared/StatsRowCompact';
+
+const PARENT_TABS = [
+  { id: 'home', icon: '🏠', label: 'Home', path: '/dashboard' },
+  { id: 'children', icon: '👩‍🎓', label: 'Children', path: '/students' },
+  { id: 'fees', icon: '💰', label: 'Fees', path: '/payments' },
+  { id: 'schedule', icon: '📅', label: 'Schedule', path: '/schedules' },
+];
 
 interface ChildData {
   id: string;
@@ -18,72 +24,68 @@ interface ChildData {
   totalClasses: number;
   attended: number;
   attendanceRate: number;
-  recentLessons: Array<{
-    date: string;
-    lesson: string;
-    homework: string;
-  }>;
+  currentLesson: string;
+  homework: string;
+  recentLessons: Array<{ date: string; lesson: string; homework: string; status: string }>;
 }
 
 export function ParentDashboard() {
   const { profile, user } = useAuth();
+  const navigate = useNavigate();
+  const [activeChildIdx, setActiveChildIdx] = useState(0);
 
-  // Fetch parent's children and their data
   const { data, isLoading } = useQuery({
-    queryKey: ['parent-dashboard', user?.id],
+    queryKey: ['parent-dashboard-v2', user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
 
-      // Get linked children
-      const { data: links, error: linksError } = await supabase
+      const { data: links } = await supabase
         .from('student_parent_links')
         .select('student_id, student:profiles!student_parent_links_student_id_fkey(id, full_name)')
         .eq('parent_id', user.id);
 
-      if (linksError) throw linksError;
+      if (!links?.length) return { children: [] };
 
-      if (!links || links.length === 0) {
-        return { children: [] };
-      }
-
-      // Fetch data for each child
       const childrenData: ChildData[] = await Promise.all(
         links.map(async (link) => {
           const studentId = link.student_id;
-          const studentName = link.student?.full_name || 'Unknown';
+          const studentName = (link.student as any)?.full_name || 'Unknown';
 
-          // Get attendance
           const { data: attendance } = await supabase
             .from('attendance')
-            .select('status, class_date, lesson_covered, homework')
+            .select('status, class_date, lesson_covered, homework, surah_name, ayah_from')
             .eq('student_id', studentId)
             .order('class_date', { ascending: false });
 
-          // Get teacher assignment
           const { data: teacherAssignment } = await supabase
             .from('student_teacher_assignments')
             .select('teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name)')
             .eq('student_id', studentId)
             .eq('status', 'active')
             .limit(1)
-            .single();
+            .maybeSingle();
 
-          const attendanceRecords = attendance || [];
-          const present = attendanceRecords.filter(a => a.status === 'present').length;
+          const records = attendance || [];
+          const present = records.filter(a => a.status === 'present').length;
+          const latestPresent = records.find(a => a.status === 'present');
+          const currentLesson = latestPresent
+            ? `${latestPresent.surah_name || latestPresent.lesson_covered || 'N/A'}${latestPresent.ayah_from ? ` Ayah ${latestPresent.ayah_from}` : ''}`
+            : 'No lessons yet';
 
           return {
             id: studentId,
             full_name: studentName,
-            teacher: teacherAssignment?.teacher?.full_name || null,
-            totalClasses: attendanceRecords.length,
+            teacher: (teacherAssignment?.teacher as any)?.full_name || null,
+            totalClasses: records.length,
             attended: present,
-            attendanceRate: attendanceRecords.length > 0 
-              ? Math.round((present / attendanceRecords.length) * 100) 
-              : 0,
-            recentLessons: attendanceRecords.slice(0, 3).map(a => ({
+            attendanceRate: records.length > 0 ? Math.round((present / records.length) * 100) : 0,
+            currentLesson,
+            homework: latestPresent?.homework || 'No homework',
+            recentLessons: records.slice(0, 3).map(a => ({
               date: format(new Date(a.class_date), 'MMM dd'),
               lesson: a.lesson_covered || 'No lesson recorded',
               homework: a.homework || 'No homework',
+              status: a.status,
             })),
           };
         })
@@ -96,174 +98,144 @@ export function ParentDashboard() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6 animate-fade-in">
-        <Skeleton className="h-20 rounded-xl" />
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-28 rounded-xl" />
-          ))}
+      <div className="min-h-screen bg-background">
+        <div className="h-12 bg-primary md:hidden" />
+        <div className="p-4 space-y-3 max-w-[680px] mx-auto pt-16">
+          <Skeleton className="h-16 rounded-2xl" />
+          <Skeleton className="h-14 rounded-xl" />
+          <Skeleton className="h-24 rounded-2xl" />
         </div>
       </div>
     );
   }
 
   const children = data?.children || [];
-
-  if (children.length === 0) {
+  if (!children.length) {
     return (
-      <div className="space-y-6 animate-fade-in">
-        <div>
-          <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">
-            Welcome, {profile?.full_name || 'Parent'}
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">Monitor your children's learning progress</p>
-        </div>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <AlertCircle className="h-12 w-12 mb-4 opacity-50" />
-              <p className="text-lg font-medium">No children linked to your account</p>
-              <p className="text-sm mt-1">Please contact an administrator to link your children.</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <DashboardShell tabs={PARENT_TABS} brandLabel="AQA"
+        leftContent={
+          <div className="bg-card rounded-xl border border-border p-6 text-center text-muted-foreground">
+            <p className="text-lg font-bold">No children linked</p>
+            <p className="text-xs mt-1">Contact an administrator to link your children.</p>
+          </div>
+        }
+        rightContent={null}
+      />
     );
   }
 
-  // Display first child's data (can be expanded to show multiple)
-  const child = children[0];
+  const child = children[activeChildIdx] || children[0];
+
+  const leftContent = (
+    <>
+      {/* Child toggle tabs */}
+      {children.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {children.map((c, idx) => (
+            <button
+              key={c.id}
+              onClick={() => setActiveChildIdx(idx)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap border transition-colors ${idx === activeChildIdx ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-foreground border-border hover:bg-secondary'}`}
+            >
+              {c.full_name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Current Lesson */}
+      <div className="bg-card rounded-2xl border border-border p-3.5 shadow-card">
+        <p className="text-[11px] text-muted-foreground font-bold tracking-wider uppercase mb-1.5">📖 Current Lesson</p>
+        <p className="text-[15px] font-extrabold text-foreground">{child.currentLesson}</p>
+        <p className="text-[11px] text-muted-foreground mt-1 truncate">📝 {child.homework}</p>
+      </div>
+
+      {/* Recent Lessons */}
+      <div>
+        <p className="text-[13px] font-extrabold text-foreground mb-2">📋 Recent Lessons</p>
+        {(!child.recentLessons.length) ? (
+          <div className="bg-card rounded-xl border border-border p-4 text-center text-muted-foreground">
+            <p className="text-xs">No lessons recorded yet</p>
+          </div>
+        ) : (
+          <div className="bg-card rounded-xl border border-border overflow-hidden divide-y divide-border">
+            {child.recentLessons.map((lesson, idx) => (
+              <div key={idx} className="px-3 py-2.5 flex items-center gap-2.5">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${lesson.status === 'present' ? 'bg-teal/10 text-teal' : 'bg-destructive/10 text-destructive'}`}>
+                  {lesson.status === 'present' ? '✅' : '❌'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-[13px] text-foreground truncate">{lesson.lesson}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">📝 {lesson.homework}</p>
+                </div>
+                <span className="text-[11px] text-muted-foreground flex-shrink-0">{lesson.date}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+
+  const rightContent = (
+    <>
+      {/* Attendance Badge */}
+      <div className="bg-card rounded-2xl border border-border p-4 shadow-card">
+        <p className="text-[13px] font-extrabold text-foreground mb-2">📊 Attendance</p>
+        <div className="flex items-center gap-3">
+          <span className={`text-3xl font-black ${child.attendanceRate >= 85 ? 'text-teal' : child.attendanceRate >= 60 ? 'text-gold' : 'text-destructive'}`}>
+            {child.attendanceRate}%
+          </span>
+          <p className="text-xs text-muted-foreground">{child.attended} of {child.totalClasses} classes</p>
+        </div>
+      </div>
+
+      {/* Teacher Card */}
+      <div className="bg-card rounded-2xl border border-border p-3.5 shadow-card">
+        <p className="text-[11px] text-muted-foreground font-bold tracking-wider uppercase mb-2">👨‍🏫 Teacher</p>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+            {(child.teacher || 'N')[0]}
+          </div>
+          <p className="font-bold text-[15px] text-foreground">{child.teacher || 'Not assigned'}</p>
+        </div>
+      </div>
+
+      {/* Fee Status */}
+      <div className="bg-card rounded-2xl border border-gold/20 p-3.5 shadow-card">
+        <p className="text-[11px] text-muted-foreground font-bold tracking-wider uppercase mb-2">💰 Fee Status</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xl font-black text-gold">Pending</p>
+            <p className="text-[11px] text-muted-foreground">Check fee details</p>
+          </div>
+          <button
+            onClick={() => navigate('/payments')}
+            className="bg-gold/10 text-gold border border-gold/15 rounded-xl px-3 py-1.5 font-bold text-xs hover:opacity-90 transition-opacity"
+          >
+            View Fees →
+          </button>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <StatsRowCompact
+        title={`📈 ${child.full_name}'s Stats`}
+        stats={[
+          { value: child.totalClasses, label: 'Total', sub: 'Classes', color: 'text-teal' },
+          { value: child.attended, label: 'Attended', sub: 'Present', color: 'text-sky' },
+          { value: `${child.attendanceRate}%`, label: 'Rate', sub: 'Attendance', color: 'text-gold' },
+        ]}
+      />
+    </>
+  );
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Header with Quick Status */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">
-            Welcome, {profile?.full_name || 'Parent'}
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">Monitor your child's Quran learning progress</p>
-        </div>
-        <QuickStatusWidgets />
-      </div>
-
-      {/* Child Info with Smart Ribbon */}
-      <div className="bg-primary/5 rounded-xl p-4 border border-primary/20">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <User className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Your Child</p>
-              <p className="text-lg font-serif font-bold text-foreground">{child.full_name}</p>
-            </div>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-muted-foreground">Teacher</p>
-            <p className="font-medium text-foreground text-sm">{child.teacher || 'Not assigned'}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Course Deck Carousel */}
-      <CourseDeckCarousel />
-
-      {/* Stats Grid - Compact */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <StatCard
-          title="Total Classes"
-          value={child.totalClasses}
-          icon={Calendar}
-        />
-        <StatCard
-          title="Attended"
-          value={child.attended}
-          icon={CheckCircle}
-          variant="primary"
-        />
-        <StatCard
-          title="Attendance"
-          value={`${child.attendanceRate}%`}
-          icon={BookOpen}
-        />
-        <StatCard
-          title="Fee Status"
-          value="Pending"
-          icon={DollarSign}
-          variant="gold"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Recent Lessons */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="font-serif text-base">Recent Lessons</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {child.recentLessons.length === 0 ? (
-              <div className="text-center py-6 text-muted-foreground">
-                <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">No lessons recorded yet</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-border">
-                {child.recentLessons.map((lesson, idx) => (
-                  <div key={idx} className="py-3 first:pt-0 last:pb-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-foreground text-sm truncate">{lesson.lesson}</p>
-                        <p className="text-xs text-muted-foreground mt-1 truncate">📝 {lesson.homework}</p>
-                      </div>
-                      <span className="text-xs text-muted-foreground flex-shrink-0">{lesson.date}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Attendance Summary */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="font-serif text-base">Attendance Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-6">
-              <div className="flex-1">
-                <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-primary rounded-full transition-all duration-500"
-                    style={{ width: `${child.attendanceRate}%` }}
-                  />
-                </div>
-                <div className="flex justify-between mt-2 text-xs">
-                  <span className="text-muted-foreground">Attendance Rate</span>
-                  <span className="font-medium text-foreground">{child.attendanceRate}%</span>
-                </div>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-serif font-bold text-primary">{child.attended}</p>
-                <p className="text-xs text-muted-foreground">of {child.totalClasses}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Multiple Children Indicator */}
-      {children.length > 1 && (
-        <Card>
-          <CardContent className="py-3">
-            <div className="flex items-center gap-3 text-muted-foreground">
-              <User className="h-4 w-4" />
-              <p className="text-sm">You have {children.length} children linked. Showing data for {child.full_name}.</p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+    <DashboardShell
+      tabs={PARENT_TABS}
+      leftContent={leftContent}
+      rightContent={rightContent}
+      brandLabel="AQA"
+    />
   );
 }

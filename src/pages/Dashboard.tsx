@@ -4,6 +4,10 @@ import { TeacherDashboard } from "@/components/dashboard/TeacherDashboard";
 import { StudentDashboard } from "@/components/dashboard/StudentDashboard";
 import { ParentDashboard } from "@/components/dashboard/ParentDashboard";
 import { SuperAdminDashboard } from "@/components/dashboard/SuperAdminDashboard";
+import { FeesAdminDashboard } from "@/components/dashboard/FeesAdminDashboard";
+import { AdmissionsAdminDashboard } from "@/components/dashboard/AdmissionsAdminDashboard";
+import { AcademicAdminDashboard } from "@/components/dashboard/AcademicAdminDashboard";
+import { ExaminerDashboard } from "@/components/dashboard/ExaminerDashboard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle } from "lucide-react";
 
@@ -22,10 +26,6 @@ export default function Dashboard() {
             <Skeleton key={i} className="h-32 rounded-xl" />
           ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Skeleton className="h-64 rounded-xl" />
-          <Skeleton className="h-64 rounded-xl" />
-        </div>
       </div>
     );
   }
@@ -40,19 +40,23 @@ export default function Dashboard() {
     );
   }
 
-  // Use activeRole from context (which reacts to role switcher)
   const displayRole = activeRole || profile.role;
 
-  // Route to role-specific dashboard based on ACTIVE role
   switch (displayRole) {
     case 'super_admin':
       return <SuperAdminDashboard />;
     
     case 'admin':
-    case 'admin_admissions':
-    case 'admin_fees':
-    case 'admin_academic':
       return <AdminDashboard />;
+    
+    case 'admin_admissions':
+      return <AdmissionsAdminDashboard />;
+    
+    case 'admin_fees':
+      return <FeesAdminDashboard />;
+    
+    case 'admin_academic':
+      return <AcademicAdminDashboard />;
     
     case 'teacher':
       return <TeacherDashboard />;
@@ -64,10 +68,9 @@ export default function Dashboard() {
       return <ParentDashboard />;
     
     case 'examiner':
-      return <AdminDashboard />;
+      return <ExaminerDashboard />;
     
     default:
-      // Fallback for users without a role
       return (
         <div className="space-y-8 animate-fade-in">
           <div>
@@ -82,7 +85,7 @@ export default function Dashboard() {
               <div>
                 <h3 className="font-medium text-foreground">Role Not Assigned</h3>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Your account doesn't have a role assigned yet. Please contact an administrator to get your role assigned.
+                  Your account doesn't have a role assigned yet. Please contact an administrator.
                 </p>
               </div>
             </div>
