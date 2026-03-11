@@ -15,7 +15,6 @@ import { StartClassButton } from "@/components/zoom/StartClassButton";
 import { TeacherQuickActions } from "./teacher/TeacherQuickActions";
 import { TeacherStatsRow } from "./teacher/TeacherStatsRow";
 import { TeacherBottomNav } from "./teacher/TeacherBottomNav";
-import { StartClassButton } from "@/components/zoom/StartClassButton";
 
 interface TodayFocusStudent {
   id: string;
