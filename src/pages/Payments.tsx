@@ -1824,12 +1824,14 @@ export default function Payments() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className={`grid ${bulkCurrency === 'PKR' ? 'grid-cols-1' : 'grid-cols-2'} gap-2`}>
                   <div><Label className="text-xs">Amount ({bulkCurrency})</Label><Input type="number" placeholder="0.00" value={payForm.amount_foreign} onChange={e => setPayForm(f => ({ ...f, amount_foreign: e.target.value }))} className="h-8 text-sm" /></div>
-                  <div><Label className="text-xs">Realized (PKR)</Label><Input type="number" placeholder="0.00" value={payForm.amount_local} onChange={e => setPayForm(f => ({ ...f, amount_local: e.target.value }))} className="h-8 text-sm" /></div>
+                  {bulkCurrency !== 'PKR' && (
+                    <div><Label className="text-xs">Realized (PKR)</Label><Input type="number" placeholder="0.00" value={payForm.amount_local} onChange={e => setPayForm(f => ({ ...f, amount_local: e.target.value }))} className="h-8 text-sm" /></div>
+                  )}
                 </div>
 
-                {amountLocal > 0 && amountForeign > 0 && (
+                {bulkCurrency !== 'PKR' && amountLocal > 0 && amountForeign > 0 && (
                   <div className="flex items-center gap-2 text-xs bg-primary/5 rounded-lg p-2 border border-primary/20">
                     <ArrowRightLeft className="h-3.5 w-3.5 text-primary" />
                     <span className="text-muted-foreground">Rate:</span>
