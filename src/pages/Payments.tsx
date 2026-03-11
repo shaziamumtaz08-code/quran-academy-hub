@@ -1980,7 +1980,7 @@ export default function Payments() {
 
                   {/* Amount + Realized */}
                   <div className="grid grid-cols-2 gap-2">
-                    <div><Label className="text-xs">Amount ({editInvoiceData.currency})</Label><Input type="number" value={editInvoiceData.amount} onChange={e => setEditInvoiceData(d => d ? { ...d, amount: e.target.value } : null)} className="h-8 text-sm" /></div>
+                    <div><Label className="text-xs">Fee Amount ({editInvoiceData.currency}) <span className="text-muted-foreground font-normal">(from billing plan)</span></Label><Input type="number" value={editInvoiceData.amount} disabled className="h-8 text-sm bg-muted" /></div>
                     <div><Label className="text-xs">Realized (PKR)</Label><Input type="number" placeholder="0.00" value={editInvoiceData.amount_local} onChange={e => setEditInvoiceData(d => d ? { ...d, amount_local: e.target.value } : null)} className="h-8 text-sm" /></div>
                   </div>
 
