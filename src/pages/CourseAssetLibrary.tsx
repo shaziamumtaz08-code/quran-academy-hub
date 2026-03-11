@@ -102,7 +102,7 @@ const SAMPLE_ASSET: Omit<CourseAsset, 'id' | 'created_at' | 'updated_at' | 'link
     {
       runId: 'run-001',
       year: '2025',
-      batch: 'Batch Alpha',
+      batch: 'Shawwal Batch',
       teacher: 'Ustadh Ahmed',
       teacherExp: 'MA Arabic Linguistics, 8 years teaching experience',
       status: 'Active',
