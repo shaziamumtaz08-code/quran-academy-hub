@@ -1921,7 +1921,7 @@ export default function Payments() {
                       </div>
                       <div className="flex items-center justify-between pt-1 border-t border-accent/20">
                         <span className="text-xs font-medium text-foreground">Total Outstanding</span>
-                        <span className="text-xs font-mono font-bold">{splitInvoices[0]?.currency || 'USD'} {splitInvoices.reduce((s, i) => s + Math.max(0, Number(i.amount) - Number(i.amount_paid || 0)), 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                        <span className="text-xs font-mono font-bold">{splitInvoices[0]?.currency || 'USD'} {splitInvoices.reduce((s, i) => s + Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0)), 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                       </div>
                       <Button
                         size="sm"
