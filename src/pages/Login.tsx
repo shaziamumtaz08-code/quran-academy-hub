@@ -8,7 +8,6 @@ import { Mail, Lock, Loader2, ChevronDown, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
 import logoDark from '@/assets/logo-dark.jpg';
-import { lovable } from '@/integrations/lovable/index';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
