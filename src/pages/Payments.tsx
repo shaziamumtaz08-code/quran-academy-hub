@@ -1334,7 +1334,7 @@ export default function Payments() {
                           <TableCell>{formatBillingMonth(inv.billing_month)}</TableCell>
                           <TableCell className="text-right font-mono font-semibold">{inv.currency} {Number(inv.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}</TableCell>
                           <TableCell className="text-right font-mono text-muted-foreground">
-                            {Number(inv.amount_paid || 0) > 0 ? `${inv.currency} ${Number(inv.amount_paid).toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '—'}
+                            {(ledgerPaidMap[inv.id] || 0) > 0 ? `${inv.currency} ${(ledgerPaidMap[inv.id] || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '—'}
                           </TableCell>
                           {!isReadOnlyView && (
                             <TableCell className="text-right font-mono text-muted-foreground">
