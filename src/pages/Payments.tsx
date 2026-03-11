@@ -798,6 +798,24 @@ export default function Payments() {
         if (txErr) throw txErr;
       }
 
+      // Fix: Recalculate amount_paid from transaction ledger (not additive)
+      const affectedInvoiceIds = [...new Set(transactions.map(t => t.invoice_id))];
+      for (const invId of affectedInvoiceIds) {
+        const { data: allTxns } = await supabase.from('payment_transactions').select('amount_foreign').eq('invoice_id', invId);
+        const totalPaid = (allTxns || []).reduce((s: number, t: any) => s + Number(t.amount_foreign || 0), 0);
+        const inv = unpaidSelected.find(i => i.id === invId);
+        const invoiceAmount = Number(inv?.amount || 0);
+        const forgivenAmt = Number(inv?.forgiven_amount || 0);
+        let recalcStatus: string;
+        if (totalPaid + forgivenAmt >= invoiceAmount) recalcStatus = 'paid';
+        else if (totalPaid > 0) recalcStatus = 'partially_paid';
+        else recalcStatus = 'pending';
+        await supabase.from('fee_invoices').update({
+          amount_paid: totalPaid,
+          status: recalcStatus as any,
+        }).eq('id', invId);
+      }
+
       return transactions.length;
     },
     onSuccess: (count) => {
