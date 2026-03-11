@@ -598,12 +598,18 @@ export default function Payments() {
 
       // Helper to check if existing invoice needs updating
       const checkAndQueueUpdate = (existingInv: any, prorated: { amount: number; period_from: string; period_to: string }) => {
-        if (existingInv && existingInv.status === 'pending' &&
-            (Math.abs(existingInv.amount - prorated.amount) > 0.01 ||
-             existingInv.period_from !== prorated.period_from ||
-             existingInv.period_to !== prorated.period_to)) {
+        if (!existingInv) return false;
+        const amountChanged = Math.abs(existingInv.amount - prorated.amount) > 0.01;
+        const periodChanged = existingInv.period_from !== prorated.period_from || existingInv.period_to !== prorated.period_to;
+        
+        if (existingInv.status === 'pending' && (amountChanged || periodChanged)) {
           updatedInvoices.push({ id: existingInv.id, amount: prorated.amount, period_from: prorated.period_from, period_to: prorated.period_to });
-          return true; // was updated
+          return true;
+        }
+        // For paid/partially_paid invoices, only update amount if fee changed (preserve payment state)
+        if ((existingInv.status === 'paid' || existingInv.status === 'partially_paid') && amountChanged) {
+          updatedInvoices.push({ id: existingInv.id, amount: prorated.amount, period_from: prorated.period_from, period_to: prorated.period_to });
+          return true;
         }
         return false;
       };
