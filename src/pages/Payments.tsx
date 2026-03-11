@@ -1796,7 +1796,7 @@ export default function Payments() {
             </DialogHeader>
 
             {editInvoiceData && (() => {
-              const editAmountForeign = parseFloat(editInvoiceData.amount_paid) || 0;
+              const editAmountForeign = parseFloat(editInvoiceData.amount) || 0;
               const editAmountLocal = parseFloat(editInvoiceData.amount_local) || 0;
               const editEffectiveRate = editAmountForeign > 0 ? editAmountLocal / editAmountForeign : 0;
               const editExpected = parseFloat(editInvoiceData.amount) || 0;
