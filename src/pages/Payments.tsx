@@ -2029,7 +2029,10 @@ export default function Payments() {
                   <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Admin Overrides</Label>
 
                   <div className="grid grid-cols-2 gap-2">
-                    <div><Label className="text-xs">Amount Paid</Label><Input type="number" value={editInvoiceData.amount_paid} onChange={e => setEditInvoiceData(d => d ? { ...d, amount_paid: e.target.value } : null)} className="h-8 text-sm" /></div>
+                    <div>
+                      <Label className="text-xs">Amount Paid <span className="text-muted-foreground font-normal">(from ledger)</span></Label>
+                      <Input type="number" value={editInvoiceData.amount_paid} disabled className="h-8 text-sm bg-muted" />
+                    </div>
                     <div><Label className="text-xs">Forgiven Amount</Label><Input type="number" value={editInvoiceData.forgiven_amount} onChange={e => setEditInvoiceData(d => d ? { ...d, forgiven_amount: e.target.value } : null)} className="h-8 text-sm" /></div>
                   </div>
 
