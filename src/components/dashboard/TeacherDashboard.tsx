@@ -40,6 +40,7 @@ export function TeacherDashboard() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [islamicDate, setIslamicDate] = useState<IslamicDateData | null>(null);
+  const [timezone, setTimezone] = useState<string>('Asia/Karachi');
   const firstName = profile?.full_name?.split(" ")[0] || "Teacher";
 
   const { data: unreadCount = 0 } = useQuery({
