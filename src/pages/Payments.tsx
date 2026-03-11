@@ -754,7 +754,7 @@ export default function Payments() {
       // Update existing pending invoices with corrected proration
       for (const upd of updatedInvoices) {
         await supabase.from('fee_invoices').update({
-          amount: upd.amount, period_from: upd.period_from, period_to: upd.period_to, updated_at: new Date().toISOString(),
+          amount: upd.amount, currency: upd.currency, period_from: upd.period_from, period_to: upd.period_to, updated_at: new Date().toISOString(),
         }).eq('id', upd.id);
       }
 
