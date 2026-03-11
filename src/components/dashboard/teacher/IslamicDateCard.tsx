@@ -27,7 +27,7 @@ interface IslamicDateCardProps {
   onTimezoneResolved?: (tz: string) => void;
 }
 
-export function IslamicDateCard({ onIslamicDateLoaded }: IslamicDateCardProps) {
+export function IslamicDateCard({ onIslamicDateLoaded, onTimezoneResolved }: IslamicDateCardProps) {
   const { user } = useAuth();
   const [islamicDate, setIslamicDate] = useState<IslamicDateData | null>(null);
   const [dateLoading, setDateLoading] = useState(true);
