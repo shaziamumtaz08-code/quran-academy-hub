@@ -1325,7 +1325,8 @@ export default function Payments() {
                       <TableHead>Billing Month</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
                       <TableHead className="text-right">Paid</TableHead>
-                      {!isReadOnlyView && <TableHead className="text-right">Realised (PKR)</TableHead>}
+                      <TableHead className="text-right">Balance</TableHead>
+                      {!isReadOnlyView && !invoices.every(i => i.currency === 'PKR') && <TableHead className="text-right">Realised (PKR)</TableHead>}
                       <TableHead>Due Date</TableHead>
                        <TableHead className="text-center">Status</TableHead>
                        <TableHead className="w-12"></TableHead>
@@ -1349,9 +1350,17 @@ export default function Payments() {
                           <TableCell className="text-right font-mono text-muted-foreground">
                             {(ledgerPaidMap[inv.id] || 0) > 0 ? `${inv.currency} ${(ledgerPaidMap[inv.id] || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '—'}
                           </TableCell>
-                          {!isReadOnlyView && (
+                          {(() => {
+                            const balance = Number(inv.amount) - (ledgerPaidMap[inv.id] || 0) - Number(inv.forgiven_amount || 0);
+                            return (
+                              <TableCell className={`text-right font-mono font-semibold ${balance > 0 ? 'text-destructive' : balance < 0 ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+                                {balance > 0 ? `${inv.currency} ${balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : balance < 0 ? `−${inv.currency} ${Math.abs(balance).toLocaleString(undefined, { maximumFractionDigits: 2 })} (Credit)` : '—'}
+                              </TableCell>
+                            );
+                          })()}
+                          {!isReadOnlyView && !invoices.every(i => i.currency === 'PKR') && (
                             <TableCell className="text-right font-mono text-muted-foreground">
-                              {realisedMap[inv.id] ? `PKR ${realisedMap[inv.id].toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}
+                              {inv.currency !== 'PKR' && realisedMap[inv.id] ? `PKR ${realisedMap[inv.id].toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}
                             </TableCell>
                           )}
                           <TableCell>{inv.due_date || '—'}</TableCell>
@@ -1815,12 +1824,14 @@ export default function Payments() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className={`grid ${bulkCurrency === 'PKR' ? 'grid-cols-1' : 'grid-cols-2'} gap-2`}>
                   <div><Label className="text-xs">Amount ({bulkCurrency})</Label><Input type="number" placeholder="0.00" value={payForm.amount_foreign} onChange={e => setPayForm(f => ({ ...f, amount_foreign: e.target.value }))} className="h-8 text-sm" /></div>
-                  <div><Label className="text-xs">Realized (PKR)</Label><Input type="number" placeholder="0.00" value={payForm.amount_local} onChange={e => setPayForm(f => ({ ...f, amount_local: e.target.value }))} className="h-8 text-sm" /></div>
+                  {bulkCurrency !== 'PKR' && (
+                    <div><Label className="text-xs">Realized (PKR)</Label><Input type="number" placeholder="0.00" value={payForm.amount_local} onChange={e => setPayForm(f => ({ ...f, amount_local: e.target.value }))} className="h-8 text-sm" /></div>
+                  )}
                 </div>
 
-                {amountLocal > 0 && amountForeign > 0 && (
+                {bulkCurrency !== 'PKR' && amountLocal > 0 && amountForeign > 0 && (
                   <div className="flex items-center gap-2 text-xs bg-primary/5 rounded-lg p-2 border border-primary/20">
                     <ArrowRightLeft className="h-3.5 w-3.5 text-primary" />
                     <span className="text-muted-foreground">Rate:</span>
@@ -1987,13 +1998,15 @@ export default function Payments() {
                   </div>
 
                   {/* Amount + Realized */}
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className={`grid ${editInvoiceData.currency === 'PKR' ? 'grid-cols-1' : 'grid-cols-2'} gap-2`}>
                     <div><Label className="text-xs">Fee Amount ({editInvoiceData.currency}) <span className="text-muted-foreground font-normal">(from billing plan)</span></Label><Input type="number" value={editInvoiceData.amount} disabled className="h-8 text-sm bg-muted" /></div>
-                    <div><Label className="text-xs">Realized (PKR)</Label><Input type="number" placeholder="0.00" value={editInvoiceData.amount_local} onChange={e => setEditInvoiceData(d => d ? { ...d, amount_local: e.target.value } : null)} className="h-8 text-sm" /></div>
+                    {editInvoiceData.currency !== 'PKR' && (
+                      <div><Label className="text-xs">Realized (PKR)</Label><Input type="number" placeholder="0.00" value={editInvoiceData.amount_local} onChange={e => setEditInvoiceData(d => d ? { ...d, amount_local: e.target.value } : null)} className="h-8 text-sm" /></div>
+                    )}
                   </div>
 
                   {/* Exchange Rate */}
-                  {editAmountLocal > 0 && editAmountForeign > 0 && (
+                  {editInvoiceData.currency !== 'PKR' && editAmountLocal > 0 && editAmountForeign > 0 && (
                     <div className="flex items-center gap-2 text-xs bg-primary/5 rounded-lg p-2 border border-primary/20">
                       <ArrowRightLeft className="h-3.5 w-3.5 text-primary" />
                       <span className="text-muted-foreground">Rate:</span>

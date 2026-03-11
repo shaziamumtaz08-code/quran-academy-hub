@@ -45,7 +45,7 @@ const getStatusLabel = (status: string) => {
 
 export function InvoiceTemplate({ invoice, invoiceNumber, orgName = 'Al-Quran Time Academy', orgLogo }: InvoiceTemplateProps) {
   const status = getStatusLabel(invoice.status);
-  const outstanding = Math.max(0, invoice.amount - invoice.amount_paid - invoice.forgiven_amount);
+  const outstanding = invoice.amount - invoice.amount_paid - invoice.forgiven_amount;
   const logoSrc = orgLogo || logoDark;
 
   return (
@@ -149,8 +149,10 @@ export function InvoiceTemplate({ invoice, invoiceNumber, orgName = 'Al-Quran Ti
             </div>
           )}
           <div style={{ borderTop: '2px solid #0a192f', paddingTop: 12, marginTop: 8, display: 'flex', justifyContent: 'space-between', fontSize: 18, fontWeight: 800 }}>
-            <span>Balance Due</span>
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", color: '#0a192f' }}>{invoice.currency} {outstanding.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            <span>{outstanding < 0 ? 'Credit' : 'Balance Due'}</span>
+            <span style={{ fontFamily: "'JetBrains Mono', monospace", color: outstanding < 0 ? '#059669' : '#0a192f' }}>
+              {outstanding < 0 ? `−${invoice.currency} ${Math.abs(outstanding).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : `${invoice.currency} ${outstanding.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+            </span>
           </div>
         </div>
       </div>
