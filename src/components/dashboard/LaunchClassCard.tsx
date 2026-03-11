@@ -14,6 +14,72 @@ interface LaunchClassCardProps {
   className?: string;
 }
 
+/**
+ * Upsert attendance records for all students scheduled with this teacher today.
+ */
+async function markAttendanceForTodaysStudents(teacherId: string) {
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const todayDay = dayNames[new Date().getDay()];
+
+  const { data: assignments } = await supabase
+    .from('student_teacher_assignments')
+    .select('id, student_id, duration_minutes, division_id, branch_id')
+    .eq('teacher_id', teacherId)
+    .eq('status', 'active');
+
+  if (!assignments?.length) return;
+
+  const assignmentIds = assignments.map(a => a.id);
+  const { data: schedules } = await supabase
+    .from('schedules')
+    .select('assignment_id, teacher_local_time, duration_minutes, division_id, branch_id, course_id')
+    .in('assignment_id', assignmentIds)
+    .eq('day_of_week', todayDay)
+    .eq('is_active', true);
+
+  if (!schedules?.length) return;
+
+  const assignmentMap = new Map(assignments.map(a => [a.id, a]));
+  const now = new Date().toISOString();
+
+  for (const schedule of schedules) {
+    const assignment = assignmentMap.get(schedule.assignment_id!);
+    if (!assignment) continue;
+
+    const { data: existing } = await supabase
+      .from('attendance')
+      .select('id')
+      .eq('student_id', assignment.student_id)
+      .eq('teacher_id', teacherId)
+      .eq('class_date', today)
+      .eq('class_time', schedule.teacher_local_time || '00:00')
+      .maybeSingle();
+
+    if (existing) {
+      await supabase
+        .from('attendance')
+        .update({ teacher_join_time: now } as any)
+        .eq('id', existing.id);
+    } else {
+      await supabase
+        .from('attendance')
+        .insert({
+          student_id: assignment.student_id,
+          teacher_id: teacherId,
+          class_date: today,
+          class_time: schedule.teacher_local_time || '00:00',
+          status: 'present',
+          duration_minutes: schedule.duration_minutes || assignment.duration_minutes,
+          division_id: schedule.division_id || assignment.division_id,
+          branch_id: schedule.branch_id || assignment.branch_id,
+          course_id: schedule.course_id,
+          teacher_join_time: now,
+        } as any);
+    }
+  }
+}
+
 export function LaunchClassCard({ className }: LaunchClassCardProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
