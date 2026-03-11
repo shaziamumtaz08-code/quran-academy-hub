@@ -475,7 +475,8 @@ export default function Payments() {
   const hasShortfall = amountForeign > 0 && amountForeign < totalExpected;
 
   const totalFees = invoices.reduce((s, i) => s + Number(i.amount), 0);
-  const collected = invoices.reduce((s, i) => s + Number(i.amount_paid || 0), 0);
+  // Guardrail #2/#10: Always derive collected from ledger, never from invoice.amount_paid
+  const collected = useMemo(() => invoices.reduce((s, i) => s + (ledgerPaidMap[i.id] || 0), 0), [invoices, ledgerPaidMap]);
   const pending = totalFees - collected;
 
   const monthOptions = Array.from({ length: 12 }, (_, i) => {
