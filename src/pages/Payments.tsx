@@ -1773,7 +1773,7 @@ export default function Payments() {
                   {unpaidSelected.map(inv => (
                     <div key={inv.id} className="flex justify-between text-xs">
                       <span className="truncate mr-2">{inv.profiles?.full_name} — {formatBillingMonth(inv.billing_month)}</span>
-                      <span className="font-mono font-medium shrink-0">{inv.currency} {(Number(inv.amount) - Number(inv.amount_paid || 0)).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                      <span className="font-mono font-medium shrink-0">{inv.currency} {Math.max(0, Number(inv.amount) - (ledgerPaidMap[inv.id] || 0) - Number(inv.forgiven_amount || 0)).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                     </div>
                   ))}
                 </div>
