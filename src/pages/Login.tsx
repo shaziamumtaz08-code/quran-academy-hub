@@ -194,9 +194,7 @@ export default function Login() {
               const { error } = await lovable.auth.signInWithOAuth("google", {
                 redirect_uri: window.location.origin + '/dashboard',
               });
-              if (error) {
-                toast({ title: "Google sign-in failed", description: String(error), variant: "destructive" });
-              }
+              if (error) toast({ title: "Google sign-in failed", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
             }}
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24">
