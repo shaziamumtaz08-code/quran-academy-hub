@@ -5,10 +5,85 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { format } from 'date-fns';
 
 interface StartClassButtonProps {
   sessionId?: string;
   onSessionCreated?: (sessionId: string, meetingLink: string) => void;
+}
+
+/**
+ * Upsert attendance records for all students scheduled with this teacher today.
+ * Sets status='present', teacher_join_time, and captures the class_time from schedule.
+ */
+async function markAttendanceForTodaysStudents(teacherId: string) {
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const todayDay = dayNames[new Date().getDay()];
+
+  // 1. Find all active assignments for this teacher
+  const { data: assignments } = await supabase
+    .from('student_teacher_assignments')
+    .select('id, student_id, duration_minutes, division_id, branch_id')
+    .eq('teacher_id', teacherId)
+    .eq('status', 'active');
+
+  if (!assignments?.length) return;
+
+  // 2. Get schedules for today
+  const assignmentIds = assignments.map(a => a.id);
+  const { data: schedules } = await supabase
+    .from('schedules')
+    .select('assignment_id, teacher_local_time, duration_minutes, division_id, branch_id, course_id')
+    .in('assignment_id', assignmentIds)
+    .eq('day_of_week', todayDay)
+    .eq('is_active', true);
+
+  if (!schedules?.length) return;
+
+  // 3. Build a map of assignment → student info
+  const assignmentMap = new Map(assignments.map(a => [a.id, a]));
+
+  // 4. Upsert attendance for each scheduled student
+  const now = new Date().toISOString();
+  for (const schedule of schedules) {
+    const assignment = assignmentMap.get(schedule.assignment_id!);
+    if (!assignment) continue;
+
+    // Check if attendance already exists for this student + date
+    const { data: existing } = await supabase
+      .from('attendance')
+      .select('id')
+      .eq('student_id', assignment.student_id)
+      .eq('teacher_id', teacherId)
+      .eq('class_date', today)
+      .eq('class_time', schedule.teacher_local_time || '00:00')
+      .maybeSingle();
+
+    if (existing) {
+      // Update existing record with teacher_join_time (don't overwrite status if already set)
+      await supabase
+        .from('attendance')
+        .update({ teacher_join_time: now } as any)
+        .eq('id', existing.id);
+    } else {
+      // Insert new attendance record
+      await supabase
+        .from('attendance')
+        .insert({
+          student_id: assignment.student_id,
+          teacher_id: teacherId,
+          class_date: today,
+          class_time: schedule.teacher_local_time || '00:00',
+          status: 'present',
+          duration_minutes: schedule.duration_minutes || assignment.duration_minutes,
+          division_id: schedule.division_id || assignment.division_id,
+          branch_id: schedule.branch_id || assignment.branch_id,
+          course_id: schedule.course_id,
+          teacher_join_time: now,
+        } as any);
+    }
+  }
 }
 
 export function StartClassButton({ sessionId, onSessionCreated }: StartClassButtonProps) {
@@ -39,15 +114,14 @@ export function StartClassButton({ sessionId, onSessionCreated }: StartClassButt
       return data;
     },
     enabled: !!user?.id,
-    refetchInterval: 30000, // Check every 30 seconds
+    refetchInterval: 30000,
   });
 
-  // Start class mutation
+  // Start class mutation — now also marks attendance
   const startClassMutation = useMutation({
     mutationFn: async () => {
       if (!user?.id) throw new Error('Not authenticated');
 
-      // First create a session if none exists
       let sessionToUse = currentSessionId;
       
       if (!sessionToUse) {
@@ -66,7 +140,7 @@ export function StartClassButton({ sessionId, onSessionCreated }: StartClassButt
         setCurrentSessionId(newSession.id);
       }
 
-      // Call the database function to get and reserve a license
+      // Reserve Zoom license
       const { data, error } = await supabase.rpc('get_and_reserve_license', {
         _teacher_id: user.id,
         _session_id: sessionToUse,
@@ -83,6 +157,9 @@ export function StartClassButton({ sessionId, onSessionCreated }: StartClassButt
         throw new Error('No license data returned');
       }
 
+      // ✅ ATTENDANCE AUTOMATION: Mark all today's students as present
+      await markAttendanceForTodaysStudents(user.id);
+
       return { 
         sessionId: sessionToUse, 
         meetingLink: data[0].meeting_link,
@@ -91,16 +168,15 @@ export function StartClassButton({ sessionId, onSessionCreated }: StartClassButt
     },
     onSuccess: (result) => {
       toast({
-        title: 'Class Started!',
-        description: 'Opening Zoom meeting in a new tab...',
+        title: '✅ Class Started & Attendance Marked!',
+        description: 'Attendance recorded for today\'s students. Opening Zoom...',
       });
       
-      // Open Zoom link in new tab
       window.open(result.meetingLink, '_blank');
       
-      // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ['active-session'] });
       queryClient.invalidateQueries({ queryKey: ['live-sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['attendance'] });
       
       onSessionCreated?.(result.sessionId, result.meetingLink);
     },
@@ -153,7 +229,7 @@ export function StartClassButton({ sessionId, onSessionCreated }: StartClassButt
     );
   }
 
-  // If there's an active session, show "End Class" button
+  // Active session → "Class in Progress" badge + Rejoin/End
   if (activeSession) {
     return (
       <div className="flex items-center gap-3">

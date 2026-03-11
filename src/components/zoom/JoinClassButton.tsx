@@ -5,7 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { differenceInMinutes, format, addDays, setHours, setMinutes, addMinutes, subMinutes } from 'date-fns';
+import { differenceInMinutes, format, setHours, setMinutes, addMinutes, subMinutes } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 interface JoinClassButtonProps {
@@ -14,6 +14,63 @@ interface JoinClassButtonProps {
 }
 
 const GRACE_PERIOD_MINUTES = 15;
+
+/**
+ * Record student_join_time on today's attendance record.
+ * If no record exists yet (teacher hasn't started), create one with status 'present'.
+ */
+async function recordStudentJoinTime(studentId: string, teacherId: string) {
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const now = new Date().toISOString();
+
+  // Find today's attendance record for this student
+  const { data: existing } = await supabase
+    .from('attendance')
+    .select('id, student_join_time')
+    .eq('student_id', studentId)
+    .eq('teacher_id', teacherId)
+    .eq('class_date', today)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existing) {
+    // Only update if student_join_time not already recorded (anti-spam)
+    if (!(existing as any).student_join_time) {
+      await supabase
+        .from('attendance')
+        .update({ student_join_time: now } as any)
+        .eq('id', existing.id);
+    }
+  } else {
+    // No attendance record yet — teacher may not have started. Create one.
+    // Get assignment info for duration/division
+    const { data: assignment } = await supabase
+      .from('student_teacher_assignments')
+      .select('id, duration_minutes, division_id, branch_id')
+      .eq('student_id', studentId)
+      .eq('teacher_id', teacherId)
+      .eq('status', 'active')
+      .limit(1)
+      .maybeSingle();
+
+    const currentTime = format(new Date(), 'HH:mm');
+
+    await supabase
+      .from('attendance')
+      .insert({
+        student_id: studentId,
+        teacher_id: teacherId,
+        class_date: today,
+        class_time: currentTime,
+        status: 'present',
+        duration_minutes: assignment?.duration_minutes || 30,
+        division_id: assignment?.division_id,
+        branch_id: assignment?.branch_id,
+        student_join_time: now,
+      } as any);
+  }
+}
 
 export function JoinClassButton({ teacherId, className }: JoinClassButtonProps) {
   const { user } = useAuth();
@@ -150,14 +207,19 @@ export function JoinClassButton({ teacherId, className }: JoinClassButtonProps) 
     refetchInterval: 30000,
   });
 
-  // Join mutation with auto-logging
+  // Join mutation — now also records student_join_time
   const joinMutation = useMutation({
     mutationFn: async () => {
       if (!user?.id || !scheduleStatus?.meetingLink) {
         throw new Error('Unable to join class');
       }
 
-      // Create session if needed and log attendance
+      // ✅ ATTENDANCE AUTOMATION: Record student join time
+      if (scheduleStatus.teacherId) {
+        await recordStudentJoinTime(user.id, scheduleStatus.teacherId);
+      }
+
+      // Create session if needed and log zoom attendance
       let sessionId = scheduleStatus.sessionId;
 
       if (!sessionId && scheduleStatus.teacherId) {
@@ -186,11 +248,12 @@ export function JoinClassButton({ teacherId, className }: JoinClassButtonProps) 
     },
     onSuccess: (meetingLink) => {
       toast({
-        title: 'Joining Class',
-        description: 'Opening Zoom meeting...',
+        title: '✅ Joining Class',
+        description: 'Attendance recorded. Opening Zoom meeting...',
       });
       window.open(meetingLink, '_blank');
       queryClient.invalidateQueries({ queryKey: ['zoom-attendance-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['attendance'] });
     },
     onError: (error: Error) => {
       toast({
