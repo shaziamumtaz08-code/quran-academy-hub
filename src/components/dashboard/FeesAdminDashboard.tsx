@@ -26,14 +26,26 @@ export function FeesAdminDashboard() {
     queryKey: ['fees-admin-dashboard', divisionId],
     queryFn: async () => {
       const currentMonth = format(new Date(), 'yyyy-MM');
-      let query = supabase.from('fee_invoices').select('amount, amount_paid, status, student_id');
+      let query = supabase.from('fee_invoices').select('id, amount, amount_paid, status, student_id');
       query = query.eq('billing_month', currentMonth);
       if (divisionId) query = query.eq('division_id', divisionId);
       const { data: fees } = await query;
 
       const invoices = fees || [];
+      const invoiceIds = invoices.map(f => f.id);
+      
+      // Guardrail: derive collected from payment_transactions ledger
+      let collectedFromLedger = 0;
+      if (invoiceIds.length > 0) {
+        const { data: txns } = await supabase
+          .from('payment_transactions')
+          .select('invoice_id, amount_foreign')
+          .in('invoice_id', invoiceIds);
+        collectedFromLedger = (txns || []).reduce((s: number, t: any) => s + Number(t.amount_foreign || 0), 0);
+      }
+
       const expected = invoices.reduce((s, f) => s + f.amount, 0);
-      const collected = invoices.reduce((s, f) => s + f.amount_paid, 0);
+      const collected = collectedFromLedger;
       const pending = expected - collected;
       const overdue = invoices.filter(f => f.status === 'overdue');
 

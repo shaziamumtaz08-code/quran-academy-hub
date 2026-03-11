@@ -466,7 +466,8 @@ export default function Payments() {
     return cached.map(c => currentMap.get(c.id) || c);
   }, [invoices, selectedIds]);
   const unpaidSelected = useMemo(() => selectedInvoices.filter(i => i.status !== 'paid' && i.status !== 'voided'), [selectedInvoices]);
-  const totalExpected = unpaidSelected.reduce((s, i) => s + (Number(i.amount) - Number(i.amount_paid || 0)), 0);
+  // Guardrail #8: balance = invoice.amount - paid_total - forgiven_amount (paid_total from ledger)
+  const totalExpected = unpaidSelected.reduce((s, i) => s + Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0)), 0);
   const bulkCurrency = unpaidSelected[0]?.currency || 'USD';
   const amountForeign = parseFloat(payForm.amount_foreign) || 0;
   const amountLocal = parseFloat(payForm.amount_local) || 0;
@@ -475,7 +476,8 @@ export default function Payments() {
   const hasShortfall = amountForeign > 0 && amountForeign < totalExpected;
 
   const totalFees = invoices.reduce((s, i) => s + Number(i.amount), 0);
-  const collected = invoices.reduce((s, i) => s + Number(i.amount_paid || 0), 0);
+  // Guardrail #2/#10: Always derive collected from ledger, never from invoice.amount_paid
+  const collected = useMemo(() => invoices.reduce((s, i) => s + (ledgerPaidMap[i.id] || 0), 0), [invoices, ledgerPaidMap]);
   const pending = totalFees - collected;
 
   const monthOptions = Array.from({ length: 12 }, (_, i) => {
@@ -790,30 +792,30 @@ export default function Payments() {
       const transactions: any[] = [];
       let remainingAmount = amountForeign;
 
+      // Guardrail #4: ONLY insert into payment_transactions. Never increment invoice.amount_paid directly.
+      const forgivenAmounts: Record<string, number> = {};
+
       for (const inv of unpaidSelected) {
-        const outstanding = Number(inv.amount) - Number(inv.amount_paid || 0);
+        // Guardrail #8: balance = invoice.amount - paid_total - forgiven_amount
+        const paidSoFar = ledgerPaidMap[inv.id] || 0;
+        const outstanding = Math.max(0, Number(inv.amount) - paidSoFar - Number(inv.forgiven_amount || 0));
         const allocated = Math.min(remainingAmount, outstanding);
         remainingAmount -= allocated;
 
         const isShort = allocated < outstanding;
-        let newStatus: string = 'paid';
         let forgivenAmount = 0;
 
         if (isShort) {
           switch (payForm.resolution) {
-            case 'partial': newStatus = 'partially_paid'; break;
-            case 'writeoff': newStatus = 'paid'; forgivenAmount = outstanding - allocated; break;
-            case 'arrears': newStatus = 'paid'; break;
-            default: newStatus = 'partially_paid';
+            case 'writeoff': forgivenAmount = outstanding - allocated; break;
+            case 'arrears': break;
+            default: break; // partial - leave open
           }
         }
 
-        // Preliminary update for forgiven_amount and paid_at (amount_paid recalculated after insert)
-        await supabase.from('fee_invoices').update({
-          paid_at: newStatus === 'paid' || newStatus === 'partially_paid' ? new Date().toISOString() : inv.paid_at,
-          forgiven_amount: forgivenAmount,
-        }).eq('id', inv.id);
+        forgivenAmounts[inv.id] = forgivenAmount;
 
+        // Guardrail #4: ONLY insert into payment_transactions
         transactions.push({
           invoice_id: inv.id, student_id: inv.student_id,
           amount_foreign: allocated, currency_foreign: inv.currency,
@@ -846,14 +848,15 @@ export default function Payments() {
         if (txErr) throw txErr;
       }
 
-      // Fix: Recalculate amount_paid from transaction ledger (not additive)
+      // Guardrail #7: After transaction insert, refresh invoice totals from ledger
       const affectedInvoiceIds = [...new Set(transactions.map(t => t.invoice_id))];
       for (const invId of affectedInvoiceIds) {
         const { data: allTxns } = await supabase.from('payment_transactions').select('amount_foreign').eq('invoice_id', invId);
         const totalPaid = (allTxns || []).reduce((s: number, t: any) => s + Number(t.amount_foreign || 0), 0);
         const inv = unpaidSelected.find(i => i.id === invId);
         const invoiceAmount = Number(inv?.amount || 0);
-        const forgivenAmt = Number(inv?.forgiven_amount || 0);
+        const forgivenAmt = Number(inv?.forgiven_amount || 0) + (forgivenAmounts[invId] || 0);
+        // Guardrail #9: status logic
         let recalcStatus: string;
         if (totalPaid + forgivenAmt >= invoiceAmount) recalcStatus = 'paid';
         else if (totalPaid > 0) recalcStatus = 'partially_paid';
@@ -861,6 +864,8 @@ export default function Payments() {
         await supabase.from('fee_invoices').update({
           amount_paid: totalPaid,
           status: recalcStatus as any,
+          forgiven_amount: forgivenAmt,
+          paid_at: recalcStatus === 'paid' || recalcStatus === 'partially_paid' ? new Date().toISOString() : null,
         }).eq('id', invId);
       }
 
@@ -958,7 +963,9 @@ export default function Payments() {
   // Invoice action mutation (mark_unpaid, waive, void, reverse, discount)
   const invoiceActionMutation = useMutation({
     mutationFn: async ({ type, invoice, reason, discountAmt }: { type: string; invoice: InvoiceRow; reason: string; discountAmt?: number }) => {
-      const prev = { status: invoice.status, amount: invoice.amount, amount_paid: invoice.amount_paid, forgiven_amount: invoice.forgiven_amount };
+      // Guardrail #10: read paid_total from ledger
+      const paidTotal = ledgerPaidMap[invoice.id] || 0;
+      const prev = { status: invoice.status, amount: invoice.amount, amount_paid: paidTotal, forgiven_amount: invoice.forgiven_amount };
 
       switch (type) {
         case 'mark_unpaid': {
@@ -973,13 +980,15 @@ export default function Payments() {
         }
         case 'apply_discount': {
           const newAmount = Math.max(0, Number(invoice.amount) - (discountAmt || 0));
-          const newStatus = Number(invoice.amount_paid || 0) >= newAmount ? 'paid' : invoice.status;
+          // Guardrail #9: derive status from ledger
+          const newStatus = paidTotal >= newAmount ? 'paid' : (paidTotal > 0 ? 'partially_paid' : 'pending');
           await createAdjustment(invoice.id, 'apply_discount', prev, { amount: newAmount, status: newStatus, discount_applied: discountAmt }, reason);
           await supabase.from('fee_invoices').update({ amount: newAmount, status: newStatus as any }).eq('id', invoice.id);
           break;
         }
         case 'waive_fee': {
-          const outstanding = Number(invoice.amount) - Number(invoice.amount_paid || 0);
+          // Guardrail #8: balance = amount - paid_total - forgiven
+          const outstanding = Math.max(0, Number(invoice.amount) - paidTotal);
           await createAdjustment(invoice.id, 'waive_fee', prev, { status: 'waived', forgiven_amount: outstanding }, reason);
           await supabase.from('fee_invoices').update({ status: 'waived' as any, forgiven_amount: outstanding }).eq('id', invoice.id);
           break;
@@ -1068,7 +1077,7 @@ export default function Payments() {
     selectedInvoiceCacheRef.current.clear();
     selectedInvoiceCacheRef.current.set(invoiceId, inv);
     setSelectedIds(new Set([invoiceId]));
-    const due = Number(inv.amount) - Number(inv.amount_paid || 0);
+    const due = Math.max(0, Number(inv.amount) - (ledgerPaidMap[inv.id] || 0) - Number(inv.forgiven_amount || 0));
     const fallback = getDefaultPeriodDates(inv.billing_month);
     setPayForm({
       amount_foreign: due.toString(), amount_local: '', resolution: 'full', notes: '',
@@ -1089,7 +1098,7 @@ export default function Payments() {
     invoices.filter(inv => familyInvoiceIds.includes(inv.id)).forEach(inv => selectedInvoiceCacheRef.current.set(inv.id, inv));
     setSelectedIds(new Set(familyInvoiceIds));
     const familyUnpaid = invoices.filter(i => familyInvoiceIds.includes(i.id));
-    const total = familyUnpaid.reduce((s, i) => s + (Number(i.amount) - Number(i.amount_paid || 0)), 0);
+    const total = familyUnpaid.reduce((s, i) => s + Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0)), 0);
     const allFroms = familyUnpaid.map(i => i.period_from || getDefaultPeriodDates(i.billing_month).from).sort();
     const allTos = familyUnpaid.map(i => i.period_to || getDefaultPeriodDates(i.billing_month).to).sort();
     setPayForm({
@@ -1235,7 +1244,7 @@ export default function Payments() {
               )}
               {isParentView && (() => {
                 const unpaidInvoices = invoices.filter(i => i.status !== 'paid' && i.status !== 'voided' && i.status !== 'waived');
-                const unpaidTotal = unpaidInvoices.reduce((s, i) => s + (Number(i.amount) - Number(i.amount_paid || 0)), 0);
+                const unpaidTotal = unpaidInvoices.reduce((s, i) => s + Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0)), 0);
                 if (unpaidInvoices.length === 0) return null;
                 return (
                   <Button
@@ -1329,7 +1338,7 @@ export default function Payments() {
                           <TableCell>{formatBillingMonth(inv.billing_month)}</TableCell>
                           <TableCell className="text-right font-mono font-semibold">{inv.currency} {Number(inv.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}</TableCell>
                           <TableCell className="text-right font-mono text-muted-foreground">
-                            {Number(inv.amount_paid || 0) > 0 ? `${inv.currency} ${Number(inv.amount_paid).toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '—'}
+                            {(ledgerPaidMap[inv.id] || 0) > 0 ? `${inv.currency} ${(ledgerPaidMap[inv.id] || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '—'}
                           </TableCell>
                           {!isReadOnlyView && (
                             <TableCell className="text-right font-mono text-muted-foreground">
@@ -1768,7 +1777,7 @@ export default function Payments() {
                   {unpaidSelected.map(inv => (
                     <div key={inv.id} className="flex justify-between text-xs">
                       <span className="truncate mr-2">{inv.profiles?.full_name} — {formatBillingMonth(inv.billing_month)}</span>
-                      <span className="font-mono font-medium shrink-0">{inv.currency} {(Number(inv.amount) - Number(inv.amount_paid || 0)).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                      <span className="font-mono font-medium shrink-0">{inv.currency} {Math.max(0, Number(inv.amount) - (ledgerPaidMap[inv.id] || 0) - Number(inv.forgiven_amount || 0)).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                     </div>
                   ))}
                 </div>
@@ -1902,7 +1911,7 @@ export default function Payments() {
                       <p className="text-[10px] text-muted-foreground">The period spans multiple months. You can record payment for all matching invoices at once using the cart system:</p>
                       <div className="space-y-1 max-h-32 overflow-y-auto">
                         {splitInvoices.map(si => {
-                          const outstanding = Number(si.amount) - Number(si.amount_paid || 0);
+                          const outstanding = Math.max(0, Number(si.amount) - (ledgerPaidMap[si.id] || 0) - Number(si.forgiven_amount || 0));
                           return (
                             <div key={si.id} className="flex justify-between items-center text-xs py-1 border-b border-border/50 last:border-0">
                               <span className="font-medium">{formatBillingMonth(si.billing_month)}</span>
@@ -1916,7 +1925,7 @@ export default function Payments() {
                       </div>
                       <div className="flex items-center justify-between pt-1 border-t border-accent/20">
                         <span className="text-xs font-medium text-foreground">Total Outstanding</span>
-                        <span className="text-xs font-mono font-bold">{splitInvoices[0]?.currency || 'USD'} {splitInvoices.reduce((s, i) => s + Math.max(0, Number(i.amount) - Number(i.amount_paid || 0)), 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                        <span className="text-xs font-mono font-bold">{splitInvoices[0]?.currency || 'USD'} {splitInvoices.reduce((s, i) => s + Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0)), 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                       </div>
                       <Button
                         size="sm"
@@ -1929,7 +1938,7 @@ export default function Payments() {
                           selectedInvoiceCacheRef.current.clear();
                           unpaidSplit.forEach(si => selectedInvoiceCacheRef.current.set(si.id, si));
                           setSelectedIds(new Set(unpaidSplit.map(si => si.id)));
-                          const total = unpaidSplit.reduce((s, i) => s + (Number(i.amount) - Number(i.amount_paid || 0)), 0);
+                          const total = unpaidSplit.reduce((s, i) => s + Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0)), 0);
                           const months = unpaidSplit.map(i => i.billing_month).sort();
                           const earliest = getDefaultPeriodDates(months[0]);
                           const latest = getDefaultPeriodDates(months[months.length - 1]);
@@ -2020,7 +2029,10 @@ export default function Payments() {
                   <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Admin Overrides</Label>
 
                   <div className="grid grid-cols-2 gap-2">
-                    <div><Label className="text-xs">Amount Paid</Label><Input type="number" value={editInvoiceData.amount_paid} onChange={e => setEditInvoiceData(d => d ? { ...d, amount_paid: e.target.value } : null)} className="h-8 text-sm" /></div>
+                    <div>
+                      <Label className="text-xs">Amount Paid <span className="text-muted-foreground font-normal">(from ledger)</span></Label>
+                      <Input type="number" value={editInvoiceData.amount_paid} disabled className="h-8 text-sm bg-muted" />
+                    </div>
                     <div><Label className="text-xs">Forgiven Amount</Label><Input type="number" value={editInvoiceData.forgiven_amount} onChange={e => setEditInvoiceData(d => d ? { ...d, forgiven_amount: e.target.value } : null)} className="h-8 text-sm" /></div>
                   </div>
 
