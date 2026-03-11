@@ -6,7 +6,8 @@ export interface QuickAction {
   bg: string;
   textColor: string;
   border: string;
-  onClick: () => void;
+  onClick?: () => void;
+  customRender?: () => React.ReactNode;
 }
 
 interface QuickActionsGridProps {
@@ -21,16 +22,22 @@ export function QuickActionsGrid({ actions, title = 'Quick Actions' }: QuickActi
         {title}
       </p>
       <div className="grid grid-cols-2 gap-2.5">
-        {actions.map((a) => (
-          <button
-            key={a.label}
-            onClick={a.onClick}
-            className={`${a.bg} ${a.textColor} border ${a.border} rounded-2xl p-3.5 flex items-center gap-2 cursor-pointer text-left font-bold text-sm hover:opacity-90 transition-opacity`}
-          >
-            <span className="text-xl">{a.icon}</span>
-            <span>{a.label}</span>
-          </button>
-        ))}
+        {actions.map((a) =>
+          a.customRender ? (
+            <div key={a.label} className="flex items-stretch">
+              {a.customRender()}
+            </div>
+          ) : (
+            <button
+              key={a.label}
+              onClick={a.onClick}
+              className={`${a.bg} ${a.textColor} border ${a.border} rounded-2xl p-3.5 flex items-center gap-2 cursor-pointer text-left font-bold text-sm hover:opacity-90 transition-opacity`}
+            >
+              <span className="text-xl">{a.icon}</span>
+              <span>{a.label}</span>
+            </button>
+          )
+        )}
       </div>
     </div>
   );

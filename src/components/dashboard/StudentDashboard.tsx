@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { Video } from 'lucide-react';
+import { JoinClassButton } from '@/components/zoom/JoinClassButton';
 
 import { DashboardShell } from './shared/DashboardShell';
 import { QuickActionsGrid } from './shared/QuickActionsGrid';
@@ -233,7 +234,7 @@ export function StudentDashboard() {
   }
 
   const quickActions = [
-    { icon: '🎥', label: 'Join Class', bg: 'bg-primary', textColor: 'text-primary-foreground', border: 'border-transparent', onClick: () => navigate('/zoom-management') },
+    { icon: '🎥', label: 'Join Class', bg: 'bg-primary', textColor: 'text-primary-foreground', border: 'border-transparent', customRender: () => <JoinClassButton /> },
     { icon: '📖', label: 'My Lessons', bg: 'bg-teal/10', textColor: 'text-teal', border: 'border-teal/15', onClick: () => navigate('/attendance') },
     { icon: '📊', label: 'My Progress', bg: 'bg-sky/10', textColor: 'text-sky', border: 'border-sky/15', onClick: () => navigate('/student-reports') },
     { icon: '📅', label: 'Schedule', bg: 'bg-gold/10', textColor: 'text-gold', border: 'border-gold/15', onClick: () => navigate('/schedules') },
@@ -264,13 +265,7 @@ export function StudentDashboard() {
           <p className="text-[15px] leading-tight font-extrabold truncate flex-1 min-w-0">
             {hasTeacher ? stats!.teacherName : <span className="opacity-60 font-semibold">Teacher will be assigned soon</span>}
           </p>
-          <button
-            onClick={() => navigate('/zoom-management')}
-            className="bg-primary-foreground text-primary border-none rounded-lg px-2.5 py-1.5 font-extrabold text-xs cursor-pointer flex items-center gap-1 hover:opacity-90 transition-opacity shrink-0"
-          >
-            <Video className="h-3.5 w-3.5" />
-            Join
-          </button>
+          <JoinClassButton />
         </div>
         <div className="flex items-center justify-between mt-1.5">
           <p className="text-[11px] text-primary-foreground/75 font-semibold truncate">
