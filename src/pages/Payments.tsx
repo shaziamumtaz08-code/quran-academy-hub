@@ -1325,7 +1325,8 @@ export default function Payments() {
                       <TableHead>Billing Month</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
                       <TableHead className="text-right">Paid</TableHead>
-                      {!isReadOnlyView && <TableHead className="text-right">Realised (PKR)</TableHead>}
+                      <TableHead className="text-right">Balance</TableHead>
+                      {!isReadOnlyView && !invoices.every(i => i.currency === 'PKR') && <TableHead className="text-right">Realised (PKR)</TableHead>}
                       <TableHead>Due Date</TableHead>
                        <TableHead className="text-center">Status</TableHead>
                        <TableHead className="w-12"></TableHead>
