@@ -51,11 +51,49 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+
+    // ── AUTH GUARD: Verify caller is authenticated super_admin ──
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+    if (!token) {
+      return new Response(JSON.stringify({ error: "Authentication required" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const anonClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user: caller }, error: authErr } = await anonClient.auth.getUser(token);
+    if (authErr || !caller) {
+      return new Response(JSON.stringify({ error: "Invalid session" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Verify super_admin role
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const { data: roleRow } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", caller.id)
+      .eq("role", "super_admin")
+      .maybeSingle();
+
+    if (!roleRow) {
+      return new Response(JSON.stringify({ error: "Forbidden: super_admin role required" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    // ── END AUTH GUARD ──
 
     const { type, rows } = await req.json();
 
-    console.log(`[bulk-import-execute] Executing ${rows?.length || 0} ${type} imports`);
+    console.log(`[bulk-import-execute] Executing ${rows?.length || 0} ${type} imports (by ${caller.email})`);
 
     if (!type || !["users", "assignments", "schedules"].includes(type)) {
       throw new Error("Invalid type. Must be 'users', 'assignments', or 'schedules'");

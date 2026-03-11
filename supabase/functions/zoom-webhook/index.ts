@@ -69,28 +69,43 @@ Deno.serve(async (req) => {
     const zoomTimestamp = req.headers.get("x-zm-request-timestamp");
     const secretToken = Deno.env.get("ZOOM_SECRET_TOKEN");
 
-    // Security: Verify Zoom webhook signature
-    if (secretToken) {
-      if (!zoomSignature || !zoomTimestamp) {
-        console.error("Missing Zoom signature headers");
-        return new Response(
-          JSON.stringify({ error: "Missing signature headers" }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      const isValid = verifyZoomSignature(zoomSignature, zoomTimestamp, body, secretToken);
-      if (!isValid) {
-        console.error("Invalid Zoom webhook signature - request rejected");
-        return new Response(
-          JSON.stringify({ error: "Invalid signature" }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      console.log("Zoom signature verified successfully");
-    } else {
-      console.warn("ZOOM_SECRET_TOKEN not set - signature verification skipped");
+    // SECURITY: Reject all requests if ZOOM_SECRET_TOKEN is not configured
+    if (!secretToken) {
+      console.error("ZOOM_SECRET_TOKEN not configured - rejecting request");
+      return new Response(
+        JSON.stringify({ error: "Webhook not configured" }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
+
+    // Verify Zoom webhook signature
+    if (!zoomSignature || !zoomTimestamp) {
+      console.error("Missing Zoom signature headers");
+      return new Response(
+        JSON.stringify({ error: "Missing signature headers" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Reject replay attacks (requests older than 5 minutes)
+    const timestampAge = Math.abs(Date.now() / 1000 - Number(zoomTimestamp));
+    if (timestampAge > 300) {
+      console.error("Zoom webhook timestamp too old - possible replay attack");
+      return new Response(
+        JSON.stringify({ error: "Request expired" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const isValid = verifyZoomSignature(zoomSignature, zoomTimestamp, body, secretToken);
+    if (!isValid) {
+      console.error("Invalid Zoom webhook signature - request rejected");
+      return new Response(
+        JSON.stringify({ error: "Invalid signature" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    console.log("Zoom signature verified successfully");
 
     const event: ZoomEvent = JSON.parse(body);
     console.log("Received Zoom webhook event:", event.event);
