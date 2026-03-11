@@ -611,7 +611,7 @@ export default function Payments() {
     mutationFn: async () => {
       const targetMonth = monthFilter;
       const targetLabel = MONTHS.find(m => m.value === targetMonth)?.label || targetMonth;
-      const { data: existing } = await supabase.from('fee_invoices').select('id, plan_id, assignment_id, amount, status, period_from, period_to').eq('billing_month', targetMonth);
+      const { data: existing } = await supabase.from('fee_invoices').select('id, plan_id, assignment_id, amount, currency, status, period_from, period_to').eq('billing_month', targetMonth);
       const existingPlanMap = new Map((existing || []).filter(e => e.plan_id).map(e => [e.plan_id, e]));
       const existingAssignmentMap = new Map((existing || []).filter(e => e.assignment_id).map(e => [e.assignment_id, e]));
       const newInvoices: any[] = [];
