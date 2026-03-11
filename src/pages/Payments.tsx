@@ -1350,9 +1350,17 @@ export default function Payments() {
                           <TableCell className="text-right font-mono text-muted-foreground">
                             {(ledgerPaidMap[inv.id] || 0) > 0 ? `${inv.currency} ${(ledgerPaidMap[inv.id] || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '—'}
                           </TableCell>
-                          {!isReadOnlyView && (
+                          {(() => {
+                            const balance = Number(inv.amount) - (ledgerPaidMap[inv.id] || 0) - Number(inv.forgiven_amount || 0);
+                            return (
+                              <TableCell className={`text-right font-mono font-semibold ${balance > 0 ? 'text-destructive' : balance < 0 ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+                                {balance > 0 ? `${inv.currency} ${balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : balance < 0 ? `−${inv.currency} ${Math.abs(balance).toLocaleString(undefined, { maximumFractionDigits: 2 })} (Credit)` : '—'}
+                              </TableCell>
+                            );
+                          })()}
+                          {!isReadOnlyView && !invoices.every(i => i.currency === 'PKR') && (
                             <TableCell className="text-right font-mono text-muted-foreground">
-                              {realisedMap[inv.id] ? `PKR ${realisedMap[inv.id].toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}
+                              {inv.currency !== 'PKR' && realisedMap[inv.id] ? `PKR ${realisedMap[inv.id].toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}
                             </TableCell>
                           )}
                           <TableCell>{inv.due_date || '—'}</TableCell>
