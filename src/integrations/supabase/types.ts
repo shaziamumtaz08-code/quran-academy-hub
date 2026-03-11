@@ -453,6 +453,56 @@ export type Database = {
           },
         ]
       }
+      course_assets: {
+        Row: {
+          ad_creative: Json
+          created_at: string
+          id: string
+          level: string
+          linked_course_id: string | null
+          name: string
+          runs: Json
+          subject: string
+          support_messages: Json
+          syllabus: string | null
+          updated_at: string
+        }
+        Insert: {
+          ad_creative?: Json
+          created_at?: string
+          id?: string
+          level?: string
+          linked_course_id?: string | null
+          name: string
+          runs?: Json
+          subject?: string
+          support_messages?: Json
+          syllabus?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ad_creative?: Json
+          created_at?: string
+          id?: string
+          level?: string
+          linked_course_id?: string | null
+          name?: string
+          runs?: Json
+          subject?: string
+          support_messages?: Json
+          syllabus?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_assets_linked_course_id_fkey"
+            columns: ["linked_course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_enrollments: {
         Row: {
           course_id: string
