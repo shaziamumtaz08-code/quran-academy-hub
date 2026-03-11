@@ -24,6 +24,7 @@ interface DashboardShellProps {
 export function DashboardShell({ tabs, leftContent, rightContent, brandLabel }: DashboardShellProps) {
   const { profile, user } = useAuth();
   const [islamicDate, setIslamicDate] = useState<IslamicDateData | null>(null);
+  const [timezone, setTimezone] = useState<string>('Asia/Karachi');
   const firstName = profile?.full_name?.split(' ')[0] || 'User';
 
   const { data: unreadCount = 0 } = useQuery({
