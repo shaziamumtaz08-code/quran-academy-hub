@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { Video } from 'lucide-react';
+import { JoinClassButton } from '@/components/zoom/JoinClassButton';
 
 import { DashboardShell } from './shared/DashboardShell';
 import { QuickActionsGrid } from './shared/QuickActionsGrid';
