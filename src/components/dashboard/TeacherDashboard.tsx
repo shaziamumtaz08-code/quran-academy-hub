@@ -157,10 +157,10 @@ export function TeacherDashboard() {
         </div>
 
         {/* 1. Islamic date/time card (scrolls) */}
-        <IslamicDateCard onIslamicDateLoaded={setIslamicDate} />
+        <IslamicDateCard onIslamicDateLoaded={setIslamicDate} onTimezoneResolved={setTimezone} />
 
         {/* 2. Prayer widget (compact, collapsible) */}
-        <PrayerTimesWidget islamicDate={islamicDate} />
+        <PrayerTimesWidget islamicDate={islamicDate} timezone={timezone} />
 
         {/* 3. Next Class (compact) */}
         <NextClassCountdown />
