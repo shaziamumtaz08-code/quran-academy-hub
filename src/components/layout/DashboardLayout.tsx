@@ -40,6 +40,7 @@ import {
   PanelLeft,
   Bell,
   Megaphone,
+  Library,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -165,6 +166,7 @@ function buildNavGroups(modelType: string | null, branchType: string | null): Na
       items: [
         { label: 'System Control', href: '/organization-settings', icon: Cog, roles: ['super_admin', 'admin'] },
         { label: 'Resources', href: '/resources', icon: FolderOpen, roles: ['super_admin'] },
+        { label: 'Course Library', href: '/course-assets', icon: Library, roles: ['super_admin', 'admin', 'admin_academic'] },
       ],
     },
   ];
