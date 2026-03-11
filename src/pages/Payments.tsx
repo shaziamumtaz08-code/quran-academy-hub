@@ -2363,12 +2363,16 @@ export default function Payments() {
                       notes: editPaymentForm.notes || null,
                     }).eq('id', tx.id);
 
-                    // 3. Recalculate invoice amount_paid & status
+                    // 3. Recalculate invoice amount_paid & status from ledger (Guardrail #7)
                     const { data: allTxns } = await supabase.from('payment_transactions').select('amount_foreign').eq('invoice_id', editPaymentData.invoiceId);
                     const totalPaid = (allTxns || []).reduce((s: number, t: any) => s + Number(t.amount_foreign || 0), 0);
                     const invoiceAmount = Number(editPaymentData.invoice.amount);
+                    const forgivenAmt = Number(editPaymentData.invoice.forgiven_amount || 0);
+                    // Guardrail #8: balance = amount - paid_total - forgiven_amount
+                    const balance = invoiceAmount - totalPaid - forgivenAmt;
                     let newStatus: string;
-                    if (totalPaid >= invoiceAmount) newStatus = 'paid';
+                    // Guardrail #9: balance ≤ 0 → paid, paid > 0 → partial, else pending
+                    if (balance <= 0) newStatus = 'paid';
                     else if (totalPaid > 0) newStatus = 'partially_paid';
                     else newStatus = 'pending';
 
