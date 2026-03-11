@@ -615,7 +615,7 @@ export default function Payments() {
       const existingPlanMap = new Map((existing || []).filter(e => e.plan_id).map(e => [e.plan_id, e]));
       const existingAssignmentMap = new Map((existing || []).filter(e => e.assignment_id).map(e => [e.assignment_id, e]));
       const newInvoices: any[] = [];
-      const updatedInvoices: { id: string; amount: number; period_from: string; period_to: string }[] = [];
+      const updatedInvoices: { id: string; amount: number; currency: string; period_from: string; period_to: string }[] = [];
 
       // Proration helper
       const computeProration = (monthlyFee: number, assignmentStartDate: string | null, assignmentEndDate: string | null, billingMonth: string) => {
