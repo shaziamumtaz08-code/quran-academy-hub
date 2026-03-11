@@ -73,7 +73,7 @@ export function DashboardShell({ tabs, leftContent, rightContent, brandLabel }: 
           <div className="space-y-2 md:space-y-4">
             {leftContent}
           </div>
-          <div className="space-y-2 md:space-y-4 mt-2 md:mt-0">
+          <div className="space-y-2 md:space-y-4 mt-2 md:mt-0 md:sticky md:top-[80px] md:self-start">
             {rightContent}
           </div>
         </div>
