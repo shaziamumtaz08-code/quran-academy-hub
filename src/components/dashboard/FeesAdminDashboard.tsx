@@ -26,7 +26,7 @@ export function FeesAdminDashboard() {
     queryKey: ['fees-admin-dashboard', divisionId],
     queryFn: async () => {
       const currentMonth = format(new Date(), 'yyyy-MM');
-      let query = supabase.from('fee_invoices').select('id, amount, amount_paid, status, student_id');
+      let query = supabase.from('fee_invoices').select('id, amount, amount_paid, status, student_id, currency');
       query = query.eq('billing_month', currentMonth);
       if (divisionId) query = query.eq('division_id', divisionId);
       const { data: fees } = await query;
@@ -34,22 +34,40 @@ export function FeesAdminDashboard() {
       const invoices = fees || [];
       const invoiceIds = invoices.map(f => f.id);
       
-      // Guardrail: derive collected from payment_transactions ledger
-      let collectedFromLedger = 0;
+      // Get latest exchange rates per currency
+      const { data: rateTxns } = await supabase
+        .from('payment_transactions')
+        .select('currency_foreign, effective_rate, created_at')
+        .not('effective_rate', 'is', null)
+        .neq('currency_foreign', 'PKR')
+        .order('created_at', { ascending: false });
+      const latestRates: Record<string, number> = {};
+      (rateTxns || []).forEach((tx: any) => {
+        if (!latestRates[tx.currency_foreign] && tx.effective_rate > 0) {
+          latestRates[tx.currency_foreign] = Number(tx.effective_rate);
+        }
+      });
+
+      // Guardrail: derive collected from payment_transactions ledger (in PKR via amount_local)
+      let collectedPKR = 0;
       if (invoiceIds.length > 0) {
         const { data: txns } = await supabase
           .from('payment_transactions')
-          .select('invoice_id, amount_foreign')
+          .select('invoice_id, amount_local')
           .in('invoice_id', invoiceIds);
-        collectedFromLedger = (txns || []).reduce((s: number, t: any) => s + Number(t.amount_foreign || 0), 0);
+        collectedPKR = (txns || []).reduce((s: number, t: any) => s + Number(t.amount_local || 0), 0);
       }
 
-      const expected = invoices.reduce((s, f) => s + f.amount, 0);
-      const collected = collectedFromLedger;
-      const pending = expected - collected;
+      // Expected in PKR: PKR invoices use amount directly, FCY use latest rate
+      const expectedPKR = invoices.reduce((s, f: any) => {
+        if (f.currency === 'PKR') return s + Number(f.amount);
+        const rate = latestRates[f.currency] || 0;
+        return s + (Number(f.amount) * rate);
+      }, 0);
+      const pendingPKR = expectedPKR - collectedPKR;
       const overdue = invoices.filter(f => f.status === 'overdue');
 
-      return { expected, collected, pending, overdueCount: overdue.length };
+      return { expected: Math.round(expectedPKR), collected: Math.round(collectedPKR), pending: Math.round(pendingPKR), overdueCount: overdue.length };
     },
   });
 
