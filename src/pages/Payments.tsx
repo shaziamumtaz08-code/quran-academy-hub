@@ -321,6 +321,26 @@ export default function Payments() {
     enabled: invoices.length > 0,
   });
 
+  // Latest exchange rates per currency (for estimating PKR value of unpaid FCY invoices)
+  const { data: latestRates = {} } = useQuery({
+    queryKey: ['latest-exchange-rates'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('payment_transactions')
+        .select('currency_foreign, effective_rate, created_at')
+        .not('effective_rate', 'is', null)
+        .neq('currency_foreign', 'PKR')
+        .order('created_at', { ascending: false });
+      const rates: Record<string, number> = {};
+      (data || []).forEach((tx: any) => {
+        if (!rates[tx.currency_foreign] && tx.effective_rate > 0) {
+          rates[tx.currency_foreign] = Number(tx.effective_rate);
+        }
+      });
+      return rates;
+    },
+  });
+
   // Derived maps for backward-compat
   const realisedMap = useMemo(() => {
     const m: Record<string, number> = {};
