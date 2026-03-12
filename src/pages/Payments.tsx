@@ -495,6 +495,17 @@ export default function Payments() {
   const shortfall = totalExpected - amountForeign;
   const hasShortfall = amountForeign > 0 && amountForeign < totalExpected;
 
+  // Summary stats converted to PKR: use amount_local from ledger for collected, latest rates for FCY estimates
+  const totalFeesPKR = useMemo(() => invoices.reduce((s, i) => {
+    const amt = Number(i.amount);
+    if (i.currency === 'PKR') return s + amt;
+    const rate = latestRates[i.currency] || 0;
+    return s + (amt * rate);
+  }, 0), [invoices, latestRates]);
+  // Collected in PKR = sum of amount_local (actual PKR received) from ledger
+  const collectedPKR = useMemo(() => invoices.reduce((s, i) => s + (realisedMap[i.id] || 0), 0), [invoices, realisedMap]);
+  const pendingPKR = totalFeesPKR - collectedPKR;
+  // Keep original foreign-currency totals for per-invoice logic
   const totalFees = invoices.reduce((s, i) => s + Number(i.amount), 0);
   // Guardrail #2/#10: Always derive collected from ledger, never from invoice.amount_paid
   const collected = useMemo(() => invoices.reduce((s, i) => s + (ledgerPaidMap[i.id] || 0), 0), [invoices, ledgerPaidMap]);
