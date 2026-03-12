@@ -321,6 +321,26 @@ export default function Payments() {
     enabled: invoices.length > 0,
   });
 
+  // Latest exchange rates per currency (for estimating PKR value of unpaid FCY invoices)
+  const { data: latestRates = {} } = useQuery({
+    queryKey: ['latest-exchange-rates'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('payment_transactions')
+        .select('currency_foreign, effective_rate, created_at')
+        .not('effective_rate', 'is', null)
+        .neq('currency_foreign', 'PKR')
+        .order('created_at', { ascending: false });
+      const rates: Record<string, number> = {};
+      (data || []).forEach((tx: any) => {
+        if (!rates[tx.currency_foreign] && tx.effective_rate > 0) {
+          rates[tx.currency_foreign] = Number(tx.effective_rate);
+        }
+      });
+      return rates;
+    },
+  });
+
   // Derived maps for backward-compat
   const realisedMap = useMemo(() => {
     const m: Record<string, number> = {};
@@ -475,6 +495,17 @@ export default function Payments() {
   const shortfall = totalExpected - amountForeign;
   const hasShortfall = amountForeign > 0 && amountForeign < totalExpected;
 
+  // Summary stats converted to PKR: use amount_local from ledger for collected, latest rates for FCY estimates
+  const totalFeesPKR = useMemo(() => invoices.reduce((s, i) => {
+    const amt = Number(i.amount);
+    if (i.currency === 'PKR') return s + amt;
+    const rate = latestRates[i.currency] || 0;
+    return s + (amt * rate);
+  }, 0), [invoices, latestRates]);
+  // Collected in PKR = sum of amount_local (actual PKR received) from ledger
+  const collectedPKR = useMemo(() => invoices.reduce((s, i) => s + (realisedMap[i.id] || 0), 0), [invoices, realisedMap]);
+  const pendingPKR = totalFeesPKR - collectedPKR;
+  // Keep original foreign-currency totals for per-invoice logic
   const totalFees = invoices.reduce((s, i) => s + Number(i.amount), 0);
   // Guardrail #2/#10: Always derive collected from ledger, never from invoice.amount_paid
   const collected = useMemo(() => invoices.reduce((s, i) => s + (ledgerPaidMap[i.id] || 0), 0), [invoices, ledgerPaidMap]);
@@ -1168,14 +1199,17 @@ export default function Payments() {
           )}
         </div>
 
-        {/* Summary Cards */}
+        {/* Summary Cards — all values in PKR */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-card rounded-xl border border-border p-6">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center"><DollarSign className="h-6 w-6 text-primary" /></div>
               <div>
-                <p className="text-sm text-muted-foreground">Total Fees</p>
-                <p className="text-2xl font-serif font-bold text-foreground">{totalFees.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                <p className="text-sm text-muted-foreground">Total Fees (PKR)</p>
+                <p className="text-2xl font-serif font-bold text-foreground">PKR {totalFeesPKR.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                {Object.keys(latestRates).length > 0 && (
+                  <p className="text-[10px] text-muted-foreground mt-0.5">FCY estimated at latest rates</p>
+                )}
               </div>
             </div>
           </div>
@@ -1183,8 +1217,8 @@ export default function Payments() {
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center"><CheckCircle className="h-6 w-6 text-primary" /></div>
               <div>
-                <p className="text-sm text-muted-foreground">Collected</p>
-                <p className="text-2xl font-serif font-bold text-foreground">{collected.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                <p className="text-sm text-muted-foreground">Collected (PKR)</p>
+                <p className="text-2xl font-serif font-bold text-foreground">PKR {collectedPKR.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
               </div>
             </div>
           </div>
@@ -1192,8 +1226,8 @@ export default function Payments() {
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-lg bg-destructive/10 flex items-center justify-center"><XCircle className="h-6 w-6 text-destructive" /></div>
               <div>
-                <p className="text-sm text-muted-foreground">Pending</p>
-                <p className="text-2xl font-serif font-bold text-destructive">{pending.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                <p className="text-sm text-muted-foreground">Pending (PKR)</p>
+                <p className="text-2xl font-serif font-bold text-destructive">PKR {pendingPKR.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
               </div>
             </div>
           </div>
