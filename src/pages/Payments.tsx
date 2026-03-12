@@ -1199,14 +1199,17 @@ export default function Payments() {
           )}
         </div>
 
-        {/* Summary Cards */}
+        {/* Summary Cards — all values in PKR */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-card rounded-xl border border-border p-6">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center"><DollarSign className="h-6 w-6 text-primary" /></div>
               <div>
-                <p className="text-sm text-muted-foreground">Total Fees</p>
-                <p className="text-2xl font-serif font-bold text-foreground">{totalFees.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                <p className="text-sm text-muted-foreground">Total Fees (PKR)</p>
+                <p className="text-2xl font-serif font-bold text-foreground">PKR {totalFeesPKR.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                {Object.keys(latestRates).length > 0 && (
+                  <p className="text-[10px] text-muted-foreground mt-0.5">FCY estimated at latest rates</p>
+                )}
               </div>
             </div>
           </div>
@@ -1214,8 +1217,8 @@ export default function Payments() {
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center"><CheckCircle className="h-6 w-6 text-primary" /></div>
               <div>
-                <p className="text-sm text-muted-foreground">Collected</p>
-                <p className="text-2xl font-serif font-bold text-foreground">{collected.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                <p className="text-sm text-muted-foreground">Collected (PKR)</p>
+                <p className="text-2xl font-serif font-bold text-foreground">PKR {collectedPKR.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
               </div>
             </div>
           </div>
@@ -1223,8 +1226,8 @@ export default function Payments() {
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-lg bg-destructive/10 flex items-center justify-center"><XCircle className="h-6 w-6 text-destructive" /></div>
               <div>
-                <p className="text-sm text-muted-foreground">Pending</p>
-                <p className="text-2xl font-serif font-bold text-destructive">{pending.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                <p className="text-sm text-muted-foreground">Pending (PKR)</p>
+                <p className="text-2xl font-serif font-bold text-destructive">PKR {pendingPKR.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
               </div>
             </div>
           </div>
