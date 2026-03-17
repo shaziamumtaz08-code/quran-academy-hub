@@ -198,6 +198,14 @@ export default function Payments() {
   const [activeTab, setActiveTab] = useState('invoices');
   const [invoiceTab, setInvoiceTab] = useState<'lcy' | 'fcy'>('lcy');
 
+  // Invoice search & filter state
+  const [invoiceSearch, setInvoiceSearch] = useState('');
+  const [invoiceNameFilter, setInvoiceNameFilter] = useState('all');
+  const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('all');
+  const [invoicePaidOnFilter, setInvoicePaidOnFilter] = useState('all');
+  const [invoiceBalanceFilter, setInvoiceBalanceFilter] = useState('all');
+  const hasInvoiceFilters = invoiceSearch || invoiceNameFilter !== 'all' || invoiceStatusFilter !== 'all' || invoicePaidOnFilter !== 'all' || invoiceBalanceFilter !== 'all';
+
   // ─── Data Queries ────────────────────────────────────────────────
   const { data: students = [] } = useQuery({
     queryKey: ['students-for-fees', branchId],
