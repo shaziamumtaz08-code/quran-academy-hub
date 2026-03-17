@@ -565,8 +565,18 @@ export default function Payments() {
     return result;
   }, [invoiceSearch, invoiceNameFilter, invoiceStatusFilter, invoicePaidOnFilter, invoiceBalanceFilter, paidOnMap, ledgerPaidMap]);
 
-  const lcyInvoices = useMemo(() => applyInvoiceFilters(lcyInvoicesAll), [lcyInvoicesAll, applyInvoiceFilters]);
-  const fcyInvoices = useMemo(() => applyInvoiceFilters(fcyInvoicesAll), [fcyInvoicesAll, applyInvoiceFilters]);
+  const sortInvoices = useCallback((list: InvoiceRow[]) => {
+    if (!invoiceSortCol) return list;
+    return [...list].sort((a, b) => {
+      const dir = invoiceSortDir === 'asc' ? 1 : -1;
+      if (invoiceSortCol === 'student') return dir * (a.profiles?.full_name || '').localeCompare(b.profiles?.full_name || '');
+      if (invoiceSortCol === 'paidOn') return dir * (paidOnMap[a.id] || '').localeCompare(paidOnMap[b.id] || '');
+      return 0;
+    });
+  }, [invoiceSortCol, invoiceSortDir, paidOnMap]);
+
+  const lcyInvoices = useMemo(() => sortInvoices(applyInvoiceFilters(lcyInvoicesAll)), [lcyInvoicesAll, applyInvoiceFilters, sortInvoices]);
+  const fcyInvoices = useMemo(() => sortInvoices(applyInvoiceFilters(fcyInvoicesAll)), [fcyInvoicesAll, applyInvoiceFilters, sortInvoices]);
 
   // Unique student names for name filter (from all invoices, not filtered)
   const invoiceStudentOptions = useMemo(() => {
