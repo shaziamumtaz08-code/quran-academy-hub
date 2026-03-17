@@ -60,14 +60,28 @@ export default function BillingPlansTable({ onEditPlan }: { onEditPlan?: (plan: 
     enabled: !!branchId,
   });
 
+  const currencies = useMemo(() => [...new Set(plans.map(p => p.currency))].sort(), [plans]);
+  const students = useMemo(() => {
+    const map = new Map<string, string>();
+    plans.forEach(p => { if (p.profiles?.full_name) map.set(p.student_id, p.profiles.full_name); });
+    return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [plans]);
+
   const filtered = useMemo(() => {
-    if (!search) return plans;
-    const s = search.toLowerCase();
-    return plans.filter(p =>
-      p.profiles?.full_name?.toLowerCase().includes(s) ||
-      p.fee_packages?.name?.toLowerCase().includes(s)
-    );
-  }, [plans, search]);
+    let result = plans;
+    if (search) {
+      const s = search.toLowerCase();
+      result = result.filter(p =>
+        p.profiles?.full_name?.toLowerCase().includes(s) ||
+        p.fee_packages?.name?.toLowerCase().includes(s)
+      );
+    }
+    if (currencyFilter !== 'all') result = result.filter(p => p.currency === currencyFilter);
+    if (studentFilter !== 'all') result = result.filter(p => p.student_id === studentFilter);
+    return result;
+  }, [plans, search, currencyFilter, studentFilter]);
+
+  const hasActiveFilters = search || currencyFilter !== 'all' || studentFilter !== 'all';
 
   const toggleMutation = useMutation({
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
