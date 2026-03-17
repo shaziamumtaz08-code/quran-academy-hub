@@ -359,6 +359,12 @@ export default function Payments() {
     return m;
   }, [txnSumsMap]);
 
+  const paidOnMap = useMemo(() => {
+    const m: Record<string, string | null> = {};
+    Object.entries(txnSumsMap).forEach(([id, v]) => { m[id] = (v as any).lastPaymentDate; });
+    return m;
+  }, [txnSumsMap]);
+
   // Self-healing: fix amount_paid drift by comparing invoice.amount_paid vs ledger sum
   useEffect(() => {
     if (!invoices.length || !Object.keys(ledgerPaidMap).length) return;
