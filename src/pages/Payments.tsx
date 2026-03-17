@@ -1312,6 +1312,20 @@ export default function Payments() {
                   <span>•</span>
                   <span>Foreign (est.): ₨ {foreignEstPKR.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                 </div>
+                {ratesAreLive && (
+                  <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                    Live rates · spread −2 PKR
+                  </p>
+                )}
+                {!ratesAreLive && ratesLastUpdated && (
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Cached rates from {ratesLastUpdated.toLocaleTimeString()}
+                  </p>
+                )}
+                {ratesError && !ratesLastUpdated && (
+                  <p className="text-[10px] text-destructive mt-1">{ratesError}</p>
+                )}
               </div>
             </div>
           </div>
