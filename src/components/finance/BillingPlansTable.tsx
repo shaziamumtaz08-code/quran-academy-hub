@@ -174,9 +174,9 @@ export default function BillingPlansTable({ onEditPlan }: { onEditPlan?: (plan: 
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Student</TableHead>
+                <TableHead><Button variant="ghost" size="sm" className="gap-1 -ml-2 h-8 font-medium" onClick={() => toggleSort('student')}>Student <ArrowUpDown className="h-3 w-3" /></Button></TableHead>
                 <TableHead>Package</TableHead>
-                <TableHead className="text-center">Duration</TableHead>
+                <TableHead className="text-center"><Button variant="ghost" size="sm" className="gap-1 h-8 font-medium" onClick={() => toggleSort('duration')}>Duration <ArrowUpDown className="h-3 w-3" /></Button></TableHead>
                 <TableHead className="text-right">Net Fee</TableHead>
                 <TableHead>Currency</TableHead>
                 <TableHead className="text-right">Discount</TableHead>
