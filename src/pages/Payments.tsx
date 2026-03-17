@@ -1677,13 +1677,15 @@ export default function Payments() {
                       const paidAmt = ledgerPaidMap[inv.id] || 0;
                       const realisedAmt = realisedMap[inv.id] || 0;
                       const balance = Number(inv.amount) - paidAmt - Number(inv.forgiven_amount || 0);
-                      // Rate: if paid, calculate from realised/paid. Otherwise use latest rate.
+                      // Rate: if paid, calculate from realised/paid. Otherwise use live rate with spread.
                       let rateDisplay = '—';
+                      const isPaidOrPartial = inv.status === 'paid' || inv.status === 'partially_paid';
                       if (paidAmt > 0 && realisedAmt > 0) {
                         rateDisplay = (realisedAmt / paidAmt).toFixed(2);
-                      } else if (latestRates[inv.currency]) {
-                        rateDisplay = latestRates[inv.currency].toFixed(2);
+                      } else if (getRate(inv.currency) > 0) {
+                        rateDisplay = getRate(inv.currency).toFixed(2);
                       }
+                      const rateLabel = (isPaidOrPartial && paidAmt > 0 && realisedAmt > 0) ? rateDisplay : (rateDisplay !== '—' ? `~${rateDisplay}` : '—');
                       return (
                         <TableRow key={inv.id} className={selectedIds.has(inv.id) ? 'bg-primary/5' : ''}>
                           {!isReadOnlyView && <TableCell><Checkbox checked={selectedIds.has(inv.id)} onCheckedChange={() => toggleSelect(inv.id)} disabled={isVoided} /></TableCell>}
