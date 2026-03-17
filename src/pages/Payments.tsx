@@ -598,7 +598,13 @@ export default function Payments() {
   const lcyCollected = useMemo(() => lcyInvoicesAll.reduce((s, i) => s + (realisedMap[i.id] || 0), 0), [lcyInvoicesAll, realisedMap]);
   const fcyCollected = useMemo(() => fcyInvoicesAll.reduce((s, i) => s + (realisedMap[i.id] || 0), 0), [fcyInvoicesAll, realisedMap]);
   const lcyPending = localTotalPKR - lcyCollected;
-  const fcyPending = foreignEstPKR - fcyCollected;
+  const fcyPending = useMemo(() => fcyInvoicesAll
+    .filter(i => i.status !== 'paid' && i.status !== 'voided' && i.status !== 'waived')
+    .reduce((s, i) => {
+      const bal = Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0));
+      const rate = getRate(i.currency);
+      return s + (rate > 0 ? bal * rate : 0);
+    }, 0), [fcyInvoicesAll, ledgerPaidMap, liveRates, getRate]);
   const pending = totalFees - collected;
 
   const monthOptions = Array.from({ length: 12 }, (_, i) => {
