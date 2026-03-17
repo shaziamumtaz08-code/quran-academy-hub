@@ -510,6 +510,18 @@ export default function Payments() {
   const totalFees = invoices.reduce((s, i) => s + Number(i.amount), 0);
   // Guardrail #2/#10: Always derive collected from ledger, never from invoice.amount_paid
   const collected = useMemo(() => invoices.reduce((s, i) => s + (ledgerPaidMap[i.id] || 0), 0), [invoices, ledgerPaidMap]);
+
+  // LCY / FCY invoice splits
+  const lcyInvoices = useMemo(() => invoices.filter(i => i.currency === 'PKR'), [invoices]);
+  const fcyInvoices = useMemo(() => invoices.filter(i => i.currency !== 'PKR'), [invoices]);
+
+  // Breakdown stats
+  const localTotalPKR = useMemo(() => lcyInvoices.reduce((s, i) => s + Number(i.amount), 0), [lcyInvoices]);
+  const foreignEstPKR = useMemo(() => fcyInvoices.reduce((s, i) => s + Number(i.amount) * (latestRates[i.currency] || 0), 0), [fcyInvoices, latestRates]);
+  const lcyCollected = useMemo(() => lcyInvoices.reduce((s, i) => s + (realisedMap[i.id] || 0), 0), [lcyInvoices, realisedMap]);
+  const fcyCollected = useMemo(() => fcyInvoices.reduce((s, i) => s + (realisedMap[i.id] || 0), 0), [fcyInvoices, realisedMap]);
+  const lcyPending = localTotalPKR - lcyCollected;
+  const fcyPending = foreignEstPKR - fcyCollected;
   const pending = totalFees - collected;
 
   const monthOptions = Array.from({ length: 12 }, (_, i) => {
