@@ -1664,7 +1664,18 @@ export default function Payments() {
                       <TableHead className="text-right">Paid (FCY)</TableHead>
                       <TableHead className="text-right">Balance (FCY)</TableHead>
                       <TableHead className="text-right">Realised (PKR)</TableHead>
-                      <TableHead className="text-right">Rate</TableHead>
+                      <TableHead className="text-right">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="cursor-help inline-flex items-center gap-1">Rate <span className="text-muted-foreground text-[10px]">ⓘ</span></span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-[220px] text-xs">
+                              <p>Confirmed rate for paid invoices. Live market rate (−2 PKR spread) shown as ~estimate for unpaid.</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </TableHead>
                       <TableHead>Due Date</TableHead>
                       <TableHead><Button variant="ghost" size="sm" className="gap-1 -ml-2 h-8 font-medium" onClick={() => toggleInvoiceSort('paidOn')}>Paid On <ArrowUpDown className="h-3 w-3" /></Button></TableHead>
                       <TableHead className="text-center">Status</TableHead>
