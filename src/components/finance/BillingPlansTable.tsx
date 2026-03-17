@@ -35,6 +35,8 @@ export default function BillingPlansTable({ onEditPlan }: { onEditPlan?: (plan: 
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
+  const [currencyFilter, setCurrencyFilter] = useState<string>('all');
+  const [studentFilter, setStudentFilter] = useState<string>('all');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const { data: plans = [], isLoading } = useQuery({
