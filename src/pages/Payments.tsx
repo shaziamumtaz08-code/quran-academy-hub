@@ -1538,6 +1538,7 @@ export default function Payments() {
                       <TableHead className="text-right">Paid (PKR)</TableHead>
                       <TableHead className="text-right">Balance (PKR)</TableHead>
                       <TableHead>Due Date</TableHead>
+                      <TableHead>Paid On</TableHead>
                       <TableHead className="text-center">Status</TableHead>
                       <TableHead className="w-12"></TableHead>
                     </TableRow>
