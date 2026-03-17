@@ -21,6 +21,7 @@ const FEES_ADMIN_TABS = [
 export function FeesAdminDashboard() {
   const navigate = useNavigate();
   const { activeDivision } = useDivision();
+  const { getRate, rates: liveRates } = useExchangeRates();
   const divisionId = activeDivision?.id;
 
   const { data: stats, isLoading } = useQuery({
