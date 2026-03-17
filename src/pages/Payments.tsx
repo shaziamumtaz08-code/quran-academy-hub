@@ -20,7 +20,7 @@ import {
 import {
   DollarSign, CheckCircle, XCircle, Clock, User, Loader2, Zap, GraduationCap,
   Plus, Receipt, Upload, ArrowRightLeft, AlertTriangle, ImageIcon, X, Search, ArrowUpDown, Users, Pencil, Trash2, ListChecks,
-  MoreHorizontal, Ban, Undo2, History, Tag, FileX, Eye, FileText, Printer
+  MoreHorizontal, Ban, Undo2, History, Tag, FileX, Eye, FileText, Printer, RotateCcw
 } from 'lucide-react';
 import { endOfMonth, startOfMonth, parseISO, format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -198,6 +198,14 @@ export default function Payments() {
   const [activeTab, setActiveTab] = useState('invoices');
   const [invoiceTab, setInvoiceTab] = useState<'lcy' | 'fcy'>('lcy');
 
+  // Invoice search & filter state
+  const [invoiceSearch, setInvoiceSearch] = useState('');
+  const [invoiceNameFilter, setInvoiceNameFilter] = useState('all');
+  const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('all');
+  const [invoicePaidOnFilter, setInvoicePaidOnFilter] = useState('all');
+  const [invoiceBalanceFilter, setInvoiceBalanceFilter] = useState('all');
+  const hasInvoiceFilters = invoiceSearch || invoiceNameFilter !== 'all' || invoiceStatusFilter !== 'all' || invoicePaidOnFilter !== 'all' || invoiceBalanceFilter !== 'all';
+
   // ─── Data Queries ────────────────────────────────────────────────
   const { data: students = [] } = useQuery({
     queryKey: ['students-for-fees', branchId],
@@ -301,7 +309,7 @@ export default function Payments() {
     enabled: isReadOnlyView || !!branchId,
   });
 
-  // Realised amounts + paid sums query (sum of amount_local and amount_foreign per invoice from ledger)
+  // Realised amounts + paid sums + payment dates query (sum of amount_local and amount_foreign per invoice from ledger)
   const { data: txnSumsMap = {} } = useQuery({
     queryKey: ['txn-sums', branchId, divisionId, monthFilter, statusFilter],
     queryFn: async () => {
@@ -309,13 +317,17 @@ export default function Payments() {
       if (invoiceIds.length === 0) return {};
       const { data } = await supabase
         .from('payment_transactions')
-        .select('invoice_id, amount_local, amount_foreign')
+        .select('invoice_id, amount_local, amount_foreign, payment_date')
         .in('invoice_id', invoiceIds);
-      const map: Record<string, { realised: number; paid: number }> = {};
+      const map: Record<string, { realised: number; paid: number; lastPaymentDate: string | null }> = {};
       (data || []).forEach((tx: any) => {
-        if (!map[tx.invoice_id]) map[tx.invoice_id] = { realised: 0, paid: 0 };
+        if (!map[tx.invoice_id]) map[tx.invoice_id] = { realised: 0, paid: 0, lastPaymentDate: null };
         map[tx.invoice_id].realised += Number(tx.amount_local || 0);
         map[tx.invoice_id].paid += Number(tx.amount_foreign || 0);
+        // Track the latest payment date
+        if (tx.payment_date && (!map[tx.invoice_id].lastPaymentDate || tx.payment_date > map[tx.invoice_id].lastPaymentDate)) {
+          map[tx.invoice_id].lastPaymentDate = tx.payment_date;
+        }
       });
       return map;
     },
@@ -352,6 +364,12 @@ export default function Payments() {
   const ledgerPaidMap = useMemo(() => {
     const m: Record<string, number> = {};
     Object.entries(txnSumsMap).forEach(([id, v]) => { m[id] = (v as any).paid; });
+    return m;
+  }, [txnSumsMap]);
+
+  const paidOnMap = useMemo(() => {
+    const m: Record<string, string | null> = {};
+    Object.entries(txnSumsMap).forEach(([id, v]) => { m[id] = (v as any).lastPaymentDate; });
     return m;
   }, [txnSumsMap]);
 
@@ -512,14 +530,57 @@ export default function Payments() {
   const collected = useMemo(() => invoices.reduce((s, i) => s + (ledgerPaidMap[i.id] || 0), 0), [invoices, ledgerPaidMap]);
 
   // LCY / FCY invoice splits
-  const lcyInvoices = useMemo(() => invoices.filter(i => i.currency === 'PKR'), [invoices]);
-  const fcyInvoices = useMemo(() => invoices.filter(i => i.currency !== 'PKR'), [invoices]);
+  const lcyInvoicesAll = useMemo(() => invoices.filter(i => i.currency === 'PKR'), [invoices]);
+  const fcyInvoicesAll = useMemo(() => invoices.filter(i => i.currency !== 'PKR'), [invoices]);
 
-  // Breakdown stats
-  const localTotalPKR = useMemo(() => lcyInvoices.reduce((s, i) => s + Number(i.amount), 0), [lcyInvoices]);
-  const foreignEstPKR = useMemo(() => fcyInvoices.reduce((s, i) => s + Number(i.amount) * (latestRates[i.currency] || 0), 0), [fcyInvoices, latestRates]);
-  const lcyCollected = useMemo(() => lcyInvoices.reduce((s, i) => s + (realisedMap[i.id] || 0), 0), [lcyInvoices, realisedMap]);
-  const fcyCollected = useMemo(() => fcyInvoices.reduce((s, i) => s + (realisedMap[i.id] || 0), 0), [fcyInvoices, realisedMap]);
+  // Invoice filter helper
+  const applyInvoiceFilters = useCallback((list: InvoiceRow[]) => {
+    let result = list;
+    if (invoiceSearch) {
+      const s = invoiceSearch.toLowerCase();
+      result = result.filter(i => i.profiles?.full_name?.toLowerCase().includes(s) || getPackageName(i).toLowerCase().includes(s));
+    }
+    if (invoiceNameFilter !== 'all') result = result.filter(i => i.student_id === invoiceNameFilter);
+    if (invoiceStatusFilter !== 'all') result = result.filter(i => i.status === invoiceStatusFilter);
+    if (invoicePaidOnFilter !== 'all') {
+      if (invoicePaidOnFilter === 'paid') result = result.filter(i => paidOnMap[i.id]);
+      else if (invoicePaidOnFilter === 'unpaid') result = result.filter(i => !paidOnMap[i.id]);
+      else result = result.filter(i => paidOnMap[i.id] === invoicePaidOnFilter);
+    }
+    if (invoiceBalanceFilter !== 'all') {
+      result = result.filter(i => {
+        const balance = Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0);
+        if (invoiceBalanceFilter === 'zero') return balance <= 0;
+        if (invoiceBalanceFilter === 'outstanding') return balance > 0;
+        if (invoiceBalanceFilter === 'credit') return balance < 0;
+        return true;
+      });
+    }
+    return result;
+  }, [invoiceSearch, invoiceNameFilter, invoiceStatusFilter, invoicePaidOnFilter, invoiceBalanceFilter, paidOnMap, ledgerPaidMap]);
+
+  const lcyInvoices = useMemo(() => applyInvoiceFilters(lcyInvoicesAll), [lcyInvoicesAll, applyInvoiceFilters]);
+  const fcyInvoices = useMemo(() => applyInvoiceFilters(fcyInvoicesAll), [fcyInvoicesAll, applyInvoiceFilters]);
+
+  // Unique student names for name filter (from all invoices, not filtered)
+  const invoiceStudentOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    invoices.forEach(i => { if (i.profiles?.full_name) map.set(i.student_id, i.profiles.full_name); });
+    return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [invoices]);
+
+  // Unique paid-on dates for filter
+  const invoicePaidOnDates = useMemo(() => {
+    const dates = new Set<string>();
+    invoices.forEach(i => { const d = paidOnMap[i.id]; if (d) dates.add(d); });
+    return [...dates].sort().reverse();
+  }, [invoices, paidOnMap]);
+
+  // Breakdown stats (use unfiltered lists for summary)
+  const localTotalPKR = useMemo(() => lcyInvoicesAll.reduce((s, i) => s + Number(i.amount), 0), [lcyInvoicesAll]);
+  const foreignEstPKR = useMemo(() => fcyInvoicesAll.reduce((s, i) => s + Number(i.amount) * (latestRates[i.currency] || 0), 0), [fcyInvoicesAll, latestRates]);
+  const lcyCollected = useMemo(() => lcyInvoicesAll.reduce((s, i) => s + (realisedMap[i.id] || 0), 0), [lcyInvoicesAll, realisedMap]);
+  const fcyCollected = useMemo(() => fcyInvoicesAll.reduce((s, i) => s + (realisedMap[i.id] || 0), 0), [fcyInvoicesAll, realisedMap]);
   const lcyPending = localTotalPKR - lcyCollected;
   const fcyPending = foreignEstPKR - fcyCollected;
   const pending = totalFees - collected;
@@ -1396,6 +1457,56 @@ export default function Payments() {
               </button>
             </div>
 
+            {/* Invoice Search & Filters */}
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-3 mb-3">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Search by student or package..." value={invoiceSearch} onChange={e => setInvoiceSearch(e.target.value)} className="pl-9" />
+              </div>
+              <Select value={invoiceNameFilter} onValueChange={setInvoiceNameFilter}>
+                <SelectTrigger className="w-[170px]"><SelectValue placeholder="All Students" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Students</SelectItem>
+                  {invoiceStudentOptions.map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={invoiceStatusFilter} onValueChange={setInvoiceStatusFilter}>
+                <SelectTrigger className="w-[140px]"><SelectValue placeholder="All Status" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="partially_paid">Partial</SelectItem>
+                  <SelectItem value="overdue">Overdue</SelectItem>
+                  <SelectItem value="waived">Waived</SelectItem>
+                  <SelectItem value="voided">Voided</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={invoicePaidOnFilter} onValueChange={setInvoicePaidOnFilter}>
+                <SelectTrigger className="w-[150px]"><SelectValue placeholder="Paid On" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Paid On</SelectItem>
+                  <SelectItem value="paid">Has Payment</SelectItem>
+                  <SelectItem value="unpaid">No Payment</SelectItem>
+                  {invoicePaidOnDates.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={invoiceBalanceFilter} onValueChange={setInvoiceBalanceFilter}>
+                <SelectTrigger className="w-[140px]"><SelectValue placeholder="Balance" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Balance</SelectItem>
+                  <SelectItem value="outstanding">Outstanding</SelectItem>
+                  <SelectItem value="zero">Settled</SelectItem>
+                  <SelectItem value="credit">Credit</SelectItem>
+                </SelectContent>
+              </Select>
+              {hasInvoiceFilters && (
+                <Button variant="outline" size="icon" onClick={() => { setInvoiceSearch(''); setInvoiceNameFilter('all'); setInvoiceStatusFilter('all'); setInvoicePaidOnFilter('all'); setInvoiceBalanceFilter('all'); }} title="Reset Filters">
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+
             {/* Invoice Table */}
             <div className="bg-card rounded-xl border border-border overflow-hidden">
               {isLoading ? (
@@ -1427,6 +1538,7 @@ export default function Payments() {
                       <TableHead className="text-right">Paid (PKR)</TableHead>
                       <TableHead className="text-right">Balance (PKR)</TableHead>
                       <TableHead>Due Date</TableHead>
+                      <TableHead>Paid On</TableHead>
                       <TableHead className="text-center">Status</TableHead>
                       <TableHead className="w-12"></TableHead>
                     </TableRow>
@@ -1453,6 +1565,7 @@ export default function Payments() {
                             {balance > 0 ? `₨ ${balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : balance < 0 ? `−₨ ${Math.abs(balance).toLocaleString(undefined, { maximumFractionDigits: 2 })} (Credit)` : '—'}
                           </TableCell>
                           <TableCell>{inv.due_date || '—'}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{paidOnMap[inv.id] || '—'}</TableCell>
                           <TableCell className="text-center">
                             {(inv.status === 'pending' || inv.status === 'partially_paid' || inv.status === 'overdue') ? (
                               <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8" onClick={() => openSinglePay(inv.id)}>
@@ -1531,6 +1644,7 @@ export default function Payments() {
                       <TableHead className="text-right">Realised (PKR)</TableHead>
                       <TableHead className="text-right">Rate</TableHead>
                       <TableHead>Due Date</TableHead>
+                      <TableHead>Paid On</TableHead>
                       <TableHead className="text-center">Status</TableHead>
                       <TableHead className="w-12"></TableHead>
                     </TableRow>
@@ -1567,6 +1681,7 @@ export default function Payments() {
                           <TableCell className="text-right font-mono text-muted-foreground">{realisedAmt > 0 ? `₨ ${realisedAmt.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}</TableCell>
                           <TableCell className="text-right font-mono text-muted-foreground">{rateDisplay}</TableCell>
                           <TableCell>{inv.due_date || '—'}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{paidOnMap[inv.id] || '—'}</TableCell>
                           <TableCell className="text-center">
                             {(inv.status === 'pending' || inv.status === 'partially_paid' || inv.status === 'overdue') ? (
                               <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8" onClick={() => openSinglePay(inv.id)}>
