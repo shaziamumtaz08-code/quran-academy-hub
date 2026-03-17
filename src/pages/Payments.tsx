@@ -530,8 +530,51 @@ export default function Payments() {
   const collected = useMemo(() => invoices.reduce((s, i) => s + (ledgerPaidMap[i.id] || 0), 0), [invoices, ledgerPaidMap]);
 
   // LCY / FCY invoice splits
-  const lcyInvoices = useMemo(() => invoices.filter(i => i.currency === 'PKR'), [invoices]);
-  const fcyInvoices = useMemo(() => invoices.filter(i => i.currency !== 'PKR'), [invoices]);
+  const lcyInvoicesAll = useMemo(() => invoices.filter(i => i.currency === 'PKR'), [invoices]);
+  const fcyInvoicesAll = useMemo(() => invoices.filter(i => i.currency !== 'PKR'), [invoices]);
+
+  // Invoice filter helper
+  const applyInvoiceFilters = useCallback((list: InvoiceRow[]) => {
+    let result = list;
+    if (invoiceSearch) {
+      const s = invoiceSearch.toLowerCase();
+      result = result.filter(i => i.profiles?.full_name?.toLowerCase().includes(s) || getPackageName(i).toLowerCase().includes(s));
+    }
+    if (invoiceNameFilter !== 'all') result = result.filter(i => i.student_id === invoiceNameFilter);
+    if (invoiceStatusFilter !== 'all') result = result.filter(i => i.status === invoiceStatusFilter);
+    if (invoicePaidOnFilter !== 'all') {
+      if (invoicePaidOnFilter === 'paid') result = result.filter(i => paidOnMap[i.id]);
+      else if (invoicePaidOnFilter === 'unpaid') result = result.filter(i => !paidOnMap[i.id]);
+      else result = result.filter(i => paidOnMap[i.id] === invoicePaidOnFilter);
+    }
+    if (invoiceBalanceFilter !== 'all') {
+      result = result.filter(i => {
+        const balance = Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0);
+        if (invoiceBalanceFilter === 'zero') return balance <= 0;
+        if (invoiceBalanceFilter === 'outstanding') return balance > 0;
+        if (invoiceBalanceFilter === 'credit') return balance < 0;
+        return true;
+      });
+    }
+    return result;
+  }, [invoiceSearch, invoiceNameFilter, invoiceStatusFilter, invoicePaidOnFilter, invoiceBalanceFilter, paidOnMap, ledgerPaidMap]);
+
+  const lcyInvoices = useMemo(() => applyInvoiceFilters(lcyInvoicesAll), [lcyInvoicesAll, applyInvoiceFilters]);
+  const fcyInvoices = useMemo(() => applyInvoiceFilters(fcyInvoicesAll), [fcyInvoicesAll, applyInvoiceFilters]);
+
+  // Unique student names for name filter (from all invoices, not filtered)
+  const invoiceStudentOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    invoices.forEach(i => { if (i.profiles?.full_name) map.set(i.student_id, i.profiles.full_name); });
+    return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [invoices]);
+
+  // Unique paid-on dates for filter
+  const invoicePaidOnDates = useMemo(() => {
+    const dates = new Set<string>();
+    invoices.forEach(i => { const d = paidOnMap[i.id]; if (d) dates.add(d); });
+    return [...dates].sort().reverse();
+  }, [invoices, paidOnMap]);
 
   // Breakdown stats
   const localTotalPKR = useMemo(() => lcyInvoices.reduce((s, i) => s + Number(i.amount), 0), [lcyInvoices]);
