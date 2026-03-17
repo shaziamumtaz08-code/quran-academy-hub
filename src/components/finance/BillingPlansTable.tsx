@@ -117,11 +117,30 @@ export default function BillingPlansTable({ onEditPlan }: { onEditPlan?: (plan: 
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col md:flex-row items-start md:items-center gap-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search by student or package..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
         </div>
+        <Select value={studentFilter} onValueChange={setStudentFilter}>
+          <SelectTrigger className="w-[180px]"><SelectValue placeholder="All Students" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Students</SelectItem>
+            {students.map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={currencyFilter} onValueChange={setCurrencyFilter}>
+          <SelectTrigger className="w-[130px]"><SelectValue placeholder="All Currencies" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Currencies</SelectItem>
+            {currencies.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        {hasActiveFilters && (
+          <Button variant="outline" size="icon" onClick={() => { setSearch(''); setCurrencyFilter('all'); setStudentFilter('all'); }} title="Reset Filters">
+            <RotateCcw className="h-4 w-4" />
+          </Button>
+        )}
         <span className="text-sm text-muted-foreground">{filtered.length} plan(s)</span>
       </div>
 
