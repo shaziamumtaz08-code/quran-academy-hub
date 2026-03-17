@@ -1651,7 +1651,7 @@ export default function Payments() {
                           setSelectedIds(prev => { const next = new Set(prev); fcySelectable.forEach(i => { next.add(i.id); selectedInvoiceCacheRef.current.set(i.id, i); }); return next; });
                         }
                       }} /></TableHead>}
-                      <TableHead>Student</TableHead>
+                      <TableHead><Button variant="ghost" size="sm" className="gap-1 -ml-2 h-8 font-medium" onClick={() => toggleInvoiceSort('student')}>Student <ArrowUpDown className="h-3 w-3" /></Button></TableHead>
                       <TableHead>Package</TableHead>
                       <TableHead>Billing Month</TableHead>
                       <TableHead className="text-right">Invoice Amount</TableHead>
@@ -1660,7 +1660,7 @@ export default function Payments() {
                       <TableHead className="text-right">Realised (PKR)</TableHead>
                       <TableHead className="text-right">Rate</TableHead>
                       <TableHead>Due Date</TableHead>
-                      <TableHead>Paid On</TableHead>
+                      <TableHead><Button variant="ghost" size="sm" className="gap-1 -ml-2 h-8 font-medium" onClick={() => toggleInvoiceSort('paidOn')}>Paid On <ArrowUpDown className="h-3 w-3" /></Button></TableHead>
                       <TableHead className="text-center">Status</TableHead>
                       <TableHead className="w-12"></TableHead>
                     </TableRow>
