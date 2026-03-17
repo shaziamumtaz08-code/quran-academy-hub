@@ -38,6 +38,13 @@ export default function BillingPlansTable({ onEditPlan }: { onEditPlan?: (plan: 
   const [currencyFilter, setCurrencyFilter] = useState<string>('all');
   const [studentFilter, setStudentFilter] = useState<string>('all');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [sortCol, setSortCol] = useState<'student' | 'duration' | null>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const toggleSort = (col: 'student' | 'duration') => {
+    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortCol(col); setSortDir('asc'); }
+  };
 
   const { data: plans = [], isLoading } = useQuery({
     queryKey: ['billing-plans-list', branchId, divisionId],
