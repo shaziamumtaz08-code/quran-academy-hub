@@ -85,8 +85,19 @@ export default function BillingPlansTable({ onEditPlan }: { onEditPlan?: (plan: 
     }
     if (currencyFilter !== 'all') result = result.filter(p => p.currency === currencyFilter);
     if (studentFilter !== 'all') result = result.filter(p => p.student_id === studentFilter);
+    if (sortCol === 'student') {
+      result = [...result].sort((a, b) => {
+        const dir = sortDir === 'asc' ? 1 : -1;
+        return dir * (a.profiles?.full_name || '').localeCompare(b.profiles?.full_name || '');
+      });
+    } else if (sortCol === 'duration') {
+      result = [...result].sort((a, b) => {
+        const dir = sortDir === 'asc' ? 1 : -1;
+        return dir * (a.session_duration - b.session_duration);
+      });
+    }
     return result;
-  }, [plans, search, currencyFilter, studentFilter]);
+  }, [plans, search, currencyFilter, studentFilter, sortCol, sortDir]);
 
   const hasActiveFilters = search || currencyFilter !== 'all' || studentFilter !== 'all';
 
