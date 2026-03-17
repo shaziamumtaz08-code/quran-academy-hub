@@ -34,18 +34,25 @@ export function FeesAdminDashboard() {
       const invoices = fees || [];
       const invoiceIds = invoices.map(f => f.id);
       
-      // Get latest exchange rates per currency
+      // Get median exchange rates per currency (last 5 transactions for resilience)
       const { data: rateTxns } = await supabase
         .from('payment_transactions')
         .select('currency_foreign, effective_rate, created_at')
         .not('effective_rate', 'is', null)
         .neq('currency_foreign', 'PKR')
+        .gt('effective_rate', 0)
         .order('created_at', { ascending: false });
-      const latestRates: Record<string, number> = {};
+      const grouped: Record<string, number[]> = {};
       (rateTxns || []).forEach((tx: any) => {
-        if (!latestRates[tx.currency_foreign] && tx.effective_rate > 0) {
-          latestRates[tx.currency_foreign] = Number(tx.effective_rate);
-        }
+        const cur = tx.currency_foreign;
+        if (!grouped[cur]) grouped[cur] = [];
+        if (grouped[cur].length < 5) grouped[cur].push(Number(tx.effective_rate));
+      });
+      const latestRates: Record<string, number> = {};
+      Object.entries(grouped).forEach(([cur, vals]) => {
+        vals.sort((a, b) => a - b);
+        const mid = Math.floor(vals.length / 2);
+        latestRates[cur] = vals.length % 2 === 0 ? (vals[mid - 1] + vals[mid]) / 2 : vals[mid];
       });
 
       // Guardrail: derive collected from payment_transactions ledger (in PKR via amount_local)
