@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Pencil, Trash2, Loader2, Search, AlertTriangle, RotateCcw } from 'lucide-react';
+import { Pencil, Trash2, Loader2, Search, AlertTriangle, RotateCcw, ArrowUpDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -38,6 +38,13 @@ export default function BillingPlansTable({ onEditPlan }: { onEditPlan?: (plan: 
   const [currencyFilter, setCurrencyFilter] = useState<string>('all');
   const [studentFilter, setStudentFilter] = useState<string>('all');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [sortCol, setSortCol] = useState<'student' | 'duration' | null>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const toggleSort = (col: 'student' | 'duration') => {
+    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortCol(col); setSortDir('asc'); }
+  };
 
   const { data: plans = [], isLoading } = useQuery({
     queryKey: ['billing-plans-list', branchId, divisionId],
@@ -78,8 +85,19 @@ export default function BillingPlansTable({ onEditPlan }: { onEditPlan?: (plan: 
     }
     if (currencyFilter !== 'all') result = result.filter(p => p.currency === currencyFilter);
     if (studentFilter !== 'all') result = result.filter(p => p.student_id === studentFilter);
+    if (sortCol === 'student') {
+      result = [...result].sort((a, b) => {
+        const dir = sortDir === 'asc' ? 1 : -1;
+        return dir * (a.profiles?.full_name || '').localeCompare(b.profiles?.full_name || '');
+      });
+    } else if (sortCol === 'duration') {
+      result = [...result].sort((a, b) => {
+        const dir = sortDir === 'asc' ? 1 : -1;
+        return dir * (a.session_duration - b.session_duration);
+      });
+    }
     return result;
-  }, [plans, search, currencyFilter, studentFilter]);
+  }, [plans, search, currencyFilter, studentFilter, sortCol, sortDir]);
 
   const hasActiveFilters = search || currencyFilter !== 'all' || studentFilter !== 'all';
 
@@ -156,9 +174,9 @@ export default function BillingPlansTable({ onEditPlan }: { onEditPlan?: (plan: 
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Student</TableHead>
+                <TableHead><Button variant="ghost" size="sm" className="gap-1 -ml-2 h-8 font-medium" onClick={() => toggleSort('student')}>Student <ArrowUpDown className="h-3 w-3" /></Button></TableHead>
                 <TableHead>Package</TableHead>
-                <TableHead className="text-center">Duration</TableHead>
+                <TableHead className="text-center"><Button variant="ghost" size="sm" className="gap-1 h-8 font-medium" onClick={() => toggleSort('duration')}>Duration <ArrowUpDown className="h-3 w-3" /></Button></TableHead>
                 <TableHead className="text-right">Net Fee</TableHead>
                 <TableHead>Currency</TableHead>
                 <TableHead className="text-right">Discount</TableHead>
