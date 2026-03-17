@@ -1703,7 +1703,7 @@ export default function Payments() {
                             {balance > 0 ? `${inv.currency} ${balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : balance < 0 ? `−${inv.currency} ${Math.abs(balance).toLocaleString(undefined, { maximumFractionDigits: 2 })} (Credit)` : '—'}
                           </TableCell>
                           <TableCell className="text-right font-mono text-muted-foreground">{realisedAmt > 0 ? `₨ ${realisedAmt.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}</TableCell>
-                          <TableCell className="text-right font-mono text-muted-foreground">{rateDisplay}</TableCell>
+                          <TableCell className="text-right font-mono text-muted-foreground">{rateLabel}</TableCell>
                           <TableCell>{inv.due_date || '—'}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">{paidOnMap[inv.id] || '—'}</TableCell>
                           <TableCell className="text-center">
