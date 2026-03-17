@@ -505,16 +505,28 @@ export default function Payments() {
   const shortfall = totalExpected - amountForeign;
   const hasShortfall = amountForeign > 0 && amountForeign < totalExpected;
 
-  // Summary stats converted to PKR: use amount_local from ledger for collected, latest rates for FCY estimates
+  // Summary stats converted to PKR: use amount_local from ledger for collected, live rates for FCY estimates
   const totalFeesPKR = useMemo(() => invoices.reduce((s, i) => {
     const amt = Number(i.amount);
     if (i.currency === 'PKR') return s + amt;
-    const rate = latestRates[i.currency] || 0;
-    return s + (amt * rate);
-  }, 0), [invoices, latestRates]);
+    const rate = getRate(i.currency);
+    return s + (rate > 0 ? amt * rate : 0);
+  }, 0), [invoices, liveRates, getRate]);
   // Collected in PKR = sum of amount_local (actual PKR received) from ledger
   const collectedPKR = useMemo(() => invoices.reduce((s, i) => s + (realisedMap[i.id] || 0), 0), [invoices, realisedMap]);
-  const pendingPKR = totalFeesPKR - collectedPKR;
+  const pendingPKR = useMemo(() => {
+    const lcyPend = invoices
+      .filter(i => i.currency === 'PKR' && i.status !== 'paid' && i.status !== 'voided' && i.status !== 'waived')
+      .reduce((s, i) => s + Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0)), 0);
+    const fcyPend = invoices
+      .filter(i => i.currency !== 'PKR' && i.status !== 'paid' && i.status !== 'voided' && i.status !== 'waived')
+      .reduce((s, i) => {
+        const balFCY = Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0));
+        const rate = getRate(i.currency);
+        return s + (rate > 0 ? balFCY * rate : 0);
+      }, 0);
+    return lcyPend + fcyPend;
+  }, [invoices, ledgerPaidMap, liveRates, getRate]);
   // Keep original foreign-currency totals for per-invoice logic
   const totalFees = invoices.reduce((s, i) => s + Number(i.amount), 0);
   // Guardrail #2/#10: Always derive collected from ledger, never from invoice.amount_paid
