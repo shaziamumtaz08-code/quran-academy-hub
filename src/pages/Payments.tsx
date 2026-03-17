@@ -301,7 +301,7 @@ export default function Payments() {
     enabled: isReadOnlyView || !!branchId,
   });
 
-  // Realised amounts + paid sums query (sum of amount_local and amount_foreign per invoice from ledger)
+  // Realised amounts + paid sums + payment dates query (sum of amount_local and amount_foreign per invoice from ledger)
   const { data: txnSumsMap = {} } = useQuery({
     queryKey: ['txn-sums', branchId, divisionId, monthFilter, statusFilter],
     queryFn: async () => {
@@ -309,13 +309,17 @@ export default function Payments() {
       if (invoiceIds.length === 0) return {};
       const { data } = await supabase
         .from('payment_transactions')
-        .select('invoice_id, amount_local, amount_foreign')
+        .select('invoice_id, amount_local, amount_foreign, payment_date')
         .in('invoice_id', invoiceIds);
-      const map: Record<string, { realised: number; paid: number }> = {};
+      const map: Record<string, { realised: number; paid: number; lastPaymentDate: string | null }> = {};
       (data || []).forEach((tx: any) => {
-        if (!map[tx.invoice_id]) map[tx.invoice_id] = { realised: 0, paid: 0 };
+        if (!map[tx.invoice_id]) map[tx.invoice_id] = { realised: 0, paid: 0, lastPaymentDate: null };
         map[tx.invoice_id].realised += Number(tx.amount_local || 0);
         map[tx.invoice_id].paid += Number(tx.amount_foreign || 0);
+        // Track the latest payment date
+        if (tx.payment_date && (!map[tx.invoice_id].lastPaymentDate || tx.payment_date > map[tx.invoice_id].lastPaymentDate)) {
+          map[tx.invoice_id].lastPaymentDate = tx.payment_date;
+        }
       });
       return map;
     },
