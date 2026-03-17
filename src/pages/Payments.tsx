@@ -1457,6 +1457,56 @@ export default function Payments() {
               </button>
             </div>
 
+            {/* Invoice Search & Filters */}
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-3 mb-3">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Search by student or package..." value={invoiceSearch} onChange={e => setInvoiceSearch(e.target.value)} className="pl-9" />
+              </div>
+              <Select value={invoiceNameFilter} onValueChange={setInvoiceNameFilter}>
+                <SelectTrigger className="w-[170px]"><SelectValue placeholder="All Students" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Students</SelectItem>
+                  {invoiceStudentOptions.map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={invoiceStatusFilter} onValueChange={setInvoiceStatusFilter}>
+                <SelectTrigger className="w-[140px]"><SelectValue placeholder="All Status" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="partially_paid">Partial</SelectItem>
+                  <SelectItem value="overdue">Overdue</SelectItem>
+                  <SelectItem value="waived">Waived</SelectItem>
+                  <SelectItem value="voided">Voided</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={invoicePaidOnFilter} onValueChange={setInvoicePaidOnFilter}>
+                <SelectTrigger className="w-[150px]"><SelectValue placeholder="Paid On" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Paid On</SelectItem>
+                  <SelectItem value="paid">Has Payment</SelectItem>
+                  <SelectItem value="unpaid">No Payment</SelectItem>
+                  {invoicePaidOnDates.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={invoiceBalanceFilter} onValueChange={setInvoiceBalanceFilter}>
+                <SelectTrigger className="w-[140px]"><SelectValue placeholder="Balance" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Balance</SelectItem>
+                  <SelectItem value="outstanding">Outstanding</SelectItem>
+                  <SelectItem value="zero">Settled</SelectItem>
+                  <SelectItem value="credit">Credit</SelectItem>
+                </SelectContent>
+              </Select>
+              {hasInvoiceFilters && (
+                <Button variant="outline" size="icon" onClick={() => { setInvoiceSearch(''); setInvoiceNameFilter('all'); setInvoiceStatusFilter('all'); setInvoicePaidOnFilter('all'); setInvoiceBalanceFilter('all'); }} title="Reset Filters">
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+
             {/* Invoice Table */}
             <div className="bg-card rounded-xl border border-border overflow-hidden">
               {isLoading ? (
