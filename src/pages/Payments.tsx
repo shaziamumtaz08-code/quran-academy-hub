@@ -31,6 +31,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { trackActivity } from '@/lib/activityLogger';
 import BillingPlansTable from '@/components/finance/BillingPlansTable';
 import { AttachmentPreview } from '@/components/shared/FileUploadField';
+import { useExchangeRates } from '@/hooks/useExchangeRates';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 // ─── Constants ───────────────────────────────────────────────────────
 const MONTHS = [
@@ -340,33 +342,8 @@ export default function Payments() {
     enabled: invoices.length > 0,
   });
 
-  // Median exchange rates per currency (last 5 transactions) for resilient PKR estimation
-  const { data: latestRates = {} } = useQuery({
-    queryKey: ['latest-exchange-rates'],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('payment_transactions')
-        .select('currency_foreign, effective_rate, created_at')
-        .not('effective_rate', 'is', null)
-        .neq('currency_foreign', 'PKR')
-        .gt('effective_rate', 0)
-        .order('created_at', { ascending: false });
-      // Group last 5 rates per currency, then take median
-      const grouped: Record<string, number[]> = {};
-      (data || []).forEach((tx: any) => {
-        const cur = tx.currency_foreign;
-        if (!grouped[cur]) grouped[cur] = [];
-        if (grouped[cur].length < 5) grouped[cur].push(Number(tx.effective_rate));
-      });
-      const rates: Record<string, number> = {};
-      Object.entries(grouped).forEach(([cur, vals]) => {
-        vals.sort((a, b) => a - b);
-        const mid = Math.floor(vals.length / 2);
-        rates[cur] = vals.length % 2 === 0 ? (vals[mid - 1] + vals[mid]) / 2 : vals[mid];
-      });
-      return rates;
-    },
-  });
+  // Live exchange rates (API + cache + fallback)
+  const { rates: liveRates, isLive: ratesAreLive, lastUpdated: ratesLastUpdated, error: ratesError, getRate } = useExchangeRates();
 
   // Derived maps for backward-compat
   const realisedMap = useMemo(() => {
@@ -528,16 +505,28 @@ export default function Payments() {
   const shortfall = totalExpected - amountForeign;
   const hasShortfall = amountForeign > 0 && amountForeign < totalExpected;
 
-  // Summary stats converted to PKR: use amount_local from ledger for collected, latest rates for FCY estimates
+  // Summary stats converted to PKR: use amount_local from ledger for collected, live rates for FCY estimates
   const totalFeesPKR = useMemo(() => invoices.reduce((s, i) => {
     const amt = Number(i.amount);
     if (i.currency === 'PKR') return s + amt;
-    const rate = latestRates[i.currency] || 0;
-    return s + (amt * rate);
-  }, 0), [invoices, latestRates]);
+    const rate = getRate(i.currency);
+    return s + (rate > 0 ? amt * rate : 0);
+  }, 0), [invoices, liveRates, getRate]);
   // Collected in PKR = sum of amount_local (actual PKR received) from ledger
   const collectedPKR = useMemo(() => invoices.reduce((s, i) => s + (realisedMap[i.id] || 0), 0), [invoices, realisedMap]);
-  const pendingPKR = totalFeesPKR - collectedPKR;
+  const pendingPKR = useMemo(() => {
+    const lcyPend = invoices
+      .filter(i => i.currency === 'PKR' && i.status !== 'paid' && i.status !== 'voided' && i.status !== 'waived')
+      .reduce((s, i) => s + Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0)), 0);
+    const fcyPend = invoices
+      .filter(i => i.currency !== 'PKR' && i.status !== 'paid' && i.status !== 'voided' && i.status !== 'waived')
+      .reduce((s, i) => {
+        const balFCY = Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0));
+        const rate = getRate(i.currency);
+        return s + (rate > 0 ? balFCY * rate : 0);
+      }, 0);
+    return lcyPend + fcyPend;
+  }, [invoices, ledgerPaidMap, liveRates, getRate]);
   // Keep original foreign-currency totals for per-invoice logic
   const totalFees = invoices.reduce((s, i) => s + Number(i.amount), 0);
   // Guardrail #2/#10: Always derive collected from ledger, never from invoice.amount_paid
@@ -602,11 +591,20 @@ export default function Payments() {
 
   // Breakdown stats (use unfiltered lists for summary)
   const localTotalPKR = useMemo(() => lcyInvoicesAll.reduce((s, i) => s + Number(i.amount), 0), [lcyInvoicesAll]);
-  const foreignEstPKR = useMemo(() => fcyInvoicesAll.reduce((s, i) => s + Number(i.amount) * (latestRates[i.currency] || 0), 0), [fcyInvoicesAll, latestRates]);
+  const foreignEstPKR = useMemo(() => fcyInvoicesAll.reduce((s, i) => {
+    const rate = getRate(i.currency);
+    return s + (rate > 0 ? Number(i.amount) * rate : 0);
+  }, 0), [fcyInvoicesAll, liveRates, getRate]);
   const lcyCollected = useMemo(() => lcyInvoicesAll.reduce((s, i) => s + (realisedMap[i.id] || 0), 0), [lcyInvoicesAll, realisedMap]);
   const fcyCollected = useMemo(() => fcyInvoicesAll.reduce((s, i) => s + (realisedMap[i.id] || 0), 0), [fcyInvoicesAll, realisedMap]);
   const lcyPending = localTotalPKR - lcyCollected;
-  const fcyPending = foreignEstPKR - fcyCollected;
+  const fcyPending = useMemo(() => fcyInvoicesAll
+    .filter(i => i.status !== 'paid' && i.status !== 'voided' && i.status !== 'waived')
+    .reduce((s, i) => {
+      const bal = Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0));
+      const rate = getRate(i.currency);
+      return s + (rate > 0 ? bal * rate : 0);
+    }, 0), [fcyInvoicesAll, ledgerPaidMap, liveRates, getRate]);
   const pending = totalFees - collected;
 
   const monthOptions = Array.from({ length: 12 }, (_, i) => {
@@ -1314,6 +1312,20 @@ export default function Payments() {
                   <span>•</span>
                   <span>Foreign (est.): ₨ {foreignEstPKR.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                 </div>
+                {ratesAreLive && (
+                  <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                    Live rates · spread −2 PKR
+                  </p>
+                )}
+                {!ratesAreLive && ratesLastUpdated && (
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Cached rates from {ratesLastUpdated.toLocaleTimeString()}
+                  </p>
+                )}
+                {ratesError && !ratesLastUpdated && (
+                  <p className="text-[10px] text-destructive mt-1">{ratesError}</p>
+                )}
               </div>
             </div>
           </div>
@@ -1666,7 +1678,18 @@ export default function Payments() {
                       <TableHead className="text-right">Paid (FCY)</TableHead>
                       <TableHead className="text-right">Balance (FCY)</TableHead>
                       <TableHead className="text-right">Realised (PKR)</TableHead>
-                      <TableHead className="text-right">Rate</TableHead>
+                      <TableHead className="text-right">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="cursor-help inline-flex items-center gap-1">Rate <span className="text-muted-foreground text-[10px]">ⓘ</span></span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-[220px] text-xs">
+                              <p>Confirmed rate for paid invoices. Live market rate (−2 PKR spread) shown as ~estimate for unpaid.</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </TableHead>
                       <TableHead>Due Date</TableHead>
                       <TableHead><Button variant="ghost" size="sm" className="gap-1 -ml-2 h-8 font-medium" onClick={() => toggleInvoiceSort('paidOn')}>Paid On <ArrowUpDown className="h-3 w-3" /></Button></TableHead>
                       <TableHead className="text-center">Status</TableHead>
@@ -1679,13 +1702,15 @@ export default function Payments() {
                       const paidAmt = ledgerPaidMap[inv.id] || 0;
                       const realisedAmt = realisedMap[inv.id] || 0;
                       const balance = Number(inv.amount) - paidAmt - Number(inv.forgiven_amount || 0);
-                      // Rate: if paid, calculate from realised/paid. Otherwise use latest rate.
+                      // Rate: if paid, calculate from realised/paid. Otherwise use live rate with spread.
                       let rateDisplay = '—';
+                      const isPaidOrPartial = inv.status === 'paid' || inv.status === 'partially_paid';
                       if (paidAmt > 0 && realisedAmt > 0) {
                         rateDisplay = (realisedAmt / paidAmt).toFixed(2);
-                      } else if (latestRates[inv.currency]) {
-                        rateDisplay = latestRates[inv.currency].toFixed(2);
+                      } else if (getRate(inv.currency) > 0) {
+                        rateDisplay = getRate(inv.currency).toFixed(2);
                       }
+                      const rateLabel = (isPaidOrPartial && paidAmt > 0 && realisedAmt > 0) ? rateDisplay : (rateDisplay !== '—' ? `~${rateDisplay}` : '—');
                       return (
                         <TableRow key={inv.id} className={selectedIds.has(inv.id) ? 'bg-primary/5' : ''}>
                           {!isReadOnlyView && <TableCell><Checkbox checked={selectedIds.has(inv.id)} onCheckedChange={() => toggleSelect(inv.id)} disabled={isVoided} /></TableCell>}
@@ -1703,7 +1728,7 @@ export default function Payments() {
                             {balance > 0 ? `${inv.currency} ${balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : balance < 0 ? `−${inv.currency} ${Math.abs(balance).toLocaleString(undefined, { maximumFractionDigits: 2 })} (Credit)` : '—'}
                           </TableCell>
                           <TableCell className="text-right font-mono text-muted-foreground">{realisedAmt > 0 ? `₨ ${realisedAmt.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}</TableCell>
-                          <TableCell className="text-right font-mono text-muted-foreground">{rateDisplay}</TableCell>
+                          <TableCell className="text-right font-mono text-muted-foreground">{rateLabel}</TableCell>
                           <TableCell>{inv.due_date || '—'}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">{paidOnMap[inv.id] || '—'}</TableCell>
                           <TableCell className="text-center">

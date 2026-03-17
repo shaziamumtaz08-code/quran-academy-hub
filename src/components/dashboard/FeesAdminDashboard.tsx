@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { useDivision } from '@/contexts/DivisionContext';
+import { useExchangeRates } from '@/hooks/useExchangeRates';
 
 import { DashboardShell } from './shared/DashboardShell';
 import { QuickActionsGrid } from './shared/QuickActionsGrid';
@@ -20,10 +21,11 @@ const FEES_ADMIN_TABS = [
 export function FeesAdminDashboard() {
   const navigate = useNavigate();
   const { activeDivision } = useDivision();
+  const { getRate, rates: liveRates } = useExchangeRates();
   const divisionId = activeDivision?.id;
 
   const { data: stats, isLoading } = useQuery({
-    queryKey: ['fees-admin-dashboard', divisionId],
+    queryKey: ['fees-admin-dashboard', divisionId, liveRates],
     queryFn: async () => {
       const currentMonth = format(new Date(), 'yyyy-MM');
       let query = supabase.from('fee_invoices').select('id, amount, amount_paid, status, student_id, currency');
@@ -33,27 +35,6 @@ export function FeesAdminDashboard() {
 
       const invoices = fees || [];
       const invoiceIds = invoices.map(f => f.id);
-      
-      // Get median exchange rates per currency (last 5 transactions for resilience)
-      const { data: rateTxns } = await supabase
-        .from('payment_transactions')
-        .select('currency_foreign, effective_rate, created_at')
-        .not('effective_rate', 'is', null)
-        .neq('currency_foreign', 'PKR')
-        .gt('effective_rate', 0)
-        .order('created_at', { ascending: false });
-      const grouped: Record<string, number[]> = {};
-      (rateTxns || []).forEach((tx: any) => {
-        const cur = tx.currency_foreign;
-        if (!grouped[cur]) grouped[cur] = [];
-        if (grouped[cur].length < 5) grouped[cur].push(Number(tx.effective_rate));
-      });
-      const latestRates: Record<string, number> = {};
-      Object.entries(grouped).forEach(([cur, vals]) => {
-        vals.sort((a, b) => a - b);
-        const mid = Math.floor(vals.length / 2);
-        latestRates[cur] = vals.length % 2 === 0 ? (vals[mid - 1] + vals[mid]) / 2 : vals[mid];
-      });
 
       // Guardrail: derive collected from payment_transactions ledger (in PKR via amount_local)
       let collectedPKR = 0;
@@ -65,11 +46,11 @@ export function FeesAdminDashboard() {
         collectedPKR = (txns || []).reduce((s: number, t: any) => s + Number(t.amount_local || 0), 0);
       }
 
-      // Expected in PKR: PKR invoices use amount directly, FCY use latest rate
+      // Expected in PKR: PKR invoices use amount directly, FCY use live rate with spread
       const expectedPKR = invoices.reduce((s, f: any) => {
         if (f.currency === 'PKR') return s + Number(f.amount);
-        const rate = latestRates[f.currency] || 0;
-        return s + (Number(f.amount) * rate);
+        const rate = getRate(f.currency);
+        return s + (rate > 0 ? Number(f.amount) * rate : 0);
       }, 0);
       const pendingPKR = expectedPKR - collectedPKR;
       const overdue = invoices.filter(f => f.status === 'overdue');
