@@ -196,6 +196,7 @@ export default function Payments() {
 
   // Active tab
   const [activeTab, setActiveTab] = useState('invoices');
+  const [invoiceTab, setInvoiceTab] = useState<'lcy' | 'fcy'>('lcy');
 
   // ─── Data Queries ────────────────────────────────────────────────
   const { data: students = [] } = useQuery({
