@@ -1378,36 +1378,176 @@ export default function Payments() {
               );
             })()}
 
+            {/* LCY / FCY Sub-Tabs */}
+            <div className="flex items-center gap-2 mb-3">
+              <button
+                onClick={() => setInvoiceTab('lcy')}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${invoiceTab === 'lcy' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+              >
+                PKR — Local
+                <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-[10px]">{lcyInvoices.length}</Badge>
+              </button>
+              <button
+                onClick={() => setInvoiceTab('fcy')}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${invoiceTab === 'fcy' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+              >
+                Foreign Currency
+                <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-[10px]">{fcyInvoices.length}</Badge>
+              </button>
+            </div>
+
             {/* Invoice Table */}
             <div className="bg-card rounded-xl border border-border overflow-hidden">
               {isLoading ? (
                 <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-              ) : invoices.length === 0 ? (
+              ) : (invoiceTab === 'lcy' ? lcyInvoices : fcyInvoices).length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                  <DollarSign className="h-12 w-12 mb-4 opacity-40" />
-                  <p className="font-medium">No invoices yet</p>
+                  <Receipt className="h-12 w-12 mb-4 opacity-40" />
+                  <p className="font-medium">No {invoiceTab === 'lcy' ? 'PKR' : 'foreign currency'} invoices</p>
                   <p className="text-sm">Set up student fees then generate monthly invoices</p>
                 </div>
-              ) : (
+              ) : invoiceTab === 'lcy' ? (
+                /* ─── LCY (PKR) Table ─── */
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      {!isReadOnlyView && <TableHead className="w-10"><Checkbox checked={allSelectableChecked} onCheckedChange={toggleSelectAll} /></TableHead>}
+                      {!isReadOnlyView && <TableHead className="w-10"><Checkbox checked={lcyInvoices.filter(i => i.status !== 'voided').every(i => selectedIds.has(i.id)) && lcyInvoices.length > 0} onCheckedChange={() => {
+                        const lcySelectable = lcyInvoices.filter(i => i.status !== 'voided');
+                        const allChecked = lcySelectable.every(i => selectedIds.has(i.id));
+                        if (allChecked) {
+                          setSelectedIds(prev => { const next = new Set(prev); lcySelectable.forEach(i => { next.delete(i.id); selectedInvoiceCacheRef.current.delete(i.id); }); return next; });
+                        } else {
+                          setSelectedIds(prev => { const next = new Set(prev); lcySelectable.forEach(i => { next.add(i.id); selectedInvoiceCacheRef.current.set(i.id, i); }); return next; });
+                        }
+                      }} /></TableHead>}
                       <TableHead>Student</TableHead>
                       <TableHead>Package</TableHead>
                       <TableHead>Billing Month</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead className="text-right">Paid</TableHead>
-                      <TableHead className="text-right">Balance</TableHead>
-                      {!isReadOnlyView && !invoices.every(i => i.currency === 'PKR') && <TableHead className="text-right">Realised (PKR)</TableHead>}
+                      <TableHead className="text-right">Amount (PKR)</TableHead>
+                      <TableHead className="text-right">Paid (PKR)</TableHead>
+                      <TableHead className="text-right">Balance (PKR)</TableHead>
                       <TableHead>Due Date</TableHead>
-                       <TableHead className="text-center">Status</TableHead>
-                       <TableHead className="w-12"></TableHead>
+                      <TableHead className="text-center">Status</TableHead>
+                      <TableHead className="w-12"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {invoices.map(inv => {
+                    {lcyInvoices.map(inv => {
                       const isVoided = inv.status === 'voided';
+                      const paidAmt = ledgerPaidMap[inv.id] || 0;
+                      const balance = Number(inv.amount) - paidAmt - Number(inv.forgiven_amount || 0);
+                      return (
+                        <TableRow key={inv.id} className={selectedIds.has(inv.id) ? 'bg-primary/5' : ''}>
+                          {!isReadOnlyView && <TableCell><Checkbox checked={selectedIds.has(inv.id)} onCheckedChange={() => toggleSelect(inv.id)} disabled={isVoided} /></TableCell>}
+                          <TableCell>
+                            <span className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center"><User className="h-4 w-4 text-secondary-foreground" /></div>
+                              <span className="font-medium">{inv.profiles?.full_name || 'Unknown'}</span>
+                            </span>
+                          </TableCell>
+                          <TableCell><Badge variant="outline" className="text-xs">{getPackageName(inv)}</Badge></TableCell>
+                          <TableCell>{formatBillingMonth(inv.billing_month)}</TableCell>
+                          <TableCell className="text-right font-mono font-semibold">₨ {Number(inv.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="text-right font-mono text-muted-foreground">{paidAmt > 0 ? `₨ ${paidAmt.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '—'}</TableCell>
+                          <TableCell className={`text-right font-mono font-semibold ${balance > 0 ? 'text-destructive' : balance < 0 ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+                            {balance > 0 ? `₨ ${balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : balance < 0 ? `−₨ ${Math.abs(balance).toLocaleString(undefined, { maximumFractionDigits: 2 })} (Credit)` : '—'}
+                          </TableCell>
+                          <TableCell>{inv.due_date || '—'}</TableCell>
+                          <TableCell className="text-center">
+                            {(inv.status === 'pending' || inv.status === 'partially_paid' || inv.status === 'overdue') ? (
+                              <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8" onClick={() => openSinglePay(inv.id)}>
+                                <Receipt className="h-3.5 w-3.5" /> {inv.status === 'partially_paid' ? 'Pay Rest' : 'Pay'}
+                              </Button>
+                            ) : getStatusBadge(inv.status)}
+                          </TableCell>
+                          {isReadOnlyView && (
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => window.open(`/finance/print/invoice/${inv.id}`, '_blank')} title="View Invoice"><FileText className="h-3.5 w-3.5" /></Button>
+                                {(inv.status === 'paid' || inv.status === 'partially_paid') && (
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => window.open(`/finance/print/invoice/${inv.id}?mode=receipt`, '_blank')} title="View Receipt"><Printer className="h-3.5 w-3.5" /></Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          )}
+                          {!isReadOnlyView && (
+                            <TableCell>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                  {isVoided ? (
+                                    <>
+                                      <DropdownMenuItem onClick={() => setActionModal({ type: 'restore_to_pending', invoice: inv })}><Undo2 className="h-3.5 w-3.5 mr-2" /> Restore to Pending</DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => openEditInvoiceWithRecalc(inv)}><Pencil className="h-3.5 w-3.5 mr-2" /> Edit Invoice</DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem onClick={() => { setActionModal({ type: 'view_history', invoice: inv }); fetchHistory(inv.id); }}><History className="h-3.5 w-3.5 mr-2" /> View History</DropdownMenuItem>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <DropdownMenuItem onClick={() => window.open(`/finance/print/invoice/${inv.id}`, '_blank')}><FileText className="h-3.5 w-3.5 mr-2" /> View Invoice</DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => openEditInvoiceWithRecalc(inv)}><Pencil className="h-3.5 w-3.5 mr-2" /> Edit Invoice</DropdownMenuItem>
+                                      {(inv.status === 'paid' || inv.status === 'partially_paid') && <DropdownMenuItem onClick={async () => { const { data: txns } = await supabase.from('payment_transactions').select('*').eq('invoice_id', inv.id).order('created_at', { ascending: false }); if (!txns?.length) { toast({ title: 'No payment transactions found', variant: 'destructive' }); return; } setReceiptTransactions(txns); setReceiptViewInvoice(inv); }}><Eye className="h-3.5 w-3.5 mr-2" /> View Receipt</DropdownMenuItem>}
+                                      {(inv.status === 'paid' || inv.status === 'partially_paid') && <DropdownMenuItem onClick={() => window.open(`/finance/print/invoice/${inv.id}?mode=receipt`, '_blank')}><Printer className="h-3.5 w-3.5 mr-2" /> Print Receipt</DropdownMenuItem>}
+                                      {(inv.status === 'paid' || inv.status === 'partially_paid') && <DropdownMenuItem onClick={() => setActionModal({ type: 'mark_unpaid', invoice: inv })}><Undo2 className="h-3.5 w-3.5 mr-2" /> Mark Unpaid</DropdownMenuItem>}
+                                      <DropdownMenuItem onClick={() => setActionModal({ type: 'apply_discount', invoice: inv })}><Tag className="h-3.5 w-3.5 mr-2" /> Apply Discount</DropdownMenuItem>
+                                      {inv.status !== 'waived' && <DropdownMenuItem onClick={() => setActionModal({ type: 'waive_fee', invoice: inv })}><Ban className="h-3.5 w-3.5 mr-2" /> Waive Fee</DropdownMenuItem>}
+                                      {(inv.status === 'paid' || inv.status === 'partially_paid') && <DropdownMenuItem onClick={() => setActionModal({ type: 'reverse_payment', invoice: inv })}><ArrowRightLeft className="h-3.5 w-3.5 mr-2" /> Reverse Payment</DropdownMenuItem>}
+                                      {(inv.status === 'paid' || inv.status === 'partially_paid') && <DropdownMenuItem onClick={async () => { const { data: txns } = await supabase.from('payment_transactions').select('*').eq('invoice_id', inv.id).order('created_at', { ascending: false }).limit(1); const tx = txns?.[0]; if (!tx) { toast({ title: 'No payment transaction found', variant: 'destructive' }); return; } setEditPaymentForm({ amount_foreign: String(tx.amount_foreign || ''), amount_local: String(tx.amount_local || ''), payment_date: tx.payment_date || '', payment_method: tx.payment_method || '', notes: tx.notes || '', reason: '' }); setEditPaymentData({ invoiceId: inv.id, transaction: tx, invoice: inv }); }}><Pencil className="h-3.5 w-3.5 mr-2" /> Edit Payment</DropdownMenuItem>}
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem onClick={() => { setActionModal({ type: 'view_history', invoice: inv }); fetchHistory(inv.id); }}><History className="h-3.5 w-3.5 mr-2" /> View History</DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setActionModal({ type: 'void_invoice', invoice: inv })}><FileX className="h-3.5 w-3.5 mr-2" /> Void Invoice</DropdownMenuItem>
+                                    </>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              ) : (
+                /* ─── FCY Table ─── */
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      {!isReadOnlyView && <TableHead className="w-10"><Checkbox checked={fcyInvoices.filter(i => i.status !== 'voided').every(i => selectedIds.has(i.id)) && fcyInvoices.length > 0} onCheckedChange={() => {
+                        const fcySelectable = fcyInvoices.filter(i => i.status !== 'voided');
+                        const allChecked = fcySelectable.every(i => selectedIds.has(i.id));
+                        if (allChecked) {
+                          setSelectedIds(prev => { const next = new Set(prev); fcySelectable.forEach(i => { next.delete(i.id); selectedInvoiceCacheRef.current.delete(i.id); }); return next; });
+                        } else {
+                          setSelectedIds(prev => { const next = new Set(prev); fcySelectable.forEach(i => { next.add(i.id); selectedInvoiceCacheRef.current.set(i.id, i); }); return next; });
+                        }
+                      }} /></TableHead>}
+                      <TableHead>Student</TableHead>
+                      <TableHead>Package</TableHead>
+                      <TableHead>Billing Month</TableHead>
+                      <TableHead className="text-right">Invoice Amount</TableHead>
+                      <TableHead className="text-right">Paid (FCY)</TableHead>
+                      <TableHead className="text-right">Balance (FCY)</TableHead>
+                      <TableHead className="text-right">Realised (PKR)</TableHead>
+                      <TableHead className="text-right">Rate</TableHead>
+                      <TableHead>Due Date</TableHead>
+                      <TableHead className="text-center">Status</TableHead>
+                      <TableHead className="w-12"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {fcyInvoices.map(inv => {
+                      const isVoided = inv.status === 'voided';
+                      const paidAmt = ledgerPaidMap[inv.id] || 0;
+                      const realisedAmt = realisedMap[inv.id] || 0;
+                      const balance = Number(inv.amount) - paidAmt - Number(inv.forgiven_amount || 0);
+                      // Rate: if paid, calculate from realised/paid. Otherwise use latest rate.
+                      let rateDisplay = '—';
+                      if (paidAmt > 0 && realisedAmt > 0) {
+                        rateDisplay = (realisedAmt / paidAmt).toFixed(2);
+                      } else if (latestRates[inv.currency]) {
+                        rateDisplay = latestRates[inv.currency].toFixed(2);
+                      }
                       return (
                         <TableRow key={inv.id} className={selectedIds.has(inv.id) ? 'bg-primary/5' : ''}>
                           {!isReadOnlyView && <TableCell><Checkbox checked={selectedIds.has(inv.id)} onCheckedChange={() => toggleSelect(inv.id)} disabled={isVoided} /></TableCell>}
@@ -1420,22 +1560,12 @@ export default function Payments() {
                           <TableCell><Badge variant="outline" className="text-xs">{getPackageName(inv)}</Badge></TableCell>
                           <TableCell>{formatBillingMonth(inv.billing_month)}</TableCell>
                           <TableCell className="text-right font-mono font-semibold">{inv.currency} {Number(inv.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}</TableCell>
-                          <TableCell className="text-right font-mono text-muted-foreground">
-                            {(ledgerPaidMap[inv.id] || 0) > 0 ? `${inv.currency} ${(ledgerPaidMap[inv.id] || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '—'}
+                          <TableCell className="text-right font-mono text-muted-foreground">{paidAmt > 0 ? `${inv.currency} ${paidAmt.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '—'}</TableCell>
+                          <TableCell className={`text-right font-mono font-semibold ${balance > 0 ? 'text-destructive' : balance < 0 ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+                            {balance > 0 ? `${inv.currency} ${balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : balance < 0 ? `−${inv.currency} ${Math.abs(balance).toLocaleString(undefined, { maximumFractionDigits: 2 })} (Credit)` : '—'}
                           </TableCell>
-                          {(() => {
-                            const balance = Number(inv.amount) - (ledgerPaidMap[inv.id] || 0) - Number(inv.forgiven_amount || 0);
-                            return (
-                              <TableCell className={`text-right font-mono font-semibold ${balance > 0 ? 'text-destructive' : balance < 0 ? 'text-emerald-600' : 'text-muted-foreground'}`}>
-                                {balance > 0 ? `${inv.currency} ${balance.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : balance < 0 ? `−${inv.currency} ${Math.abs(balance).toLocaleString(undefined, { maximumFractionDigits: 2 })} (Credit)` : '—'}
-                              </TableCell>
-                            );
-                          })()}
-                          {!isReadOnlyView && !invoices.every(i => i.currency === 'PKR') && (
-                            <TableCell className="text-right font-mono text-muted-foreground">
-                              {inv.currency !== 'PKR' && realisedMap[inv.id] ? `PKR ${realisedMap[inv.id].toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}
-                            </TableCell>
-                          )}
+                          <TableCell className="text-right font-mono text-muted-foreground">{realisedAmt > 0 ? `₨ ${realisedAmt.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}</TableCell>
+                          <TableCell className="text-right font-mono text-muted-foreground">{rateDisplay}</TableCell>
                           <TableCell>{inv.due_date || '—'}</TableCell>
                           <TableCell className="text-center">
                             {(inv.status === 'pending' || inv.status === 'partially_paid' || inv.status === 'overdue') ? (
@@ -1447,13 +1577,9 @@ export default function Payments() {
                           {isReadOnlyView && (
                             <TableCell>
                               <div className="flex items-center gap-1">
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => window.open(`/finance/print/invoice/${inv.id}`, '_blank')} title="View Invoice">
-                                  <FileText className="h-3.5 w-3.5" />
-                                </Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => window.open(`/finance/print/invoice/${inv.id}`, '_blank')} title="View Invoice"><FileText className="h-3.5 w-3.5" /></Button>
                                 {(inv.status === 'paid' || inv.status === 'partially_paid') && (
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => window.open(`/finance/print/invoice/${inv.id}?mode=receipt`, '_blank')} title="View Receipt">
-                                    <Printer className="h-3.5 w-3.5" />
-                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => window.open(`/finance/print/invoice/${inv.id}?mode=receipt`, '_blank')} title="View Receipt"><Printer className="h-3.5 w-3.5" /></Button>
                                 )}
                               </div>
                             </TableCell>
@@ -1461,92 +1587,30 @@ export default function Payments() {
                           {!isReadOnlyView && (
                             <TableCell>
                               <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
+                                <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-48">
                                   {isVoided ? (
                                     <>
-                                      <DropdownMenuItem onClick={() => setActionModal({ type: 'restore_to_pending', invoice: inv })}>
-                                        <Undo2 className="h-3.5 w-3.5 mr-2" /> Restore to Pending
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => openEditInvoiceWithRecalc(inv)}>
-                                        <Pencil className="h-3.5 w-3.5 mr-2" /> Edit Invoice
-                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => setActionModal({ type: 'restore_to_pending', invoice: inv })}><Undo2 className="h-3.5 w-3.5 mr-2" /> Restore to Pending</DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => openEditInvoiceWithRecalc(inv)}><Pencil className="h-3.5 w-3.5 mr-2" /> Edit Invoice</DropdownMenuItem>
                                       <DropdownMenuSeparator />
-                                      <DropdownMenuItem onClick={() => { setActionModal({ type: 'view_history', invoice: inv }); fetchHistory(inv.id); }}>
-                                        <History className="h-3.5 w-3.5 mr-2" /> View History
-                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => { setActionModal({ type: 'view_history', invoice: inv }); fetchHistory(inv.id); }}><History className="h-3.5 w-3.5 mr-2" /> View History</DropdownMenuItem>
                                     </>
                                   ) : (
                                     <>
-                                      <DropdownMenuItem onClick={() => window.open(`/finance/print/invoice/${inv.id}`, '_blank')}>
-                                        <FileText className="h-3.5 w-3.5 mr-2" /> View Invoice
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => openEditInvoiceWithRecalc(inv)}>
-                                        <Pencil className="h-3.5 w-3.5 mr-2" /> Edit Invoice
-                                      </DropdownMenuItem>
-                                      {(inv.status === 'paid' || inv.status === 'partially_paid') && (
-                                        <DropdownMenuItem onClick={async () => {
-                                          const { data: txns } = await supabase.from('payment_transactions').select('*').eq('invoice_id', inv.id).order('created_at', { ascending: false });
-                                          if (!txns?.length) { toast({ title: 'No payment transactions found', variant: 'destructive' }); return; }
-                                          setReceiptTransactions(txns);
-                                          setReceiptViewInvoice(inv);
-                                        }}>
-                                          <Eye className="h-3.5 w-3.5 mr-2" /> View Receipt
-                                        </DropdownMenuItem>
-                                      )}
-                                      {(inv.status === 'paid' || inv.status === 'partially_paid') && (
-                                        <DropdownMenuItem onClick={() => window.open(`/finance/print/invoice/${inv.id}?mode=receipt`, '_blank')}>
-                                          <Printer className="h-3.5 w-3.5 mr-2" /> Print Receipt
-                                        </DropdownMenuItem>
-                                      )}
-                                      {(inv.status === 'paid' || inv.status === 'partially_paid') && (
-                                        <DropdownMenuItem onClick={() => setActionModal({ type: 'mark_unpaid', invoice: inv })}>
-                                          <Undo2 className="h-3.5 w-3.5 mr-2" /> Mark Unpaid
-                                        </DropdownMenuItem>
-                                      )}
-                                      <DropdownMenuItem onClick={() => setActionModal({ type: 'apply_discount', invoice: inv })}>
-                                        <Tag className="h-3.5 w-3.5 mr-2" /> Apply Discount
-                                      </DropdownMenuItem>
-                                      {inv.status !== 'waived' && (
-                                        <DropdownMenuItem onClick={() => setActionModal({ type: 'waive_fee', invoice: inv })}>
-                                          <Ban className="h-3.5 w-3.5 mr-2" /> Waive Fee
-                                        </DropdownMenuItem>
-                                      )}
-                                      {(inv.status === 'paid' || inv.status === 'partially_paid') && (
-                                        <DropdownMenuItem onClick={() => setActionModal({ type: 'reverse_payment', invoice: inv })}>
-                                          <ArrowRightLeft className="h-3.5 w-3.5 mr-2" /> Reverse Payment
-                                        </DropdownMenuItem>
-                                      )}
-                                      {(inv.status === 'paid' || inv.status === 'partially_paid') && (
-                                        <DropdownMenuItem onClick={async () => {
-                                          const { data: txns } = await supabase.from('payment_transactions').select('*').eq('invoice_id', inv.id).order('created_at', { ascending: false }).limit(1);
-                                          const tx = txns?.[0];
-                                          if (!tx) { toast({ title: 'No payment transaction found for this invoice', variant: 'destructive' }); return; }
-                                          setEditPaymentForm({
-                                            amount_foreign: String(tx.amount_foreign || ''),
-                                            amount_local: String(tx.amount_local || ''),
-                                            payment_date: tx.payment_date || '',
-                                            payment_method: tx.payment_method || '',
-                                            notes: tx.notes || '',
-                                            reason: '',
-                                          });
-                                          setEditPaymentData({ invoiceId: inv.id, transaction: tx, invoice: inv });
-                                        }}>
-                                          <Pencil className="h-3.5 w-3.5 mr-2" /> Edit Payment
-                                        </DropdownMenuItem>
-                                      )}
+                                      <DropdownMenuItem onClick={() => window.open(`/finance/print/invoice/${inv.id}`, '_blank')}><FileText className="h-3.5 w-3.5 mr-2" /> View Invoice</DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => openEditInvoiceWithRecalc(inv)}><Pencil className="h-3.5 w-3.5 mr-2" /> Edit Invoice</DropdownMenuItem>
+                                      {(inv.status === 'paid' || inv.status === 'partially_paid') && <DropdownMenuItem onClick={async () => { const { data: txns } = await supabase.from('payment_transactions').select('*').eq('invoice_id', inv.id).order('created_at', { ascending: false }); if (!txns?.length) { toast({ title: 'No payment transactions found', variant: 'destructive' }); return; } setReceiptTransactions(txns); setReceiptViewInvoice(inv); }}><Eye className="h-3.5 w-3.5 mr-2" /> View Receipt</DropdownMenuItem>}
+                                      {(inv.status === 'paid' || inv.status === 'partially_paid') && <DropdownMenuItem onClick={() => window.open(`/finance/print/invoice/${inv.id}?mode=receipt`, '_blank')}><Printer className="h-3.5 w-3.5 mr-2" /> Print Receipt</DropdownMenuItem>}
+                                      {(inv.status === 'paid' || inv.status === 'partially_paid') && <DropdownMenuItem onClick={() => setActionModal({ type: 'mark_unpaid', invoice: inv })}><Undo2 className="h-3.5 w-3.5 mr-2" /> Mark Unpaid</DropdownMenuItem>}
+                                      <DropdownMenuItem onClick={() => setActionModal({ type: 'apply_discount', invoice: inv })}><Tag className="h-3.5 w-3.5 mr-2" /> Apply Discount</DropdownMenuItem>
+                                      {inv.status !== 'waived' && <DropdownMenuItem onClick={() => setActionModal({ type: 'waive_fee', invoice: inv })}><Ban className="h-3.5 w-3.5 mr-2" /> Waive Fee</DropdownMenuItem>}
+                                      {(inv.status === 'paid' || inv.status === 'partially_paid') && <DropdownMenuItem onClick={() => setActionModal({ type: 'reverse_payment', invoice: inv })}><ArrowRightLeft className="h-3.5 w-3.5 mr-2" /> Reverse Payment</DropdownMenuItem>}
+                                      {(inv.status === 'paid' || inv.status === 'partially_paid') && <DropdownMenuItem onClick={async () => { const { data: txns } = await supabase.from('payment_transactions').select('*').eq('invoice_id', inv.id).order('created_at', { ascending: false }).limit(1); const tx = txns?.[0]; if (!tx) { toast({ title: 'No payment transaction found', variant: 'destructive' }); return; } setEditPaymentForm({ amount_foreign: String(tx.amount_foreign || ''), amount_local: String(tx.amount_local || ''), payment_date: tx.payment_date || '', payment_method: tx.payment_method || '', notes: tx.notes || '', reason: '' }); setEditPaymentData({ invoiceId: inv.id, transaction: tx, invoice: inv }); }}><Pencil className="h-3.5 w-3.5 mr-2" /> Edit Payment</DropdownMenuItem>}
                                       <DropdownMenuSeparator />
-                                      <DropdownMenuItem onClick={() => { setActionModal({ type: 'view_history', invoice: inv }); fetchHistory(inv.id); }}>
-                                        <History className="h-3.5 w-3.5 mr-2" /> View History
-                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => { setActionModal({ type: 'view_history', invoice: inv }); fetchHistory(inv.id); }}><History className="h-3.5 w-3.5 mr-2" /> View History</DropdownMenuItem>
                                       <DropdownMenuSeparator />
-                                      <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setActionModal({ type: 'void_invoice', invoice: inv })}>
-                                        <FileX className="h-3.5 w-3.5 mr-2" /> Void Invoice
-                                      </DropdownMenuItem>
+                                      <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setActionModal({ type: 'void_invoice', invoice: inv })}><FileX className="h-3.5 w-3.5 mr-2" /> Void Invoice</DropdownMenuItem>
                                     </>
                                   )}
                                 </DropdownMenuContent>
