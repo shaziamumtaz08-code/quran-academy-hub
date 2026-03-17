@@ -59,32 +59,40 @@ export function TicketList({ view, userId }: TicketListProps) {
       } else if (view === 'sent' && userId) {
         query = query.eq('creator_id', userId);
       }
-      // 'watching' and 'all' fetch all visible tickets (RLS handles filtering)
 
       const { data, error } = await query;
-      console.log('[TicketList] view=', view, 'userId=', userId, 'data=', data?.length, 'error=', error);
       if (error) throw error;
 
-      // For watching view, we need to filter by watcher
+      let allData = data || [];
+
+      // Filter watching view BEFORE enrichment
       if (view === 'watching' && userId) {
         const { data: watchedIds } = await supabase
           .from('ticket_watchers')
           .select('ticket_id')
           .eq('user_id', userId);
         const ids = new Set((watchedIds || []).map(w => w.ticket_id));
-        return (data || []).filter((t: any) => ids.has(t.id));
+        allData = allData.filter((t: any) => ids.has(t.id));
       }
 
-      // Enrich with profile names
-      const allData = data || [];
-      const userIds = [...new Set(allData.flatMap((t: any) => [t.creator_id, t.assignee_id]))];
-      const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', userIds);
-      const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p.full_name]));
-      return allData.map((t: any) => ({
-        ...t,
-        creator_name: profileMap[t.creator_id] || 'Unknown',
-        assignee_name: profileMap[t.assignee_id] || 'Unknown',
-      }));
+      // Enrich ALL views with profile names
+      const userIds = [...new Set(allData.flatMap((t: any) =>
+        [t.creator_id, t.assignee_id].filter(Boolean)
+      ))];
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .in('id', userIds);
+        const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p.full_name]));
+        allData = allData.map((t: any) => ({
+          ...t,
+          creator_name: profileMap[t.creator_id] || 'Unknown',
+          assignee_name: profileMap[t.assignee_id] || 'Unknown',
+        }));
+      }
+
+      return allData;
     },
     enabled: !!userId || view === 'all',
   });
