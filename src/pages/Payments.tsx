@@ -204,6 +204,12 @@ export default function Payments() {
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('all');
   const [invoicePaidOnFilter, setInvoicePaidOnFilter] = useState('all');
   const [invoiceBalanceFilter, setInvoiceBalanceFilter] = useState('all');
+  const [invoiceSortCol, setInvoiceSortCol] = useState<'student' | 'paidOn' | null>(null);
+  const [invoiceSortDir, setInvoiceSortDir] = useState<'asc' | 'desc'>('asc');
+  const toggleInvoiceSort = (col: 'student' | 'paidOn') => {
+    if (invoiceSortCol === col) setInvoiceSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setInvoiceSortCol(col); setInvoiceSortDir('asc'); }
+  };
   const hasInvoiceFilters = invoiceSearch || invoiceNameFilter !== 'all' || invoiceStatusFilter !== 'all' || invoicePaidOnFilter !== 'all' || invoiceBalanceFilter !== 'all';
 
   // ─── Data Queries ────────────────────────────────────────────────
