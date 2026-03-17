@@ -2,19 +2,22 @@ import React, { useState } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Plus, Inbox, Send, Eye, LayoutGrid, Settings2, MessageSquareWarning, ThumbsUp, Lightbulb, ClipboardList, CalendarOff, HelpCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { TicketList } from '@/components/hub/TicketList';
 import { CreateTicketDialog } from '@/components/hub/CreateTicketDialog';
 import { SubcategoryManager } from '@/components/hub/SubcategoryManager';
 
 const QUICK_CATEGORIES = [
-  { value: 'complaint', label: 'Complaint', icon: MessageSquareWarning, gradient: 'from-red-500/80 to-rose-600/80' },
-  { value: 'feedback', label: 'Feedback', icon: ThumbsUp, gradient: 'from-emerald-500/80 to-teal-600/80' },
-  { value: 'suggestion', label: 'Suggestion', icon: Lightbulb, gradient: 'from-amber-500/80 to-yellow-600/80' },
-  { value: 'task', label: 'Task', icon: ClipboardList, gradient: 'from-blue-500/80 to-indigo-600/80' },
-  { value: 'leave_request', label: 'Leave', icon: CalendarOff, gradient: 'from-purple-500/80 to-violet-600/80' },
-  { value: 'general', label: 'General', icon: HelpCircle, gradient: 'from-slate-500/80 to-gray-600/80' },
+  { value: 'complaint', label: 'Complaint', icon: MessageSquareWarning, color: 'text-red-600', bg: 'bg-red-50 dark:bg-red-950/30', border: 'border-red-100 dark:border-red-900/40', iconBg: 'bg-red-100 dark:bg-red-900/50' },
+  { value: 'feedback', label: 'Feedback', icon: ThumbsUp, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30', border: 'border-emerald-100 dark:border-emerald-900/40', iconBg: 'bg-emerald-100 dark:bg-emerald-900/50' },
+  { value: 'suggestion', label: 'Suggestion', icon: Lightbulb, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30', border: 'border-amber-100 dark:border-amber-900/40', iconBg: 'bg-amber-100 dark:bg-amber-900/50' },
+  { value: 'task', label: 'Task', icon: ClipboardList, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', border: 'border-blue-100 dark:border-blue-900/40', iconBg: 'bg-blue-100 dark:bg-blue-900/50' },
+  { value: 'leave_request', label: 'Leave', icon: CalendarOff, color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-950/30', border: 'border-purple-100 dark:border-purple-900/40', iconBg: 'bg-purple-100 dark:bg-purple-900/50' },
+  { value: 'general', label: 'General', icon: HelpCircle, color: 'text-slate-600', bg: 'bg-slate-50 dark:bg-slate-950/30', border: 'border-slate-100 dark:border-slate-900/40', iconBg: 'bg-slate-100 dark:bg-slate-900/50' },
 ];
 
 export default function WorkHub() {
@@ -25,6 +28,36 @@ export default function WorkHub() {
   const [defaultCategory, setDefaultCategory] = useState<string | undefined>();
   const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_');
 
+  // Tab badge counts
+  const { data: tabCounts } = useQuery({
+    queryKey: ['workhub-tab-counts', profile?.id],
+    queryFn: async () => {
+      const userId = profile?.id;
+      if (!userId) return { inbox: 0, sent: 0, overdue: 0 };
+
+      const { count: inboxCount } = await supabase
+        .from('tickets')
+        .select('id', { count: 'exact', head: true })
+        .eq('assignee_id', userId)
+        .in('status', ['open', 'in_progress', 'awaiting_input']);
+
+      const { count: sentCount } = await supabase
+        .from('tickets')
+        .select('id', { count: 'exact', head: true })
+        .eq('creator_id', userId);
+
+      const { count: overdueCount } = await supabase
+        .from('tickets')
+        .select('id', { count: 'exact', head: true })
+        .eq('assignee_id', userId)
+        .eq('is_overdue', true)
+        .in('status', ['open', 'in_progress', 'awaiting_input']);
+
+      return { inbox: inboxCount || 0, sent: sentCount || 0, overdue: overdueCount || 0 };
+    },
+    enabled: !!profile?.id,
+  });
+
   const handleQuickCreate = (category: string) => {
     setDefaultCategory(category);
     setCreateOpen(true);
@@ -33,12 +66,21 @@ export default function WorkHub() {
   return (
     <DashboardLayout>
       <div className="p-4 lg:p-6 space-y-4">
-        {/* Header */}
-        <div className="page-header-premium text-primary-foreground">
+        {/* Hero Header */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[hsl(var(--navy))] to-[hsl(var(--accent))] p-5 sm:p-6 text-white">
+          <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
           <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <h1 className="text-2xl font-bold">Work Hub</h1>
-              <p className="text-sm opacity-80">Tickets, tasks, leave requests & feedback — all in one place</p>
+              <p className="text-sm opacity-80 mt-0.5">Tickets, tasks, leave requests & feedback — all in one place</p>
+              <div className="flex items-center gap-2 mt-2">
+                {(tabCounts?.overdue || 0) > 0 && (
+                  <Badge className="bg-destructive/90 text-destructive-foreground text-xs">{tabCounts?.overdue} overdue</Badge>
+                )}
+                {(tabCounts?.inbox || 0) > 0 && (
+                  <Badge className="bg-white/10 text-white border-white/20 text-xs">{tabCounts?.inbox} pending action</Badge>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-2">
               {isAdmin && (
@@ -47,7 +89,7 @@ export default function WorkHub() {
                   Manage
                 </Button>
               )}
-              <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={() => { setDefaultCategory(undefined); setCreateOpen(true); }}>
+              <Button size="sm" className="bg-white text-[hsl(var(--navy))] font-bold hover:bg-white/90" onClick={() => { setDefaultCategory(undefined); setCreateOpen(true); }}>
                 <Plus className="h-4 w-4 mr-1" />
                 New Ticket
               </Button>
@@ -55,41 +97,47 @@ export default function WorkHub() {
           </div>
         </div>
 
-        {/* Quick Category Buttons */}
+        {/* Quick Category Cards */}
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3">
-          {QUICK_CATEGORIES.map(({ value, label, icon: Icon, gradient }) => (
+          {QUICK_CATEGORIES.map(({ value, label, icon: Icon, color, bg, border, iconBg }) => (
             <button
               key={value}
               onClick={() => handleQuickCreate(value)}
-              className={`group relative flex flex-col items-center gap-1.5 p-3 sm:p-4 rounded-xl bg-gradient-to-br ${gradient} text-white shadow-sm hover:shadow-lg hover:scale-[1.03] active:scale-[0.98] transition-all duration-200 overflow-hidden`}
+              className={`group flex flex-col items-center gap-1.5 p-3 sm:p-4 rounded-2xl ${bg} border ${border} hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200`}
             >
-              <div className="absolute inset-0 bg-white/0 group-hover:bg-white/10 transition-colors duration-200" />
-              <Icon className="h-5 w-5 sm:h-6 sm:w-6 relative z-10 drop-shadow-sm" />
-              <span className="text-[11px] sm:text-xs font-semibold tracking-wide relative z-10 drop-shadow-sm">{label}</span>
+              <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg ${iconBg} flex items-center justify-center`}>
+                <Icon className={`h-4 w-4 sm:h-5 sm:w-5 ${color}`} />
+              </div>
+              <span className={`text-[11px] sm:text-xs font-semibold ${color}`}>{label}</span>
             </button>
           ))}
         </div>
 
-        {/* Tabs */}
+        {/* Pill Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
-            <TabsTrigger value="inbox" className="gap-1.5">
+          <TabsList className="bg-muted/60 p-1 rounded-xl h-auto w-full lg:w-auto lg:inline-flex">
+            <TabsTrigger value="inbox" className="rounded-lg gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
               <Inbox className="h-4 w-4" />
               <span className="hidden sm:inline">My Inbox</span>
               <span className="sm:hidden">Inbox</span>
+              {(tabCounts?.inbox || 0) > 0 && (
+                <Badge className="h-5 min-w-5 px-1.5 text-[10px] bg-accent text-accent-foreground">{tabCounts?.inbox}</Badge>
+              )}
             </TabsTrigger>
-            <TabsTrigger value="sent" className="gap-1.5">
+            <TabsTrigger value="sent" className="rounded-lg gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
               <Send className="h-4 w-4" />
-              <span className="hidden sm:inline">Sent</span>
-              <span className="sm:hidden">Sent</span>
+              <span>Sent</span>
+              {(tabCounts?.sent || 0) > 0 && (
+                <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-[10px]">{tabCounts?.sent}</Badge>
+              )}
             </TabsTrigger>
-            <TabsTrigger value="watching" className="gap-1.5">
+            <TabsTrigger value="watching" className="rounded-lg gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
               <Eye className="h-4 w-4" />
               <span className="hidden sm:inline">Watching</span>
               <span className="sm:hidden">CC'd</span>
             </TabsTrigger>
             {isAdmin && (
-              <TabsTrigger value="all" className="gap-1.5">
+              <TabsTrigger value="all" className="rounded-lg gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                 <LayoutGrid className="h-4 w-4" />
                 <span className="hidden sm:inline">All Tickets</span>
                 <span className="sm:hidden">All</span>
