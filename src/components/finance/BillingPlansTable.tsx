@@ -4,8 +4,9 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Pencil, Trash2, Loader2, Search, AlertTriangle } from 'lucide-react';
+import { Pencil, Trash2, Loader2, Search, AlertTriangle, RotateCcw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -34,6 +35,8 @@ export default function BillingPlansTable({ onEditPlan }: { onEditPlan?: (plan: 
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
+  const [currencyFilter, setCurrencyFilter] = useState<string>('all');
+  const [studentFilter, setStudentFilter] = useState<string>('all');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const { data: plans = [], isLoading } = useQuery({
@@ -57,14 +60,28 @@ export default function BillingPlansTable({ onEditPlan }: { onEditPlan?: (plan: 
     enabled: !!branchId,
   });
 
+  const currencies = useMemo(() => [...new Set(plans.map(p => p.currency))].sort(), [plans]);
+  const students = useMemo(() => {
+    const map = new Map<string, string>();
+    plans.forEach(p => { if (p.profiles?.full_name) map.set(p.student_id, p.profiles.full_name); });
+    return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [plans]);
+
   const filtered = useMemo(() => {
-    if (!search) return plans;
-    const s = search.toLowerCase();
-    return plans.filter(p =>
-      p.profiles?.full_name?.toLowerCase().includes(s) ||
-      p.fee_packages?.name?.toLowerCase().includes(s)
-    );
-  }, [plans, search]);
+    let result = plans;
+    if (search) {
+      const s = search.toLowerCase();
+      result = result.filter(p =>
+        p.profiles?.full_name?.toLowerCase().includes(s) ||
+        p.fee_packages?.name?.toLowerCase().includes(s)
+      );
+    }
+    if (currencyFilter !== 'all') result = result.filter(p => p.currency === currencyFilter);
+    if (studentFilter !== 'all') result = result.filter(p => p.student_id === studentFilter);
+    return result;
+  }, [plans, search, currencyFilter, studentFilter]);
+
+  const hasActiveFilters = search || currencyFilter !== 'all' || studentFilter !== 'all';
 
   const toggleMutation = useMutation({
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
@@ -100,11 +117,30 @@ export default function BillingPlansTable({ onEditPlan }: { onEditPlan?: (plan: 
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col md:flex-row items-start md:items-center gap-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search by student or package..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
         </div>
+        <Select value={studentFilter} onValueChange={setStudentFilter}>
+          <SelectTrigger className="w-[180px]"><SelectValue placeholder="All Students" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Students</SelectItem>
+            {students.map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={currencyFilter} onValueChange={setCurrencyFilter}>
+          <SelectTrigger className="w-[130px]"><SelectValue placeholder="All Currencies" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Currencies</SelectItem>
+            {currencies.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        {hasActiveFilters && (
+          <Button variant="outline" size="icon" onClick={() => { setSearch(''); setCurrencyFilter('all'); setStudentFilter('all'); }} title="Reset Filters">
+            <RotateCcw className="h-4 w-4" />
+          </Button>
+        )}
         <span className="text-sm text-muted-foreground">{filtered.length} plan(s)</span>
       </div>
 
