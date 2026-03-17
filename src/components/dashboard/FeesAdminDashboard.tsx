@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { useDivision } from '@/contexts/DivisionContext';
+import { useExchangeRates } from '@/hooks/useExchangeRates';
 
 import { DashboardShell } from './shared/DashboardShell';
 import { QuickActionsGrid } from './shared/QuickActionsGrid';
