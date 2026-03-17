@@ -1681,6 +1681,7 @@ export default function Payments() {
                           <TableCell className="text-right font-mono text-muted-foreground">{realisedAmt > 0 ? `₨ ${realisedAmt.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}</TableCell>
                           <TableCell className="text-right font-mono text-muted-foreground">{rateDisplay}</TableCell>
                           <TableCell>{inv.due_date || '—'}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{paidOnMap[inv.id] || '—'}</TableCell>
                           <TableCell className="text-center">
                             {(inv.status === 'pending' || inv.status === 'partially_paid' || inv.status === 'overdue') ? (
                               <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8" onClick={() => openSinglePay(inv.id)}>
