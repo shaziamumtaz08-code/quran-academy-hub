@@ -591,7 +591,10 @@ export default function Payments() {
 
   // Breakdown stats (use unfiltered lists for summary)
   const localTotalPKR = useMemo(() => lcyInvoicesAll.reduce((s, i) => s + Number(i.amount), 0), [lcyInvoicesAll]);
-  const foreignEstPKR = useMemo(() => fcyInvoicesAll.reduce((s, i) => s + Number(i.amount) * (latestRates[i.currency] || 0), 0), [fcyInvoicesAll, latestRates]);
+  const foreignEstPKR = useMemo(() => fcyInvoicesAll.reduce((s, i) => {
+    const rate = getRate(i.currency);
+    return s + (rate > 0 ? Number(i.amount) * rate : 0);
+  }, 0), [fcyInvoicesAll, liveRates, getRate]);
   const lcyCollected = useMemo(() => lcyInvoicesAll.reduce((s, i) => s + (realisedMap[i.id] || 0), 0), [lcyInvoicesAll, realisedMap]);
   const fcyCollected = useMemo(() => fcyInvoicesAll.reduce((s, i) => s + (realisedMap[i.id] || 0), 0), [fcyInvoicesAll, realisedMap]);
   const lcyPending = localTotalPKR - lcyCollected;
