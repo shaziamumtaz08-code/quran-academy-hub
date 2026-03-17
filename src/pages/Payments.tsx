@@ -31,6 +31,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { trackActivity } from '@/lib/activityLogger';
 import BillingPlansTable from '@/components/finance/BillingPlansTable';
 import { AttachmentPreview } from '@/components/shared/FileUploadField';
+import { useExchangeRates } from '@/hooks/useExchangeRates';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 // ─── Constants ───────────────────────────────────────────────────────
 const MONTHS = [
