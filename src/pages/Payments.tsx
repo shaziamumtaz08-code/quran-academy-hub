@@ -576,11 +576,11 @@ export default function Payments() {
     return [...dates].sort().reverse();
   }, [invoices, paidOnMap]);
 
-  // Breakdown stats
-  const localTotalPKR = useMemo(() => lcyInvoices.reduce((s, i) => s + Number(i.amount), 0), [lcyInvoices]);
-  const foreignEstPKR = useMemo(() => fcyInvoices.reduce((s, i) => s + Number(i.amount) * (latestRates[i.currency] || 0), 0), [fcyInvoices, latestRates]);
-  const lcyCollected = useMemo(() => lcyInvoices.reduce((s, i) => s + (realisedMap[i.id] || 0), 0), [lcyInvoices, realisedMap]);
-  const fcyCollected = useMemo(() => fcyInvoices.reduce((s, i) => s + (realisedMap[i.id] || 0), 0), [fcyInvoices, realisedMap]);
+  // Breakdown stats (use unfiltered lists for summary)
+  const localTotalPKR = useMemo(() => lcyInvoicesAll.reduce((s, i) => s + Number(i.amount), 0), [lcyInvoicesAll]);
+  const foreignEstPKR = useMemo(() => fcyInvoicesAll.reduce((s, i) => s + Number(i.amount) * (latestRates[i.currency] || 0), 0), [fcyInvoicesAll, latestRates]);
+  const lcyCollected = useMemo(() => lcyInvoicesAll.reduce((s, i) => s + (realisedMap[i.id] || 0), 0), [lcyInvoicesAll, realisedMap]);
+  const fcyCollected = useMemo(() => fcyInvoicesAll.reduce((s, i) => s + (realisedMap[i.id] || 0), 0), [fcyInvoicesAll, realisedMap]);
   const lcyPending = localTotalPKR - lcyCollected;
   const fcyPending = foreignEstPKR - fcyCollected;
   const pending = totalFees - collected;
