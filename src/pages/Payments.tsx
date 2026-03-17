@@ -204,6 +204,12 @@ export default function Payments() {
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('all');
   const [invoicePaidOnFilter, setInvoicePaidOnFilter] = useState('all');
   const [invoiceBalanceFilter, setInvoiceBalanceFilter] = useState('all');
+  const [invoiceSortCol, setInvoiceSortCol] = useState<'student' | 'paidOn' | null>(null);
+  const [invoiceSortDir, setInvoiceSortDir] = useState<'asc' | 'desc'>('asc');
+  const toggleInvoiceSort = (col: 'student' | 'paidOn') => {
+    if (invoiceSortCol === col) setInvoiceSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setInvoiceSortCol(col); setInvoiceSortDir('asc'); }
+  };
   const hasInvoiceFilters = invoiceSearch || invoiceNameFilter !== 'all' || invoiceStatusFilter !== 'all' || invoicePaidOnFilter !== 'all' || invoiceBalanceFilter !== 'all';
 
   // ─── Data Queries ────────────────────────────────────────────────
@@ -559,8 +565,18 @@ export default function Payments() {
     return result;
   }, [invoiceSearch, invoiceNameFilter, invoiceStatusFilter, invoicePaidOnFilter, invoiceBalanceFilter, paidOnMap, ledgerPaidMap]);
 
-  const lcyInvoices = useMemo(() => applyInvoiceFilters(lcyInvoicesAll), [lcyInvoicesAll, applyInvoiceFilters]);
-  const fcyInvoices = useMemo(() => applyInvoiceFilters(fcyInvoicesAll), [fcyInvoicesAll, applyInvoiceFilters]);
+  const sortInvoices = useCallback((list: InvoiceRow[]) => {
+    if (!invoiceSortCol) return list;
+    return [...list].sort((a, b) => {
+      const dir = invoiceSortDir === 'asc' ? 1 : -1;
+      if (invoiceSortCol === 'student') return dir * (a.profiles?.full_name || '').localeCompare(b.profiles?.full_name || '');
+      if (invoiceSortCol === 'paidOn') return dir * (paidOnMap[a.id] || '').localeCompare(paidOnMap[b.id] || '');
+      return 0;
+    });
+  }, [invoiceSortCol, invoiceSortDir, paidOnMap]);
+
+  const lcyInvoices = useMemo(() => sortInvoices(applyInvoiceFilters(lcyInvoicesAll)), [lcyInvoicesAll, applyInvoiceFilters, sortInvoices]);
+  const fcyInvoices = useMemo(() => sortInvoices(applyInvoiceFilters(fcyInvoicesAll)), [fcyInvoicesAll, applyInvoiceFilters, sortInvoices]);
 
   // Unique student names for name filter (from all invoices, not filtered)
   const invoiceStudentOptions = useMemo(() => {
@@ -1531,14 +1547,14 @@ export default function Payments() {
                           setSelectedIds(prev => { const next = new Set(prev); lcySelectable.forEach(i => { next.add(i.id); selectedInvoiceCacheRef.current.set(i.id, i); }); return next; });
                         }
                       }} /></TableHead>}
-                      <TableHead>Student</TableHead>
+                      <TableHead><Button variant="ghost" size="sm" className="gap-1 -ml-2 h-8 font-medium" onClick={() => toggleInvoiceSort('student')}>Student <ArrowUpDown className="h-3 w-3" /></Button></TableHead>
                       <TableHead>Package</TableHead>
                       <TableHead>Billing Month</TableHead>
                       <TableHead className="text-right">Amount (PKR)</TableHead>
                       <TableHead className="text-right">Paid (PKR)</TableHead>
                       <TableHead className="text-right">Balance (PKR)</TableHead>
                       <TableHead>Due Date</TableHead>
-                      <TableHead>Paid On</TableHead>
+                      <TableHead><Button variant="ghost" size="sm" className="gap-1 -ml-2 h-8 font-medium" onClick={() => toggleInvoiceSort('paidOn')}>Paid On <ArrowUpDown className="h-3 w-3" /></Button></TableHead>
                       <TableHead className="text-center">Status</TableHead>
                       <TableHead className="w-12"></TableHead>
                     </TableRow>
@@ -1635,7 +1651,7 @@ export default function Payments() {
                           setSelectedIds(prev => { const next = new Set(prev); fcySelectable.forEach(i => { next.add(i.id); selectedInvoiceCacheRef.current.set(i.id, i); }); return next; });
                         }
                       }} /></TableHead>}
-                      <TableHead>Student</TableHead>
+                      <TableHead><Button variant="ghost" size="sm" className="gap-1 -ml-2 h-8 font-medium" onClick={() => toggleInvoiceSort('student')}>Student <ArrowUpDown className="h-3 w-3" /></Button></TableHead>
                       <TableHead>Package</TableHead>
                       <TableHead>Billing Month</TableHead>
                       <TableHead className="text-right">Invoice Amount</TableHead>
@@ -1644,7 +1660,7 @@ export default function Payments() {
                       <TableHead className="text-right">Realised (PKR)</TableHead>
                       <TableHead className="text-right">Rate</TableHead>
                       <TableHead>Due Date</TableHead>
-                      <TableHead>Paid On</TableHead>
+                      <TableHead><Button variant="ghost" size="sm" className="gap-1 -ml-2 h-8 font-medium" onClick={() => toggleInvoiceSort('paidOn')}>Paid On <ArrowUpDown className="h-3 w-3" /></Button></TableHead>
                       <TableHead className="text-center">Status</TableHead>
                       <TableHead className="w-12"></TableHead>
                     </TableRow>
