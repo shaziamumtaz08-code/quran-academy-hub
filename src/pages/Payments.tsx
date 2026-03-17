@@ -340,7 +340,7 @@ export default function Payments() {
     enabled: invoices.length > 0,
   });
 
-  // Latest exchange rates per currency (for estimating PKR value of unpaid FCY invoices)
+  // Median exchange rates per currency (last 5 transactions) for resilient PKR estimation
   const { data: latestRates = {} } = useQuery({
     queryKey: ['latest-exchange-rates'],
     queryFn: async () => {
@@ -349,12 +349,20 @@ export default function Payments() {
         .select('currency_foreign, effective_rate, created_at')
         .not('effective_rate', 'is', null)
         .neq('currency_foreign', 'PKR')
+        .gt('effective_rate', 0)
         .order('created_at', { ascending: false });
-      const rates: Record<string, number> = {};
+      // Group last 5 rates per currency, then take median
+      const grouped: Record<string, number[]> = {};
       (data || []).forEach((tx: any) => {
-        if (!rates[tx.currency_foreign] && tx.effective_rate > 0) {
-          rates[tx.currency_foreign] = Number(tx.effective_rate);
-        }
+        const cur = tx.currency_foreign;
+        if (!grouped[cur]) grouped[cur] = [];
+        if (grouped[cur].length < 5) grouped[cur].push(Number(tx.effective_rate));
+      });
+      const rates: Record<string, number> = {};
+      Object.entries(grouped).forEach(([cur, vals]) => {
+        vals.sort((a, b) => a - b);
+        const mid = Math.floor(vals.length / 2);
+        rates[cur] = vals.length % 2 === 0 ? (vals[mid - 1] + vals[mid]) / 2 : vals[mid];
       });
       return rates;
     },
