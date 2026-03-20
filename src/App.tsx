@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { DivisionProvider } from "@/contexts/DivisionContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -48,6 +48,7 @@ const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
   
   if (isLoading) {
     return (
@@ -61,7 +62,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
   
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
   
   return <>{children}</>;
@@ -178,6 +179,25 @@ function TeacherRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function LoginRedirect() {
+  const { isAuthenticated, activeRole } = useAuth();
+  const location = useLocation();
+  const from = (location.state as any)?.from;
+  
+  const getDefaultRoute = () => {
+    if (!activeRole) return '/dashboard';
+    if (activeRole === 'super_admin') return '/select-division';
+    if (activeRole === 'admin' || activeRole?.startsWith('admin_')) return '/admin';
+    if (activeRole === 'teacher' || activeRole === 'examiner') return '/teacher';
+    return '/dashboard';
+  };
+
+  if (isAuthenticated) {
+    return <Navigate to={from || getDefaultRoute()} replace />;
+  }
+  return <Login />;
+}
+
 function AppRoutes() {
   const { isAuthenticated, activeRole } = useAuth();
   
@@ -196,7 +216,7 @@ function AppRoutes() {
   
   return (
     <Routes>
-      <Route path="/login" element={isAuthenticated ? <Navigate to={getDefaultRoute()} replace /> : <Login />} />
+      <Route path="/login" element={<LoginRedirect />} />
       <Route path="/" element={<Navigate to={getDefaultRoute()} replace />} />
       <Route path="/select-division" element={
         <ProtectedRoute>
