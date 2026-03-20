@@ -179,6 +179,25 @@ function TeacherRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function LoginRedirect() {
+  const { isAuthenticated, activeRole } = useAuth();
+  const location = useLocation();
+  const from = (location.state as any)?.from;
+  
+  const getDefaultRoute = () => {
+    if (!activeRole) return '/dashboard';
+    if (activeRole === 'super_admin') return '/select-division';
+    if (activeRole === 'admin' || activeRole?.startsWith('admin_')) return '/admin';
+    if (activeRole === 'teacher' || activeRole === 'examiner') return '/teacher';
+    return '/dashboard';
+  };
+
+  if (isAuthenticated) {
+    return <Navigate to={from || getDefaultRoute()} replace />;
+  }
+  return <Login />;
+}
+
 function AppRoutes() {
   const { isAuthenticated, activeRole } = useAuth();
   
