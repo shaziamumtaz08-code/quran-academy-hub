@@ -1046,9 +1046,9 @@ export default function SalaryEngine() {
           editRoleAmounts={editRoleAmounts}
           onEditAmount={(id, amt) => setEditAmounts(prev => ({ ...prev, [id]: amt }))}
           onEditRoleAmount={(id, amt) => setEditRoleAmounts(prev => ({ ...prev, [id]: amt }))}
-          onMarkPaid={(type, reason, invoiceNumber, receiptUrls, amountPaid) => {
+          onMarkPaid={(type, reason, invoiceNumber, receiptUrls, amountPaid, paymentDate) => {
             if (selectedTeacherId) {
-              markPaid.mutate({ teacherId: selectedTeacherId, type, reason, invoiceNumber, receiptUrls, amountPaid });
+              markPaid.mutate({ teacherId: selectedTeacherId, type, reason, invoiceNumber, receiptUrls, amountPaid, paymentDate });
             }
           }}
           onTopUp={(amount, notes, receiptUrls) => {
