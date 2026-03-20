@@ -170,7 +170,9 @@ export function SalarySheetDialog({
       setReceiptUrls(existingReceiptUrls || []);
       setPartialReason("");
       setPartialAmount("");
-      setShowPartialInput(false);
+      setShowPartialDialog(false);
+      setPartialPaymentDate(new Date());
+      setPartialReceipts([]);
       setShowTopUpInput(false);
       setTopUpAmount("");
       setTopUpNotes("");
