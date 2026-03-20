@@ -1,42 +1,37 @@
 
 
-# Fix: Salary Partial Payment — Separate Dialog + Date Tracking
+# Salary Engine: Balance Column + Partial Payment Status Fix
 
 ## Problem
-1. The "Partially Paid" button currently just expands inline fields instead of opening a proper dialog
-2. Partial payments do NOT store a `paid_at` date (only full payments do — line 561 of SalaryEngine.tsx)
-3. The salary statement template has no way to show partial payment dates
+1. The "Net" column always shows the full net salary even after partial payment — it should show the **remaining balance**
+2. After a partial payment, the status shows "Paid" if the partial amount equals or exceeds net — but partially paid records should keep behaving like draft (Save button enabled, no Lock button) until fully paid
+3. Column name "Net" is misleading when balance differs from net
 
 ## Changes
 
-### 1. Store partial payment date in `salary_payouts` (SalaryEngine.tsx)
-- In the `markPaid` mutation (line 554-568), when `type === 'partial'`, set `paid_at` to the current timestamp regardless of whether it reaches full payment. Currently `paid_at` is only set when `finalStatus === 'paid'`.
-- In the `topUpPayment` mutation (line 604-611), also always update `paid_at` to capture the latest payment activity date.
+### File: `src/pages/SalaryEngine.tsx`
 
-### 2. Convert inline partial payment fields to a Dialog (SalarySheetDialog.tsx)
-- Replace the `showPartialInput` inline expansion (lines 672-707) with a separate `Dialog` component
-- The dialog will contain:
-  - Amount field (PKR) with balance preview
-  - Payment date picker (defaults to today, editable)
-  - Notes/reason textarea
-  - File upload for receipt/proof
-  - Confirm button
-- The "Partially Paid" button (line 667) will open this dialog instead of toggling inline content
+**1. Rename "Net" column to "Balance"**
+- Change `TableHead` from "Net" to "Balance" (line 946)
 
-### 3. Pass payment date through the chain
-- Update `onMarkPaid` prop signature to accept an optional `paymentDate` parameter
-- Pass the selected date from the dialog through to the SalaryEngine mutation
-- Store it in `paid_at` on the `salary_payouts` record
+**2. Show balance instead of net salary in the table**
+- Line 984: Instead of always showing `teacher.netSalary`, check if there's a payout with `amount_paid > 0`. If so, show `netSalary - amount_paid` as the balance. If no partial payment, show full net.
+- Add a small secondary line showing the original net when balance differs (e.g., `Net: PKR 5,725.80`)
 
-### 4. Reflect partial payment date on salary statement
-- In `PrintSalary.tsx` (line 100): currently `paymentDate` is derived from `payout.paid_at` — this will now be populated for partial payments too, so the statement will automatically show the date
-- The existing `SalaryStatementTemplate` already renders `paymentDate` when present (line 287), so no template changes needed
+**3. Fix `canSave` logic for partially_paid**
+- Line 958: Remove `'partially_paid'` from the disabled condition — partially paid records should still allow Save (same as draft behavior)
+- Only `'locked'` and `'paid'` (fully paid) should disable Save
 
-### Files Modified
-| File | Change |
+**4. Hide Lock button for partially_paid**
+- Line 1001: The Lock button currently only shows for `'paid'` — this is already correct, no change needed
+
+**5. Fix the `markPaid` partial status logic**
+- Line 557: The `finalStatus` check `paidAmount >= netSalary` is using the freshly provided `amountPaid` directly, not cumulative. For partial payments, this should always set `'partially_paid'` unless the amount truly covers the full net. This logic looks correct already but needs to ensure cumulative top-ups work properly.
+
+### Summary
+| Line | Change |
 |---|---|
-| `src/pages/SalaryEngine.tsx` | Set `paid_at` for partial payments; accept `paymentDate` param |
-| `src/components/salary/SalarySheetDialog.tsx` | Replace inline partial fields with a Dialog; add date picker; pass date to parent |
-
-No database changes needed — `paid_at` column already exists on `salary_payouts`.
+| 946 | Rename "Net" → "Balance" |
+| 958 | Allow Save for `partially_paid` (remove from disabled list) |
+| 984 | Show remaining balance (net − amount_paid) when partially paid; show original net as subtitle |
 
