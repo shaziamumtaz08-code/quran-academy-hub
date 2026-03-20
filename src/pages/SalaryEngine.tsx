@@ -540,7 +540,7 @@ export default function SalaryEngine() {
   });
 
   const markPaid = useMutation({
-    mutationFn: async ({ teacherId, type, reason, invoiceNumber, receiptUrls, amountPaid }: { teacherId: string; type: 'full' | 'partial'; reason?: string; invoiceNumber?: string; receiptUrls?: string[]; amountPaid?: number }) => {
+    mutationFn: async ({ teacherId, type, reason, invoiceNumber, receiptUrls, amountPaid, paymentDate }: { teacherId: string; type: 'full' | 'partial'; reason?: string; invoiceNumber?: string; receiptUrls?: string[]; amountPaid?: number; paymentDate?: string }) => {
       const payout = existingPayouts.find((p: any) => p.teacher_id === teacherId);
       if (!payout) {
         const teacher = salaryData.find(t => t.teacherId === teacherId);
@@ -550,6 +550,7 @@ export default function SalaryEngine() {
       if (!payoutRefresh) throw new Error('Save payout first');
 
       const netSalary = Number(payoutRefresh.net_salary) || 0;
+      const paidAtDate = paymentDate || new Date().toISOString();
 
       if (type === 'partial') {
         const paidAmount = amountPaid || 0;
@@ -558,8 +559,8 @@ export default function SalaryEngine() {
           status: finalStatus,
           amount_paid: paidAmount,
           partial_notes: reason || null,
-          paid_at: finalStatus === 'paid' ? new Date().toISOString() : null,
-          paid_by: finalStatus === 'paid' ? user?.id : null,
+          paid_at: paidAtDate,
+          paid_by: user?.id || null,
           payment_method: 'Partial Payment',
           invoice_number: invoiceNumber || null,
           receipt_urls: receiptUrls || [],
