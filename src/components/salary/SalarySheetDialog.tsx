@@ -156,7 +156,9 @@ export function SalarySheetDialog({
 }: SalarySheetDialogProps) {
   const [partialReason, setPartialReason] = useState("");
   const [partialAmount, setPartialAmount] = useState<string>("");
-  const [showPartialInput, setShowPartialInput] = useState(false);
+  const [showPartialDialog, setShowPartialDialog] = useState(false);
+  const [partialPaymentDate, setPartialPaymentDate] = useState<Date>(new Date());
+  const [partialReceipts, setPartialReceipts] = useState<string[]>([]);
   const [receiptUrls, setReceiptUrls] = useState<string[]>([]);
   const [showTopUpInput, setShowTopUpInput] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState<string>("");
