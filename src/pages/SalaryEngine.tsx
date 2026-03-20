@@ -606,7 +606,8 @@ export default function SalaryEngine() {
         status: finalStatus,
         amount_paid: newTotal,
         partial_notes: combinedNotes,
-        ...(finalStatus === 'paid' ? { paid_at: new Date().toISOString(), paid_by: user?.id } : {}),
+        paid_at: new Date().toISOString(),
+        paid_by: user?.id || null,
         receipt_urls: mergedReceipts,
         receipt_url: mergedReceipts[0] || null,
       }).eq('id', payout.id);
