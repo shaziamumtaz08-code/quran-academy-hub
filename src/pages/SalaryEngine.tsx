@@ -525,6 +525,10 @@ export default function SalaryEngine() {
       };
       if (existing) {
         if (existing.status === 'locked' || existing.status === 'paid') throw new Error('Payout is ' + existing.status + ', cannot edit calculations');
+        // Preserve payment status for partially_paid records
+        if (existing.status === 'partially_paid') {
+          payload.status = 'partially_paid';
+        }
         const { error } = await supabase.from('salary_payouts').update(payload).eq('id', existing.id);
         if (error) throw error;
       } else {
