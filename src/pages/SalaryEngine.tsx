@@ -525,6 +525,10 @@ export default function SalaryEngine() {
       };
       if (existing) {
         if (existing.status === 'locked' || existing.status === 'paid') throw new Error('Payout is ' + existing.status + ', cannot edit calculations');
+        // Preserve payment status for partially_paid records
+        if (existing.status === 'partially_paid') {
+          payload.status = 'partially_paid';
+        }
         const { error } = await supabase.from('salary_payouts').update(payload).eq('id', existing.id);
         if (error) throw error;
       } else {
@@ -541,15 +545,19 @@ export default function SalaryEngine() {
 
   const markPaid = useMutation({
     mutationFn: async ({ teacherId, type, reason, invoiceNumber, receiptUrls, amountPaid, paymentDate }: { teacherId: string; type: 'full' | 'partial'; reason?: string; invoiceNumber?: string; receiptUrls?: string[]; amountPaid?: number; paymentDate?: string }) => {
-      const payout = existingPayouts.find((p: any) => p.teacher_id === teacherId);
-      if (!payout) {
-        const teacher = salaryData.find(t => t.teacherId === teacherId);
-        if (teacher) await savePayout.mutateAsync(teacher);
+      // Always re-save payout with current calculated values before marking paid
+      const teacher = salaryData.find(t => t.teacherId === teacherId);
+      if (teacher) {
+        const existingPayout = existingPayouts.find((p: any) => p.teacher_id === teacherId);
+        if (!existingPayout || (existingPayout.status !== 'locked' && existingPayout.status !== 'paid')) {
+          await savePayout.mutateAsync(teacher);
+        }
       }
       const payoutRefresh = (await supabase.from('salary_payouts').select('id, net_salary').eq('teacher_id', teacherId).eq('salary_month', salaryMonth).single()).data;
       if (!payoutRefresh) throw new Error('Save payout first');
 
-      const netSalary = Number(payoutRefresh.net_salary) || 0;
+      // Use the current calculated net salary from UI, falling back to DB value
+      const netSalary = teacher ? teacher.netSalary : (Number(payoutRefresh.net_salary) || 0);
       const paidAtDate = paymentDate || new Date().toISOString();
 
       if (type === 'partial') {
