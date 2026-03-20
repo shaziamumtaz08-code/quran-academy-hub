@@ -27,6 +27,7 @@ import {
   X,
   Plus,
   Briefcase,
+  CalendarIcon,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { FileUploadField, AttachmentPreview } from "@/components/shared/FileUploadField";
