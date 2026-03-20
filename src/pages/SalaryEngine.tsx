@@ -943,7 +943,7 @@ export default function SalaryEngine() {
                   <TableHead className="text-right">Extras</TableHead>
                   <TableHead className="text-right">Additions</TableHead>
                   <TableHead className="text-right">Deductions</TableHead>
-                  <TableHead className="text-right font-bold">Net</TableHead>
+                  <TableHead className="text-right font-bold">Balance</TableHead>
                   <TableHead>Status</TableHead>
                   {!isTeacherView && <TableHead className="text-right">Actions</TableHead>}
                 </TableRow>
@@ -955,7 +955,7 @@ export default function SalaryEngine() {
                 {filteredData.map(teacher => {
                   const payout = existingPayouts.find((p: any) => p.teacher_id === teacher.teacherId);
                   const canRevert = payout && (payout.status === 'confirmed' || payout.status === 'paid' || payout.status === 'locked' || payout.status === 'partially_paid');
-                  const canSave = teacher.payoutStatus !== 'locked' && teacher.payoutStatus !== 'paid' && teacher.payoutStatus !== 'partially_paid';
+                  const canSave = teacher.payoutStatus !== 'locked' && teacher.payoutStatus !== 'paid';
                   
                   return (
                     <TableRow key={teacher.teacherId} className="group">
@@ -981,7 +981,20 @@ export default function SalaryEngine() {
                       <TableCell className="text-right tabular-nums">PKR {teacher.extraClassAmount.toFixed(2)}</TableCell>
                       <TableCell className="text-right tabular-nums text-emerald-600">PKR {teacher.adjustmentAmount.toFixed(2)}</TableCell>
                       <TableCell className="text-right tabular-nums text-red-600">PKR {teacher.deductions.toFixed(2)}</TableCell>
-                      <TableCell className="text-right font-bold tabular-nums">PKR {teacher.netSalary.toFixed(2)}</TableCell>
+                      <TableCell className="text-right font-bold tabular-nums">
+                        {(() => {
+                          const amountPaid = payout?.amount_paid || 0;
+                          const balance = teacher.netSalary - amountPaid;
+                          return (
+                            <div>
+                              <div>PKR {balance.toFixed(2)}</div>
+                              {amountPaid > 0 && balance !== teacher.netSalary && (
+                                <div className="text-xs font-normal text-muted-foreground">Net: PKR {teacher.netSalary.toFixed(2)}</div>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </TableCell>
                       <TableCell>{getStatusBadge(teacher.payoutStatus, payout)}</TableCell>
                       {!isTeacherView && (
                         <TableCell className="text-right">
