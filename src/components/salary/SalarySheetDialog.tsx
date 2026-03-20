@@ -672,47 +672,93 @@ export function SalarySheetDialog({
                       {isPayingPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
                       <CheckCircle className="h-4 w-4 mr-1.5" /> Mark Fully Paid
                     </Button>
-                    <Button variant="outline" className="flex-1" onClick={() => setShowPartialInput(!showPartialInput)}>
+                    <Button variant="outline" className="flex-1" onClick={() => setShowPartialDialog(true)}>
                       <AlertCircle className="h-4 w-4 mr-1.5" /> Partially Paid
                     </Button>
                   </div>
 
-                  {showPartialInput && (
-                    <div className="mt-3 space-y-3 p-3 border border-amber-200 bg-amber-50/50 rounded-lg print:hidden">
-                      <p className="text-xs font-semibold text-amber-700 uppercase tracking-wider">Partial Payment Details</p>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <Label className="text-xs">Amount Paying (PKR)</Label>
-                          <Input type="number" placeholder="0.00" value={partialAmount} onChange={(e) => setPartialAmount(e.target.value)} className="h-8 text-sm" />
+                  {/* Partial Payment Dialog */}
+                  <Dialog open={showPartialDialog} onOpenChange={setShowPartialDialog}>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Partial Payment</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center text-sm bg-muted/50 rounded-lg p-3">
+                          <span className="text-muted-foreground">Net Salary</span>
+                          <span className="font-semibold tabular-nums">PKR {grandNet.toFixed(2)}</span>
                         </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Balance Remaining</Label>
-                          <div className="h-8 flex items-center px-3 bg-muted rounded-md text-sm font-semibold tabular-nums">
-                            PKR {Math.max(0, grandNet - (parseFloat(partialAmount) || 0)).toFixed(2)}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Amount Paying (PKR)</Label>
+                            <Input type="number" placeholder="0.00" value={partialAmount} onChange={(e) => setPartialAmount(e.target.value)} className="h-9 text-sm" />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Balance Remaining</Label>
+                            <div className="h-9 flex items-center px-3 bg-muted rounded-md text-sm font-semibold tabular-nums">
+                              PKR {Math.max(0, grandNet - (parseFloat(partialAmount) || 0)).toFixed(2)}
+                            </div>
                           </div>
                         </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Payment Date</Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-9", !partialPaymentDate && "text-muted-foreground")}>
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {partialPaymentDate ? format(partialPaymentDate, "dd MMM yyyy") : "Select date"}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={partialPaymentDate}
+                                onSelect={(d) => d && setPartialPaymentDate(d)}
+                                initialFocus
+                                className={cn("p-3 pointer-events-auto")}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Notes / Reason</Label>
+                          <Textarea placeholder="Reason for partial payment..." value={partialReason} onChange={(e) => setPartialReason(e.target.value)} className="text-sm min-h-[70px]" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Receipt / Proof (optional)</Label>
+                          {partialReceipts[0] ? (
+                            <div className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+                              <AttachmentPreview url={partialReceipts[0]} />
+                              <Button type="button" size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive hover:text-destructive" onClick={() => setPartialReceipts([])}>
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <FileUploadField label="" bucket="salary-receipts" value="" onChange={(url) => setPartialReceipts([url])} hint="Upload receipt" />
+                          )}
+                        </div>
                       </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">Notes / Reason</Label>
-                        <Textarea placeholder="Reason for partial payment..." value={partialReason} onChange={(e) => setPartialReason(e.target.value)} className="text-sm min-h-[60px]" />
-                      </div>
-                      <Button
-                        size="sm"
-                        disabled={!partialAmount || parseFloat(partialAmount) <= 0 || isPayingPending}
-                        onClick={() => {
-                          const amt = parseFloat(partialAmount) || 0;
-                          onMarkPaid("partial", partialReason || undefined, displayInvoice, receiptUrls, amt);
-                          setPartialReason("");
-                          setPartialAmount("");
-                          setShowPartialInput(false);
-                        }}
-                        className="w-full"
-                      >
-                        {isPayingPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
-                        Confirm Partial Payment — PKR {(parseFloat(partialAmount) || 0).toFixed(2)}
-                      </Button>
-                    </div>
-                  )}
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowPartialDialog(false)}>Cancel</Button>
+                        <Button
+                          disabled={!partialAmount || parseFloat(partialAmount) <= 0 || isPayingPending}
+                          onClick={() => {
+                            const amt = parseFloat(partialAmount) || 0;
+                            const allReceipts = [...receiptUrls, ...partialReceipts].filter(Boolean);
+                            onMarkPaid("partial", partialReason || undefined, displayInvoice, allReceipts.length > 0 ? allReceipts : receiptUrls, amt, partialPaymentDate.toISOString());
+                            setPartialReason("");
+                            setPartialAmount("");
+                            setPartialReceipts([]);
+                            setPartialPaymentDate(new Date());
+                            setShowPartialDialog(false);
+                          }}
+                        >
+                          {isPayingPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+                          Confirm — PKR {(parseFloat(partialAmount) || 0).toFixed(2)}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               )}
 
