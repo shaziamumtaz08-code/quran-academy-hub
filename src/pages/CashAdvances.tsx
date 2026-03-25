@@ -38,6 +38,16 @@ const EXPENSE_CATEGORIES = [
   { value: 'manual', label: 'Manual' },
 ];
 
+const PAYMENT_MODES = [
+  { value: 'cash', label: 'Cash' },
+  { value: 'bank_transfer', label: 'Bank Transfer' },
+  { value: 'easypaisa', label: 'Easypaisa' },
+  { value: 'jazzcash', label: 'JazzCash' },
+  { value: 'cheque', label: 'Cheque' },
+  { value: 'online', label: 'Online Transfer' },
+  { value: 'other', label: 'Other' },
+];
+
 export default function CashAdvances() {
   const { activeBranch, activeDivision } = useDivision();
   const { user } = useAuth();
