@@ -392,7 +392,7 @@ export default function CashAdvances() {
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
       queryClient.invalidateQueries({ queryKey: ['salary-adjustments'] });
       setExpenseFromAdvanceOpen(false);
-      setExpenseForm({ amount: '', description: '', category: 'operational', expense_date: new Date().toISOString().split('T')[0], invoice_number: '', receipt_url: '' });
+      setExpenseForm({ amount: '', description: '', category: 'operational', expense_date: new Date().toISOString().split('T')[0], invoice_number: '', receipt_url: '', payment_method: 'cash' });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
