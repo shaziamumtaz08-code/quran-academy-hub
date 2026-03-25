@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Textarea } from '@/components/ui/textarea';
 import {
   Banknote, Plus, Search, Loader2, Trash2, ArrowDownLeft, Receipt,
-  CheckCircle, AlertCircle, Wallet, BookOpen
+  CheckCircle, AlertCircle, Wallet, BookOpen, Upload, FileText, Image, ExternalLink
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
