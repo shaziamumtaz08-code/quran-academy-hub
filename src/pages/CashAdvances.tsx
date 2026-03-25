@@ -337,6 +337,7 @@ export default function CashAdvances() {
         expense_date: expenseForm.expense_date,
         invoice_number: expenseForm.invoice_number || null,
         receipt_url: expenseForm.receipt_url || null,
+        payment_method: expenseForm.payment_method || null,
         branch_id: branchId,
         division_id: divisionId,
         created_by: user?.id,
