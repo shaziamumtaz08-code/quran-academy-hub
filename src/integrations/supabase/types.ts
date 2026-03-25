@@ -992,6 +992,7 @@ export type Database = {
           id: string
           invoice_number: string | null
           notes: string | null
+          payment_method: string | null
           receipt_url: string | null
           status: string
           student_id: string | null
@@ -1013,6 +1014,7 @@ export type Database = {
           id?: string
           invoice_number?: string | null
           notes?: string | null
+          payment_method?: string | null
           receipt_url?: string | null
           status?: string
           student_id?: string | null
@@ -1034,6 +1036,7 @@ export type Database = {
           id?: string
           invoice_number?: string | null
           notes?: string | null
+          payment_method?: string | null
           receipt_url?: string | null
           status?: string
           student_id?: string | null
