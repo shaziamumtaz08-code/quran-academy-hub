@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Textarea } from '@/components/ui/textarea';
 import {
   Banknote, Plus, Search, Loader2, Trash2, ArrowDownLeft, Receipt,
-  CheckCircle, AlertCircle, Wallet, BookOpen
+  CheckCircle, AlertCircle, Wallet, BookOpen, Upload, FileText, Image, ExternalLink
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -36,6 +36,16 @@ const EXPENSE_CATEGORIES = [
   { value: 'maternity', label: 'Maternity' },
   { value: 'operational', label: 'Operational' },
   { value: 'manual', label: 'Manual' },
+];
+
+const PAYMENT_MODES = [
+  { value: 'cash', label: 'Cash' },
+  { value: 'bank_transfer', label: 'Bank Transfer' },
+  { value: 'easypaisa', label: 'Easypaisa' },
+  { value: 'jazzcash', label: 'JazzCash' },
+  { value: 'cheque', label: 'Cheque' },
+  { value: 'online', label: 'Online Transfer' },
+  { value: 'other', label: 'Other' },
 ];
 
 export default function CashAdvances() {
@@ -79,7 +89,10 @@ export default function CashAdvances() {
     expense_date: new Date().toISOString().split('T')[0],
     invoice_number: '',
     receipt_url: '',
+    payment_method: 'cash',
   });
+  const [expenseReceiptUploading, setExpenseReceiptUploading] = useState(false);
+  const expenseReceiptRef = React.useRef<HTMLInputElement>(null);
 
   // Fetch staff
   const { data: staff = [] } = useQuery({
@@ -324,6 +337,7 @@ export default function CashAdvances() {
         expense_date: expenseForm.expense_date,
         invoice_number: expenseForm.invoice_number || null,
         receipt_url: expenseForm.receipt_url || null,
+        payment_method: expenseForm.payment_method || null,
         branch_id: branchId,
         division_id: divisionId,
         created_by: user?.id,
@@ -379,7 +393,7 @@ export default function CashAdvances() {
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
       queryClient.invalidateQueries({ queryKey: ['salary-adjustments'] });
       setExpenseFromAdvanceOpen(false);
-      setExpenseForm({ amount: '', description: '', category: 'operational', expense_date: new Date().toISOString().split('T')[0], invoice_number: '', receipt_url: '' });
+      setExpenseForm({ amount: '', description: '', category: 'operational', expense_date: new Date().toISOString().split('T')[0], invoice_number: '', receipt_url: '', payment_method: 'cash' });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
@@ -735,9 +749,57 @@ export default function CashAdvances() {
                   <Input value={expenseForm.invoice_number} onChange={e => setExpenseForm(p => ({ ...p, invoice_number: e.target.value }))} placeholder="INV-001" />
                 </div>
                 <div>
-                  <Label>Receipt URL</Label>
-                  <Input value={expenseForm.receipt_url} onChange={e => setExpenseForm(p => ({ ...p, receipt_url: e.target.value }))} placeholder="https://..." />
+                  <Label>Payment Mode</Label>
+                  <Select value={expenseForm.payment_method} onValueChange={v => setExpenseForm(p => ({ ...p, payment_method: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {PAYMENT_MODES.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
+              </div>
+              <div>
+                <Label>Receipt / Screenshot</Label>
+                <div className="flex gap-2 items-center">
+                  <Input
+                    ref={expenseReceiptRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,application/pdf,.doc,.docx"
+                    disabled={expenseReceiptUploading}
+                    className="text-xs h-9"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (file.size > 5 * 1024 * 1024) {
+                        toast({ title: 'File too large', description: 'Max 5 MB', variant: 'destructive' });
+                        return;
+                      }
+                      setExpenseReceiptUploading(true);
+                      try {
+                        const ext = file.name.split('.').pop();
+                        const path = `expense-receipts/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+                        const { error } = await supabase.storage.from('receipts').upload(path, file);
+                        if (error) throw error;
+                        const { data: urlData } = supabase.storage.from('receipts').getPublicUrl(path);
+                        setExpenseForm(p => ({ ...p, receipt_url: urlData.publicUrl }));
+                        toast({ title: 'Receipt uploaded' });
+                      } catch (err: any) {
+                        toast({ title: 'Upload failed', description: err.message, variant: 'destructive' });
+                      } finally {
+                        setExpenseReceiptUploading(false);
+                        if (expenseReceiptRef.current) expenseReceiptRef.current.value = '';
+                      }
+                    }}
+                  />
+                  {expenseReceiptUploading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">JPG, PNG, PDF or DOC — max 5 MB</p>
+                {expenseForm.receipt_url && (
+                  <a href={expenseForm.receipt_url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1 mt-1">
+                    {/\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(expenseForm.receipt_url) ? <Image className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
+                    View Attachment <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
               </div>
             </div>
             <DialogFooter>
