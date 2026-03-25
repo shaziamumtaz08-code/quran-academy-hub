@@ -89,7 +89,10 @@ export default function CashAdvances() {
     expense_date: new Date().toISOString().split('T')[0],
     invoice_number: '',
     receipt_url: '',
+    payment_method: 'cash',
   });
+  const [expenseReceiptUploading, setExpenseReceiptUploading] = useState(false);
+  const expenseReceiptRef = React.useRef<HTMLInputElement>(null);
 
   // Fetch staff
   const { data: staff = [] } = useQuery({
