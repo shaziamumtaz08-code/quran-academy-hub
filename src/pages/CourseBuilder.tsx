@@ -505,19 +505,21 @@ export default function CourseBuilder() {
       </div>
 
       {/* ─── Tabs ─────────────────────────────────────── */}
-      <div className="max-w-[1600px] mx-auto w-full px-4 pt-4">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="bg-background border">
-            <TabsTrigger value="builder" className="gap-1.5">
-              <BookOpen className="h-4 w-4" /> Builder
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="gap-1.5">
-              <Settings className="h-4 w-4" /> Settings
-            </TabsTrigger>
-            <TabsTrigger value="roster" className="gap-1.5">
-              <Users className="h-4 w-4" /> Roster & Bulk Add
-            </TabsTrigger>
-          </TabsList>
+      <div className="max-w-[1600px] mx-auto w-full px-3 sm:px-4 pt-4 pb-4 flex-1 flex flex-col">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+          <div className="overflow-x-auto whitespace-nowrap -mx-3 px-3 sm:mx-0 sm:px-0">
+            <TabsList className="bg-background border">
+              <TabsTrigger value="builder" className="gap-1.5 text-xs sm:text-sm">
+                <BookOpen className="h-4 w-4" /><span className="hidden sm:inline">Builder</span>
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="gap-1.5 text-xs sm:text-sm">
+                <Settings className="h-4 w-4" /><span className="hidden sm:inline">Settings</span>
+              </TabsTrigger>
+              <TabsTrigger value="roster" className="gap-1.5 text-xs sm:text-sm">
+                <Users className="h-4 w-4" /><span className="hidden sm:inline">Roster & Bulk Add</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* ═══ BUILDER TAB ═══ */}
           <TabsContent value="builder" className="mt-4">
