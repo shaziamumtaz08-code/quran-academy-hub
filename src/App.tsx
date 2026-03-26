@@ -31,6 +31,7 @@ import ZoomManagement from "./pages/ZoomManagement";
 import IntegrityAudit from "./pages/IntegrityAudit";
 import Courses from "./pages/Courses";
 import CourseAssetLibrary from "./pages/CourseAssetLibrary";
+import CourseBuilder from "./pages/CourseBuilder";
 import OrganizationSettings from "./pages/OrganizationSettings";
 import FinanceSetup from "./pages/FinanceSetup";
 import SalaryEngine from "./pages/SalaryEngine";
