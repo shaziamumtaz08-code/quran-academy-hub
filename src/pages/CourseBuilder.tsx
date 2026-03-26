@@ -72,6 +72,7 @@ export default function CourseBuilder() {
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+  const [syllabusOpen, setSyllabusOpen] = useState(true);
 
   // AI state
   const [aiOpen, setAiOpen] = useState(false);
