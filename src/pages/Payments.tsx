@@ -1138,6 +1138,51 @@ export default function Payments() {
     });
   };
 
+  // Close month function
+  const closeMonth = async () => {
+    const amount = parseFloat(closeMonthAmount) || 0;
+    if (!closeMonthReason.trim()) return;
+    setCloseMonthSaving(true);
+    try {
+      const admin = await getAdminInfo();
+      if (amount > 0) {
+        const { error } = await supabase.from('invoice_adjustments').insert({
+          invoice_id: invoices.find(i => i.currency !== 'PKR')?.id || invoices[0]?.id,
+          action_type: 'rate_adjustment',
+          previous_values: { pending_before: pendingPKR, month: monthFilter },
+          new_values: {
+            adjustment_amount: amount,
+            billing_month: monthFilter,
+            branch_id: branchId,
+            division_id: divisionId,
+            reason: closeMonthReason.trim(),
+            closed_by: admin.name,
+          },
+          reason: closeMonthReason.trim(),
+          admin_id: admin.id,
+          admin_name: admin.name,
+          admin_email: admin.email,
+        });
+        if (error) throw error;
+      }
+      toast({
+        title: `${formatBillingMonth(monthFilter)} closed`,
+        description: amount > 0
+          ? `₨${amount.toLocaleString()} FCY variance written off.`
+          : 'Month marked as settled.',
+      });
+      setCloseMonthOpen(false);
+      setCloseMonthAmount('');
+      setCloseMonthReason('');
+      setStatusViewFilter(null);
+      queryClient.invalidateQueries({ queryKey: ['rate-adjustments'] });
+    } catch (e: any) {
+      toast({ title: 'Failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setCloseMonthSaving(false);
+    }
+  };
+
   // Invoice edit mutation (with audit trail) - full edit
   const editInvoiceMutation = useMutation({
     mutationFn: async (data: { id: string; amount: number; due_date: string; billing_month: string; currency: string; remark: string; status: string; amount_paid: number; forgiven_amount: number; payment_method: string; paid_at: string; period_from: string; period_to: string; originalInvoice: InvoiceRow }) => {
