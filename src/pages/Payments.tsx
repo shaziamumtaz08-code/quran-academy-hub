@@ -1920,8 +1920,8 @@ export default function Payments() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      {!isReadOnlyView && <TableHead className="w-10"><Checkbox checked={fcyInvoices.filter(i => i.status !== 'voided').every(i => selectedIds.has(i.id)) && fcyInvoices.length > 0} onCheckedChange={() => {
-                        const fcySelectable = fcyInvoices.filter(i => i.status !== 'voided');
+                      {!isReadOnlyView && <TableHead className="w-10"><Checkbox checked={fcyTableInvoices.filter(i => i.status !== 'voided').every(i => selectedIds.has(i.id)) && fcyTableInvoices.length > 0} onCheckedChange={() => {
+                        const fcySelectable = fcyTableInvoices.filter(i => i.status !== 'voided');
                         const allChecked = fcySelectable.every(i => selectedIds.has(i.id));
                         if (allChecked) {
                           setSelectedIds(prev => { const next = new Set(prev); fcySelectable.forEach(i => { next.delete(i.id); selectedInvoiceCacheRef.current.delete(i.id); }); return next; });
