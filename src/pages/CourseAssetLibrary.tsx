@@ -750,7 +750,11 @@ export default function CourseAssetLibrary() {
 
             <div className="flex justify-end gap-3 mt-6">
               <Button variant="outline" onClick={() => { setView('list'); setEditingAsset(null); }}>Cancel</Button>
-              <Button onClick={() => saveMutation.mutate()} disabled={!form.name || saveMutation.isPending}>
+              <Button
+                onClick={() => saveMutation.mutate()}
+                disabled={!canManageAssets || saveMutation.isPending}
+                title={!canManageAssets ? 'Only Super Admin or Academic Admin can manage assets' : 'Save asset'}
+              >
                 {saveMutation.isPending ? 'Saving…' : editingAsset ? 'Update' : 'Create'}
               </Button>
             </div>
