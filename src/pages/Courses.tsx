@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -77,6 +78,7 @@ function formatTime12h(time: string): string {
 // ─── Main Component ────────────────────────────────────
 export default function Courses() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [createOpen, setCreateOpen] = useState(false);
   const [detailCourse, setDetailCourse] = useState<Course | null>(null);
   const [enrollOpen, setEnrollOpen] = useState(false);
@@ -487,8 +489,11 @@ export default function Courses() {
                         <Badge variant="secondary">{course.enrollment_count}/{course.max_students}</Badge>
                       </TableCell>
                       <TableCell>
+                        <Button size="sm" variant="ghost" onClick={() => navigate(`/courses/${course.id}`)}>
+                          <Eye className="h-4 w-4 mr-1" /> Open
+                        </Button>
                         <Button size="sm" variant="ghost" onClick={() => { setDetailCourse(course); setActiveTab('students'); }}>
-                          <Eye className="h-4 w-4 mr-1" /> View
+                          <Users className="h-4 w-4 mr-1" /> Quick View
                         </Button>
                       </TableCell>
                     </TableRow>

@@ -31,6 +31,7 @@ import ZoomManagement from "./pages/ZoomManagement";
 import IntegrityAudit from "./pages/IntegrityAudit";
 import Courses from "./pages/Courses";
 import CourseAssetLibrary from "./pages/CourseAssetLibrary";
+import CourseBuilder from "./pages/CourseBuilder";
 import OrganizationSettings from "./pages/OrganizationSettings";
 import FinanceSetup from "./pages/FinanceSetup";
 import SalaryEngine from "./pages/SalaryEngine";
@@ -256,6 +257,7 @@ function AppRoutes() {
       <Route path="/integrity-audit" element={<ProtectedRoute><AdminRoute><IntegrityAudit /></AdminRoute></ProtectedRoute>} />
       <Route path="/courses" element={<ProtectedRoute><AdminRoute><Courses /></AdminRoute></ProtectedRoute>} />
       <Route path="/course-assets" element={<ProtectedRoute><AdminRoute><CourseAssetLibrary /></AdminRoute></ProtectedRoute>} />
+      <Route path="/courses/:id" element={<ProtectedRoute><AdminRoute><CourseBuilder /></AdminRoute></ProtectedRoute>} />
       <Route path="/organization-settings" element={<ProtectedRoute><AdminRoute><OrganizationSettings /></AdminRoute></ProtectedRoute>} />
       <Route path="/finance-setup" element={<ProtectedRoute><AdminRoute><FinanceSetup /></AdminRoute></ProtectedRoute>} />
       <Route path="/salary" element={<ProtectedRoute><AdminOrTeacherRoute><SalaryEngine /></AdminOrTeacherRoute></ProtectedRoute>} />
