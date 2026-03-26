@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Plus, Search, BookOpen, ArrowLeft, Copy, Trash2, Pencil, Users,
 } from 'lucide-react';
