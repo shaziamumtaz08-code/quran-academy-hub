@@ -289,6 +289,8 @@ function AppRoutes() {
       } />
       {/* Work Hub - accessible by all authenticated users */}
       <Route path="/hub" element={<ProtectedRoute><WorkHub /></ProtectedRoute>} />
+      <Route path="/workhub" element={<Navigate to="/hub" replace />} />
+      <Route path="/work-hub" element={<Navigate to="/hub" replace />} />
       {/* Printable Routes - standalone, no layout */}
       <Route path="/reports/print/:reportId" element={<ProtectedRoute><PrintReport /></ProtectedRoute>} />
       <Route path="/finance/print/invoice/:invoiceId" element={<ProtectedRoute><PrintInvoice /></ProtectedRoute>} />

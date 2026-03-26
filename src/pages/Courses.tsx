@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,6 +25,7 @@ import { Plus, Users, Eye, UserPlus, Archive, Search, Clock, Trash2, CheckCircle
 import { TableToolbar } from '@/components/ui/table-toolbar';
 import { format } from 'date-fns';
 import { useDivision } from '@/contexts/DivisionContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 // ─── Types ─────────────────────────────────────────────
 interface Course {
