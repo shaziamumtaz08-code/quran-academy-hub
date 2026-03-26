@@ -82,6 +82,8 @@ export default function Courses() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { activeDivision, activeBranch } = useDivision();
+  const { activeRole, profile } = useAuth();
+  const canCreateCourse = activeRole === 'super_admin' || activeRole === 'admin' || activeRole === 'admin_academic';
   const [createOpen, setCreateOpen] = useState(false);
   const [detailCourse, setDetailCourse] = useState<Course | null>(null);
   const [enrollOpen, setEnrollOpen] = useState(false);
@@ -90,6 +92,12 @@ export default function Courses() {
   const [activeTab, setActiveTab] = useState('students');
   const [courseSearch, setCourseSearch] = useState('');
   const [courseFilterTeacher, setCourseFilterTeacher] = useState('all');
+
+  useEffect(() => {
+    if (!canCreateCourse) {
+      console.warn('[Courses] Create disabled: insufficient role', { activeRole });
+    }
+  }, [canCreateCourse, activeRole]);
 
   // Schedule form state
   const [scheduleDay, setScheduleDay] = useState('');
