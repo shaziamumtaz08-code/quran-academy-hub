@@ -487,8 +487,11 @@ export default function Courses() {
                         <Badge variant="secondary">{course.enrollment_count}/{course.max_students}</Badge>
                       </TableCell>
                       <TableCell>
+                        <Button size="sm" variant="ghost" onClick={() => navigate(`/courses/${course.id}`)}>
+                          <Eye className="h-4 w-4 mr-1" /> Open
+                        </Button>
                         <Button size="sm" variant="ghost" onClick={() => { setDetailCourse(course); setActiveTab('students'); }}>
-                          <Eye className="h-4 w-4 mr-1" /> View
+                          <Users className="h-4 w-4 mr-1" /> Quick View
                         </Button>
                       </TableCell>
                     </TableRow>
