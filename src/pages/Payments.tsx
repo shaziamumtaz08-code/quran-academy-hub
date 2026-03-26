@@ -162,6 +162,13 @@ export default function Payments() {
   const [splitInvoices, setSplitInvoices] = useState<InvoiceRow[]>([]);
   const [splitMode, setSplitMode] = useState(false);
 
+  // Month Status Banner state
+  const [statusViewFilter, setStatusViewFilter] = useState<'recovered' | 'arrears_pending' | 'genuine' | null>(null);
+  const [closeMonthOpen, setCloseMonthOpen] = useState(false);
+  const [closeMonthAmount, setCloseMonthAmount] = useState('');
+  const [closeMonthReason, setCloseMonthReason] = useState('');
+  const [closeMonthSaving, setCloseMonthSaving] = useState(false);
+
   // Setup fee form - multi-select students
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [studentSearch, setStudentSearch] = useState('');
