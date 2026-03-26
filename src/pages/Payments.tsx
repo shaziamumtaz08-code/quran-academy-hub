@@ -2980,6 +2980,79 @@ export default function Payments() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* ─── Close Month Dialog ──────────────────────────────────── */}
+        <Dialog open={closeMonthOpen} onOpenChange={setCloseMonthOpen}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 font-serif">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                Close {formatBillingMonth(monthFilter)}
+              </DialogTitle>
+              <DialogDescription>
+                All genuine debts are cleared. This will write off any remaining FCY
+                rate variance and mark the month as settled.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="bg-muted/50 rounded-lg p-3 text-xs space-y-1.5 border border-border">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Recovered via arrears</span>
+                  <span className="font-medium text-emerald-600">{monthStatusData?.recovered.length || 0} students ✅</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Genuinely unpaid</span>
+                  <span className="font-medium">{monthStatusData?.genuinelyUnpaid.length || 0} students</span>
+                </div>
+                <div className="flex justify-between font-semibold border-t border-border pt-1.5">
+                  <span>FCY rate variance remaining</span>
+                  <span className="font-mono">
+                    ₨ {parseFloat(closeMonthAmount) > 0
+                      ? parseFloat(closeMonthAmount).toLocaleString(undefined, { maximumFractionDigits: 0 })
+                      : '0'
+                    }
+                  </span>
+                </div>
+              </div>
+              {parseFloat(closeMonthAmount) > 0 && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">FCY Variance Write-off (PKR)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={closeMonthAmount}
+                    onChange={e => setCloseMonthAmount(e.target.value)}
+                    className="font-mono"
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    Pre-filled with the difference between estimated and actual PKR for FCY invoices.
+                    Adjust if needed.
+                  </p>
+                </div>
+              )}
+              <div className="space-y-1.5">
+                <Label className="text-xs">Closing Note *</Label>
+                <Textarea
+                  placeholder={`e.g. ${formatBillingMonth(monthFilter)} fully settled — bank fee gaps recovered via arrears`}
+                  value={closeMonthReason}
+                  onChange={e => setCloseMonthReason(e.target.value)}
+                  className="text-sm min-h-[60px]"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setCloseMonthOpen(false)}>Cancel</Button>
+              <Button
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                disabled={!closeMonthReason.trim() || closeMonthSaving}
+                onClick={closeMonth}
+              >
+                {closeMonthSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Close Month
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
