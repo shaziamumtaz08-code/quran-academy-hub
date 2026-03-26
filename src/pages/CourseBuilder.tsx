@@ -72,6 +72,7 @@ export default function CourseBuilder() {
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+  const [syllabusOpen, setSyllabusOpen] = useState(true);
 
   // AI state
   const [aiOpen, setAiOpen] = useState(false);
@@ -473,20 +474,20 @@ export default function CourseBuilder() {
     <div className="min-h-screen bg-muted/30 flex flex-col">
       {/* ─── Top Navigation Bar ─────────────────────────── */}
       <div className="sticky top-0 z-30 bg-background border-b border-border px-4 py-3">
-        <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/courses')} className="shrink-0">
-              <ChevronLeft className="h-4 w-4 mr-1" /> Courses
+        <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <Button variant="ghost" size="sm" onClick={() => navigate('/courses')} className="shrink-0 px-2 sm:px-3">
+              <ChevronLeft className="h-4 w-4" /><span className="hidden sm:inline ml-1">Courses</span>
             </Button>
-            <Separator orientation="vertical" className="h-6" />
-            <h1 className="text-lg font-semibold truncate">{course.name}</h1>
-            <Badge variant={course.status === 'active' ? 'default' : 'secondary'} className="shrink-0">
+            <Separator orientation="vertical" className="h-6 hidden sm:block" />
+            <h1 className="text-sm sm:text-lg font-semibold truncate">{course.name}</h1>
+            <Badge variant={course.status === 'active' ? 'default' : 'secondary'} className="shrink-0 text-[10px] sm:text-xs">
               {course.status === 'active' ? 'Published' : 'Draft'}
             </Badge>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <div className="flex items-center gap-2">
-              <Label htmlFor="publish-toggle" className="text-xs text-muted-foreground">Publish</Label>
+              <Label htmlFor="publish-toggle" className="text-xs text-muted-foreground hidden sm:block">Publish</Label>
               <Switch
                 id="publish-toggle"
                 checked={course.status === 'active'}
@@ -496,7 +497,7 @@ export default function CourseBuilder() {
             {editorDirty && (
               <Button size="sm" onClick={saveLesson} disabled={saving} className="gap-1.5">
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Save Changes
+                <span className="hidden sm:inline">Save Changes</span>
               </Button>
             )}
           </div>
@@ -504,25 +505,42 @@ export default function CourseBuilder() {
       </div>
 
       {/* ─── Tabs ─────────────────────────────────────── */}
-      <div className="max-w-[1600px] mx-auto w-full px-4 pt-4">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="bg-background border">
-            <TabsTrigger value="builder" className="gap-1.5">
-              <BookOpen className="h-4 w-4" /> Builder
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="gap-1.5">
-              <Settings className="h-4 w-4" /> Settings
-            </TabsTrigger>
-            <TabsTrigger value="roster" className="gap-1.5">
-              <Users className="h-4 w-4" /> Roster & Bulk Add
-            </TabsTrigger>
-          </TabsList>
+      <div className="max-w-[1600px] mx-auto w-full px-3 sm:px-4 pt-4 pb-4 flex-1 flex flex-col">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+          <div className="overflow-x-auto whitespace-nowrap -mx-3 px-3 sm:mx-0 sm:px-0">
+            <TabsList className="bg-background border">
+              <TabsTrigger value="builder" className="gap-1.5 text-xs sm:text-sm">
+                <BookOpen className="h-4 w-4" /><span className="hidden sm:inline">Builder</span>
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="gap-1.5 text-xs sm:text-sm">
+                <Settings className="h-4 w-4" /><span className="hidden sm:inline">Settings</span>
+              </TabsTrigger>
+              <TabsTrigger value="roster" className="gap-1.5 text-xs sm:text-sm">
+                <Users className="h-4 w-4" /><span className="hidden sm:inline">Roster & Bulk Add</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* ═══ BUILDER TAB ═══ */}
-          <TabsContent value="builder" className="mt-4">
-            <div className="flex gap-4 min-h-[calc(100vh-180px)]">
-              {/* ─── Left Pane: Syllabus Outline (35%) ─── */}
-              <div className="w-[35%] shrink-0 bg-background rounded-xl shadow-sm border border-border overflow-hidden flex flex-col">
+          <TabsContent value="builder" className="mt-4 flex-1">
+            {/* Mobile syllabus toggle */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="mb-3 gap-1.5 md:hidden w-full"
+              onClick={() => setSyllabusOpen(prev => !prev)}
+            >
+              <BookOpen className="h-4 w-4" />
+              {syllabusOpen ? 'Hide Syllabus' : 'Show Syllabus'}
+              {syllabusOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            </Button>
+
+            <div className="flex flex-col md:flex-row gap-4 min-h-[calc(100vh-220px)]">
+              {/* ─── Left Pane: Syllabus Outline ─── */}
+              <div className={cn(
+                'w-full md:w-1/3 shrink-0 bg-background rounded-xl shadow-sm border border-border overflow-hidden flex flex-col',
+                !syllabusOpen && 'hidden md:flex'
+              )}>
                 <div className="px-4 py-3 border-b border-border bg-muted/30">
                   <h2 className="text-sm font-semibold text-foreground">Syllabus Outline</h2>
                   <p className="text-xs text-muted-foreground mt-0.5">{modules.length} modules · {lessons.length} lessons</p>
@@ -661,11 +679,11 @@ export default function CourseBuilder() {
               </div>
 
               {/* ─── Right Pane: Content Editor (65%) ─── */}
-              <div className="flex-1 bg-background rounded-xl shadow-sm border border-border overflow-hidden flex flex-col">
+              <div className="w-full md:flex-1 bg-background rounded-xl shadow-sm border border-border overflow-hidden flex flex-col">
                 {selectedLesson ? (
                   <>
                     {/* Editor header */}
-                    <div className="px-5 py-3 border-b border-border bg-muted/30 flex items-center justify-between">
+                    <div className="px-3 sm:px-5 py-3 border-b border-border bg-muted/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="text-lg">{CONTENT_TYPE_EMOJI[selectedLesson.content_type] || '📄'}</span>
                         <div className="min-w-0">
@@ -850,6 +868,7 @@ export default function CourseBuilder() {
                 {enrollments.length === 0 ? (
                   <p className="text-muted-foreground text-center py-6">No students enrolled yet</p>
                 ) : (
+                  <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -872,6 +891,7 @@ export default function CourseBuilder() {
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
                 )}
               </CardContent>
             </Card>
