@@ -136,9 +136,17 @@ function getStatusColor(status: string) {
 // ─── Main Component ────────────────────────────────────
 export default function CourseAssetLibrary() {
   const queryClient = useQueryClient();
+  const { activeRole } = useAuth();
+  const canManageAssets = activeRole === 'super_admin' || activeRole === 'admin' || activeRole === 'admin_academic';
   const [view, setView] = useState<'list' | 'detail' | 'form'>('list');
   const [selectedAsset, setSelectedAsset] = useState<CourseAsset | null>(null);
   const [editingAsset, setEditingAsset] = useState<CourseAsset | null>(null);
+
+  useEffect(() => {
+    if (!canManageAssets) {
+      console.warn('[CourseAssetLibrary] Create/Edit disabled: insufficient role', { activeRole });
+    }
+  }, [canManageAssets, activeRole]);
 
   // Filters
   const [search, setSearch] = useState('');
