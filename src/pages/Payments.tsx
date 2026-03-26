@@ -1838,7 +1838,7 @@ export default function Payments() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {lcyInvoices.map(inv => {
+                    {lcyTableInvoices.map(inv => {
                       const isVoided = inv.status === 'voided';
                       const paidAmt = ledgerPaidMap[inv.id] || 0;
                       const balance = Number(inv.amount) - paidAmt - Number(inv.forgiven_amount || 0);
