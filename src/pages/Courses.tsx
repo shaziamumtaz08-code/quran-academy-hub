@@ -483,7 +483,12 @@ export default function Courses() {
               </h1>
               <p className="text-white/80 mt-1">Create and manage group batches & courses</p>
             </div>
-            <Button onClick={() => setCreateOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button
+              onClick={() => setCreateOpen(true)}
+              disabled={!canCreateCourse}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              title={!canCreateCourse ? 'Only Super Admin or Academic Admin can create courses' : 'Create course'}
+            >
               <Plus className="h-4 w-4 mr-2" /> New Course
             </Button>
           </div>
