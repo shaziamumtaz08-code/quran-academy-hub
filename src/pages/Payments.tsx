@@ -1805,7 +1805,7 @@ export default function Payments() {
             <div className="bg-card rounded-xl border border-border overflow-hidden">
               {isLoading ? (
                 <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-              ) : (invoiceTab === 'lcy' ? lcyInvoices : fcyInvoices).length === 0 ? (
+              ) : (invoiceTab === 'lcy' ? lcyTableInvoices : fcyTableInvoices).length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                   <Receipt className="h-12 w-12 mb-4 opacity-40" />
                   <p className="font-medium">No {invoiceTab === 'lcy' ? 'PKR' : 'foreign currency'} invoices</p>
