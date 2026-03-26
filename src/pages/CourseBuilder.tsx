@@ -522,10 +522,25 @@ export default function CourseBuilder() {
           </div>
 
           {/* ═══ BUILDER TAB ═══ */}
-          <TabsContent value="builder" className="mt-4">
-            <div className="flex gap-4 min-h-[calc(100vh-180px)]">
-              {/* ─── Left Pane: Syllabus Outline (35%) ─── */}
-              <div className="w-[35%] shrink-0 bg-background rounded-xl shadow-sm border border-border overflow-hidden flex flex-col">
+          <TabsContent value="builder" className="mt-4 flex-1">
+            {/* Mobile syllabus toggle */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="mb-3 gap-1.5 md:hidden w-full"
+              onClick={() => setSyllabusOpen(prev => !prev)}
+            >
+              <BookOpen className="h-4 w-4" />
+              {syllabusOpen ? 'Hide Syllabus' : 'Show Syllabus'}
+              {syllabusOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            </Button>
+
+            <div className="flex flex-col md:flex-row gap-4 min-h-[calc(100vh-220px)]">
+              {/* ─── Left Pane: Syllabus Outline ─── */}
+              <div className={cn(
+                'w-full md:w-1/3 shrink-0 bg-background rounded-xl shadow-sm border border-border overflow-hidden flex flex-col',
+                !syllabusOpen && 'hidden md:flex'
+              )}>
                 <div className="px-4 py-3 border-b border-border bg-muted/30">
                   <h2 className="text-sm font-semibold text-foreground">Syllabus Outline</h2>
                   <p className="text-xs text-muted-foreground mt-0.5">{modules.length} modules · {lessons.length} lessons</p>
