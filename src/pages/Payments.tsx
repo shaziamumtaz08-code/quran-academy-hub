@@ -1592,6 +1592,146 @@ export default function Payments() {
               );
             })()}
 
+            {/* Month Status Banner */}
+            {monthStatusData && monthFilter !== 'all' && !isReadOnlyView && (
+              <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm mb-4">
+                <div className="flex items-center justify-between px-4 py-3 bg-muted/40 border-b border-border">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                    <span className="text-sm font-semibold text-foreground">
+                      {formatBillingMonth(monthFilter)} — Month Status
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {statusViewFilter && (
+                      <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-muted-foreground" onClick={() => setStatusViewFilter(null)}>
+                        <X className="h-3 w-3" /> Clear filter
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      className={cn(
+                        'h-7 text-xs gap-1.5 font-semibold',
+                        monthStatusData.canCloseMonth
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
+                          : 'bg-muted text-muted-foreground cursor-not-allowed opacity-60'
+                      )}
+                      disabled={!monthStatusData.canCloseMonth}
+                      onClick={() => {
+                        const fcyVariance = Math.max(0, pendingPKR - (
+                          invoices
+                            .filter(i => i.currency === 'PKR' && i.status !== 'paid' && i.status !== 'voided' && i.status !== 'waived')
+                            .reduce((s, i) => s + Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0)), 0)
+                        ));
+                        setCloseMonthAmount(fcyVariance > 0 ? fcyVariance.toFixed(0) : '');
+                        setCloseMonthReason('');
+                        setCloseMonthOpen(true);
+                      }}
+                      title={!monthStatusData.canCloseMonth ? 'Cannot close — genuine unpaid invoices remain' : 'Close this billing month'}
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Close Month
+                    </Button>
+                  </div>
+                </div>
+                <div className="divide-y divide-border">
+                  {monthStatusData.recovered.length > 0 && (
+                    <div
+                      className={cn(
+                        'flex items-center justify-between px-4 py-2.5 transition-colors',
+                        statusViewFilter === 'recovered' ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'hover:bg-muted/30 cursor-pointer'
+                      )}
+                      onClick={() => setStatusViewFilter(prev => prev === 'recovered' ? null : 'recovered')}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">Recovered via arrears</p>
+                          <p className="text-xs text-muted-foreground">Arrears paid in a later month — these can be closed</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 font-semibold">
+                          {monthStatusData.recovered.length} student{monthStatusData.recovered.length !== 1 ? 's' : ''}
+                        </Badge>
+                        <ChevronRight className={cn('h-4 w-4 text-muted-foreground transition-transform', statusViewFilter === 'recovered' && 'rotate-90')} />
+                      </div>
+                    </div>
+                  )}
+                  {monthStatusData.arrearsStillPending.length > 0 && (
+                    <div
+                      className={cn(
+                        'flex items-center justify-between px-4 py-2.5 transition-colors',
+                        statusViewFilter === 'arrears_pending' ? 'bg-amber-50 dark:bg-amber-950/30' : 'hover:bg-muted/30 cursor-pointer'
+                      )}
+                      onClick={() => setStatusViewFilter(prev => prev === 'arrears_pending' ? null : 'arrears_pending')}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
+                          <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">Arrears created — still pending</p>
+                          <p className="text-xs text-muted-foreground">Arrears invoice exists in a future month but not yet paid</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 font-semibold">
+                          {monthStatusData.arrearsStillPending.length} student{monthStatusData.arrearsStillPending.length !== 1 ? 's' : ''}
+                        </Badge>
+                        <ChevronRight className={cn('h-4 w-4 text-muted-foreground transition-transform', statusViewFilter === 'arrears_pending' && 'rotate-90')} />
+                      </div>
+                    </div>
+                  )}
+                  {monthStatusData.genuinelyUnpaid.length > 0 && (
+                    <div
+                      className={cn(
+                        'flex items-center justify-between px-4 py-2.5 transition-colors',
+                        statusViewFilter === 'genuine' ? 'bg-red-50 dark:bg-red-950/30' : 'hover:bg-muted/30 cursor-pointer'
+                      )}
+                      onClick={() => setStatusViewFilter(prev => prev === 'genuine' ? null : 'genuine')}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-7 h-7 rounded-lg bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
+                          <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">Genuinely unpaid</p>
+                          <p className="text-xs text-muted-foreground">No arrears created — student still owes this amount</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 font-semibold">
+                          {monthStatusData.genuinelyUnpaid.length} student{monthStatusData.genuinelyUnpaid.length !== 1 ? 's' : ''}
+                        </Badge>
+                        <ChevronRight className={cn('h-4 w-4 text-muted-foreground transition-transform', statusViewFilter === 'genuine' && 'rotate-90')} />
+                      </div>
+                    </div>
+                  )}
+                  {monthStatusData.genuinelyUnpaid.length === 0 && monthStatusData.arrearsStillPending.length === 0 && (
+                    <div className="flex items-center gap-3 px-4 py-2.5 bg-emerald-50/50 dark:bg-emerald-950/20">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <p className="text-sm text-emerald-700 dark:text-emerald-400 font-medium">
+                        All partial invoices recovered — month is ready to close
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Status view filter indicator */}
+            {statusViewFilter && monthStatusData && (
+              <div className="flex items-center gap-2 text-sm bg-muted/50 rounded-lg px-3 py-2 border border-border mb-3">
+                <span className="text-muted-foreground">Showing {displayedInvoices.length} of {invoices.length} invoices</span>
+                <Button variant="ghost" size="sm" className="h-6 text-xs gap-1" onClick={() => setStatusViewFilter(null)}>
+                  <X className="h-3 w-3" /> Clear filter
+                </Button>
+              </div>
+            )}
+
             {/* LCY / FCY Sub-Tabs */}
             <div className="flex items-center gap-2 mb-3">
               <button
@@ -1599,14 +1739,14 @@ export default function Payments() {
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${invoiceTab === 'lcy' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
               >
                 PKR — Local
-                <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-[10px]">{lcyInvoices.length}</Badge>
+                <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-[10px]">{lcyTableInvoices.length}</Badge>
               </button>
               <button
                 onClick={() => setInvoiceTab('fcy')}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${invoiceTab === 'fcy' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
               >
                 Foreign Currency
-                <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-[10px]">{fcyInvoices.length}</Badge>
+                <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-[10px]">{fcyTableInvoices.length}</Badge>
               </button>
             </div>
 
