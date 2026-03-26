@@ -679,7 +679,7 @@ export default function CourseBuilder() {
               </div>
 
               {/* ─── Right Pane: Content Editor (65%) ─── */}
-              <div className="flex-1 bg-background rounded-xl shadow-sm border border-border overflow-hidden flex flex-col">
+              <div className="w-full md:flex-1 bg-background rounded-xl shadow-sm border border-border overflow-hidden flex flex-col">
                 {selectedLesson ? (
                   <>
                     {/* Editor header */}
