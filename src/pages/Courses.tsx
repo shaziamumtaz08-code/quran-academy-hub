@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,6 +25,7 @@ import { Plus, Users, Eye, UserPlus, Archive, Search, Clock, Trash2, CheckCircle
 import { TableToolbar } from '@/components/ui/table-toolbar';
 import { format } from 'date-fns';
 import { useDivision } from '@/contexts/DivisionContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 // ─── Types ─────────────────────────────────────────────
 interface Course {
@@ -81,6 +82,8 @@ export default function Courses() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { activeDivision, activeBranch } = useDivision();
+  const { activeRole, profile } = useAuth();
+  const canCreateCourse = activeRole === 'super_admin' || activeRole === 'admin' || activeRole === 'admin_academic';
   const [createOpen, setCreateOpen] = useState(false);
   const [detailCourse, setDetailCourse] = useState<Course | null>(null);
   const [enrollOpen, setEnrollOpen] = useState(false);
@@ -89,6 +92,12 @@ export default function Courses() {
   const [activeTab, setActiveTab] = useState('students');
   const [courseSearch, setCourseSearch] = useState('');
   const [courseFilterTeacher, setCourseFilterTeacher] = useState('all');
+
+  useEffect(() => {
+    if (!canCreateCourse) {
+      console.warn('[Courses] Create disabled: insufficient role', { activeRole });
+    }
+  }, [canCreateCourse, activeRole]);
 
   // Schedule form state
   const [scheduleDay, setScheduleDay] = useState('');
@@ -204,16 +213,46 @@ export default function Courses() {
   // ─── Mutations ────────────────────────────────────────
   const createCourse = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('courses').insert({
-        name: formName,
-        teacher_id: formTeacherId,
+      if (!canCreateCourse) {
+        console.warn('[Courses] Create blocked by role', { activeRole });
+        throw new Error('You do not have permission to create courses');
+      }
+
+      let branchId = activeBranch?.id ?? null;
+      let divisionId = activeDivision?.id ?? null;
+
+      if ((!branchId || !divisionId) && profile?.id) {
+        const { data: fallbackContext } = await supabase
+          .rpc('get_user_default_context', { _user_id: profile.id })
+          .maybeSingle();
+
+        branchId = branchId || fallbackContext?.branch_id || null;
+        divisionId = divisionId || fallbackContext?.division_id || null;
+      }
+
+      if (!branchId || !divisionId) {
+        console.warn('[Courses] Create blocked: missing branch/division context');
+        throw new Error('Please select a branch/division before creating a course');
+      }
+
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const payload = {
+        name: formName.trim() || `Untitled Course ${today}`,
+        teacher_id: formTeacherId || profile?.id,
         subject_id: formSubjectId || null,
-        start_date: formStartDate,
+        start_date: formStartDate || today,
         end_date: formEndDate || null,
         max_students: parseInt(formMaxStudents) || 30,
-        branch_id: activeBranch?.id || null,
-        division_id: activeDivision?.id || null,
-      });
+        branch_id: branchId,
+        division_id: divisionId,
+      };
+
+      if (!payload.teacher_id) {
+        console.warn('[Courses] Create blocked: no teacher selected and no fallback profile');
+        throw new Error('Select a teacher before creating the course');
+      }
+
+      const { error } = await supabase.from('courses').insert(payload);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -444,7 +483,12 @@ export default function Courses() {
               </h1>
               <p className="text-white/80 mt-1">Create and manage group batches & courses</p>
             </div>
-            <Button onClick={() => setCreateOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button
+              onClick={() => setCreateOpen(true)}
+              disabled={!canCreateCourse}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              title={!canCreateCourse ? 'Only Super Admin or Academic Admin can create courses' : 'Create course'}
+            >
               <Plus className="h-4 w-4 mr-2" /> New Course
             </Button>
           </div>
@@ -597,7 +641,8 @@ export default function Courses() {
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
             <Button
               onClick={() => createCourse.mutate()}
-              disabled={!formName || !formTeacherId || !formStartDate || createCourse.isPending}
+              disabled={!canCreateCourse || createCourse.isPending}
+              title={!canCreateCourse ? 'Only Super Admin or Academic Admin can create courses' : 'Create course'}
             >
               {createCourse.isPending ? 'Creating...' : 'Create Course'}
             </Button>

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Plus, Search, BookOpen, ArrowLeft, Copy, Trash2, Pencil, Users,
 } from 'lucide-react';
@@ -135,9 +136,17 @@ function getStatusColor(status: string) {
 // ─── Main Component ────────────────────────────────────
 export default function CourseAssetLibrary() {
   const queryClient = useQueryClient();
+  const { activeRole } = useAuth();
+  const canManageAssets = activeRole === 'super_admin' || activeRole === 'admin' || activeRole === 'admin_academic';
   const [view, setView] = useState<'list' | 'detail' | 'form'>('list');
   const [selectedAsset, setSelectedAsset] = useState<CourseAsset | null>(null);
   const [editingAsset, setEditingAsset] = useState<CourseAsset | null>(null);
+
+  useEffect(() => {
+    if (!canManageAssets) {
+      console.warn('[CourseAssetLibrary] Create/Edit disabled: insufficient role', { activeRole });
+    }
+  }, [canManageAssets, activeRole]);
 
   // Filters
   const [search, setSearch] = useState('');
@@ -208,8 +217,13 @@ export default function CourseAssetLibrary() {
   // ─── Mutations ──────────────────────────────────────
   const saveMutation = useMutation({
     mutationFn: async () => {
+      if (!canManageAssets) {
+        console.warn('[CourseAssetLibrary] Save blocked by role', { activeRole });
+        throw new Error('You do not have permission to save course assets');
+      }
+
       const payload = {
-        name: form.name,
+        name: form.name.trim() || `Untitled Asset ${new Date().toISOString().slice(0, 10)}`,
         subject: form.subject,
         level: form.level,
         ad_creative: form.ad_creative as any,
@@ -368,7 +382,12 @@ export default function CourseAssetLibrary() {
                   </h1>
                   <p className="text-white/80 mt-1">Manage course templates, ad creatives, and run history</p>
                 </div>
-                <Button onClick={openNewForm} className="bg-primary text-primary-foreground hover:bg-primary/90">
+                <Button
+                  onClick={openNewForm}
+                  disabled={!canManageAssets}
+                  title={!canManageAssets ? 'Only Super Admin or Academic Admin can manage assets' : 'Create asset'}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                >
                   <Plus className="h-4 w-4 mr-2" /> New Course Asset
                 </Button>
               </div>
@@ -731,7 +750,11 @@ export default function CourseAssetLibrary() {
 
             <div className="flex justify-end gap-3 mt-6">
               <Button variant="outline" onClick={() => { setView('list'); setEditingAsset(null); }}>Cancel</Button>
-              <Button onClick={() => saveMutation.mutate()} disabled={!form.name || saveMutation.isPending}>
+              <Button
+                onClick={() => saveMutation.mutate()}
+                disabled={!canManageAssets || saveMutation.isPending}
+                title={!canManageAssets ? 'Only Super Admin or Academic Admin can manage assets' : 'Save asset'}
+              >
                 {saveMutation.isPending ? 'Saving…' : editingAsset ? 'Update' : 'Create'}
               </Button>
             </div>
