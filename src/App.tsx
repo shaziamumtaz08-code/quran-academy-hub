@@ -258,6 +258,7 @@ function AppRoutes() {
       <Route path="/courses" element={<ProtectedRoute><AdminRoute><Courses /></AdminRoute></ProtectedRoute>} />
       <Route path="/course-assets" element={<ProtectedRoute><AdminRoute><CourseAssetLibrary /></AdminRoute></ProtectedRoute>} />
       <Route path="/courses/:id" element={<ProtectedRoute><AdminRoute><CourseBuilder /></AdminRoute></ProtectedRoute>} />
+      <Route path="/academics/courses/:id" element={<ProtectedRoute><AdminRoute><CourseBuilder /></AdminRoute></ProtectedRoute>} />
       <Route path="/organization-settings" element={<ProtectedRoute><AdminRoute><OrganizationSettings /></AdminRoute></ProtectedRoute>} />
       <Route path="/finance-setup" element={<ProtectedRoute><AdminRoute><FinanceSetup /></AdminRoute></ProtectedRoute>} />
       <Route path="/salary" element={<ProtectedRoute><AdminOrTeacherRoute><SalaryEngine /></AdminOrTeacherRoute></ProtectedRoute>} />
