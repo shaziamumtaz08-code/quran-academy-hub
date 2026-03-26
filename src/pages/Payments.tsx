@@ -324,6 +324,21 @@ export default function Payments() {
     enabled: isReadOnlyView || !!branchId,
   });
 
+  // Fetch arrears invoices that originated from the current billing month
+  const { data: linkedArrears = [] } = useQuery({
+    queryKey: ['linked-arrears', monthFilter, branchId, divisionId],
+    queryFn: async () => {
+      if (monthFilter === 'all') return [];
+      const monthLabel = formatBillingMonth(monthFilter);
+      const { data } = await supabase
+        .from('fee_invoices')
+        .select('id, student_id, amount, currency, billing_month, status, amount_paid, forgiven_amount')
+        .ilike('remark', `%arrears from ${monthLabel}%`);
+      return data || [];
+    },
+    enabled: monthFilter !== 'all',
+  });
+
   // Realised amounts + paid sums + payment dates query (sum of amount_local and amount_foreign per invoice from ledger)
   const { data: txnSumsMap = {} } = useQuery({
     queryKey: ['txn-sums', branchId, divisionId, monthFilter, statusFilter],
