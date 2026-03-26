@@ -24,6 +24,7 @@ import { toast } from '@/hooks/use-toast';
 import { Plus, Users, Eye, UserPlus, Archive, Search, Clock, Trash2, CheckCircle, XCircle, AlertCircle, ClipboardCheck, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { TableToolbar } from '@/components/ui/table-toolbar';
 import { format } from 'date-fns';
+import { useDivision } from '@/contexts/DivisionContext';
 
 // ─── Types ─────────────────────────────────────────────
 interface Course {
@@ -79,6 +80,7 @@ function formatTime12h(time: string): string {
 export default function Courses() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { activeDivision, activeBranch } = useDivision();
   const [createOpen, setCreateOpen] = useState(false);
   const [detailCourse, setDetailCourse] = useState<Course | null>(null);
   const [enrollOpen, setEnrollOpen] = useState(false);
@@ -209,6 +211,8 @@ export default function Courses() {
         start_date: formStartDate,
         end_date: formEndDate || null,
         max_students: parseInt(formMaxStudents) || 30,
+        branch_id: activeBranch?.id || null,
+        division_id: activeDivision?.id || null,
       });
       if (error) throw error;
     },

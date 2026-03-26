@@ -95,9 +95,11 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory }: Crea
 
       const metadata = category === 'leave_request' ? leaveMetadata : {};
 
+      const finalAssigneeId = assigneeId || profile!.id;
+
       const { error } = await supabase.from('tickets').insert({
         creator_id: profile!.id,
-        assignee_id: assigneeId,
+        assignee_id: finalAssigneeId,
         category,
         subcategory_id: subcategoryId || null,
         subject,
@@ -115,6 +117,7 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory }: Crea
     onSuccess: () => {
       toast.success('Ticket created successfully');
       queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['workhub-tab-counts'] });
       resetForm();
       onOpenChange(false);
     },
@@ -131,7 +134,7 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory }: Crea
     setLeaveMetadata({});
   };
 
-  const canSubmit = subject.trim() && assigneeId;
+  const canSubmit = subject.trim();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
