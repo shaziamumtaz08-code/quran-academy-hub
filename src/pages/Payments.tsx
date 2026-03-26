@@ -18,9 +18,9 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  DollarSign, CheckCircle, XCircle, Clock, User, Loader2, Zap, GraduationCap,
+  DollarSign, CheckCircle, CheckCircle2, XCircle, Clock, User, Loader2, Zap, GraduationCap,
   Plus, Receipt, Upload, ArrowRightLeft, AlertTriangle, ImageIcon, X, Search, ArrowUpDown, Users, Pencil, Trash2, ListChecks,
-  MoreHorizontal, Ban, Undo2, History, Tag, FileX, Eye, FileText, Printer, RotateCcw
+  MoreHorizontal, Ban, Undo2, History, Tag, FileX, Eye, FileText, Printer, RotateCcw, ChevronRight
 } from 'lucide-react';
 import { endOfMonth, startOfMonth, parseISO, format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -33,6 +33,7 @@ import BillingPlansTable from '@/components/finance/BillingPlansTable';
 import { AttachmentPreview } from '@/components/shared/FileUploadField';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 // ─── Constants ───────────────────────────────────────────────────────
 const MONTHS = [
@@ -161,6 +162,13 @@ export default function Payments() {
   const [editPaymentLoading, setEditPaymentLoading] = useState(false);
   const [splitInvoices, setSplitInvoices] = useState<InvoiceRow[]>([]);
   const [splitMode, setSplitMode] = useState(false);
+
+  // Month Status Banner state
+  const [statusViewFilter, setStatusViewFilter] = useState<'recovered' | 'arrears_pending' | 'genuine' | null>(null);
+  const [closeMonthOpen, setCloseMonthOpen] = useState(false);
+  const [closeMonthAmount, setCloseMonthAmount] = useState('');
+  const [closeMonthReason, setCloseMonthReason] = useState('');
+  const [closeMonthSaving, setCloseMonthSaving] = useState(false);
 
   // Setup fee form - multi-select students
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
@@ -315,6 +323,21 @@ export default function Payments() {
     },
     // Parents/students don't need branch context; RLS handles scoping
     enabled: isReadOnlyView || !!branchId,
+  });
+
+  // Fetch arrears invoices that originated from the current billing month
+  const { data: linkedArrears = [] } = useQuery({
+    queryKey: ['linked-arrears', monthFilter, branchId, divisionId],
+    queryFn: async () => {
+      if (monthFilter === 'all') return [];
+      const monthLabel = formatBillingMonth(monthFilter);
+      const { data } = await supabase
+        .from('fee_invoices')
+        .select('id, student_id, amount, currency, billing_month, status, amount_paid, forgiven_amount')
+        .ilike('remark', `%arrears from ${monthLabel}%`);
+      return data || [];
+    },
+    enabled: monthFilter !== 'all',
   });
 
   // Realised amounts + paid sums + payment dates query (sum of amount_local and amount_foreign per invoice from ledger)
@@ -574,6 +597,56 @@ export default function Payments() {
 
   const lcyInvoices = useMemo(() => sortInvoices(applyInvoiceFilters(lcyInvoicesAll)), [lcyInvoicesAll, applyInvoiceFilters, sortInvoices]);
   const fcyInvoices = useMemo(() => sortInvoices(applyInvoiceFilters(fcyInvoicesAll)), [fcyInvoicesAll, applyInvoiceFilters, sortInvoices]);
+
+  // Month Status classification
+  const monthStatusData = useMemo(() => {
+    if (monthFilter === 'all') return null;
+    const partialInvoices = invoices.filter(i => i.status === 'partially_paid');
+    if (partialInvoices.length === 0) return null;
+    const arrearsMap: Record<string, typeof linkedArrears> = {};
+    linkedArrears.forEach((a: any) => {
+      if (!arrearsMap[a.student_id]) arrearsMap[a.student_id] = [];
+      arrearsMap[a.student_id].push(a);
+    });
+    const recovered: typeof invoices = [];
+    const arrearsStillPending: typeof invoices = [];
+    const genuinelyUnpaid: typeof invoices = [];
+    partialInvoices.forEach(inv => {
+      const studentArrears = arrearsMap[inv.student_id];
+      if (!studentArrears || studentArrears.length === 0) {
+        genuinelyUnpaid.push(inv);
+      } else {
+        const allSettled = studentArrears.every((a: any) =>
+          a.status === 'paid' || a.status === 'waived' || a.status === 'voided'
+        );
+        if (allSettled) recovered.push(inv);
+        else arrearsStillPending.push(inv);
+      }
+    });
+    const canCloseMonth = genuinelyUnpaid.length === 0 && arrearsStillPending.length === 0;
+    const nonSettled = invoices.filter(i =>
+      i.status !== 'paid' && i.status !== 'waived' && i.status !== 'voided'
+    );
+    const isFullySettled = nonSettled.length === 0 || (nonSettled.length === recovered.length);
+    return { recovered, arrearsStillPending, genuinelyUnpaid, canCloseMonth, isFullySettled };
+  }, [invoices, linkedArrears, monthFilter]);
+
+  // When a status filter is active from the Month Status banner, override the table
+  const displayedInvoices = useMemo(() => {
+    if (!statusViewFilter || !monthStatusData) return invoices;
+    switch (statusViewFilter) {
+      case 'recovered': return monthStatusData.recovered;
+      case 'arrears_pending': return monthStatusData.arrearsStillPending;
+      case 'genuine': return monthStatusData.genuinelyUnpaid;
+      default: return invoices;
+    }
+  }, [invoices, statusViewFilter, monthStatusData]);
+
+  const lcyTableInvoices = useMemo(() => sortInvoices(applyInvoiceFilters(displayedInvoices.filter(i => i.currency === 'PKR'))), [displayedInvoices, applyInvoiceFilters, sortInvoices]);
+  const fcyTableInvoices = useMemo(() => sortInvoices(applyInvoiceFilters(displayedInvoices.filter(i => i.currency !== 'PKR'))), [displayedInvoices, applyInvoiceFilters, sortInvoices]);
+
+  // Reset statusViewFilter when month changes
+  useEffect(() => { setStatusViewFilter(null); }, [monthFilter]);
 
   // Unique student names for name filter (from all invoices, not filtered)
   const invoiceStudentOptions = useMemo(() => {
@@ -1066,6 +1139,51 @@ export default function Payments() {
     });
   };
 
+  // Close month function
+  const closeMonth = async () => {
+    const amount = parseFloat(closeMonthAmount) || 0;
+    if (!closeMonthReason.trim()) return;
+    setCloseMonthSaving(true);
+    try {
+      const admin = await getAdminInfo();
+      if (amount > 0) {
+        const { error } = await supabase.from('invoice_adjustments').insert({
+          invoice_id: invoices.find(i => i.currency !== 'PKR')?.id || invoices[0]?.id,
+          action_type: 'rate_adjustment',
+          previous_values: { pending_before: pendingPKR, month: monthFilter },
+          new_values: {
+            adjustment_amount: amount,
+            billing_month: monthFilter,
+            branch_id: branchId,
+            division_id: divisionId,
+            reason: closeMonthReason.trim(),
+            closed_by: admin.name,
+          },
+          reason: closeMonthReason.trim(),
+          admin_id: admin.id,
+          admin_name: admin.name,
+          admin_email: admin.email,
+        });
+        if (error) throw error;
+      }
+      toast({
+        title: `${formatBillingMonth(monthFilter)} closed`,
+        description: amount > 0
+          ? `₨${amount.toLocaleString()} FCY variance written off.`
+          : 'Month marked as settled.',
+      });
+      setCloseMonthOpen(false);
+      setCloseMonthAmount('');
+      setCloseMonthReason('');
+      setStatusViewFilter(null);
+      queryClient.invalidateQueries({ queryKey: ['rate-adjustments'] });
+    } catch (e: any) {
+      toast({ title: 'Failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setCloseMonthSaving(false);
+    }
+  };
+
   // Invoice edit mutation (with audit trail) - full edit
   const editInvoiceMutation = useMutation({
     mutationFn: async (data: { id: string; amount: number; due_date: string; billing_month: string; currency: string; remark: string; status: string; amount_paid: number; forgiven_amount: number; payment_method: string; paid_at: string; period_from: string; period_to: string; originalInvoice: InvoiceRow }) => {
@@ -1475,6 +1593,146 @@ export default function Payments() {
               );
             })()}
 
+            {/* Month Status Banner */}
+            {monthStatusData && monthFilter !== 'all' && !isReadOnlyView && (
+              <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm mb-4">
+                <div className="flex items-center justify-between px-4 py-3 bg-muted/40 border-b border-border">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                    <span className="text-sm font-semibold text-foreground">
+                      {formatBillingMonth(monthFilter)} — Month Status
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {statusViewFilter && (
+                      <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-muted-foreground" onClick={() => setStatusViewFilter(null)}>
+                        <X className="h-3 w-3" /> Clear filter
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      className={cn(
+                        'h-7 text-xs gap-1.5 font-semibold',
+                        monthStatusData.canCloseMonth
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
+                          : 'bg-muted text-muted-foreground cursor-not-allowed opacity-60'
+                      )}
+                      disabled={!monthStatusData.canCloseMonth}
+                      onClick={() => {
+                        const fcyVariance = Math.max(0, pendingPKR - (
+                          invoices
+                            .filter(i => i.currency === 'PKR' && i.status !== 'paid' && i.status !== 'voided' && i.status !== 'waived')
+                            .reduce((s, i) => s + Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0)), 0)
+                        ));
+                        setCloseMonthAmount(fcyVariance > 0 ? fcyVariance.toFixed(0) : '');
+                        setCloseMonthReason('');
+                        setCloseMonthOpen(true);
+                      }}
+                      title={!monthStatusData.canCloseMonth ? 'Cannot close — genuine unpaid invoices remain' : 'Close this billing month'}
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Close Month
+                    </Button>
+                  </div>
+                </div>
+                <div className="divide-y divide-border">
+                  {monthStatusData.recovered.length > 0 && (
+                    <div
+                      className={cn(
+                        'flex items-center justify-between px-4 py-2.5 transition-colors',
+                        statusViewFilter === 'recovered' ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'hover:bg-muted/30 cursor-pointer'
+                      )}
+                      onClick={() => setStatusViewFilter(prev => prev === 'recovered' ? null : 'recovered')}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">Recovered via arrears</p>
+                          <p className="text-xs text-muted-foreground">Arrears paid in a later month — these can be closed</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 font-semibold">
+                          {monthStatusData.recovered.length} student{monthStatusData.recovered.length !== 1 ? 's' : ''}
+                        </Badge>
+                        <ChevronRight className={cn('h-4 w-4 text-muted-foreground transition-transform', statusViewFilter === 'recovered' && 'rotate-90')} />
+                      </div>
+                    </div>
+                  )}
+                  {monthStatusData.arrearsStillPending.length > 0 && (
+                    <div
+                      className={cn(
+                        'flex items-center justify-between px-4 py-2.5 transition-colors',
+                        statusViewFilter === 'arrears_pending' ? 'bg-amber-50 dark:bg-amber-950/30' : 'hover:bg-muted/30 cursor-pointer'
+                      )}
+                      onClick={() => setStatusViewFilter(prev => prev === 'arrears_pending' ? null : 'arrears_pending')}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
+                          <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">Arrears created — still pending</p>
+                          <p className="text-xs text-muted-foreground">Arrears invoice exists in a future month but not yet paid</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 font-semibold">
+                          {monthStatusData.arrearsStillPending.length} student{monthStatusData.arrearsStillPending.length !== 1 ? 's' : ''}
+                        </Badge>
+                        <ChevronRight className={cn('h-4 w-4 text-muted-foreground transition-transform', statusViewFilter === 'arrears_pending' && 'rotate-90')} />
+                      </div>
+                    </div>
+                  )}
+                  {monthStatusData.genuinelyUnpaid.length > 0 && (
+                    <div
+                      className={cn(
+                        'flex items-center justify-between px-4 py-2.5 transition-colors',
+                        statusViewFilter === 'genuine' ? 'bg-red-50 dark:bg-red-950/30' : 'hover:bg-muted/30 cursor-pointer'
+                      )}
+                      onClick={() => setStatusViewFilter(prev => prev === 'genuine' ? null : 'genuine')}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-7 h-7 rounded-lg bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
+                          <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">Genuinely unpaid</p>
+                          <p className="text-xs text-muted-foreground">No arrears created — student still owes this amount</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 font-semibold">
+                          {monthStatusData.genuinelyUnpaid.length} student{monthStatusData.genuinelyUnpaid.length !== 1 ? 's' : ''}
+                        </Badge>
+                        <ChevronRight className={cn('h-4 w-4 text-muted-foreground transition-transform', statusViewFilter === 'genuine' && 'rotate-90')} />
+                      </div>
+                    </div>
+                  )}
+                  {monthStatusData.genuinelyUnpaid.length === 0 && monthStatusData.arrearsStillPending.length === 0 && (
+                    <div className="flex items-center gap-3 px-4 py-2.5 bg-emerald-50/50 dark:bg-emerald-950/20">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <p className="text-sm text-emerald-700 dark:text-emerald-400 font-medium">
+                        All partial invoices recovered — month is ready to close
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Status view filter indicator */}
+            {statusViewFilter && monthStatusData && (
+              <div className="flex items-center gap-2 text-sm bg-muted/50 rounded-lg px-3 py-2 border border-border mb-3">
+                <span className="text-muted-foreground">Showing {displayedInvoices.length} of {invoices.length} invoices</span>
+                <Button variant="ghost" size="sm" className="h-6 text-xs gap-1" onClick={() => setStatusViewFilter(null)}>
+                  <X className="h-3 w-3" /> Clear filter
+                </Button>
+              </div>
+            )}
+
             {/* LCY / FCY Sub-Tabs */}
             <div className="flex items-center gap-2 mb-3">
               <button
@@ -1482,14 +1740,14 @@ export default function Payments() {
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${invoiceTab === 'lcy' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
               >
                 PKR — Local
-                <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-[10px]">{lcyInvoices.length}</Badge>
+                <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-[10px]">{lcyTableInvoices.length}</Badge>
               </button>
               <button
                 onClick={() => setInvoiceTab('fcy')}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${invoiceTab === 'fcy' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
               >
                 Foreign Currency
-                <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-[10px]">{fcyInvoices.length}</Badge>
+                <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-[10px]">{fcyTableInvoices.length}</Badge>
               </button>
             </div>
 
@@ -1547,7 +1805,7 @@ export default function Payments() {
             <div className="bg-card rounded-xl border border-border overflow-hidden">
               {isLoading ? (
                 <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-              ) : (invoiceTab === 'lcy' ? lcyInvoices : fcyInvoices).length === 0 ? (
+              ) : (invoiceTab === 'lcy' ? lcyTableInvoices : fcyTableInvoices).length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                   <Receipt className="h-12 w-12 mb-4 opacity-40" />
                   <p className="font-medium">No {invoiceTab === 'lcy' ? 'PKR' : 'foreign currency'} invoices</p>
@@ -1558,8 +1816,8 @@ export default function Payments() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      {!isReadOnlyView && <TableHead className="w-10"><Checkbox checked={lcyInvoices.filter(i => i.status !== 'voided').every(i => selectedIds.has(i.id)) && lcyInvoices.length > 0} onCheckedChange={() => {
-                        const lcySelectable = lcyInvoices.filter(i => i.status !== 'voided');
+                      {!isReadOnlyView && <TableHead className="w-10"><Checkbox checked={lcyTableInvoices.filter(i => i.status !== 'voided').every(i => selectedIds.has(i.id)) && lcyTableInvoices.length > 0} onCheckedChange={() => {
+                        const lcySelectable = lcyTableInvoices.filter(i => i.status !== 'voided');
                         const allChecked = lcySelectable.every(i => selectedIds.has(i.id));
                         if (allChecked) {
                           setSelectedIds(prev => { const next = new Set(prev); lcySelectable.forEach(i => { next.delete(i.id); selectedInvoiceCacheRef.current.delete(i.id); }); return next; });
@@ -1580,7 +1838,7 @@ export default function Payments() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {lcyInvoices.map(inv => {
+                    {lcyTableInvoices.map(inv => {
                       const isVoided = inv.status === 'voided';
                       const paidAmt = ledgerPaidMap[inv.id] || 0;
                       const balance = Number(inv.amount) - paidAmt - Number(inv.forgiven_amount || 0);
@@ -1662,8 +1920,8 @@ export default function Payments() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      {!isReadOnlyView && <TableHead className="w-10"><Checkbox checked={fcyInvoices.filter(i => i.status !== 'voided').every(i => selectedIds.has(i.id)) && fcyInvoices.length > 0} onCheckedChange={() => {
-                        const fcySelectable = fcyInvoices.filter(i => i.status !== 'voided');
+                      {!isReadOnlyView && <TableHead className="w-10"><Checkbox checked={fcyTableInvoices.filter(i => i.status !== 'voided').every(i => selectedIds.has(i.id)) && fcyTableInvoices.length > 0} onCheckedChange={() => {
+                        const fcySelectable = fcyTableInvoices.filter(i => i.status !== 'voided');
                         const allChecked = fcySelectable.every(i => selectedIds.has(i.id));
                         if (allChecked) {
                           setSelectedIds(prev => { const next = new Set(prev); fcySelectable.forEach(i => { next.delete(i.id); selectedInvoiceCacheRef.current.delete(i.id); }); return next; });
@@ -1697,7 +1955,7 @@ export default function Payments() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {fcyInvoices.map(inv => {
+                    {fcyTableInvoices.map(inv => {
                       const isVoided = inv.status === 'voided';
                       const paidAmt = ledgerPaidMap[inv.id] || 0;
                       const realisedAmt = realisedMap[inv.id] || 0;
@@ -2718,6 +2976,79 @@ export default function Payments() {
                 }}
               >
                 {editPaymentLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Save Correction
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* ─── Close Month Dialog ──────────────────────────────────── */}
+        <Dialog open={closeMonthOpen} onOpenChange={setCloseMonthOpen}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 font-serif">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                Close {formatBillingMonth(monthFilter)}
+              </DialogTitle>
+              <DialogDescription>
+                All genuine debts are cleared. This will write off any remaining FCY
+                rate variance and mark the month as settled.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="bg-muted/50 rounded-lg p-3 text-xs space-y-1.5 border border-border">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Recovered via arrears</span>
+                  <span className="font-medium text-emerald-600">{monthStatusData?.recovered.length || 0} students ✅</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Genuinely unpaid</span>
+                  <span className="font-medium">{monthStatusData?.genuinelyUnpaid.length || 0} students</span>
+                </div>
+                <div className="flex justify-between font-semibold border-t border-border pt-1.5">
+                  <span>FCY rate variance remaining</span>
+                  <span className="font-mono">
+                    ₨ {parseFloat(closeMonthAmount) > 0
+                      ? parseFloat(closeMonthAmount).toLocaleString(undefined, { maximumFractionDigits: 0 })
+                      : '0'
+                    }
+                  </span>
+                </div>
+              </div>
+              {parseFloat(closeMonthAmount) > 0 && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">FCY Variance Write-off (PKR)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={closeMonthAmount}
+                    onChange={e => setCloseMonthAmount(e.target.value)}
+                    className="font-mono"
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    Pre-filled with the difference between estimated and actual PKR for FCY invoices.
+                    Adjust if needed.
+                  </p>
+                </div>
+              )}
+              <div className="space-y-1.5">
+                <Label className="text-xs">Closing Note *</Label>
+                <Textarea
+                  placeholder={`e.g. ${formatBillingMonth(monthFilter)} fully settled — bank fee gaps recovered via arrears`}
+                  value={closeMonthReason}
+                  onChange={e => setCloseMonthReason(e.target.value)}
+                  className="text-sm min-h-[60px]"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setCloseMonthOpen(false)}>Cancel</Button>
+              <Button
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                disabled={!closeMonthReason.trim() || closeMonthSaving}
+                onClick={closeMonth}
+              >
+                {closeMonthSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Close Month
               </Button>
             </DialogFooter>
           </DialogContent>
