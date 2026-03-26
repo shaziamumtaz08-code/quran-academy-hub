@@ -597,6 +597,56 @@ export default function Payments() {
   const lcyInvoices = useMemo(() => sortInvoices(applyInvoiceFilters(lcyInvoicesAll)), [lcyInvoicesAll, applyInvoiceFilters, sortInvoices]);
   const fcyInvoices = useMemo(() => sortInvoices(applyInvoiceFilters(fcyInvoicesAll)), [fcyInvoicesAll, applyInvoiceFilters, sortInvoices]);
 
+  // Month Status classification
+  const monthStatusData = useMemo(() => {
+    if (monthFilter === 'all') return null;
+    const partialInvoices = invoices.filter(i => i.status === 'partially_paid');
+    if (partialInvoices.length === 0) return null;
+    const arrearsMap: Record<string, typeof linkedArrears> = {};
+    linkedArrears.forEach((a: any) => {
+      if (!arrearsMap[a.student_id]) arrearsMap[a.student_id] = [];
+      arrearsMap[a.student_id].push(a);
+    });
+    const recovered: typeof invoices = [];
+    const arrearsStillPending: typeof invoices = [];
+    const genuinelyUnpaid: typeof invoices = [];
+    partialInvoices.forEach(inv => {
+      const studentArrears = arrearsMap[inv.student_id];
+      if (!studentArrears || studentArrears.length === 0) {
+        genuinelyUnpaid.push(inv);
+      } else {
+        const allSettled = studentArrears.every((a: any) =>
+          a.status === 'paid' || a.status === 'waived' || a.status === 'voided'
+        );
+        if (allSettled) recovered.push(inv);
+        else arrearsStillPending.push(inv);
+      }
+    });
+    const canCloseMonth = genuinelyUnpaid.length === 0 && arrearsStillPending.length === 0;
+    const nonSettled = invoices.filter(i =>
+      i.status !== 'paid' && i.status !== 'waived' && i.status !== 'voided'
+    );
+    const isFullySettled = nonSettled.length === 0 || (nonSettled.length === recovered.length);
+    return { recovered, arrearsStillPending, genuinelyUnpaid, canCloseMonth, isFullySettled };
+  }, [invoices, linkedArrears, monthFilter]);
+
+  // When a status filter is active from the Month Status banner, override the table
+  const displayedInvoices = useMemo(() => {
+    if (!statusViewFilter || !monthStatusData) return invoices;
+    switch (statusViewFilter) {
+      case 'recovered': return monthStatusData.recovered;
+      case 'arrears_pending': return monthStatusData.arrearsStillPending;
+      case 'genuine': return monthStatusData.genuinelyUnpaid;
+      default: return invoices;
+    }
+  }, [invoices, statusViewFilter, monthStatusData]);
+
+  const lcyTableInvoices = useMemo(() => sortInvoices(applyInvoiceFilters(displayedInvoices.filter(i => i.currency === 'PKR'))), [displayedInvoices, applyInvoiceFilters, sortInvoices]);
+  const fcyTableInvoices = useMemo(() => sortInvoices(applyInvoiceFilters(displayedInvoices.filter(i => i.currency !== 'PKR'))), [displayedInvoices, applyInvoiceFilters, sortInvoices]);
+
+  // Reset statusViewFilter when month changes
+  useEffect(() => { setStatusViewFilter(null); }, [monthFilter]);
+
   // Unique student names for name filter (from all invoices, not filtered)
   const invoiceStudentOptions = useMemo(() => {
     const map = new Map<string, string>();
