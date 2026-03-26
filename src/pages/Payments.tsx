@@ -33,6 +33,7 @@ import BillingPlansTable from '@/components/finance/BillingPlansTable';
 import { AttachmentPreview } from '@/components/shared/FileUploadField';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 // ─── Constants ───────────────────────────────────────────────────────
 const MONTHS = [
