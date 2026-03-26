@@ -213,16 +213,46 @@ export default function Courses() {
   // ─── Mutations ────────────────────────────────────────
   const createCourse = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('courses').insert({
-        name: formName,
-        teacher_id: formTeacherId,
+      if (!canCreateCourse) {
+        console.warn('[Courses] Create blocked by role', { activeRole });
+        throw new Error('You do not have permission to create courses');
+      }
+
+      let branchId = activeBranch?.id ?? null;
+      let divisionId = activeDivision?.id ?? null;
+
+      if ((!branchId || !divisionId) && profile?.id) {
+        const { data: fallbackContext } = await supabase
+          .rpc('get_user_default_context', { _user_id: profile.id })
+          .maybeSingle();
+
+        branchId = branchId || fallbackContext?.branch_id || null;
+        divisionId = divisionId || fallbackContext?.division_id || null;
+      }
+
+      if (!branchId || !divisionId) {
+        console.warn('[Courses] Create blocked: missing branch/division context');
+        throw new Error('Please select a branch/division before creating a course');
+      }
+
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const payload = {
+        name: formName.trim() || `Untitled Course ${today}`,
+        teacher_id: formTeacherId || profile?.id,
         subject_id: formSubjectId || null,
-        start_date: formStartDate,
+        start_date: formStartDate || today,
         end_date: formEndDate || null,
         max_students: parseInt(formMaxStudents) || 30,
-        branch_id: activeBranch?.id || null,
-        division_id: activeDivision?.id || null,
-      });
+        branch_id: branchId,
+        division_id: divisionId,
+      };
+
+      if (!payload.teacher_id) {
+        console.warn('[Courses] Create blocked: no teacher selected and no fallback profile');
+        throw new Error('Select a teacher before creating the course');
+      }
+
+      const { error } = await supabase.from('courses').insert(payload);
       if (error) throw error;
     },
     onSuccess: () => {
