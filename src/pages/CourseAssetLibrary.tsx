@@ -217,8 +217,13 @@ export default function CourseAssetLibrary() {
   // ─── Mutations ──────────────────────────────────────
   const saveMutation = useMutation({
     mutationFn: async () => {
+      if (!canManageAssets) {
+        console.warn('[CourseAssetLibrary] Save blocked by role', { activeRole });
+        throw new Error('You do not have permission to save course assets');
+      }
+
       const payload = {
-        name: form.name,
+        name: form.name.trim() || `Untitled Asset ${new Date().toISOString().slice(0, 10)}`,
         subject: form.subject,
         level: form.level,
         ad_creative: form.ad_creative as any,
