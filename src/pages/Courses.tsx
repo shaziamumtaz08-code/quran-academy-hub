@@ -24,6 +24,7 @@ import { toast } from '@/hooks/use-toast';
 import { Plus, Users, Eye, UserPlus, Archive, Search, Clock, Trash2, CheckCircle, XCircle, AlertCircle, ClipboardCheck, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { TableToolbar } from '@/components/ui/table-toolbar';
 import { format } from 'date-fns';
+import { useDivision } from '@/contexts/DivisionContext';
 
 // ─── Types ─────────────────────────────────────────────
 interface Course {

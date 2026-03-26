@@ -131,7 +131,7 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory }: Crea
     setLeaveMetadata({});
   };
 
-  const canSubmit = subject.trim() && assigneeId;
+  const canSubmit = subject.trim() && (assigneeId || true);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
