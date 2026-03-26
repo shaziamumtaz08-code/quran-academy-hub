@@ -382,7 +382,12 @@ export default function CourseAssetLibrary() {
                   </h1>
                   <p className="text-white/80 mt-1">Manage course templates, ad creatives, and run history</p>
                 </div>
-                <Button onClick={openNewForm} className="bg-primary text-primary-foreground hover:bg-primary/90">
+                <Button
+                  onClick={openNewForm}
+                  disabled={!canManageAssets}
+                  title={!canManageAssets ? 'Only Super Admin or Academic Admin can manage assets' : 'Create asset'}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                >
                   <Plus className="h-4 w-4 mr-2" /> New Course Asset
                 </Button>
               </div>
