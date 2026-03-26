@@ -1,37 +1,95 @@
 
 
-# Salary Engine: Balance Column + Partial Payment Status Fix
+# AI-Powered Course Builder & Premium Workspace
 
-## Problem
-1. The "Net" column always shows the full net salary even after partial payment — it should show the **remaining balance**
-2. After a partial payment, the status shows "Paid" if the partial amount equals or exceeds net — but partially paid records should keep behaving like draft (Save button enabled, no Lock button) until fully paid
-3. Column name "Net" is misleading when balance differs from net
+## Overview
+Replace the current Course detail modal/sheet with a full-page split-pane Course Builder at `/courses/:id`. This includes an interactive syllabus builder (left pane), AI-powered content editor (right pane), and tabs for Settings and Roster management.
 
-## Changes
+## Database Changes (3 new tables + 1 storage bucket)
 
-### File: `src/pages/SalaryEngine.tsx`
+### Table: `course_modules`
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| course_id | uuid | references courses |
+| title | text | |
+| sort_order | integer | default 0 |
+| created_at / updated_at | timestamptz | |
 
-**1. Rename "Net" column to "Balance"**
-- Change `TableHead` from "Net" to "Balance" (line 946)
+### Table: `course_lessons`
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| module_id | uuid | references course_modules |
+| course_id | uuid | references courses |
+| title | text | |
+| content_type | text | 'text', 'video', 'document' |
+| content_html | text | nullable, for text lessons |
+| video_url | text | nullable, for video lessons |
+| file_url | text | nullable, for document lessons |
+| sort_order | integer | default 0 |
+| created_at / updated_at | timestamptz | |
 
-**2. Show balance instead of net salary in the table**
-- Line 984: Instead of always showing `teacher.netSalary`, check if there's a payout with `amount_paid > 0`. If so, show `netSalary - amount_paid` as the balance. If no partial payment, show full net.
-- Add a small secondary line showing the original net when balance differs (e.g., `Net: PKR 5,725.80`)
+### Storage bucket: `course_materials`
+Public bucket for PDF/document uploads linked to lessons.
 
-**3. Fix `canSave` logic for partially_paid**
-- Line 958: Remove `'partially_paid'` from the disabled condition — partially paid records should still allow Save (same as draft behavior)
-- Only `'locked'` and `'paid'` (fully paid) should disable Save
+### RLS
+- Admins/super_admins: full CRUD on both tables and storage
+- Teachers: SELECT on courses they own, UPDATE on lessons for their courses
+- Students: SELECT on courses they're enrolled in
 
-**4. Hide Lock button for partially_paid**
-- Line 1001: The Lock button currently only shows for `'paid'` — this is already correct, no change needed
+## Edge Function: `generate-course-content`
+- Uses Lovable AI (gateway) with `google/gemini-3-flash-preview`
+- Accepts `{ prompt: string, lessonTitle: string }` 
+- Returns structured HTML content for the lesson
+- CORS enabled, `verify_jwt = false`
 
-**5. Fix the `markPaid` partial status logic**
-- Line 557: The `finalStatus` check `paidAmount >= netSalary` is using the freshly provided `amountPaid` directly, not cumulative. For partial payments, this should always set `'partially_paid'` unless the amount truly covers the full net. This logic looks correct already but needs to ensure cumulative top-ups work properly.
+## New Files
 
-### Summary
-| Line | Change |
-|---|---|
-| 946 | Rename "Net" → "Balance" |
-| 958 | Allow Save for `partially_paid` (remove from disabled list) |
-| 984 | Show remaining balance (net − amount_paid) when partially paid; show original net as subtitle |
+### `src/pages/CourseBuilder.tsx` (full-page route)
+- **Top bar**: Breadcrumb (Courses > Course Name), "Save Changes" button, "Publish" toggle (updates `courses.status`)
+- **Tabs**: Builder | Settings | Roster & Bulk Add
+- **Builder tab** — Split-pane layout:
+  - **Left pane (35%)**: Syllabus outline with accordion modules, drag-to-reorder via `@dnd-kit/sortable`, "Add Module" button, "+Lesson" on hover per module. Icons per content_type (video/text/document).
+  - **Right pane (65%)**: Content editor that changes based on selected lesson's `content_type`:
+    - **Text**: Rich text editor (TipTap or simple contentEditable with toolbar) + "Generate with AI" button
+    - **Video**: URL input + iframe preview
+    - **Document**: File upload dropzone → `course_materials` bucket
+- **Settings tab**: Edit course name, teacher, subject, dates, max students
+- **Roster tab**: Current enrollment table + CSV bulk upload (maps First Name, Last Name, Email → auto-creates profiles and enrollments)
+
+### Route addition in `App.tsx`
+```
+/courses/:id → <CourseBuilder />
+```
+Admin-protected route. The existing `/courses` list page gets a "View" button linking to `/courses/:id` instead of opening a sheet.
+
+## Modifications to Existing Files
+
+### `src/pages/Courses.tsx`
+- Change "View" button to navigate to `/courses/${course.id}` via `useNavigate()`
+- Remove the Sheet-based detail panel (or keep as fallback)
+
+### `supabase/config.toml`
+- Add `[functions.generate-course-content]` with `verify_jwt = false`
+
+## AI Generation Flow
+1. User clicks "Generate with AI" in right pane
+2. Small prompt modal: "What should this lesson cover?"
+3. Calls edge function → Lovable AI gateway
+4. Streams response back, injects HTML into the editor
+5. User can edit the generated content before saving
+
+## Design Tokens
+- Background: `bg-slate-50`
+- Panes: `bg-white shadow-sm rounded-xl`
+- Hover states: `hover:bg-slate-100` on syllabus items
+- Smooth transitions on tab switches and AI loading (skeleton placeholders)
+
+## Implementation Order
+1. DB migration (tables + bucket + RLS)
+2. Edge function `generate-course-content`
+3. `CourseBuilder.tsx` page with split-pane layout
+4. Wire up route in `App.tsx`, update `Courses.tsx` navigation
+5. AI integration in content editor
 
