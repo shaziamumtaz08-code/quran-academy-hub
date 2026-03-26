@@ -18,9 +18,9 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  DollarSign, CheckCircle, XCircle, Clock, User, Loader2, Zap, GraduationCap,
+  DollarSign, CheckCircle, CheckCircle2, XCircle, Clock, User, Loader2, Zap, GraduationCap,
   Plus, Receipt, Upload, ArrowRightLeft, AlertTriangle, ImageIcon, X, Search, ArrowUpDown, Users, Pencil, Trash2, ListChecks,
-  MoreHorizontal, Ban, Undo2, History, Tag, FileX, Eye, FileText, Printer, RotateCcw
+  MoreHorizontal, Ban, Undo2, History, Tag, FileX, Eye, FileText, Printer, RotateCcw, ChevronRight
 } from 'lucide-react';
 import { endOfMonth, startOfMonth, parseISO, format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
