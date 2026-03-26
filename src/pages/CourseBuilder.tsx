@@ -891,6 +891,7 @@ export default function CourseBuilder() {
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
                 )}
               </CardContent>
             </Card>
