@@ -641,7 +641,8 @@ export default function Courses() {
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
             <Button
               onClick={() => createCourse.mutate()}
-              disabled={!formName || !formTeacherId || !formStartDate || createCourse.isPending}
+              disabled={!canCreateCourse || createCourse.isPending}
+              title={!canCreateCourse ? 'Only Super Admin or Academic Admin can create courses' : 'Create course'}
             >
               {createCourse.isPending ? 'Creating...' : 'Create Course'}
             </Button>
