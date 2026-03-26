@@ -868,6 +868,7 @@ export default function CourseBuilder() {
                 {enrollments.length === 0 ? (
                   <p className="text-muted-foreground text-center py-6">No students enrolled yet</p>
                 ) : (
+                  <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
