@@ -78,6 +78,7 @@ function formatTime12h(time: string): string {
 // ─── Main Component ────────────────────────────────────
 export default function Courses() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [createOpen, setCreateOpen] = useState(false);
   const [detailCourse, setDetailCourse] = useState<Course | null>(null);
   const [enrollOpen, setEnrollOpen] = useState(false);
