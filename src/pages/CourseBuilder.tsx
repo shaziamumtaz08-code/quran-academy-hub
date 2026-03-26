@@ -683,7 +683,7 @@ export default function CourseBuilder() {
                 {selectedLesson ? (
                   <>
                     {/* Editor header */}
-                    <div className="px-5 py-3 border-b border-border bg-muted/30 flex items-center justify-between">
+                    <div className="px-3 sm:px-5 py-3 border-b border-border bg-muted/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="text-lg">{CONTENT_TYPE_EMOJI[selectedLesson.content_type] || '📄'}</span>
                         <div className="min-w-0">
