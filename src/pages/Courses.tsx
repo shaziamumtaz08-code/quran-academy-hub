@@ -209,6 +209,8 @@ export default function Courses() {
         start_date: formStartDate,
         end_date: formEndDate || null,
         max_students: parseInt(formMaxStudents) || 30,
+        branch_id: activeBranch?.id || null,
+        division_id: activeDivision?.id || null,
       });
       if (error) throw error;
     },
