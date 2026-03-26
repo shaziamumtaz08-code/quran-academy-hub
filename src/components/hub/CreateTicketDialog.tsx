@@ -117,6 +117,7 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory }: Crea
     onSuccess: () => {
       toast.success('Ticket created successfully');
       queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['workhub-tab-counts'] });
       resetForm();
       onOpenChange(false);
     },
