@@ -1955,7 +1955,7 @@ export default function Payments() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {fcyInvoices.map(inv => {
+                    {fcyTableInvoices.map(inv => {
                       const isVoided = inv.status === 'voided';
                       const paidAmt = ledgerPaidMap[inv.id] || 0;
                       const realisedAmt = realisedMap[inv.id] || 0;
