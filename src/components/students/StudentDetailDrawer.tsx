@@ -69,6 +69,7 @@ interface StudentProfile {
   gender: string | null;
   country: string | null;
   city: string | null;
+  registration_id: string | null;
 }
 
 interface MonthlyPlan {
