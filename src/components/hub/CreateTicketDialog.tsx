@@ -28,7 +28,7 @@ const CATEGORIES = [
   { value: 'general', label: 'General' },
 ];
 
-export function CreateTicketDialog({ open, onOpenChange, defaultCategory }: CreateTicketDialogProps) {
+export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCreated }: CreateTicketDialogProps) {
   const { profile } = useAuth();
   const { activeDivision, activeBranch } = useDivision();
   const queryClient = useQueryClient();
