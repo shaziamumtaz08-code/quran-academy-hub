@@ -747,14 +747,15 @@ export default function Assignments() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Teacher</TableHead>
-                    <TableHead>Student</TableHead>
-                    <TableHead>Subject</TableHead>
-                    <TableHead>Payout</TableHead>
-                    <TableHead>Billing Plan</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-center">Reassign</TableHead>
-                    <TableHead className="text-center">Action</TableHead>
+                     <TableHead>Teacher</TableHead>
+                     <TableHead>Student</TableHead>
+                     <TableHead>Subject</TableHead>
+                     <TableHead>Payout</TableHead>
+                     <TableHead>Billing Plan</TableHead>
+                     <TableHead>Tracking</TableHead>
+                     <TableHead>Status</TableHead>
+                     <TableHead className="text-center">Reassign</TableHead>
+                     <TableHead className="text-center">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
