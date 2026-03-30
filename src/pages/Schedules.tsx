@@ -866,7 +866,8 @@ export default function Schedules() {
     if (editingSchedule) {
       updateScheduleMutation.mutate({ id: editingSchedule.id, ...scheduleData });
     } else {
-      createScheduleMutation.mutate({ assignment_id: newSchedule.assignmentId, ...scheduleData });
+      const selectedAssignment = assignments.find(a => a.id === newSchedule.assignmentId);
+      createScheduleMutation.mutate({ assignment_id: newSchedule.assignmentId, division_id: selectedAssignment?.division_id || activeDivision?.id || null, ...scheduleData });
     }
   };
 
