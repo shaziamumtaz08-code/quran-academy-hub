@@ -230,11 +230,6 @@ export default function Courses() {
   // ─── Mutations ────────────────────────────────────────
   const createCourse = useMutation({
     mutationFn: async () => {
-      if (!canCreateCourse) {
-        console.warn('[Courses] Create blocked by role', { activeRole });
-        throw new Error('You do not have permission to create courses');
-      }
-
       let branchId = activeBranch?.id ?? null;
       let divisionId = activeDivision?.id ?? null;
 
@@ -658,8 +653,8 @@ export default function Courses() {
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
             <Button
               onClick={() => createCourse.mutate()}
-              disabled={!canCreateCourse || createCourse.isPending}
-              title={!canCreateCourse ? 'Only Super Admin or Academic Admin can create courses' : 'Create course'}
+              disabled={createCourse.isPending}
+              title="Create course"
             >
               {createCourse.isPending ? 'Creating...' : 'Create Course'}
             </Button>
