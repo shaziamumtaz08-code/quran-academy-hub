@@ -949,6 +949,66 @@ export default function CourseBuilder() {
             </Card>
           </TabsContent>
 
+          {/* ═══ WEBSITE TAB ═══ */}
+          <TabsContent value="website" className="mt-4 space-y-4">
+            <Card><CardContent className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold">Public Course Page</h3>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="web-toggle" className="text-sm">Publish to Website</Label>
+                  <Switch id="web-toggle" checked={webEnabled} onCheckedChange={setWebEnabled} />
+                </div>
+              </div>
+              {webEnabled && course?.seo_slug && (
+                <p className="text-xs text-muted-foreground">Preview: <a href={`/course/${course.seo_slug}`} target="_blank" className="text-accent underline">/course/{course.seo_slug}</a></p>
+              )}
+              <div className="space-y-2"><Label>Description</Label><Textarea value={webDescription} onChange={e => setWebDescription(e.target.value)} rows={3} placeholder="Course overview for the website…" /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2"><Label>Level</Label>
+                  <Select value={webLevel} onValueChange={setWebLevel}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+                    {['Beginner','Intermediate','Advanced','All Levels'].map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                  </SelectContent></Select>
+                </div>
+                <div className="space-y-2"><Label>Pricing ({webPricingCurrency})</Label><Input type="number" value={webPricingAmount} onChange={e => setWebPricingAmount(e.target.value)} placeholder="0" /></div>
+              </div>
+              <div className="space-y-2"><Label>Key Outcomes (one per line)</Label><Textarea value={webOutcomes} onChange={e => setWebOutcomes(e.target.value)} rows={4} placeholder="Learn conversational Arabic&#10;Master essential grammar" /></div>
+              <div className="space-y-2"><Label>Syllabus Text</Label><Textarea value={webSyllabus} onChange={e => setWebSyllabus(e.target.value)} rows={4} placeholder="Week 1: Introduction&#10;Week 2: Basics" /></div>
+              <div className="space-y-2"><Label>FAQs (question|answer per line)</Label><Textarea value={webFaqs} onChange={e => setWebFaqs(e.target.value)} rows={3} placeholder="Who is this for?|Beginners with no prior knowledge" /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2"><Label>Contact Email</Label><Input value={webContactEmail} onChange={e => setWebContactEmail(e.target.value)} /></div>
+                <div className="space-y-2"><Label>WhatsApp</Label><Input value={webContactWhatsapp} onChange={e => setWebContactWhatsapp(e.target.value)} placeholder="+92..." /></div>
+              </div>
+              <Button onClick={() => saveWebsite.mutate()} disabled={saveWebsite.isPending}>
+                {saveWebsite.isPending ? 'Saving…' : 'Save Website Settings'}
+              </Button>
+            </CardContent></Card>
+          </TabsContent>
+
+          {/* ═══ MARKETING TAB ═══ */}
+          <TabsContent value="marketing" className="mt-4 space-y-4">
+            <Card><CardContent className="p-6 space-y-4">
+              <h3 className="font-semibold">Ad Creative</h3>
+              <div className="space-y-2"><Label>Ad Title</Label><Input value={adTitle} onChange={e => setAdTitle(e.target.value)} placeholder="Catchy ad title" /></div>
+              <div className="space-y-2"><Label>Ad Body</Label><Textarea value={adBody} onChange={e => setAdBody(e.target.value)} rows={4} placeholder="Ad copy text…" /></div>
+              <div className="space-y-2"><Label>Hashtags</Label><Input value={adHashtags} onChange={e => setAdHashtags(e.target.value)} placeholder="#LearnArabic #OnlineCourse" /></div>
+            </CardContent></Card>
+            <Card><CardContent className="p-6 space-y-4">
+              <h3 className="font-semibold">Support Messages</h3>
+              <div className="space-y-2"><Label>Welcome Message</Label><Textarea value={supportWelcome} onChange={e => setSupportWelcome(e.target.value)} rows={2} /></div>
+              <div className="space-y-2"><Label>Reminder</Label><Textarea value={supportReminder} onChange={e => setSupportReminder(e.target.value)} rows={2} /></div>
+              <div className="space-y-2"><Label>Last Seat Alert</Label><Textarea value={supportLastSeat} onChange={e => setSupportLastSeat(e.target.value)} rows={2} /></div>
+              <div className="space-y-2"><Label>Closing Message</Label><Textarea value={supportClosing} onChange={e => setSupportClosing(e.target.value)} rows={2} /></div>
+              <Button onClick={() => saveAdCreative.mutate()} disabled={saveAdCreative.isPending}>
+                {saveAdCreative.isPending ? 'Saving…' : 'Save Marketing Content'}
+              </Button>
+            </CardContent></Card>
+          </TabsContent>
+
+          {/* ═══ COMMUNITY TAB ═══ */}
+          <TabsContent value="community" className="mt-4">
+            <CourseBoards courseId={courseId!} isAdmin={true} />
+          </TabsContent>
+
           {/* ═══ ROSTER TAB ═══ */}
           <TabsContent value="roster" className="mt-4 space-y-4">
             <Card>
