@@ -1009,7 +1009,7 @@ export default function UserManagement() {
                             city: newUserCity || undefined,
                             forceNewProfile: createAsSibling || undefined,
                             branch_id: newUserBranchId || undefined,
-                            parent_id: newUserParentId || undefined,
+                            parent_id: newUserParentId && newUserParentId !== 'none' ? newUserParentId : undefined,
                           });
                         }}
                       >
