@@ -95,7 +95,7 @@ export function StudentDetailDrawer({
       if (!student?.id) return null;
       const { data, error } = await supabase
         .from('profiles')
-        .select('age, gender, country, city')
+        .select('age, gender, country, city, registration_id')
         .eq('id', student.id)
         .single();
       
