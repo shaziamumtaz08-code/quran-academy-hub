@@ -538,7 +538,11 @@ export default function UserManagement() {
       setNewUserParentId('');
       setIsCreateDialogOpen(false);
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      // Auto-check sibling option if backend says it's needed
+      if (error?.requiresForceNew) {
+        setCreateAsSibling(true);
+      }
       toast({
         title: 'Failed to create user',
         description: error instanceof Error ? error.message : 'Please try again.',
