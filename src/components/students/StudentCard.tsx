@@ -31,10 +31,10 @@ interface StudentCardProps {
     age: number | null;
     gender: string | null;
     timezone?: string;
+    registration_id?: string | null;
   };
   onViewHistory: () => void;
   onViewSchedule: () => void;
-  // Remove the onMarkAttendance prop - we handle it internally now
 }
 
 export function StudentCard({ student, onViewHistory, onViewSchedule }: StudentCardProps) {
