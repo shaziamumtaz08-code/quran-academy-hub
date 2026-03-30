@@ -501,7 +501,7 @@ export default function Courses() {
               <p className="text-white/80 mt-1">Create and manage group batches & courses</p>
             </div>
             <Button
-              onClick={() => setCreateOpen(true)}
+              onClick={() => { console.log('[Courses] NEW COURSE BUTTON CLICKED'); setCreateOpen(true); }}
               disabled={false}
               className="bg-primary text-primary-foreground hover:bg-primary/90"
               title={!canCreateCourse ? 'You can open this form, but create requires super_admin/admin/admin_academic role' : 'Create course'}

@@ -372,7 +372,7 @@ export default function CourseAssetLibrary() {
                   <p className="text-white/80 mt-1">Manage course templates, ad creatives, and run history</p>
                 </div>
                 <Button
-                  onClick={openNewForm}
+                  onClick={() => { console.log('[CourseAsset] NEW ASSET BUTTON CLICKED'); openNewForm(); }}
                   disabled={false}
                   title={!canManageAssets ? 'You can open this form, but save requires super_admin/admin/admin_academic role' : 'Create asset'}
                   className="bg-primary text-primary-foreground hover:bg-primary/90"
