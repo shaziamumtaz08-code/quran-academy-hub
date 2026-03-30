@@ -136,17 +136,26 @@ function getStatusColor(status: string) {
 // ─── Main Component ────────────────────────────────────
 export default function CourseAssetLibrary() {
   const queryClient = useQueryClient();
-  const { activeRole } = useAuth();
-  const canManageAssets = activeRole === 'super_admin' || activeRole === 'admin' || activeRole === 'admin_academic';
+  const { activeRole, profile } = useAuth();
+
+  const canManageAssets = useMemo(() => {
+    const allowed = new Set(['super_admin', 'admin', 'admin_academic']);
+    const assignedRoles = profile?.roles || [];
+    return assignedRoles.some((role) => allowed.has(role)) || (activeRole ? allowed.has(activeRole) : false);
+  }, [activeRole, profile?.roles]);
+
   const [view, setView] = useState<'list' | 'detail' | 'form'>('list');
   const [selectedAsset, setSelectedAsset] = useState<CourseAsset | null>(null);
   const [editingAsset, setEditingAsset] = useState<CourseAsset | null>(null);
 
   useEffect(() => {
     if (!canManageAssets) {
-      console.warn('[CourseAssetLibrary] Create/Edit disabled: insufficient role', { activeRole });
+      console.warn('[CourseAssetLibrary] Create/Edit disabled: insufficient role', {
+        activeRole,
+        assignedRoles: profile?.roles || [],
+      });
     }
-  }, [canManageAssets, activeRole]);
+  }, [canManageAssets, activeRole, profile?.roles]);
 
   // Filters
   const [search, setSearch] = useState('');
@@ -366,8 +375,8 @@ export default function CourseAssetLibrary() {
                 </div>
                 <Button
                   onClick={openNewForm}
-                  disabled={!canManageAssets}
-                  title={!canManageAssets ? 'Only Super Admin or Academic Admin can manage assets' : 'Create asset'}
+                  disabled={false}
+                  title={!canManageAssets ? 'You can open this form, but save requires super_admin/admin/admin_academic role' : 'Create asset'}
                   className="bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   <Plus className="h-4 w-4 mr-2" /> New Course Asset

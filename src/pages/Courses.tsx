@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -83,7 +83,13 @@ export default function Courses() {
   const navigate = useNavigate();
   const { activeDivision, activeBranch } = useDivision();
   const { activeRole, profile } = useAuth();
-  const canCreateCourse = activeRole === 'super_admin' || activeRole === 'admin' || activeRole === 'admin_academic';
+
+  const canCreateCourse = useMemo(() => {
+    const allowed = new Set(['super_admin', 'admin', 'admin_academic']);
+    const assignedRoles = profile?.roles || [];
+    return assignedRoles.some((role) => allowed.has(role)) || (activeRole ? allowed.has(activeRole) : false);
+  }, [activeRole, profile?.roles]);
+
   const [createOpen, setCreateOpen] = useState(false);
   const [detailCourse, setDetailCourse] = useState<Course | null>(null);
   const [enrollOpen, setEnrollOpen] = useState(false);
@@ -95,9 +101,12 @@ export default function Courses() {
 
   useEffect(() => {
     if (!canCreateCourse) {
-      console.warn('[Courses] Create disabled: insufficient role', { activeRole });
+      console.warn('[Courses] Create disabled: insufficient role', {
+        activeRole,
+        assignedRoles: profile?.roles || [],
+      });
     }
-  }, [canCreateCourse, activeRole]);
+  }, [canCreateCourse, activeRole, profile?.roles]);
 
   // Schedule form state
   const [scheduleDay, setScheduleDay] = useState('');
@@ -493,9 +502,9 @@ export default function Courses() {
             </div>
             <Button
               onClick={() => setCreateOpen(true)}
-              disabled={!canCreateCourse}
+              disabled={false}
               className="bg-primary text-primary-foreground hover:bg-primary/90"
-              title={!canCreateCourse ? 'Only Super Admin or Academic Admin can create courses' : 'Create course'}
+              title={!canCreateCourse ? 'You can open this form, but create requires super_admin/admin/admin_academic role' : 'Create course'}
             >
               <Plus className="h-4 w-4 mr-2" /> New Course
             </Button>
