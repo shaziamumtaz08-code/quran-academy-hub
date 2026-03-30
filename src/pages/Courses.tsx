@@ -26,7 +26,58 @@ import { TableToolbar } from '@/components/ui/table-toolbar';
 import { format } from 'date-fns';
 import { useDivision } from '@/contexts/DivisionContext';
 import { useAuth } from '@/contexts/AuthContext';
-...
+
+// ─── Types ─────────────────────────────────────────────
+interface Course {
+  id: string;
+  name: string;
+  teacher_id: string;
+  subject_id: string | null;
+  start_date: string;
+  end_date: string | null;
+  status: string;
+  max_students: number;
+  is_group_class: boolean;
+  created_at: string;
+  teacher?: { full_name: string };
+  subject?: { name: string } | null;
+  enrollment_count?: number;
+}
+
+interface CourseEnrollment {
+  id: string;
+  course_id: string;
+  student_id: string;
+  status: string;
+  enrolled_at: string;
+  student?: { full_name: string; email: string | null };
+}
+
+interface CourseSchedule {
+  id: string;
+  course_id: string;
+  day_of_week: string;
+  student_local_time: string;
+  teacher_local_time: string;
+  duration_minutes: number;
+  is_active: boolean;
+}
+
+const DAYS_OF_WEEK = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+const DAYS_LABELS: Record<string, string> = {
+  monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu',
+  friday: 'Fri', saturday: 'Sat', sunday: 'Sun',
+};
+
+function formatTime12h(time: string): string {
+  if (!time) return '';
+  const [hours, minutes] = time.split(':').map(Number);
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const hour12 = hours % 12 || 12;
+  return `${hour12}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+}
+
+// ─── Main Component ────────────────────────────────────
 export default function Courses() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -40,7 +91,14 @@ export default function Courses() {
   }, [activeRole, profile?.roles]);
 
   const [createOpen, setCreateOpen] = useState(false);
-...
+  const [detailCourse, setDetailCourse] = useState<Course | null>(null);
+  const [enrollOpen, setEnrollOpen] = useState(false);
+  const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
+  const [studentSearch, setStudentSearch] = useState('');
+  const [activeTab, setActiveTab] = useState('students');
+  const [courseSearch, setCourseSearch] = useState('');
+  const [courseFilterTeacher, setCourseFilterTeacher] = useState('all');
+
   useEffect(() => {
     if (!canCreateCourse) {
       console.warn('[Courses] Create disabled: insufficient role', {

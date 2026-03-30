@@ -145,7 +145,9 @@ export default function CourseAssetLibrary() {
   }, [activeRole, profile?.roles]);
 
   const [view, setView] = useState<'list' | 'detail' | 'form'>('list');
-...
+  const [selectedAsset, setSelectedAsset] = useState<CourseAsset | null>(null);
+  const [editingAsset, setEditingAsset] = useState<CourseAsset | null>(null);
+
   useEffect(() => {
     if (!canManageAssets) {
       console.warn('[CourseAssetLibrary] Create/Edit disabled: insufficient role', {
