@@ -208,6 +208,7 @@ export default function CourseAssetLibrary() {
   // ─── Mutations ──────────────────────────────────────
   const saveMutation = useMutation({
     mutationFn: async () => {
+      console.log('[CourseAsset] SAVE MUTATION FIRED', { formName: form.name, editingAsset: !!editingAsset });
       const payload = {
         name: form.name.trim() || `Untitled Asset ${new Date().toISOString().slice(0, 10)}`,
         subject: form.subject,
@@ -219,10 +220,12 @@ export default function CourseAssetLibrary() {
       };
       if (editingAsset) {
         const { error } = await supabase.from('course_assets').update(payload).eq('id', editingAsset.id);
-        if (error) throw error;
+        if (error) { console.error('[CourseAsset] UPDATE ERROR:', error); throw error; }
+        console.log('[CourseAsset] UPDATE SUCCESS');
       } else {
         const { error } = await supabase.from('course_assets').insert(payload);
-        if (error) throw error;
+        if (error) { console.error('[CourseAsset] INSERT ERROR:', error); throw error; }
+        console.log('[CourseAsset] INSERT SUCCESS');
       }
     },
     onSuccess: () => {
@@ -369,7 +372,7 @@ export default function CourseAssetLibrary() {
                   <p className="text-white/80 mt-1">Manage course templates, ad creatives, and run history</p>
                 </div>
                 <Button
-                  onClick={openNewForm}
+                  onClick={() => { console.log('[CourseAsset] NEW ASSET BUTTON CLICKED'); openNewForm(); }}
                   disabled={false}
                   title={!canManageAssets ? 'You can open this form, but save requires super_admin/admin/admin_academic role' : 'Create asset'}
                   className="bg-primary text-primary-foreground hover:bg-primary/90"
