@@ -230,11 +230,6 @@ export default function Courses() {
   // ─── Mutations ────────────────────────────────────────
   const createCourse = useMutation({
     mutationFn: async () => {
-      if (!canCreateCourse) {
-        console.warn('[Courses] Create blocked by role', { activeRole });
-        throw new Error('You do not have permission to create courses');
-      }
-
       let branchId = activeBranch?.id ?? null;
       let divisionId = activeDivision?.id ?? null;
 
