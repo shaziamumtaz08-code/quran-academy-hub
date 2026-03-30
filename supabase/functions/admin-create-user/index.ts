@@ -338,6 +338,31 @@ serve(async (req) => {
     if (existingUser && !forceNewProfile) {
       const existingUserId = existingUser.id;
 
+      // Check if existing profile has a conflicting role that suggests a separate person is needed
+      // e.g., trying to add 'student' role to a profile that already has 'parent' role
+      const { data: existingRoles } = await adminClient
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", existingUserId);
+
+      const existingRoleNames = (existingRoles || []).map((r: any) => r.role);
+
+      // If adding student to a parent profile, or parent to a student profile, 
+      // require forceNewProfile to create a separate person
+      const conflictingPairs: [string, string][] = [
+        ["student", "parent"],
+        ["parent", "student"],
+      ];
+
+      for (const [newRole, existingRole] of conflictingPairs) {
+        if (role === newRole && existingRoleNames.includes(existingRole)) {
+          return json(400, {
+            error: `This email already belongs to a profile with the '${existingRole}' role. To create a separate ${role} profile (e.g., a child), please check "Create as new person (sibling/family member)".`,
+            requiresForceNew: true,
+          }, requestOrigin);
+        }
+      }
+
       const { data: existingRole } = await adminClient
         .from("user_roles")
         .select("id")
