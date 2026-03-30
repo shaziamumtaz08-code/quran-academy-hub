@@ -130,6 +130,7 @@ interface UserWithRoles {
   city: string | null;
   created_at: string;
   archived_at: string | null;
+  registration_id: string | null;
   roles: AppRole[];
   exceptions: Array<{ permission: string; is_granted: boolean }>;
 }
