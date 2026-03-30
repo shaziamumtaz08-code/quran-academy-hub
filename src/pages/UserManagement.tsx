@@ -917,6 +917,43 @@ export default function UserManagement() {
                           className="h-9"
                         />
                       </div>
+                      {/* Branch selector for registration ID */}
+                      <div className="space-y-1.5">
+                        <Label htmlFor="branch" className="text-xs">Branch (for ID generation)</Label>
+                        <Select value={newUserBranchId} onValueChange={setNewUserBranchId}>
+                          <SelectTrigger className="h-9">
+                            <SelectValue placeholder="Select branch" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {branches.map((b) => (
+                              <SelectItem key={b.id} value={b.id}>
+                                {b.name} {b.code ? `(${b.code})` : ''}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Parent linker - only show when role is student */}
+                      {(newUserRole === 'student') && (
+                        <div className="space-y-1.5">
+                          <Label htmlFor="parentLink" className="text-xs">Link to Parent</Label>
+                          <Select value={newUserParentId} onValueChange={setNewUserParentId}>
+                            <SelectTrigger className="h-9">
+                              <SelectValue placeholder="Select parent (optional)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">None</SelectItem>
+                              {parentUsers.map((p) => (
+                                <SelectItem key={p.id} value={p.id}>
+                                  {p.full_name} ({p.email})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
                       {/* Create new profile checkbox - for different people sharing an email */}
                       <div className="flex items-center space-x-2 pt-4 col-span-full">
                         <Checkbox
