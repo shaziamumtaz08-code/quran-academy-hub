@@ -530,6 +530,8 @@ export default function UserManagement() {
       setNewUserCountry('PK');
       setNewUserCity('');
       setCreateAsSibling(false);
+      setNewUserBranchId('');
+      setNewUserParentId('');
       setIsCreateDialogOpen(false);
     },
     onError: (error) => {
