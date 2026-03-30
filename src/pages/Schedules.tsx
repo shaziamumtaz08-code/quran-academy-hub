@@ -448,6 +448,7 @@ export default function Schedules() {
   const bulkCreateScheduleMutation = useMutation({
     mutationFn: async (schedulesData: Array<{
       assignment_id: string;
+      division_id?: string | null;
       day_of_week: string;
       student_local_time: string;
       teacher_local_time: string;
