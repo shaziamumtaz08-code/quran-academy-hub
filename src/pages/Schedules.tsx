@@ -289,6 +289,7 @@ export default function Schedules() {
           teacher_id,
           student_id,
           status,
+          division_id,
           student_timezone,
           teacher_timezone,
           teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name, country, city),
