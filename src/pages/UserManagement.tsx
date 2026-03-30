@@ -971,6 +971,8 @@ export default function UserManagement() {
                             country: newUserCountry ? getCountryName(newUserCountry) : undefined,
                             city: newUserCity || undefined,
                             forceNewProfile: createAsSibling || undefined,
+                            branch_id: newUserBranchId || undefined,
+                            parent_id: newUserParentId || undefined,
                           });
                         }}
                       >
