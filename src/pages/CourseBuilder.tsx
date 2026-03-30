@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { CourseBoards } from '@/components/courses/CourseBoards';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -70,6 +71,27 @@ export default function CourseBuilder() {
 
   const [activeTab, setActiveTab] = useState('builder');
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
+
+  // Website tab state
+  const [webDescription, setWebDescription] = useState('');
+  const [webOutcomes, setWebOutcomes] = useState('');
+  const [webFaqs, setWebFaqs] = useState('');
+  const [webSyllabus, setWebSyllabus] = useState('');
+  const [webPricingAmount, setWebPricingAmount] = useState('');
+  const [webPricingCurrency, setWebPricingCurrency] = useState('USD');
+  const [webContactEmail, setWebContactEmail] = useState('');
+  const [webContactWhatsapp, setWebContactWhatsapp] = useState('');
+  const [webEnabled, setWebEnabled] = useState(false);
+  const [webLevel, setWebLevel] = useState('All Levels');
+  
+  // Ad creative state
+  const [adTitle, setAdTitle] = useState('');
+  const [adBody, setAdBody] = useState('');
+  const [adHashtags, setAdHashtags] = useState('');
+  const [supportWelcome, setSupportWelcome] = useState('');
+  const [supportReminder, setSupportReminder] = useState('');
+  const [supportLastSeat, setSupportLastSeat] = useState('');
+  const [supportClosing, setSupportClosing] = useState('');
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [syllabusOpen, setSyllabusOpen] = useState(true);
@@ -175,6 +197,31 @@ export default function CourseBuilder() {
       setSettingsMaxStudents(String(course.max_students));
       setSettingsStartDate(course.start_date);
       setSettingsEndDate(course.end_date || '');
+      // Website fields
+      setWebDescription(course.description || '');
+      setWebLevel(course.level || 'All Levels');
+      setWebEnabled(course.website_enabled || false);
+      setWebSyllabus(course.syllabus_text || '');
+      const outcomes = Array.isArray(course.outcomes) ? (course.outcomes as any[]).map((o: any) => o.text || '').join('\n') : '';
+      setWebOutcomes(outcomes);
+      const faqs = Array.isArray(course.faqs) ? (course.faqs as any[]).map((f: any) => `${f.question || ''}|${f.answer || ''}`).join('\n') : '';
+      setWebFaqs(faqs);
+      const pricing = (course.pricing || {}) as any;
+      setWebPricingAmount(String(pricing.amount || ''));
+      setWebPricingCurrency(pricing.currency || 'USD');
+      const contact = (course.contact_info || {}) as any;
+      setWebContactEmail(contact.email || '');
+      setWebContactWhatsapp(contact.whatsapp || '');
+      // Ad creative
+      const ad = (course.ad_creative || {}) as any;
+      setAdTitle(ad.title || '');
+      setAdBody(ad.body || '');
+      setAdHashtags(ad.hashtags || '');
+      const support = (course.support_messages || {}) as any;
+      setSupportWelcome(support.welcome || '');
+      setSupportReminder(support.reminder || '');
+      setSupportLastSeat(support.lastSeat || '');
+      setSupportClosing(support.closing || '');
     }
   }, [course]);
 
@@ -330,7 +377,42 @@ export default function CourseBuilder() {
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
-  // ─── AI Generation ───────────────────────────────────
+  const saveWebsite = useMutation({
+    mutationFn: async () => {
+      const outcomesArr = webOutcomes.split('\n').filter(Boolean).map(t => ({ text: t.trim() }));
+      const faqsArr = webFaqs.split('\n').filter(Boolean).map(line => {
+        const [q, a] = line.split('|');
+        return { question: (q || '').trim(), answer: (a || '').trim() };
+      });
+      const { error } = await supabase.from('courses').update({
+        description: webDescription || null,
+        level: webLevel,
+        website_enabled: webEnabled,
+        syllabus_text: webSyllabus || null,
+        outcomes: outcomesArr as any,
+        faqs: faqsArr as any,
+        pricing: { amount: parseFloat(webPricingAmount) || 0, currency: webPricingCurrency, period: 'month' } as any,
+        contact_info: { email: webContactEmail, whatsapp: webContactWhatsapp } as any,
+        seo_slug: course?.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || null,
+      }).eq('id', courseId!);
+      if (error) throw error;
+    },
+    onSuccess: () => { invalidateAll(); toast({ title: 'Website settings saved' }); },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const saveAdCreative = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from('courses').update({
+        ad_creative: { title: adTitle, body: adBody, hashtags: adHashtags } as any,
+        support_messages: { welcome: supportWelcome, reminder: supportReminder, lastSeat: supportLastSeat, closing: supportClosing } as any,
+      }).eq('id', courseId!);
+      if (error) throw error;
+    },
+    onSuccess: () => { invalidateAll(); toast({ title: 'Marketing content saved' }); },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
   const generateWithAI = async () => {
     if (!aiPrompt.trim() || !selectedLesson) return;
     setAiGenerating(true);
@@ -512,11 +594,20 @@ export default function CourseBuilder() {
               <TabsTrigger value="builder" className="gap-1.5 text-xs sm:text-sm">
                 <BookOpen className="h-4 w-4" /><span className="hidden sm:inline">Builder</span>
               </TabsTrigger>
+              <TabsTrigger value="website" className="gap-1.5 text-xs sm:text-sm">
+                <ExternalLink className="h-4 w-4" /><span className="hidden sm:inline">Website</span>
+              </TabsTrigger>
+              <TabsTrigger value="marketing" className="gap-1.5 text-xs sm:text-sm">
+                <Sparkles className="h-4 w-4" /><span className="hidden sm:inline">Marketing</span>
+              </TabsTrigger>
+              <TabsTrigger value="community" className="gap-1.5 text-xs sm:text-sm">
+                <Users className="h-4 w-4" /><span className="hidden sm:inline">Community</span>
+              </TabsTrigger>
               <TabsTrigger value="settings" className="gap-1.5 text-xs sm:text-sm">
                 <Settings className="h-4 w-4" /><span className="hidden sm:inline">Settings</span>
               </TabsTrigger>
               <TabsTrigger value="roster" className="gap-1.5 text-xs sm:text-sm">
-                <Users className="h-4 w-4" /><span className="hidden sm:inline">Roster & Bulk Add</span>
+                <Users className="h-4 w-4" /><span className="hidden sm:inline">Roster</span>
               </TabsTrigger>
             </TabsList>
           </div>
@@ -856,6 +947,66 @@ export default function CourseBuilder() {
                 </Button>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* ═══ WEBSITE TAB ═══ */}
+          <TabsContent value="website" className="mt-4 space-y-4">
+            <Card><CardContent className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold">Public Course Page</h3>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="web-toggle" className="text-sm">Publish to Website</Label>
+                  <Switch id="web-toggle" checked={webEnabled} onCheckedChange={setWebEnabled} />
+                </div>
+              </div>
+              {webEnabled && course?.seo_slug && (
+                <p className="text-xs text-muted-foreground">Preview: <a href={`/course/${course.seo_slug}`} target="_blank" className="text-accent underline">/course/{course.seo_slug}</a></p>
+              )}
+              <div className="space-y-2"><Label>Description</Label><Textarea value={webDescription} onChange={e => setWebDescription(e.target.value)} rows={3} placeholder="Course overview for the website…" /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2"><Label>Level</Label>
+                  <Select value={webLevel} onValueChange={setWebLevel}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>
+                    {['Beginner','Intermediate','Advanced','All Levels'].map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                  </SelectContent></Select>
+                </div>
+                <div className="space-y-2"><Label>Pricing ({webPricingCurrency})</Label><Input type="number" value={webPricingAmount} onChange={e => setWebPricingAmount(e.target.value)} placeholder="0" /></div>
+              </div>
+              <div className="space-y-2"><Label>Key Outcomes (one per line)</Label><Textarea value={webOutcomes} onChange={e => setWebOutcomes(e.target.value)} rows={4} placeholder="Learn conversational Arabic&#10;Master essential grammar" /></div>
+              <div className="space-y-2"><Label>Syllabus Text</Label><Textarea value={webSyllabus} onChange={e => setWebSyllabus(e.target.value)} rows={4} placeholder="Week 1: Introduction&#10;Week 2: Basics" /></div>
+              <div className="space-y-2"><Label>FAQs (question|answer per line)</Label><Textarea value={webFaqs} onChange={e => setWebFaqs(e.target.value)} rows={3} placeholder="Who is this for?|Beginners with no prior knowledge" /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2"><Label>Contact Email</Label><Input value={webContactEmail} onChange={e => setWebContactEmail(e.target.value)} /></div>
+                <div className="space-y-2"><Label>WhatsApp</Label><Input value={webContactWhatsapp} onChange={e => setWebContactWhatsapp(e.target.value)} placeholder="+92..." /></div>
+              </div>
+              <Button onClick={() => saveWebsite.mutate()} disabled={saveWebsite.isPending}>
+                {saveWebsite.isPending ? 'Saving…' : 'Save Website Settings'}
+              </Button>
+            </CardContent></Card>
+          </TabsContent>
+
+          {/* ═══ MARKETING TAB ═══ */}
+          <TabsContent value="marketing" className="mt-4 space-y-4">
+            <Card><CardContent className="p-6 space-y-4">
+              <h3 className="font-semibold">Ad Creative</h3>
+              <div className="space-y-2"><Label>Ad Title</Label><Input value={adTitle} onChange={e => setAdTitle(e.target.value)} placeholder="Catchy ad title" /></div>
+              <div className="space-y-2"><Label>Ad Body</Label><Textarea value={adBody} onChange={e => setAdBody(e.target.value)} rows={4} placeholder="Ad copy text…" /></div>
+              <div className="space-y-2"><Label>Hashtags</Label><Input value={adHashtags} onChange={e => setAdHashtags(e.target.value)} placeholder="#LearnArabic #OnlineCourse" /></div>
+            </CardContent></Card>
+            <Card><CardContent className="p-6 space-y-4">
+              <h3 className="font-semibold">Support Messages</h3>
+              <div className="space-y-2"><Label>Welcome Message</Label><Textarea value={supportWelcome} onChange={e => setSupportWelcome(e.target.value)} rows={2} /></div>
+              <div className="space-y-2"><Label>Reminder</Label><Textarea value={supportReminder} onChange={e => setSupportReminder(e.target.value)} rows={2} /></div>
+              <div className="space-y-2"><Label>Last Seat Alert</Label><Textarea value={supportLastSeat} onChange={e => setSupportLastSeat(e.target.value)} rows={2} /></div>
+              <div className="space-y-2"><Label>Closing Message</Label><Textarea value={supportClosing} onChange={e => setSupportClosing(e.target.value)} rows={2} /></div>
+              <Button onClick={() => saveAdCreative.mutate()} disabled={saveAdCreative.isPending}>
+                {saveAdCreative.isPending ? 'Saving…' : 'Save Marketing Content'}
+              </Button>
+            </CardContent></Card>
+          </TabsContent>
+
+          {/* ═══ COMMUNITY TAB ═══ */}
+          <TabsContent value="community" className="mt-4">
+            <CourseBoards courseId={courseId!} isAdmin={true} />
           </TabsContent>
 
           {/* ═══ ROSTER TAB ═══ */}

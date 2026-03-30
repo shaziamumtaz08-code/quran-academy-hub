@@ -605,6 +605,92 @@ export type Database = {
           },
         ]
       }
+      course_library_assets: {
+        Row: {
+          asset_type: string
+          branch_id: string | null
+          content_html: string | null
+          content_url: string | null
+          course_id: string | null
+          created_at: string | null
+          division_id: string | null
+          id: string
+          metadata: Json | null
+          owner_id: string | null
+          status: string | null
+          tags: string[] | null
+          title: string
+          updated_at: string | null
+          version: number | null
+          visibility: string | null
+        }
+        Insert: {
+          asset_type?: string
+          branch_id?: string | null
+          content_html?: string | null
+          content_url?: string | null
+          course_id?: string | null
+          created_at?: string | null
+          division_id?: string | null
+          id?: string
+          metadata?: Json | null
+          owner_id?: string | null
+          status?: string | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string | null
+          version?: number | null
+          visibility?: string | null
+        }
+        Update: {
+          asset_type?: string
+          branch_id?: string | null
+          content_html?: string | null
+          content_url?: string | null
+          course_id?: string | null
+          created_at?: string | null
+          division_id?: string | null
+          id?: string
+          metadata?: Json | null
+          owner_id?: string | null
+          status?: string | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string | null
+          version?: number | null
+          visibility?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_library_assets_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_library_assets_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_library_assets_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_library_assets_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_modules: {
         Row: {
           course_id: string
@@ -640,51 +726,207 @@ export type Database = {
           },
         ]
       }
+      course_post_replies: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string | null
+          flag_reason: string | null
+          id: string
+          is_approved: boolean | null
+          is_flagged: boolean | null
+          post_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string | null
+          flag_reason?: string | null
+          id?: string
+          is_approved?: boolean | null
+          is_flagged?: boolean | null
+          post_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string | null
+          flag_reason?: string | null
+          id?: string
+          is_approved?: boolean | null
+          is_flagged?: boolean | null
+          post_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_post_replies_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_post_replies_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "course_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_posts: {
+        Row: {
+          author_id: string
+          content: string | null
+          course_id: string
+          created_at: string | null
+          flag_reason: string | null
+          id: string
+          is_approved: boolean | null
+          is_flagged: boolean | null
+          is_pinned: boolean | null
+          metadata: Json | null
+          post_type: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          author_id: string
+          content?: string | null
+          course_id: string
+          created_at?: string | null
+          flag_reason?: string | null
+          id?: string
+          is_approved?: boolean | null
+          is_flagged?: boolean | null
+          is_pinned?: boolean | null
+          metadata?: Json | null
+          post_type?: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          author_id?: string
+          content?: string | null
+          course_id?: string
+          created_at?: string | null
+          flag_reason?: string | null
+          id?: string
+          is_approved?: boolean | null
+          is_flagged?: boolean | null
+          is_pinned?: boolean | null
+          metadata?: Json | null
+          post_type?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_posts_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_posts_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courses: {
         Row: {
+          ad_creative: Json | null
           branch_id: string | null
+          contact_info: Json | null
           created_at: string
+          description: string | null
           division_id: string | null
           end_date: string | null
+          enrollment_type: string | null
+          faqs: Json | null
+          hero_image_url: string | null
           id: string
           is_group_class: boolean
+          level: string | null
           max_students: number
           name: string
+          outcomes: Json | null
+          pricing: Json | null
+          seo_slug: string | null
           start_date: string
           status: string
           subject_id: string | null
+          support_messages: Json | null
+          syllabus_text: string | null
+          tags: string[] | null
           teacher_id: string
           updated_at: string
+          website_enabled: boolean | null
         }
         Insert: {
+          ad_creative?: Json | null
           branch_id?: string | null
+          contact_info?: Json | null
           created_at?: string
+          description?: string | null
           division_id?: string | null
           end_date?: string | null
+          enrollment_type?: string | null
+          faqs?: Json | null
+          hero_image_url?: string | null
           id?: string
           is_group_class?: boolean
+          level?: string | null
           max_students?: number
           name: string
+          outcomes?: Json | null
+          pricing?: Json | null
+          seo_slug?: string | null
           start_date: string
           status?: string
           subject_id?: string | null
+          support_messages?: Json | null
+          syllabus_text?: string | null
+          tags?: string[] | null
           teacher_id: string
           updated_at?: string
+          website_enabled?: boolean | null
         }
         Update: {
+          ad_creative?: Json | null
           branch_id?: string | null
+          contact_info?: Json | null
           created_at?: string
+          description?: string | null
           division_id?: string | null
           end_date?: string | null
+          enrollment_type?: string | null
+          faqs?: Json | null
+          hero_image_url?: string | null
           id?: string
           is_group_class?: boolean
+          level?: string | null
           max_students?: number
           name?: string
+          outcomes?: Json | null
+          pricing?: Json | null
+          seo_slug?: string | null
           start_date?: string
           status?: string
           subject_id?: string | null
+          support_messages?: Json | null
+          syllabus_text?: string | null
+          tags?: string[] | null
           teacher_id?: string
           updated_at?: string
+          website_enabled?: boolean | null
         }
         Relationships: [
           {
