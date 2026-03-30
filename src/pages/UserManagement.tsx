@@ -943,7 +943,7 @@ export default function UserManagement() {
                               <SelectValue placeholder="Select parent (optional)" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">None</SelectItem>
+                              <SelectItem value="none">None</SelectItem>
                               {parentUsers.map((p) => (
                                 <SelectItem key={p.id} value={p.id}>
                                   {p.full_name} ({p.email})
@@ -1009,7 +1009,7 @@ export default function UserManagement() {
                             city: newUserCity || undefined,
                             forceNewProfile: createAsSibling || undefined,
                             branch_id: newUserBranchId || undefined,
-                            parent_id: newUserParentId || undefined,
+                            parent_id: newUserParentId && newUserParentId !== 'none' ? newUserParentId : undefined,
                           });
                         }}
                       >
