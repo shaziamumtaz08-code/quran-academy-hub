@@ -259,7 +259,7 @@
 
   .page-header-premium::after {
     content: '';
-    @apply absolute inset-0 opacity-10;
+    @apply absolute inset-0 opacity-10 pointer-events-none;
     background: radial-gradient(circle at 100% 0%, hsl(197 100% 45% / 0.3), transparent 50%);
   }
 
