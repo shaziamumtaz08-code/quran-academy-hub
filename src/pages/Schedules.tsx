@@ -332,7 +332,7 @@ export default function Schedules() {
         .not('assignment_id', 'is', null);
 
       if (!showAllDivisions && activeDivision?.id) {
-        query = query.eq('division_id', activeDivision.id);
+        query = query.or(`division_id.eq.${activeDivision.id},division_id.is.null`);
       }
 
       const { data, error } = await query;
