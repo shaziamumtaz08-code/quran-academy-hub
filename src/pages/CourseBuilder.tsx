@@ -197,6 +197,31 @@ export default function CourseBuilder() {
       setSettingsMaxStudents(String(course.max_students));
       setSettingsStartDate(course.start_date);
       setSettingsEndDate(course.end_date || '');
+      // Website fields
+      setWebDescription(course.description || '');
+      setWebLevel(course.level || 'All Levels');
+      setWebEnabled(course.website_enabled || false);
+      setWebSyllabus(course.syllabus_text || '');
+      const outcomes = Array.isArray(course.outcomes) ? (course.outcomes as any[]).map((o: any) => o.text || '').join('\n') : '';
+      setWebOutcomes(outcomes);
+      const faqs = Array.isArray(course.faqs) ? (course.faqs as any[]).map((f: any) => `${f.question || ''}|${f.answer || ''}`).join('\n') : '';
+      setWebFaqs(faqs);
+      const pricing = (course.pricing || {}) as any;
+      setWebPricingAmount(String(pricing.amount || ''));
+      setWebPricingCurrency(pricing.currency || 'USD');
+      const contact = (course.contact_info || {}) as any;
+      setWebContactEmail(contact.email || '');
+      setWebContactWhatsapp(contact.whatsapp || '');
+      // Ad creative
+      const ad = (course.ad_creative || {}) as any;
+      setAdTitle(ad.title || '');
+      setAdBody(ad.body || '');
+      setAdHashtags(ad.hashtags || '');
+      const support = (course.support_messages || {}) as any;
+      setSupportWelcome(support.welcome || '');
+      setSupportReminder(support.reminder || '');
+      setSupportLastSeat(support.lastSeat || '');
+      setSupportClosing(support.closing || '');
     }
   }, [course]);
 
