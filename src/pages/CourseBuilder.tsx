@@ -71,6 +71,27 @@ export default function CourseBuilder() {
 
   const [activeTab, setActiveTab] = useState('builder');
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
+
+  // Website tab state
+  const [webDescription, setWebDescription] = useState('');
+  const [webOutcomes, setWebOutcomes] = useState('');
+  const [webFaqs, setWebFaqs] = useState('');
+  const [webSyllabus, setWebSyllabus] = useState('');
+  const [webPricingAmount, setWebPricingAmount] = useState('');
+  const [webPricingCurrency, setWebPricingCurrency] = useState('USD');
+  const [webContactEmail, setWebContactEmail] = useState('');
+  const [webContactWhatsapp, setWebContactWhatsapp] = useState('');
+  const [webEnabled, setWebEnabled] = useState(false);
+  const [webLevel, setWebLevel] = useState('All Levels');
+  
+  // Ad creative state
+  const [adTitle, setAdTitle] = useState('');
+  const [adBody, setAdBody] = useState('');
+  const [adHashtags, setAdHashtags] = useState('');
+  const [supportWelcome, setSupportWelcome] = useState('');
+  const [supportReminder, setSupportReminder] = useState('');
+  const [supportLastSeat, setSupportLastSeat] = useState('');
+  const [supportClosing, setSupportClosing] = useState('');
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [syllabusOpen, setSyllabusOpen] = useState(true);
