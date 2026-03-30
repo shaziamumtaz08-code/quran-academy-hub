@@ -309,6 +309,7 @@ export default function Schedules() {
         teacher_id: row.teacher_id,
         student_id: row.student_id,
         status: row.status || 'active',
+        division_id: row.division_id || null,
         teacher_name: row.teacher?.full_name || 'Unknown',
         student_name: row.student?.full_name || 'Unknown',
         subject_name: row.subject?.name || null,
