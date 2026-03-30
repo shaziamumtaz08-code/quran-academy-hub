@@ -1,95 +1,109 @@
 
 
-# AI-Powered Course Builder & Premium Workspace
+# Unique ID System & Signup Process
 
-## Overview
-Replace the current Course detail modal/sheet with a full-page split-pane Course Builder at `/courses/:id`. This includes an interactive syllabus builder (left pane), AI-powered content editor (right pane), and tabs for Settings and Roster management.
+## Current State
+- Profiles use UUIDs as primary keys (no human-readable IDs)
+- Admin creates all users via `admin-create-user` edge function
+- Sibling/family sharing works via `forceNewProfile` flag
+- No public signup — admin-only creation confirmed by user preference
+- Google OAuth deferred to a later phase
 
-## Database Changes (3 new tables + 1 storage bucket)
+## User's Request
+1. **IBAN-style unique IDs**: A structured, human-readable registration ID incorporating org, branch, division, and role segments
+2. **Signup strategy**: Admin-only creation (confirmed), with future website integration in mind
 
-### Table: `course_modules`
-| Column | Type | Notes |
-|---|---|---|
-| id | uuid PK | |
-| course_id | uuid | references courses |
-| title | text | |
-| sort_order | integer | default 0 |
-| created_at / updated_at | timestamptz | |
+---
 
-### Table: `course_lessons`
-| Column | Type | Notes |
-|---|---|---|
-| id | uuid PK | |
-| module_id | uuid | references course_modules |
-| course_id | uuid | references courses |
-| title | text | |
-| content_type | text | 'text', 'video', 'document' |
-| content_html | text | nullable, for text lessons |
-| video_url | text | nullable, for video lessons |
-| file_url | text | nullable, for document lessons |
-| sort_order | integer | default 0 |
-| created_at / updated_at | timestamptz | |
+## Plan
 
-### Storage bucket: `course_materials`
-Public bucket for PDF/document uploads linked to lessons.
+### 1. Database: Add `registration_id` column + sequence table
 
-### RLS
-- Admins/super_admins: full CRUD on both tables and storage
-- Teachers: SELECT on courses they own, UPDATE on lessons for their courses
-- Students: SELECT on courses they're enrolled in
+Add a `registration_id` (text, unique) column to `profiles` and create a `registration_sequences` table to track the next number per org-branch-division-role combination.
 
-## Edge Function: `generate-course-content`
-- Uses Lovable AI (gateway) with `google/gemini-3-flash-preview`
-- Accepts `{ prompt: string, lessonTitle: string }` 
-- Returns structured HTML content for the lesson
-- CORS enabled, `verify_jwt = false`
+**ID Format**: `{ORG_CODE}-{BRANCH_CODE}-{ROLE_CODE}-{AUTO_NUMBER}`
 
-## New Files
+Example IDs:
+- `QHS-KHI-STU-0001` (Quran Hifz School, Karachi branch, Student #1)
+- `QHS-ONL-TCH-0012` (Online branch, Teacher #12)
+- `QHS-LDN-PAR-0003` (London branch, Parent #3)
 
-### `src/pages/CourseBuilder.tsx` (full-page route)
-- **Top bar**: Breadcrumb (Courses > Course Name), "Save Changes" button, "Publish" toggle (updates `courses.status`)
-- **Tabs**: Builder | Settings | Roster & Bulk Add
-- **Builder tab** — Split-pane layout:
-  - **Left pane (35%)**: Syllabus outline with accordion modules, drag-to-reorder via `@dnd-kit/sortable`, "Add Module" button, "+Lesson" on hover per module. Icons per content_type (video/text/document).
-  - **Right pane (65%)**: Content editor that changes based on selected lesson's `content_type`:
-    - **Text**: Rich text editor (TipTap or simple contentEditable with toolbar) + "Generate with AI" button
-    - **Video**: URL input + iframe preview
-    - **Document**: File upload dropzone → `course_materials` bucket
-- **Settings tab**: Edit course name, teacher, subject, dates, max students
-- **Roster tab**: Current enrollment table + CSV bulk upload (maps First Name, Last Name, Email → auto-creates profiles and enrollments)
+Division is intentionally omitted from the ID because a single student can be in multiple divisions (1:1 + Group). The ID represents the person, not their enrollment context.
 
-### Route addition in `App.tsx`
+**Migration SQL:**
+- Add `registration_id` (text, unique, nullable) to `profiles`
+- Create `registration_sequences` table: `(org_code, branch_code, role_code, next_val)`
+- Add `code` column (3-4 char uppercase) to `branches` table for branch codes
+- Add `code` column to `organizations` table for org code
+- Create a DB function `generate_registration_id(org_code, branch_code, role_code)` that atomically increments the sequence and returns the formatted ID
+
+### 2. Edge Function: Auto-assign registration_id on user creation
+
+Update `admin-create-user/index.ts`:
+- Accept `branch_id` in the request body (required for ID generation)
+- After profile creation, call the DB function to generate and assign the `registration_id`
+- Return `registration_id` in the response
+
+### 3. Edge Function: Auto-link siblings to parent
+
+In the same `admin-create-user` update:
+- Accept optional `parent_id` in request body
+- If `role === 'student'` and `parent_id` is provided, insert into `student_parent_links`
+- If `role === 'student'` and no `parent_id` but `forceNewProfile === true`, auto-detect parent from existing `student_parent_links` for profiles sharing the same email
+
+### 4. UI: Show registration_id in User Management
+
+Update `UserManagement.tsx`:
+- Display `registration_id` column in the users table
+- Add `branch_id` selector in the Create User dialog (required field)
+- Add optional "Link to Parent" searchable dropdown when creating a student
+- Show registration ID on student cards and profile views
+
+### 5. UI: Show registration_id across the app
+
+- `StudentCard.tsx` — show reg ID badge
+- `StudentDetailDrawer.tsx` — display in header
+- Profile sections in dashboards — display as "Your ID: QHS-KHI-STU-0001"
+
+---
+
+## Technical Details
+
+### Registration Sequence DB Function
+```text
+generate_registration_id(org_code TEXT, branch_code TEXT, role_code TEXT)
+→ Returns TEXT like "QHS-KHI-STU-0001"
+
+Uses SELECT ... FOR UPDATE on registration_sequences to atomically
+increment and return the next value, zero-padded to 4 digits.
 ```
-/courses/:id → <CourseBuilder />
+
+### Role Code Mapping
+```text
+super_admin     → SA
+admin           → ADM
+admin_admissions → ADA
+admin_fees      → ADF
+admin_academic  → ADC
+teacher         → TCH
+student         → STU
+parent          → PAR
+examiner        → EXM
 ```
-Admin-protected route. The existing `/courses` list page gets a "View" button linking to `/courses/:id` instead of opening a sheet.
 
-## Modifications to Existing Files
+### Branch Code
+Each branch gets a short `code` field (e.g., KHI, LDN, ONL). Set by admin in Organization Settings.
 
-### `src/pages/Courses.tsx`
-- Change "View" button to navigate to `/courses/${course.id}` via `useNavigate()`
-- Remove the Sheet-based detail panel (or keep as fallback)
+### Signup Strategy (Confirmed)
+- **No public self-signup**. All accounts created by admin via User Management.
+- Future website "Apply" button will create a WorkHub ticket/lead, not an account.
+- Email + Password only (Google OAuth deferred).
+- This means the existing `signUp` function in `AuthContext.tsx` can remain but won't be exposed publicly — only the Login page is public-facing.
 
-### `supabase/config.toml`
-- Add `[functions.generate-course-content]` with `verify_jwt = false`
-
-## AI Generation Flow
-1. User clicks "Generate with AI" in right pane
-2. Small prompt modal: "What should this lesson cover?"
-3. Calls edge function → Lovable AI gateway
-4. Streams response back, injects HTML into the editor
-5. User can edit the generated content before saving
-
-## Design Tokens
-- Background: `bg-slate-50`
-- Panes: `bg-white shadow-sm rounded-xl`
-- Hover states: `hover:bg-slate-100` on syllabus items
-- Smooth transitions on tab switches and AI loading (skeleton placeholders)
-
-## Implementation Order
-1. DB migration (tables + bucket + RLS)
-2. Edge function `generate-course-content`
-3. `CourseBuilder.tsx` page with split-pane layout
-4. Wire up route in `App.tsx`, update `Courses.tsx` navigation
-5. AI integration in content editor
+### Files to Modify
+1. **Migration** — `profiles` add `registration_id`, new `registration_sequences` table, add `code` to `branches` and `organizations`, DB function
+2. **`supabase/functions/admin-create-user/index.ts`** — Add branch_id, parent_id params, call generate_registration_id, insert student_parent_links
+3. **`src/pages/UserManagement.tsx`** — Add branch selector, parent linker, show reg ID column
+4. **`src/components/students/StudentCard.tsx`** — Show registration_id badge
+5. **`src/components/students/StudentDetailDrawer.tsx`** — Show registration_id in header
 
