@@ -927,8 +927,10 @@ export default function Schedules() {
       return;
     }
 
+    const selectedAssignment = assignments.find(a => a.id === bulkSchedule.assignmentId);
     const schedulesData = bulkSchedule.selectedDays.map(day => ({
       assignment_id: bulkSchedule.assignmentId,
+      division_id: selectedAssignment?.division_id || activeDivision?.id || null,
       day_of_week: day,
       student_local_time: bulkSchedule.studentTime,
       teacher_local_time: bulkSchedule.teacherTime || calculateTeacherTime(bulkSchedule.studentTime, bulkSchedule.studentTimezone, bulkSchedule.teacherTimezone),
