@@ -803,6 +803,34 @@ export default function Assignments() {
                           )}
                         </TableCell>
                         <TableCell>
+                          <div className="flex items-center gap-2">
+                            <button
+                              title="Track Schedule"
+                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded cursor-pointer transition-colors ${assignment.requires_schedule ? 'bg-teal/15 text-teal' : 'bg-muted text-muted-foreground line-through'}`}
+                              onClick={async () => {
+                                await supabase.from('student_teacher_assignments').update({ requires_schedule: !assignment.requires_schedule }).eq('id', assignment.id);
+                                queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
+                              }}
+                            >S</button>
+                            <button
+                              title="Track Planning"
+                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded cursor-pointer transition-colors ${assignment.requires_planning ? 'bg-gold/15 text-gold' : 'bg-muted text-muted-foreground line-through'}`}
+                              onClick={async () => {
+                                await supabase.from('student_teacher_assignments').update({ requires_planning: !assignment.requires_planning }).eq('id', assignment.id);
+                                queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
+                              }}
+                            >P</button>
+                            <button
+                              title="Track Attendance"
+                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded cursor-pointer transition-colors ${assignment.requires_attendance ? 'bg-sky/15 text-sky' : 'bg-muted text-muted-foreground line-through'}`}
+                              onClick={async () => {
+                                await supabase.from('student_teacher_assignments').update({ requires_attendance: !assignment.requires_attendance }).eq('id', assignment.id);
+                                queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
+                              }}
+                            >A</button>
+                          </div>
+                        </TableCell>
+                        <TableCell>
                           <Select
                             value={assignment.status}
                             onValueChange={(value: AssignmentStatus) => {
