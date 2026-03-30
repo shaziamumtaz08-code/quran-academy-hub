@@ -148,7 +148,7 @@ export default function WorkHub() {
           <TabsContent value="inbox" className="mt-4">
             <TicketList view="inbox" userId={profile?.id} />
           </TabsContent>
-          <TabsContent value="sent" className="mt-4">
+          <TabsContent value="sent" className="mt-4" forceMount style={{ display: activeTab === 'sent' ? undefined : 'none' }}>
             <TicketList view="sent" userId={profile?.id} />
           </TabsContent>
           <TabsContent value="watching" className="mt-4">
