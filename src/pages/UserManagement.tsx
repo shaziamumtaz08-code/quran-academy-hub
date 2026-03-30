@@ -243,6 +243,7 @@ export default function UserManagement() {
             city: profile.city,
             created_at: profile.created_at,
             archived_at: profile.archived_at,
+            registration_id: (profile as any).registration_id ?? null,
             roles: (rolesData || []).map(r => r.role as AppRole),
             exceptions: exceptions || [],
           };
