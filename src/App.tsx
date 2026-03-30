@@ -137,9 +137,9 @@ function AdminOrExaminerOrTeacherRoute({ children }: { children: React.ReactNode
 
 // Admin or Teacher route (for monthly planning)
 function AdminOrTeacherRoute({ children }: { children: React.ReactNode }) {
-  const { activeRole, isLoading } = useAuth();
+  const { activeRole, isLoading, profile } = useAuth();
 
-  if (isLoading) {
+  if (isLoading || (profile && !activeRole)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
@@ -162,9 +162,9 @@ function AdminOrTeacherRoute({ children }: { children: React.ReactNode }) {
 
 // Teacher only route - uses activeRole
 function TeacherRoute({ children }: { children: React.ReactNode }) {
-  const { activeRole, isLoading } = useAuth();
+  const { activeRole, isLoading, profile } = useAuth();
   
-  if (isLoading) {
+  if (isLoading || (profile && !activeRole)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
