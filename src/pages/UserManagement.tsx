@@ -283,6 +283,40 @@ export default function UserManagement() {
     },
   });
 
+  // Fetch branches for branch selector in create dialog
+  const { data: branches = [] } = useQuery({
+    queryKey: ['branches-list'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('branches')
+        .select('id, name, code')
+        .eq('is_active', true)
+        .order('name');
+      if (error) throw error;
+      return data as Array<{ id: string; name: string; code: string | null }>;
+    },
+  });
+
+  // Fetch parent-role users for linking
+  const { data: parentUsers = [] } = useQuery({
+    queryKey: ['parent-users-for-linking'],
+    queryFn: async () => {
+      const { data: parentRoles, error } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'parent');
+      if (error || !parentRoles) return [];
+      const parentIds = parentRoles.map(r => r.user_id);
+      if (parentIds.length === 0) return [];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', parentIds)
+        .order('full_name');
+      return (profiles || []) as Array<{ id: string; full_name: string; email: string | null }>;
+    },
+  });
+
   // Get unique countries (from timezone_mappings for backward compat - used in edit form as fallback)
   const oldCountries = [...new Set(timezoneMappings.map(t => t.country))];
   
