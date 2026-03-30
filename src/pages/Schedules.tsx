@@ -419,6 +419,7 @@ export default function Schedules() {
   const createScheduleMutation = useMutation({
     mutationFn: async (scheduleData: {
       assignment_id: string;
+      division_id?: string | null;
       day_of_week: string;
       student_local_time: string;
       teacher_local_time: string;
