@@ -118,6 +118,8 @@ export default function BillingPlansTable({ onEditPlan }: { onEditPlan?: (plan: 
     mutationFn: async (id: string) => {
       // Delete linked pending invoices first
       await supabase.from('fee_invoices').delete().eq('plan_id', id).eq('status', 'pending' as any);
+      // Unlink non-pending invoices so the plan can be removed
+      await supabase.from('fee_invoices').update({ plan_id: null }).eq('plan_id', id);
       const { error } = await supabase.from('student_billing_plans').delete().eq('id', id);
       if (error) throw error;
       return id;
