@@ -377,7 +377,42 @@ export default function CourseBuilder() {
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
-  // ─── AI Generation ───────────────────────────────────
+  const saveWebsite = useMutation({
+    mutationFn: async () => {
+      const outcomesArr = webOutcomes.split('\n').filter(Boolean).map(t => ({ text: t.trim() }));
+      const faqsArr = webFaqs.split('\n').filter(Boolean).map(line => {
+        const [q, a] = line.split('|');
+        return { question: (q || '').trim(), answer: (a || '').trim() };
+      });
+      const { error } = await supabase.from('courses').update({
+        description: webDescription || null,
+        level: webLevel,
+        website_enabled: webEnabled,
+        syllabus_text: webSyllabus || null,
+        outcomes: outcomesArr as any,
+        faqs: faqsArr as any,
+        pricing: { amount: parseFloat(webPricingAmount) || 0, currency: webPricingCurrency, period: 'month' } as any,
+        contact_info: { email: webContactEmail, whatsapp: webContactWhatsapp } as any,
+        seo_slug: course?.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || null,
+      }).eq('id', courseId!);
+      if (error) throw error;
+    },
+    onSuccess: () => { invalidateAll(); toast({ title: 'Website settings saved' }); },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const saveAdCreative = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from('courses').update({
+        ad_creative: { title: adTitle, body: adBody, hashtags: adHashtags } as any,
+        support_messages: { welcome: supportWelcome, reminder: supportReminder, lastSeat: supportLastSeat, closing: supportClosing } as any,
+      }).eq('id', courseId!);
+      if (error) throw error;
+    },
+    onSuccess: () => { invalidateAll(); toast({ title: 'Marketing content saved' }); },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
   const generateWithAI = async () => {
     if (!aiPrompt.trim() || !selectedLesson) return;
     setAiGenerating(true);
