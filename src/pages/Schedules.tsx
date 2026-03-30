@@ -88,6 +88,7 @@ interface Assignment {
   teacher_id: string;
   student_id: string;
   status: AssignmentStatus;
+  division_id: string | null;
   teacher_name: string;
   student_name: string;
   subject_name: string | null;
@@ -289,6 +290,7 @@ export default function Schedules() {
           teacher_id,
           student_id,
           status,
+          division_id,
           student_timezone,
           teacher_timezone,
           teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name, country, city),
@@ -307,6 +309,7 @@ export default function Schedules() {
         teacher_id: row.teacher_id,
         student_id: row.student_id,
         status: row.status || 'active',
+        division_id: row.division_id || null,
         teacher_name: row.teacher?.full_name || 'Unknown',
         student_name: row.student?.full_name || 'Unknown',
         subject_name: row.subject?.name || null,
@@ -331,7 +334,7 @@ export default function Schedules() {
         .not('assignment_id', 'is', null);
 
       if (!showAllDivisions && activeDivision?.id) {
-        query = query.eq('division_id', activeDivision.id);
+        query = query.or(`division_id.eq.${activeDivision.id},division_id.is.null`);
       }
 
       const { data, error } = await query;
@@ -416,6 +419,7 @@ export default function Schedules() {
   const createScheduleMutation = useMutation({
     mutationFn: async (scheduleData: {
       assignment_id: string;
+      division_id?: string | null;
       day_of_week: string;
       student_local_time: string;
       teacher_local_time: string;
@@ -444,6 +448,7 @@ export default function Schedules() {
   const bulkCreateScheduleMutation = useMutation({
     mutationFn: async (schedulesData: Array<{
       assignment_id: string;
+      division_id?: string | null;
       day_of_week: string;
       student_local_time: string;
       teacher_local_time: string;
@@ -863,7 +868,8 @@ export default function Schedules() {
     if (editingSchedule) {
       updateScheduleMutation.mutate({ id: editingSchedule.id, ...scheduleData });
     } else {
-      createScheduleMutation.mutate({ assignment_id: newSchedule.assignmentId, ...scheduleData });
+      const selectedAssignment = assignments.find(a => a.id === newSchedule.assignmentId);
+      createScheduleMutation.mutate({ assignment_id: newSchedule.assignmentId, division_id: selectedAssignment?.division_id || activeDivision?.id || null, ...scheduleData });
     }
   };
 
@@ -921,8 +927,10 @@ export default function Schedules() {
       return;
     }
 
+    const selectedAssignment = assignments.find(a => a.id === bulkSchedule.assignmentId);
     const schedulesData = bulkSchedule.selectedDays.map(day => ({
       assignment_id: bulkSchedule.assignmentId,
+      division_id: selectedAssignment?.division_id || activeDivision?.id || null,
       day_of_week: day,
       student_local_time: bulkSchedule.studentTime,
       teacher_local_time: bulkSchedule.teacherTime || calculateTeacherTime(bulkSchedule.studentTime, bulkSchedule.studentTimezone, bulkSchedule.teacherTimezone),
