@@ -107,8 +107,8 @@ export default function PublicCoursePage() {
     );
   }
 
-  const outcomes: Outcome[] = Array.isArray(course.outcomes) ? course.outcomes as Outcome[] : [];
-  const faqs: FAQ[] = Array.isArray(course.faqs) ? course.faqs as FAQ[] : [];
+  const outcomes: Outcome[] = Array.isArray(course.outcomes) ? (course.outcomes as unknown as Outcome[]) : [];
+  const faqs: FAQ[] = Array.isArray(course.faqs) ? (course.faqs as unknown as FAQ[]) : [];
   const pricing = (course.pricing || {}) as Pricing;
   const contactInfo = (course.contact_info || {}) as ContactInfo;
   const syllabusLines = (course.syllabus_text || '').split('\n').filter(Boolean);
