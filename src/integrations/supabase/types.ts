@@ -3164,6 +3164,9 @@ export type Database = {
           is_custom_override: boolean
           payout_amount: number | null
           payout_type: string | null
+          requires_attendance: boolean
+          requires_planning: boolean
+          requires_schedule: boolean
           start_date: string | null
           status: Database["public"]["Enums"]["assignment_status"]
           status_effective_date: string | null
@@ -3188,6 +3191,9 @@ export type Database = {
           is_custom_override?: boolean
           payout_amount?: number | null
           payout_type?: string | null
+          requires_attendance?: boolean
+          requires_planning?: boolean
+          requires_schedule?: boolean
           start_date?: string | null
           status?: Database["public"]["Enums"]["assignment_status"]
           status_effective_date?: string | null
@@ -3212,6 +3218,9 @@ export type Database = {
           is_custom_override?: boolean
           payout_amount?: number | null
           payout_type?: string | null
+          requires_attendance?: boolean
+          requires_planning?: boolean
+          requires_schedule?: boolean
           start_date?: string | null
           status?: Database["public"]["Enums"]["assignment_status"]
           status_effective_date?: string | null
