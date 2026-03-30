@@ -1170,6 +1170,7 @@ export default function UserManagement() {
                             {getSortIcon('name')}
                           </div>
                         </TableHead>
+                        <TableHead>Reg ID</TableHead>
                         <TableHead>WhatsApp</TableHead>
                         <TableHead 
                           className="cursor-pointer select-none hover:bg-muted/50"
