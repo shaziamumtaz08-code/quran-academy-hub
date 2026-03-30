@@ -88,6 +88,7 @@ interface Assignment {
   teacher_id: string;
   student_id: string;
   status: AssignmentStatus;
+  division_id: string | null;
   teacher_name: string;
   student_name: string;
   subject_name: string | null;
