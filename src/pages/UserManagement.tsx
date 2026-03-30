@@ -1226,7 +1226,14 @@ export default function UserManagement() {
                               {user.archived_at && (
                                 <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-200">Archived</Badge>
                               )}
-                            </div>
+                          </div>
+                          </TableCell>
+                          <TableCell>
+                            {user.registration_id ? (
+                              <Badge variant="outline" className="text-xs font-mono">{user.registration_id}</Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">—</span>
+                            )}
                           </TableCell>
                           <TableCell>
                             {user.whatsapp_number ? (
