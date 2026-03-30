@@ -492,7 +492,11 @@ export default function UserManagement() {
         body: { email, password, fullName, role, whatsapp, gender, age, country, city, forceNewProfile, branch_id, parent_id },
       });
       if (error) throw new Error(error.message || 'Failed to create user');
-      if (data?.error) throw new Error(data.error);
+      if (data?.error) {
+        const err = new Error(data.error) as any;
+        err.requiresForceNew = data.requiresForceNew === true;
+        throw err;
+      }
 
       return data as {
         userId: string;
@@ -534,7 +538,11 @@ export default function UserManagement() {
       setNewUserParentId('');
       setIsCreateDialogOpen(false);
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      // Auto-check sibling option if backend says it's needed
+      if (error?.requiresForceNew) {
+        setCreateAsSibling(true);
+      }
       toast({
         title: 'Failed to create user',
         description: error instanceof Error ? error.message : 'Please try again.',
