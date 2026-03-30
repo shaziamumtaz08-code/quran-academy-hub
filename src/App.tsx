@@ -297,6 +297,8 @@ function AppRoutes() {
       <Route path="/reports/print/:reportId" element={<ProtectedRoute><PrintReport /></ProtectedRoute>} />
       <Route path="/finance/print/invoice/:invoiceId" element={<ProtectedRoute><PrintInvoice /></ProtectedRoute>} />
       <Route path="/finance/print/salary/:payoutId" element={<ProtectedRoute><PrintSalary /></ProtectedRoute>} />
+      {/* Public Course Page - no auth required */}
+      <Route path="/course/:slug" element={<PublicCoursePage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
