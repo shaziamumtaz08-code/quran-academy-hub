@@ -569,7 +569,12 @@ export default function Assignments() {
                             onCheckedChange={() => !editingAssignment && handleStudentToggle(student.id)}
                             disabled={!!editingAssignment}
                           />
-                          <span className="text-sm">{student.full_name}</span>
+                          <span className="text-sm">
+                            {student.full_name}
+                            {(student as any).registration_id && (
+                              <span className="ml-2 text-xs text-muted-foreground font-mono">({(student as any).registration_id})</span>
+                            )}
+                          </span>
                         </label>
                       ))}
                     </div>
