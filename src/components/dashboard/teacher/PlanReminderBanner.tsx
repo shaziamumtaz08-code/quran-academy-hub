@@ -26,13 +26,15 @@ export function PlanReminderBanner() {
       // Get all active student assignments
       const { data: assignments } = await supabase
         .from('student_teacher_assignments')
-        .select('student_id, student:profiles!student_teacher_assignments_student_id_fkey(id, full_name)')
+        .select('student_id, requires_planning, student:profiles!student_teacher_assignments_student_id_fkey(id, full_name)')
         .eq('teacher_id', user.id)
         .eq('status', 'active');
 
       if (!assignments?.length) return [];
 
-      const studentIds = assignments.map(a => (a.student as any)?.id).filter(Boolean);
+      // Only consider students where planning tracking is enabled
+      const trackableAssignments = assignments.filter(a => (a as any).requires_planning !== false);
+      const studentIds = trackableAssignments.map(a => (a.student as any)?.id).filter(Boolean);
 
       // Check which students have a plan for this month
       const { data: plans } = await supabase
@@ -45,7 +47,7 @@ export function PlanReminderBanner() {
 
       const filledIds = new Set((plans || []).map(p => p.student_id));
 
-      return assignments
+      return trackableAssignments
         .filter(a => {
           const sid = (a.student as any)?.id;
           return sid && !filledIds.has(sid);

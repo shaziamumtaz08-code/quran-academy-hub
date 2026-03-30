@@ -71,17 +71,19 @@ export function MissingAttendanceSection({
           day_of_week,
           teacher_local_time,
           is_active,
-          student_teacher_assignments!inner (
-            student_id,
-            teacher_id,
-            status,
-            subject:subjects(name),
-            student:profiles!student_teacher_assignments_student_id_fkey(id, full_name),
-            teacher:profiles!student_teacher_assignments_teacher_id_fkey(id, full_name)
-          )
-        `)
-        .eq('is_active', true)
-        .eq('student_teacher_assignments.status', 'active');
+            student_teacher_assignments!inner (
+              student_id,
+              teacher_id,
+              status,
+              requires_attendance,
+              subject:subjects(name),
+              student:profiles!student_teacher_assignments_student_id_fkey(id, full_name),
+              teacher:profiles!student_teacher_assignments_teacher_id_fkey(id, full_name)
+            )
+          `)
+          .eq('is_active', true)
+          .eq('student_teacher_assignments.status', 'active')
+          .eq('student_teacher_assignments.requires_attendance', true);
 
       if (error) throw error;
       return data;
@@ -383,13 +385,15 @@ export function useMissingAttendanceCount(
         .from('schedules')
         .select(`
           day_of_week,
-          student_teacher_assignments!inner (
-            student_id,
-            status
-          )
-        `)
-        .eq('is_active', true)
-        .eq('student_teacher_assignments.status', 'active');
+            student_teacher_assignments!inner (
+              student_id,
+              status,
+              requires_attendance
+            )
+          `)
+          .eq('is_active', true)
+          .eq('student_teacher_assignments.status', 'active')
+          .eq('student_teacher_assignments.requires_attendance', true);
 
       if (error) throw error;
       return data;

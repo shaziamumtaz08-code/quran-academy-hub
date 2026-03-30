@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { Switch } from '@/components/ui/switch';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -59,6 +60,9 @@ interface Assignment {
   payout_amount: number;
   payout_type: string;
   effective_from_date: string | null;
+  requires_schedule: boolean;
+  requires_planning: boolean;
+  requires_attendance: boolean;
 }
 
 export default function Assignments() {
@@ -154,6 +158,7 @@ export default function Assignments() {
         .select(`
           id, teacher_id, student_id, subject_id, status, created_at,
           payout_amount, payout_type, effective_from_date,
+          requires_schedule, requires_planning, requires_attendance,
           teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name),
           student:profiles!student_teacher_assignments_student_id_fkey(full_name),
           subject:subjects(name)
@@ -177,6 +182,9 @@ export default function Assignments() {
         payout_amount: row.payout_amount || 0,
         payout_type: row.payout_type || 'monthly',
         effective_from_date: row.effective_from_date,
+        requires_schedule: row.requires_schedule ?? true,
+        requires_planning: row.requires_planning ?? true,
+        requires_attendance: row.requires_attendance ?? true,
       })) as Assignment[];
     },
   });
@@ -739,14 +747,15 @@ export default function Assignments() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Teacher</TableHead>
-                    <TableHead>Student</TableHead>
-                    <TableHead>Subject</TableHead>
-                    <TableHead>Payout</TableHead>
-                    <TableHead>Billing Plan</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-center">Reassign</TableHead>
-                    <TableHead className="text-center">Action</TableHead>
+                     <TableHead>Teacher</TableHead>
+                     <TableHead>Student</TableHead>
+                     <TableHead>Subject</TableHead>
+                     <TableHead>Payout</TableHead>
+                     <TableHead>Billing Plan</TableHead>
+                     <TableHead>Tracking</TableHead>
+                     <TableHead>Status</TableHead>
+                     <TableHead className="text-center">Reassign</TableHead>
+                     <TableHead className="text-center">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -792,6 +801,34 @@ export default function Assignments() {
                           ) : (
                             <span className="text-muted-foreground text-xs">No plan</span>
                           )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <button
+                              title="Track Schedule"
+                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded cursor-pointer transition-colors ${assignment.requires_schedule ? 'bg-teal/15 text-teal' : 'bg-muted text-muted-foreground line-through'}`}
+                              onClick={async () => {
+                                await supabase.from('student_teacher_assignments').update({ requires_schedule: !assignment.requires_schedule }).eq('id', assignment.id);
+                                queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
+                              }}
+                            >S</button>
+                            <button
+                              title="Track Planning"
+                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded cursor-pointer transition-colors ${assignment.requires_planning ? 'bg-gold/15 text-gold' : 'bg-muted text-muted-foreground line-through'}`}
+                              onClick={async () => {
+                                await supabase.from('student_teacher_assignments').update({ requires_planning: !assignment.requires_planning }).eq('id', assignment.id);
+                                queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
+                              }}
+                            >P</button>
+                            <button
+                              title="Track Attendance"
+                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded cursor-pointer transition-colors ${assignment.requires_attendance ? 'bg-sky/15 text-sky' : 'bg-muted text-muted-foreground line-through'}`}
+                              onClick={async () => {
+                                await supabase.from('student_teacher_assignments').update({ requires_attendance: !assignment.requires_attendance }).eq('id', assignment.id);
+                                queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
+                              }}
+                            >A</button>
+                          </div>
                         </TableCell>
                         <TableCell>
                           <Select
