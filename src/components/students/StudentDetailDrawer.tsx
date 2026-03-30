@@ -198,6 +198,11 @@ export function StudentDetailDrawer({
             <User className="h-5 w-5 text-primary" />
             {student.full_name}
           </SheetTitle>
+          {profile?.registration_id && (
+            <Badge variant="outline" className="w-fit text-xs font-mono mt-1">
+              {profile.registration_id}
+            </Badge>
+          )}
         </SheetHeader>
 
         {isLoading ? (
