@@ -3582,6 +3582,14 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_ticket_participant: {
+        Args: { _ticket_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_ticket_watcher: {
+        Args: { _ticket_id: string; _user_id: string }
+        Returns: boolean
+      }
       release_license: {
         Args: { _session_id: string; _teacher_id: string }
         Returns: boolean
