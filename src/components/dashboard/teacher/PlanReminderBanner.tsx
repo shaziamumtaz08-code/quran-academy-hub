@@ -26,7 +26,7 @@ export function PlanReminderBanner() {
       // Get all active student assignments
       const { data: assignments } = await supabase
         .from('student_teacher_assignments')
-        .select('student_id, student:profiles!student_teacher_assignments_student_id_fkey(id, full_name)')
+        .select('student_id, requires_planning, student:profiles!student_teacher_assignments_student_id_fkey(id, full_name)')
         .eq('teacher_id', user.id)
         .eq('status', 'active');
 
