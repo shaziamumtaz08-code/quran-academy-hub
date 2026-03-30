@@ -69,6 +69,7 @@ interface StudentProfile {
   gender: string | null;
   country: string | null;
   city: string | null;
+  registration_id: string | null;
 }
 
 interface MonthlyPlan {
@@ -94,7 +95,7 @@ export function StudentDetailDrawer({
       if (!student?.id) return null;
       const { data, error } = await supabase
         .from('profiles')
-        .select('age, gender, country, city')
+        .select('age, gender, country, city, registration_id')
         .eq('id', student.id)
         .single();
       
@@ -197,6 +198,11 @@ export function StudentDetailDrawer({
             <User className="h-5 w-5 text-primary" />
             {student.full_name}
           </SheetTitle>
+          {profile?.registration_id && (
+            <Badge variant="outline" className="w-fit text-xs font-mono mt-1">
+              {profile.registration_id}
+            </Badge>
+          )}
         </SheetHeader>
 
         {isLoading ? (

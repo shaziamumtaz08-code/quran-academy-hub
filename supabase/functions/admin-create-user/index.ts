@@ -26,6 +26,18 @@ const ALLOWED_ROLES: AppRole[] = [
   "parent",
 ];
 
+const ROLE_CODE_MAP: Record<AppRole, string> = {
+  super_admin: "SA",
+  admin: "ADM",
+  admin_admissions: "ADA",
+  admin_fees: "ADF",
+  admin_academic: "ADC",
+  teacher: "TCH",
+  student: "STU",
+  parent: "PAR",
+  examiner: "EXM",
+};
+
 // Input validation functions
 function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -33,7 +45,6 @@ function isValidEmail(email: string): boolean {
 }
 
 function isValidPassword(password: string): boolean {
-  // At least 8 chars, max 100
   return password.length >= 8 && password.length <= 100;
 }
 
@@ -44,24 +55,21 @@ function isValidFullName(name: string): boolean {
 function isValidWhatsApp(phone: string | null | undefined): boolean {
   if (!phone || phone.trim() === "") return true;
   const digits = phone.replace(/\D/g, "");
-  if (!digits) return true; // treat "N/A" etc as empty since phone is optional
+  if (!digits) return true;
   return digits.length >= 7 && digits.length <= 20;
 }
 
-
-
 function isValidAge(age: number | null): boolean {
-  if (age === null) return true; // nullable
+  if (age === null) return true;
   return Number.isInteger(age) && age >= 3 && age <= 120;
 }
 
 function isValidGender(gender: string | null): boolean {
-  if (!gender) return true; // nullable
+  if (!gender) return true;
   return ['male', 'female'].includes(gender);
 }
 
 function sanitizeString(str: string): string {
-  // Remove potentially dangerous characters
   return str.replace(/[<>]/g, '');
 }
 
@@ -71,6 +79,127 @@ function json(status: number, body: unknown, requestOrigin?: string | null) {
     status,
     headers: { ...headers, "Content-Type": "application/json" },
   });
+}
+
+/** Generate registration ID using the DB function */
+async function generateRegId(
+  adminClient: ReturnType<typeof createClient>,
+  branchId: string | null,
+  role: AppRole
+): Promise<string | null> {
+  if (!branchId) return null;
+
+  try {
+    // Get org code and branch code
+    const { data: branch } = await adminClient
+      .from("branches")
+      .select("code, org_id")
+      .eq("id", branchId)
+      .maybeSingle();
+
+    if (!branch?.code) return null;
+
+    let orgCode = "ORG";
+    if (branch.org_id) {
+      const { data: org } = await adminClient
+        .from("organizations")
+        .select("code")
+        .eq("id", branch.org_id)
+        .maybeSingle();
+      if (org?.code) orgCode = org.code;
+    }
+
+    const roleCode = ROLE_CODE_MAP[role] || "USR";
+
+    const { data: regId, error } = await adminClient.rpc("generate_registration_id", {
+      _org_code: orgCode,
+      _branch_code: branch.code,
+      _role_code: roleCode,
+    });
+
+    if (error) {
+      console.error("Error generating registration ID:", error.message);
+      return null;
+    }
+
+    return regId as string;
+  } catch (e) {
+    console.error("Registration ID generation failed:", e);
+    return null;
+  }
+}
+
+/** Auto-link student to parent */
+async function linkStudentToParent(
+  adminClient: ReturnType<typeof createClient>,
+  studentId: string,
+  parentId: string | null,
+  email: string,
+  forceNewProfile: boolean
+): Promise<void> {
+  try {
+    if (parentId) {
+      // Explicit parent link
+      await adminClient.from("student_parent_links").upsert(
+        { student_id: studentId, parent_id: parentId },
+        { onConflict: "student_id,parent_id" }
+      );
+      console.log(`Linked student ${studentId} to parent ${parentId}`);
+      return;
+    }
+
+    // Auto-detect: find parent for siblings sharing the same email
+    if (forceNewProfile && email) {
+      // Find other profiles with the same email
+      const { data: sameEmailProfiles } = await adminClient
+        .from("profiles")
+        .select("id")
+        .eq("email", email)
+        .neq("id", studentId);
+
+      if (sameEmailProfiles && sameEmailProfiles.length > 0) {
+        const siblingIds = sameEmailProfiles.map(p => p.id);
+
+        // Check if any sibling is already linked to a parent
+        const { data: existingLinks } = await adminClient
+          .from("student_parent_links")
+          .select("parent_id")
+          .in("student_id", siblingIds)
+          .limit(1);
+
+        if (existingLinks && existingLinks.length > 0) {
+          const detectedParentId = existingLinks[0].parent_id;
+          await adminClient.from("student_parent_links").upsert(
+            { student_id: studentId, parent_id: detectedParentId },
+            { onConflict: "student_id,parent_id" }
+          );
+          console.log(`Auto-linked sibling ${studentId} to parent ${detectedParentId}`);
+          return;
+        }
+
+        // Check if any profile with same email has parent role
+        for (const p of sameEmailProfiles) {
+          const { data: parentRole } = await adminClient
+            .from("user_roles")
+            .select("id")
+            .eq("user_id", p.id)
+            .eq("role", "parent")
+            .maybeSingle();
+
+          if (parentRole) {
+            await adminClient.from("student_parent_links").upsert(
+              { student_id: studentId, parent_id: p.id },
+              { onConflict: "student_id,parent_id" }
+            );
+            console.log(`Auto-linked student ${studentId} to parent-role profile ${p.id}`);
+            return;
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Parent linking failed (non-fatal):", e);
+  }
 }
 
 serve(async (req) => {
@@ -100,7 +229,6 @@ serve(async (req) => {
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
     if (!token) return json(401, { error: "Authentication required" }, requestOrigin);
 
-    // Validate caller session
     const authedClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -115,7 +243,6 @@ serve(async (req) => {
       return json(401, { error: "Invalid session" }, requestOrigin);
     }
 
-    // Use service role for privileged actions
     const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     // Authorization: only super_admin can create users
@@ -149,8 +276,9 @@ serve(async (req) => {
     const age = body?.age !== undefined && body?.age !== null && typeof body.age === 'number' ? body.age : null;
     const country = body?.country ? sanitizeString(String(body.country).trim()) : 'Pakistan';
     const city = body?.city ? sanitizeString(String(body.city).trim()) : 'Karachi';
-    // forceNewProfile: when true, always create a new profile even if email exists (for siblings)
     const forceNewProfile = body?.forceNewProfile === true;
+    const branchId = body?.branch_id ? String(body.branch_id).trim() : null;
+    const parentId = body?.parent_id ? String(body.parent_id).trim() : null;
 
     // Resolve timezone from city/country using timezone_mappings
     let resolvedTimezone: string | null = null;
@@ -163,7 +291,6 @@ serve(async (req) => {
         .maybeSingle();
       resolvedTimezone = tzMapping?.timezone || null;
     }
-    // Fallback: country-level defaults
     if (!resolvedTimezone) {
       const countryLower = country.toLowerCase();
       if (countryLower === 'pakistan') resolvedTimezone = 'Asia/Karachi';
@@ -179,44 +306,23 @@ serve(async (req) => {
     // Validate all inputs
     const validationErrors: string[] = [];
 
-    if (!email) {
-      validationErrors.push("Email is required");
-    } else if (!isValidEmail(email)) {
-      validationErrors.push("Invalid email format");
-    }
+    if (!email) validationErrors.push("Email is required");
+    else if (!isValidEmail(email)) validationErrors.push("Invalid email format");
 
-    if (!fullName) {
-      validationErrors.push("Full name is required");
-    } else if (!isValidFullName(fullName)) {
-      validationErrors.push("Full name must be 2-100 characters");
-    }
+    if (!fullName) validationErrors.push("Full name is required");
+    else if (!isValidFullName(fullName)) validationErrors.push("Full name must be 2-100 characters");
 
-    if (!ALLOWED_ROLES.includes(role)) {
-      validationErrors.push("Invalid role specified");
-    }
-
-    if (!isValidWhatsApp(whatsapp)) {
-      validationErrors.push("Invalid phone number format");
-    }
-
-    if (!isValidGender(gender)) {
-      validationErrors.push("Invalid gender value");
-    }
-
-    if (!isValidAge(age)) {
-      validationErrors.push("Age must be between 3 and 120");
-    }
+    if (!ALLOWED_ROLES.includes(role)) validationErrors.push("Invalid role specified");
+    if (!isValidWhatsApp(whatsapp)) validationErrors.push("Invalid phone number format");
+    if (!isValidGender(gender)) validationErrors.push("Invalid gender value");
+    if (!isValidAge(age)) validationErrors.push("Age must be between 3 and 120");
 
     if (validationErrors.length > 0) {
       return json(400, { error: validationErrors.join(", ") }, requestOrigin);
     }
 
-    // Check if user with this email already exists using direct lookup
-    // Note: listUsers() has pagination limits, so we try to create first and handle the error
+    // Check if user with this email already exists (skip if forceNewProfile)
     let existingUser = null;
-    
-    // Try to find existing user by searching in profiles table first
-    // Skip this check if forceNewProfile is true (creating a sibling)
     if (!forceNewProfile) {
       const { data: existingProfile } = await adminClient
         .from("profiles")
@@ -230,10 +336,8 @@ serve(async (req) => {
     }
 
     if (existingUser && !forceNewProfile) {
-      // User exists - just add the new role if not already assigned
       const existingUserId = existingUser.id;
 
-      // Check if user already has this role
       const { data: existingRole } = await adminClient
         .from("user_roles")
         .select("id")
@@ -242,7 +346,6 @@ serve(async (req) => {
         .maybeSingle();
 
       if (existingRole) {
-        // Return success - user already exists with this role, no action needed
         return json(200, {
           userId: existingUserId,
           email,
@@ -253,7 +356,6 @@ serve(async (req) => {
         }, requestOrigin);
       }
 
-      // Add the new role
       const { error: roleErr } = await adminClient.from("user_roles").insert({
         user_id: existingUserId,
         role,
@@ -264,8 +366,12 @@ serve(async (req) => {
         return json(500, { error: "Failed to assign role" }, requestOrigin);
       }
 
-      console.log(`Added role ${role} to existing user ${email}`);
+      // Link student to parent if applicable
+      if (role === "student") {
+        await linkStudentToParent(adminClient, existingUserId, parentId, email, false);
+      }
 
+      console.log(`Added role ${role} to existing user ${email}`);
       return json(200, {
         userId: existingUserId,
         email,
@@ -275,12 +381,8 @@ serve(async (req) => {
       }, requestOrigin);
     }
 
-    // If forceNewProfile is true (sibling), create a new profile with unique ID
-    // The new profile will share the same email but have its own identity
-
-    // For sibling creation (forceNewProfile), we need special handling
+    // Sibling creation (forceNewProfile)
     if (forceNewProfile) {
-      // Check if auth user already exists for this email
       const { data: authUsers } = await adminClient.auth.admin.listUsers({ 
         page: 1, 
         perPage: 1000 
@@ -289,10 +391,11 @@ serve(async (req) => {
       const existingAuthUser = authUsers?.users?.find(u => u.email?.toLowerCase() === email);
       
       if (existingAuthUser) {
-        // Auth user exists - create an ORPHAN profile (not linked to auth.users)
-        // This profile shares the email for contact but has its own identity
         const newProfileId = crypto.randomUUID();
         
+        // Generate registration ID for sibling
+        const registrationId = await generateRegId(adminClient, branchId, role);
+
         const { error: profileErr } = await adminClient.from("profiles").insert({
           id: newProfileId,
           email,
@@ -303,6 +406,7 @@ serve(async (req) => {
           country,
           city,
           timezone: resolvedTimezone,
+          registration_id: registrationId,
         });
 
         if (profileErr) {
@@ -310,7 +414,6 @@ serve(async (req) => {
           return json(500, { error: "Failed to create sibling profile" }, requestOrigin);
         }
         
-        // Add the role to the new profile
         const { error: roleErr } = await adminClient.from("user_roles").insert({
           user_id: newProfileId,
           role,
@@ -321,6 +424,11 @@ serve(async (req) => {
           return json(500, { error: "Sibling profile created but role assignment failed" }, requestOrigin);
         }
 
+        // Auto-link student sibling to parent
+        if (role === "student") {
+          await linkStudentToParent(adminClient, newProfileId, parentId, email, true);
+        }
+
         console.log(`Created sibling profile for ${fullName} (${email}) with role ${role}, profile ID: ${newProfileId}`);
 
         return json(200, {
@@ -328,6 +436,7 @@ serve(async (req) => {
           email,
           full_name: fullName,
           role,
+          registration_id: registrationId,
           whatsapp_number: whatsapp,
           gender,
           age,
@@ -338,7 +447,6 @@ serve(async (req) => {
           isSiblingProfile: true,
         }, requestOrigin);
       }
-      // If no existing auth user, fall through to create new user normally
     }
 
     // User doesn't exist - create new user (requires password)
@@ -358,11 +466,9 @@ serve(async (req) => {
     });
 
     if (createErr || !created.user) {
-      // Handle the case where user exists in auth but not in profiles
       if (createErr?.message?.includes("already been registered")) {
         console.log("User exists in auth but not in profiles, attempting to find and add role");
         
-        // List users with pagination to find this user
         const { data: authUsers } = await adminClient.auth.admin.listUsers({ 
           page: 1, 
           perPage: 1000 
@@ -371,7 +477,8 @@ serve(async (req) => {
         const authUser = authUsers?.users?.find(u => u.email?.toLowerCase() === email);
         
         if (authUser) {
-          // Always ensure profile exists first
+          const registrationId = await generateRegId(adminClient, branchId, role);
+
           const { error: profileUpsertErr } = await adminClient.from("profiles").upsert({
             id: authUser.id,
             email,
@@ -382,16 +489,14 @@ serve(async (req) => {
             country,
             city,
             timezone: resolvedTimezone,
+            registration_id: registrationId,
           }, { onConflict: "id" });
 
           if (profileUpsertErr) {
             console.error("Error upserting profile for existing auth user:", profileUpsertErr.message);
             return json(500, { error: "Failed to create/update profile" }, requestOrigin);
           }
-          
-          console.log(`Profile upserted for auth user ${email}`);
 
-          // Check if user already has this role
           const { data: existingRole } = await adminClient
             .from("user_roles")
             .select("id")
@@ -400,19 +505,17 @@ serve(async (req) => {
             .maybeSingle();
 
           if (existingRole) {
-            console.log(`User ${email} already has role ${role}`);
-            // Return success - user already exists with this role
             return json(200, {
               userId: authUser.id,
               email,
               role,
+              registration_id: registrationId,
               message: `User already exists with the ${role} role`,
               roleAdded: false,
               alreadyExists: true,
             }, requestOrigin);
           }
 
-          // Add the new role
           const { error: roleErr } = await adminClient.from("user_roles").insert({
             user_id: authUser.id,
             role,
@@ -423,11 +526,16 @@ serve(async (req) => {
             return json(500, { error: "Failed to assign role" }, requestOrigin);
           }
 
+          if (role === "student") {
+            await linkStudentToParent(adminClient, authUser.id, parentId, email, false);
+          }
+
           console.log(`Added role ${role} to existing auth user ${email}`);
           return json(200, {
             userId: authUser.id,
             email,
             role,
+            registration_id: registrationId,
             message: `Role '${role}' added to existing user`,
             roleAdded: true,
           }, requestOrigin);
@@ -440,7 +548,9 @@ serve(async (req) => {
 
     const newUserId = created.user.id;
 
-    // Create/Update profile with additional fields
+    // Generate registration ID
+    const registrationId = await generateRegId(adminClient, branchId, role);
+
     const { error: profileErr } = await adminClient.from("profiles").upsert(
       {
         id: newUserId,
@@ -452,6 +562,7 @@ serve(async (req) => {
         country,
         city,
         timezone: resolvedTimezone,
+        registration_id: registrationId,
       },
       { onConflict: "id" },
     );
@@ -461,7 +572,6 @@ serve(async (req) => {
       return json(500, { error: "User created but profile setup failed" }, requestOrigin);
     }
 
-    // Add the role
     const { error: roleErr } = await adminClient.from("user_roles").insert({
       user_id: newUserId,
       role,
@@ -472,13 +582,19 @@ serve(async (req) => {
       return json(500, { error: "User created but role assignment failed" }, requestOrigin);
     }
 
-    console.log(`Created new user ${email} with role ${role}`);
+    // Link student to parent if applicable
+    if (role === "student") {
+      await linkStudentToParent(adminClient, newUserId, parentId, email, forceNewProfile);
+    }
+
+    console.log(`Created new user ${email} with role ${role}, reg ID: ${registrationId}`);
 
     return json(200, {
       userId: newUserId,
       email,
       full_name: fullName,
       role,
+      registration_id: registrationId,
       whatsapp_number: whatsapp,
       gender,
       age,

@@ -271,6 +271,7 @@ export type Database = {
       branches: {
         Row: {
           address: string | null
+          code: string | null
           created_at: string
           id: string
           is_active: boolean
@@ -282,6 +283,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          code?: string | null
           created_at?: string
           id?: string
           is_active?: boolean
@@ -293,6 +295,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          code?: string | null
           created_at?: string
           id?: string
           is_active?: boolean
@@ -1726,6 +1729,7 @@ export type Database = {
       }
       organizations: {
         Row: {
+          code: string | null
           created_at: string
           id: string
           logo_url: string | null
@@ -1735,6 +1739,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          code?: string | null
           created_at?: string
           id?: string
           logo_url?: string | null
@@ -1744,6 +1749,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          code?: string | null
           created_at?: string
           id?: string
           logo_url?: string | null
@@ -1915,6 +1921,7 @@ export type Database = {
           preferred_language: string | null
           preferred_unit: string
           region: string | null
+          registration_id: string | null
           timezone: string | null
           updated_at: string
           whatsapp_number: string | null
@@ -1941,6 +1948,7 @@ export type Database = {
           preferred_language?: string | null
           preferred_unit?: string
           region?: string | null
+          registration_id?: string | null
           timezone?: string | null
           updated_at?: string
           whatsapp_number?: string | null
@@ -1967,6 +1975,7 @@ export type Database = {
           preferred_language?: string | null
           preferred_unit?: string
           region?: string | null
+          registration_id?: string | null
           timezone?: string | null
           updated_at?: string
           whatsapp_number?: string | null
@@ -2023,6 +2032,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      registration_sequences: {
+        Row: {
+          branch_code: string
+          created_at: string
+          id: string
+          next_val: number
+          org_code: string
+          role_code: string
+        }
+        Insert: {
+          branch_code: string
+          created_at?: string
+          id?: string
+          next_val?: number
+          org_code: string
+          role_code: string
+        }
+        Update: {
+          branch_code?: string
+          created_at?: string
+          id?: string
+          next_val?: number
+          org_code?: string
+          role_code?: string
+        }
+        Relationships: []
       }
       resources: {
         Row: {
@@ -3537,6 +3573,10 @@ export type Database = {
       can_view_resource_visibility: {
         Args: { _visibility: string; _visible_to_roles: string[] }
         Returns: boolean
+      }
+      generate_registration_id: {
+        Args: { _branch_code: string; _org_code: string; _role_code: string }
+        Returns: string
       }
       get_and_reserve_license: {
         Args: { _session_id: string; _teacher_id: string }

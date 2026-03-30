@@ -31,10 +31,10 @@ interface StudentCardProps {
     age: number | null;
     gender: string | null;
     timezone?: string;
+    registration_id?: string | null;
   };
   onViewHistory: () => void;
   onViewSchedule: () => void;
-  // Remove the onMarkAttendance prop - we handle it internally now
 }
 
 export function StudentCard({ student, onViewHistory, onViewSchedule }: StudentCardProps) {
@@ -75,6 +75,11 @@ export function StudentCard({ student, onViewHistory, onViewSchedule }: StudentC
               <h3 className="font-semibold text-lg leading-tight truncate text-navy dark:text-sky-light">
                 {student.full_name}
               </h3>
+              {student.registration_id && (
+                <Badge variant="outline" className="text-[10px] h-5 font-mono">
+                  {student.registration_id}
+                </Badge>
+              )}
               {status !== 'active' && (
                 <Badge variant="outline" className={cn("text-[10px] h-5", STATUS_CONFIG[status].badgeClass)}>
                   {STATUS_CONFIG[status].label}

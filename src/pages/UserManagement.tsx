@@ -130,6 +130,7 @@ interface UserWithRoles {
   city: string | null;
   created_at: string;
   archived_at: string | null;
+  registration_id: string | null;
   roles: AppRole[];
   exceptions: Array<{ permission: string; is_granted: boolean }>;
 }
@@ -162,6 +163,8 @@ export default function UserManagement() {
   const [showNewUserPassword, setShowNewUserPassword] = useState(false);
   const [addRoleSelection, setAddRoleSelection] = useState<AppRole>('student');
   const [createAsSibling, setCreateAsSibling] = useState(false); // For creating siblings with shared email
+  const [newUserBranchId, setNewUserBranchId] = useState('');
+  const [newUserParentId, setNewUserParentId] = useState('');
 
   // View/Edit dialog states
   const [isEditMode, setIsEditMode] = useState(false);
@@ -240,6 +243,7 @@ export default function UserManagement() {
             city: profile.city,
             created_at: profile.created_at,
             archived_at: profile.archived_at,
+            registration_id: (profile as any).registration_id ?? null,
             roles: (rolesData || []).map(r => r.role as AppRole),
             exceptions: exceptions || [],
           };
@@ -276,6 +280,40 @@ export default function UserManagement() {
       
       if (error) throw error;
       return data as Array<{ country: string; city: string; timezone: string }>;
+    },
+  });
+
+  // Fetch branches for branch selector in create dialog
+  const { data: branches = [] } = useQuery({
+    queryKey: ['branches-list'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('branches')
+        .select('id, name, code')
+        .eq('is_active', true)
+        .order('name');
+      if (error) throw error;
+      return data as Array<{ id: string; name: string; code: string | null }>;
+    },
+  });
+
+  // Fetch parent-role users for linking
+  const { data: parentUsers = [] } = useQuery({
+    queryKey: ['parent-users-for-linking'],
+    queryFn: async () => {
+      const { data: parentRoles, error } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'parent');
+      if (error || !parentRoles) return [];
+      const parentIds = parentRoles.map(r => r.user_id);
+      if (parentIds.length === 0) return [];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', parentIds)
+        .order('full_name');
+      return (profiles || []) as Array<{ id: string; full_name: string; email: string | null }>;
     },
   });
 
@@ -434,6 +472,8 @@ export default function UserManagement() {
       country,
       city,
       forceNewProfile,
+      branch_id,
+      parent_id,
     }: {
       email: string;
       password: string;
@@ -445,9 +485,11 @@ export default function UserManagement() {
       country?: string;
       city?: string;
       forceNewProfile?: boolean;
+      branch_id?: string;
+      parent_id?: string;
     }) => {
       const { data, error } = await supabase.functions.invoke('admin-create-user', {
-        body: { email, password, fullName, role, whatsapp, gender, age, country, city, forceNewProfile },
+        body: { email, password, fullName, role, whatsapp, gender, age, country, city, forceNewProfile, branch_id, parent_id },
       });
       if (error) throw new Error(error.message || 'Failed to create user');
       if (data?.error) throw new Error(data.error);
@@ -459,6 +501,7 @@ export default function UserManagement() {
         message?: string;
         email?: string;
         role?: AppRole;
+        registration_id?: string;
       };
     },
     onSuccess: (data) => {
@@ -487,6 +530,8 @@ export default function UserManagement() {
       setNewUserCountry('PK');
       setNewUserCity('');
       setCreateAsSibling(false);
+      setNewUserBranchId('');
+      setNewUserParentId('');
       setIsCreateDialogOpen(false);
     },
     onError: (error) => {
@@ -872,6 +917,43 @@ export default function UserManagement() {
                           className="h-9"
                         />
                       </div>
+                      {/* Branch selector for registration ID */}
+                      <div className="space-y-1.5">
+                        <Label htmlFor="branch" className="text-xs">Branch (for ID generation)</Label>
+                        <Select value={newUserBranchId} onValueChange={setNewUserBranchId}>
+                          <SelectTrigger className="h-9">
+                            <SelectValue placeholder="Select branch" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {branches.map((b) => (
+                              <SelectItem key={b.id} value={b.id}>
+                                {b.name} {b.code ? `(${b.code})` : ''}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Parent linker - only show when role is student */}
+                      {(newUserRole === 'student') && (
+                        <div className="space-y-1.5">
+                          <Label htmlFor="parentLink" className="text-xs">Link to Parent</Label>
+                          <Select value={newUserParentId} onValueChange={setNewUserParentId}>
+                            <SelectTrigger className="h-9">
+                              <SelectValue placeholder="Select parent (optional)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">None</SelectItem>
+                              {parentUsers.map((p) => (
+                                <SelectItem key={p.id} value={p.id}>
+                                  {p.full_name} ({p.email})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
                       {/* Create new profile checkbox - for different people sharing an email */}
                       <div className="flex items-center space-x-2 pt-4 col-span-full">
                         <Checkbox
@@ -926,6 +1008,8 @@ export default function UserManagement() {
                             country: newUserCountry ? getCountryName(newUserCountry) : undefined,
                             city: newUserCity || undefined,
                             forceNewProfile: createAsSibling || undefined,
+                            branch_id: newUserBranchId || undefined,
+                            parent_id: newUserParentId || undefined,
                           });
                         }}
                       >
@@ -1086,6 +1170,7 @@ export default function UserManagement() {
                             {getSortIcon('name')}
                           </div>
                         </TableHead>
+                        <TableHead>Reg ID</TableHead>
                         <TableHead>WhatsApp</TableHead>
                         <TableHead 
                           className="cursor-pointer select-none hover:bg-muted/50"
@@ -1141,7 +1226,14 @@ export default function UserManagement() {
                               {user.archived_at && (
                                 <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-200">Archived</Badge>
                               )}
-                            </div>
+                          </div>
+                          </TableCell>
+                          <TableCell>
+                            {user.registration_id ? (
+                              <Badge variant="outline" className="text-xs font-mono">{user.registration_id}</Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">—</span>
+                            )}
                           </TableCell>
                           <TableCell>
                             {user.whatsapp_number ? (
