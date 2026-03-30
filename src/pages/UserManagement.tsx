@@ -472,6 +472,8 @@ export default function UserManagement() {
       country,
       city,
       forceNewProfile,
+      branch_id,
+      parent_id,
     }: {
       email: string;
       password: string;
@@ -483,9 +485,11 @@ export default function UserManagement() {
       country?: string;
       city?: string;
       forceNewProfile?: boolean;
+      branch_id?: string;
+      parent_id?: string;
     }) => {
       const { data, error } = await supabase.functions.invoke('admin-create-user', {
-        body: { email, password, fullName, role, whatsapp, gender, age, country, city, forceNewProfile },
+        body: { email, password, fullName, role, whatsapp, gender, age, country, city, forceNewProfile, branch_id, parent_id },
       });
       if (error) throw new Error(error.message || 'Failed to create user');
       if (data?.error) throw new Error(data.error);
@@ -497,6 +501,7 @@ export default function UserManagement() {
         message?: string;
         email?: string;
         role?: AppRole;
+        registration_id?: string;
       };
     },
     onSuccess: (data) => {
