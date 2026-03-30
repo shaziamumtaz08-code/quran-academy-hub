@@ -123,11 +123,11 @@ export default function Assignments() {
       if (studentIds.length === 0) return [];
       const { data: profiles, error: profileError } = await supabase
         .from('profiles')
-        .select('id, full_name')
+        .select('id, full_name, registration_id, email')
         .in('id', studentIds)
         .order('full_name', { ascending: true });
       if (profileError) throw profileError;
-      return (profiles ?? []) as Profile[];
+      return (profiles ?? []) as (Profile & { registration_id?: string; email?: string })[];
     },
   });
 
