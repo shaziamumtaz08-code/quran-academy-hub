@@ -118,12 +118,15 @@ export default function Courses() {
 
   // ─── Queries ──────────────────────────────────────────
   const { data: courses = [], isLoading } = useQuery({
-    queryKey: ['courses'],
+    queryKey: ['courses', activeDivision?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from('courses')
         .select('*, teacher:profiles!courses_teacher_id_fkey(full_name), subject:subjects!courses_subject_id_fkey(name)')
         .order('created_at', { ascending: false });
+      if (activeDivision?.id) q = q.eq('division_id', activeDivision.id);
+      if (activeBranch?.id) q = q.eq('branch_id', activeBranch.id);
+      const { data, error } = await q;
       if (error) throw error;
 
       const { data: enrollments } = await supabase
