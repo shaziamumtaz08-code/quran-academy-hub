@@ -385,13 +385,15 @@ export function useMissingAttendanceCount(
         .from('schedules')
         .select(`
           day_of_week,
-          student_teacher_assignments!inner (
-            student_id,
-            status
-          )
-        `)
-        .eq('is_active', true)
-        .eq('student_teacher_assignments.status', 'active');
+            student_teacher_assignments!inner (
+              student_id,
+              status,
+              requires_attendance
+            )
+          `)
+          .eq('is_active', true)
+          .eq('student_teacher_assignments.status', 'active')
+          .eq('student_teacher_assignments.requires_attendance', true);
 
       if (error) throw error;
       return data;
