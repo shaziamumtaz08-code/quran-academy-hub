@@ -230,6 +230,7 @@ export default function Courses() {
   // ─── Mutations ────────────────────────────────────────
   const createCourse = useMutation({
     mutationFn: async () => {
+      console.log('[Courses] CREATE MUTATION FIRED', { formName, formTeacherId, activeBranch: activeBranch?.id, activeDivision: activeDivision?.id, profileId: profile?.id });
       let branchId = activeBranch?.id ?? null;
       let divisionId = activeDivision?.id ?? null;
 
@@ -265,7 +266,11 @@ export default function Courses() {
       }
 
       const { error } = await supabase.from('courses').insert(payload);
-      if (error) throw error;
+      if (error) {
+        console.error('[Courses] INSERT ERROR:', error);
+        throw error;
+      }
+      console.log('[Courses] INSERT SUCCESS');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['courses'] });
