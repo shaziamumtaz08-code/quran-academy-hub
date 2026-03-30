@@ -163,6 +163,8 @@ export default function UserManagement() {
   const [showNewUserPassword, setShowNewUserPassword] = useState(false);
   const [addRoleSelection, setAddRoleSelection] = useState<AppRole>('student');
   const [createAsSibling, setCreateAsSibling] = useState(false); // For creating siblings with shared email
+  const [newUserBranchId, setNewUserBranchId] = useState('');
+  const [newUserParentId, setNewUserParentId] = useState('');
 
   // View/Edit dialog states
   const [isEditMode, setIsEditMode] = useState(false);
