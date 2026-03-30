@@ -16,6 +16,7 @@ interface CreateTicketDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultCategory?: string;
+  onCreated?: () => void;
 }
 
 const CATEGORIES = [
@@ -27,7 +28,7 @@ const CATEGORIES = [
   { value: 'general', label: 'General' },
 ];
 
-export function CreateTicketDialog({ open, onOpenChange, defaultCategory }: CreateTicketDialogProps) {
+export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCreated }: CreateTicketDialogProps) {
   const { profile } = useAuth();
   const { activeDivision, activeBranch } = useDivision();
   const queryClient = useQueryClient();
@@ -120,6 +121,7 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory }: Crea
       queryClient.invalidateQueries({ queryKey: ['workhub-tab-counts'] });
       resetForm();
       onOpenChange(false);
+      onCreated?.();
     },
     onError: (err: any) => toast.error(err.message || 'Failed to create ticket'),
   });
