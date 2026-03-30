@@ -594,11 +594,20 @@ export default function CourseBuilder() {
               <TabsTrigger value="builder" className="gap-1.5 text-xs sm:text-sm">
                 <BookOpen className="h-4 w-4" /><span className="hidden sm:inline">Builder</span>
               </TabsTrigger>
+              <TabsTrigger value="website" className="gap-1.5 text-xs sm:text-sm">
+                <ExternalLink className="h-4 w-4" /><span className="hidden sm:inline">Website</span>
+              </TabsTrigger>
+              <TabsTrigger value="marketing" className="gap-1.5 text-xs sm:text-sm">
+                <Sparkles className="h-4 w-4" /><span className="hidden sm:inline">Marketing</span>
+              </TabsTrigger>
+              <TabsTrigger value="community" className="gap-1.5 text-xs sm:text-sm">
+                <Users className="h-4 w-4" /><span className="hidden sm:inline">Community</span>
+              </TabsTrigger>
               <TabsTrigger value="settings" className="gap-1.5 text-xs sm:text-sm">
                 <Settings className="h-4 w-4" /><span className="hidden sm:inline">Settings</span>
               </TabsTrigger>
               <TabsTrigger value="roster" className="gap-1.5 text-xs sm:text-sm">
-                <Users className="h-4 w-4" /><span className="hidden sm:inline">Roster & Bulk Add</span>
+                <Users className="h-4 w-4" /><span className="hidden sm:inline">Roster</span>
               </TabsTrigger>
             </TabsList>
           </div>
