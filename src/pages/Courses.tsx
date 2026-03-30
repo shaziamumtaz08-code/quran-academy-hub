@@ -147,16 +147,21 @@ export default function Courses() {
   });
 
   const { data: teachers = [] } = useQuery({
-    queryKey: ['teachers-list'],
+    queryKey: ['teachers-for-courses'],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data: roleRows } = await supabase
         .from('user_roles')
-        .select('user_id, profiles:user_id(id, full_name)')
+        .select('user_id')
         .eq('role', 'teacher');
-      return (data || []).map((r: any) => ({
-        id: r.profiles?.id,
-        full_name: r.profiles?.full_name,
-      })).filter((t: any) => t.id);
+      if (!roleRows?.length) return [];
+      const userIds = roleRows.map((r: any) => r.user_id);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', userIds)
+        .is('archived_at', null)
+        .order('full_name');
+      return profiles || [];
     },
   });
 

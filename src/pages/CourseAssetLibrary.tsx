@@ -194,25 +194,7 @@ export default function CourseAssetLibrary() {
     },
   });
 
-  // Seed sample if empty
-  useQuery({
-    queryKey: ['course-assets-seed'],
-    enabled: !isLoading && assets.length === 0,
-    queryFn: async () => {
-      const { error } = await supabase.from('course_assets').insert({
-        name: SAMPLE_ASSET.name,
-        subject: SAMPLE_ASSET.subject,
-        level: SAMPLE_ASSET.level,
-        ad_creative: SAMPLE_ASSET.ad_creative as any,
-        support_messages: SAMPLE_ASSET.support_messages as any,
-        syllabus: SAMPLE_ASSET.syllabus,
-        runs: SAMPLE_ASSET.runs as any,
-      });
-      if (!error) queryClient.invalidateQueries({ queryKey: ['course-assets'] });
-      return null;
-    },
-    retry: false,
-  });
+  // Auto-seed removed — assets are created manually via the form
 
   // ─── Mutations ──────────────────────────────────────
   const saveMutation = useMutation({

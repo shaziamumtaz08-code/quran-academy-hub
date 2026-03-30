@@ -162,7 +162,7 @@ export default function WorkHub() {
         </Tabs>
       </div>
 
-      <CreateTicketDialog open={createOpen} onOpenChange={(v) => { setCreateOpen(v); if (!v) setDefaultCategory(undefined); }} defaultCategory={defaultCategory} />
+      <CreateTicketDialog open={createOpen} onOpenChange={(v) => { setCreateOpen(v); if (!v) setDefaultCategory(undefined); }} defaultCategory={defaultCategory} onCreated={() => setActiveTab('sent')} />
       <SubcategoryManager open={manageSubcatsOpen} onOpenChange={setManageSubcatsOpen} />
     </DashboardLayout>
   );

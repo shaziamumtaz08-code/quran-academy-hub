@@ -121,6 +121,7 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCrea
       queryClient.invalidateQueries({ queryKey: ['workhub-tab-counts'] });
       resetForm();
       onOpenChange(false);
+      onCreated?.();
     },
     onError: (err: any) => toast.error(err.message || 'Failed to create ticket'),
   });
