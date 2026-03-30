@@ -47,7 +47,7 @@ export function PlanReminderBanner() {
 
       const filledIds = new Set((plans || []).map(p => p.student_id));
 
-      return assignments
+      return trackableAssignments
         .filter(a => {
           const sid = (a.student as any)?.id;
           return sid && !filledIds.has(sid);
