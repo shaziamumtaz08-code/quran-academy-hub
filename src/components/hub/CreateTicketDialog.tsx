@@ -16,6 +16,7 @@ interface CreateTicketDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultCategory?: string;
+  onCreated?: () => void;
 }
 
 const CATEGORIES = [
