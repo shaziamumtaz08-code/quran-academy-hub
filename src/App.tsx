@@ -201,6 +201,22 @@ function LoginRedirect() {
   return <Login />;
 }
 
+/** Wraps Dashboard in DashboardLayout for non-teacher roles; teachers get their own standalone layout */
+function DashboardWrapper() {
+  const { activeRole } = useAuth();
+  const isStandaloneRole = activeRole === 'teacher' || activeRole === 'student' || activeRole === 'parent';
+  
+  if (isStandaloneRole) {
+    return <ErrorBoundary><Dashboard /></ErrorBoundary>;
+  }
+  
+  return (
+    <DashboardLayout>
+      <ErrorBoundary><Dashboard /></ErrorBoundary>
+    </DashboardLayout>
+  );
+}
+
 function AppRoutes() {
   const { isAuthenticated, activeRole } = useAuth();
   
@@ -242,7 +258,7 @@ function AppRoutes() {
       <Route path="/teacher" element={<ProtectedRoute><TeacherRoute><TeacherNazraDashboard /></TeacherRoute></ProtectedRoute>} />
       
       {/* General Protected Routes */}
-      <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout><ErrorBoundary><Dashboard /></ErrorBoundary></DashboardLayout></ProtectedRoute>} />
+      <Route path="/dashboard" element={<ProtectedRoute><DashboardWrapper /></ProtectedRoute>} />
       <Route path="/user-management" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
       <Route path="/assignments" element={<ProtectedRoute><Assignments /></ProtectedRoute>} />
       <Route path="/subjects" element={<ProtectedRoute><Subjects /></ProtectedRoute>} />
