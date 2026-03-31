@@ -212,7 +212,7 @@ function AppRoutes() {
       return '/admin';
     }
     if (activeRole === 'teacher' || activeRole === 'examiner') {
-      return '/teacher';
+      return '/dashboard';
     }
     return '/dashboard';
   };
