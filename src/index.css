@@ -443,6 +443,25 @@
   }
 }
 
+/* Mobile: always show horizontal scrollbar on tables */
+@media (max-width: 767px) {
+  .relative.w-full.overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+    overflow-x: scroll;
+  }
+  .relative.w-full.overflow-x-auto::-webkit-scrollbar {
+    height: 6px;
+    display: block;
+  }
+  .relative.w-full.overflow-x-auto::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 3px;
+  }
+  .relative.w-full.overflow-x-auto::-webkit-scrollbar-track {
+    background: hsl(var(--muted) / 0.5);
+  }
+}
+
 /* Print styles for Salary Sheet */
 @media print {
   body * { visibility: hidden; }
