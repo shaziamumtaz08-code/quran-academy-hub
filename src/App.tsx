@@ -242,7 +242,7 @@ function AppRoutes() {
       <Route path="/teacher" element={<ProtectedRoute><TeacherRoute><TeacherNazraDashboard /></TeacherRoute></ProtectedRoute>} />
       
       {/* General Protected Routes */}
-      <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout><ErrorBoundary><Dashboard /></ErrorBoundary></DashboardLayout></ProtectedRoute>} />
+      <Route path="/dashboard" element={<ProtectedRoute><DashboardWrapper /></ProtectedRoute>} />
       <Route path="/user-management" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
       <Route path="/assignments" element={<ProtectedRoute><Assignments /></ProtectedRoute>} />
       <Route path="/subjects" element={<ProtectedRoute><Subjects /></ProtectedRoute>} />
