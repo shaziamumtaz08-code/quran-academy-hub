@@ -191,7 +191,7 @@ function LoginRedirect() {
     if (!activeRole) return '/dashboard';
     if (activeRole === 'super_admin') return '/select-division';
     if (activeRole === 'admin' || activeRole?.startsWith('admin_')) return '/admin';
-    if (activeRole === 'teacher' || activeRole === 'examiner') return '/teacher';
+    if (activeRole === 'teacher' || activeRole === 'examiner') return '/dashboard';
     return '/dashboard';
   };
 
@@ -212,7 +212,7 @@ function AppRoutes() {
       return '/admin';
     }
     if (activeRole === 'teacher' || activeRole === 'examiner') {
-      return '/teacher';
+      return '/dashboard';
     }
     return '/dashboard';
   };
