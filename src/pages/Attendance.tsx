@@ -1126,14 +1126,15 @@ export default function Attendance() {
         )}
 
         {/* Table - show main records or missing records based on filter */}
-        {showMissing && isAdmin ? (
+        {showMissing ? (
           <MissingAttendanceSection
             monthFilter={monthFilter}
             dateMode={dateMode}
             dateFrom={dateFrom}
             dateTo={dateTo}
             isVisible={true}
-            onClose={() => setShowMissing(false)}
+            onClose={() => { setShowMissing(false); searchParams.delete('filter'); setSearchParams(searchParams); }}
+            teacherId={isTeacher ? user?.id : undefined}
           />
         ) : (
         <Card>
