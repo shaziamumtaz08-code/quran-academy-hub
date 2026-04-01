@@ -24,6 +24,9 @@ interface MissingRecord {
   scheduledTime: string;
 }
 
+// Bypass cutoff: only count missing from April 2026 onwards
+const BYPASS_CUTOFF = '2026-04-01';
+
 interface MissingAttendanceSectionProps {
   monthFilter: string;
   dateMode: 'month' | 'dateRange';
@@ -31,6 +34,7 @@ interface MissingAttendanceSectionProps {
   dateTo: string;
   isVisible: boolean;
   onClose: () => void;
+  teacherId?: string;
 }
 
 export function MissingAttendanceSection({
@@ -40,6 +44,7 @@ export function MissingAttendanceSection({
   dateTo,
   isVisible,
   onClose,
+  teacherId,
 }: MissingAttendanceSectionProps) {
   const [studentFilter, setStudentFilter] = useState('all');
   const [teacherFilter, setTeacherFilter] = useState('all');
