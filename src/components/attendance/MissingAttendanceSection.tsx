@@ -24,6 +24,9 @@ interface MissingRecord {
   scheduledTime: string;
 }
 
+// Bypass cutoff: only count missing from April 2026 onwards
+const BYPASS_CUTOFF = '2026-04-01';
+
 interface MissingAttendanceSectionProps {
   monthFilter: string;
   dateMode: 'month' | 'dateRange';
@@ -31,6 +34,7 @@ interface MissingAttendanceSectionProps {
   dateTo: string;
   isVisible: boolean;
   onClose: () => void;
+  teacherId?: string;
 }
 
 export function MissingAttendanceSection({
@@ -40,6 +44,7 @@ export function MissingAttendanceSection({
   dateTo,
   isVisible,
   onClose,
+  teacherId,
 }: MissingAttendanceSectionProps) {
   const [studentFilter, setStudentFilter] = useState('all');
   const [teacherFilter, setTeacherFilter] = useState('all');
@@ -48,23 +53,30 @@ export function MissingAttendanceSection({
   const [sortField, setSortField] = useState<'date' | 'student' | 'teacher' | 'subject' | 'time'>('date');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
-  // Compute date range
+  // Compute date range — enforce bypass cutoff (no missing before April 2026)
   const { startDate, endDate } = useMemo(() => {
+    let sd: string, ed: string;
     if (dateMode === 'dateRange' && dateFrom && dateTo) {
-      return { startDate: dateFrom, endDate: dateTo };
+      sd = dateFrom;
+      ed = dateTo;
+    } else {
+      const monthStart = startOfMonth(parseISO(`${monthFilter}-01`));
+      sd = format(monthStart, 'yyyy-MM-dd');
+      ed = format(endOfMonth(monthStart), 'yyyy-MM-dd');
     }
-    const monthStart = startOfMonth(parseISO(`${monthFilter}-01`));
-    return {
-      startDate: format(monthStart, 'yyyy-MM-dd'),
-      endDate: format(endOfMonth(monthStart), 'yyyy-MM-dd'),
-    };
+    // Enforce bypass: never show missing before April 2026
+    if (sd < BYPASS_CUTOFF) sd = BYPASS_CUTOFF;
+    return { startDate: sd, endDate: ed };
   }, [dateMode, dateFrom, dateTo, monthFilter]);
 
   // Fetch all active schedules with student/teacher info
   const { data: schedules, isLoading: schedulesLoading } = useQuery({
-    queryKey: ['all-schedules-for-missing', startDate, endDate],
+    queryKey: ['all-schedules-for-missing', startDate, endDate, teacherId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // If start is after end (e.g. viewing Jan-Mar which is before cutoff), return empty
+      if (startDate > endDate) return [];
+
+      let query = supabase
         .from('schedules')
         .select(`
           id,
@@ -85,6 +97,11 @@ export function MissingAttendanceSection({
           .eq('student_teacher_assignments.status', 'active')
           .eq('student_teacher_assignments.requires_attendance', true);
 
+      if (teacherId) {
+        query = query.eq('student_teacher_assignments.teacher_id', teacherId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
@@ -93,14 +110,21 @@ export function MissingAttendanceSection({
 
   // Fetch all attendance records in range
   const { data: attendanceRecords, isLoading: attendanceLoading } = useQuery({
-    queryKey: ['attendance-for-missing', startDate, endDate],
+    queryKey: ['attendance-for-missing', startDate, endDate, teacherId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      if (startDate > endDate) return [];
+
+      let query = supabase
         .from('attendance')
         .select('student_id, class_date')
         .gte('class_date', startDate)
         .lte('class_date', endDate);
 
+      if (teacherId) {
+        query = query.eq('teacher_id', teacherId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
@@ -368,14 +392,18 @@ export function useMissingAttendanceCount(
   enabled: boolean
 ) {
   const { startDate, endDate } = useMemo(() => {
+    let sd: string, ed: string;
     if (dateMode === 'dateRange' && dateFrom && dateTo) {
-      return { startDate: dateFrom, endDate: dateTo };
+      sd = dateFrom;
+      ed = dateTo;
+    } else {
+      const monthStart = startOfMonth(parseISO(`${monthFilter}-01`));
+      sd = format(monthStart, 'yyyy-MM-dd');
+      ed = format(endOfMonth(monthStart), 'yyyy-MM-dd');
     }
-    const monthStart = startOfMonth(parseISO(`${monthFilter}-01`));
-    return {
-      startDate: format(monthStart, 'yyyy-MM-dd'),
-      endDate: format(endOfMonth(monthStart), 'yyyy-MM-dd'),
-    };
+    // Enforce bypass: never show missing before April 2026
+    if (sd < BYPASS_CUTOFF) sd = BYPASS_CUTOFF;
+    return { startDate: sd, endDate: ed };
   }, [dateMode, dateFrom, dateTo, monthFilter]);
 
   const { data: schedules } = useQuery({
