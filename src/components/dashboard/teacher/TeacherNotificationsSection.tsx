@@ -76,15 +76,15 @@ export function TeacherNotificationsSection() {
 
       const { data: tickets } = await supabase
         .from('tickets')
-        .select('id, title, description, created_at, category')
-        .or(`assigned_to.eq.${user.id},created_by.eq.${user.id}`)
+        .select('id, subject, description, created_at, category')
+        .or(`assignee_id.eq.${user.id},creator_id.eq.${user.id}`)
         .in('status', ['open', 'in_progress'])
         .order('created_at', { ascending: false })
         .limit(5);
 
       return (tickets || []).map(t => ({
         id: t.id,
-        title: t.title,
+        title: t.subject,
         message: t.description || '',
         created_at: t.created_at,
         category: t.category || 'general',
