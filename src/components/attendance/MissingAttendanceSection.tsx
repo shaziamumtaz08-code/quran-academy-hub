@@ -53,16 +53,20 @@ export function MissingAttendanceSection({
   const [sortField, setSortField] = useState<'date' | 'student' | 'teacher' | 'subject' | 'time'>('date');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
-  // Compute date range
+  // Compute date range — enforce bypass cutoff (no missing before April 2026)
   const { startDate, endDate } = useMemo(() => {
+    let sd: string, ed: string;
     if (dateMode === 'dateRange' && dateFrom && dateTo) {
-      return { startDate: dateFrom, endDate: dateTo };
+      sd = dateFrom;
+      ed = dateTo;
+    } else {
+      const monthStart = startOfMonth(parseISO(`${monthFilter}-01`));
+      sd = format(monthStart, 'yyyy-MM-dd');
+      ed = format(endOfMonth(monthStart), 'yyyy-MM-dd');
     }
-    const monthStart = startOfMonth(parseISO(`${monthFilter}-01`));
-    return {
-      startDate: format(monthStart, 'yyyy-MM-dd'),
-      endDate: format(endOfMonth(monthStart), 'yyyy-MM-dd'),
-    };
+    // Enforce bypass: never show missing before April 2026
+    if (sd < BYPASS_CUTOFF) sd = BYPASS_CUTOFF;
+    return { startDate: sd, endDate: ed };
   }, [dateMode, dateFrom, dateTo, monthFilter]);
 
   // Fetch all active schedules with student/teacher info
