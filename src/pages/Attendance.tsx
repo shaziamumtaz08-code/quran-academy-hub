@@ -123,6 +123,7 @@ export default function Attendance() {
   const { activeDivision } = useDivision();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   const [filter, setFilter] = useState('all');
   const [monthFilter, setMonthFilter] = useState(format(new Date(), 'yyyy-MM'));
@@ -136,7 +137,7 @@ export default function Attendance() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
   const [selectedRecordIds, setSelectedRecordIds] = useState<Set<string>>(new Set());
-  const [showMissing, setShowMissing] = useState(false);
+  const [showMissing, setShowMissing] = useState(searchParams.get('filter') === 'missing');
   
   // Form state for marking attendance
   const [selectedStudent, setSelectedStudent] = useState('');
