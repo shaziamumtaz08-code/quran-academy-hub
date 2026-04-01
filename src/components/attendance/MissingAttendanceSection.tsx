@@ -71,9 +71,12 @@ export function MissingAttendanceSection({
 
   // Fetch all active schedules with student/teacher info
   const { data: schedules, isLoading: schedulesLoading } = useQuery({
-    queryKey: ['all-schedules-for-missing', startDate, endDate],
+    queryKey: ['all-schedules-for-missing', startDate, endDate, teacherId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // If start is after end (e.g. viewing Jan-Mar which is before cutoff), return empty
+      if (startDate > endDate) return [];
+
+      let query = supabase
         .from('schedules')
         .select(`
           id,
@@ -94,6 +97,11 @@ export function MissingAttendanceSection({
           .eq('student_teacher_assignments.status', 'active')
           .eq('student_teacher_assignments.requires_attendance', true);
 
+      if (teacherId) {
+        query = query.eq('student_teacher_assignments.teacher_id', teacherId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
@@ -102,14 +110,21 @@ export function MissingAttendanceSection({
 
   // Fetch all attendance records in range
   const { data: attendanceRecords, isLoading: attendanceLoading } = useQuery({
-    queryKey: ['attendance-for-missing', startDate, endDate],
+    queryKey: ['attendance-for-missing', startDate, endDate, teacherId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      if (startDate > endDate) return [];
+
+      let query = supabase
         .from('attendance')
         .select('student_id, class_date')
         .gte('class_date', startDate)
         .lte('class_date', endDate);
 
+      if (teacherId) {
+        query = query.eq('teacher_id', teacherId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
