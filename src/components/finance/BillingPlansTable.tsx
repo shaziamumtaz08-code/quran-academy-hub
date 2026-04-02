@@ -28,7 +28,7 @@ interface BillingPlan {
   fee_packages: { name: string; amount: number } | null;
 }
 
-export default function BillingPlansTable({ onEditPlan }: { onEditPlan?: (plan: BillingPlan) => void }) {
+export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPlan?: (plan: BillingPlan) => void; onViewPlan?: (plan: BillingPlan) => void }) {
   const { activeBranch, activeDivision } = useDivision();
   const branchId = activeBranch?.id || null;
   const divisionId = activeDivision?.id || null;
