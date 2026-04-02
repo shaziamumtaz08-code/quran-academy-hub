@@ -2408,8 +2408,9 @@ export default function Payments() {
                     <span className="text-muted-foreground">Rate:</span>
                     <span className="font-mono font-bold text-foreground">1 {bulkCurrency} = {effectiveRate.toFixed(2)} PKR</span>
                   </div>
-                )}
-
+                   )}
+                  {/* Plan Change History */}
+                  {editingPlanId && <PlanHistorySection planId={editingPlanId} />}
                 {hasShortfall && (
                   <div className="space-y-2 bg-destructive/5 rounded-lg border border-destructive/20 p-3">
                     <div className="flex items-center gap-2 text-xs font-medium text-destructive">
