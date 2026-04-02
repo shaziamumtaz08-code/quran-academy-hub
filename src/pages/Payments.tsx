@@ -146,6 +146,7 @@ export default function Payments() {
   const [setupOpen, setSetupOpen] = useState(false);
   const [bulkPayOpen, setBulkPayOpen] = useState(false);
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
+  const [viewingPlan, setViewingPlan] = useState<any | null>(null);
 
   // Invoice action modals state
   const [editInvoiceData, setEditInvoiceData] = useState<{ id: string; amount: string; due_date: string; billing_month: string; currency: string; remark: string; status: string; amount_paid: string; forgiven_amount: string; payment_method: string; paid_at: string; period_from: string; period_to: string; amount_local: string; receipt_url: string } | null>(null);
