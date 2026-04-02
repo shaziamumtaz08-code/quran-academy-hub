@@ -2350,6 +2350,9 @@ export default function Payments() {
           </DialogContent>
         </Dialog>
 
+        {/* View Plan Dialog */}
+        <ViewPlanDialog plan={viewingPlan} onClose={() => setViewingPlan(null)} />
+
         {/* ─── Bulk Payment Modal ───────────────────────────────────── */}
         <Dialog open={bulkPayOpen} onOpenChange={setBulkPayOpen}>
           <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col p-0">
