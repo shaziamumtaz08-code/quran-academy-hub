@@ -206,6 +206,9 @@ export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPl
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
+                      {onViewPlan && (
+                        <Button variant="ghost" size="icon" onClick={() => onViewPlan(plan)} title="View"><Eye className="h-4 w-4" /></Button>
+                      )}
                       {onEditPlan && (
                         <Button variant="ghost" size="icon" onClick={() => onEditPlan(plan)} title="Edit"><Pencil className="h-4 w-4" /></Button>
                       )}
