@@ -756,9 +756,28 @@ export default function Payments() {
       };
 
       if (editingPlanId) {
+        // Fetch current plan values for history before updating
+        const { data: oldPlan } = await supabase.from('student_billing_plans')
+          .select('base_package_id, session_duration, duration_surcharge, flat_discount, net_recurring_fee, currency, global_discount_id')
+          .eq('id', editingPlanId).single();
+
         const { error } = await supabase.from('student_billing_plans').update(planFields).eq('id', editingPlanId);
         if (error) throw error;
-        // Cascade update pending invoices: amount + currency from the effective month onward
+
+        // Record history
+        if (oldPlan) {
+          const userId = (await supabase.auth.getUser()).data.user?.id;
+          await supabase.from('billing_plan_history').insert({
+            plan_id: editingPlanId,
+            changed_by: userId || null,
+            effective_from: effectiveFrom,
+            previous_values: oldPlan,
+            new_values: planFields,
+            reason: null,
+          } as any);
+        }
+
+        // Cascade update ONLY pending invoices from the effective month onward
         const { error: invoiceErr } = await supabase
           .from('fee_invoices')
           .update({ amount: netRecurringFee, currency: feeCurrency } as any)
@@ -766,14 +785,6 @@ export default function Payments() {
           .eq('status', 'pending' as any)
           .gte('billing_month', effectiveFrom);
         if (invoiceErr) console.error('Invoice cascade error:', invoiceErr);
-        // Also cascade CURRENCY to paid/partially_paid invoices (currency is fundamental, not just amount)
-        const { error: currErr } = await supabase
-          .from('fee_invoices')
-          .update({ amount: netRecurringFee, currency: feeCurrency } as any)
-          .eq('plan_id', editingPlanId)
-          .in('status', ['paid', 'partially_paid'] as any)
-          .gte('billing_month', effectiveFrom);
-        if (currErr) console.error('Invoice currency cascade error:', currErr);
         return 1;
       }
       if (selectedStudentIds.length === 0 || (!feeForm.base_package_id && !isManual)) throw new Error('Select student(s) and package');
