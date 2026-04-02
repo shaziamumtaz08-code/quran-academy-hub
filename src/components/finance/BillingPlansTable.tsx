@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Pencil, Trash2, Loader2, Search, AlertTriangle, RotateCcw, ArrowUpDown } from 'lucide-react';
+import { Pencil, Trash2, Loader2, Search, AlertTriangle, RotateCcw, ArrowUpDown, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,7 +28,7 @@ interface BillingPlan {
   fee_packages: { name: string; amount: number } | null;
 }
 
-export default function BillingPlansTable({ onEditPlan }: { onEditPlan?: (plan: BillingPlan) => void }) {
+export default function BillingPlansTable({ onEditPlan, onViewPlan }: { onEditPlan?: (plan: BillingPlan) => void; onViewPlan?: (plan: BillingPlan) => void }) {
   const { activeBranch, activeDivision } = useDivision();
   const branchId = activeBranch?.id || null;
   const divisionId = activeDivision?.id || null;
@@ -206,6 +206,9 @@ export default function BillingPlansTable({ onEditPlan }: { onEditPlan?: (plan: 
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
+                      {onViewPlan && (
+                        <Button variant="ghost" size="icon" onClick={() => onViewPlan(plan)} title="View"><Eye className="h-4 w-4" /></Button>
+                      )}
                       {onEditPlan && (
                         <Button variant="ghost" size="icon" onClick={() => onEditPlan(plan)} title="Edit"><Pencil className="h-4 w-4" /></Button>
                       )}

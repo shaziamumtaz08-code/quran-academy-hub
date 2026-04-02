@@ -30,6 +30,8 @@ import { useDivision } from '@/contexts/DivisionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { trackActivity } from '@/lib/activityLogger';
 import BillingPlansTable from '@/components/finance/BillingPlansTable';
+import { PlanHistorySection } from '@/components/finance/PlanHistorySection';
+import { ViewPlanDialog } from '@/components/finance/ViewPlanDialog';
 import { AttachmentPreview } from '@/components/shared/FileUploadField';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -146,6 +148,7 @@ export default function Payments() {
   const [setupOpen, setSetupOpen] = useState(false);
   const [bulkPayOpen, setBulkPayOpen] = useState(false);
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
+  const [viewingPlan, setViewingPlan] = useState<any | null>(null);
 
   // Invoice action modals state
   const [editInvoiceData, setEditInvoiceData] = useState<{ id: string; amount: string; due_date: string; billing_month: string; currency: string; remark: string; status: string; amount_paid: string; forgiven_amount: string; payment_method: string; paid_at: string; period_from: string; period_to: string; amount_local: string; receipt_url: string } | null>(null);
@@ -756,9 +759,28 @@ export default function Payments() {
       };
 
       if (editingPlanId) {
+        // Fetch current plan values for history before updating
+        const { data: oldPlan } = await supabase.from('student_billing_plans')
+          .select('base_package_id, session_duration, duration_surcharge, flat_discount, net_recurring_fee, currency, global_discount_id')
+          .eq('id', editingPlanId).single();
+
         const { error } = await supabase.from('student_billing_plans').update(planFields).eq('id', editingPlanId);
         if (error) throw error;
-        // Cascade update pending invoices: amount + currency from the effective month onward
+
+        // Record history
+        if (oldPlan) {
+          const userId = (await supabase.auth.getUser()).data.user?.id;
+          await supabase.from('billing_plan_history').insert({
+            plan_id: editingPlanId,
+            changed_by: userId || null,
+            effective_from: effectiveFrom,
+            previous_values: oldPlan,
+            new_values: planFields,
+            reason: null,
+          } as any);
+        }
+
+        // Cascade update ONLY pending invoices from the effective month onward
         const { error: invoiceErr } = await supabase
           .from('fee_invoices')
           .update({ amount: netRecurringFee, currency: feeCurrency } as any)
@@ -766,14 +788,6 @@ export default function Payments() {
           .eq('status', 'pending' as any)
           .gte('billing_month', effectiveFrom);
         if (invoiceErr) console.error('Invoice cascade error:', invoiceErr);
-        // Also cascade CURRENCY to paid/partially_paid invoices (currency is fundamental, not just amount)
-        const { error: currErr } = await supabase
-          .from('fee_invoices')
-          .update({ amount: netRecurringFee, currency: feeCurrency } as any)
-          .eq('plan_id', editingPlanId)
-          .in('status', ['paid', 'partially_paid'] as any)
-          .gte('billing_month', effectiveFrom);
-        if (currErr) console.error('Invoice currency cascade error:', currErr);
         return 1;
       }
       if (selectedStudentIds.length === 0 || (!feeForm.base_package_id && !isManual)) throw new Error('Select student(s) and package');
@@ -2050,7 +2064,7 @@ export default function Payments() {
 
           {!isReadOnlyView && (
             <TabsContent value="plans" className="mt-4">
-              <BillingPlansTable onEditPlan={handleEditPlan} />
+              <BillingPlansTable onEditPlan={handleEditPlan} onViewPlan={(plan: any) => setViewingPlan(plan)} />
             </TabsContent>
           )}
         </Tabs>
@@ -2336,6 +2350,9 @@ export default function Payments() {
           </DialogContent>
         </Dialog>
 
+        {/* View Plan Dialog */}
+        <ViewPlanDialog plan={viewingPlan} onClose={() => setViewingPlan(null)} />
+
         {/* ─── Bulk Payment Modal ───────────────────────────────────── */}
         <Dialog open={bulkPayOpen} onOpenChange={setBulkPayOpen}>
           <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col p-0">
@@ -2396,8 +2413,9 @@ export default function Payments() {
                     <span className="text-muted-foreground">Rate:</span>
                     <span className="font-mono font-bold text-foreground">1 {bulkCurrency} = {effectiveRate.toFixed(2)} PKR</span>
                   </div>
-                )}
-
+                   )}
+                  {/* Plan Change History */}
+                  {editingPlanId && <PlanHistorySection planId={editingPlanId} />}
                 {hasShortfall && (
                   <div className="space-y-2 bg-destructive/5 rounded-lg border border-destructive/20 p-3">
                     <div className="flex items-center gap-2 text-xs font-medium text-destructive">

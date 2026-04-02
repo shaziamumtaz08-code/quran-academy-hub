@@ -268,6 +268,47 @@ export type Database = {
           },
         ]
       }
+      billing_plan_history: {
+        Row: {
+          changed_by: string | null
+          created_at: string
+          effective_from: string
+          id: string
+          new_values: Json
+          plan_id: string
+          previous_values: Json
+          reason: string | null
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string
+          effective_from: string
+          id?: string
+          new_values?: Json
+          plan_id: string
+          previous_values?: Json
+          reason?: string | null
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string
+          effective_from?: string
+          id?: string
+          new_values?: Json
+          plan_id?: string
+          previous_values?: Json
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_plan_history_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "student_billing_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       branches: {
         Row: {
           address: string | null
