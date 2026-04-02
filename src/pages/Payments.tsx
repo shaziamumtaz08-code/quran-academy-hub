@@ -2062,7 +2062,7 @@ export default function Payments() {
 
           {!isReadOnlyView && (
             <TabsContent value="plans" className="mt-4">
-              <BillingPlansTable onEditPlan={handleEditPlan} />
+              <BillingPlansTable onEditPlan={handleEditPlan} onViewPlan={(plan: any) => setViewingPlan(plan)} />
             </TabsContent>
           )}
         </Tabs>
