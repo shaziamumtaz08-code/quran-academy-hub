@@ -139,6 +139,11 @@ export default function Attendance() {
   const [selectedRecordIds, setSelectedRecordIds] = useState<Set<string>>(new Set());
   const [showMissing, setShowMissing] = useState(searchParams.get('filter') === 'missing');
   
+  // Holiday dialog state
+  const [holidayDialogOpen, setHolidayDialogOpen] = useState(false);
+  const [holidayName, setHolidayName] = useState('');
+  const [holidayDate, setHolidayDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  
   // Form state for marking attendance
   const [selectedStudent, setSelectedStudent] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<AttendanceStatus>('present');
