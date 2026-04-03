@@ -42,8 +42,8 @@ export function TeacherNotificationsSection() {
 
       if (!assignments?.length) return [];
 
-      const trackable = assignments.filter(a => (a as any).requires_planning !== false);
-      const studentIds = trackable.map(a => (a.student as any)?.id).filter(Boolean);
+      const studentIds = assignments.map(a => (a.student as any)?.id).filter(Boolean);
+      if (!studentIds.length) return [];
       if (!studentIds.length) return [];
 
       const { data: plans } = await supabase
