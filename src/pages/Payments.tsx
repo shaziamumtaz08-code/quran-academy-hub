@@ -540,7 +540,7 @@ export default function Payments() {
   const collectedPKR = useMemo(() => invoices.reduce((s, i) => s + (realisedMap[i.id] || 0), 0), [invoices, realisedMap]);
   const pendingPKR = useMemo(() => {
     const lcyPend = invoices
-      .filter(i => i.currency === 'PKR' && i.status !== 'paid' && i.status !== 'voided' && i.status !== 'waived')
+      .filter(i => i.currency === 'PKR' && i.status !== 'paid' && i.status !== 'waived')
       .reduce((s, i) => s + Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0)), 0);
     const fcyPend = invoices
       .filter(i => i.currency !== 'PKR' && i.status !== 'paid' && i.status !== 'voided' && i.status !== 'waived')
