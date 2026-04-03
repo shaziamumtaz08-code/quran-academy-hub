@@ -41,7 +41,8 @@ export function MissedAttendanceBanner() {
       if (!assignments?.length) return [];
 
       // Get attendance records for last 14 days
-      const twoWeeksAgo = format(subDays(new Date(), 14), 'yyyy-MM-dd');
+      const twoWeeksAgoRaw = format(subDays(new Date(), 14), 'yyyy-MM-dd');
+      const twoWeeksAgo = twoWeeksAgoRaw < OPERATIONAL_CUTOFF ? OPERATIONAL_CUTOFF : twoWeeksAgoRaw;
       const today = format(new Date(), 'yyyy-MM-dd');
 
       const { data: attendanceRecords } = await supabase
