@@ -1527,7 +1527,6 @@ export default function Payments() {
                   <SelectItem value="overdue">Overdue</SelectItem>
                   <SelectItem value="waived">Waived</SelectItem>
                   <SelectItem value="adjusted">Adjusted</SelectItem>
-                  <SelectItem value="voided">Voided</SelectItem>
                 </SelectContent>
               </Select>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
