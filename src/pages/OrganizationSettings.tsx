@@ -266,6 +266,7 @@ export default function OrganizationSettings() {
             <TabsTrigger value="identity">🏢 Identity</TabsTrigger>
             <TabsTrigger value="branches">🌐 Branches</TabsTrigger>
             <TabsTrigger value="divisions">📦 Divisions</TabsTrigger>
+            <TabsTrigger value="holidays">📅 Holidays</TabsTrigger>
           </TabsList>
 
           {/* ── Tab 1: Identity ── */}
