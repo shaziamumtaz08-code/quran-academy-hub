@@ -1804,6 +1804,57 @@ export type Database = {
           },
         ]
       }
+      holidays: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          created_by: string
+          division_id: string | null
+          holiday_date: string
+          id: string
+          is_recurring: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          created_by: string
+          division_id?: string | null
+          holiday_date: string
+          id?: string
+          is_recurring?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string
+          division_id?: string | null
+          holiday_date?: string
+          id?: string
+          is_recurring?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "holidays_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "holidays_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_adjustments: {
         Row: {
           action_type: string
