@@ -673,7 +673,7 @@ export default function Payments() {
   const fcyCollected = useMemo(() => fcyInvoicesAll.reduce((s, i) => s + (realisedMap[i.id] || 0), 0), [fcyInvoicesAll, realisedMap]);
   const lcyPending = localTotalPKR - lcyCollected;
   const fcyPending = useMemo(() => fcyInvoicesAll
-    .filter(i => i.status !== 'paid' && i.status !== 'voided' && i.status !== 'waived')
+    .filter(i => i.status !== 'paid' && i.status !== 'waived')
     .reduce((s, i) => {
       const bal = Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0));
       const rate = getRate(i.currency);
