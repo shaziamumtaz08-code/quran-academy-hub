@@ -6,7 +6,8 @@ import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { format, subDays, isAfter, isBefore, startOfDay } from 'date-fns';
 
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+const OPERATIONAL_CUTOFF = '2026-04-01';
 
 interface MissedEntry {
   date: string;
