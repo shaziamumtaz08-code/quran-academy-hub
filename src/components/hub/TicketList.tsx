@@ -212,8 +212,9 @@ export function TicketList({ view, userId }: TicketListProps) {
                     <h4 className="font-medium text-sm mt-1 truncate">{ticket.subject}</h4>
                     <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                       <span>
-                      {view === 'inbox' ? `From: ${ticket.creator_name}` :
-                         `To: ${ticket.assignee_name}`}
+                      {view === 'inbox'
+                        ? `From: ${ticket.creator_name}${ticket.is_anonymous && isAdmin ? ' (Anon)' : ''}`
+                        : `To: ${ticket.assignee_name}`}
                       </span>
                       <span>•</span>
                       <span>{formatDistanceToNow(new Date(ticket.created_at), { addSuffix: true })}</span>
