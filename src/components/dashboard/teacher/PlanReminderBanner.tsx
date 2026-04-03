@@ -15,8 +15,9 @@ export function PlanReminderBanner() {
   const navigate = useNavigate();
 
   const now = new Date();
-  const currentMonth = format(now, 'MMMM');
+  const currentMonth = format(now, 'MM'); // DB stores as '01','02',...'12'
   const currentYear = format(now, 'yyyy');
+  const currentMonthLabel = format(now, 'MMMM');
 
   const { data: reminders } = useQuery({
     queryKey: ['plan-reminders', user?.id, currentMonth, currentYear],

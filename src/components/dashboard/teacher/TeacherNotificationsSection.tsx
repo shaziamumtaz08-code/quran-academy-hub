@@ -23,8 +23,9 @@ export function TeacherNotificationsSection() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const now = new Date();
-  const currentMonth = format(now, 'MMMM');
+  const currentMonth = format(now, 'MM'); // DB stores as '01','02',...'12'
   const currentYear = format(now, 'yyyy');
+  const currentMonthLabel = format(now, 'MMMM'); // For display only
 
   // Plan reminders for current month
   const { data: planReminders } = useQuery({
