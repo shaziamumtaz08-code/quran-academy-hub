@@ -1914,6 +1914,36 @@ export default function Attendance() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Holiday Dialog */}
+        <Dialog open={holidayDialogOpen} onOpenChange={setHolidayDialogOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="font-serif">Mark Holiday</DialogTitle>
+              <DialogDescription>Mark a date as a holiday — all scheduled sessions on this date will be excluded from missing attendance.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 mt-2">
+              <div className="space-y-2">
+                <Label>Holiday Date</Label>
+                <Input type="date" value={holidayDate} onChange={e => setHolidayDate(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Holiday Name</Label>
+                <Input value={holidayName} onChange={e => setHolidayName(e.target.value)} placeholder="e.g. Eid ul Fitr, Weekend Off" />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <Button variant="outline" className="flex-1" onClick={() => setHolidayDialogOpen(false)}>Cancel</Button>
+                <Button 
+                  className="flex-1" 
+                  disabled={!holidayName || !holidayDate || saveHoliday.isPending}
+                  onClick={() => saveHoliday.mutate()}
+                >
+                  {saveHoliday.isPending ? 'Saving...' : 'Save Holiday'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
