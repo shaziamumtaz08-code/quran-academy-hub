@@ -67,11 +67,13 @@ export function MissedAttendanceBanner() {
           .filter((s: any) => s.is_active)
           .map((s: any) => s.day_of_week);
 
-        // Check last 14 days
+        // Check last 14 days (but not before April 2026 cutoff)
         for (let i = 1; i <= 14; i++) {
           const checkDate = subDays(new Date(), i);
           const dayName = DAY_NAMES[checkDate.getDay()];
           const dateStr = format(checkDate, 'yyyy-MM-dd');
+
+          if (dateStr < OPERATIONAL_CUTOFF) continue;
 
           if (activeDays.includes(dayName)) {
             const key = `${assignment.student_id}_${dateStr}`;
