@@ -140,6 +140,7 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCrea
     setPriority('normal');
     setAssigneeId('');
     setLeaveMetadata({});
+    setIsAnonymous(false);
   };
 
   const canSubmit = subject.trim();
