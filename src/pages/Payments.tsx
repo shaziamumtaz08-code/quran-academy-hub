@@ -112,8 +112,6 @@ const getStatusBadge = (status: string) => {
       return <Badge className="bg-muted text-muted-foreground border-border gap-1"><Ban className="h-3 w-3" /> Waived</Badge>;
     case 'adjusted':
       return <Badge className="bg-secondary text-secondary-foreground border-border gap-1"><Tag className="h-3 w-3" /> Adjusted</Badge>;
-    case 'voided':
-      return <Badge className="bg-destructive/10 text-destructive border-destructive/20 gap-1"><FileX className="h-3 w-3" /> Voided</Badge>;
     default:
       return <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" /> Pay</Badge>;
   }
