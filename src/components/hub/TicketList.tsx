@@ -88,11 +88,14 @@ export function TicketList({ view, userId }: TicketListProps) {
           .select('id, full_name')
           .in('id', userIds);
         const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p.full_name]));
-        allData = allData.map((t: any) => ({
-          ...t,
-          creator_name: profileMap[t.creator_id] || 'Unknown',
-          assignee_name: profileMap[t.assignee_id] || 'Unknown',
-        }));
+        allData = allData.map((t: any) => {
+          const anonCreator = t.is_anonymous && !isAdmin;
+          return {
+            ...t,
+            creator_name: anonCreator ? 'Anonymous' : profileMap[t.creator_id] || 'Unknown',
+            assignee_name: profileMap[t.assignee_id] || 'Unknown',
+          };
+        });
       }
 
       return allData;
