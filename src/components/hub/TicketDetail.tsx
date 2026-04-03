@@ -185,11 +185,20 @@ export function TicketDetail({ ticketId, open, onOpenChange }: TicketDetailProps
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="flex items-center gap-2">
                 <Avatar className="h-6 w-6">
-                  <AvatarFallback className="text-[10px] bg-primary/10 text-primary">{initials(ticket.creator?.full_name || '')}</AvatarFallback>
+                  <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                    {ticket.is_anonymous && !isAdmin ? '?' : initials(ticket.creator?.full_name || '')}
+                  </AvatarFallback>
                 </Avatar>
                 <div>
                   <p className="text-[10px] text-muted-foreground">From</p>
-                  <p className="text-xs font-medium">{ticket.creator?.full_name}</p>
+                  <p className="text-xs font-medium">
+                    {ticket.is_anonymous && !isAdmin
+                      ? 'Anonymous'
+                      : ticket.creator?.full_name}
+                    {ticket.is_anonymous && isAdmin && (
+                      <Badge variant="outline" className="ml-1 text-[9px] px-1 py-0">Anon</Badge>
+                    )}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
