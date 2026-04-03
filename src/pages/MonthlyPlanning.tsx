@@ -463,11 +463,13 @@ export default function MonthlyPlanning() {
           student_id,
           teacher_id,
           subject_id,
+          requires_planning,
           student:profiles!student_teacher_assignments_student_id_fkey(id, full_name),
           teacher:profiles!student_teacher_assignments_teacher_id_fkey(id, full_name),
           subject:subjects(id, name)
         `)
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .eq('requires_planning', true);
       
       if (error) throw error;
       return (data || []).map((a: any) => ({

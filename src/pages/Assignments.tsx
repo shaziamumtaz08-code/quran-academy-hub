@@ -27,6 +27,7 @@ import { useDivision } from '@/contexts/DivisionContext';
 import { BulkAssignmentImportDialog } from '@/components/assignments/BulkAssignmentImportDialog';
 import { Textarea } from '@/components/ui/textarea';
 import { formatDisplayDate } from '@/lib/dateFormat';
+import { cn } from '@/lib/utils';
 
 const STATUS_CONFIG = {
   active: { label: 'Active', color: 'bg-emerald-500', badgeClass: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' },
@@ -803,31 +804,31 @@ export default function Assignments() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            <button
-                              title="Track Schedule"
-                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded cursor-pointer transition-colors ${assignment.requires_schedule ? 'bg-teal/15 text-teal' : 'bg-muted text-muted-foreground line-through'}`}
-                              onClick={async () => {
-                                await supabase.from('student_teacher_assignments').update({ requires_schedule: !assignment.requires_schedule }).eq('id', assignment.id);
-                                queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
-                              }}
-                            >S</button>
-                            <button
-                              title="Track Planning"
-                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded cursor-pointer transition-colors ${assignment.requires_planning ? 'bg-gold/15 text-gold' : 'bg-muted text-muted-foreground line-through'}`}
-                              onClick={async () => {
-                                await supabase.from('student_teacher_assignments').update({ requires_planning: !assignment.requires_planning }).eq('id', assignment.id);
-                                queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
-                              }}
-                            >P</button>
-                            <button
-                              title="Track Attendance"
-                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded cursor-pointer transition-colors ${assignment.requires_attendance ? 'bg-sky/15 text-sky' : 'bg-muted text-muted-foreground line-through'}`}
-                              onClick={async () => {
-                                await supabase.from('student_teacher_assignments').update({ requires_attendance: !assignment.requires_attendance }).eq('id', assignment.id);
-                                queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
-                              }}
-                            >A</button>
+                          <div className="flex items-center gap-1.5">
+                            {[
+                              { key: 'requires_schedule' as const, label: 'S', title: 'Schedule Tracking', activeClass: 'bg-teal text-white shadow-sm', inactiveClass: 'bg-muted/60 text-muted-foreground/50' },
+                              { key: 'requires_planning' as const, label: 'P', title: 'Planning Tracking', activeClass: 'bg-gold text-white shadow-sm', inactiveClass: 'bg-muted/60 text-muted-foreground/50' },
+                              { key: 'requires_attendance' as const, label: 'A', title: 'Attendance Tracking', activeClass: 'bg-sky-500 text-white shadow-sm', inactiveClass: 'bg-muted/60 text-muted-foreground/50' },
+                            ].map(({ key, label, title, activeClass, inactiveClass }) => (
+                              <button
+                                key={key}
+                                title={`${title}: ${assignment[key] ? 'ON — click to disable' : 'OFF — click to enable'}`}
+                                className={cn(
+                                  'w-7 h-7 rounded-md text-xs font-extrabold flex items-center justify-center cursor-pointer transition-all duration-200 border',
+                                  assignment[key]
+                                    ? `${activeClass} border-transparent hover:opacity-80`
+                                    : `${inactiveClass} border-border hover:bg-muted`
+                                )}
+                                onClick={async () => {
+                                  await supabase.from('student_teacher_assignments').update({ [key]: !assignment[key] }).eq('id', assignment.id);
+                                  queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
+                                  toast({
+                                    title: `${title} ${!assignment[key] ? 'Enabled' : 'Disabled'}`,
+                                    description: `${assignment.student_name} — ${title.toLowerCase()} is now ${!assignment[key] ? 'on' : 'off'}`,
+                                  });
+                                }}
+                              >{label}</button>
+                            ))}
                           </div>
                         </TableCell>
                         <TableCell>

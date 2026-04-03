@@ -23,8 +23,9 @@ export function TeacherNotificationsSection() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const now = new Date();
-  const currentMonth = format(now, 'MMMM');
+  const currentMonth = format(now, 'MM'); // DB stores as '01','02',...'12'
   const currentYear = format(now, 'yyyy');
+  const currentMonthLabel = format(now, 'MMMM'); // For display only
 
   // Plan reminders for current month
   const { data: planReminders } = useQuery({
@@ -36,12 +37,13 @@ export function TeacherNotificationsSection() {
         .from('student_teacher_assignments')
         .select('student_id, requires_planning, student:profiles!student_teacher_assignments_student_id_fkey(id, full_name)')
         .eq('teacher_id', user.id)
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .eq('requires_planning', true);
 
       if (!assignments?.length) return [];
 
-      const trackable = assignments.filter(a => (a as any).requires_planning !== false);
-      const studentIds = trackable.map(a => (a.student as any)?.id).filter(Boolean);
+      const studentIds = assignments.map(a => (a.student as any)?.id).filter(Boolean);
+      if (!studentIds.length) return [];
       if (!studentIds.length) return [];
 
       const { data: plans } = await supabase
@@ -54,7 +56,7 @@ export function TeacherNotificationsSection() {
 
       const filledIds = new Set((plans || []).map(p => p.student_id));
 
-      return trackable
+      return assignments
         .filter(a => {
           const sid = (a.student as any)?.id;
           return sid && !filledIds.has(sid);
@@ -113,7 +115,7 @@ export function TeacherNotificationsSection() {
           <div className="flex items-center gap-2 mb-2">
             <ClipboardList className="h-4 w-4 text-gold" />
             <p className="font-extrabold text-[13px] text-gold">
-              {currentMonth} Plan Pending ({planReminders!.length})
+              {currentMonthLabel} Plan Pending ({planReminders!.length})
             </p>
           </div>
           <div className="space-y-1">
