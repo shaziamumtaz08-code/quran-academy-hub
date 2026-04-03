@@ -115,7 +115,7 @@ export function TeacherNotificationsSection() {
           <div className="flex items-center gap-2 mb-2">
             <ClipboardList className="h-4 w-4 text-gold" />
             <p className="font-extrabold text-[13px] text-gold">
-              {currentMonth} Plan Pending ({planReminders!.length})
+              {currentMonthLabel} Plan Pending ({planReminders!.length})
             </p>
           </div>
           <div className="space-y-1">

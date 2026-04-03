@@ -68,7 +68,7 @@ export function PlanReminderBanner() {
       <span className="text-lg shrink-0">📋</span>
       <div className="flex-1">
         <p className="font-extrabold text-[13px] text-gold/90 mb-0.5">
-          {currentMonth} Plan Not Submitted
+          {currentMonthLabel} Plan Not Submitted
         </p>
         {reminders.slice(0, 2).map((r, i) => (
           <p key={i} className="text-xs text-gold/70">
