@@ -20,7 +20,7 @@ import {
 import {
   DollarSign, CheckCircle, CheckCircle2, XCircle, Clock, User, Loader2, Zap, GraduationCap,
   Plus, Receipt, Upload, ArrowRightLeft, AlertTriangle, ImageIcon, X, Search, ArrowUpDown, Users, Pencil, Trash2, ListChecks,
-  MoreHorizontal, Ban, Undo2, History, Tag, FileX, Eye, FileText, Printer, RotateCcw, ChevronRight
+  MoreHorizontal, Ban, Undo2, History, Tag, Eye, FileText, Printer, RotateCcw, ChevronRight
 } from 'lucide-react';
 import { endOfMonth, startOfMonth, parseISO, format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -112,8 +112,6 @@ const getStatusBadge = (status: string) => {
       return <Badge className="bg-muted text-muted-foreground border-border gap-1"><Ban className="h-3 w-3" /> Waived</Badge>;
     case 'adjusted':
       return <Badge className="bg-secondary text-secondary-foreground border-border gap-1"><Tag className="h-3 w-3" /> Adjusted</Badge>;
-    case 'voided':
-      return <Badge className="bg-destructive/10 text-destructive border-destructive/20 gap-1"><FileX className="h-3 w-3" /> Voided</Badge>;
     default:
       return <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" /> Pay</Badge>;
   }
@@ -154,7 +152,7 @@ export default function Payments() {
   const [editInvoiceData, setEditInvoiceData] = useState<{ id: string; amount: string; due_date: string; billing_month: string; currency: string; remark: string; status: string; amount_paid: string; forgiven_amount: string; payment_method: string; paid_at: string; period_from: string; period_to: string; amount_local: string; receipt_url: string } | null>(null);
   const editReceiptInputRef = useRef<HTMLInputElement>(null);
   const [editReceiptFile, setEditReceiptFile] = useState<File | null>(null);
-  const [actionModal, setActionModal] = useState<{ type: 'mark_unpaid' | 'apply_discount' | 'waive_fee' | 'reverse_payment' | 'void_invoice' | 'view_history' | 'restore_to_pending'; invoice: InvoiceRow } | null>(null);
+  const [actionModal, setActionModal] = useState<{ type: 'mark_unpaid' | 'apply_discount' | 'waive_fee' | 'reverse_payment' | 'view_history' | 'restore_to_pending'; invoice: InvoiceRow } | null>(null);
   const [receiptViewInvoice, setReceiptViewInvoice] = useState<InvoiceRow | null>(null);
   const [receiptTransactions, setReceiptTransactions] = useState<any[]>([]);
   const [actionReason, setActionReason] = useState('');
@@ -521,7 +519,7 @@ export default function Payments() {
     const currentMap = new Map(invoices.map(i => [i.id, i]));
     return cached.map(c => currentMap.get(c.id) || c);
   }, [invoices, selectedIds]);
-  const unpaidSelected = useMemo(() => selectedInvoices.filter(i => i.status !== 'paid' && i.status !== 'voided'), [selectedInvoices]);
+  const unpaidSelected = useMemo(() => selectedInvoices.filter(i => i.status !== 'paid'), [selectedInvoices]);
   // Guardrail #8: balance = invoice.amount - paid_total - forgiven_amount (paid_total from ledger)
   const totalExpected = unpaidSelected.reduce((s, i) => s + Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0)), 0);
   const bulkCurrency = unpaidSelected[0]?.currency || 'USD';
@@ -542,10 +540,10 @@ export default function Payments() {
   const collectedPKR = useMemo(() => invoices.reduce((s, i) => s + (realisedMap[i.id] || 0), 0), [invoices, realisedMap]);
   const pendingPKR = useMemo(() => {
     const lcyPend = invoices
-      .filter(i => i.currency === 'PKR' && i.status !== 'paid' && i.status !== 'voided' && i.status !== 'waived')
+      .filter(i => i.currency === 'PKR' && i.status !== 'paid' && i.status !== 'waived')
       .reduce((s, i) => s + Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0)), 0);
     const fcyPend = invoices
-      .filter(i => i.currency !== 'PKR' && i.status !== 'paid' && i.status !== 'voided' && i.status !== 'waived')
+      .filter(i => i.currency !== 'PKR' && i.status !== 'paid' && i.status !== 'waived')
       .reduce((s, i) => {
         const balFCY = Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0));
         const rate = getRate(i.currency);
@@ -620,7 +618,7 @@ export default function Payments() {
         genuinelyUnpaid.push(inv);
       } else {
         const allSettled = studentArrears.every((a: any) =>
-          a.status === 'paid' || a.status === 'waived' || a.status === 'voided'
+          a.status === 'paid' || a.status === 'waived'
         );
         if (allSettled) recovered.push(inv);
         else arrearsStillPending.push(inv);
@@ -628,7 +626,7 @@ export default function Payments() {
     });
     const canCloseMonth = genuinelyUnpaid.length === 0 && arrearsStillPending.length === 0;
     const nonSettled = invoices.filter(i =>
-      i.status !== 'paid' && i.status !== 'waived' && i.status !== 'voided'
+      i.status !== 'paid' && i.status !== 'waived'
     );
     const isFullySettled = nonSettled.length === 0 || (nonSettled.length === recovered.length);
     return { recovered, arrearsStillPending, genuinelyUnpaid, canCloseMonth, isFullySettled };
@@ -675,7 +673,7 @@ export default function Payments() {
   const fcyCollected = useMemo(() => fcyInvoicesAll.reduce((s, i) => s + (realisedMap[i.id] || 0), 0), [fcyInvoicesAll, realisedMap]);
   const lcyPending = localTotalPKR - lcyCollected;
   const fcyPending = useMemo(() => fcyInvoicesAll
-    .filter(i => i.status !== 'paid' && i.status !== 'voided' && i.status !== 'waived')
+    .filter(i => i.status !== 'paid' && i.status !== 'waived')
     .reduce((s, i) => {
       const bal = Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0));
       const rate = getRate(i.currency);
@@ -688,7 +686,7 @@ export default function Payments() {
     return { value: `${now.getFullYear()}-${m}`, label: `${MONTHS[i].label} ${now.getFullYear()}` };
   });
 
-  const selectableInvoices = useMemo(() => invoices.filter(i => i.status !== 'voided'), [invoices]);
+  const selectableInvoices = useMemo(() => invoices, [invoices]);
   const allSelectableChecked = selectableInvoices.length > 0 && selectableInvoices.every(i => selectedIds.has(i.id));
 
   // ─── Multi-month split detection for Edit Invoice ─────────────────
@@ -726,7 +724,7 @@ export default function Payments() {
         .select(`id, student_id, amount, currency, billing_month, status, amount_paid, forgiven_amount, profiles!fee_invoices_student_id_fkey(full_name)`)
         .eq('student_id', inv.student_id)
         .in('billing_month', months)
-        .neq('status', 'voided' as any)
+        
         .order('billing_month');
       setSplitInvoices((data || []) as unknown as InvoiceRow[]);
       setSplitMode(months.length > 1);
@@ -1266,11 +1264,6 @@ export default function Payments() {
           await supabase.from('fee_invoices').update({ status: 'pending' as any, amount_paid: 0, paid_at: null, forgiven_amount: 0 }).eq('id', invoice.id);
           break;
         }
-        case 'void_invoice': {
-          await createAdjustment(invoice.id, 'void_invoice', prev, { status: 'voided' }, reason);
-          await supabase.from('fee_invoices').update({ status: 'voided' as any }).eq('id', invoice.id);
-          break;
-        }
       }
       return invoice.id;
     },
@@ -1534,7 +1527,6 @@ export default function Payments() {
                   <SelectItem value="overdue">Overdue</SelectItem>
                   <SelectItem value="waived">Waived</SelectItem>
                   <SelectItem value="adjusted">Adjusted</SelectItem>
-                  <SelectItem value="voided">Voided</SelectItem>
                 </SelectContent>
               </Select>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -1554,7 +1546,7 @@ export default function Payments() {
                 </Select>
               )}
               {isParentView && (() => {
-                const unpaidInvoices = invoices.filter(i => i.status !== 'paid' && i.status !== 'voided' && i.status !== 'waived');
+                const unpaidInvoices = invoices.filter(i => i.status !== 'paid' && i.status !== 'waived');
                 const unpaidTotal = unpaidInvoices.reduce((s, i) => s + Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0)), 0);
                 if (unpaidInvoices.length === 0) return null;
                 return (
@@ -1635,7 +1627,7 @@ export default function Payments() {
                       onClick={() => {
                         const fcyVariance = Math.max(0, pendingPKR - (
                           invoices
-                            .filter(i => i.currency === 'PKR' && i.status !== 'paid' && i.status !== 'voided' && i.status !== 'waived')
+                            .filter(i => i.currency === 'PKR' && i.status !== 'paid' && i.status !== 'waived')
                             .reduce((s, i) => s + Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0)), 0)
                         ));
                         setCloseMonthAmount(fcyVariance > 0 ? fcyVariance.toFixed(0) : '');
@@ -1787,7 +1779,6 @@ export default function Payments() {
                   <SelectItem value="partially_paid">Partial</SelectItem>
                   <SelectItem value="overdue">Overdue</SelectItem>
                   <SelectItem value="waived">Waived</SelectItem>
-                  <SelectItem value="voided">Voided</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={invoicePaidOnFilter} onValueChange={setInvoicePaidOnFilter}>
@@ -1917,7 +1908,6 @@ export default function Payments() {
                                       <DropdownMenuSeparator />
                                       <DropdownMenuItem onClick={() => { setActionModal({ type: 'view_history', invoice: inv }); fetchHistory(inv.id); }}><History className="h-3.5 w-3.5 mr-2" /> View History</DropdownMenuItem>
                                       <DropdownMenuSeparator />
-                                      <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setActionModal({ type: 'void_invoice', invoice: inv })}><FileX className="h-3.5 w-3.5 mr-2" /> Void Invoice</DropdownMenuItem>
                                     </>
                                   )}
                                 </DropdownMenuContent>
@@ -2046,7 +2036,7 @@ export default function Payments() {
                                       <DropdownMenuSeparator />
                                       <DropdownMenuItem onClick={() => { setActionModal({ type: 'view_history', invoice: inv }); fetchHistory(inv.id); }}><History className="h-3.5 w-3.5 mr-2" /> View History</DropdownMenuItem>
                                       <DropdownMenuSeparator />
-                                      <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setActionModal({ type: 'void_invoice', invoice: inv })}><FileX className="h-3.5 w-3.5 mr-2" /> Void Invoice</DropdownMenuItem>
+                                      
                                     </>
                                   )}
                                 </DropdownMenuContent>
@@ -2733,7 +2723,7 @@ export default function Payments() {
                 {actionModal?.type === 'apply_discount' && <><Tag className="h-5 w-5" /> Apply Discount</>}
                 {actionModal?.type === 'waive_fee' && <><Ban className="h-5 w-5" /> Waive Fee</>}
                 {actionModal?.type === 'reverse_payment' && <><ArrowRightLeft className="h-5 w-5" /> Reverse Payment</>}
-                {actionModal?.type === 'void_invoice' && <><FileX className="h-5 w-5 text-destructive" /> Void Invoice</>}
+                
               </DialogTitle>
               <DialogDescription>
                 {actionModal?.type === 'mark_unpaid' && 'Reset this invoice to unpaid status. Payment records are preserved.'}
@@ -2741,7 +2731,7 @@ export default function Payments() {
                 {actionModal?.type === 'apply_discount' && 'Apply an additional discount to reduce the invoice amount.'}
                 {actionModal?.type === 'waive_fee' && 'Waive the remaining balance. This will mark the fee as forgiven.'}
                 {actionModal?.type === 'reverse_payment' && 'Reverse all payments on this invoice. Transaction records are preserved.'}
-                {actionModal?.type === 'void_invoice' && 'Void this invoice. It will remain in records but be inactive.'}
+                
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-2">
@@ -2762,7 +2752,7 @@ export default function Payments() {
             <DialogFooter>
               <Button variant="outline" onClick={() => { setActionModal(null); setActionReason(''); setDiscountAmount(''); }}>Cancel</Button>
               <Button
-                variant={actionModal?.type === 'void_invoice' ? 'destructive' : 'default'}
+                variant="default"
                 disabled={!actionReason.trim() || invoiceActionMutation.isPending || (actionModal?.type === 'apply_discount' && !parseFloat(discountAmount))}
                 onClick={() => actionModal && invoiceActionMutation.mutate({
                   type: actionModal.type,

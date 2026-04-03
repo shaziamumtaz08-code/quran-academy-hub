@@ -38,7 +38,7 @@ const getStatusLabel = (status: string) => {
     case 'partially_paid': return { label: 'PARTIAL', bg: '#fef3c7', color: '#92400e' };
     case 'overdue': return { label: 'OVERDUE', bg: '#fee2e2', color: '#991b1b' };
     case 'waived': return { label: 'WAIVED', bg: '#f3f4f6', color: '#4b5563' };
-    case 'voided': return { label: 'VOIDED', bg: '#fef2f2', color: '#dc2626' };
+    
     default: return { label: 'PENDING', bg: '#fff7ed', color: '#9a3412' };
   }
 };
