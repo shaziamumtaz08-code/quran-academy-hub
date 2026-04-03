@@ -48,6 +48,7 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCrea
   const [priority, setPriority] = useState('normal');
   const [assigneeId, setAssigneeId] = useState('');
   const [leaveMetadata, setLeaveMetadata] = useState<any>({});
+  const [isAnonymous, setIsAnonymous] = useState(false);
 
   // Fetch subcategories
   const { data: subcategories = [] } = useQuery({
