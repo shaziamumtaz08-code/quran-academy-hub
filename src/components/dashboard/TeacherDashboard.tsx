@@ -37,7 +37,7 @@ export function TeacherDashboard() {
   });
 
   return (
-    <div className="min-h-screen bg-background relative font-sans">
+    <div className="relative font-sans">
       <TeacherTopBar />
 
       <div className="p-4 pt-14 md:pt-4 pb-20 md:pb-6 space-y-2 max-w-[680px] mx-auto">
