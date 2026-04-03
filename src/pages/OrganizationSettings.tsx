@@ -400,6 +400,51 @@ export default function OrganizationSettings() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* ── Tab 4: Holidays ── */}
+          <TabsContent value="holidays">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2"><CalendarOff className="h-5 w-5" /> Holiday Calendar</CardTitle>
+                  <CardDescription>Manage holidays — these dates are excluded from missing attendance</CardDescription>
+                </div>
+                <Button onClick={openNewHoliday} size="sm" className="gap-1"><Plus className="h-4 w-4" /> Add Holiday</Button>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Recurring</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {holidaysList.map(h => (
+                      <TableRow key={h.id}>
+                        <TableCell className="font-medium">{h.holiday_date}</TableCell>
+                        <TableCell>{h.name}</TableCell>
+                        <TableCell>
+                          <Badge variant={h.is_recurring ? 'default' : 'outline'}>
+                            {h.is_recurring ? '🔁 Annual' : 'One-off'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="icon" onClick={() => openEditHoliday(h)}><Pencil className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => deleteHoliday.mutate(h.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {holidaysList.length === 0 && (
+                      <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">No holidays configured</TableCell></TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
 
