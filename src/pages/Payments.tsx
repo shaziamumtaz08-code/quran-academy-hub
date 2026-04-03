@@ -626,7 +626,7 @@ export default function Payments() {
     });
     const canCloseMonth = genuinelyUnpaid.length === 0 && arrearsStillPending.length === 0;
     const nonSettled = invoices.filter(i =>
-      i.status !== 'paid' && i.status !== 'waived' && i.status !== 'voided'
+      i.status !== 'paid' && i.status !== 'waived'
     );
     const isFullySettled = nonSettled.length === 0 || (nonSettled.length === recovered.length);
     return { recovered, arrearsStillPending, genuinelyUnpaid, canCloseMonth, isFullySettled };
