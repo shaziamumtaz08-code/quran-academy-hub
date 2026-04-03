@@ -519,7 +519,7 @@ export default function Payments() {
     const currentMap = new Map(invoices.map(i => [i.id, i]));
     return cached.map(c => currentMap.get(c.id) || c);
   }, [invoices, selectedIds]);
-  const unpaidSelected = useMemo(() => selectedInvoices.filter(i => i.status !== 'paid' && i.status !== 'voided'), [selectedInvoices]);
+  const unpaidSelected = useMemo(() => selectedInvoices.filter(i => i.status !== 'paid'), [selectedInvoices]);
   // Guardrail #8: balance = invoice.amount - paid_total - forgiven_amount (paid_total from ledger)
   const totalExpected = unpaidSelected.reduce((s, i) => s + Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0)), 0);
   const bulkCurrency = unpaidSelected[0]?.currency || 'USD';
