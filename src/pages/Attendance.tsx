@@ -902,15 +902,49 @@ export default function Attendance() {
                'View and manage attendance across the academy'}
             </p>
           </div>
-          {/* Both Admin and Teacher can mark attendance */}
+          {/* Action buttons for Admin and Teacher */}
           {(isAdmin || isTeacher) && (
-            <Button 
-              onClick={() => setMarkDialogOpen(true)}
-              title="Mark attendance"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Mark Attendance
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={showMissing ? "default" : "outline"}
+                className={cn(
+                  showMissing && "bg-orange-500 hover:bg-orange-600 text-white"
+                )}
+                onClick={() => { setShowMissing(!showMissing); if (!showMissing) setFilter('all'); }}
+              >
+                <AlertTriangle className="h-4 w-4 mr-2" />
+                Missing{missingCount > 0 ? ` (${missingCount})` : ''}
+              </Button>
+              <Button 
+                onClick={() => {
+                  setSelectedStatus('teacher_leave');
+                  setMarkDialogOpen(true);
+                }}
+                variant="outline"
+              >
+                <Palmtree className="h-4 w-4 mr-2" />
+                Leave
+              </Button>
+              <Button 
+                onClick={() => {
+                  setSelectedStatus('rescheduled');
+                  setMarkDialogOpen(true);
+                }}
+                variant="outline"
+              >
+                <CalendarClock className="h-4 w-4 mr-2" />
+                Reschedule
+              </Button>
+              <Button 
+                onClick={() => {
+                  setSelectedStatus('present');
+                  setMarkDialogOpen(true);
+                }}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Mark Attendance
+              </Button>
+            </div>
           )}
         </div>
 
