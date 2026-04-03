@@ -1263,6 +1263,8 @@ export default function Payments() {
         }
         case 'reverse_payment': {
           await createAdjustment(invoice.id, 'reverse_payment', prev, { status: 'pending', amount_paid: 0 }, reason);
+          // Delete all payment transactions for this invoice so ledger is consistent
+          await supabase.from('payment_transactions').delete().eq('invoice_id', invoice.id);
           await supabase.from('fee_invoices').update({ status: 'pending' as any, amount_paid: 0, paid_at: null, forgiven_amount: 0 }).eq('id', invoice.id);
           break;
         }
