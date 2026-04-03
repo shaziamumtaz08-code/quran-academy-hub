@@ -34,9 +34,7 @@ export function PlanReminderBanner() {
 
       if (!assignments?.length) return [];
 
-      // Only consider students where planning tracking is enabled
-      const trackableAssignments = assignments.filter(a => (a as any).requires_planning !== false);
-      const studentIds = trackableAssignments.map(a => (a.student as any)?.id).filter(Boolean);
+      const studentIds = assignments.map(a => (a.student as any)?.id).filter(Boolean);
 
       // Check which students have a plan for this month
       const { data: plans } = await supabase
