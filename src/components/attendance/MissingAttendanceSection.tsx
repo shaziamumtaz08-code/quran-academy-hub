@@ -205,7 +205,7 @@ export function MissingAttendanceSection({
 
     // Sort by date descending
     return missing.sort((a, b) => b.date.localeCompare(a.date));
-  }, [schedules, attendanceRecords, startDate, endDate]);
+  }, [schedules, attendanceRecords, holidays, startDate, endDate]);
 
   // Extract unique filter options
   const filterOptions = useMemo(() => {
