@@ -724,7 +724,7 @@ export default function Payments() {
         .select(`id, student_id, amount, currency, billing_month, status, amount_paid, forgiven_amount, profiles!fee_invoices_student_id_fkey(full_name)`)
         .eq('student_id', inv.student_id)
         .in('billing_month', months)
-        .neq('status', 'voided' as any)
+        
         .order('billing_month');
       setSplitInvoices((data || []) as unknown as InvoiceRow[]);
       setSplitMode(months.length > 1);
