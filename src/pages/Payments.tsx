@@ -2731,7 +2731,7 @@ export default function Payments() {
                 {actionModal?.type === 'apply_discount' && 'Apply an additional discount to reduce the invoice amount.'}
                 {actionModal?.type === 'waive_fee' && 'Waive the remaining balance. This will mark the fee as forgiven.'}
                 {actionModal?.type === 'reverse_payment' && 'Reverse all payments on this invoice. Transaction records are preserved.'}
-                {actionModal?.type === 'void_invoice' && 'Void this invoice. It will remain in records but be inactive.'}
+                
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-2">
