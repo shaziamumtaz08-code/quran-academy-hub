@@ -142,7 +142,7 @@ export function MissingAttendanceSection({
         .gte('holiday_date', startDate)
         .lte('holiday_date', endDate);
       if (error) throw error;
-      return (data || []) as { holiday_date: string }[];
+      return (data || []) as unknown as { holiday_date: string }[];
     },
     enabled: isVisible,
   });
