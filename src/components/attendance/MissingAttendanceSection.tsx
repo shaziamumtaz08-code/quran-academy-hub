@@ -131,6 +131,22 @@ export function MissingAttendanceSection({
     enabled: isVisible,
   });
 
+  // Fetch holidays in range
+  const { data: holidays } = useQuery({
+    queryKey: ['holidays-for-missing', startDate, endDate],
+    queryFn: async () => {
+      if (startDate > endDate) return [];
+      const { data, error } = await supabase
+        .from('holidays' as any)
+        .select('holiday_date')
+        .gte('holiday_date', startDate)
+        .lte('holiday_date', endDate);
+      if (error) throw error;
+      return (data || []) as { holiday_date: string }[];
+    },
+    enabled: isVisible,
+  });
+
   // Compute missing records
   const missingRecords = useMemo(() => {
     if (!schedules || !attendanceRecords) return [];
