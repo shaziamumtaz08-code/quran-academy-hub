@@ -419,8 +419,8 @@ export default function Attendance() {
     }
   }, [markDialogOpen, selectedStudent, classDate, markDialogSchedule]);
 
-  // Missing attendance count for the stat card
-  const missingCount = useMissingAttendanceCount(monthFilter, dateMode, dateFrom, dateTo, isAdmin);
+  // Missing attendance count for the stat card - enabled for admin AND teacher
+  const missingCount = useMissingAttendanceCount(monthFilter, dateMode, dateFrom, dateTo, isAdmin || isTeacher);
 
   // Validation
   const isFormValid = useMemo(() => {
@@ -902,15 +902,49 @@ export default function Attendance() {
                'View and manage attendance across the academy'}
             </p>
           </div>
-          {/* Both Admin and Teacher can mark attendance */}
+          {/* Action buttons for Admin and Teacher */}
           {(isAdmin || isTeacher) && (
-            <Button 
-              onClick={() => setMarkDialogOpen(true)}
-              title="Mark attendance"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Mark Attendance
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={showMissing ? "default" : "outline"}
+                className={cn(
+                  showMissing && "bg-orange-500 hover:bg-orange-600 text-white"
+                )}
+                onClick={() => { setShowMissing(!showMissing); if (!showMissing) setFilter('all'); }}
+              >
+                <AlertTriangle className="h-4 w-4 mr-2" />
+                Missing{missingCount > 0 ? ` (${missingCount})` : ''}
+              </Button>
+              <Button 
+                onClick={() => {
+                  setSelectedStatus('teacher_leave');
+                  setMarkDialogOpen(true);
+                }}
+                variant="outline"
+              >
+                <Palmtree className="h-4 w-4 mr-2" />
+                Leave
+              </Button>
+              <Button 
+                onClick={() => {
+                  setSelectedStatus('rescheduled');
+                  setMarkDialogOpen(true);
+                }}
+                variant="outline"
+              >
+                <CalendarClock className="h-4 w-4 mr-2" />
+                Reschedule
+              </Button>
+              <Button 
+                onClick={() => {
+                  setSelectedStatus('present');
+                  setMarkDialogOpen(true);
+                }}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Mark Attendance
+              </Button>
+            </div>
           )}
         </div>
 
@@ -930,7 +964,7 @@ export default function Attendance() {
           <TabsContent value="one-on-one" className="space-y-6">
 
         {/* Stats - Enhanced for Admin */}
-        <div className={cn("grid gap-4", isAdmin ? "grid-cols-2 md:grid-cols-7" : "grid-cols-2 md:grid-cols-4")}>
+        <div className={cn("grid gap-4", isAdmin ? "grid-cols-2 md:grid-cols-7" : isTeacher ? "grid-cols-2 md:grid-cols-5" : "grid-cols-2 md:grid-cols-4")}>
           <Card className={cn("text-center cursor-pointer transition-all hover:ring-2 hover:ring-primary/30", filter === 'all' && !showMissing && "ring-2 ring-primary")} onClick={() => { setFilter('all'); setShowMissing(false); }}>
             <CardContent className="pt-6">
               <p className="text-2xl font-serif font-bold text-foreground">{stats.total}</p>
@@ -984,12 +1018,28 @@ export default function Attendance() {
             </>
           )}
           {!isAdmin && (
-            <Card className={cn("bg-accent/10 border-accent/20 text-center cursor-pointer transition-all hover:ring-2 hover:ring-accent/30", filter === 'rescheduled' && "ring-2 ring-accent")} onClick={() => { setFilter(filter === 'rescheduled' ? 'all' : 'rescheduled'); setShowMissing(false); }}>
-              <CardContent className="pt-6">
-                <p className="text-2xl font-serif font-bold text-accent">{stats.rescheduled}</p>
-                <p className="text-sm text-accent/80">Rescheduled</p>
-              </CardContent>
-            </Card>
+            <>
+              <Card className={cn("bg-accent/10 border-accent/20 text-center cursor-pointer transition-all hover:ring-2 hover:ring-accent/30", filter === 'rescheduled' && "ring-2 ring-accent")} onClick={() => { setFilter(filter === 'rescheduled' ? 'all' : 'rescheduled'); setShowMissing(false); }}>
+                <CardContent className="pt-6">
+                  <p className="text-2xl font-serif font-bold text-accent">{stats.rescheduled}</p>
+                  <p className="text-sm text-accent/80">Rescheduled</p>
+                </CardContent>
+              </Card>
+              {isTeacher && (
+                <Card 
+                  className={cn(
+                    "bg-orange-500/10 border-orange-500/20 text-center cursor-pointer transition-all hover:ring-2 hover:ring-orange-500/30",
+                    showMissing && "ring-2 ring-orange-500"
+                  )} 
+                  onClick={() => { setShowMissing(!showMissing); if (!showMissing) setFilter('all'); }}
+                >
+                  <CardContent className="pt-6">
+                    <p className="text-2xl font-serif font-bold text-orange-500">{missingCount}</p>
+                    <p className="text-sm text-orange-500/80">Missing</p>
+                  </CardContent>
+                </Card>
+              )}
+            </>
           )}
         </div>
 
