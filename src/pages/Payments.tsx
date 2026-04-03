@@ -1141,14 +1141,19 @@ export default function Payments() {
     return { id: authUser.id, name: profile?.full_name || 'Unknown', email: profile?.email || authUser.email || null };
   };
 
-  // Create adjustment record
+  // Create adjustment record (best-effort only; billing actions must still work even if history logging is unavailable)
   const createAdjustment = async (invoiceId: string, actionType: string, prevValues: any, newValues: any, reason: string) => {
-    const admin = await getAdminInfo();
-    await supabase.from('invoice_adjustments').insert({
-      invoice_id: invoiceId, action_type: actionType,
-      previous_values: prevValues, new_values: newValues,
-      reason, admin_id: admin.id, admin_name: admin.name, admin_email: admin.email,
-    });
+    try {
+      const admin = await getAdminInfo();
+      const { error } = await supabase.from('invoice_adjustments').insert({
+        invoice_id: invoiceId, action_type: actionType,
+        previous_values: prevValues, new_values: newValues,
+        reason, admin_id: admin.id, admin_name: admin.name, admin_email: admin.email,
+      });
+      if (error) console.warn('Invoice adjustment logging skipped:', error.message);
+    } catch (error) {
+      console.warn('Invoice adjustment logging failed:', error);
+    }
   };
 
   // Close month function
