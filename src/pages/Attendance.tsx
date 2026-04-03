@@ -915,6 +915,15 @@ export default function Attendance() {
                 <AlertTriangle className="h-4 w-4 mr-2" />
                 Missing{missingCount > 0 ? ` (${missingCount})` : ''}
               </Button>
+              {isAdmin && (
+                <Button 
+                  variant="outline"
+                  onClick={() => setHolidayDialogOpen(true)}
+                >
+                  <Palmtree className="h-4 w-4 mr-2" />
+                  Mark Holiday
+                </Button>
+              )}
               <Button 
                 onClick={() => {
                   setSelectedStatus('teacher_leave');
@@ -922,7 +931,7 @@ export default function Attendance() {
                 }}
                 variant="outline"
               >
-                <Palmtree className="h-4 w-4 mr-2" />
+                <UserX className="h-4 w-4 mr-2" />
                 Leave
               </Button>
               <Button 
