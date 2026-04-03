@@ -56,7 +56,7 @@ export function TeacherNotificationsSection() {
 
       const filledIds = new Set((plans || []).map(p => p.student_id));
 
-      return trackable
+      return assignments
         .filter(a => {
           const sid = (a.student as any)?.id;
           return sid && !filledIds.has(sid);
