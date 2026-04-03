@@ -29,7 +29,8 @@ export function PlanReminderBanner() {
         .from('student_teacher_assignments')
         .select('student_id, requires_planning, student:profiles!student_teacher_assignments_student_id_fkey(id, full_name)')
         .eq('teacher_id', user.id)
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .eq('requires_planning', true);
 
       if (!assignments?.length) return [];
 
