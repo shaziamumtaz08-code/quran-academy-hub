@@ -1278,6 +1278,7 @@ export default function Payments() {
     },
     onSuccess: (id) => {
       queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['txn-sums'] });
       toast({ title: 'Invoice updated successfully' });
       trackActivity({ action: 'invoice_edited', entityType: 'invoice', entityId: id, details: { action: actionModal?.type } });
       setActionModal(null);
