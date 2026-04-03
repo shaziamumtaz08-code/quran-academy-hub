@@ -27,6 +27,7 @@ import { useDivision } from '@/contexts/DivisionContext';
 import { BulkAssignmentImportDialog } from '@/components/assignments/BulkAssignmentImportDialog';
 import { Textarea } from '@/components/ui/textarea';
 import { formatDisplayDate } from '@/lib/dateFormat';
+import { cn } from '@/lib/utils';
 
 const STATUS_CONFIG = {
   active: { label: 'Active', color: 'bg-emerald-500', badgeClass: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' },
