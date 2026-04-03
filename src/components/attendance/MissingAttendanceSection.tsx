@@ -147,9 +147,11 @@ export function MissingAttendanceSection({
     enabled: isVisible,
   });
 
-  // Compute missing records
+  // Compute missing records (excluding holidays)
   const missingRecords = useMemo(() => {
     if (!schedules || !attendanceRecords) return [];
+
+    const holidaySet = new Set((holidays || []).map(h => h.holiday_date));
 
     const today = new Date();
     today.setHours(23, 59, 59, 999);
