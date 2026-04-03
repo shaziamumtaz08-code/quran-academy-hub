@@ -42,6 +42,8 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function TicketList({ view, userId }: TicketListProps) {
+  const { activeRole } = useAuth();
+  const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_');
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
