@@ -526,6 +526,34 @@ export default function OrganizationSettings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── Holiday Dialog ── */}
+      <Dialog open={holidayDialog} onOpenChange={setHolidayDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editHoliday ? 'Edit Holiday' : 'New Holiday'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Holiday Name</Label>
+              <Input value={holidayForm.name} onChange={e => setHolidayForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Eid ul Fitr" />
+            </div>
+            <div className="space-y-2">
+              <Label>Date</Label>
+              <Input type="date" value={holidayForm.holiday_date} onChange={e => setHolidayForm(p => ({ ...p, holiday_date: e.target.value }))} />
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch checked={holidayForm.is_recurring} onCheckedChange={c => setHolidayForm(p => ({ ...p, is_recurring: c }))} />
+              <Label>Recurring annually</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => saveHolidayMut.mutate()} disabled={saveHolidayMut.isPending || !holidayForm.name || !holidayForm.holiday_date}>
+              {saveHolidayMut.isPending ? 'Saving...' : editHoliday ? 'Update' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
