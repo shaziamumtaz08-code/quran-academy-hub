@@ -310,7 +310,9 @@ export function TicketDetail({ ticketId, open, onOpenChange }: TicketDetailProps
                       </div>
                       <div className={`flex items-center gap-1.5 mt-0.5 px-1 ${isMe ? 'flex-row-reverse' : ''}`}>
                         <span className="text-[10px] text-muted-foreground font-medium">
-                          {isMe ? 'You' : comment.author?.full_name || 'Unknown'}
+                          {isMe ? 'You' : (ticket.is_anonymous && comment.author_id === ticket.creator_id && !isAdmin)
+                            ? 'Anonymous'
+                            : comment.author?.full_name || 'Unknown'}
                         </span>
                         <span className="text-[10px] text-muted-foreground">
                           {format(new Date(comment.created_at), 'HH:mm')}
