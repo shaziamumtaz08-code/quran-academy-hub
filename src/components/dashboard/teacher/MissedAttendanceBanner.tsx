@@ -84,6 +84,7 @@ export function MissedAttendanceBanner() {
           const dateStr = format(checkDate, 'yyyy-MM-dd');
 
           if (dateStr < OPERATIONAL_CUTOFF) continue;
+          if (holidaySet.has(dateStr)) continue;
 
           if (activeDays.includes(dayName)) {
             const key = `${assignment.student_id}_${dateStr}`;
