@@ -2736,11 +2736,11 @@ export default function Payments() {
                 
               </DialogTitle>
               <DialogDescription>
-                {actionModal?.type === 'mark_unpaid' && 'Reset this invoice to unpaid status. Payment records are preserved.'}
-                {actionModal?.type === 'restore_to_pending' && 'Restore this voided invoice back to pending. Amount paid will be reset to 0.'}
+                {actionModal?.type === 'mark_unpaid' && 'Reset this invoice to unpaid status and remove all linked payment records.'}
+                {actionModal?.type === 'restore_to_pending' && 'Restore this invoice back to pending status.'}
                 {actionModal?.type === 'apply_discount' && 'Apply an additional discount to reduce the invoice amount.'}
                 {actionModal?.type === 'waive_fee' && 'Waive the remaining balance. This will mark the fee as forgiven.'}
-                {actionModal?.type === 'reverse_payment' && 'Reverse all payments on this invoice. Transaction records are preserved.'}
+                {actionModal?.type === 'reverse_payment' && 'Reverse all payments on this invoice and remove the linked payment records.'}
                 
               </DialogDescription>
             </DialogHeader>
