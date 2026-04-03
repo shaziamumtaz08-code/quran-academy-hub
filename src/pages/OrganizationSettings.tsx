@@ -11,7 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, Plus, Pencil, Trash2, Globe, MapPin, Layers, Loader2, Save } from 'lucide-react';
+import { Building2, Plus, Pencil, Trash2, Globe, MapPin, Layers, Loader2, Save, CalendarOff } from 'lucide-react';
+import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -171,6 +172,75 @@ export default function OrganizationSettings() {
     },
   });
 
+  // ── Holidays ──
+  const { data: holidaysList = [], isLoading: holidaysLoading } = useQuery({
+    queryKey: ['holidays-settings'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('holidays' as any).select('*').order('holiday_date', { ascending: false });
+      if (error) throw error;
+      return (data || []) as unknown as Array<{
+        id: string; holiday_date: string; name: string; is_recurring: boolean;
+        branch_id: string | null; division_id: string | null; created_at: string;
+      }>;
+    },
+  });
+
+  const [holidayDialog, setHolidayDialog] = useState(false);
+  const [editHoliday, setEditHoliday] = useState<any>(null);
+  const [holidayForm, setHolidayForm] = useState({ name: '', holiday_date: '', is_recurring: false, branch_id: '', division_id: '' });
+
+  const openNewHoliday = () => {
+    setEditHoliday(null);
+    setHolidayForm({ name: '', holiday_date: format(new Date(), 'yyyy-MM-dd'), is_recurring: false, branch_id: '', division_id: '' });
+    setHolidayDialog(true);
+  };
+
+  const openEditHoliday = (h: any) => {
+    setEditHoliday(h);
+    setHolidayForm({ name: h.name, holiday_date: h.holiday_date, is_recurring: h.is_recurring, branch_id: h.branch_id || '', division_id: h.division_id || '' });
+    setHolidayDialog(true);
+  };
+
+  const saveHolidayMut = useMutation({
+    mutationFn: async () => {
+      const payload: any = {
+        name: holidayForm.name,
+        holiday_date: holidayForm.holiday_date,
+        is_recurring: holidayForm.is_recurring,
+        branch_id: holidayForm.branch_id || null,
+        division_id: holidayForm.division_id || null,
+      };
+      if (editHoliday) {
+        const { error } = await supabase.from('holidays' as any).update(payload).eq('id', editHoliday.id);
+        if (error) throw error;
+      } else {
+        const { data: userData } = await supabase.auth.getUser();
+        payload.created_by = userData.user?.id;
+        const { error } = await supabase.from('holidays' as any).insert(payload);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['holidays-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['holidays'] });
+      setHolidayDialog(false);
+      toast({ title: editHoliday ? 'Holiday updated' : 'Holiday created' });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const deleteHoliday = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('holidays' as any).delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['holidays-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['holidays'] });
+      toast({ title: 'Holiday deleted' });
+    },
+  });
+
   if (orgLoading || branchesLoading) {
     return (
       <DashboardLayout>
@@ -196,6 +266,7 @@ export default function OrganizationSettings() {
             <TabsTrigger value="identity">🏢 Identity</TabsTrigger>
             <TabsTrigger value="branches">🌐 Branches</TabsTrigger>
             <TabsTrigger value="divisions">📦 Divisions</TabsTrigger>
+            <TabsTrigger value="holidays">📅 Holidays</TabsTrigger>
           </TabsList>
 
           {/* ── Tab 1: Identity ── */}
@@ -329,6 +400,51 @@ export default function OrganizationSettings() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* ── Tab 4: Holidays ── */}
+          <TabsContent value="holidays">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2"><CalendarOff className="h-5 w-5" /> Holiday Calendar</CardTitle>
+                  <CardDescription>Manage holidays — these dates are excluded from missing attendance</CardDescription>
+                </div>
+                <Button onClick={openNewHoliday} size="sm" className="gap-1"><Plus className="h-4 w-4" /> Add Holiday</Button>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Recurring</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {holidaysList.map(h => (
+                      <TableRow key={h.id}>
+                        <TableCell className="font-medium">{h.holiday_date}</TableCell>
+                        <TableCell>{h.name}</TableCell>
+                        <TableCell>
+                          <Badge variant={h.is_recurring ? 'default' : 'outline'}>
+                            {h.is_recurring ? '🔁 Annual' : 'One-off'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="icon" onClick={() => openEditHoliday(h)}><Pencil className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => deleteHoliday.mutate(h.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {holidaysList.length === 0 && (
+                      <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">No holidays configured</TableCell></TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
 
@@ -406,6 +522,34 @@ export default function OrganizationSettings() {
           <DialogFooter>
             <Button onClick={() => saveDivision.mutate()} disabled={saveDivision.isPending || !divForm.name || !divForm.branch_id}>
               {saveDivision.isPending ? 'Creating...' : 'Create Division'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Holiday Dialog ── */}
+      <Dialog open={holidayDialog} onOpenChange={setHolidayDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editHoliday ? 'Edit Holiday' : 'New Holiday'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Holiday Name</Label>
+              <Input value={holidayForm.name} onChange={e => setHolidayForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Eid ul Fitr" />
+            </div>
+            <div className="space-y-2">
+              <Label>Date</Label>
+              <Input type="date" value={holidayForm.holiday_date} onChange={e => setHolidayForm(p => ({ ...p, holiday_date: e.target.value }))} />
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch checked={holidayForm.is_recurring} onCheckedChange={c => setHolidayForm(p => ({ ...p, is_recurring: c }))} />
+              <Label>Recurring annually</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => saveHolidayMut.mutate()} disabled={saveHolidayMut.isPending || !holidayForm.name || !holidayForm.holiday_date}>
+              {saveHolidayMut.isPending ? 'Saving...' : editHoliday ? 'Update' : 'Create'}
             </Button>
           </DialogFooter>
         </DialogContent>

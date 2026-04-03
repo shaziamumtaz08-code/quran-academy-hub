@@ -131,9 +131,27 @@ export function MissingAttendanceSection({
     enabled: isVisible,
   });
 
-  // Compute missing records
+  // Fetch holidays in range
+  const { data: holidays } = useQuery({
+    queryKey: ['holidays-for-missing', startDate, endDate],
+    queryFn: async () => {
+      if (startDate > endDate) return [];
+      const { data, error } = await supabase
+        .from('holidays' as any)
+        .select('holiday_date')
+        .gte('holiday_date', startDate)
+        .lte('holiday_date', endDate);
+      if (error) throw error;
+      return (data || []) as unknown as { holiday_date: string }[];
+    },
+    enabled: isVisible,
+  });
+
+  // Compute missing records (excluding holidays)
   const missingRecords = useMemo(() => {
     if (!schedules || !attendanceRecords) return [];
+
+    const holidaySet = new Set((holidays || []).map(h => h.holiday_date));
 
     const today = new Date();
     today.setHours(23, 59, 59, 999);
@@ -165,6 +183,8 @@ export function MissingAttendanceSection({
         // Skip if today (attendance might not be marked yet if class hasn't happened)
         const dayStr = format(day, 'yyyy-MM-dd');
         if (dayStr === format(new Date(), 'yyyy-MM-dd')) continue;
+        // Skip holidays
+        if (holidaySet.has(dayStr)) continue;
 
         if (getDay(day) === scheduledDayIndex) {
           const key = `${assignment.student_id}:${dayStr}`;
@@ -185,7 +205,7 @@ export function MissingAttendanceSection({
 
     // Sort by date descending
     return missing.sort((a, b) => b.date.localeCompare(a.date));
-  }, [schedules, attendanceRecords, startDate, endDate]);
+  }, [schedules, attendanceRecords, holidays, startDate, endDate]);
 
   // Extract unique filter options
   const filterOptions = useMemo(() => {
@@ -444,6 +464,21 @@ export function useMissingAttendanceCount(
     enabled,
   });
 
+  // Fetch holidays for exclusion
+  const { data: holidays } = useQuery({
+    queryKey: ['holidays-count-missing', startDate, endDate],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('holidays' as any)
+        .select('holiday_date')
+        .gte('holiday_date', startDate)
+        .lte('holiday_date', endDate);
+      if (error) throw error;
+      return (data || []) as unknown as { holiday_date: string }[];
+    },
+    enabled,
+  });
+
   return useMemo(() => {
     if (!schedules || !attendanceRecords) return 0;
 
@@ -451,6 +486,7 @@ export function useMissingAttendanceCount(
     const attendanceSet = new Set(
       (attendanceRecords || []).map(r => `${r.student_id}:${r.class_date}`)
     );
+    const holidaySet = new Set((holidays || []).map(h => h.holiday_date));
 
     let count = 0;
     const effectiveEnd = endDate > format(today, 'yyyy-MM-dd') ? format(today, 'yyyy-MM-dd') : endDate;
@@ -470,6 +506,7 @@ export function useMissingAttendanceCount(
         if (isAfter(day, new Date())) continue;
         const dayStr = format(day, 'yyyy-MM-dd');
         if (dayStr === format(new Date(), 'yyyy-MM-dd')) continue;
+        if (holidaySet.has(dayStr)) continue;
 
         if (getDay(day) === scheduledDayIndex) {
           const key = `${assignment.student_id}:${dayStr}`;
@@ -481,5 +518,5 @@ export function useMissingAttendanceCount(
     }
 
     return count;
-  }, [schedules, attendanceRecords, startDate, endDate]);
+  }, [schedules, attendanceRecords, holidays, startDate, endDate]);
 }

@@ -139,6 +139,11 @@ export default function Attendance() {
   const [selectedRecordIds, setSelectedRecordIds] = useState<Set<string>>(new Set());
   const [showMissing, setShowMissing] = useState(searchParams.get('filter') === 'missing');
   
+  // Holiday dialog state
+  const [holidayDialogOpen, setHolidayDialogOpen] = useState(false);
+  const [holidayName, setHolidayName] = useState('');
+  const [holidayDate, setHolidayDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  
   // Form state for marking attendance
   const [selectedStudent, setSelectedStudent] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<AttendanceStatus>('present');
@@ -556,6 +561,31 @@ export default function Attendance() {
     enabled: !!user?.id && (activeRole !== 'parent' || (childrenIds !== undefined)),
   });
 
+  // Save holiday mutation
+  const saveHoliday = useMutation({
+    mutationFn: async () => {
+      if (!user?.id) throw new Error('Missing user');
+      const { error } = await supabase.from('holidays' as any).insert({
+        holiday_date: holidayDate,
+        name: holidayName,
+        created_by: user.id,
+        branch_id: null,
+        division_id: activeDivision?.id || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: 'Holiday Saved', description: `${holidayName} on ${holidayDate} marked as holiday` });
+      queryClient.invalidateQueries({ queryKey: ['holidays'] });
+      queryClient.invalidateQueries({ queryKey: ['schedules-count-missing'] });
+      queryClient.invalidateQueries({ queryKey: ['missing-attendance'] });
+      setHolidayDialogOpen(false);
+      setHolidayName('');
+      setHolidayDate(format(new Date(), 'yyyy-MM-dd'));
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
   // Mark attendance mutation
   const markAttendance = useMutation({
     mutationFn: async () => {
@@ -915,6 +945,15 @@ export default function Attendance() {
                 <AlertTriangle className="h-4 w-4 mr-2" />
                 Missing{missingCount > 0 ? ` (${missingCount})` : ''}
               </Button>
+              {isAdmin && (
+                <Button 
+                  variant="outline"
+                  onClick={() => setHolidayDialogOpen(true)}
+                >
+                  <Palmtree className="h-4 w-4 mr-2" />
+                  Mark Holiday
+                </Button>
+              )}
               <Button 
                 onClick={() => {
                   setSelectedStatus('teacher_leave');
@@ -922,7 +961,7 @@ export default function Attendance() {
                 }}
                 variant="outline"
               >
-                <Palmtree className="h-4 w-4 mr-2" />
+                <UserX className="h-4 w-4 mr-2" />
                 Leave
               </Button>
               <Button 
@@ -1897,6 +1936,36 @@ export default function Attendance() {
               >
                 {updateAttendance.isPending ? 'Saving...' : 'Update'}
               </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Holiday Dialog */}
+        <Dialog open={holidayDialogOpen} onOpenChange={setHolidayDialogOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="font-serif">Mark Holiday</DialogTitle>
+              <DialogDescription>Mark a date as a holiday — all scheduled sessions on this date will be excluded from missing attendance.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 mt-2">
+              <div className="space-y-2">
+                <Label>Holiday Date</Label>
+                <Input type="date" value={holidayDate} onChange={e => setHolidayDate(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Holiday Name</Label>
+                <Input value={holidayName} onChange={e => setHolidayName(e.target.value)} placeholder="e.g. Eid ul Fitr, Weekend Off" />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <Button variant="outline" className="flex-1" onClick={() => setHolidayDialogOpen(false)}>Cancel</Button>
+                <Button 
+                  className="flex-1" 
+                  disabled={!holidayName || !holidayDate || saveHoliday.isPending}
+                  onClick={() => saveHoliday.mutate()}
+                >
+                  {saveHoliday.isPending ? 'Saving...' : 'Save Holiday'}
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>

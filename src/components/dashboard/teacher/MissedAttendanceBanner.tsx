@@ -45,15 +45,25 @@ export function MissedAttendanceBanner() {
       const twoWeeksAgo = twoWeeksAgoRaw < OPERATIONAL_CUTOFF ? OPERATIONAL_CUTOFF : twoWeeksAgoRaw;
       const today = format(new Date(), 'yyyy-MM-dd');
 
-      const { data: attendanceRecords } = await supabase
-        .from('attendance')
-        .select('student_id, class_date')
-        .eq('teacher_id', user.id)
-        .gte('class_date', twoWeeksAgo)
-        .lt('class_date', today);
+      const [attendanceRes, holidaysRes] = await Promise.all([
+        supabase
+          .from('attendance')
+          .select('student_id, class_date')
+          .eq('teacher_id', user.id)
+          .gte('class_date', twoWeeksAgo)
+          .lt('class_date', today),
+        supabase
+          .from('holidays' as any)
+          .select('holiday_date')
+          .gte('holiday_date', twoWeeksAgo)
+          .lte('holiday_date', today),
+      ]);
 
       const attendedSet = new Set(
-        (attendanceRecords || []).map(a => `${a.student_id}_${a.class_date}`)
+        (attendanceRes.data || []).map(a => `${a.student_id}_${a.class_date}`)
+      );
+      const holidaySet = new Set(
+        ((holidaysRes.data || []) as unknown as { holiday_date: string }[]).map(h => h.holiday_date)
       );
 
       const missed: MissedEntry[] = [];
@@ -74,6 +84,7 @@ export function MissedAttendanceBanner() {
           const dateStr = format(checkDate, 'yyyy-MM-dd');
 
           if (dateStr < OPERATIONAL_CUTOFF) continue;
+          if (holidaySet.has(dateStr)) continue;
 
           if (activeDays.includes(dayName)) {
             const key = `${assignment.student_id}_${dateStr}`;
