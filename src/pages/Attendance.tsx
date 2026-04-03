@@ -419,8 +419,8 @@ export default function Attendance() {
     }
   }, [markDialogOpen, selectedStudent, classDate, markDialogSchedule]);
 
-  // Missing attendance count for the stat card
-  const missingCount = useMissingAttendanceCount(monthFilter, dateMode, dateFrom, dateTo, isAdmin);
+  // Missing attendance count for the stat card - enabled for admin AND teacher
+  const missingCount = useMissingAttendanceCount(monthFilter, dateMode, dateFrom, dateTo, isAdmin || isTeacher);
 
   // Validation
   const isFormValid = useMemo(() => {
