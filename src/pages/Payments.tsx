@@ -2752,7 +2752,7 @@ export default function Payments() {
             <DialogFooter>
               <Button variant="outline" onClick={() => { setActionModal(null); setActionReason(''); setDiscountAmount(''); }}>Cancel</Button>
               <Button
-                variant={actionModal?.type === 'void_invoice' ? 'destructive' : 'default'}
+                variant="default"
                 disabled={!actionReason.trim() || invoiceActionMutation.isPending || (actionModal?.type === 'apply_discount' && !parseFloat(discountAmount))}
                 onClick={() => actionModal && invoiceActionMutation.mutate({
                   type: actionModal.type,
