@@ -1264,11 +1264,6 @@ export default function Payments() {
           await supabase.from('fee_invoices').update({ status: 'pending' as any, amount_paid: 0, paid_at: null, forgiven_amount: 0 }).eq('id', invoice.id);
           break;
         }
-        case 'void_invoice': {
-          await createAdjustment(invoice.id, 'void_invoice', prev, { status: 'voided' }, reason);
-          await supabase.from('fee_invoices').update({ status: 'voided' as any }).eq('id', invoice.id);
-          break;
-        }
       }
       return invoice.id;
     },
