@@ -1236,6 +1236,8 @@ export default function Payments() {
       switch (type) {
         case 'mark_unpaid': {
           await createAdjustment(invoice.id, 'mark_unpaid', prev, { status: 'pending', amount_paid: 0 }, reason);
+          // Delete all payment transactions for this invoice so ledger is consistent
+          await supabase.from('payment_transactions').delete().eq('invoice_id', invoice.id);
           await supabase.from('fee_invoices').update({ status: 'pending' as any, amount_paid: 0, paid_at: null }).eq('id', invoice.id);
           break;
         }
