@@ -6,7 +6,8 @@ import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { format, subDays, isAfter, isBefore, startOfDay } from 'date-fns';
 
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+const OPERATIONAL_CUTOFF = '2026-04-01';
 
 interface MissedEntry {
   date: string;
@@ -40,7 +41,8 @@ export function MissedAttendanceBanner() {
       if (!assignments?.length) return [];
 
       // Get attendance records for last 14 days
-      const twoWeeksAgo = format(subDays(new Date(), 14), 'yyyy-MM-dd');
+      const twoWeeksAgoRaw = format(subDays(new Date(), 14), 'yyyy-MM-dd');
+      const twoWeeksAgo = twoWeeksAgoRaw < OPERATIONAL_CUTOFF ? OPERATIONAL_CUTOFF : twoWeeksAgoRaw;
       const today = format(new Date(), 'yyyy-MM-dd');
 
       const { data: attendanceRecords } = await supabase
@@ -65,11 +67,13 @@ export function MissedAttendanceBanner() {
           .filter((s: any) => s.is_active)
           .map((s: any) => s.day_of_week);
 
-        // Check last 14 days
+        // Check last 14 days (but not before April 2026 cutoff)
         for (let i = 1; i <= 14; i++) {
           const checkDate = subDays(new Date(), i);
           const dayName = DAY_NAMES[checkDate.getDay()];
           const dateStr = format(checkDate, 'yyyy-MM-dd');
+
+          if (dateStr < OPERATIONAL_CUTOFF) continue;
 
           if (activeDays.includes(dayName)) {
             const key = `${assignment.student_id}_${dateStr}`;
