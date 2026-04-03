@@ -172,6 +172,75 @@ export default function OrganizationSettings() {
     },
   });
 
+  // ── Holidays ──
+  const { data: holidaysList = [], isLoading: holidaysLoading } = useQuery({
+    queryKey: ['holidays-settings'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('holidays' as any).select('*').order('holiday_date', { ascending: false });
+      if (error) throw error;
+      return (data || []) as unknown as Array<{
+        id: string; holiday_date: string; name: string; is_recurring: boolean;
+        branch_id: string | null; division_id: string | null; created_at: string;
+      }>;
+    },
+  });
+
+  const [holidayDialog, setHolidayDialog] = useState(false);
+  const [editHoliday, setEditHoliday] = useState<any>(null);
+  const [holidayForm, setHolidayForm] = useState({ name: '', holiday_date: '', is_recurring: false, branch_id: '', division_id: '' });
+
+  const openNewHoliday = () => {
+    setEditHoliday(null);
+    setHolidayForm({ name: '', holiday_date: format(new Date(), 'yyyy-MM-dd'), is_recurring: false, branch_id: '', division_id: '' });
+    setHolidayDialog(true);
+  };
+
+  const openEditHoliday = (h: any) => {
+    setEditHoliday(h);
+    setHolidayForm({ name: h.name, holiday_date: h.holiday_date, is_recurring: h.is_recurring, branch_id: h.branch_id || '', division_id: h.division_id || '' });
+    setHolidayDialog(true);
+  };
+
+  const saveHolidayMut = useMutation({
+    mutationFn: async () => {
+      const payload: any = {
+        name: holidayForm.name,
+        holiday_date: holidayForm.holiday_date,
+        is_recurring: holidayForm.is_recurring,
+        branch_id: holidayForm.branch_id || null,
+        division_id: holidayForm.division_id || null,
+      };
+      if (editHoliday) {
+        const { error } = await supabase.from('holidays' as any).update(payload).eq('id', editHoliday.id);
+        if (error) throw error;
+      } else {
+        const { data: userData } = await supabase.auth.getUser();
+        payload.created_by = userData.user?.id;
+        const { error } = await supabase.from('holidays' as any).insert(payload);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['holidays-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['holidays'] });
+      setHolidayDialog(false);
+      toast({ title: editHoliday ? 'Holiday updated' : 'Holiday created' });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const deleteHoliday = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('holidays' as any).delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['holidays-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['holidays'] });
+      toast({ title: 'Holiday deleted' });
+    },
+  });
+
   if (orgLoading || branchesLoading) {
     return (
       <DashboardLayout>
