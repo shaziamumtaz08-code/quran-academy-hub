@@ -216,6 +216,17 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCrea
             <Textarea placeholder="Details..." value={description} onChange={e => setDescription(e.target.value)} className="min-h-[80px]" />
           </div>
 
+          {/* Anonymous Toggle */}
+          {['complaint', 'feedback', 'suggestion'].includes(category) && (
+            <div className="flex items-center justify-between bg-muted/50 rounded-lg px-3 py-2.5">
+              <div>
+                <p className="text-sm font-medium">Submit Anonymously</p>
+                <p className="text-xs text-muted-foreground">Your identity will be hidden from the recipient</p>
+              </div>
+              <Switch checked={isAnonymous} onCheckedChange={setIsAnonymous} />
+            </div>
+          )}
+
           {/* Leave Request Fields */}
           {category === 'leave_request' && (
             <LeaveRequestFields metadata={leaveMetadata} onChange={setLeaveMetadata} />
