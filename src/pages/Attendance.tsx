@@ -1018,12 +1018,28 @@ export default function Attendance() {
             </>
           )}
           {!isAdmin && (
-            <Card className={cn("bg-accent/10 border-accent/20 text-center cursor-pointer transition-all hover:ring-2 hover:ring-accent/30", filter === 'rescheduled' && "ring-2 ring-accent")} onClick={() => { setFilter(filter === 'rescheduled' ? 'all' : 'rescheduled'); setShowMissing(false); }}>
-              <CardContent className="pt-6">
-                <p className="text-2xl font-serif font-bold text-accent">{stats.rescheduled}</p>
-                <p className="text-sm text-accent/80">Rescheduled</p>
-              </CardContent>
-            </Card>
+            <>
+              <Card className={cn("bg-accent/10 border-accent/20 text-center cursor-pointer transition-all hover:ring-2 hover:ring-accent/30", filter === 'rescheduled' && "ring-2 ring-accent")} onClick={() => { setFilter(filter === 'rescheduled' ? 'all' : 'rescheduled'); setShowMissing(false); }}>
+                <CardContent className="pt-6">
+                  <p className="text-2xl font-serif font-bold text-accent">{stats.rescheduled}</p>
+                  <p className="text-sm text-accent/80">Rescheduled</p>
+                </CardContent>
+              </Card>
+              {isTeacher && (
+                <Card 
+                  className={cn(
+                    "bg-orange-500/10 border-orange-500/20 text-center cursor-pointer transition-all hover:ring-2 hover:ring-orange-500/30",
+                    showMissing && "ring-2 ring-orange-500"
+                  )} 
+                  onClick={() => { setShowMissing(!showMissing); if (!showMissing) setFilter('all'); }}
+                >
+                  <CardContent className="pt-6">
+                    <p className="text-2xl font-serif font-bold text-orange-500">{missingCount}</p>
+                    <p className="text-sm text-orange-500/80">Missing</p>
+                  </CardContent>
+                </Card>
+              )}
+            </>
           )}
         </div>
 
