@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { Switch } from '@/components/ui/switch';
 import { LeaveRequestFields } from './LeaveRequestFields';
 
 interface CreateTicketDialogProps {
@@ -47,6 +48,7 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCrea
   const [priority, setPriority] = useState('normal');
   const [assigneeId, setAssigneeId] = useState('');
   const [leaveMetadata, setLeaveMetadata] = useState<any>({});
+  const [isAnonymous, setIsAnonymous] = useState(false);
 
   // Fetch subcategories
   const { data: subcategories = [] } = useQuery({
@@ -84,6 +86,9 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCrea
   useEffect(() => {
     setSubcategoryId('');
     setLeaveMetadata({});
+    if (!['complaint', 'feedback', 'suggestion'].includes(category)) {
+      setIsAnonymous(false);
+    }
   }, [category]);
 
   const createTicket = useMutation({
@@ -110,6 +115,7 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCrea
         tat_deadline: tatDeadline,
         due_date: tatDeadline,
         metadata,
+        is_anonymous: isAnonymous,
         branch_id: activeBranch?.id || null,
         division_id: activeDivision?.id || null,
       });
@@ -134,6 +140,7 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCrea
     setPriority('normal');
     setAssigneeId('');
     setLeaveMetadata({});
+    setIsAnonymous(false);
   };
 
   const canSubmit = subject.trim();
@@ -208,6 +215,17 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCrea
             <Label className="text-xs">Description</Label>
             <Textarea placeholder="Details..." value={description} onChange={e => setDescription(e.target.value)} className="min-h-[80px]" />
           </div>
+
+          {/* Anonymous Toggle */}
+          {['complaint', 'feedback', 'suggestion'].includes(category) && (
+            <div className="flex items-center justify-between bg-muted/50 rounded-lg px-3 py-2.5">
+              <div>
+                <p className="text-sm font-medium">Submit Anonymously</p>
+                <p className="text-xs text-muted-foreground">Your identity will be hidden from the recipient</p>
+              </div>
+              <Switch checked={isAnonymous} onCheckedChange={setIsAnonymous} />
+            </div>
+          )}
 
           {/* Leave Request Fields */}
           {category === 'leave_request' && (
