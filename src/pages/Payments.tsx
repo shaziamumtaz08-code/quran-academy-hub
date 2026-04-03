@@ -2036,7 +2036,7 @@ export default function Payments() {
                                       <DropdownMenuSeparator />
                                       <DropdownMenuItem onClick={() => { setActionModal({ type: 'view_history', invoice: inv }); fetchHistory(inv.id); }}><History className="h-3.5 w-3.5 mr-2" /> View History</DropdownMenuItem>
                                       <DropdownMenuSeparator />
-                                      <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setActionModal({ type: 'void_invoice', invoice: inv })}><FileX className="h-3.5 w-3.5 mr-2" /> Void Invoice</DropdownMenuItem>
+                                      
                                     </>
                                   )}
                                 </DropdownMenuContent>
