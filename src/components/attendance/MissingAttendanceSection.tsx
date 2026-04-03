@@ -183,6 +183,8 @@ export function MissingAttendanceSection({
         // Skip if today (attendance might not be marked yet if class hasn't happened)
         const dayStr = format(day, 'yyyy-MM-dd');
         if (dayStr === format(new Date(), 'yyyy-MM-dd')) continue;
+        // Skip holidays
+        if (holidaySet.has(dayStr)) continue;
 
         if (getDay(day) === scheduledDayIndex) {
           const key = `${assignment.student_id}:${dayStr}`;
