@@ -3580,6 +3580,7 @@ export type Database = {
           division_id: string | null
           due_date: string | null
           id: string
+          is_anonymous: boolean
           is_overdue: boolean
           metadata: Json | null
           priority: string
@@ -3604,6 +3605,7 @@ export type Database = {
           division_id?: string | null
           due_date?: string | null
           id?: string
+          is_anonymous?: boolean
           is_overdue?: boolean
           metadata?: Json | null
           priority?: string
@@ -3628,6 +3630,7 @@ export type Database = {
           division_id?: string | null
           due_date?: string | null
           id?: string
+          is_anonymous?: boolean
           is_overdue?: boolean
           metadata?: Json | null
           priority?: string

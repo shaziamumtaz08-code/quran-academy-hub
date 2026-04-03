@@ -1,0 +1,1 @@
+ALTER TABLE public.tickets ADD COLUMN is_anonymous BOOLEAN NOT NULL DEFAULT false;
