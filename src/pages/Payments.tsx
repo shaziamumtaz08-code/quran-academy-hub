@@ -1627,7 +1627,7 @@ export default function Payments() {
                       onClick={() => {
                         const fcyVariance = Math.max(0, pendingPKR - (
                           invoices
-                            .filter(i => i.currency === 'PKR' && i.status !== 'paid' && i.status !== 'voided' && i.status !== 'waived')
+                            .filter(i => i.currency === 'PKR' && i.status !== 'paid' && i.status !== 'waived')
                             .reduce((s, i) => s + Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0)), 0)
                         ));
                         setCloseMonthAmount(fcyVariance > 0 ? fcyVariance.toFixed(0) : '');
