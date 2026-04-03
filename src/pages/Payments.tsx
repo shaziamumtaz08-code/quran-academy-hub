@@ -1546,7 +1546,7 @@ export default function Payments() {
                 </Select>
               )}
               {isParentView && (() => {
-                const unpaidInvoices = invoices.filter(i => i.status !== 'paid' && i.status !== 'voided' && i.status !== 'waived');
+                const unpaidInvoices = invoices.filter(i => i.status !== 'paid' && i.status !== 'waived');
                 const unpaidTotal = unpaidInvoices.reduce((s, i) => s + Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0)), 0);
                 if (unpaidInvoices.length === 0) return null;
                 return (
