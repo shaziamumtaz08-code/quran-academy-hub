@@ -6,7 +6,7 @@ import { fetchIslamicDate, type IslamicDateData } from '@/lib/islamicDate';
 function useLiveClock(timezone: string) {
   const [now, setNow] = useState(new Date());
   useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 1000);
+    const t = setInterval(() => setNow(new Date()), 1000); // clock needs 1s for seconds display
     return () => clearInterval(t);
   }, []);
 

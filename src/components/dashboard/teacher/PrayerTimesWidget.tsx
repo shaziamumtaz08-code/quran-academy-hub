@@ -57,7 +57,7 @@ export function PrayerTimesWidget({ islamicDate, timezone }: PrayerTimesWidgetPr
   const [now, setNow] = useState(() => getNowInTimezone(tz));
 
   useEffect(() => {
-    const t = setInterval(() => setNow(getNowInTimezone(tz)), 1000);
+    const t = setInterval(() => setNow(getNowInTimezone(tz)), 30000); // every 30s instead of 1s
     return () => clearInterval(t);
   }, [tz]);
 

@@ -204,7 +204,7 @@ function LoginRedirect() {
 /** Wraps Dashboard in DashboardLayout for non-teacher roles; teachers get their own standalone layout */
 function DashboardWrapper() {
   const { activeRole } = useAuth();
-  const isStandaloneRole = activeRole === 'teacher' || activeRole === 'student' || activeRole === 'parent';
+  const isStandaloneRole = activeRole === 'student' || activeRole === 'parent';
   
   if (isStandaloneRole) {
     return <ErrorBoundary><Dashboard /></ErrorBoundary>;

@@ -210,7 +210,10 @@ export async function fetchIslamicDate(timezone: string = 'Asia/Karachi'): Promi
   const params = `city=${encodeURIComponent(city)}&country=${encodeURIComponent(country)}&method=${method}&school=${school}`;
 
   try {
-    const todayRes = await fetch(`${baseUrl}/${todayStr}?${params}`).then(r => r.json());
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+    const todayRes = await fetch(`${baseUrl}/${todayStr}?${params}`, { signal: controller.signal }).then(r => r.json());
+    clearTimeout(timeoutId);
     const todayData = parseApiResponse(todayRes);
 
     if (todayData) {
