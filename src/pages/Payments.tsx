@@ -618,7 +618,7 @@ export default function Payments() {
         genuinelyUnpaid.push(inv);
       } else {
         const allSettled = studentArrears.every((a: any) =>
-          a.status === 'paid' || a.status === 'waived' || a.status === 'voided'
+          a.status === 'paid' || a.status === 'waived'
         );
         if (allSettled) recovered.push(inv);
         else arrearsStillPending.push(inv);
