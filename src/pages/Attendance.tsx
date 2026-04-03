@@ -561,6 +561,31 @@ export default function Attendance() {
     enabled: !!user?.id && (activeRole !== 'parent' || (childrenIds !== undefined)),
   });
 
+  // Save holiday mutation
+  const saveHoliday = useMutation({
+    mutationFn: async () => {
+      if (!user?.id) throw new Error('Missing user');
+      const { error } = await supabase.from('holidays' as any).insert({
+        holiday_date: holidayDate,
+        name: holidayName,
+        created_by: user.id,
+        branch_id: null,
+        division_id: activeDivision?.id || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: 'Holiday Saved', description: `${holidayName} on ${holidayDate} marked as holiday` });
+      queryClient.invalidateQueries({ queryKey: ['holidays'] });
+      queryClient.invalidateQueries({ queryKey: ['schedules-count-missing'] });
+      queryClient.invalidateQueries({ queryKey: ['missing-attendance'] });
+      setHolidayDialogOpen(false);
+      setHolidayName('');
+      setHolidayDate(format(new Date(), 'yyyy-MM-dd'));
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
   // Mark attendance mutation
   const markAttendance = useMutation({
     mutationFn: async () => {
