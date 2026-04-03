@@ -2723,7 +2723,7 @@ export default function Payments() {
                 {actionModal?.type === 'apply_discount' && <><Tag className="h-5 w-5" /> Apply Discount</>}
                 {actionModal?.type === 'waive_fee' && <><Ban className="h-5 w-5" /> Waive Fee</>}
                 {actionModal?.type === 'reverse_payment' && <><ArrowRightLeft className="h-5 w-5" /> Reverse Payment</>}
-                {actionModal?.type === 'void_invoice' && <><FileX className="h-5 w-5 text-destructive" /> Void Invoice</>}
+                
               </DialogTitle>
               <DialogDescription>
                 {actionModal?.type === 'mark_unpaid' && 'Reset this invoice to unpaid status. Payment records are preserved.'}
