@@ -86,6 +86,9 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCrea
   useEffect(() => {
     setSubcategoryId('');
     setLeaveMetadata({});
+    if (!['complaint', 'feedback', 'suggestion'].includes(category)) {
+      setIsAnonymous(false);
+    }
   }, [category]);
 
   const createTicket = useMutation({
