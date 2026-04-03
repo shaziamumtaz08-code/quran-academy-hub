@@ -686,7 +686,7 @@ export default function Payments() {
     return { value: `${now.getFullYear()}-${m}`, label: `${MONTHS[i].label} ${now.getFullYear()}` };
   });
 
-  const selectableInvoices = useMemo(() => invoices.filter(i => i.status !== 'voided'), [invoices]);
+  const selectableInvoices = useMemo(() => invoices, [invoices]);
   const allSelectableChecked = selectableInvoices.length > 0 && selectableInvoices.every(i => selectedIds.has(i.id));
 
   // ─── Multi-month split detection for Edit Invoice ─────────────────
