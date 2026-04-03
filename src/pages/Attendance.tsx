@@ -964,7 +964,7 @@ export default function Attendance() {
           <TabsContent value="one-on-one" className="space-y-6">
 
         {/* Stats - Enhanced for Admin */}
-        <div className={cn("grid gap-4", isAdmin ? "grid-cols-2 md:grid-cols-7" : "grid-cols-2 md:grid-cols-4")}>
+        <div className={cn("grid gap-4", isAdmin ? "grid-cols-2 md:grid-cols-7" : isTeacher ? "grid-cols-2 md:grid-cols-5" : "grid-cols-2 md:grid-cols-4")}>
           <Card className={cn("text-center cursor-pointer transition-all hover:ring-2 hover:ring-primary/30", filter === 'all' && !showMissing && "ring-2 ring-primary")} onClick={() => { setFilter('all'); setShowMissing(false); }}>
             <CardContent className="pt-6">
               <p className="text-2xl font-serif font-bold text-foreground">{stats.total}</p>
