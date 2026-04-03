@@ -1779,7 +1779,6 @@ export default function Payments() {
                   <SelectItem value="partially_paid">Partial</SelectItem>
                   <SelectItem value="overdue">Overdue</SelectItem>
                   <SelectItem value="waived">Waived</SelectItem>
-                  <SelectItem value="voided">Voided</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={invoicePaidOnFilter} onValueChange={setInvoicePaidOnFilter}>
