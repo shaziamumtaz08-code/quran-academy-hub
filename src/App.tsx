@@ -306,6 +306,8 @@ function AppRoutes() {
           })()}
         </ProtectedRoute>
       } />
+      {/* Leads Pipeline - admin only */}
+      <Route path="/leads" element={<ProtectedRoute><AdminRoute><LeadsPipeline /></AdminRoute></ProtectedRoute>} />
       {/* Work Hub - accessible by all authenticated users */}
       <Route path="/hub" element={<ProtectedRoute><WorkHub /></ProtectedRoute>} />
       <Route path="/workhub" element={<Navigate to="/hub" replace />} />
