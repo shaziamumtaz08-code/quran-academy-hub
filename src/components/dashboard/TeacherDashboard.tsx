@@ -6,13 +6,11 @@ import { Bell } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { IslamicDateData } from "@/lib/islamicDate";
 
-import { TeacherTopBar } from "./teacher/TeacherTopBar";
 import { IslamicDateCard } from "./teacher/IslamicDateCard";
 import { PrayerTimesWidget } from "./teacher/PrayerTimesWidget";
 import { NextClassCountdown } from "./teacher/NextClassCountdown";
 import { TeacherQuickActions } from "./teacher/TeacherQuickActions";
 import { TeacherStatsRow } from "./teacher/TeacherStatsRow";
-import { TeacherBottomNav } from "./teacher/TeacherBottomNav";
 import { TeacherNotificationsSection } from "./teacher/TeacherNotificationsSection";
 
 export function TeacherDashboard() {
@@ -38,11 +36,9 @@ export function TeacherDashboard() {
 
   return (
     <div className="relative font-sans">
-      <TeacherTopBar />
-
-      <div className="p-4 pt-14 md:pt-4 pb-20 md:pb-6 space-y-2 max-w-[680px] mx-auto">
-        {/* Desktop greeting */}
-        <div className="hidden md:flex items-center justify-between bg-card border border-border rounded-xl px-3 py-1.5">
+      <div className="p-4 pb-20 md:pb-6 space-y-2 max-w-[680px] mx-auto">
+        {/* Greeting */}
+        <div className="flex items-center justify-between bg-card border border-border rounded-xl px-3 py-1.5">
           <p className="text-sm font-bold text-foreground truncate">Assalamu Alaikum, {firstName} 👋</p>
           <button className="relative bg-secondary border border-border rounded-lg w-9 h-9 flex items-center justify-center text-foreground shrink-0">
             <Bell className="h-4 w-4" />
@@ -75,8 +71,6 @@ export function TeacherDashboard() {
           <TeacherNotificationsSection />
         </div>
       </div>
-
-      <TeacherBottomNav />
     </div>
   );
 }

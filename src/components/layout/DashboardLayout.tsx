@@ -465,7 +465,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div className="min-h-screen bg-background islamic-pattern">
       {/* Mobile Header - hidden on dashboard page where each role has its own top bar */}
-      <header className={`lg:hidden fixed top-0 left-0 right-0 z-50 h-14 bg-card border-b border-border flex items-center justify-between px-3 safe-area-inset ${location.pathname === '/dashboard' ? 'hidden' : ''}`}>
+      <header className={`lg:hidden fixed top-0 left-0 right-0 z-50 h-14 bg-card border-b border-border flex items-center justify-between px-3 safe-area-inset ${location.pathname === '/dashboard' && activeRole !== 'teacher' && activeRole !== 'examiner' ? 'hidden' : ''}`}>
         <div className="flex items-center gap-2 min-w-0">
           <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0" onClick={() => setSidebarOpen(!sidebarOpen)}>
             {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
