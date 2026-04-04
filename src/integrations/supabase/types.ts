@@ -2287,6 +2287,79 @@ export type Database = {
           },
         ]
       }
+      notification_events: {
+        Row: {
+          channel: string
+          created_at: string
+          error_message: string | null
+          id: string
+          payload: Json | null
+          recipient_email: string | null
+          recipient_id: string | null
+          recipient_phone: string | null
+          rendered_text: string | null
+          sent_at: string | null
+          status: string
+          template_id: string | null
+          triggered_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          payload?: Json | null
+          recipient_email?: string | null
+          recipient_id?: string | null
+          recipient_phone?: string | null
+          rendered_text?: string | null
+          sent_at?: string | null
+          status?: string
+          template_id?: string | null
+          triggered_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          payload?: Json | null
+          recipient_email?: string | null
+          recipient_id?: string | null
+          recipient_phone?: string | null
+          rendered_text?: string | null
+          sent_at?: string | null
+          status?: string
+          template_id?: string | null
+          triggered_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_events_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_events_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "notification_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_events_triggered_by_fkey"
+            columns: ["triggered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_queue: {
         Row: {
           created_at: string
@@ -2328,6 +2401,63 @@ export type Database = {
           title?: string
         }
         Relationships: []
+      }
+      notification_templates: {
+        Row: {
+          branch_id: string | null
+          channel: string
+          created_at: string
+          division_id: string | null
+          event_trigger: string
+          id: string
+          is_active: boolean
+          name: string
+          template_text: string
+          updated_at: string
+          variables: string[] | null
+        }
+        Insert: {
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          division_id?: string | null
+          event_trigger: string
+          id?: string
+          is_active?: boolean
+          name: string
+          template_text: string
+          updated_at?: string
+          variables?: string[] | null
+        }
+        Update: {
+          branch_id?: string | null
+          channel?: string
+          created_at?: string
+          division_id?: string | null
+          event_trigger?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          template_text?: string
+          updated_at?: string
+          variables?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_templates_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_templates_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       organizations: {
         Row: {
