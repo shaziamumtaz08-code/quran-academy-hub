@@ -8,8 +8,11 @@ import { Button } from "@/components/ui/button";
 import { AlertTriangle, Download, Search } from "lucide-react";
 import { format, subDays } from "date-fns";
 import { useState } from "react";
+import { useDivision } from "@/contexts/DivisionContext";
 
 export default function AttendanceReports() {
+  const { activeDivision } = useDivision();
+  const divisionId = activeDivision?.id;
   const [dateFrom, setDateFrom] = useState(format(subDays(new Date(), 30), "yyyy-MM-dd"));
   const [dateTo, setDateTo] = useState(format(new Date(), "yyyy-MM-dd"));
   const [searchName, setSearchName] = useState("");
@@ -26,9 +29,20 @@ export default function AttendanceReports() {
     },
   });
 
+  // Holidays in range — to exclude from analysis
+  const { data: holidays } = useQuery({
+    queryKey: ["report-holidays", dateFrom, dateTo, divisionId],
+    queryFn: async () => {
+      let query = supabase.from("holidays").select("holiday_date").gte("holiday_date", dateFrom).lte("holiday_date", dateTo);
+      if (divisionId) query = query.eq("division_id", divisionId);
+      const { data } = await query;
+      return new Set((data || []).map((h: any) => h.holiday_date));
+    },
+  });
+
   // Attendance data
-  const { data: attendance, isLoading } = useQuery({
-    queryKey: ["att-report", dateFrom, dateTo, filterTeacher],
+  const { data: attendance } = useQuery({
+    queryKey: ["att-report", dateFrom, dateTo, filterTeacher, divisionId],
     queryFn: async () => {
       let query = supabase
         .from("attendance")
@@ -37,14 +51,18 @@ export default function AttendanceReports() {
         .lte("class_date", dateTo)
         .order("class_date", { ascending: false });
 
+      if (divisionId) query = query.eq("division_id", divisionId);
       if (filterTeacher !== "all") query = query.eq("teacher_id", filterTeacher);
       const { data } = await query;
       return data || [];
     },
   });
 
+  // Filter out holiday records
+  const filteredAttendance = (attendance || []).filter((r: any) => !holidays?.has(r.class_date));
+
   // Group by student
-  const studentSummary = (attendance || []).reduce((acc: Record<string, any>, r: any) => {
+  const studentSummary = filteredAttendance.reduce((acc: Record<string, any>, r: any) => {
     const sid = r.student_id;
     if (!acc[sid]) {
       acc[sid] = { name: r.student?.full_name || "Unknown", teacher: r.teacher?.full_name || "Unknown", total: 0, present: 0, absent: 0, dates: [] as string[] };
@@ -52,7 +70,7 @@ export default function AttendanceReports() {
     acc[sid].total++;
     if (r.status === "present" || r.status === "late") acc[sid].present++;
     else acc[sid].absent++;
-    if (r.status !== "present" && r.status !== "late") acc[sid].dates.push(r.class_date);
+    if (r.status !== "present" && r.status !== "late" && r.status !== "holiday") acc[sid].dates.push(r.class_date);
     return acc;
   }, {});
 
@@ -112,9 +130,9 @@ export default function AttendanceReports() {
       {/* Summary stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card><CardContent className="p-3 text-center"><p className="text-2xl font-bold">{filtered.length}</p><p className="text-xs text-muted-foreground">Students</p></CardContent></Card>
-        <Card><CardContent className="p-3 text-center"><p className="text-2xl font-bold">{attendance?.length || 0}</p><p className="text-xs text-muted-foreground">Total Records</p></CardContent></Card>
-        <Card><CardContent className="p-3 text-center"><p className="text-2xl font-bold text-green-600">{filtered.length > 0 ? Math.round(filtered.reduce((s, f) => s + f.rate, 0) / filtered.length) : 0}%</p><p className="text-xs text-muted-foreground">Avg Attendance</p></CardContent></Card>
-        <Card><CardContent className="p-3 text-center"><p className="text-2xl font-bold text-destructive">{filtered.filter(f => f.streak >= 3).length}</p><p className="text-xs text-muted-foreground">3+ Day Streaks</p></CardContent></Card>
+        <Card><CardContent className="p-3 text-center"><p className="text-2xl font-bold">{filteredAttendance.length}</p><p className="text-xs text-muted-foreground">Records (excl. holidays)</p></CardContent></Card>
+        <Card><CardContent className="p-3 text-center"><p className="text-2xl font-bold text-teal">{filtered.length > 0 ? Math.round(filtered.reduce((s, f) => s + f.rate, 0) / filtered.length) : 0}%</p><p className="text-xs text-muted-foreground">Avg Attendance</p></CardContent></Card>
+        <Card><CardContent className="p-3 text-center"><p className="text-2xl font-bold text-destructive">{filtered.filter(f => f.streak >= 3).length}</p><p className="text-xs text-muted-foreground">3+ Day Streaks ⚠️</p></CardContent></Card>
       </div>
 
       {/* Table */}

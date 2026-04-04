@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Download, Plus, Trash2, Play } from "lucide-react";
 import { format, subDays } from "date-fns";
+import { useDivision } from "@/contexts/DivisionContext";
 
 type Condition = {
   field: string;
@@ -20,7 +21,8 @@ const fieldOptions = [
   { value: "fee_status", label: "Fee Status" },
   { value: "inactive_days", label: "Inactive Days" },
   { value: "total_classes", label: "Total Classes" },
-  { value: "lines_completed", label: "Hifz Lines" },
+  { value: "lines_completed", label: "Hifz Progress" },
+  { value: "fee_pending", label: "Fee Balance (PKR)" },
 ];
 
 const operatorOptions = [
@@ -32,6 +34,8 @@ const operatorOptions = [
 ];
 
 export default function CustomReportBuilder() {
+  const { activeDivision } = useDivision();
+  const divisionId = activeDivision?.id;
   const [conditions, setConditions] = useState<Condition[]>([{ field: "attendance_rate", operator: "<", value: "50" }]);
   const [runQuery, setRunQuery] = useState(false);
 
@@ -40,37 +44,43 @@ export default function CustomReportBuilder() {
   const updateCondition = (i: number, key: keyof Condition, val: string) =>
     setConditions(c => c.map((cond, idx) => idx === i ? { ...cond, [key]: val } : cond));
 
-  // Run query
   const { data: results, isLoading, refetch } = useQuery({
-    queryKey: ["custom-report", JSON.stringify(conditions)],
+    queryKey: ["custom-report", JSON.stringify(conditions), divisionId],
     queryFn: async () => {
       const dateFrom = format(subDays(new Date(), 30), "yyyy-MM-dd");
       const dateTo = format(new Date(), "yyyy-MM-dd");
+      const currentBM = format(new Date(), "yyyy-MM");
 
-      // Fetch base data
-      const { data: assignments } = await supabase
+      // Fetch active assignments in division
+      let assignQuery = supabase
         .from("student_teacher_assignments")
         .select("student_id, teacher_id, status, student:profiles!student_teacher_assignments_student_id_fkey(full_name)")
         .eq("status", "active");
+      if (divisionId) assignQuery = assignQuery.eq("division_id", divisionId);
+      const { data: assignments } = await assignQuery;
 
       if (!assignments?.length) return [];
 
       const studentIds = [...new Set(assignments.map(a => a.student_id))];
 
       // Attendance
-      const { data: attendance } = await supabase
+      let attQuery = supabase
         .from("attendance")
-        .select("student_id, status, class_date, lines_completed")
+        .select("student_id, status, class_date, lines_completed, raw_input_amount")
         .in("student_id", studentIds)
         .gte("class_date", dateFrom)
         .lte("class_date", dateTo);
+      if (divisionId) attQuery = attQuery.eq("division_id", divisionId);
+      const { data: attendance } = await attQuery;
 
-      // Fees
-      const { data: invoices } = await supabase
+      // Fees — current billing month pending invoices
+      let feeQuery = supabase
         .from("fee_invoices")
-        .select("student_id, status, amount, amount_paid")
+        .select("student_id, status, amount, amount_paid, forgiven_amount")
         .in("student_id", studentIds)
-        .eq("status", "pending");
+        .in("status", ["pending", "partially_paid", "overdue"]);
+      if (divisionId) feeQuery = feeQuery.eq("division_id", divisionId);
+      const { data: invoices } = await feeQuery;
 
       // Build student records
       const students: Record<string, any> = {};
@@ -99,21 +109,20 @@ export default function CustomReportBuilder() {
           s.present++;
           if (!s.last_class || r.class_date > s.last_class) s.last_class = r.class_date;
         }
-        if (r.lines_completed) s.lines_completed += r.lines_completed;
+        const amount = r.raw_input_amount || r.lines_completed || 0;
+        if (amount) s.lines_completed += Number(amount);
       });
 
-      // Compute rates and inactive days
       Object.values(students).forEach((s: any) => {
         s.attendance_rate = s.total_classes > 0 ? Math.round((s.present / s.total_classes) * 100) : 0;
         s.inactive_days = s.last_class ? Math.floor((Date.now() - new Date(s.last_class).getTime()) / 86400000) : 30;
       });
 
-      // Fee status
       (invoices || []).forEach((inv: any) => {
         const s = students[inv.student_id];
         if (!s) return;
         s.fee_status = "unpaid";
-        s.fee_pending += (inv.amount - (inv.amount_paid || 0));
+        s.fee_pending += (Number(inv.amount) - Number(inv.amount_paid || 0) - Number(inv.forgiven_amount || 0));
       });
 
       // Apply conditions
@@ -143,8 +152,8 @@ export default function CustomReportBuilder() {
 
   const exportCsv = () => {
     if (!results?.length) return;
-    const rows = [["Student", "Attendance %", "Classes", "Lines", "Fee Status", "Inactive Days"]];
-    results.forEach((s: any) => rows.push([s.name, s.attendance_rate + "%", s.total_classes, s.lines_completed, s.fee_status, s.inactive_days]));
+    const rows = [["Student", "Attendance %", "Classes", "Hifz Progress", "Fee Status", "Fee Balance", "Inactive Days"]];
+    results.forEach((s: any) => rows.push([s.name, s.attendance_rate + "%", s.total_classes, s.lines_completed, s.fee_status, s.fee_pending, s.inactive_days]));
     const csv = rows.map(r => r.join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "custom_report.csv"; a.click();
@@ -156,7 +165,7 @@ export default function CustomReportBuilder() {
         <CardContent className="p-4 space-y-4">
           <h3 className="font-semibold">Filter Conditions</h3>
           {conditions.map((cond, i) => (
-            <div key={i} className="flex gap-2 items-center">
+            <div key={i} className="flex gap-2 items-center flex-wrap">
               {i > 0 && <Badge variant="secondary" className="text-xs">AND</Badge>}
               <Select value={cond.field} onValueChange={v => updateCondition(i, "field", v)}>
                 <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
@@ -184,7 +193,7 @@ export default function CustomReportBuilder() {
           ))}
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={addCondition}><Plus className="h-4 w-4 mr-1" />Add Condition</Button>
-            <Button size="sm" onClick={handleRun}><Play className="h-4 w-4 mr-1" />Run Report</Button>
+            <Button size="sm" onClick={handleRun} disabled={isLoading}><Play className="h-4 w-4 mr-1" />{isLoading ? "Running..." : "Run Report"}</Button>
           </div>
         </CardContent>
       </Card>
@@ -205,8 +214,9 @@ export default function CustomReportBuilder() {
                       <th className="text-left p-3 font-medium">Student</th>
                       <th className="text-center p-3 font-medium">Attendance</th>
                       <th className="text-center p-3 font-medium">Classes</th>
-                      <th className="text-center p-3 font-medium">Lines</th>
+                      <th className="text-center p-3 font-medium">Progress</th>
                       <th className="text-center p-3 font-medium">Fee Status</th>
+                      <th className="text-center p-3 font-medium">Balance</th>
                       <th className="text-center p-3 font-medium">Inactive</th>
                     </tr>
                   </thead>
@@ -218,10 +228,11 @@ export default function CustomReportBuilder() {
                         <td className="p-3 text-center">{s.total_classes}</td>
                         <td className="p-3 text-center">{s.lines_completed}</td>
                         <td className="p-3 text-center"><Badge variant={s.fee_status === "paid" ? "default" : "destructive"} className="capitalize">{s.fee_status}</Badge></td>
+                        <td className="p-3 text-center">{s.fee_pending > 0 ? <span className="text-destructive font-medium">PKR {Math.round(s.fee_pending).toLocaleString()}</span> : "—"}</td>
                         <td className="p-3 text-center">{s.inactive_days > 7 ? <Badge variant="destructive">{s.inactive_days}d</Badge> : <span>{s.inactive_days}d</span>}</td>
                       </tr>
                     ))}
-                    {results.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No students match your criteria</td></tr>}
+                    {results.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">No students match your criteria</td></tr>}
                   </tbody>
                 </table>
               </div>

@@ -4,20 +4,24 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
+import { useDivision } from "@/contexts/DivisionContext";
 
 export default function CourseReports() {
+  const { activeDivision } = useDivision();
+  const divisionId = activeDivision?.id;
+
   const { data: courses } = useQuery({
-    queryKey: ["course-reports"],
+    queryKey: ["course-reports", divisionId],
     queryFn: async () => {
-      const { data: allCourses } = await supabase
+      let query = supabase
         .from("courses")
         .select("id, name, status, max_students, teacher_id, start_date, teacher:profiles!courses_teacher_id_fkey(full_name)")
         .order("created_at", { ascending: false });
+      if (divisionId) query = query.eq("division_id", divisionId);
+      const { data: allCourses } = await query;
 
       if (!allCourses?.length) return [];
 
-      // Get enrollment counts
-      const courseIds = allCourses.map(c => c.id);
       const { data: enrollments } = await supabase
         .from("course_enrollments")
         .select("course_id, status");

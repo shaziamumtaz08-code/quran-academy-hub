@@ -5,13 +5,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { format, subDays } from "date-fns";
+import { useDivision } from "@/contexts/DivisionContext";
 
 export default function TeacherPerformance() {
+  const { activeDivision } = useDivision();
+  const divisionId = activeDivision?.id;
   const dateFrom = format(subDays(new Date(), 30), "yyyy-MM-dd");
   const dateTo = format(new Date(), "yyyy-MM-dd");
 
   const { data: perfData } = useQuery({
-    queryKey: ["teacher-perf", dateFrom, dateTo],
+    queryKey: ["teacher-perf", dateFrom, dateTo, divisionId],
     queryFn: async () => {
       // Get teachers
       const { data: roles } = await supabase.from("user_roles").select("user_id").eq("role", "teacher");
@@ -19,26 +22,32 @@ export default function TeacherPerformance() {
       const teacherIds = roles.map(r => r.user_id);
       const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", teacherIds);
 
-      // Get attendance records
-      const { data: attendance } = await supabase
+      // Get attendance records with division filter
+      let attQuery = supabase
         .from("attendance")
         .select("teacher_id, status, class_date, student_id")
         .in("teacher_id", teacherIds)
         .gte("class_date", dateFrom)
         .lte("class_date", dateTo);
+      if (divisionId) attQuery = attQuery.eq("division_id", divisionId);
+      const { data: attendance } = await attQuery;
 
       // Get scheduled classes
-      const { data: schedules } = await supabase
+      let schedQuery = supabase
         .from("schedules")
         .select("assignment_id, day_of_week, student_teacher_assignments!inner(teacher_id)")
         .in("student_teacher_assignments.teacher_id", teacherIds)
         .eq("is_active", true);
+      if (divisionId) schedQuery = schedQuery.eq("division_id", divisionId);
+      const { data: schedules } = await schedQuery;
 
       // Get assignments for student count
-      const { data: assignments } = await supabase
+      let assignQuery = supabase
         .from("student_teacher_assignments")
         .select("teacher_id, student_id, status")
         .in("teacher_id", teacherIds);
+      if (divisionId) assignQuery = assignQuery.eq("division_id", divisionId);
+      const { data: assignments } = await assignQuery;
 
       const teachers: Record<string, any> = {};
       (profiles || []).forEach((p: any) => {
@@ -55,13 +64,11 @@ export default function TeacherPerformance() {
         };
       });
 
-      // Count schedules per teacher
       (schedules || []).forEach((s: any) => {
         const tid = (s.student_teacher_assignments as any)?.teacher_id;
         if (tid && teachers[tid]) teachers[tid].scheduledPerWeek++;
       });
 
-      // Count assignments
       (assignments || []).forEach((a: any) => {
         if (teachers[a.teacher_id]) {
           teachers[a.teacher_id].totalStudents++;
@@ -69,7 +76,6 @@ export default function TeacherPerformance() {
         }
       });
 
-      // Process attendance
       (attendance || []).forEach((r: any) => {
         const t = teachers[r.teacher_id];
         if (!t) return;
