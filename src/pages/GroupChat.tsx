@@ -10,42 +10,62 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
-import { Plus, Send, Users, Hash, Paperclip, ArrowLeft, ClipboardList, ExternalLink } from 'lucide-react';
+import { Plus, Users, Hash } from 'lucide-react';
+import { ChatHeader } from '@/components/chat/ChatHeader';
+import { ChatEmptyState } from '@/components/chat/ChatEmptyState';
+import { ChatMessageBubble } from '@/components/chat/ChatMessageBubble';
+import { ChatInput } from '@/components/chat/ChatInput';
+import { MembersPanel } from '@/components/chat/MembersPanel';
+import { AIAssistantDialog } from '@/components/chat/AIAssistantDialog';
+
+const typeIcons: Record<string, string> = { project: '📋', issue: '🐛', salary: '💰', custom: '💬' };
 
 export default function GroupChat() {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupType, setNewGroupType] = useState('project');
-  const [messageText, setMessageText] = useState('');
+  const [membersOpen, setMembersOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [replyTo, setReplyTo] = useState<any | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch user's groups
+  // Fetch groups
   const { data: groups = [] } = useQuery({
     queryKey: ['chat-groups', user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
-      const { data: memberships } = await supabase
-        .from('chat_members')
-        .select('group_id')
-        .eq('user_id', user.id);
+      const { data: memberships } = await supabase.from('chat_members').select('group_id').eq('user_id', user.id);
       if (!memberships?.length) return [];
       const groupIds = memberships.map(m => m.group_id);
-      const { data: groupsData } = await supabase
-        .from('chat_groups')
-        .select('*')
-        .in('id', groupIds)
-        .eq('is_active', true)
-        .order('updated_at', { ascending: false });
-      return groupsData || [];
+      const { data } = await supabase.from('chat_groups').select('*').in('id', groupIds).eq('is_active', true).order('updated_at', { ascending: false });
+      return data || [];
     },
     enabled: !!user?.id,
   });
 
-  // Fetch messages for active group
+  // Fetch members for active group
+  const { data: members = [] } = useQuery({
+    queryKey: ['chat-members', activeGroupId],
+    queryFn: async () => {
+      if (!activeGroupId) return [];
+      const { data: mems } = await supabase.from('chat_members').select('*').eq('group_id', activeGroupId);
+      if (!mems?.length) return [];
+      const ids = mems.map(m => m.user_id);
+      const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', ids);
+      const nameMap = Object.fromEntries((profiles || []).map(p => [p.id, p.full_name]));
+      return mems.map(m => ({ ...m, full_name: nameMap[m.user_id] || 'Unknown' }));
+    },
+    enabled: !!activeGroupId,
+  });
+
+  // Check if current user is admin of active group
+  const isGroupAdmin = members.some((m: any) => m.user_id === user?.id && m.role === 'admin');
+
+  // Fetch messages
   const { data: messages = [] } = useQuery({
     queryKey: ['chat-messages', activeGroupId],
     queryFn: async () => {
@@ -56,9 +76,9 @@ export default function GroupChat() {
         .eq('group_id', activeGroupId)
         .eq('is_deleted', false)
         .order('created_at', { ascending: true })
-        .limit(100);
-      // Enrich with names
+        .limit(200);
       const senderIds = [...new Set((data || []).map(m => m.sender_id))];
+      if (!senderIds.length) return [];
       const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', senderIds);
       const nameMap = Object.fromEntries((profiles || []).map(p => [p.id, p.full_name]));
       return (data || []).map(m => ({ ...m, senderName: nameMap[m.sender_id] || 'Unknown' }));
@@ -66,7 +86,7 @@ export default function GroupChat() {
     enabled: !!activeGroupId,
   });
 
-  // Realtime subscription for messages
+  // Realtime
   useEffect(() => {
     if (!activeGroupId) return;
     const channel = supabase
@@ -93,7 +113,6 @@ export default function GroupChat() {
         .select()
         .single();
       if (error) throw error;
-      // Add creator as member
       await supabase.from('chat_members').insert({ group_id: group.id, user_id: user.id, role: 'admin' });
       return group;
     },
@@ -108,43 +127,44 @@ export default function GroupChat() {
 
   // Send message
   const sendMessage = useMutation({
-    mutationFn: async (content: string) => {
+    mutationFn: async ({ content, attachmentUrl }: { content: string; attachmentUrl?: string }) => {
       if (!user?.id || !activeGroupId) return;
       const { error } = await supabase.from('chat_messages').insert({
         group_id: activeGroupId,
         sender_id: user.id,
-        content,
+        content: content || null,
+        attachment_url: attachmentUrl || null,
+        reply_to: replyTo?.id || null,
       });
       if (error) throw error;
     },
     onSuccess: () => {
-      setMessageText('');
+      setReplyTo(null);
       queryClient.invalidateQueries({ queryKey: ['chat-messages', activeGroupId] });
     },
   });
 
-  // Convert message to task
+  // Convert to task
   const convertToTask = useMutation({
     mutationFn: async (msg: any) => {
       if (!user?.id) return;
       const { error } = await supabase.from('tasks').insert({
-        title: msg.content.slice(0, 100),
-        description: msg.content,
+        title: (msg.content || 'Task from chat').slice(0, 100),
+        description: msg.content || '',
         created_by: user.id,
         assigned_to: msg.sender_id,
         priority: 'medium',
         status: 'open',
       });
       if (error) throw error;
-      // Link message to task
-      // Update chat message with linked_task_id could be done here
     },
     onSuccess: () => toast({ title: 'Task created from message' }),
   });
 
   const activeGroup = groups.find((g: any) => g.id === activeGroupId);
 
-  const typeIcons: Record<string, string> = { project: '📋', issue: '🐛', salary: '💰', custom: '💬' };
+  // Build reply map for quick lookup
+  const msgMap = Object.fromEntries(messages.map((m: any) => [m.id, m]));
 
   return (
     <DashboardLayout>
@@ -178,7 +198,13 @@ export default function GroupChat() {
               </button>
             ))}
             {groups.length === 0 && (
-              <p className="text-xs text-muted-foreground text-center py-6">No groups yet</p>
+              <div className="text-center py-8 px-4 space-y-2">
+                <Hash className="h-8 w-8 text-muted-foreground mx-auto" />
+                <p className="text-xs text-muted-foreground">No groups yet</p>
+                <Button size="sm" variant="outline" className="text-xs" onClick={() => setCreateOpen(true)}>
+                  <Plus className="h-3 w-3 mr-1" /> Create Group
+                </Button>
+              </div>
             )}
           </div>
         </div>
@@ -187,80 +213,58 @@ export default function GroupChat() {
         <div className={`flex-1 flex flex-col ${!activeGroupId ? 'hidden md:flex' : 'flex'}`}>
           {activeGroup ? (
             <>
-              {/* Header */}
-              <div className="h-12 border-b border-border flex items-center px-3 gap-2 bg-card">
-                <button className="md:hidden" onClick={() => setActiveGroupId(null)}>
-                  <ArrowLeft className="h-4 w-4" />
-                </button>
-                <span className="text-sm">{typeIcons[activeGroup.type] || '💬'}</span>
-                <p className="text-sm font-bold text-foreground">{activeGroup.name}</p>
-                <Badge variant="secondary" className="text-[9px] capitalize">{activeGroup.type}</Badge>
-              </div>
+              <ChatHeader
+                group={activeGroup}
+                memberCount={members.length}
+                onBack={() => setActiveGroupId(null)}
+                onViewMembers={() => setMembersOpen(true)}
+                onAI={() => setAiOpen(true)}
+                onAttach={() => {/* handled in ChatInput */}}
+              />
 
-              {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                {messages.map((msg: any) => {
-                  const isMe = msg.sender_id === user?.id;
-                  return (
-                    <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} group`}>
-                      <div className={`max-w-[75%] rounded-2xl px-3 py-2 ${
-                        isMe ? 'bg-primary text-primary-foreground rounded-br-md' : 'bg-muted border border-border rounded-bl-md'
-                      }`}>
-                        {!isMe && <p className="text-[10px] font-bold opacity-70 mb-0.5">{msg.senderName}</p>}
-                        <p className="text-sm">{msg.content}</p>
-                        {msg.attachment_url && (
-                          <a href={msg.attachment_url} target="_blank" rel="noopener" className="flex items-center gap-1 text-[10px] underline mt-1">
-                            <Paperclip className="h-3 w-3" /> Attachment
-                          </a>
-                        )}
-                        <div className="flex items-center justify-between mt-1">
-                          <p className={`text-[9px] ${isMe ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>
-                            {format(new Date(msg.created_at), 'h:mm a')}
-                          </p>
-                          {/* Convert to task */}
-                          <button
-                            onClick={() => convertToTask.mutate(msg)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity"
-                            title="Convert to task"
-                          >
-                            <ClipboardList className={`h-3 w-3 ${isMe ? 'text-primary-foreground/60' : 'text-muted-foreground'}`} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                <div ref={messagesEndRef} />
-              </div>
-
-              {/* Input */}
-              <div className="border-t border-border p-2 flex gap-2 bg-card">
-                <Input
-                  value={messageText}
-                  onChange={e => setMessageText(e.target.value)}
-                  placeholder="Type a message..."
-                  className="text-sm"
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' && !e.shiftKey && messageText.trim()) {
-                      e.preventDefault();
-                      sendMessage.mutate(messageText.trim());
-                    }
-                  }}
+              {messages.length === 0 ? (
+                <ChatEmptyState
+                  group={activeGroup}
+                  members={members}
+                  onAddMembers={() => setMembersOpen(true)}
+                  onCreateTask={() => toast({ title: 'Use WorkHub to create tasks' })}
+                  onAskAI={() => setAiOpen(true)}
+                  onShareFile={() => {/* focus input */}}
                 />
-                <Button
-                  size="icon"
-                  disabled={!messageText.trim() || sendMessage.isPending}
-                  onClick={() => sendMessage.mutate(messageText.trim())}
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
+              ) : (
+                <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                  {messages.map((msg: any) => {
+                    const replyContent = msg.reply_to ? msgMap[msg.reply_to]?.content : undefined;
+                    return (
+                      <ChatMessageBubble
+                        key={msg.id}
+                        msg={msg}
+                        isMe={msg.sender_id === user?.id}
+                        onConvertToTask={(m) => convertToTask.mutate(m)}
+                        onReply={(m) => setReplyTo(m)}
+                        replyToContent={replyContent}
+                      />
+                    );
+                  })}
+                  <div ref={messagesEndRef} />
+                </div>
+              )}
+
+              <ChatInput
+                onSend={(content, attachmentUrl) => sendMessage.mutate({ content, attachmentUrl })}
+                sending={sendMessage.isPending}
+                replyTo={replyTo}
+                onCancelReply={() => setReplyTo(null)}
+              />
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center">
-              <div className="text-center">
-                <Users className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
+              <div className="text-center space-y-3">
+                <Users className="h-10 w-10 text-muted-foreground mx-auto" />
                 <p className="text-sm text-muted-foreground">Select a group to start chatting</p>
+                <Button size="sm" variant="outline" onClick={() => setCreateOpen(true)}>
+                  <Plus className="h-3.5 w-3.5 mr-1" /> New Group
+                </Button>
               </div>
             </div>
           )}
@@ -288,12 +292,16 @@ export default function GroupChat() {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={() => createGroup.mutate()} disabled={!newGroupName.trim()}>
-              Create Group
-            </Button>
+            <Button onClick={() => createGroup.mutate()} disabled={!newGroupName.trim()}>Create Group</Button>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Members panel */}
+      <MembersPanel open={membersOpen} onOpenChange={setMembersOpen} groupId={activeGroupId || ''} isAdmin={isGroupAdmin} />
+
+      {/* AI Assistant */}
+      <AIAssistantDialog open={aiOpen} onOpenChange={setAiOpen} messages={messages} />
     </DashboardLayout>
   );
 }
