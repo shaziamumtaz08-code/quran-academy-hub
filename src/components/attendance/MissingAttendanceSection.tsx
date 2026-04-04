@@ -73,7 +73,7 @@ export function MissingAttendanceSection({
 
   // Fetch all active schedules with student/teacher info
   const { data: schedules, isLoading: schedulesLoading } = useQuery({
-    queryKey: ['all-schedules-for-missing', startDate, endDate, teacherId],
+    queryKey: ['all-schedules-for-missing', startDate, endDate, teacherId, divisionId],
     queryFn: async () => {
       // If start is after end (e.g. viewing Jan-Mar which is before cutoff), return empty
       if (startDate > endDate) return [];
@@ -85,11 +85,13 @@ export function MissingAttendanceSection({
           day_of_week,
           teacher_local_time,
           is_active,
+          division_id,
             student_teacher_assignments!inner (
               student_id,
               teacher_id,
               status,
               requires_attendance,
+              division_id,
               subject:subjects(name),
               student:profiles!student_teacher_assignments_student_id_fkey(id, full_name),
               teacher:profiles!student_teacher_assignments_teacher_id_fkey(id, full_name)
@@ -101,6 +103,11 @@ export function MissingAttendanceSection({
 
       if (teacherId) {
         query = query.eq('student_teacher_assignments.teacher_id', teacherId);
+      }
+
+      // Filter by division
+      if (divisionId) {
+        query = query.or(`division_id.eq.${divisionId},student_teacher_assignments.division_id.eq.${divisionId}`);
       }
 
       const { data, error } = await query;
