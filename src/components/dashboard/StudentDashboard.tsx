@@ -352,12 +352,16 @@ export function StudentDashboard() {
       const totalPresent = allAtt.filter(a => a.status === 'present' || a.status === 'late').length;
       const overallRate = allAtt.length > 0 ? Math.round((totalPresent / allAtt.length) * 100) : 0;
 
+      const unreadCount = inboxItems.filter(i => i.isUnread).length;
+
       return {
         enrollments,
         globalNextClass,
         globalNextEnrollment,
         alerts,
         notifications: notifications || [],
+        priorityInbox: inboxItems.slice(0, 3),
+        unreadCount,
         overallStats: {
           totalClasses: allAtt.length,
           attended: totalPresent,
