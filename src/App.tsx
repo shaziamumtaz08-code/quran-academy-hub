@@ -44,6 +44,7 @@ import PrintReport from "./pages/PrintReport";
 import PrintInvoice from "./pages/PrintInvoice";
 import PrintSalary from "./pages/PrintSalary";
 import WorkHub from "./pages/WorkHub";
+import LeadsPipeline from "./pages/LeadsPipeline";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
