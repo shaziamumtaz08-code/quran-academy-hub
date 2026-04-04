@@ -221,16 +221,39 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCrea
             </div>
             <div>
               <Label className="text-xs">Assign To</Label>
-              <Select value={assigneeId} onValueChange={setAssigneeId}>
+              <Select value={assigneeId} onValueChange={(v) => { setAssigneeId(v); setTargetRole(''); }}>
                 <SelectTrigger><SelectValue placeholder="Select user..." /></SelectTrigger>
                 <SelectContent>
                   {users.map((u: any) => (
-                    <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.full_name}
+                      {u.roles.length > 0 && (
+                        <span className="text-muted-foreground ml-1">
+                          ({u.roles.map((r: string) => r.replace('_', ' ')).join(', ')})
+                        </span>
+                      )}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
           </div>
+
+          {/* Target Role (shown when assignee has multiple roles) */}
+          {assigneeId && assigneeRoles.length > 1 && (
+            <div>
+              <Label className="text-xs">For Role</Label>
+              <Select value={targetRole} onValueChange={setTargetRole}>
+                <SelectTrigger><SelectValue placeholder="Select role context..." /></SelectTrigger>
+                <SelectContent>
+                  {assigneeRoles.map((r: string) => (
+                    <SelectItem key={r} value={r} className="capitalize">{r.replace(/_/g, ' ')}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Which role should handle this ticket?</p>
+            </div>
+          )}
 
           {/* Subject */}
           <div>
