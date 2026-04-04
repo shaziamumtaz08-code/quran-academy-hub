@@ -57,6 +57,10 @@ interface Lead {
   notes: any[];
   lost_reason: string | null;
   source_url: string | null;
+  enrollment_form_token: string | null;
+  enrollment_form_sent_at: string | null;
+  enrollment_form_opened_at: string | null;
+  enrollment_form_data: any | null;
   created_at: string;
   updated_at: string;
 }
