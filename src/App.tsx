@@ -48,6 +48,7 @@ import LeadsPipeline from "./pages/LeadsPipeline";
 import EnrollmentForm from "./pages/EnrollmentForm";
 import PublicInquiryForm from "./pages/PublicInquiryForm";
 import NotFound from "./pages/NotFound";
+import IdentityResolution from "./pages/IdentityResolution";
 
 const queryClient = new QueryClient();
 
@@ -310,6 +311,8 @@ function AppRoutes() {
       } />
       {/* Leads Pipeline - admin only */}
       <Route path="/leads" element={<ProtectedRoute><AdminRoute><LeadsPipeline /></AdminRoute></ProtectedRoute>} />
+      {/* Identity Resolution - admin only */}
+      <Route path="/identity" element={<ProtectedRoute><AdminRoute><IdentityResolution /></AdminRoute></ProtectedRoute>} />
       {/* Work Hub - accessible by all authenticated users */}
       <Route path="/hub" element={<ProtectedRoute><WorkHub /></ProtectedRoute>} />
       <Route path="/workhub" element={<Navigate to="/hub" replace />} />
