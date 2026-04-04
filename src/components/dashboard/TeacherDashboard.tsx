@@ -6,7 +6,6 @@ import { Bell } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { IslamicDateData } from "@/lib/islamicDate";
 
-import { TeacherTopBar } from "./teacher/TeacherTopBar";
 import { IslamicDateCard } from "./teacher/IslamicDateCard";
 import { PrayerTimesWidget } from "./teacher/PrayerTimesWidget";
 import { NextClassCountdown } from "./teacher/NextClassCountdown";
