@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { TicketList } from '@/components/hub/TicketList';
 import { CreateTicketDialog } from '@/components/hub/CreateTicketDialog';
 import { SubcategoryManager } from '@/components/hub/SubcategoryManager';
+import TasksAndPolls from '@/components/hub/TasksAndPolls';
 
 const QUICK_CATEGORIES = [
   { value: 'complaint', label: 'Complaint', icon: MessageSquareWarning, color: 'text-red-600', bg: 'bg-red-50 dark:bg-red-950/30', border: 'border-red-100 dark:border-red-900/40', iconBg: 'bg-red-100 dark:bg-red-900/50' },
@@ -160,6 +161,9 @@ export default function WorkHub() {
             </TabsContent>
           )}
         </Tabs>
+
+        {/* Tasks & Polls Section */}
+        <TasksAndPolls />
       </div>
 
       <CreateTicketDialog open={createOpen} onOpenChange={(v) => { setCreateOpen(v); if (!v) setDefaultCategory(undefined); }} defaultCategory={defaultCategory} onCreated={() => setActiveTab('sent')} />

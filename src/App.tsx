@@ -52,6 +52,8 @@ import IdentityResolution from "./pages/IdentityResolution";
 import CourseCatalog from "./pages/CourseCatalog";
 import RecordedCourses from "./pages/RecordedCourses";
 import NotificationCenter from "./pages/NotificationCenter";
+import GroupChat from "./pages/GroupChat";
+import MyResources from "./pages/MyResources";
 
 const queryClient = new QueryClient();
 
@@ -315,6 +317,10 @@ function AppRoutes() {
       <Route path="/hub" element={<ProtectedRoute><WorkHub /></ProtectedRoute>} />
       <Route path="/workhub" element={<Navigate to="/hub" replace />} />
       <Route path="/work-hub" element={<Navigate to="/hub" replace />} />
+      {/* Group Chat - all authenticated users */}
+      <Route path="/chat" element={<ProtectedRoute><GroupChat /></ProtectedRoute>} />
+      {/* My Resources - all authenticated users */}
+      <Route path="/my-resources" element={<ProtectedRoute><MyResources /></ProtectedRoute>} />
       {/* Printable Routes - standalone, no layout */}
       <Route path="/reports/print/:reportId" element={<ProtectedRoute><PrintReport /></ProtectedRoute>} />
       <Route path="/finance/print/invoice/:invoiceId" element={<ProtectedRoute><PrintInvoice /></ProtectedRoute>} />
