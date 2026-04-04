@@ -161,6 +161,9 @@ export default function WorkHub() {
             </TabsContent>
           )}
         </Tabs>
+
+        {/* Tasks & Polls Section */}
+        <TasksAndPolls />
       </div>
 
       <CreateTicketDialog open={createOpen} onOpenChange={(v) => { setCreateOpen(v); if (!v) setDefaultCategory(undefined); }} defaultCategory={defaultCategory} onCreated={() => setActiveTab('sent')} />
