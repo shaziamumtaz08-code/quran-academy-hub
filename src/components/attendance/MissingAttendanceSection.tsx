@@ -437,22 +437,29 @@ export function useMissingAttendanceCount(
   }, [dateMode, dateFrom, dateTo, monthFilter]);
 
   const { data: schedules } = useQuery({
-    queryKey: ['schedules-count-missing', startDate, endDate],
+    queryKey: ['schedules-count-missing', startDate, endDate, divisionId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('schedules')
         .select(`
           day_of_week,
             student_teacher_assignments!inner (
               student_id,
               status,
-              requires_attendance
+              requires_attendance,
+              division_id
             )
           `)
           .eq('is_active', true)
           .eq('student_teacher_assignments.status', 'active')
           .eq('student_teacher_assignments.requires_attendance', true);
 
+      // Filter by division
+      if (divisionId) {
+        query = query.eq('student_teacher_assignments.division_id', divisionId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
