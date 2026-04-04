@@ -572,6 +572,7 @@ export type Database = {
           created_by: string
           id: string
           is_active: boolean
+          is_dm: boolean
           name: string
           type: string
           updated_at: string
@@ -582,6 +583,7 @@ export type Database = {
           created_by: string
           id?: string
           is_active?: boolean
+          is_dm?: boolean
           name: string
           type?: string
           updated_at?: string
@@ -592,6 +594,7 @@ export type Database = {
           created_by?: string
           id?: string
           is_active?: boolean
+          is_dm?: boolean
           name?: string
           type?: string
           updated_at?: string
@@ -643,9 +646,12 @@ export type Database = {
           attachment_url: string | null
           content: string | null
           created_at: string
+          forwarded_from: string | null
+          forwarded_source_group: string | null
           group_id: string
           id: string
           is_deleted: boolean
+          is_forwarded: boolean
           linked_task_id: string | null
           reply_to: string | null
           sender_id: string
@@ -654,9 +660,12 @@ export type Database = {
           attachment_url?: string | null
           content?: string | null
           created_at?: string
+          forwarded_from?: string | null
+          forwarded_source_group?: string | null
           group_id: string
           id?: string
           is_deleted?: boolean
+          is_forwarded?: boolean
           linked_task_id?: string | null
           reply_to?: string | null
           sender_id: string
@@ -665,9 +674,12 @@ export type Database = {
           attachment_url?: string | null
           content?: string | null
           created_at?: string
+          forwarded_from?: string | null
+          forwarded_source_group?: string | null
           group_id?: string
           id?: string
           is_deleted?: boolean
+          is_forwarded?: boolean
           linked_task_id?: string | null
           reply_to?: string | null
           sender_id?: string
@@ -4258,6 +4270,38 @@ export type Database = {
           },
         ]
       }
+      task_comments: {
+        Row: {
+          comment: string
+          created_at: string
+          id: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          comment: string
+          created_at?: string
+          id?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          comment?: string
+          created_at?: string
+          id?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           assigned_to: string | null
@@ -4271,6 +4315,8 @@ export type Database = {
           is_anonymous: boolean
           linked_ticket_id: string | null
           priority: string
+          source_id: string | null
+          source_type: string | null
           status: string
           title: string
           updated_at: string
@@ -4287,6 +4333,8 @@ export type Database = {
           is_anonymous?: boolean
           linked_ticket_id?: string | null
           priority?: string
+          source_id?: string | null
+          source_type?: string | null
           status?: string
           title: string
           updated_at?: string
@@ -4303,6 +4351,8 @@ export type Database = {
           is_anonymous?: boolean
           linked_ticket_id?: string | null
           priority?: string
+          source_id?: string | null
+          source_type?: string | null
           status?: string
           title?: string
           updated_at?: string

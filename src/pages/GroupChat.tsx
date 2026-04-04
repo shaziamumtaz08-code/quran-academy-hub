@@ -10,13 +10,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Users, Hash } from 'lucide-react';
+import { Plus, Users, Hash, User, MessageCircle, Search } from 'lucide-react';
 import { ChatHeader } from '@/components/chat/ChatHeader';
 import { ChatEmptyState } from '@/components/chat/ChatEmptyState';
 import { ChatMessageBubble } from '@/components/chat/ChatMessageBubble';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { MembersPanel } from '@/components/chat/MembersPanel';
 import { AIAssistantDialog } from '@/components/chat/AIAssistantDialog';
+import { ForwardMessageDialog } from '@/components/chat/ForwardMessageDialog';
 
 const typeIcons: Record<string, string> = { project: '📋', issue: '🐛', salary: '💰', custom: '💬' };
 
@@ -30,8 +31,11 @@ export default function GroupChat() {
   const [membersOpen, setMembersOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<any | null>(null);
+  const [forwardMsg, setForwardMsg] = useState<any | null>(null);
+  const [dmOpen, setDmOpen] = useState(false);
+  const [dmSearch, setDmSearch] = useState('');
+  const [sidebarFilter, setSidebarFilter] = useState('all');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch groups
   const { data: groups = [] } = useQuery({
@@ -42,6 +46,23 @@ export default function GroupChat() {
       if (!memberships?.length) return [];
       const groupIds = memberships.map(m => m.group_id);
       const { data } = await supabase.from('chat_groups').select('*').in('id', groupIds).eq('is_active', true).order('updated_at', { ascending: false });
+      
+      // For DM groups, fetch the other user's name
+      const dmGroups = (data || []).filter(g => g.is_dm);
+      if (dmGroups.length) {
+        const dmGroupIds = dmGroups.map(g => g.id);
+        const { data: dmMembers } = await supabase.from('chat_members').select('group_id, user_id').in('group_id', dmGroupIds);
+        const otherUserIds = [...new Set((dmMembers || []).filter(m => m.user_id !== user.id).map(m => m.user_id))];
+        if (otherUserIds.length) {
+          const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', otherUserIds);
+          const nameMap = Object.fromEntries((profiles || []).map(p => [p.id, p.full_name]));
+          const groupUserMap: Record<string, string> = {};
+          (dmMembers || []).filter(m => m.user_id !== user.id).forEach(m => {
+            groupUserMap[m.group_id] = nameMap[m.user_id] || 'User';
+          });
+          return (data || []).map(g => g.is_dm ? { ...g, name: groupUserMap[g.id] || 'Direct Message' } : g);
+        }
+      }
       return data || [];
     },
     enabled: !!user?.id,
@@ -62,7 +83,6 @@ export default function GroupChat() {
     enabled: !!activeGroupId,
   });
 
-  // Check if current user is admin of active group
   const isGroupAdmin = members.some((m: any) => m.user_id === user?.id && m.role === 'admin');
 
   // Fetch messages
@@ -84,6 +104,16 @@ export default function GroupChat() {
       return (data || []).map(m => ({ ...m, senderName: nameMap[m.sender_id] || 'Unknown' }));
     },
     enabled: !!activeGroupId,
+  });
+
+  // All users for DM
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ['all-users-dm'],
+    queryFn: async () => {
+      const { data } = await supabase.from('profiles').select('id, full_name').order('full_name').limit(200);
+      return (data || []).filter((u: any) => u.id !== user?.id);
+    },
+    enabled: dmOpen,
   });
 
   // Realtime
@@ -125,6 +155,51 @@ export default function GroupChat() {
     },
   });
 
+  // Start DM
+  const startDM = useMutation({
+    mutationFn: async (targetUserId: string) => {
+      if (!user?.id) return;
+      // Check existing DMs
+      const { data: myMemberships } = await supabase.from('chat_members').select('group_id').eq('user_id', user.id);
+      const myGroupIds = (myMemberships || []).map(m => m.group_id);
+      
+      if (myGroupIds.length) {
+        const { data: dmGroups } = await supabase.from('chat_groups').select('id').eq('is_dm', true).in('id', myGroupIds);
+        if (dmGroups?.length) {
+          for (const dm of dmGroups) {
+            const { data: members } = await supabase.from('chat_members').select('user_id').eq('group_id', dm.id);
+            const memberIds = (members || []).map(m => m.user_id);
+            if (memberIds.includes(targetUserId) && memberIds.length === 2) {
+              return dm.id;
+            }
+          }
+        }
+      }
+
+      // Create new DM
+      const { data: newGroup, error } = await supabase.from('chat_groups').insert({
+        name: 'DM',
+        type: 'custom',
+        created_by: user.id,
+        is_dm: true,
+      }).select().single();
+      if (error) throw error;
+      await supabase.from('chat_members').insert([
+        { group_id: newGroup.id, user_id: user.id, role: 'admin' },
+        { group_id: newGroup.id, user_id: targetUserId, role: 'member' },
+      ]);
+      return newGroup.id;
+    },
+    onSuccess: (groupId) => {
+      if (groupId) {
+        queryClient.invalidateQueries({ queryKey: ['chat-groups'] });
+        setActiveGroupId(groupId);
+        setDmOpen(false);
+        setDmSearch('');
+      }
+    },
+  });
+
   // Send message
   const sendMessage = useMutation({
     mutationFn: async ({ content, attachmentUrl }: { content: string; attachmentUrl?: string }) => {
@@ -155,16 +230,23 @@ export default function GroupChat() {
         assigned_to: msg.sender_id,
         priority: 'medium',
         status: 'open',
+        source_type: 'chat',
+        source_id: msg.id,
       });
       if (error) throw error;
+      await supabase.from('chat_messages').update({ linked_task_id: msg.id }).eq('id', msg.id);
     },
     onSuccess: () => toast({ title: 'Task created from message' }),
   });
 
   const activeGroup = groups.find((g: any) => g.id === activeGroupId);
-
-  // Build reply map for quick lookup
   const msgMap = Object.fromEntries(messages.map((m: any) => [m.id, m]));
+
+  const filteredGroups = sidebarFilter === 'all' ? groups
+    : sidebarFilter === 'dm' ? groups.filter((g: any) => g.is_dm)
+    : groups.filter((g: any) => !g.is_dm);
+
+  const filteredDmUsers = allUsers.filter((u: any) => u.full_name?.toLowerCase().includes(dmSearch.toLowerCase()));
 
   return (
     <DashboardLayout>
@@ -173,14 +255,35 @@ export default function GroupChat() {
         <div className={`w-full md:w-72 border-r border-border flex flex-col bg-card ${activeGroupId ? 'hidden md:flex' : 'flex'}`}>
           <div className="p-3 border-b border-border flex items-center justify-between">
             <p className="text-sm font-bold text-foreground flex items-center gap-1.5">
-              <Users className="h-4 w-4 text-primary" /> Groups
+              <Users className="h-4 w-4 text-primary" /> Messages
             </p>
-            <Button size="sm" variant="ghost" onClick={() => setCreateOpen(true)}>
-              <Plus className="h-4 w-4" />
-            </Button>
+            <div className="flex gap-1">
+              <Button size="sm" variant="ghost" onClick={() => setDmOpen(true)} title="New DM">
+                <MessageCircle className="h-4 w-4" />
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setCreateOpen(true)} title="New Group">
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
+
+          {/* Filter pills */}
+          <div className="flex gap-1 px-3 py-2 border-b border-border">
+            {(['all', 'groups', 'dm'] as const).map(f => (
+              <button
+                key={f}
+                onClick={() => setSidebarFilter(f)}
+                className={`text-[10px] px-2.5 py-1 rounded-full font-semibold capitalize transition-colors ${
+                  sidebarFilter === f ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-secondary'
+                }`}
+              >
+                {f === 'dm' ? 'Direct' : f}
+              </button>
+            ))}
+          </div>
+
           <div className="flex-1 overflow-y-auto">
-            {groups.map((g: any) => (
+            {filteredGroups.map((g: any) => (
               <button
                 key={g.id}
                 onClick={() => setActiveGroupId(g.id)}
@@ -189,21 +292,26 @@ export default function GroupChat() {
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-sm">{typeIcons[g.type] || '💬'}</span>
+                  <span className="text-sm">{g.is_dm ? '👤' : (typeIcons[g.type] || '💬')}</span>
                   <div className="min-w-0">
                     <p className="text-[13px] font-bold text-foreground truncate">{g.name}</p>
-                    <p className="text-[10px] text-muted-foreground capitalize">{g.type}</p>
+                    <p className="text-[10px] text-muted-foreground capitalize">{g.is_dm ? 'Direct message' : g.type}</p>
                   </div>
                 </div>
               </button>
             ))}
-            {groups.length === 0 && (
+            {filteredGroups.length === 0 && (
               <div className="text-center py-8 px-4 space-y-2">
                 <Hash className="h-8 w-8 text-muted-foreground mx-auto" />
-                <p className="text-xs text-muted-foreground">No groups yet</p>
-                <Button size="sm" variant="outline" className="text-xs" onClick={() => setCreateOpen(true)}>
-                  <Plus className="h-3 w-3 mr-1" /> Create Group
-                </Button>
+                <p className="text-xs text-muted-foreground">No conversations yet</p>
+                <div className="flex gap-2 justify-center">
+                  <Button size="sm" variant="outline" className="text-xs" onClick={() => setDmOpen(true)}>
+                    <MessageCircle className="h-3 w-3 mr-1" /> New DM
+                  </Button>
+                  <Button size="sm" variant="outline" className="text-xs" onClick={() => setCreateOpen(true)}>
+                    <Plus className="h-3 w-3 mr-1" /> New Group
+                  </Button>
+                </div>
               </div>
             )}
           </div>
@@ -219,7 +327,7 @@ export default function GroupChat() {
                 onBack={() => setActiveGroupId(null)}
                 onViewMembers={() => setMembersOpen(true)}
                 onAI={() => setAiOpen(true)}
-                onAttach={() => {/* handled in ChatInput */}}
+                onAttach={() => {}}
               />
 
               {messages.length === 0 ? (
@@ -229,7 +337,7 @@ export default function GroupChat() {
                   onAddMembers={() => setMembersOpen(true)}
                   onCreateTask={() => toast({ title: 'Use WorkHub to create tasks' })}
                   onAskAI={() => setAiOpen(true)}
-                  onShareFile={() => {/* focus input */}}
+                  onShareFile={() => {}}
                 />
               ) : (
                 <div className="flex-1 overflow-y-auto p-3 space-y-2">
@@ -242,6 +350,7 @@ export default function GroupChat() {
                         isMe={msg.sender_id === user?.id}
                         onConvertToTask={(m) => convertToTask.mutate(m)}
                         onReply={(m) => setReplyTo(m)}
+                        onForward={(m) => setForwardMsg(m)}
                         replyToContent={replyContent}
                       />
                     );
@@ -261,10 +370,15 @@ export default function GroupChat() {
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center space-y-3">
                 <Users className="h-10 w-10 text-muted-foreground mx-auto" />
-                <p className="text-sm text-muted-foreground">Select a group to start chatting</p>
-                <Button size="sm" variant="outline" onClick={() => setCreateOpen(true)}>
-                  <Plus className="h-3.5 w-3.5 mr-1" /> New Group
-                </Button>
+                <p className="text-sm text-muted-foreground">Select a conversation to start</p>
+                <div className="flex gap-2 justify-center">
+                  <Button size="sm" variant="outline" onClick={() => setDmOpen(true)}>
+                    <MessageCircle className="h-3.5 w-3.5 mr-1" /> New DM
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setCreateOpen(true)}>
+                    <Plus className="h-3.5 w-3.5 mr-1" /> New Group
+                  </Button>
+                </div>
               </div>
             </div>
           )}
@@ -297,11 +411,51 @@ export default function GroupChat() {
         </DialogContent>
       </Dialog>
 
+      {/* New DM dialog */}
+      <Dialog open={dmOpen} onOpenChange={setDmOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle className="text-sm">New Direct Message</DialogTitle></DialogHeader>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              value={dmSearch}
+              onChange={e => setDmSearch(e.target.value)}
+              placeholder="Search users..."
+              className="pl-8 h-8 text-xs"
+            />
+          </div>
+          <div className="max-h-60 overflow-y-auto space-y-1">
+            {filteredDmUsers.map((u: any) => (
+              <button
+                key={u.id}
+                onClick={() => startDM.mutate(u.id)}
+                disabled={startDM.isPending}
+                className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-secondary text-xs flex items-center gap-2"
+              >
+                <User className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="font-medium">{u.full_name}</span>
+              </button>
+            ))}
+            {filteredDmUsers.length === 0 && <p className="text-[10px] text-muted-foreground text-center py-4">No users found</p>}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Members panel */}
       <MembersPanel open={membersOpen} onOpenChange={setMembersOpen} groupId={activeGroupId || ''} isAdmin={isGroupAdmin} />
 
       {/* AI Assistant */}
       <AIAssistantDialog open={aiOpen} onOpenChange={setAiOpen} messages={messages} />
+
+      {/* Forward message */}
+      {forwardMsg && (
+        <ForwardMessageDialog
+          open={!!forwardMsg}
+          onOpenChange={(v) => { if (!v) setForwardMsg(null); }}
+          message={forwardMsg}
+          currentGroupName={activeGroup?.name}
+        />
+      )}
     </DashboardLayout>
   );
 }
