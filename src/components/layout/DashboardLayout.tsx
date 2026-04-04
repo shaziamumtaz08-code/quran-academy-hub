@@ -133,6 +133,7 @@ function buildNavGroups(modelType: string | null, branchType: string | null): Na
         { label: 'All Users', href: '/user-management', icon: Shield, roles: ['super_admin', 'admin'] },
         { label: 'Teachers', href: '/teachers', icon: Users, permission: 'teachers.view' },
         { label: 'Students', href: '/students', icon: GraduationCap, permission: 'students.view' },
+        { label: 'Leads Pipeline', href: '/leads', icon: UserCheck, roles: ['super_admin', 'admin', 'admin_admissions'] },
       ],
     },
     {

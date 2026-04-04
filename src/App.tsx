@@ -44,6 +44,7 @@ import PrintReport from "./pages/PrintReport";
 import PrintInvoice from "./pages/PrintInvoice";
 import PrintSalary from "./pages/PrintSalary";
 import WorkHub from "./pages/WorkHub";
+import LeadsPipeline from "./pages/LeadsPipeline";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -305,6 +306,8 @@ function AppRoutes() {
           })()}
         </ProtectedRoute>
       } />
+      {/* Leads Pipeline - admin only */}
+      <Route path="/leads" element={<ProtectedRoute><AdminRoute><LeadsPipeline /></AdminRoute></ProtectedRoute>} />
       {/* Work Hub - accessible by all authenticated users */}
       <Route path="/hub" element={<ProtectedRoute><WorkHub /></ProtectedRoute>} />
       <Route path="/workhub" element={<Navigate to="/hub" replace />} />
