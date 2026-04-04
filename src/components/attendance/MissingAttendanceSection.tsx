@@ -418,7 +418,8 @@ export function useMissingAttendanceCount(
   dateMode: 'month' | 'dateRange',
   dateFrom: string,
   dateTo: string,
-  enabled: boolean
+  enabled: boolean,
+  divisionId?: string,
 ) {
   const { startDate, endDate } = useMemo(() => {
     let sd: string, ed: string;
