@@ -44,7 +44,6 @@ export function TeacherStatsRow() {
       if (divisionId) assignQuery = assignQuery.or(`division_id.eq.${divisionId},division_id.is.null`);
 
       const [attendanceRes, assignmentsRes] = await Promise.all([attQuery, assignQuery]);
-      ]);
 
       const attendance = attendanceRes.data || [];
       const present = attendance.filter(a => a.status === 'present').length;
