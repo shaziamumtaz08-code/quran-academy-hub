@@ -75,7 +75,7 @@ export function FamilyManagement() {
           email: student?.email || null,
           hasPin: !!cred,
           username: cred?.username || null,
-          oversight_level: link.oversight_level || 'none',
+          oversight_level: oversightMap.get(link.id) || 'none',
         };
       }) as LinkedChild[];
     },
