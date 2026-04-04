@@ -36,6 +36,9 @@ export function TicketDetail({ ticketId, open, onOpenChange }: TicketDetailProps
   const [newComment, setNewComment] = useState('');
   const [detailsOpen, setDetailsOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [attachmentUrl, setAttachmentUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
   const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_');
 
   const { data: ticket, isLoading } = useQuery({
