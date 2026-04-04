@@ -164,10 +164,48 @@ export function StudentDashboard() {
       // 6) Notifications / messages
       const { data: notifications } = await supabase
         .from('notification_queue')
-        .select('id, title, body, created_at, status')
+        .select('id, title, body, created_at, status, channel')
         .eq('recipient_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(3);
+        .limit(5);
+
+      // 7) Priority Inbox: pinned announcements, teacher messages, system alerts
+      const { data: announcements } = await supabase
+        .from('notification_queue')
+        .select('id, title, body, created_at, status, channel')
+        .eq('recipient_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      // Build priority inbox items
+      const inboxItems: Array<{
+        id: string;
+        type: 'pinned' | 'announcement' | 'teacher' | 'system';
+        title: string;
+        body: string;
+        timestamp: string;
+        isUnread: boolean;
+      }> = [];
+
+      (announcements || []).forEach((n: any) => {
+        const isPinned = n.channel === 'pinned' || (n.title || '').toLowerCase().includes('important');
+        const isAnnouncement = n.channel === 'announcement' || (n.title || '').toLowerCase().includes('announcement');
+        inboxItems.push({
+          id: n.id,
+          type: isPinned ? 'pinned' : isAnnouncement ? 'announcement' : n.channel === 'system' ? 'system' : 'teacher',
+          title: n.title || 'Notification',
+          body: n.body || '',
+          timestamp: n.created_at,
+          isUnread: n.status === 'pending',
+        });
+      });
+
+      // Sort: pinned first, then by timestamp
+      inboxItems.sort((a, b) => {
+        if (a.type === 'pinned' && b.type !== 'pinned') return -1;
+        if (b.type === 'pinned' && a.type !== 'pinned') return 1;
+        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+      });
 
       // Build unified enrollments
       const enrollments: Enrollment[] = [];
