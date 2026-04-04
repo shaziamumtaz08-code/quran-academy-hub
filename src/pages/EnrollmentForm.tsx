@@ -60,7 +60,7 @@ export default function EnrollmentForm() {
     student_name: '', student_dob: '', student_gender: '', student_email: '',
     student_whatsapp: '', student_country: '', student_city: '',
     parent_name: '', parent_relationship: '', parent_email: '', parent_whatsapp: '',
-    parent_oversight: 'full',
+    parent_oversight: 'none',
     password: '', confirm_password: '',
     preferred_schedule: '', payment_method: '',
     terms_accepted: false, privacy_accepted: false, parental_consent: false,
