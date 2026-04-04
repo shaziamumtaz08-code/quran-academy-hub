@@ -1,42 +1,39 @@
 
-# Holiday Management System
 
-## Overview
-Give admins the ability to mark holidays both as quick one-off actions from the Attendance page and as recurring/planned holidays from a dedicated calendar in Organization Settings.
+# Role-Aware Ticket Assignment in WorkHub
 
-## Database Changes
+## Problem
+When assigning a ticket to someone who holds multiple roles (e.g., Admin + Teacher), there is no way to indicate which role the ticket is meant for. The recipient's inbox becomes a mixed bag with no context about whether a ticket needs their "teacher" or "admin" attention.
 
-### New `holidays` table
-- `id` (uuid, PK)
-- `holiday_date` (date, required)
-- `name` (text, e.g., "Eid ul Fitr", "Weekend Off")
-- `is_recurring` (boolean, default false — for annual holidays)
-- `branch_id` (uuid, nullable — null = all branches)
-- `division_id` (uuid, nullable — null = all divisions)
-- `created_by` (uuid)
-- `created_at`, `updated_at`
-- RLS: Admins/Super Admins can manage; all authenticated users can view
+## Solution
+Add a **"Target Role"** field to tickets so the creator specifies which role context the ticket is for. This role tag is displayed as a badge on ticket cards, making it immediately clear in the inbox.
 
-## Feature 1: Quick "Mark Holiday" Button (Attendance Page)
-- Add a **Holiday** button alongside the existing Leave/Reschedule/Mark Attendance buttons
-- Opens a dialog: pick date, enter holiday name, optional branch/division scope
-- Inserts into `holidays` table
-- All scheduled sessions on that date are automatically excluded from "Missing Attendance" calculations
+## Changes
 
-## Feature 2: Holiday Calendar (Organization Settings)
-- New **Holidays** tab in Organization Settings page
-- Table/calendar view of all holidays (past and upcoming)
-- Add, edit, delete holidays
-- Toggle `is_recurring` for annual holidays (e.g., Eid, national days)
-- Filter by branch/division
+### 1. Database Migration
+- Add `target_role` (text, nullable) column to the `tickets` table
+- Stores the intended role context (e.g., `teacher`, `admin`, `admin_fees`)
 
-## Impact on Missing Attendance
-- Update `MissingAttendanceSection` and `useMissingAttendanceCount` to fetch holidays and skip those dates
-- Update `MissedAttendanceBanner` (teacher dashboard) to exclude holiday dates
+### 2. Create Ticket Dialog (`CreateTicketDialog.tsx`)
+- After selecting an assignee, fetch that user's roles from `user_roles` table
+- Show a **"For Role"** dropdown populated with only that assignee's actual roles
+- Store the selected role in `target_role` when inserting the ticket
+- If the assignee has only one role, auto-select it and skip the dropdown
 
-### Files Modified
-1. **Migration SQL** — create `holidays` table with RLS
-2. **`src/pages/Attendance.tsx`** — add Holiday button + dialog
-3. **`src/components/attendance/MissingAttendanceSection.tsx`** — exclude holidays from missing count
-4. **`src/components/dashboard/teacher/MissedAttendanceBanner.tsx`** — exclude holidays
-5. **`src/pages/OrganizationSettings.tsx`** — add Holidays tab with CRUD table
+### 3. Ticket List (`TicketList.tsx`)
+- Display a role badge (e.g., "As Teacher", "As Admin") on each ticket card next to the assignee name
+- Color-coded by role type for quick scanning
+
+### 4. Ticket Detail (`TicketDetail.tsx`)
+- Show the target role in the ticket header metadata section
+
+### 5. Assignee Picker Enhancement
+- Change the assignee dropdown to show users grouped or labeled with their roles: e.g., "Sana Sanaullah (Teacher, Admin)"
+- When a user is selected, if they have multiple roles, the "For Role" picker appears
+
+## Files Modified
+1. **Migration SQL** — add `target_role` column
+2. **`src/components/hub/CreateTicketDialog.tsx`** — role-aware assignee picker + target role field
+3. **`src/components/hub/TicketList.tsx`** — role badge on ticket cards
+4. **`src/components/hub/TicketDetail.tsx`** — role in header metadata
+
