@@ -35,10 +35,25 @@ export function FamilyManagement() {
       const { data: links } = await supabase
         .from('student_parent_links')
         .select(`
-          id, student_id, oversight_level,
+          id, student_id,
           student:profiles!student_parent_links_student_id_fkey(id, full_name, email)
         `)
         .eq('parent_id', user.id);
+
+      // Fetch oversight levels separately to avoid type issues
+      const linkIds = links?.map(l => l.id) || [];
+      let oversightMap = new Map<string, string>();
+      if (linkIds.length) {
+        const { data: oversightData } = await supabase
+          .from('student_parent_links')
+          .select('id, oversight_level')
+          .in('id', linkIds) as any;
+        if (oversightData) {
+          for (const o of oversightData) {
+            oversightMap.set(o.id, o.oversight_level || 'none');
+          }
+        }
+      }
 
       if (!links?.length) return [];
 
