@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import { DashboardShell } from './shared/DashboardShell';
 import { QuickActionsGrid } from './shared/QuickActionsGrid';
 import { StatsRowCompact } from './shared/StatsRowCompact';
+import { FamilyManagement } from '@/components/parent/FamilyManagement';
 
 const PARENT_TABS = [
   { id: 'home', icon: '🏠', label: 'Home', path: '/dashboard' },
