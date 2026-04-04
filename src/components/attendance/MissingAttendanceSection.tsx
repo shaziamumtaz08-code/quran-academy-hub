@@ -35,6 +35,7 @@ interface MissingAttendanceSectionProps {
   isVisible: boolean;
   onClose: () => void;
   teacherId?: string;
+  divisionId?: string;
 }
 
 export function MissingAttendanceSection({
