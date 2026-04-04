@@ -190,7 +190,7 @@ export default function TasksAndPolls() {
             const sc = statusConfig[task.status] || statusConfig.open;
             const isOverdue = task.deadline && isPast(new Date(task.deadline)) && task.status !== 'completed';
             return (
-              <Card key={task.id} className={isOverdue ? 'border-destructive/30' : ''}>
+              <Card key={task.id} className={`cursor-pointer hover:shadow-sm transition-shadow ${isOverdue ? 'border-destructive/30' : ''}`} onClick={() => setSelectedTask(task)}>
                 <CardContent className="p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
@@ -200,6 +200,11 @@ export default function TasksAndPolls() {
                           {task.priority}
                         </Badge>
                         {isOverdue && <Badge variant="destructive" className="text-[9px] px-1.5 py-0 h-4">Overdue</Badge>}
+                        {task.source_type === 'chat' && (
+                          <Badge variant="secondary" className="text-[8px] px-1 py-0 h-3.5 gap-0.5">
+                            <MessageSquare className="h-2 w-2" /> Chat
+                          </Badge>
+                        )}
                       </div>
                       {task.description && <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{task.description}</p>}
                       <div className="flex items-center gap-3 mt-1.5 text-[10px] text-muted-foreground">
@@ -208,8 +213,8 @@ export default function TasksAndPolls() {
                         {task.deadline && <span>Due: {format(new Date(task.deadline), 'MMM d')}</span>}
                       </div>
                     </div>
-                    <Select value={task.status} onValueChange={v => updateTaskStatus.mutate({ id: task.id, status: v })}>
-                      <SelectTrigger className="w-28 h-7 text-[10px]">
+                    <Select value={task.status} onValueChange={v => { v && updateTaskStatus.mutate({ id: task.id, status: v }); }} >
+                      <SelectTrigger className="w-28 h-7 text-[10px]" onClick={e => e.stopPropagation()}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
