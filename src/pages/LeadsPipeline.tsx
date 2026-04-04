@@ -57,6 +57,10 @@ interface Lead {
   notes: any[];
   lost_reason: string | null;
   source_url: string | null;
+  enrollment_form_token: string | null;
+  enrollment_form_sent_at: string | null;
+  enrollment_form_opened_at: string | null;
+  enrollment_form_data: any | null;
   created_at: string;
   updated_at: string;
 }
@@ -145,11 +149,281 @@ function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
   );
 }
 
+// ── Schedule Demo Sub-Dialog ──
+function ScheduleDemoSection({ lead, onScheduled }: { lead: Lead; onScheduled: () => void }) {
+  const queryClient = useQueryClient();
+  const [form, setForm] = useState({
+    scheduled_date: '', scheduled_time: '', duration_min: '30',
+    platform: 'zoom', meeting_link: '', teacher_id: '',
+  });
+
+  const { data: teachers = [] } = useQuery({
+    queryKey: ['teachers-for-demo'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('user_roles').select('user_id, profiles!inner(id, full_name)')
+        .eq('role', 'teacher');
+      return (data || []).map((r: any) => ({ id: r.profiles.id, name: r.profiles.full_name }));
+    },
+  });
+
+  const scheduleMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from('demo_sessions').insert({
+        lead_id: lead.id,
+        scheduled_date: form.scheduled_date,
+        scheduled_time: form.scheduled_time,
+        duration_min: parseInt(form.duration_min),
+        platform: form.platform,
+        meeting_link: form.meeting_link || null,
+        teacher_id: form.teacher_id || null,
+        status: 'scheduled',
+        feedback_token: crypto.randomUUID(),
+      });
+      if (error) throw error;
+      // Auto-advance lead to demo_scheduled
+      if (lead.status === 'new' || lead.status === 'contacted') {
+        await supabase.from('leads').update({ status: 'demo_scheduled' }).eq('id', lead.id);
+      }
+    },
+    onSuccess: () => {
+      toast({ title: 'Demo scheduled!' });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['demo-sessions'] });
+      onScheduled();
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div><Label className="text-xs">Date *</Label><Input type="date" value={form.scheduled_date} onChange={e => setForm(p => ({ ...p, scheduled_date: e.target.value }))} /></div>
+        <div><Label className="text-xs">Time *</Label><Input type="time" value={form.scheduled_time} onChange={e => setForm(p => ({ ...p, scheduled_time: e.target.value }))} /></div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div><Label className="text-xs">Duration (min)</Label><Input type="number" value={form.duration_min} onChange={e => setForm(p => ({ ...p, duration_min: e.target.value }))} /></div>
+        <div><Label className="text-xs">Platform</Label>
+          <Select value={form.platform} onValueChange={v => setForm(p => ({ ...p, platform: v }))}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="zoom">Zoom</SelectItem>
+              <SelectItem value="google_meet">Google Meet</SelectItem>
+              <SelectItem value="whatsapp">WhatsApp Call</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div><Label className="text-xs">Teacher</Label>
+        <Select value={form.teacher_id} onValueChange={v => setForm(p => ({ ...p, teacher_id: v }))}>
+          <SelectTrigger><SelectValue placeholder="Assign teacher..." /></SelectTrigger>
+          <SelectContent>
+            {teachers.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+      <div><Label className="text-xs">Meeting Link</Label><Input value={form.meeting_link} onChange={e => setForm(p => ({ ...p, meeting_link: e.target.value }))} placeholder="https://..." /></div>
+      <Button onClick={() => scheduleMutation.mutate()} disabled={!form.scheduled_date || !form.scheduled_time || scheduleMutation.isPending} className="w-full">
+        <Calendar className="h-4 w-4 mr-1" /> {scheduleMutation.isPending ? 'Scheduling...' : 'Schedule Demo'}
+      </Button>
+    </div>
+  );
+}
+
+// ── Demo Sessions List ──
+function DemoSessionsList({ leadId }: { leadId: string }) {
+  const queryClient = useQueryClient();
+  const { data: sessions = [] } = useQuery({
+    queryKey: ['demo-sessions', leadId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('demo_sessions')
+        .select('*, profiles:teacher_id(full_name)')
+        .eq('lead_id', leadId)
+        .order('scheduled_date', { ascending: false });
+      return data || [];
+    },
+  });
+
+  const updateSession = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: any }) => {
+      const { error } = await supabase.from('demo_sessions').update(updates).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['demo-sessions', leadId] });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      toast({ title: 'Session updated' });
+    },
+  });
+
+  if (sessions.length === 0) return <p className="text-xs text-muted-foreground text-center py-4">No demos scheduled yet</p>;
+
+  return (
+    <div className="space-y-3">
+      {sessions.map((s: any) => (
+        <div key={s.id} className="p-3 border rounded-lg space-y-2 bg-muted/20">
+          <div className="flex justify-between items-center">
+            <div className="text-sm font-medium">
+              {s.scheduled_date} at {s.scheduled_time}
+            </div>
+            <Badge variant={s.status === 'completed' ? 'default' : s.status === 'no_show' ? 'destructive' : 'secondary'} className="text-[10px] capitalize">
+              {s.status}
+            </Badge>
+          </div>
+          {s.profiles?.full_name && <p className="text-xs text-muted-foreground">Teacher: {s.profiles.full_name}</p>}
+          {s.platform && <p className="text-xs text-muted-foreground capitalize">Platform: {s.platform}</p>}
+          {s.meeting_link && <a href={s.meeting_link} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">Join Link</a>}
+
+          {/* Feedback display */}
+          {s.feedback_rating && (
+            <div className="p-2 bg-muted/50 rounded text-xs space-y-1">
+              <div className="flex items-center gap-1">
+                <Star className="h-3 w-3 text-yellow-500" />
+                <span className="font-medium">Rating: {s.feedback_rating}/5</span>
+                {s.feedback_response && <Badge variant="outline" className="ml-2 text-[10px] capitalize">{s.feedback_response}</Badge>}
+              </div>
+              {s.feedback_comment && <p className="text-muted-foreground">{s.feedback_comment}</p>}
+            </div>
+          )}
+
+          {/* Teacher notes */}
+          {s.teacher_notes && <p className="text-xs italic text-muted-foreground">Notes: {s.teacher_notes}</p>}
+
+          {/* Actions for scheduled demos */}
+          {s.status === 'scheduled' && (
+            <div className="flex gap-1 pt-1">
+              <Button size="sm" variant="outline" className="text-[10px] h-7" onClick={() => updateSession.mutate({ id: s.id, updates: { status: 'completed' } })}>
+                <ThumbsUp className="h-3 w-3 mr-1" /> Done
+              </Button>
+              <Button size="sm" variant="outline" className="text-[10px] h-7" onClick={() => updateSession.mutate({ id: s.id, updates: { status: 'no_show' } })}>
+                <ThumbsDown className="h-3 w-3 mr-1" /> No Show
+              </Button>
+              <Button size="sm" variant="outline" className="text-[10px] h-7" onClick={() => updateSession.mutate({ id: s.id, updates: { status: 'cancelled' } })}>
+                <XIcon className="h-3 w-3 mr-1" /> Cancel
+              </Button>
+            </div>
+          )}
+
+          {/* Feedback collection for completed demos without feedback */}
+          {s.status === 'completed' && !s.feedback_rating && (
+            <FeedbackCollector sessionId={s.id} leadId={leadId} />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Feedback Collector (inline) ──
+function FeedbackCollector({ sessionId, leadId }: { sessionId: string; leadId: string }) {
+  const queryClient = useQueryClient();
+  const [rating, setRating] = useState(0);
+  const [response, setResponse] = useState('');
+  const [comment, setComment] = useState('');
+
+  const saveFeedback = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from('demo_sessions').update({
+        feedback_rating: rating,
+        feedback_response: response || null,
+        feedback_comment: comment || null,
+      }).eq('id', sessionId);
+      if (error) throw error;
+      // Auto-advance lead
+      if (response === 'yes') {
+        await supabase.from('leads').update({ status: 'ready_to_enroll' }).eq('id', leadId);
+      } else if (response === 'no') {
+        await supabase.from('leads').update({ status: 'lost', lost_reason: 'Declined after demo' }).eq('id', leadId);
+      } else {
+        await supabase.from('leads').update({ status: 'feedback_pending' }).eq('id', leadId);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['demo-sessions', leadId] });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      toast({ title: 'Feedback saved' });
+    },
+  });
+
+  return (
+    <div className="p-2 border border-dashed border-primary/30 rounded-lg space-y-2 bg-primary/5">
+      <p className="text-xs font-medium text-primary">Collect Feedback</p>
+      <div className="flex gap-1">
+        {[1, 2, 3, 4, 5].map(n => (
+          <button key={n} onClick={() => setRating(n)} className={`p-1 rounded ${rating >= n ? 'text-yellow-500' : 'text-muted-foreground/30'}`}>
+            <Star className="h-4 w-4" fill={rating >= n ? 'currentColor' : 'none'} />
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-1">
+        {[{ v: 'yes', l: 'Yes, enroll', icon: ThumbsUp }, { v: 'thinking', l: 'Thinking', icon: Clock }, { v: 'no', l: 'No', icon: ThumbsDown }].map(o => (
+          <Button key={o.v} size="sm" variant={response === o.v ? 'default' : 'outline'} className="text-[10px] h-7" onClick={() => setResponse(o.v)}>
+            <o.icon className="h-3 w-3 mr-1" /> {o.l}
+          </Button>
+        ))}
+      </div>
+      <Textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="Additional comments..." rows={2} className="text-xs" />
+      <Button size="sm" onClick={() => saveFeedback.mutate()} disabled={!rating || saveFeedback.isPending} className="w-full h-8 text-xs">
+        Save Feedback
+      </Button>
+    </div>
+  );
+}
+
+// ── Enrollment Form Section ──
+function EnrollmentFormSection({ lead }: { lead: Lead }) {
+  const queryClient = useQueryClient();
+
+  const sendForm = useMutation({
+    mutationFn: async () => {
+      const token = crypto.randomUUID();
+      const { error } = await supabase.from('leads').update({
+        enrollment_form_token: token,
+        enrollment_form_sent_at: new Date().toISOString(),
+        status: 'enrollment_form_sent',
+      }).eq('id', lead.id);
+      if (error) throw error;
+      return token;
+    },
+    onSuccess: (token) => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      toast({ title: 'Enrollment form ready', description: `Token: ${token}` });
+    },
+  });
+
+  if (lead.enrollment_form_token) {
+    const formUrl = `${window.location.origin}/enroll/${lead.enrollment_form_token}`;
+    return (
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-teal-600">✅ Enrollment form generated</p>
+        <div className="p-2 bg-muted/50 rounded text-xs break-all font-mono">{formUrl}</div>
+        <Button size="sm" variant="outline" className="text-xs" onClick={() => { navigator.clipboard.writeText(formUrl); toast({ title: 'Link copied!' }); }}>
+          📋 Copy Link
+        </Button>
+        {lead.enrollment_form_opened_at && <p className="text-[10px] text-muted-foreground">Opened: {format(new Date(lead.enrollment_form_opened_at), 'dd MMM yyyy HH:mm')}</p>}
+        {lead.enrollment_form_data && (
+          <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded text-xs">
+            <p className="font-medium text-green-700 dark:text-green-400">✅ Form submitted</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <Button size="sm" onClick={() => sendForm.mutate()} disabled={sendForm.isPending} className="w-full">
+      <Send className="h-4 w-4 mr-1" /> Generate Enrollment Form Link
+    </Button>
+  );
+}
+
 // ── Lead Detail Dialog ──
 function LeadDetailDialog({ lead, open, onOpenChange }: { lead: Lead | null; open: boolean; onOpenChange: (v: boolean) => void }) {
   const queryClient = useQueryClient();
   const [noteText, setNoteText] = useState('');
   const [lostReason, setLostReason] = useState('');
+  const [showScheduler, setShowScheduler] = useState(false);
   const { profile } = useAuth();
 
   const updateStatus = useMutation({
@@ -198,9 +472,11 @@ function LeadDetailDialog({ lead, open, onOpenChange }: { lead: Lead | null; ope
         </DialogHeader>
 
         <Tabs defaultValue="info" className="mt-2">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="info">Info</TabsTrigger>
-            <TabsTrigger value="notes">Notes ({notes.length})</TabsTrigger>
+            <TabsTrigger value="demo">Demo</TabsTrigger>
+            <TabsTrigger value="notes">Notes</TabsTrigger>
+            <TabsTrigger value="enroll">Enroll</TabsTrigger>
             <TabsTrigger value="actions">Actions</TabsTrigger>
           </TabsList>
 
@@ -219,6 +495,21 @@ function LeadDetailDialog({ lead, open, onOpenChange }: { lead: Lead | null; ope
             {lead.subject_interest && <div className="text-sm"><span className="text-muted-foreground">Subject:</span> {lead.subject_interest}</div>}
             {lead.message && <div className="text-sm p-3 bg-muted/30 rounded-lg italic">"{lead.message}"</div>}
             <div className="text-xs text-muted-foreground">Created {formatDistanceToNow(new Date(lead.created_at))} ago</div>
+          </TabsContent>
+
+          <TabsContent value="demo" className="space-y-3 mt-3">
+            <div className="flex justify-between items-center">
+              <p className="text-sm font-medium">Demo Sessions</p>
+              <Button size="sm" variant="outline" onClick={() => setShowScheduler(!showScheduler)}>
+                <Calendar className="h-3 w-3 mr-1" /> {showScheduler ? 'Hide' : 'Schedule New'}
+              </Button>
+            </div>
+            {showScheduler && (
+              <div className="border border-dashed border-primary/30 rounded-lg p-3 bg-primary/5">
+                <ScheduleDemoSection lead={lead} onScheduled={() => setShowScheduler(false)} />
+              </div>
+            )}
+            <DemoSessionsList leadId={lead.id} />
           </TabsContent>
 
           <TabsContent value="notes" className="space-y-3 mt-3">
@@ -243,6 +534,12 @@ function LeadDetailDialog({ lead, open, onOpenChange }: { lead: Lead | null; ope
                 </div>
               )}
             </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="enroll" className="space-y-3 mt-3">
+            <p className="text-sm font-medium">Enrollment Form</p>
+            <p className="text-xs text-muted-foreground">Generate a unique enrollment form link for this lead. The form will be pre-filled with their details and include age-triggered parental consent.</p>
+            <EnrollmentFormSection lead={lead} />
           </TabsContent>
 
           <TabsContent value="actions" className="space-y-3 mt-3">

@@ -45,6 +45,8 @@ import PrintInvoice from "./pages/PrintInvoice";
 import PrintSalary from "./pages/PrintSalary";
 import WorkHub from "./pages/WorkHub";
 import LeadsPipeline from "./pages/LeadsPipeline";
+import EnrollmentForm from "./pages/EnrollmentForm";
+import PublicInquiryForm from "./pages/PublicInquiryForm";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -318,6 +320,10 @@ function AppRoutes() {
       <Route path="/finance/print/salary/:payoutId" element={<ProtectedRoute><PrintSalary /></ProtectedRoute>} />
       {/* Public Course Page - no auth required */}
       <Route path="/course/:slug" element={<PublicCoursePage />} />
+      {/* Public Enrollment Form - token-based, no auth */}
+      <Route path="/enroll/:token" element={<EnrollmentForm />} />
+      {/* Public Inquiry Form - no auth */}
+      <Route path="/inquiry" element={<PublicInquiryForm />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
