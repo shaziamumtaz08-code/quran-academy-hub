@@ -35,6 +35,7 @@ interface MissingAttendanceSectionProps {
   isVisible: boolean;
   onClose: () => void;
   teacherId?: string;
+  divisionId?: string;
 }
 
 export function MissingAttendanceSection({
@@ -45,6 +46,7 @@ export function MissingAttendanceSection({
   isVisible,
   onClose,
   teacherId,
+  divisionId,
 }: MissingAttendanceSectionProps) {
   const [studentFilter, setStudentFilter] = useState('all');
   const [teacherFilter, setTeacherFilter] = useState('all');
@@ -71,7 +73,7 @@ export function MissingAttendanceSection({
 
   // Fetch all active schedules with student/teacher info
   const { data: schedules, isLoading: schedulesLoading } = useQuery({
-    queryKey: ['all-schedules-for-missing', startDate, endDate, teacherId],
+    queryKey: ['all-schedules-for-missing', startDate, endDate, teacherId, divisionId],
     queryFn: async () => {
       // If start is after end (e.g. viewing Jan-Mar which is before cutoff), return empty
       if (startDate > endDate) return [];
@@ -83,11 +85,13 @@ export function MissingAttendanceSection({
           day_of_week,
           teacher_local_time,
           is_active,
+          division_id,
             student_teacher_assignments!inner (
               student_id,
               teacher_id,
               status,
               requires_attendance,
+              division_id,
               subject:subjects(name),
               student:profiles!student_teacher_assignments_student_id_fkey(id, full_name),
               teacher:profiles!student_teacher_assignments_teacher_id_fkey(id, full_name)
@@ -99,6 +103,11 @@ export function MissingAttendanceSection({
 
       if (teacherId) {
         query = query.eq('student_teacher_assignments.teacher_id', teacherId);
+      }
+
+      // Filter by division
+      if (divisionId) {
+        query = query.or(`division_id.eq.${divisionId},student_teacher_assignments.division_id.eq.${divisionId}`);
       }
 
       const { data, error } = await query;
@@ -409,7 +418,8 @@ export function useMissingAttendanceCount(
   dateMode: 'month' | 'dateRange',
   dateFrom: string,
   dateTo: string,
-  enabled: boolean
+  enabled: boolean,
+  divisionId?: string,
 ) {
   const { startDate, endDate } = useMemo(() => {
     let sd: string, ed: string;
@@ -427,22 +437,29 @@ export function useMissingAttendanceCount(
   }, [dateMode, dateFrom, dateTo, monthFilter]);
 
   const { data: schedules } = useQuery({
-    queryKey: ['schedules-count-missing', startDate, endDate],
+    queryKey: ['schedules-count-missing', startDate, endDate, divisionId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('schedules')
         .select(`
           day_of_week,
             student_teacher_assignments!inner (
               student_id,
               status,
-              requires_attendance
+              requires_attendance,
+              division_id
             )
           `)
           .eq('is_active', true)
           .eq('student_teacher_assignments.status', 'active')
           .eq('student_teacher_assignments.requires_attendance', true);
 
+      // Filter by division
+      if (divisionId) {
+        query = query.eq('student_teacher_assignments.division_id', divisionId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
