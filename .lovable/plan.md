@@ -1,33 +1,34 @@
 
+# WhatsApp Integration Plan (via WhatsChimp)
 
-# Make Parental Supervision Optional (Not Parental Identity)
+## Phase 1: Database Schema
+- Create `whatsapp_messages` table (id, contact_phone, contact_name, direction, message_text, attachment_url, attachment_type, delivery_status, wa_message_id, template_name, source_group_id, forwarded_to_task_id, forwarded_to_group_id, forwarded_to_user_id, is_forwarded, created_at, updated_at)
+- Create `whatsapp_contacts` table (id, phone, name, profile_id, last_message_at, unread_count, created_at)
+- RLS: Admin + Super Admin full access, teachers see their assigned students' threads only
+- Add WhatsChimp API key secret
 
-## Understanding
-The issue is NOT about skipping parent contact info — kids or parents can fill in name/email freely. The issue is that **parental dashboard oversight** (full oversight, notifications) should be **optional**, not forced. A parent might provide their details but not want a dashboard. Or a kid might enroll alone and add a parent later.
+## Phase 2: Edge Function — Webhook Receiver
+- `whatsapp-webhook` edge function to receive incoming messages from WhatsChimp
+- Parse WhatsChimp webhook payload, store in whatsapp_messages
+- Update whatsapp_contacts on each message
+- Auto-match phone to profile via profiles.phone
 
-## Changes — `src/pages/EnrollmentForm.tsx` only
+## Phase 3: Edge Function — Send Message
+- `whatsapp-send` edge function to send outgoing messages via WhatsChimp API
+- Support text, template, and attachment messages
+- Store sent message in whatsapp_messages with delivery tracking
 
-### 1. Keep parent fields visible but never mandatory
-- Remove the "Required" badge from the parental consent section
-- Parent name, email, WhatsApp remain visible for minors but are all optional
-- Anyone can fill them in or leave them blank
+## Phase 4: WhatsApp Inbox UI
+- New `/whatsapp` page with WhatsApp-style inbox
+- Left panel: contact list with last message preview, unread badges
+- Right panel: thread view with message bubbles, timestamps, delivery status
+- Quick actions: Forward to user/group, Convert to WorkHub task
+- Search bar across all messages
+- Attachment previews (images, PDFs, voice)
+- Template send dialog for bulk/templated messages
 
-### 2. Make oversight selection optional with a "No thanks" option
-- Add a third option to the parent oversight dropdown: **"None — no parent dashboard needed"**
-- Default to "None" instead of "full"
-- Remove the forced oversight lock for under-13 (the `computedForcedOversight` logic that hides the "None" option)
-
-### 3. Update `canSubmit` validation (line ~116)
-- Remove the requirement for `parent_name && parent_email && parental_consent` for minors
-- Only require: `student_name`, `terms_accepted`, `privacy_accepted` for everyone
-- The parental consent checkbox becomes optional too — only shown if parent fields are filled
-
-### 4. Adjust the under-13 message
-- Instead of "Full parental oversight is mandatory", show: "We recommend adding a parent/guardian for students under 13"
-
-### No database changes needed
-`enrollment_form_data` is JSONB — new field values are stored automatically.
-
-### File modified
-- `src/pages/EnrollmentForm.tsx`
-
+## Phase 5: Integration with existing systems
+- Forward WhatsApp message → creates task in WorkHub (tasks table)
+- Forward WhatsApp message → sends to chat group/user
+- Link notification_templates to WhatsApp sending
+- Add WhatsApp nav item to Communication Center
