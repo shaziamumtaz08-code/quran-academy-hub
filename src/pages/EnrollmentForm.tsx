@@ -229,21 +229,20 @@ export default function EnrollmentForm() {
                 <div><Label className="text-xs">Parent WhatsApp</Label><Input value={form.parent_whatsapp} onChange={e => updateField('parent_whatsapp', e.target.value)} /></div>
               </div>
 
-              {!computedForcedOversight && (
-                <div>
-                  <Label className="text-xs">Parent Dashboard Access</Label>
-                  <Select value={form.parent_oversight} onValueChange={v => updateField('parent_oversight', v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="full">Full oversight — view classes, grades, attendance</SelectItem>
-                      <SelectItem value="notifications">Notifications only — receive alerts & summaries</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              {computedForcedOversight && (
+              <div>
+                <Label className="text-xs">Parent Dashboard Access</Label>
+                <Select value={form.parent_oversight} onValueChange={v => updateField('parent_oversight', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None — no parent dashboard needed</SelectItem>
+                    <SelectItem value="full">Full oversight — view classes, grades, attendance</SelectItem>
+                    <SelectItem value="notifications">Notifications only — receive alerts & summaries</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {computedAge !== null && computedAge < 13 && (
                 <p className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-900/20 p-2 rounded">
-                  Full parental oversight is mandatory for students under 13.
+                  We recommend adding a parent/guardian for students under 13.
                 </p>
               )}
             </CardContent>
