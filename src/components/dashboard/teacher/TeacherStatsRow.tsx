@@ -1,6 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDivision } from '@/contexts/DivisionContext';
 import { supabase } from '@/integrations/supabase/client';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -12,9 +13,11 @@ const DAY_MAP: Record<string, number> = {
 
 export function TeacherStatsRow() {
   const { user } = useAuth();
+  const { activeDivision } = useDivision();
+  const divisionId = activeDivision?.id;
 
   const { data: stats, isLoading } = useQuery({
-    queryKey: ['teacher-stats-row', user?.id],
+    queryKey: ['teacher-stats-row', user?.id, divisionId],
     queryFn: async () => {
       if (!user?.id) return null;
 
@@ -25,22 +28,22 @@ export function TeacherStatsRow() {
       const endDate = format(endOfMonth(now), 'yyyy-MM-dd');
       const todayStr = format(today, 'yyyy-MM-dd');
 
-      const [attendanceRes, assignmentsRes] = await Promise.all([
-        supabase
+      let attQuery = supabase
           .from('attendance')
           .select('status')
           .eq('teacher_id', user.id)
           .gte('class_date', startDate)
-          .lte('class_date', endDate),
-        supabase
+          .lte('class_date', endDate);
+      if (divisionId) attQuery = attQuery.or(`division_id.eq.${divisionId},division_id.is.null`);
+
+      let assignQuery = supabase
           .from('student_teacher_assignments')
-          .select(`
-            id,
-            schedules(day_of_week, is_active)
-          `)
+          .select(`id, schedules(day_of_week, is_active)`)
           .eq('teacher_id', user.id)
-          .eq('status', 'active'),
-      ]);
+          .eq('status', 'active');
+      if (divisionId) assignQuery = assignQuery.or(`division_id.eq.${divisionId},division_id.is.null`);
+
+      const [attendanceRes, assignmentsRes] = await Promise.all([attQuery, assignQuery]);
 
       const attendance = attendanceRes.data || [];
       const present = attendance.filter(a => a.status === 'present').length;
