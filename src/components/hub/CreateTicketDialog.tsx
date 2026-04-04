@@ -51,6 +51,7 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCrea
   const [leaveMetadata, setLeaveMetadata] = useState<any>({});
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [targetRole, setTargetRole] = useState('');
+  const [attachmentUrl, setAttachmentUrl] = useState('');
 
   // Fetch assignee roles when assignee changes
   const { data: assigneeRoles = [] } = useQuery({
