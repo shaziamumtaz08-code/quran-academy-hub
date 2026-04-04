@@ -172,6 +172,7 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCrea
     setLeaveMetadata({});
     setIsAnonymous(false);
     setTargetRole('');
+    setAttachmentUrl('');
   };
 
   const canSubmit = subject.trim();
