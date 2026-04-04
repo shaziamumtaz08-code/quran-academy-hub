@@ -4737,6 +4737,140 @@ export type Database = {
           },
         ]
       }
+      whatsapp_contacts: {
+        Row: {
+          created_at: string
+          id: string
+          last_message_at: string | null
+          name: string | null
+          phone: string
+          profile_id: string | null
+          unread_count: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          name?: string | null
+          phone: string
+          profile_id?: string | null
+          unread_count?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          name?: string | null
+          phone?: string
+          profile_id?: string | null
+          unread_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_contacts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_messages: {
+        Row: {
+          attachment_type: string | null
+          attachment_url: string | null
+          contact_id: string
+          created_at: string
+          delivery_status: string
+          direction: string
+          forwarded_to_group_id: string | null
+          forwarded_to_task_id: string | null
+          forwarded_to_user_id: string | null
+          id: string
+          is_forwarded: boolean
+          message_text: string | null
+          sent_by: string | null
+          template_name: string | null
+          updated_at: string
+          wa_message_id: string | null
+        }
+        Insert: {
+          attachment_type?: string | null
+          attachment_url?: string | null
+          contact_id: string
+          created_at?: string
+          delivery_status?: string
+          direction?: string
+          forwarded_to_group_id?: string | null
+          forwarded_to_task_id?: string | null
+          forwarded_to_user_id?: string | null
+          id?: string
+          is_forwarded?: boolean
+          message_text?: string | null
+          sent_by?: string | null
+          template_name?: string | null
+          updated_at?: string
+          wa_message_id?: string | null
+        }
+        Update: {
+          attachment_type?: string | null
+          attachment_url?: string | null
+          contact_id?: string
+          created_at?: string
+          delivery_status?: string
+          direction?: string
+          forwarded_to_group_id?: string | null
+          forwarded_to_task_id?: string | null
+          forwarded_to_user_id?: string | null
+          id?: string
+          is_forwarded?: boolean
+          message_text?: string | null
+          sent_by?: string | null
+          template_name?: string | null
+          updated_at?: string
+          wa_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_messages_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_messages_forwarded_to_group_id_fkey"
+            columns: ["forwarded_to_group_id"]
+            isOneToOne: false
+            referencedRelation: "chat_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_messages_forwarded_to_task_id_fkey"
+            columns: ["forwarded_to_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_messages_forwarded_to_user_id_fkey"
+            columns: ["forwarded_to_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_messages_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       zoom_attendance_logs: {
         Row: {
           action: Database["public"]["Enums"]["attendance_action"]
