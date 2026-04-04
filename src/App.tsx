@@ -208,15 +208,8 @@ function LoginRedirect() {
   return <Login />;
 }
 
-/** Wraps Dashboard in DashboardLayout for non-teacher roles; teachers get their own standalone layout */
+/** Wraps Dashboard in DashboardLayout for all roles so sidebar is accessible on desktop */
 function DashboardWrapper() {
-  const { activeRole } = useAuth();
-  const isStandaloneRole = activeRole === 'student' || activeRole === 'parent';
-  
-  if (isStandaloneRole) {
-    return <ErrorBoundary><Dashboard /></ErrorBoundary>;
-  }
-  
   return (
     <DashboardLayout>
       <ErrorBoundary><Dashboard /></ErrorBoundary>
