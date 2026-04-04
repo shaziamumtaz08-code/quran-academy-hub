@@ -38,9 +38,7 @@ export function TeacherDashboard() {
 
   return (
     <div className="relative font-sans">
-      <TeacherTopBar />
-
-      <div className="p-4 pt-14 md:pt-4 pb-20 md:pb-6 space-y-2 max-w-[680px] mx-auto">
+      <div className="p-4 pb-20 md:pb-6 space-y-2 max-w-[680px] mx-auto">
         {/* Desktop greeting */}
         <div className="hidden md:flex items-center justify-between bg-card border border-border rounded-xl px-3 py-1.5">
           <p className="text-sm font-bold text-foreground truncate">Assalamu Alaikum, {firstName} 👋</p>
