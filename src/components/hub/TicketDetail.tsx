@@ -262,6 +262,14 @@ export function TicketDetail({ ticketId, open, onOpenChange }: TicketDetailProps
               <div className="bg-muted/50 rounded-lg p-3 text-xs whitespace-pre-wrap">{ticket.description}</div>
             )}
 
+            {/* Ticket Attachment */}
+            {ticket.attachment_url && (
+              <a href={ticket.attachment_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-muted/50 rounded-lg p-3 text-xs text-primary hover:underline">
+                <Paperclip className="h-3.5 w-3.5 shrink-0" />
+                View Initial Attachment <ExternalLink className="h-3 w-3 shrink-0" />
+              </a>
+            )}
+
             {/* Leave metadata */}
             {ticket.category === 'leave_request' && ticket.metadata && (
               <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3 text-xs space-y-1">
