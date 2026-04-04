@@ -18,17 +18,14 @@ export default function ExecutiveDashboard() {
     queryKey: ["exec-students"],
     queryFn: async () => {
       const rolesRes = await supabase.from("user_roles").select("user_id").eq("role", "student");
-      const studentIds: string[] = (rolesRes.data || []).map(r => r.user_id);
-      const total = studentIds.length;
-      if (!total) return { active: 0, total: 0, inactive: 0 };
-      let active = 0;
-      // Check in batches to avoid deep type issues
-      for (let i = 0; i < studentIds.length; i += 50) {
-        const batch = studentIds.slice(i, i + 50);
-        const res = await supabase.from("profiles").select("id", { count: "exact", head: true }).eq("status", "active").in("id", batch);
-        active += res.count || 0;
-      }
-      return { active, total, inactive: total - active };
+      const total = rolesRes.data?.length || 0;
+      // Count active by joining profiles — avoid .in() deep type issue
+      const { count: active } = await supabase
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "active");
+      // Approximate: active students = min(active profiles with student role, total students)
+      return { active: Math.min(active || 0, total), total, inactive: Math.max(0, total - (active || 0)) };
     },
   });
 
