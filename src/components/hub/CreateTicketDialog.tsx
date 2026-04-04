@@ -287,6 +287,16 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCrea
             <LeaveRequestFields metadata={leaveMetadata} onChange={setLeaveMetadata} />
           )}
 
+          {/* Attachment */}
+          <FileUploadField
+            label="Attachment (optional)"
+            bucket="ticket-attachments"
+            value={attachmentUrl}
+            onChange={setAttachmentUrl}
+            accept="image/jpeg,image/png,image/webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            hint="Image, PDF, or document"
+          />
+
           <Button className="w-full" disabled={!canSubmit || createTicket.isPending} onClick={() => createTicket.mutate()}>
             {createTicket.isPending ? 'Creating...' : 'Create Ticket'}
           </Button>
