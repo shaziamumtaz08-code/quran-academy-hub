@@ -54,13 +54,11 @@ export default function EnrollmentForm() {
   const studentName = isChild ? (lead?.child_name || '') : (lead?.name || '');
   const studentAge = lead?.child_age || null;
   const isMinor = studentAge !== null && studentAge < 18;
-  const forcedOversight = studentAge !== null && studentAge < 13;
-
   const [form, setForm] = useState({
     student_name: '', student_dob: '', student_gender: '', student_email: '',
     student_whatsapp: '', student_country: '', student_city: '',
     parent_name: '', parent_relationship: '', parent_email: '', parent_whatsapp: '',
-    parent_oversight: 'full',
+    parent_oversight: 'none',
     password: '', confirm_password: '',
     preferred_schedule: '', payment_method: '',
     terms_accepted: false, privacy_accepted: false, parental_consent: false,
@@ -95,7 +93,7 @@ export default function EnrollmentForm() {
   }, [form.student_dob, studentAge]);
 
   const computedIsMinor = computedAge !== null && computedAge < 18;
-  const computedForcedOversight = computedAge !== null && computedAge < 13;
+  
 
   const submitMutation = useMutation({
     mutationFn: async () => {
@@ -113,8 +111,8 @@ export default function EnrollmentForm() {
 
   const alreadySubmitted = lead?.enrollment_form_data !== null;
 
+  const hasParentDetails = form.parent_name && form.parent_email;
   const canSubmit = form.student_name && form.terms_accepted && form.privacy_accepted &&
-    (!computedIsMinor || (form.parent_name && form.parent_email && form.parental_consent)) &&
     (computedIsMinor || (form.password && form.password === form.confirm_password));
 
   if (isLoading) {
@@ -205,8 +203,8 @@ export default function EnrollmentForm() {
           <Card className="border-amber-300 dark:border-amber-700">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <Shield className="h-4 w-4 text-amber-600" /> Parental / Guardian Consent
-                <Badge variant="outline" className="text-amber-600 border-amber-300">Required</Badge>
+                <Shield className="h-4 w-4 text-amber-600" /> Parent / Guardian Details
+                <Badge variant="outline" className="text-muted-foreground border-muted">Optional</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -229,21 +227,20 @@ export default function EnrollmentForm() {
                 <div><Label className="text-xs">Parent WhatsApp</Label><Input value={form.parent_whatsapp} onChange={e => updateField('parent_whatsapp', e.target.value)} /></div>
               </div>
 
-              {!computedForcedOversight && (
-                <div>
-                  <Label className="text-xs">Parent Dashboard Access</Label>
-                  <Select value={form.parent_oversight} onValueChange={v => updateField('parent_oversight', v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="full">Full oversight — view classes, grades, attendance</SelectItem>
-                      <SelectItem value="notifications">Notifications only — receive alerts & summaries</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              {computedForcedOversight && (
+              <div>
+                <Label className="text-xs">Parent Dashboard Access</Label>
+                <Select value={form.parent_oversight} onValueChange={v => updateField('parent_oversight', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None — no parent dashboard needed</SelectItem>
+                    <SelectItem value="full">Full oversight — view classes, grades, attendance</SelectItem>
+                    <SelectItem value="notifications">Notifications only — receive alerts & summaries</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {computedAge !== null && computedAge < 13 && (
                 <p className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-900/20 p-2 rounded">
-                  Full parental oversight is mandatory for students under 13.
+                  We recommend adding a parent/guardian for students under 13.
                 </p>
               )}
             </CardContent>
@@ -311,10 +308,10 @@ export default function EnrollmentForm() {
               <Checkbox checked={form.privacy_accepted} onCheckedChange={v => updateField('privacy_accepted', !!v)} id="privacy" />
               <label htmlFor="privacy" className="text-xs leading-snug cursor-pointer">I agree to the Privacy Policy and consent to data processing *</label>
             </div>
-            {computedIsMinor && (
+            {computedIsMinor && hasParentDetails && (
               <div className="flex items-start gap-2">
                 <Checkbox checked={form.parental_consent} onCheckedChange={v => updateField('parental_consent', !!v)} id="parental" />
-                <label htmlFor="parental" className="text-xs leading-snug cursor-pointer">I, as the parent/guardian, consent to my child's enrollment and understand the oversight terms *</label>
+                <label htmlFor="parental" className="text-xs leading-snug cursor-pointer">I, as the parent/guardian, consent to my child's enrollment and understand the oversight terms</label>
               </div>
             )}
           </CardContent>
