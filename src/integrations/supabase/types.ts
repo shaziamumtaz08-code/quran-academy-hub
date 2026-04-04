@@ -4023,6 +4023,7 @@ export type Database = {
       tickets: {
         Row: {
           assignee_id: string
+          attachment_url: string | null
           branch_id: string | null
           category: string
           closed_at: string | null
@@ -4049,6 +4050,7 @@ export type Database = {
         }
         Insert: {
           assignee_id: string
+          attachment_url?: string | null
           branch_id?: string | null
           category?: string
           closed_at?: string | null
@@ -4075,6 +4077,7 @@ export type Database = {
         }
         Update: {
           assignee_id?: string
+          attachment_url?: string | null
           branch_id?: string | null
           category?: string
           closed_at?: string | null

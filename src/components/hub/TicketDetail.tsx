@@ -8,11 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Send, Clock, CheckCircle2, XCircle, AlertTriangle, Lock, Loader2, ChevronDown } from 'lucide-react';
+import { Send, Clock, CheckCircle2, XCircle, AlertTriangle, Lock, Loader2, ChevronDown, Paperclip, FileText, Image, ExternalLink } from 'lucide-react';
 import { format, isSameDay } from 'date-fns';
 import { TATIndicator } from './TATIndicator';
 import { toast } from 'sonner';
 import { ParentFeedbackForm } from './ParentFeedbackForm';
+import { supabase as sb } from '@/integrations/supabase/client';
 
 interface TicketDetailProps {
   ticketId: string;
@@ -35,6 +36,9 @@ export function TicketDetail({ ticketId, open, onOpenChange }: TicketDetailProps
   const [newComment, setNewComment] = useState('');
   const [detailsOpen, setDetailsOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [attachmentUrl, setAttachmentUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
   const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_');
 
   const { data: ticket, isLoading } = useQuery({
@@ -79,16 +83,18 @@ export function TicketDetail({ ticketId, open, onOpenChange }: TicketDetailProps
   }, [comments]);
 
   const addComment = useMutation({
-    mutationFn: async (message: string) => {
+    mutationFn: async ({ message, attachment }: { message: string; attachment?: string }) => {
       const { error } = await supabase.from('ticket_comments').insert({
         ticket_id: ticketId,
         author_id: profile!.id,
         message,
-      });
+        attachment_url: attachment || null,
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
       setNewComment('');
+      setAttachmentUrl('');
       queryClient.invalidateQueries({ queryKey: ['ticket-comments', ticketId] });
       toast.success('Message sent');
     },
@@ -112,7 +118,33 @@ export function TicketDetail({ ticketId, open, onOpenChange }: TicketDetailProps
   });
 
   const handleSend = () => {
-    if (newComment.trim()) addComment.mutate(newComment.trim());
+    if (newComment.trim() || attachmentUrl) {
+      addComment.mutate({ message: newComment.trim() || '📎 Attachment', attachment: attachmentUrl });
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File too large (max 10MB)');
+      return;
+    }
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `${ticketId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+      const { error } = await sb.storage.from('ticket-attachments').upload(path, file);
+      if (error) throw error;
+      const { data: urlData } = sb.storage.from('ticket-attachments').getPublicUrl(path);
+      setAttachmentUrl(urlData.publicUrl);
+      toast.success('File attached');
+    } catch (err: any) {
+      toast.error(err.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -230,6 +262,14 @@ export function TicketDetail({ ticketId, open, onOpenChange }: TicketDetailProps
               <div className="bg-muted/50 rounded-lg p-3 text-xs whitespace-pre-wrap">{ticket.description}</div>
             )}
 
+            {/* Ticket Attachment */}
+            {ticket.attachment_url && (
+              <a href={ticket.attachment_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-muted/50 rounded-lg p-3 text-xs text-primary hover:underline">
+                <Paperclip className="h-3.5 w-3.5 shrink-0" />
+                View Initial Attachment <ExternalLink className="h-3 w-3 shrink-0" />
+              </a>
+            )}
+
             {/* Leave metadata */}
             {ticket.category === 'leave_request' && ticket.metadata && (
               <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3 text-xs space-y-1">
@@ -303,6 +343,17 @@ export function TicketDetail({ ticketId, open, onOpenChange }: TicketDetailProps
                           </span>
                         )}
                         <p className="whitespace-pre-wrap">{comment.message}</p>
+                        {/* Attachment */}
+                        {comment.attachment_url && (() => {
+                          const url = comment.attachment_url;
+                          const isImg = /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(url);
+                          return (
+                            <a href={url} target="_blank" rel="noreferrer" className="mt-1.5 flex items-center gap-1.5 text-xs text-primary hover:underline">
+                              {isImg ? <Image className="h-3.5 w-3.5 shrink-0" /> : <FileText className="h-3.5 w-3.5 shrink-0" />}
+                              View Attachment <ExternalLink className="h-3 w-3 shrink-0" />
+                            </a>
+                          );
+                        })()}
                         {/* Feedback ratings */}
                         {comment.metadata && (comment.metadata as any).type === 'parent_feedback' && (
                           <div className="mt-2 bg-background/50 rounded p-2 text-xs space-y-1">
@@ -342,31 +393,52 @@ export function TicketDetail({ ticketId, open, onOpenChange }: TicketDetailProps
               <span>This ticket is closed.</span>
             </div>
           ) : (
-            <div className="flex items-end gap-2">
-              <Avatar className="h-7 w-7 shrink-0 mb-0.5">
-                <AvatarFallback className="text-[10px] bg-accent/10 text-accent">
-                  {initials(profile?.full_name || '')}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 relative">
-                <Textarea
-                  placeholder="Type a message..."
-                  value={newComment}
-                  onChange={e => setNewComment(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  className="min-h-[40px] max-h-[120px] text-sm pr-10 resize-y"
-                  rows={1}
+            <div className="space-y-2">
+              {/* Attachment preview */}
+              {attachmentUrl && (
+                <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-1.5 text-xs">
+                  <Paperclip className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span className="truncate flex-1 text-primary">File attached</span>
+                  <Button variant="ghost" size="sm" className="h-5 px-1.5 text-[10px]" onClick={() => setAttachmentUrl('')}>Remove</Button>
+                </div>
+              )}
+              <div className="flex items-end gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,video/*,audio/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
                 />
                 <Button
+                  variant="ghost"
                   size="icon"
-                  className={`absolute right-1.5 bottom-1.5 h-7 w-7 rounded-full transition-colors ${
-                    newComment.trim() ? 'bg-accent text-accent-foreground hover:bg-accent/90' : 'bg-muted text-muted-foreground'
-                  }`}
-                  disabled={!newComment.trim() || addComment.isPending}
-                  onClick={handleSend}
+                  className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
                 >
-                  {addComment.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                  {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
                 </Button>
+                <div className="flex-1 relative">
+                  <Textarea
+                    placeholder="Type a message..."
+                    value={newComment}
+                    onChange={e => setNewComment(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    className="min-h-[40px] max-h-[120px] text-sm pr-10 resize-y"
+                    rows={1}
+                  />
+                  <Button
+                    size="icon"
+                    className={`absolute right-1.5 bottom-1.5 h-7 w-7 rounded-full transition-colors ${
+                      (newComment.trim() || attachmentUrl) ? 'bg-accent text-accent-foreground hover:bg-accent/90' : 'bg-muted text-muted-foreground'
+                    }`}
+                    disabled={(!newComment.trim() && !attachmentUrl) || addComment.isPending}
+                    onClick={handleSend}
+                  >
+                    {addComment.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
               </div>
             </div>
           )}

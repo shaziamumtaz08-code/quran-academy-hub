@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
 import { LeaveRequestFields } from './LeaveRequestFields';
+import { FileUploadField } from '@/components/shared/FileUploadField';
 
 interface CreateTicketDialogProps {
   open: boolean;
@@ -50,6 +51,7 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCrea
   const [leaveMetadata, setLeaveMetadata] = useState<any>({});
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [targetRole, setTargetRole] = useState('');
+  const [attachmentUrl, setAttachmentUrl] = useState('');
 
   // Fetch assignee roles when assignee changes
   const { data: assigneeRoles = [] } = useQuery({
@@ -145,7 +147,8 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCrea
         target_role: targetRole || null,
         branch_id: activeBranch?.id || null,
         division_id: activeDivision?.id || null,
-      });
+        attachment_url: attachmentUrl || null,
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -169,6 +172,7 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCrea
     setLeaveMetadata({});
     setIsAnonymous(false);
     setTargetRole('');
+    setAttachmentUrl('');
   };
 
   const canSubmit = subject.trim();
@@ -282,6 +286,16 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCrea
           {category === 'leave_request' && (
             <LeaveRequestFields metadata={leaveMetadata} onChange={setLeaveMetadata} />
           )}
+
+          {/* Attachment */}
+          <FileUploadField
+            label="Attachment (optional)"
+            bucket="ticket-attachments"
+            value={attachmentUrl}
+            onChange={setAttachmentUrl}
+            accept="image/jpeg,image/png,image/webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            hint="Image, PDF, or document"
+          />
 
           <Button className="w-full" disabled={!canSubmit || createTicket.isPending} onClick={() => createTicket.mutate()}>
             {createTicket.isPending ? 'Creating...' : 'Create Ticket'}
