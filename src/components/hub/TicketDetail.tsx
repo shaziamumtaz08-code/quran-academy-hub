@@ -13,6 +13,7 @@ import { format, isSameDay } from 'date-fns';
 import { TATIndicator } from './TATIndicator';
 import { toast } from 'sonner';
 import { ParentFeedbackForm } from './ParentFeedbackForm';
+import { supabase as sb } from '@/integrations/supabase/client';
 
 interface TicketDetailProps {
   ticketId: string;
