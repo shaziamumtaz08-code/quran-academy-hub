@@ -80,12 +80,18 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCrea
     enabled: open,
   });
 
-  // Fetch users for assignee picker
+  // Fetch users with roles for assignee picker
   const { data: users = [] } = useQuery({
-    queryKey: ['hub-users'],
+    queryKey: ['hub-users-with-roles'],
     queryFn: async () => {
-      const { data } = await supabase.from('profiles').select('id, full_name, email').order('full_name');
-      return data || [];
+      const { data: profiles } = await supabase.from('profiles').select('id, full_name, email').order('full_name');
+      const { data: allRoles } = await supabase.from('user_roles').select('user_id, role');
+      const roleMap: Record<string, string[]> = {};
+      (allRoles || []).forEach((r: any) => {
+        if (!roleMap[r.user_id]) roleMap[r.user_id] = [];
+        roleMap[r.user_id].push(r.role);
+      });
+      return (profiles || []).map((p: any) => ({ ...p, roles: roleMap[p.id] || [] }));
     },
     enabled: open,
   });
