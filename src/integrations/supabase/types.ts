@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_insights: {
+        Row: {
+          created_at: string
+          id: string
+          insight_text: string
+          is_dismissed: boolean
+          metadata: Json | null
+          risk_level: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          insight_text: string
+          is_dismissed?: boolean
+          metadata?: Json | null
+          risk_level?: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          insight_text?: string
+          is_dismissed?: boolean
+          metadata?: Json | null
+          risk_level?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           created_at: string
@@ -101,6 +134,7 @@ export type Database = {
           id: string
           input_unit: string | null
           lesson_covered: string | null
+          lesson_notes: string | null
           lesson_number: number | null
           lesson_type: string | null
           lines_completed: number | null
@@ -149,6 +183,7 @@ export type Database = {
           id?: string
           input_unit?: string | null
           lesson_covered?: string | null
+          lesson_notes?: string | null
           lesson_number?: number | null
           lesson_type?: string | null
           lines_completed?: number | null
@@ -197,6 +232,7 @@ export type Database = {
           id?: string
           input_unit?: string | null
           lesson_covered?: string | null
+          lesson_notes?: string | null
           lesson_number?: number | null
           lesson_type?: string | null
           lines_completed?: number | null
@@ -264,6 +300,38 @@ export type Database = {
             columns: ["teacher_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      attendance_comments: {
+        Row: {
+          attendance_id: string
+          comment: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          attendance_id: string
+          comment: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          attendance_id?: string
+          comment?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_comments_attendance_id_fkey"
+            columns: ["attendance_id"]
+            isOneToOne: false
+            referencedRelation: "attendance"
             referencedColumns: ["id"]
           },
         ]
@@ -493,6 +561,137 @@ export type Database = {
             columns: ["issued_to"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_groups: {
+        Row: {
+          course_id: string | null
+          created_at: string
+          created_by: string
+          id: string
+          is_active: boolean
+          name: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          course_id?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          is_active?: boolean
+          name: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_groups_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_members: {
+        Row: {
+          group_id: string
+          id: string
+          joined_at: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          group_id: string
+          id?: string
+          joined_at?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          group_id?: string
+          id?: string
+          joined_at?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "chat_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_messages: {
+        Row: {
+          attachment_url: string | null
+          content: string | null
+          created_at: string
+          group_id: string
+          id: string
+          is_deleted: boolean
+          linked_task_id: string | null
+          reply_to: string | null
+          sender_id: string
+        }
+        Insert: {
+          attachment_url?: string | null
+          content?: string | null
+          created_at?: string
+          group_id: string
+          id?: string
+          is_deleted?: boolean
+          linked_task_id?: string | null
+          reply_to?: string | null
+          sender_id: string
+        }
+        Update: {
+          attachment_url?: string | null
+          content?: string | null
+          created_at?: string
+          group_id?: string
+          id?: string
+          is_deleted?: boolean
+          linked_task_id?: string | null
+          reply_to?: string | null
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "chat_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_linked_task_id_fkey"
+            columns: ["linked_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_reply_to_fkey"
+            columns: ["reply_to"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
             referencedColumns: ["id"]
           },
         ]
@@ -2630,6 +2829,141 @@ export type Database = {
         }
         Relationships: []
       }
+      poll_options: {
+        Row: {
+          created_at: string
+          id: string
+          option_text: string
+          poll_id: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          option_text: string
+          poll_id: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          option_text?: string
+          poll_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_options_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      poll_responses: {
+        Row: {
+          created_at: string
+          id: string
+          option_id: string
+          poll_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          option_id: string
+          poll_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          option_id?: string
+          poll_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_responses_option_id_fkey"
+            columns: ["option_id"]
+            isOneToOne: false
+            referencedRelation: "poll_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_responses_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      polls: {
+        Row: {
+          branch_id: string | null
+          course_id: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          division_id: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          branch_id?: string | null
+          course_id?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          division_id?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string | null
+          course_id?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          division_id?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "polls_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "polls_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "polls_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           age: number | null
@@ -2791,6 +3125,51 @@ export type Database = {
           role_code?: string
         }
         Relationships: []
+      }
+      resource_assignments: {
+        Row: {
+          assigned_by: string
+          assigned_to: string
+          course_id: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          resource_id: string
+        }
+        Insert: {
+          assigned_by: string
+          assigned_to: string
+          course_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          resource_id: string
+        }
+        Update: {
+          assigned_by?: string
+          assigned_to?: string
+          course_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          resource_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resource_assignments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resource_assignments_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       resources: {
         Row: {
@@ -3879,6 +4258,79 @@ export type Database = {
           },
         ]
       }
+      tasks: {
+        Row: {
+          assigned_to: string | null
+          branch_id: string | null
+          created_at: string
+          created_by: string
+          deadline: string | null
+          description: string | null
+          division_id: string | null
+          id: string
+          is_anonymous: boolean
+          linked_ticket_id: string | null
+          priority: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          branch_id?: string | null
+          created_at?: string
+          created_by: string
+          deadline?: string | null
+          description?: string | null
+          division_id?: string | null
+          id?: string
+          is_anonymous?: boolean
+          linked_ticket_id?: string | null
+          priority?: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string
+          deadline?: string | null
+          description?: string | null
+          division_id?: string | null
+          id?: string
+          is_anonymous?: boolean
+          linked_ticket_id?: string | null
+          priority?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_linked_ticket_id_fkey"
+            columns: ["linked_ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tat_defaults: {
         Row: {
           branch_id: string | null
@@ -4370,6 +4822,10 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_chat_member: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_enrolled_in_course: {
         Args: { _course_id: string; _student_id: string }
         Returns: boolean
