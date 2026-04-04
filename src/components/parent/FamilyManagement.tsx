@@ -115,10 +115,10 @@ export function FamilyManagement() {
 
   const updateOversightMutation = useMutation({
     mutationFn: async ({ linkId, level }: { linkId: string; level: string }) => {
-      const { error } = await supabase
+      const { error } = await (supabase
         .from('student_parent_links')
-        .update({ oversight_level: level })
-        .eq('id', linkId);
+        .update({ oversight_level: level } as any)
+        .eq('id', linkId));
       if (error) throw error;
     },
     onSuccess: () => {
