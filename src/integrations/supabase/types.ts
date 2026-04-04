@@ -3640,6 +3640,7 @@ export type Database = {
           status: string
           subcategory_id: string | null
           subject: string
+          target_role: string | null
           tat_deadline: string | null
           tat_hours: number | null
           ticket_number: number
@@ -3665,6 +3666,7 @@ export type Database = {
           status?: string
           subcategory_id?: string | null
           subject: string
+          target_role?: string | null
           tat_deadline?: string | null
           tat_hours?: number | null
           ticket_number?: number
@@ -3690,6 +3692,7 @@ export type Database = {
           status?: string
           subcategory_id?: string | null
           subject?: string
+          target_role?: string | null
           tat_deadline?: string | null
           tat_hours?: number | null
           ticket_number?: number

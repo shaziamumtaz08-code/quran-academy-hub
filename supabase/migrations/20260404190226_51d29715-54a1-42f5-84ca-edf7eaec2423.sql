@@ -1,0 +1,1 @@
+ALTER TABLE public.tickets ADD COLUMN target_role text;
