@@ -93,7 +93,7 @@ export default function EnrollmentForm() {
   }, [form.student_dob, studentAge]);
 
   const computedIsMinor = computedAge !== null && computedAge < 18;
-  const computedForcedOversight = computedAge !== null && computedAge < 13;
+  
 
   const submitMutation = useMutation({
     mutationFn: async () => {
