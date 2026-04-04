@@ -329,6 +329,10 @@ function AppRoutes() {
       <Route path="/enroll/:token" element={<EnrollmentForm />} />
       {/* Public Inquiry Form - no auth */}
       <Route path="/inquiry" element={<PublicInquiryForm />} />
+      {/* Public Course Catalog - no auth */}
+      <Route path="/courses-catalog" element={<CourseCatalog />} />
+      {/* Recorded Courses Storefront - no auth */}
+      <Route path="/recorded-courses" element={<RecordedCourses />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
