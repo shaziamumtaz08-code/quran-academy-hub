@@ -538,6 +538,12 @@ export function StudentDashboard() {
           )}
         </div>
       </div>
+
+      {/* ═══ RECENT LESSONS WITH COMMENTS ═══ */}
+      <StudentAttendanceSection />
+
+      {/* ═══ AI INSIGHTS ═══ */}
+      <AiInsightsWidget />
     </>
   );
 

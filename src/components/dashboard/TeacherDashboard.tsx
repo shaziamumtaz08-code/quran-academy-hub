@@ -67,6 +67,12 @@ export function TeacherDashboard() {
         {/* My Stats */}
         <TeacherStatsRow />
 
+        {/* Recent Sessions with Comments */}
+        <TeacherAttendanceComments />
+
+        {/* AI Insights */}
+        <AiInsightsWidget />
+
         {/* Notifications & Alerts */}
         <div>
           <p className="text-[13px] font-extrabold text-foreground mb-2">🔔 Notifications & Alerts</p>
