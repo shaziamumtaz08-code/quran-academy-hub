@@ -65,12 +65,18 @@ export default function KPI() {
         .gte('class_date', monthStart)
         .lte('class_date', monthEnd);
 
-      // 4) Monthly plans
-      const { data: plans } = await supabase
-        .from('monthly_plans')
-        .select('id, teacher_id, student_id, month, status, created_at, approved_at, approved_by')
-        .in('teacher_id', teacherIds)
-        .eq('month', monthKey);
+      // 4) Monthly plans (table may not exist yet — handle gracefully)
+      let plans: any[] = [];
+      try {
+        const { data: planData } = await (supabase as any)
+          .from('monthly_plans')
+          .select('id, teacher_id, student_id, month, status, created_at, approved_at, approved_by')
+          .in('teacher_id', teacherIds)
+          .eq('month', monthKey);
+        plans = planData || [];
+      } catch {
+        plans = [];
+      }
 
       // Build teacher KPIs
       const teachers = teacherIds.map(tid => {
