@@ -113,7 +113,7 @@ export default function TasksAndPolls() {
     mutationFn: async () => {
       if (!user?.id) return;
       const { data: poll, error } = await supabase.from('polls')
-        .insert({ question: newPoll.question, created_by: user.id, is_active: true })
+        .insert({ title: newPoll.question, created_by: user.id, is_active: true })
         .select().single();
       if (error) throw error;
       const options = newPoll.options.filter(o => o.trim()).map((text, i) => ({
