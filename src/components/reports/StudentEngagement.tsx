@@ -7,32 +7,39 @@ import { Button } from "@/components/ui/button";
 import { Download, Search, Flame } from "lucide-react";
 import { format, subDays } from "date-fns";
 import { useState } from "react";
+import { useDivision } from "@/contexts/DivisionContext";
 
 export default function StudentEngagement() {
+  const { activeDivision } = useDivision();
+  const divisionId = activeDivision?.id;
   const [searchName, setSearchName] = useState("");
   const dateFrom = format(subDays(new Date(), 30), "yyyy-MM-dd");
   const dateTo = format(new Date(), "yyyy-MM-dd");
 
-  // Student attendance + assignments data
   const { data: engagementData } = useQuery({
-    queryKey: ["engagement-report", dateFrom, dateTo],
+    queryKey: ["engagement-report", dateFrom, dateTo, divisionId],
     queryFn: async () => {
-      // Get all student assignments
-      const { data: assignments } = await supabase
+      // Get active assignments in division
+      let assignQuery = supabase
         .from("student_teacher_assignments")
         .select("student_id, student:profiles!student_teacher_assignments_student_id_fkey(full_name)")
         .eq("status", "active");
+      if (divisionId) assignQuery = assignQuery.eq("division_id", divisionId);
+      const { data: assignments } = await assignQuery;
 
       if (!assignments?.length) return [];
 
-      // Get attendance for these students
       const studentIds = [...new Set(assignments.map(a => a.student_id))];
-      const { data: attendance } = await supabase
+
+      // Get attendance with Hifz progress fields
+      let attQuery = supabase
         .from("attendance")
-        .select("student_id, status, class_date, progress_marker, sabaq, lines_completed")
+        .select("student_id, status, class_date, progress_marker, sabaq, lines_completed, raw_input_amount, input_unit, surah_name, ayah_from, ayah_to")
         .in("student_id", studentIds)
         .gte("class_date", dateFrom)
         .lte("class_date", dateTo);
+      if (divisionId) attQuery = attQuery.eq("division_id", divisionId);
+      const { data: attendance } = await attQuery;
 
       // Build engagement per student
       const students: Record<string, any> = {};
@@ -47,6 +54,7 @@ export default function StudentEngagement() {
             progressMarkers: 0,
             sabaqCount: 0,
             dates: [] as string[],
+            lastSurah: "",
           };
         }
       });
@@ -59,9 +67,12 @@ export default function StudentEngagement() {
           s.present++;
           s.dates.push(r.class_date);
         }
-        if (r.lines_completed) s.linesCompleted += r.lines_completed;
+        // Use raw_input_amount if available, fall back to lines_completed
+        const amount = r.raw_input_amount || r.lines_completed || 0;
+        if (amount) s.linesCompleted += Number(amount);
         if (r.progress_marker) s.progressMarkers++;
         if (r.sabaq) s.sabaqCount++;
+        if (r.surah_name) s.lastSurah = r.surah_name;
       });
 
       return Object.values(students).map((s: any) => ({
@@ -89,8 +100,8 @@ export default function StudentEngagement() {
     .sort((a: any, b: any) => b.attendanceRate - a.attendanceRate);
 
   const exportCsv = () => {
-    const rows = [["Student", "Attendance %", "Classes", "Lines Completed", "Sabaq Entries", "Consistency Streak"]];
-    filtered.forEach((s: any) => rows.push([s.name, s.attendanceRate + "%", `${s.present}/${s.totalClasses}`, s.linesCompleted, s.sabaqCount, s.consistency]));
+    const rows = [["Student", "Attendance %", "Classes", "Lines/Progress", "Sabaq Entries", "Consistency Streak", "Last Surah"]];
+    filtered.forEach((s: any) => rows.push([s.name, s.attendanceRate + "%", `${s.present}/${s.totalClasses}`, s.linesCompleted, s.sabaqCount, s.consistency, s.lastSurah]));
     const csv = rows.map(r => r.join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "student_engagement.csv"; a.click();
@@ -113,7 +124,7 @@ export default function StudentEngagement() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card><CardContent className="p-3 text-center"><p className="text-2xl font-bold">{filtered.length}</p><p className="text-xs text-muted-foreground">Students</p></CardContent></Card>
         <Card><CardContent className="p-3 text-center"><p className="text-2xl font-bold">{filtered.length > 0 ? Math.round(filtered.reduce((s: number, f: any) => s + f.attendanceRate, 0) / filtered.length) : 0}%</p><p className="text-xs text-muted-foreground">Avg Attendance</p></CardContent></Card>
-        <Card><CardContent className="p-3 text-center"><p className="text-2xl font-bold">{filtered.reduce((s: number, f: any) => s + f.linesCompleted, 0)}</p><p className="text-xs text-muted-foreground">Total Lines</p></CardContent></Card>
+        <Card><CardContent className="p-3 text-center"><p className="text-2xl font-bold">{filtered.reduce((s: number, f: any) => s + f.linesCompleted, 0)}</p><p className="text-xs text-muted-foreground">Total Progress</p></CardContent></Card>
         <Card><CardContent className="p-3 text-center"><p className="text-2xl font-bold">{filtered.reduce((s: number, f: any) => s + f.sabaqCount, 0)}</p><p className="text-xs text-muted-foreground">Sabaq Entries</p></CardContent></Card>
       </div>
 
@@ -125,8 +136,9 @@ export default function StudentEngagement() {
                 <tr>
                   <th className="text-left p-3 font-medium">Student</th>
                   <th className="text-center p-3 font-medium">Attendance</th>
-                  <th className="text-center p-3 font-medium">Hifz Lines</th>
+                  <th className="text-center p-3 font-medium">Hifz Progress</th>
                   <th className="text-center p-3 font-medium">Sabaq</th>
+                  <th className="text-center p-3 font-medium">Last Surah</th>
                   <th className="text-center p-3 font-medium">Consistency</th>
                 </tr>
               </thead>
@@ -139,6 +151,7 @@ export default function StudentEngagement() {
                     </td>
                     <td className="p-3 text-center">{s.linesCompleted}</td>
                     <td className="p-3 text-center">{s.sabaqCount}</td>
+                    <td className="p-3 text-center text-muted-foreground text-xs">{s.lastSurah || "—"}</td>
                     <td className="p-3 text-center">
                       {s.consistency >= 5 ? (
                         <Badge variant="default" className="gap-1"><Flame className="h-3 w-3" />{s.consistency} days</Badge>
@@ -146,7 +159,7 @@ export default function StudentEngagement() {
                     </td>
                   </tr>
                 ))}
-                {filtered.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No data found</td></tr>}
+                {filtered.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No data found</td></tr>}
               </tbody>
             </table>
           </div>

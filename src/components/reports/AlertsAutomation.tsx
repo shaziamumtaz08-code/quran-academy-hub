@@ -2,23 +2,28 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, Clock, UserMinus, DollarSign } from "lucide-react";
+import { Clock, UserMinus, DollarSign } from "lucide-react";
 import { format, subDays } from "date-fns";
+import { useDivision } from "@/contexts/DivisionContext";
 
 export default function AlertsAutomation() {
+  const { activeDivision } = useDivision();
+  const divisionId = activeDivision?.id;
   const today = format(new Date(), "yyyy-MM-dd");
   const weekAgo = format(subDays(new Date(), 7), "yyyy-MM-dd");
 
   // Low attendance students (< 50% in last 30 days)
   const { data: lowAttendance } = useQuery({
-    queryKey: ["alert-low-attendance"],
+    queryKey: ["alert-low-attendance", divisionId],
     queryFn: async () => {
       const from = format(subDays(new Date(), 30), "yyyy-MM-dd");
-      const { data } = await supabase
+      let query = supabase
         .from("attendance")
         .select("student_id, status, student:profiles!attendance_student_id_fkey(full_name)")
         .gte("class_date", from)
         .lte("class_date", today);
+      if (divisionId) query = query.eq("division_id", divisionId);
+      const { data } = await query;
 
       const students: Record<string, { name: string; total: number; present: number }> = {};
       (data || []).forEach((r: any) => {
@@ -34,31 +39,35 @@ export default function AlertsAutomation() {
     },
   });
 
-  // Overdue fees
+  // Overdue fees — use real status + due_date
   const { data: overdueFees } = useQuery({
-    queryKey: ["alert-overdue-fees"],
+    queryKey: ["alert-overdue-fees", divisionId],
     queryFn: async () => {
-      const { data } = await supabase
+      let query = supabase
         .from("fee_invoices")
-        .select("id, amount, amount_paid, billing_month, student:profiles!fee_invoices_student_id_fkey(full_name)")
-        .eq("status", "pending")
+        .select("id, amount, amount_paid, forgiven_amount, billing_month, currency, student:profiles!fee_invoices_student_id_fkey(full_name)")
+        .in("status", ["pending", "overdue"])
         .lt("due_date", today)
         .order("due_date", { ascending: true })
         .limit(20);
+      if (divisionId) query = query.eq("division_id", divisionId);
+      const { data } = await query;
       return data || [];
     },
   });
 
   // Teacher missed classes (teacher_absent in last 7 days)
   const { data: teacherMissed } = useQuery({
-    queryKey: ["alert-teacher-missed"],
+    queryKey: ["alert-teacher-missed", divisionId],
     queryFn: async () => {
-      const { data } = await supabase
+      let query = supabase
         .from("attendance")
         .select("teacher_id, class_date, teacher:profiles!attendance_teacher_id_fkey(full_name)")
         .in("status", ["teacher_absent", "teacher_leave"])
         .gte("class_date", weekAgo)
         .lte("class_date", today);
+      if (divisionId) query = query.eq("division_id", divisionId);
+      const { data } = await query;
 
       const teachers: Record<string, { name: string; count: number; dates: string[] }> = {};
       (data || []).forEach((r: any) => {
@@ -83,7 +92,7 @@ export default function AlertsAutomation() {
       type: "fee" as const,
       icon: DollarSign,
       title: `${f.student?.full_name} — overdue fee`,
-      description: `${f.billing_month}: $${f.amount - (f.amount_paid || 0)} pending`,
+      description: `${f.billing_month}: ${f.currency} ${Number(f.amount) - Number(f.amount_paid || 0) - Number(f.forgiven_amount || 0)} pending`,
       severity: "warning",
     })),
     ...(teacherMissed || []).map((t: any) => ({
@@ -99,8 +108,8 @@ export default function AlertsAutomation() {
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-3">
         <Card><CardContent className="p-3 text-center"><p className="text-2xl font-bold text-destructive">{lowAttendance?.length || 0}</p><p className="text-xs text-muted-foreground">Low Attendance</p></CardContent></Card>
-        <Card><CardContent className="p-3 text-center"><p className="text-2xl font-bold text-yellow-600">{overdueFees?.length || 0}</p><p className="text-xs text-muted-foreground">Overdue Fees</p></CardContent></Card>
-        <Card><CardContent className="p-3 text-center"><p className="text-2xl font-bold text-orange-600">{teacherMissed?.length || 0}</p><p className="text-xs text-muted-foreground">Teacher Absences</p></CardContent></Card>
+        <Card><CardContent className="p-3 text-center"><p className="text-2xl font-bold text-gold">{overdueFees?.length || 0}</p><p className="text-xs text-muted-foreground">Overdue Fees</p></CardContent></Card>
+        <Card><CardContent className="p-3 text-center"><p className="text-2xl font-bold text-destructive">{teacherMissed?.length || 0}</p><p className="text-xs text-muted-foreground">Teacher Absences</p></CardContent></Card>
       </div>
 
       <div className="space-y-3">
@@ -110,9 +119,9 @@ export default function AlertsAutomation() {
           </Card>
         )}
         {alerts.map((alert, i) => (
-          <Card key={i} className={`border-l-4 ${alert.severity === "critical" ? "border-l-destructive" : "border-l-yellow-500"}`}>
+          <Card key={i} className={`border-l-4 ${alert.severity === "critical" ? "border-l-destructive" : "border-l-gold"}`}>
             <CardContent className="p-4 flex items-start gap-3">
-              <alert.icon className={`h-5 w-5 mt-0.5 ${alert.severity === "critical" ? "text-destructive" : "text-yellow-600"}`} />
+              <alert.icon className={`h-5 w-5 mt-0.5 ${alert.severity === "critical" ? "text-destructive" : "text-gold"}`} />
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="font-medium text-sm">{alert.title}</p>
