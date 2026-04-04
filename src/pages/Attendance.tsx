@@ -1231,6 +1231,7 @@ export default function Attendance() {
             isVisible={true}
             onClose={() => { setShowMissing(false); searchParams.delete('filter'); setSearchParams(searchParams); }}
             teacherId={isTeacher ? user?.id : undefined}
+            divisionId={activeDivision?.id}
           />
         ) : (
         <Card>
