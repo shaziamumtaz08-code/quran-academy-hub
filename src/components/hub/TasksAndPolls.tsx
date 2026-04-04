@@ -36,6 +36,7 @@ export default function TasksAndPolls() {
   const queryClient = useQueryClient();
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
   const [createPollOpen, setCreatePollOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<any>(null);
   const [newTask, setNewTask] = useState({ title: '', description: '', priority: 'medium', deadline: '', is_anonymous: false });
   const [newPoll, setNewPoll] = useState({ question: '', options: ['', ''] });
   const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_');
