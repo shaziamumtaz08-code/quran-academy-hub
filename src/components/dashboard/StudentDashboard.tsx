@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { format, subDays } from 'date-fns';
-import { Video, AlertTriangle, MessageSquare, ChevronRight, Flame, Clock, BookOpen, Calendar, CalendarOff, Pin, Megaphone, Bell, Brain } from 'lucide-react';
+import { Video, AlertTriangle, MessageSquare, ChevronRight, Flame, Clock, BookOpen, Calendar, CalendarOff, Pin, Megaphone, Bell, Brain, MessagesSquare, FolderOpen } from 'lucide-react';
 import { StudentAttendanceSection } from './StudentAttendanceSection';
 import { AiInsightsWidget } from './AiInsightsWidget';
 import { JoinClassButton } from '@/components/zoom/JoinClassButton';
