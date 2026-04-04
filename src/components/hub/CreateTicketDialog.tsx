@@ -49,6 +49,26 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCrea
   const [assigneeId, setAssigneeId] = useState('');
   const [leaveMetadata, setLeaveMetadata] = useState<any>({});
   const [isAnonymous, setIsAnonymous] = useState(false);
+  const [targetRole, setTargetRole] = useState('');
+
+  // Fetch assignee roles when assignee changes
+  const { data: assigneeRoles = [] } = useQuery({
+    queryKey: ['assignee-roles', assigneeId],
+    queryFn: async () => {
+      const { data } = await supabase.from('user_roles').select('role').eq('user_id', assigneeId);
+      return (data || []).map((r: any) => r.role as string);
+    },
+    enabled: !!assigneeId && open,
+  });
+
+  // Auto-select role if assignee has only one
+  useEffect(() => {
+    if (assigneeRoles.length === 1) {
+      setTargetRole(assigneeRoles[0]);
+    } else if (assigneeRoles.length === 0) {
+      setTargetRole('');
+    }
+  }, [assigneeRoles]);
 
   // Fetch subcategories
   const { data: subcategories = [] } = useQuery({
