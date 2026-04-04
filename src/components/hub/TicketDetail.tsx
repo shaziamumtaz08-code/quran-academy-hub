@@ -207,7 +207,14 @@ export function TicketDetail({ ticketId, open, onOpenChange }: TicketDetailProps
                 </Avatar>
                 <div>
                   <p className="text-[10px] text-muted-foreground">Assigned To</p>
-                  <p className="text-xs font-medium">{ticket.assignee?.full_name}</p>
+                  <p className="text-xs font-medium">
+                    {ticket.assignee?.full_name}
+                    {ticket.target_role && (
+                      <Badge variant="outline" className="ml-1 text-[9px] px-1 py-0 capitalize bg-primary/5 text-primary border-primary/20">
+                        As {ticket.target_role.replace(/_/g, ' ')}
+                      </Badge>
+                    )}
+                  </p>
                 </div>
               </div>
             </div>

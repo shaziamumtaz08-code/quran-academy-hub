@@ -49,6 +49,26 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCrea
   const [assigneeId, setAssigneeId] = useState('');
   const [leaveMetadata, setLeaveMetadata] = useState<any>({});
   const [isAnonymous, setIsAnonymous] = useState(false);
+  const [targetRole, setTargetRole] = useState('');
+
+  // Fetch assignee roles when assignee changes
+  const { data: assigneeRoles = [] } = useQuery({
+    queryKey: ['assignee-roles', assigneeId],
+    queryFn: async () => {
+      const { data } = await supabase.from('user_roles').select('role').eq('user_id', assigneeId);
+      return (data || []).map((r: any) => r.role as string);
+    },
+    enabled: !!assigneeId && open,
+  });
+
+  // Auto-select role if assignee has only one
+  useEffect(() => {
+    if (assigneeRoles.length === 1) {
+      setTargetRole(assigneeRoles[0]);
+    } else if (assigneeRoles.length === 0) {
+      setTargetRole('');
+    }
+  }, [assigneeRoles]);
 
   // Fetch subcategories
   const { data: subcategories = [] } = useQuery({
@@ -60,12 +80,18 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCrea
     enabled: open,
   });
 
-  // Fetch users for assignee picker
+  // Fetch users with roles for assignee picker
   const { data: users = [] } = useQuery({
-    queryKey: ['hub-users'],
+    queryKey: ['hub-users-with-roles'],
     queryFn: async () => {
-      const { data } = await supabase.from('profiles').select('id, full_name, email').order('full_name');
-      return data || [];
+      const { data: profiles } = await supabase.from('profiles').select('id, full_name, email').order('full_name');
+      const { data: allRoles } = await supabase.from('user_roles').select('user_id, role');
+      const roleMap: Record<string, string[]> = {};
+      (allRoles || []).forEach((r: any) => {
+        if (!roleMap[r.user_id]) roleMap[r.user_id] = [];
+        roleMap[r.user_id].push(r.role);
+      });
+      return (profiles || []).map((p: any) => ({ ...p, roles: roleMap[p.id] || [] }));
     },
     enabled: open,
   });
@@ -116,6 +142,7 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCrea
         due_date: tatDeadline,
         metadata,
         is_anonymous: isAnonymous,
+        target_role: targetRole || null,
         branch_id: activeBranch?.id || null,
         division_id: activeDivision?.id || null,
       });
@@ -141,6 +168,7 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCrea
     setAssigneeId('');
     setLeaveMetadata({});
     setIsAnonymous(false);
+    setTargetRole('');
   };
 
   const canSubmit = subject.trim();
@@ -193,16 +221,39 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCrea
             </div>
             <div>
               <Label className="text-xs">Assign To</Label>
-              <Select value={assigneeId} onValueChange={setAssigneeId}>
+              <Select value={assigneeId} onValueChange={(v) => { setAssigneeId(v); setTargetRole(''); }}>
                 <SelectTrigger><SelectValue placeholder="Select user..." /></SelectTrigger>
                 <SelectContent>
                   {users.map((u: any) => (
-                    <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.full_name}
+                      {u.roles.length > 0 && (
+                        <span className="text-muted-foreground ml-1">
+                          ({u.roles.map((r: string) => r.replace('_', ' ')).join(', ')})
+                        </span>
+                      )}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
           </div>
+
+          {/* Target Role (shown when assignee has multiple roles) */}
+          {assigneeId && assigneeRoles.length > 1 && (
+            <div>
+              <Label className="text-xs">For Role</Label>
+              <Select value={targetRole} onValueChange={setTargetRole}>
+                <SelectTrigger><SelectValue placeholder="Select role context..." /></SelectTrigger>
+                <SelectContent>
+                  {assigneeRoles.map((r: string) => (
+                    <SelectItem key={r} value={r} className="capitalize">{r.replace(/_/g, ' ')}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Which role should handle this ticket?</p>
+            </div>
+          )}
 
           {/* Subject */}
           <div>

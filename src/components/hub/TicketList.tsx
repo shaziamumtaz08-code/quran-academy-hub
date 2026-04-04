@@ -208,6 +208,11 @@ export function TicketList({ view, userId }: TicketListProps) {
                       <Badge variant="outline" className={`text-xs ${STATUS_COLORS[ticket.status] || ''}`}>
                         {ticket.status?.replace('_', ' ')}
                       </Badge>
+                      {ticket.target_role && (
+                        <Badge variant="outline" className="text-xs bg-primary/5 text-primary border-primary/20 capitalize">
+                          As {ticket.target_role.replace(/_/g, ' ')}
+                        </Badge>
+                      )}
                     </div>
                     <h4 className="font-medium text-sm mt-1 truncate">{ticket.subject}</h4>
                     <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
