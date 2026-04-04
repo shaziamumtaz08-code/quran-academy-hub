@@ -1,46 +1,33 @@
 
-# Multi-Tenant LMS Architecture Expansion
 
-## Build Order & Status
+# Make Parental Supervision Optional (Not Parental Identity)
 
-### ✅ Part 1: Leads Pipeline (DONE)
-- Database: `leads` and `demo_sessions` tables with RLS
-- UI: Kanban board with 10 pipeline stages
-- Features: Create leads, view details, add notes, move stages, mark lost
-- Navigation: People → Leads Pipeline (admin/super_admin/admin_admissions)
+## Understanding
+The issue is NOT about skipping parent contact info — kids or parents can fill in name/email freely. The issue is that **parental dashboard oversight** (full oversight, notifications) should be **optional**, not forced. A parent might provide their details but not want a dashboard. Or a kid might enroll alone and add a parent later.
 
-### ✅ Part 2: Demo Session Scheduling (DONE)
-- Schedule demo classes from lead detail dialog (Demo tab)
-- Teacher assignment dropdown for demos
-- Demo feedback collection with star rating + response (yes/thinking/no)
-- Auto-advance lead status based on feedback response
-- Demo status management: Done, No Show, Cancel
+## Changes — `src/pages/EnrollmentForm.tsx` only
 
-### ✅ Part 3: Smart Enrollment Form (DONE)
-- Token-based public enrollment form (`/enroll/{token}`)
-- Age-triggered parental consent (DOB → computed age)
-- Forced oversight for under-13
-- Pre-filled from lead data
-- Consent checkboxes (terms, privacy, parental)
-- Form link generation from lead detail (Enroll tab)
+### 1. Keep parent fields visible but never mandatory
+- Remove the "Required" badge from the parental consent section
+- Parent name, email, WhatsApp remain visible for minors but are all optional
+- Anyone can fill them in or leave them blank
 
-### ✅ Part 4: Public Inquiry Form (DONE)
-- Standalone public form at `/inquiry`
-- Creates leads without login required
-- For self/child/other selection
-- Subject interest, preferred time, message
+### 2. Make oversight selection optional with a "No thanks" option
+- Add a third option to the parent oversight dropdown: **"None — no parent dashboard needed"**
+- Default to "None" instead of "full"
+- Remove the forced oversight lock for under-13 (the `computedForcedOversight` logic that hides the "None" option)
 
-### 🔲 Part 5: Minor/Child Login
-- Username + PIN authentication
-- Parent-child profile linking
-- Profile selector for parent sessions
+### 3. Update `canSubmit` validation (line ~116)
+- Remove the requirement for `parent_name && parent_email && parental_consent` for minors
+- Only require: `student_name`, `terms_accepted`, `privacy_accepted` for everyone
+- The parental consent checkbox becomes optional too — only shown if parent fields are filled
 
-### 🔲 Part 6: Parent Dashboard Enhancements
-- Family management (PIN reset, username change)
-- Multi-child overview cards
+### 4. Adjust the under-13 message
+- Instead of "Full parental oversight is mandatory", show: "We recommend adding a parent/guardian for students under 13"
 
-### 🔲 Part 7: Identity Architecture Migration
-- platform_persons layer
-- URN system (org_relationships)
-- Role enrollment tags
-- Matching engine (Edge Function)
+### No database changes needed
+`enrollment_form_data` is JSONB — new field values are stored automatically.
+
+### File modified
+- `src/pages/EnrollmentForm.tsx`
+
