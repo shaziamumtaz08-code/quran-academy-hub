@@ -19,7 +19,9 @@ export default function ExecutiveDashboard() {
     queryFn: async () => {
       const rolesRes: any = await supabase.from("user_roles").select("user_id").eq("role", "student");
       const total = rolesRes.data?.length || 0;
-      const profilesRes: any = await supabase.from("profiles").select("id", { count: "exact", head: true }).eq("status", "active");
+      // Use rpc or direct count to avoid deep type instantiation
+      const profilesQuery = supabase.from("profiles" as any).select("id", { count: "exact", head: true }).eq("status", "active");
+      const profilesRes: any = await profilesQuery;
       const active = Math.min(profilesRes.count || 0, total);
       return { active, total, inactive: Math.max(0, total - active) };
     },
