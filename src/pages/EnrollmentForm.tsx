@@ -113,8 +113,8 @@ export default function EnrollmentForm() {
 
   const alreadySubmitted = lead?.enrollment_form_data !== null;
 
+  const hasParentDetails = form.parent_name && form.parent_email;
   const canSubmit = form.student_name && form.terms_accepted && form.privacy_accepted &&
-    (!computedIsMinor || (form.parent_name && form.parent_email && form.parental_consent)) &&
     (computedIsMinor || (form.password && form.password === form.confirm_password));
 
   if (isLoading) {
