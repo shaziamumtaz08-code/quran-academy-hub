@@ -15,7 +15,8 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { format, isPast } from 'date-fns';
-import { Plus, ClipboardList, BarChart3, AlertTriangle, CheckCircle, Clock, Circle } from 'lucide-react';
+import { Plus, ClipboardList, BarChart3, AlertTriangle, CheckCircle, Clock, Circle, MessageSquare, Forward } from 'lucide-react';
+import { TaskDetailDialog } from '@/components/hub/TaskDetailDialog';
 
 const statusConfig: Record<string, { icon: React.ReactNode; color: string }> = {
   open: { icon: <Circle className="h-3 w-3" />, color: 'text-sky bg-sky/10' },
