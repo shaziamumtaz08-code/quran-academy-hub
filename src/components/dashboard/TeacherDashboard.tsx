@@ -73,6 +73,5 @@ export function TeacherDashboard() {
         </div>
       </div>
     </div>
-    </div>
   );
 }
