@@ -52,6 +52,8 @@ import IdentityResolution from "./pages/IdentityResolution";
 import CourseCatalog from "./pages/CourseCatalog";
 import RecordedCourses from "./pages/RecordedCourses";
 import NotificationCenter from "./pages/NotificationCenter";
+import GroupChat from "./pages/GroupChat";
+import MyResources from "./pages/MyResources";
 
 const queryClient = new QueryClient();
 
