@@ -54,8 +54,6 @@ export default function EnrollmentForm() {
   const studentName = isChild ? (lead?.child_name || '') : (lead?.name || '');
   const studentAge = lead?.child_age || null;
   const isMinor = studentAge !== null && studentAge < 18;
-  const forcedOversight = studentAge !== null && studentAge < 13;
-
   const [form, setForm] = useState({
     student_name: '', student_dob: '', student_gender: '', student_email: '',
     student_whatsapp: '', student_country: '', student_city: '',
