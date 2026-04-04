@@ -90,11 +90,10 @@ export default function KPI() {
         const attendanceRate = totalClasses > 0 ? Math.round((delivered / totalClasses) * 100) : 0;
         const deliveryRate = totalClasses > 0 ? Math.round(((totalClasses - teacherAbsent) / totalClasses) * 100) : 0;
 
-        // Planning stats for this teacher
-        const teacherPlans = (plans || []).filter(p => p.teacher_id === tid);
+        const teacherPlans = plans.filter((p: any) => p.teacher_id === tid);
         const expectedPlans = info.studentIds.size;
         const submittedPlans = teacherPlans.length;
-        const approvedPlans = teacherPlans.filter(p => p.status === 'approved').length;
+        const approvedPlans = teacherPlans.filter((p: any) => p.status === 'approved').length;
 
         // Score: weighted (delivery 40%, attendance 30%, planning 30%)
         const planRate = expectedPlans > 0 ? submittedPlans / expectedPlans : 0;
