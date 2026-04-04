@@ -93,7 +93,7 @@ export function StudentDashboard() {
   const currentMonth = new Date();
 
   const { data: stats, isLoading } = useQuery({
-    queryKey: ['student-dashboard-v4', user?.id],
+    queryKey: ['student-dashboard-v5', user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
 
@@ -193,6 +193,56 @@ export function StudentDashboard() {
       const monthlyProgress = Math.min(100, Math.round((totalAchieved / monthlyTarget) * 100));
       const markerLabel = activePlan?.primary_marker === 'rukus' ? 'Rukus' : activePlan?.primary_marker === 'pages' ? 'Pages' : 'Lines';
 
+      // 5) Enrolled courses (group classes)
+      const { data: enrollments } = await supabase
+        .from('course_enrollments')
+        .select('id, status, course:courses(id, name, description, level, status, teacher:profiles!courses_teacher_id_fkey(full_name))')
+        .eq('student_id', user.id)
+        .eq('status', 'active');
+
+      const enrolledCourses = (enrollments || []).map(e => {
+        const course = e.course as any;
+        return {
+          id: course?.id,
+          name: course?.name || 'Course',
+          level: course?.level || '',
+          teacherName: course?.teacher?.full_name || 'Instructor',
+          status: course?.status || 'active',
+        };
+      });
+
+      // 6) Latest exam results
+      const { data: exams } = await supabase
+        .from('exams')
+        .select('id, exam_date, percentage, total_marks, max_total_marks, public_remarks, template:exam_templates(name)')
+        .eq('student_id', user.id)
+        .is('deleted_at', null)
+        .order('exam_date', { ascending: false })
+        .limit(3);
+
+      const recentExams = (exams || []).map(e => ({
+        id: e.id,
+        name: (e.template as any)?.name || 'Exam',
+        date: format(new Date(e.exam_date), 'MMM dd'),
+        percentage: e.percentage,
+        totalMarks: e.total_marks,
+        maxMarks: e.max_total_marks,
+        remarks: e.public_remarks,
+      }));
+
+      // 7) Fee status — latest pending invoice
+      const { data: invoices } = await supabase
+        .from('fee_invoices')
+        .select('amount, currency, status, due_date')
+        .eq('student_id', user.id)
+        .eq('status', 'pending')
+        .order('due_date', { ascending: true })
+        .limit(1);
+
+      const feeStatus = invoices?.[0]
+        ? { amount: invoices[0].amount, currency: invoices[0].currency, dueDate: invoices[0].due_date }
+        : null;
+
       return {
         totalClasses: allAttendance.length,
         attended: present,
@@ -212,6 +262,9 @@ export function StudentDashboard() {
           homework: a.homework || 'No homework',
           status: a.status,
         })),
+        enrolledCourses,
+        recentExams,
+        feeStatus,
       };
     },
     enabled: !!user?.id,
