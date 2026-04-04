@@ -46,6 +46,7 @@ export function MissingAttendanceSection({
   isVisible,
   onClose,
   teacherId,
+  divisionId,
 }: MissingAttendanceSectionProps) {
   const [studentFilter, setStudentFilter] = useState('all');
   const [teacherFilter, setTeacherFilter] = useState('all');
