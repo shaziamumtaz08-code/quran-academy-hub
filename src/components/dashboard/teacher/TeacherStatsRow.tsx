@@ -13,9 +13,11 @@ const DAY_MAP: Record<string, number> = {
 
 export function TeacherStatsRow() {
   const { user } = useAuth();
+  const { activeDivision } = useDivision();
+  const divisionId = activeDivision?.id;
 
   const { data: stats, isLoading } = useQuery({
-    queryKey: ['teacher-stats-row', user?.id],
+    queryKey: ['teacher-stats-row', user?.id, divisionId],
     queryFn: async () => {
       if (!user?.id) return null;
 
