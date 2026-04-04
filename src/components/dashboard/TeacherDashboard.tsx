@@ -12,6 +12,8 @@ import { NextClassCountdown } from "./teacher/NextClassCountdown";
 import { TeacherQuickActions } from "./teacher/TeacherQuickActions";
 import { TeacherStatsRow } from "./teacher/TeacherStatsRow";
 import { TeacherNotificationsSection } from "./teacher/TeacherNotificationsSection";
+import { TeacherAttendanceComments } from "./teacher/TeacherAttendanceComments";
+import { AiInsightsWidget } from "./AiInsightsWidget";
 
 export function TeacherDashboard() {
   const { user, profile } = useAuth();
