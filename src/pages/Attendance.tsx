@@ -539,8 +539,14 @@ export default function Attendance() {
         .order('class_date', { ascending: false });
 
       // Filter by active division
+      // For teachers: show their records in the active division OR records with null division_id
+      // (some older records may not have division_id set)
       if (activeDivision?.id) {
-        query = query.eq('division_id', activeDivision.id);
+        if (isTeacher) {
+          query = query.or(`division_id.eq.${activeDivision.id},division_id.is.null`);
+        } else {
+          query = query.eq('division_id', activeDivision.id);
+        }
       }
 
       // Apply explicit role-based filters (not relying on RLS for multi-role users)
