@@ -1,16 +1,18 @@
 import React from 'react';
 import { format } from 'date-fns';
-import { Paperclip, ClipboardList, Copy, Reply, ExternalLink, FileText, Image as ImageIcon, Mic } from 'lucide-react';
+import { Paperclip, ClipboardList, Copy, Reply, ExternalLink, FileText, Image as ImageIcon, Mic, Forward, ArrowRight } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 interface ChatMessageBubbleProps {
   msg: any;
   isMe: boolean;
   onConvertToTask: (msg: any) => void;
   onReply: (msg: any) => void;
+  onForward?: (msg: any) => void;
   replyToContent?: string;
 }
 
-export function ChatMessageBubble({ msg, isMe, onConvertToTask, onReply, replyToContent }: ChatMessageBubbleProps) {
+export function ChatMessageBubble({ msg, isMe, onConvertToTask, onReply, onForward, replyToContent }: ChatMessageBubbleProps) {
   const isImage = msg.attachment_url && /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(msg.attachment_url);
   const isAudio = msg.attachment_url && /\.(webm|ogg|mp3|wav|m4a)(\?|$)/i.test(msg.attachment_url);
   const isPdf = msg.attachment_url && /\.pdf(\?|$)/i.test(msg.attachment_url);
@@ -28,6 +30,16 @@ export function ChatMessageBubble({ msg, isMe, onConvertToTask, onReply, replyTo
             {replyToContent}
           </div>
         )}
+
+        {/* Forwarded indicator */}
+        {msg.is_forwarded && (
+          <div className="flex items-center gap-1 text-[9px] text-muted-foreground italic mb-0.5">
+            <Forward className="h-2.5 w-2.5" />
+            Forwarded from <span className="font-semibold">{msg.forwarded_from}</span>
+            {msg.forwarded_source_group && <span>in {msg.forwarded_source_group}</span>}
+          </div>
+        )}
+
         <div className={`rounded-2xl px-3.5 py-2 ${
           isMe
             ? 'bg-primary text-primary-foreground rounded-br-md'
@@ -60,6 +72,13 @@ export function ChatMessageBubble({ msg, isMe, onConvertToTask, onReply, replyTo
             </div>
           )}
 
+          {/* Task linked indicator */}
+          {msg.linked_task_id && (
+            <div className="mt-1 flex items-center gap-1 text-[9px] opacity-70">
+              <ClipboardList className="h-2.5 w-2.5" /> Linked to task
+            </div>
+          )}
+
           <p className={`text-[9px] mt-1 ${isMe ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>
             {format(new Date(msg.created_at), 'h:mm a')}
           </p>
@@ -70,6 +89,11 @@ export function ChatMessageBubble({ msg, isMe, onConvertToTask, onReply, replyTo
           <button onClick={() => onReply(msg)} className="p-1 rounded hover:bg-muted" title="Reply">
             <Reply className="h-3 w-3 text-muted-foreground" />
           </button>
+          {onForward && (
+            <button onClick={() => onForward(msg)} className="p-1 rounded hover:bg-muted" title="Forward">
+              <Forward className="h-3 w-3 text-muted-foreground" />
+            </button>
+          )}
           <button onClick={() => onConvertToTask(msg)} className="p-1 rounded hover:bg-muted" title="Convert to task">
             <ClipboardList className="h-3 w-3 text-muted-foreground" />
           </button>
