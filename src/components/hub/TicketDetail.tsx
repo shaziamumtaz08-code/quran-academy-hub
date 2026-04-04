@@ -118,7 +118,33 @@ export function TicketDetail({ ticketId, open, onOpenChange }: TicketDetailProps
   });
 
   const handleSend = () => {
-    if (newComment.trim()) addComment.mutate(newComment.trim());
+    if (newComment.trim() || attachmentUrl) {
+      addComment.mutate({ message: newComment.trim() || '📎 Attachment', attachment: attachmentUrl });
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File too large (max 10MB)');
+      return;
+    }
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `${ticketId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+      const { error } = await sb.storage.from('ticket-attachments').upload(path, file);
+      if (error) throw error;
+      const { data: urlData } = sb.storage.from('ticket-attachments').getPublicUrl(path);
+      setAttachmentUrl(urlData.publicUrl);
+      toast.success('File attached');
+    } catch (err: any) {
+      toast.error(err.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
