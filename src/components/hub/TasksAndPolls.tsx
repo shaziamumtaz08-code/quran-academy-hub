@@ -326,6 +326,13 @@ export default function TasksAndPolls() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Task Detail */}
+      <TaskDetailDialog
+        open={!!selectedTask}
+        onOpenChange={(v) => { if (!v) setSelectedTask(null); }}
+        task={selectedTask}
+      />
     </div>
   );
 }
