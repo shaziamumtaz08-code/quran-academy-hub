@@ -156,6 +156,8 @@ function buildNavGroups(modelType: string | null, branchType: string | null): Na
       icon: MessageSquare,
       items: [
         { label: 'Work Hub', href: '/hub', icon: Megaphone },
+        { label: 'Group Chat', href: '/chat', icon: MessageSquare },
+        { label: 'My Resources', href: '/my-resources', icon: FolderOpen },
         ...(!isOnsite ? [{ label: 'Zoom Engine', href: '/zoom-management', icon: Video, roles: ['super_admin', 'admin'] as string[] }] : []),
         { label: 'Integrity Audit', href: '/integrity-audit', icon: AlertTriangle, roles: ['super_admin', 'admin'] },
       ],
