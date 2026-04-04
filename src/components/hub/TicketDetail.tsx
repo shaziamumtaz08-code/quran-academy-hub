@@ -83,16 +83,18 @@ export function TicketDetail({ ticketId, open, onOpenChange }: TicketDetailProps
   }, [comments]);
 
   const addComment = useMutation({
-    mutationFn: async (message: string) => {
+    mutationFn: async ({ message, attachment }: { message: string; attachment?: string }) => {
       const { error } = await supabase.from('ticket_comments').insert({
         ticket_id: ticketId,
         author_id: profile!.id,
         message,
-      });
+        attachment_url: attachment || null,
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
       setNewComment('');
+      setAttachmentUrl('');
       queryClient.invalidateQueries({ queryKey: ['ticket-comments', ticketId] });
       toast.success('Message sent');
     },
