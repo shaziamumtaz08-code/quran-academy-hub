@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Send, Clock, CheckCircle2, XCircle, AlertTriangle, Lock, Loader2, ChevronDown } from 'lucide-react';
+import { Send, Clock, CheckCircle2, XCircle, AlertTriangle, Lock, Loader2, ChevronDown, Paperclip, FileText, Image, ExternalLink } from 'lucide-react';
 import { format, isSameDay } from 'date-fns';
 import { TATIndicator } from './TATIndicator';
 import { toast } from 'sonner';
