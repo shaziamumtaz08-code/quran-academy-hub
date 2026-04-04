@@ -1000,6 +1000,88 @@ export type Database = {
           },
         ]
       }
+      demo_sessions: {
+        Row: {
+          created_at: string
+          duration_min: number
+          feedback_comment: string | null
+          feedback_rating: number | null
+          feedback_response: string | null
+          feedback_token: string | null
+          id: string
+          lead_id: string
+          meeting_link: string | null
+          org_id: string | null
+          platform: string | null
+          scheduled_date: string
+          scheduled_time: string
+          status: string
+          teacher_id: string | null
+          teacher_notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          duration_min?: number
+          feedback_comment?: string | null
+          feedback_rating?: number | null
+          feedback_response?: string | null
+          feedback_token?: string | null
+          id?: string
+          lead_id: string
+          meeting_link?: string | null
+          org_id?: string | null
+          platform?: string | null
+          scheduled_date: string
+          scheduled_time: string
+          status?: string
+          teacher_id?: string | null
+          teacher_notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          duration_min?: number
+          feedback_comment?: string | null
+          feedback_rating?: number | null
+          feedback_response?: string | null
+          feedback_token?: string | null
+          id?: string
+          lead_id?: string
+          meeting_link?: string | null
+          org_id?: string | null
+          platform?: string | null
+          scheduled_date?: string
+          scheduled_time?: string
+          status?: string
+          teacher_id?: string | null
+          teacher_notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demo_sessions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demo_sessions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demo_sessions_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       discount_rules: {
         Row: {
           branch_id: string | null
@@ -1898,6 +1980,141 @@ export type Database = {
             columns: ["invoice_id"]
             isOneToOne: false
             referencedRelation: "fee_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          assigned_to: string | null
+          branch_id: string | null
+          child_age: number | null
+          child_gender: string | null
+          child_name: string | null
+          city: string | null
+          converted_person_ids: string[] | null
+          country: string | null
+          created_at: string
+          division_id: string | null
+          email: string | null
+          enrollment_form_data: Json | null
+          enrollment_form_opened_at: string | null
+          enrollment_form_sent_at: string | null
+          enrollment_form_token: string | null
+          for_whom: string
+          id: string
+          lost_reason: string | null
+          match_status: string | null
+          matched_person_id: string | null
+          message: string | null
+          name: string
+          notes: Json | null
+          org_id: string | null
+          phone_whatsapp: string | null
+          preferred_time: string | null
+          source_url: string | null
+          status: string
+          subject_interest: string | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          branch_id?: string | null
+          child_age?: number | null
+          child_gender?: string | null
+          child_name?: string | null
+          city?: string | null
+          converted_person_ids?: string[] | null
+          country?: string | null
+          created_at?: string
+          division_id?: string | null
+          email?: string | null
+          enrollment_form_data?: Json | null
+          enrollment_form_opened_at?: string | null
+          enrollment_form_sent_at?: string | null
+          enrollment_form_token?: string | null
+          for_whom?: string
+          id?: string
+          lost_reason?: string | null
+          match_status?: string | null
+          matched_person_id?: string | null
+          message?: string | null
+          name: string
+          notes?: Json | null
+          org_id?: string | null
+          phone_whatsapp?: string | null
+          preferred_time?: string | null
+          source_url?: string | null
+          status?: string
+          subject_interest?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          branch_id?: string | null
+          child_age?: number | null
+          child_gender?: string | null
+          child_name?: string | null
+          city?: string | null
+          converted_person_ids?: string[] | null
+          country?: string | null
+          created_at?: string
+          division_id?: string | null
+          email?: string | null
+          enrollment_form_data?: Json | null
+          enrollment_form_opened_at?: string | null
+          enrollment_form_sent_at?: string | null
+          enrollment_form_token?: string | null
+          for_whom?: string
+          id?: string
+          lost_reason?: string | null
+          match_status?: string | null
+          matched_person_id?: string | null
+          message?: string | null
+          name?: string
+          notes?: Json | null
+          org_id?: string | null
+          phone_whatsapp?: string | null
+          preferred_time?: string | null
+          source_url?: string | null
+          status?: string
+          subject_interest?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_matched_person_id_fkey"
+            columns: ["matched_person_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
