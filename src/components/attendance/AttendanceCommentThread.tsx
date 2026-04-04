@@ -64,8 +64,8 @@ export function AttendanceCommentThread({ attendanceId, compact = false }: Props
         await supabase.from('notification_queue').insert({
           recipient_id: recipientId,
           title: 'New Attendance Comment',
-          body: comment.slice(0, 100),
-          channel: 'in_app',
+          message: comment.slice(0, 100),
+          notification_type: 'attendance_comment',
           status: 'pending',
         });
       }
