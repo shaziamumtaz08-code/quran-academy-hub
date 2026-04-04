@@ -17,9 +17,13 @@ export default function ExecutiveDashboard() {
   const { data: studentStats } = useQuery({
     queryKey: ["exec-students"],
     queryFn: async () => {
-      const { count: active } = await supabase.from("profiles").select("*", { count: "exact", head: true }).eq("status", "active").in("id", (await supabase.from("user_roles").select("user_id").eq("role", "student")).data?.map(r => r.user_id) || []);
-      const { count: total } = await supabase.from("user_roles").select("*", { count: "exact", head: true }).eq("role", "student");
-      return { active: active || 0, total: total || 0, inactive: (total || 0) - (active || 0) };
+      const { data: studentRoles } = await supabase.from("user_roles").select("user_id").eq("role", "student");
+      const studentIds = (studentRoles || []).map(r => r.user_id);
+      const total = studentIds.length;
+      if (!total) return { active: 0, total: 0, inactive: 0 };
+      const { data: activeProfiles } = await supabase.from("profiles").select("id").eq("status", "active").in("id", studentIds);
+      const active = activeProfiles?.length || 0;
+      return { active, total, inactive: total - active };
     },
   });
 
