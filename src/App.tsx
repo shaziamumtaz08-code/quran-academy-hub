@@ -45,6 +45,8 @@ import PrintInvoice from "./pages/PrintInvoice";
 import PrintSalary from "./pages/PrintSalary";
 import WorkHub from "./pages/WorkHub";
 import LeadsPipeline from "./pages/LeadsPipeline";
+import EnrollmentForm from "./pages/EnrollmentForm";
+import PublicInquiryForm from "./pages/PublicInquiryForm";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
