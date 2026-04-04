@@ -316,6 +316,8 @@ function AppRoutes() {
       <Route path="/leads" element={<ProtectedRoute><AdminRoute><LeadsPipeline /></AdminRoute></ProtectedRoute>} />
       {/* Identity Resolution - admin only */}
       <Route path="/identity" element={<ProtectedRoute><AdminRoute><IdentityResolution /></AdminRoute></ProtectedRoute>} />
+      {/* Notification Center - admin only */}
+      <Route path="/notifications" element={<ProtectedRoute><AdminRoute><NotificationCenter /></AdminRoute></ProtectedRoute>} />
       {/* Work Hub - accessible by all authenticated users */}
       <Route path="/hub" element={<ProtectedRoute><WorkHub /></ProtectedRoute>} />
       <Route path="/workhub" element={<Navigate to="/hub" replace />} />
