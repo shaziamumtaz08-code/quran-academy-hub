@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { format, subDays } from 'date-fns';
-import { Video, AlertTriangle, MessageSquare, ChevronRight, Flame, Clock, BookOpen, Calendar } from 'lucide-react';
+import { Video, AlertTriangle, MessageSquare, ChevronRight, Flame, Clock, BookOpen, Calendar, CalendarOff, Pin, Megaphone, Bell } from 'lucide-react';
 import { JoinClassButton } from '@/components/zoom/JoinClassButton';
 import { DashboardShell } from './shared/DashboardShell';
 
@@ -164,10 +164,48 @@ export function StudentDashboard() {
       // 6) Notifications / messages
       const { data: notifications } = await supabase
         .from('notification_queue')
-        .select('id, title, body, created_at, status')
+        .select('id, title, body, created_at, status, channel')
         .eq('recipient_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(3);
+        .limit(5);
+
+      // 7) Priority Inbox: pinned announcements, teacher messages, system alerts
+      const { data: announcements } = await supabase
+        .from('notification_queue')
+        .select('id, title, body, created_at, status, channel')
+        .eq('recipient_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      // Build priority inbox items
+      const inboxItems: Array<{
+        id: string;
+        type: 'pinned' | 'announcement' | 'teacher' | 'system';
+        title: string;
+        body: string;
+        timestamp: string;
+        isUnread: boolean;
+      }> = [];
+
+      (announcements || []).forEach((n: any) => {
+        const isPinned = n.channel === 'pinned' || (n.title || '').toLowerCase().includes('important');
+        const isAnnouncement = n.channel === 'announcement' || (n.title || '').toLowerCase().includes('announcement');
+        inboxItems.push({
+          id: n.id,
+          type: isPinned ? 'pinned' : isAnnouncement ? 'announcement' : n.channel === 'system' ? 'system' : 'teacher',
+          title: n.title || 'Notification',
+          body: n.body || '',
+          timestamp: n.created_at,
+          isUnread: n.status === 'pending',
+        });
+      });
+
+      // Sort: pinned first, then by timestamp
+      inboxItems.sort((a, b) => {
+        if (a.type === 'pinned' && b.type !== 'pinned') return -1;
+        if (b.type === 'pinned' && a.type !== 'pinned') return 1;
+        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+      });
 
       // Build unified enrollments
       const enrollments: Enrollment[] = [];
@@ -314,12 +352,16 @@ export function StudentDashboard() {
       const totalPresent = allAtt.filter(a => a.status === 'present' || a.status === 'late').length;
       const overallRate = allAtt.length > 0 ? Math.round((totalPresent / allAtt.length) * 100) : 0;
 
+      const unreadCount = inboxItems.filter(i => i.isUnread).length;
+
       return {
         enrollments,
         globalNextClass,
         globalNextEnrollment,
         alerts,
         notifications: notifications || [],
+        priorityInbox: inboxItems.slice(0, 3),
+        unreadCount,
         overallStats: {
           totalClasses: allAtt.length,
           attended: totalPresent,
@@ -499,6 +541,54 @@ export function StudentDashboard() {
 
   const rightContent = (
     <>
+      {/* ═══ PRIORITY INBOX ═══ */}
+      <div className="bg-card rounded-2xl border border-border p-3.5 shadow-card">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-[13px] font-extrabold text-foreground flex items-center gap-1.5">
+            <Bell className="h-4 w-4 text-primary" /> Priority Inbox
+          </p>
+          <div className="flex items-center gap-2">
+            {(dashData?.unreadCount || 0) > 0 && (
+              <Badge className="bg-destructive text-destructive-foreground text-[9px] h-5 px-1.5">{dashData?.unreadCount} new</Badge>
+            )}
+            <button onClick={() => navigate('/notifications')} className="text-[10px] text-primary font-bold hover:underline">
+              View All →
+            </button>
+          </div>
+        </div>
+        {(dashData?.priorityInbox || []).length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-3">No new messages</p>
+        ) : (
+          <div className="space-y-2">
+            {dashData!.priorityInbox.map((item: any) => {
+              const typeConfig = {
+                pinned: { icon: Pin, color: 'text-destructive', bg: 'bg-destructive/10', label: 'Pinned' },
+                announcement: { icon: Megaphone, color: 'text-primary', bg: 'bg-primary/10', label: 'Announcement' },
+                teacher: { icon: MessageSquare, color: 'text-teal', bg: 'bg-teal/10', label: 'Teacher' },
+                system: { icon: Bell, color: 'text-gold', bg: 'bg-gold/10', label: 'System' },
+              }[item.type] || { icon: Bell, color: 'text-muted-foreground', bg: 'bg-muted/10', label: 'Alert' };
+              const TypeIcon = typeConfig.icon;
+              return (
+                <div key={item.id} className={`flex items-start gap-2.5 p-2.5 rounded-xl border ${item.isUnread ? 'bg-primary/5 border-primary/20' : 'bg-background border-border'}`}>
+                  <div className={`w-7 h-7 rounded-lg ${typeConfig.bg} flex items-center justify-center shrink-0 mt-0.5`}>
+                    <TypeIcon className={`h-3.5 w-3.5 ${typeConfig.color}`} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-[12px] font-bold text-foreground truncate">{item.title}</p>
+                      {item.type === 'pinned' && <Badge variant="destructive" className="text-[8px] px-1 py-0 h-3.5">PINNED</Badge>}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground truncate">{item.body}</p>
+                    <p className="text-[9px] text-muted-foreground mt-0.5">{format(new Date(item.timestamp), 'MMM dd, h:mm a')}</p>
+                  </div>
+                  {item.isUnread && <div className="w-2 h-2 rounded-full bg-primary shrink-0 mt-2" />}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       {/* ═══ PERFORMANCE SNAPSHOT ═══ */}
       <div className="bg-card rounded-2xl border border-border p-4 shadow-card">
         <p className="text-[13px] font-extrabold text-foreground mb-3 flex items-center gap-1.5">
@@ -527,48 +617,17 @@ export function StudentDashboard() {
         </div>
       </div>
 
-      {/* ═══ MESSAGES ═══ */}
-      <div className="bg-card rounded-2xl border border-border p-3.5 shadow-card">
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-[13px] font-extrabold text-foreground flex items-center gap-1.5">
-            <MessageSquare className="h-4 w-4 text-primary" /> Messages
-          </p>
-          <button
-            onClick={() => navigate('/notifications')}
-            className="text-[10px] text-primary font-bold hover:underline"
-          >
-            View All →
-          </button>
-        </div>
-        {(dashData?.notifications || []).length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-3">No new messages</p>
-        ) : (
-          <div className="space-y-2">
-            {dashData!.notifications.map((n: any) => (
-              <div key={n.id} className="flex items-start gap-2 p-2 rounded-lg bg-background border border-border">
-                <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${n.status === 'pending' ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
-                <div className="min-w-0">
-                  <p className="text-[12px] font-bold text-foreground truncate">{n.title}</p>
-                  <p className="text-[10px] text-muted-foreground truncate">{n.body}</p>
-                  <p className="text-[9px] text-muted-foreground mt-0.5">{format(new Date(n.created_at), 'MMM dd, h:mm a')}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
       {/* ═══ QUICK LINKS ═══ */}
       <div className="grid grid-cols-2 gap-2">
         {[
           { icon: Calendar, label: 'My Schedule', path: '/schedules', color: 'text-primary bg-primary/10' },
           { icon: BookOpen, label: 'My Lessons', path: '/attendance', color: 'text-teal bg-teal/10' },
           { icon: Clock, label: 'My Progress', path: '/student-reports', color: 'text-sky bg-sky/10' },
-          { icon: Video, label: 'Join Class', path: null, color: 'text-gold bg-gold/10', isJoin: true },
+          { icon: CalendarOff, label: 'Request Leave', path: '/work-hub?category=leave_request', color: 'text-purple-600 bg-purple-100 dark:bg-purple-900/30' },
         ].map((link) => (
           <button
             key={link.label}
-            onClick={() => link.path ? navigate(link.path) : undefined}
+            onClick={() => navigate(link.path)}
             className="bg-card rounded-xl border border-border p-3 flex items-center gap-2 hover:bg-secondary/30 transition-colors text-left"
           >
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${link.color}`}>
