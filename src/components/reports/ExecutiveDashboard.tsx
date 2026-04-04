@@ -17,9 +17,9 @@ export default function ExecutiveDashboard() {
   const { data: studentStats } = useQuery({
     queryKey: ["exec-students"],
     queryFn: async () => {
-      const rolesRes = await (supabase.from("user_roles").select("user_id").eq("role", "student") as any);
+      const rolesRes: any = await supabase.from("user_roles").select("user_id").eq("role", "student");
       const total = rolesRes.data?.length || 0;
-      const profilesRes = await (supabase.from("profiles").select("id", { count: "exact", head: true }).eq("status", "active") as any);
+      const profilesRes: any = await supabase.from("profiles").select("id", { count: "exact", head: true }).eq("status", "active");
       const active = Math.min(profilesRes.count || 0, total);
       return { active, total, inactive: Math.max(0, total - active) };
     },
