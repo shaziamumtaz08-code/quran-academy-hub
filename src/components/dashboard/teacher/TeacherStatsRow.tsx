@@ -28,21 +28,22 @@ export function TeacherStatsRow() {
       const endDate = format(endOfMonth(now), 'yyyy-MM-dd');
       const todayStr = format(today, 'yyyy-MM-dd');
 
-      const [attendanceRes, assignmentsRes] = await Promise.all([
-        supabase
+      let attQuery = supabase
           .from('attendance')
           .select('status')
           .eq('teacher_id', user.id)
           .gte('class_date', startDate)
-          .lte('class_date', endDate),
-        supabase
+          .lte('class_date', endDate);
+      if (divisionId) attQuery = attQuery.or(`division_id.eq.${divisionId},division_id.is.null`);
+
+      let assignQuery = supabase
           .from('student_teacher_assignments')
-          .select(`
-            id,
-            schedules(day_of_week, is_active)
-          `)
+          .select(`id, schedules(day_of_week, is_active)`)
           .eq('teacher_id', user.id)
-          .eq('status', 'active'),
+          .eq('status', 'active');
+      if (divisionId) assignQuery = assignQuery.or(`division_id.eq.${divisionId},division_id.is.null`);
+
+      const [attendanceRes, assignmentsRes] = await Promise.all([attQuery, assignQuery]);
       ]);
 
       const attendance = attendanceRes.data || [];
