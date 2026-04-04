@@ -21,7 +21,7 @@ export default function ExecutiveDashboard() {
       const studentIds = (studentRoles || []).map(r => r.user_id);
       const total = studentIds.length;
       if (!total) return { active: 0, total: 0, inactive: 0 };
-      const { data: activeProfiles } = await supabase.from("profiles").select("id").eq("status", "active").in("id", studentIds);
+      const { data: activeProfiles } = await supabase.from("profiles").select("id").eq("status", "active").in("id", studentIds as any);
       const active = activeProfiles?.length || 0;
       return { active, total, inactive: total - active };
     },
