@@ -310,10 +310,10 @@ export default function EnrollmentForm() {
               <Checkbox checked={form.privacy_accepted} onCheckedChange={v => updateField('privacy_accepted', !!v)} id="privacy" />
               <label htmlFor="privacy" className="text-xs leading-snug cursor-pointer">I agree to the Privacy Policy and consent to data processing *</label>
             </div>
-            {computedIsMinor && (
+            {computedIsMinor && hasParentDetails && (
               <div className="flex items-start gap-2">
                 <Checkbox checked={form.parental_consent} onCheckedChange={v => updateField('parental_consent', !!v)} id="parental" />
-                <label htmlFor="parental" className="text-xs leading-snug cursor-pointer">I, as the parent/guardian, consent to my child's enrollment and understand the oversight terms *</label>
+                <label htmlFor="parental" className="text-xs leading-snug cursor-pointer">I, as the parent/guardian, consent to my child's enrollment and understand the oversight terms</label>
               </div>
             )}
           </CardContent>
