@@ -385,31 +385,52 @@ export function TicketDetail({ ticketId, open, onOpenChange }: TicketDetailProps
               <span>This ticket is closed.</span>
             </div>
           ) : (
-            <div className="flex items-end gap-2">
-              <Avatar className="h-7 w-7 shrink-0 mb-0.5">
-                <AvatarFallback className="text-[10px] bg-accent/10 text-accent">
-                  {initials(profile?.full_name || '')}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 relative">
-                <Textarea
-                  placeholder="Type a message..."
-                  value={newComment}
-                  onChange={e => setNewComment(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  className="min-h-[40px] max-h-[120px] text-sm pr-10 resize-y"
-                  rows={1}
+            <div className="space-y-2">
+              {/* Attachment preview */}
+              {attachmentUrl && (
+                <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-1.5 text-xs">
+                  <Paperclip className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span className="truncate flex-1 text-primary">File attached</span>
+                  <Button variant="ghost" size="sm" className="h-5 px-1.5 text-[10px]" onClick={() => setAttachmentUrl('')}>Remove</Button>
+                </div>
+              )}
+              <div className="flex items-end gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,video/*,audio/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
                 />
                 <Button
+                  variant="ghost"
                   size="icon"
-                  className={`absolute right-1.5 bottom-1.5 h-7 w-7 rounded-full transition-colors ${
-                    newComment.trim() ? 'bg-accent text-accent-foreground hover:bg-accent/90' : 'bg-muted text-muted-foreground'
-                  }`}
-                  disabled={!newComment.trim() || addComment.isPending}
-                  onClick={handleSend}
+                  className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
                 >
-                  {addComment.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                  {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
                 </Button>
+                <div className="flex-1 relative">
+                  <Textarea
+                    placeholder="Type a message..."
+                    value={newComment}
+                    onChange={e => setNewComment(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    className="min-h-[40px] max-h-[120px] text-sm pr-10 resize-y"
+                    rows={1}
+                  />
+                  <Button
+                    size="icon"
+                    className={`absolute right-1.5 bottom-1.5 h-7 w-7 rounded-full transition-colors ${
+                      (newComment.trim() || attachmentUrl) ? 'bg-accent text-accent-foreground hover:bg-accent/90' : 'bg-muted text-muted-foreground'
+                    }`}
+                    disabled={(!newComment.trim() && !attachmentUrl) || addComment.isPending}
+                    onClick={handleSend}
+                  >
+                    {addComment.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
               </div>
             </div>
           )}
