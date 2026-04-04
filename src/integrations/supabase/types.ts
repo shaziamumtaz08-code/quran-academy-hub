@@ -3476,18 +3476,21 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          oversight_level: string
           parent_id: string
           student_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          oversight_level?: string
           parent_id: string
           student_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          oversight_level?: string
           parent_id?: string
           student_id?: string
         }
