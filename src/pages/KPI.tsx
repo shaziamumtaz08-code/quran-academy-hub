@@ -19,7 +19,8 @@ export default function KPI() {
   const now = new Date();
   const [selectedYear, setSelectedYear] = React.useState(String(now.getFullYear()));
   const [selectedMonth, setSelectedMonth] = React.useState(String(now.getMonth() + 1).padStart(2, '0'));
-  const { activeDivisionId } = useDivision();
+  const { activeDivision } = useDivision();
+  const activeDivisionId = activeDivision?.id;
 
   const monthKey = `${selectedYear}-${selectedMonth}`;
 
