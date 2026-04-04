@@ -632,6 +632,8 @@ export function StudentDashboard() {
           { icon: BookOpen, label: 'My Lessons', path: '/attendance', color: 'text-teal bg-teal/10' },
           { icon: Clock, label: 'My Progress', path: '/student-reports', color: 'text-sky bg-sky/10' },
           { icon: CalendarOff, label: 'Request Leave', path: '/work-hub?category=leave_request', color: 'text-purple-600 bg-purple-100 dark:bg-purple-900/30' },
+          { icon: MessagesSquare, label: 'Group Chat', path: '/chat', color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30' },
+          { icon: FolderOpen, label: 'My Resources', path: '/my-resources', color: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30' },
         ].map((link) => (
           <button
             key={link.label}
