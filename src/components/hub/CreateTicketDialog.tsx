@@ -147,7 +147,8 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCrea
         target_role: targetRole || null,
         branch_id: activeBranch?.id || null,
         division_id: activeDivision?.id || null,
-      });
+        attachment_url: attachmentUrl || null,
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
