@@ -118,18 +118,17 @@ export default function KPI() {
       }).sort((a, b) => b.score - a.score);
 
       // Planning KPIs (global)
-      const allPlans = plans || [];
       const totalExpected = Object.values(teacherMap).reduce((s, t) => s + t.studentIds.size, 0);
-      const totalSubmitted = allPlans.length;
-      const totalPending = allPlans.filter(p => p.status === 'pending').length;
+      const totalSubmitted = plans.length;
+      const totalPending = plans.filter((p: any) => p.status === 'pending').length;
 
       // TAT: hours from created_at to approved_at
-      const approvedWithTat = allPlans.filter(p => p.approved_at && p.created_at);
+      const approvedWithTat = plans.filter((p: any) => p.approved_at && p.created_at);
       const avgTat = approvedWithTat.length > 0
-        ? Math.round(approvedWithTat.reduce((s, p) => s + differenceInHours(new Date(p.approved_at!), new Date(p.created_at)), 0) / approvedWithTat.length)
+        ? Math.round(approvedWithTat.reduce((s: number, p: any) => s + differenceInHours(new Date(p.approved_at), new Date(p.created_at)), 0) / approvedWithTat.length)
         : 0;
-      const breached = approvedWithTat.filter(p => differenceInHours(new Date(p.approved_at!), new Date(p.created_at)) > 36).length
-        + totalPending; // Pending counts as potential breach
+      const breached = approvedWithTat.filter((p: any) => differenceInHours(new Date(p.approved_at), new Date(p.created_at)) > 36).length
+        + totalPending;
 
       return {
         teachers,
