@@ -51,6 +51,7 @@ import NotFound from "./pages/NotFound";
 import IdentityResolution from "./pages/IdentityResolution";
 import CourseCatalog from "./pages/CourseCatalog";
 import RecordedCourses from "./pages/RecordedCourses";
+import NotificationCenter from "./pages/NotificationCenter";
 
 const queryClient = new QueryClient();
 
