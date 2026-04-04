@@ -1,6 +1,6 @@
 import React from 'react';
 import { format } from 'date-fns';
-import { Paperclip, ClipboardList, Copy, Reply, ExternalLink, FileText, Image as ImageIcon } from 'lucide-react';
+import { Paperclip, ClipboardList, Copy, Reply, ExternalLink, FileText, Image as ImageIcon, Mic } from 'lucide-react';
 
 interface ChatMessageBubbleProps {
   msg: any;
