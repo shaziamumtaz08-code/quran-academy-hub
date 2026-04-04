@@ -73,8 +73,7 @@ export function TeacherDashboard() {
           <TeacherNotificationsSection />
         </div>
       </div>
-
-      <TeacherBottomNav />
+    </div>
     </div>
   );
 }
