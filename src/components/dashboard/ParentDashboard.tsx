@@ -365,6 +365,9 @@ export function ParentDashboard() {
           { value: `${child.attendanceRate}%`, label: 'Rate', sub: 'Attendance', color: 'text-gold' },
         ]}
       />
+
+      {/* Family Management */}
+      <FamilyManagement />
     </>
   );
 
