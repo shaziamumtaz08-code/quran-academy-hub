@@ -136,6 +136,7 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCrea
         due_date: tatDeadline,
         metadata,
         is_anonymous: isAnonymous,
+        target_role: targetRole || null,
         branch_id: activeBranch?.id || null,
         division_id: activeDivision?.id || null,
       });
