@@ -205,8 +205,8 @@ export default function EnrollmentForm() {
           <Card className="border-amber-300 dark:border-amber-700">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <Shield className="h-4 w-4 text-amber-600" /> Parental / Guardian Consent
-                <Badge variant="outline" className="text-amber-600 border-amber-300">Required</Badge>
+                <Shield className="h-4 w-4 text-amber-600" /> Parent / Guardian Details
+                <Badge variant="outline" className="text-muted-foreground border-muted">Optional</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
