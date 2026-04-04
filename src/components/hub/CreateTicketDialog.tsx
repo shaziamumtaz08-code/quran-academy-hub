@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
 import { LeaveRequestFields } from './LeaveRequestFields';
+import { FileUploadField } from '@/components/shared/FileUploadField';
 
 interface CreateTicketDialogProps {
   open: boolean;
