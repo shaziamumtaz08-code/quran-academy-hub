@@ -320,6 +320,8 @@ function AppRoutes() {
       <Route path="/work-hub" element={<Navigate to="/hub" replace />} />
       {/* Group Chat - all authenticated users */}
       <Route path="/chat" element={<ProtectedRoute><GroupChat /></ProtectedRoute>} />
+      {/* WhatsApp Inbox - admin only */}
+      <Route path="/whatsapp" element={<ProtectedRoute><AdminRoute><WhatsAppInbox /></AdminRoute></ProtectedRoute>} />
       {/* My Resources - all authenticated users */}
       <Route path="/my-resources" element={<ProtectedRoute><MyResources /></ProtectedRoute>} />
       {/* Printable Routes - standalone, no layout */}
