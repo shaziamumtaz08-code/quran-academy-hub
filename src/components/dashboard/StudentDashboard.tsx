@@ -449,6 +449,82 @@ export function StudentDashboard() {
         <QuickActionsGrid actions={quickActions} />
       </div>
 
+      {/* Enrolled Courses */}
+      {stats?.enrolledCourses?.length ? (
+        <div className="bg-card rounded-2xl border border-border p-3.5 shadow-card">
+          <p className="text-[11px] text-muted-foreground font-bold tracking-wider uppercase mb-2">🎓 My Courses</p>
+          <div className="space-y-2">
+            {stats.enrolledCourses.map((course) => (
+              <div key={course.id} className="flex items-center gap-2.5 p-2 rounded-lg bg-background border border-border">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary text-xs font-bold">
+                  {course.name[0]}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12px] font-bold text-foreground truncate">{course.name}</p>
+                  <p className="text-[10px] text-muted-foreground">{course.teacherName} · {course.level}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {/* Recent Exams */}
+      {stats?.recentExams?.length ? (
+        <div className="bg-card rounded-2xl border border-border p-3.5 shadow-card">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[11px] text-muted-foreground font-bold tracking-wider uppercase">📝 Recent Results</p>
+            <button onClick={() => navigate('/student-reports')} className="text-[10px] text-teal font-bold hover:underline">
+              View All →
+            </button>
+          </div>
+          <div className="space-y-2">
+            {stats.recentExams.map((exam) => (
+              <div key={exam.id} className="flex items-center justify-between p-2 rounded-lg bg-background border border-border">
+                <div className="min-w-0">
+                  <p className="text-[12px] font-bold text-foreground truncate">{exam.name}</p>
+                  <p className="text-[10px] text-muted-foreground">{exam.date}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className={`text-sm font-black ${exam.percentage >= 80 ? 'text-teal' : exam.percentage >= 50 ? 'text-gold' : 'text-destructive'}`}>
+                    {exam.percentage}%
+                  </span>
+                  <p className="text-[9px] text-muted-foreground">{exam.totalMarks}/{exam.maxMarks}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {/* Fee Status */}
+      <div className="bg-card rounded-2xl border border-gold/20 p-3.5 shadow-card">
+        <p className="text-[11px] text-muted-foreground font-bold tracking-wider uppercase mb-2">💰 Fee Status</p>
+        {stats?.feeStatus ? (
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-lg font-black text-gold">
+                {stats.feeStatus.currency} {stats.feeStatus.amount.toLocaleString()}
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                Due {stats.feeStatus.dueDate ? format(new Date(stats.feeStatus.dueDate), 'MMM dd') : 'N/A'}
+              </p>
+            </div>
+            <button
+              onClick={() => navigate('/payments')}
+              className="bg-gold/10 text-gold border border-gold/15 rounded-xl px-3 py-1.5 font-bold text-xs hover:opacity-90 transition-opacity"
+            >
+              View →
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="text-teal text-sm font-black">✓ Up to date</span>
+            <span className="text-[10px] text-muted-foreground">No pending invoices</span>
+          </div>
+        )}
+      </div>
+
       {/* Stats Row — desktop only */}
       <div className="hidden md:block">
         <StatsRowCompact
