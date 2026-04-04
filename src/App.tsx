@@ -54,6 +54,7 @@ import RecordedCourses from "./pages/RecordedCourses";
 import NotificationCenter from "./pages/NotificationCenter";
 import GroupChat from "./pages/GroupChat";
 import MyResources from "./pages/MyResources";
+import WhatsAppInbox from "./pages/WhatsAppInbox";
 
 const queryClient = new QueryClient();
 
