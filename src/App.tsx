@@ -320,6 +320,10 @@ function AppRoutes() {
       <Route path="/finance/print/salary/:payoutId" element={<ProtectedRoute><PrintSalary /></ProtectedRoute>} />
       {/* Public Course Page - no auth required */}
       <Route path="/course/:slug" element={<PublicCoursePage />} />
+      {/* Public Enrollment Form - token-based, no auth */}
+      <Route path="/enroll/:token" element={<EnrollmentForm />} />
+      {/* Public Inquiry Form - no auth */}
+      <Route path="/inquiry" element={<PublicInquiryForm />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
