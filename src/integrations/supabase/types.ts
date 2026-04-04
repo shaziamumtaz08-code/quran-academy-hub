@@ -2236,6 +2236,57 @@ export type Database = {
           },
         ]
       }
+      minor_credentials: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          failed_attempts: number
+          id: string
+          locked_until: string | null
+          pin_hash: string
+          profile_id: string
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          failed_attempts?: number
+          id?: string
+          locked_until?: string | null
+          pin_hash: string
+          profile_id: string
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          failed_attempts?: number
+          id?: string
+          locked_until?: string | null
+          pin_hash?: string
+          profile_id?: string
+          updated_at?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "minor_credentials_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "minor_credentials_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_queue: {
         Row: {
           created_at: string
