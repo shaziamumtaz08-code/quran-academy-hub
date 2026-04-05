@@ -645,6 +645,13 @@ export default function Students() {
             }}
           />
         )}
+
+        {/* Teacher Detail Drawer */}
+        <TeacherDetailDrawer
+          open={!!drawerTeacher}
+          onOpenChange={(open) => !open && setDrawerTeacher(null)}
+          teacher={drawerTeacher}
+        />
       </div>
     </DashboardLayout>
   );
