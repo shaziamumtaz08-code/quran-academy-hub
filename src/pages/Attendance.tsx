@@ -1340,7 +1340,6 @@ export default function Attendance() {
                       <TableCell>
                         <StatusIndicator status={record.status} size="md" />
                       </TableCell>
-                      </TableCell>
                       <TableCell className="text-muted-foreground max-w-[200px] truncate">
                         {record.lesson_covered || '-'}
                       </TableCell>
