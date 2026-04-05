@@ -246,8 +246,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const isItemVisible = useCallback((item: NavItem) => {
     if (activeRole === 'super_admin') return true;
     if (item.href === '/dashboard') return true;
+    // If roles are specified, check them
     if (item.roles && activeRole && item.roles.includes(activeRole)) return true;
+    // If permission is specified, check it (fallback for items with permission but no roles)
     if (item.permission && hasPermission(item.permission)) return true;
+    // Items with neither roles nor permission: hidden to non-super_admin
+    if (!item.roles && !item.permission) return false;
     return false;
   }, [activeRole, hasPermission]);
 
