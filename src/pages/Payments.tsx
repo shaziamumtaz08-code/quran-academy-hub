@@ -2741,7 +2741,7 @@ export default function Payments() {
                 {actionModal?.type === 'apply_discount' && 'Apply an additional discount to reduce the invoice amount.'}
                 {actionModal?.type === 'waive_fee' && 'Waive the remaining balance. This will mark the fee as forgiven.'}
                 {actionModal?.type === 'reverse_payment' && 'Reverse all payments on this invoice and remove the linked payment records.'}
-                
+                {actionModal?.type === 'reset_invoice' && 'Delete ALL adjustments, payments, and history for this invoice, then recalculate the correct amount from the billing plan. This is destructive.'}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-2">
