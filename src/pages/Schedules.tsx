@@ -1289,6 +1289,15 @@ export default function Schedules() {
                 List
               </Button>
               <Button
+                variant={viewMode === 'daily' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('daily')}
+                className="h-10 rounded-none"
+              >
+                <LayoutGrid className="h-4 w-4 mr-1" />
+                Daily
+              </Button>
+              <Button
                 variant={viewMode === 'calendar' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setViewMode('calendar')}
