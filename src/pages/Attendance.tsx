@@ -25,6 +25,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format, startOfMonth, endOfMonth, parseISO, startOfWeek, endOfWeek, getDay, isAfter } from 'date-fns';
 import { SurahSearchSelect } from '@/components/attendance/SurahSearchSelect';
 import { trackActivity } from '@/lib/activityLogger';
+import { StatusIndicator } from '@/components/shared/StatusIndicator';
 import { UnitInputSelector } from '@/components/attendance/UnitInputSelector';
 import { QaidaProgressInput } from '@/components/attendance/QaidaProgressInput';
 import { HifzAttendanceFields } from '@/components/attendance/HifzAttendanceFields';
@@ -1337,17 +1338,7 @@ export default function Attendance() {
                       )}
                       <TableCell>{record.class_time?.substring(0, 5) || '-'}</TableCell>
                       <TableCell>
-                        <span className={cn(
-                          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
-                          record.status === 'present' && "bg-emerald-light/10 text-emerald-light",
-                          record.status === 'student_absent' && "bg-destructive/10 text-destructive",
-                          ['teacher_absent', 'teacher_leave'].includes(record.status) && "bg-accent/10 text-accent",
-                          record.status === 'rescheduled' && "bg-primary/10 text-primary",
-                          record.status === 'holiday' && "bg-muted text-muted-foreground"
-                        )}>
-                          {getStatusIcon(record.status)}
-                          {getStatusLabel(record.status)}
-                        </span>
+                        <StatusIndicator status={record.status} size="md" />
                       </TableCell>
                       <TableCell className="text-muted-foreground max-w-[200px] truncate">
                         {record.lesson_covered || '-'}

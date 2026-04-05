@@ -35,6 +35,8 @@ import { ViewPlanDialog } from '@/components/finance/ViewPlanDialog';
 import { AttachmentPreview } from '@/components/shared/FileUploadField';
 import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { PaymentsSummaryCards } from '@/components/finance/PaymentsSummaryCards';
+import { MonthStatusBanner } from '@/components/finance/MonthStatusBanner';
 import { cn } from '@/lib/utils';
 
 // ─── Constants ───────────────────────────────────────────────────────
@@ -1469,83 +1471,12 @@ export default function Payments() {
         </div>
 
         {/* Summary Cards — per-currency native totals */}
-        <div className="space-y-3">
-          {/* PKR Row */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/10 p-5">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <span className="text-lg font-bold text-primary">₨</span>
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground">Total Fees (PKR)</p>
-                  <p className="text-2xl font-serif font-bold text-foreground">₨ {localTotalPKR.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                </div>
-              </div>
-            </div>
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20 border border-emerald-100 dark:border-emerald-900/30 p-5">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center shrink-0">
-                  <CheckCircle className="h-5 w-5 text-emerald-600" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground">Collected (PKR)</p>
-                  <p className="text-2xl font-serif font-bold text-emerald-700 dark:text-emerald-400">₨ {lcyCollected.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                </div>
-              </div>
-            </div>
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-950/20 dark:to-rose-950/20 border border-red-100 dark:border-red-900/30 p-5">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/50 flex items-center justify-center shrink-0">
-                  <XCircle className="h-5 w-5 text-red-600" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground">Pending (PKR)</p>
-                  <p className="text-2xl font-serif font-bold text-red-600 dark:text-red-400">₨ {lcyPending.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* FCY Rows — one per currency */}
-          {fcyCurrencyBreakdown.map(([currency, data]) => (
-            <div key={currency} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-secondary/30 to-secondary/50 border border-border p-5">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center shrink-0">
-                    <DollarSign className="h-5 w-5 text-secondary-foreground" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">Total Fees ({currency})</p>
-                    <p className="text-2xl font-serif font-bold text-foreground">{currency} {data.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50/50 to-teal-50/50 dark:from-emerald-950/10 dark:to-teal-950/10 border border-emerald-100/50 dark:border-emerald-900/20 p-5">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-emerald-100/70 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
-                    <CheckCircle className="h-5 w-5 text-emerald-600" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">Collected ({currency})</p>
-                    <p className="text-2xl font-serif font-bold text-emerald-700 dark:text-emerald-400">{currency} {data.collected.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-50/50 to-rose-50/50 dark:from-red-950/10 dark:to-rose-950/10 border border-red-100/50 dark:border-red-900/20 p-5">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-red-100/70 dark:bg-red-900/30 flex items-center justify-center shrink-0">
-                    <XCircle className="h-5 w-5 text-red-600" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">Pending ({currency})</p>
-                    <p className="text-2xl font-serif font-bold text-red-600 dark:text-red-400">{currency} {data.pending.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <PaymentsSummaryCards
+          localTotalPKR={localTotalPKR}
+          lcyCollected={lcyCollected}
+          lcyPending={lcyPending}
+          fcyCurrencyBreakdown={fcyCurrencyBreakdown}
+        />
 
         {/* Tabs: Invoices | Billing Plans */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -1654,132 +1585,23 @@ export default function Payments() {
 
             {/* Month Status Banner */}
             {monthStatusData && monthFilter !== 'all' && !isReadOnlyView && (
-              <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm mb-4">
-                <div className="flex items-center justify-between px-4 py-3 bg-muted/40 border-b border-border">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                    <span className="text-sm font-semibold text-foreground">
-                      {formatBillingMonth(monthFilter)} — Month Status
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {statusViewFilter && (
-                      <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-muted-foreground" onClick={() => setStatusViewFilter(null)}>
-                        <X className="h-3 w-3" /> Clear filter
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      className={cn(
-                        'h-7 text-xs gap-1.5 font-semibold',
-                        monthStatusData.canCloseMonth
-                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
-                          : 'bg-muted text-muted-foreground cursor-not-allowed opacity-60'
-                      )}
-                      disabled={!monthStatusData.canCloseMonth}
-                      onClick={() => {
-                        const fcyVariance = Math.max(0, pendingPKR - (
-                          invoices
-                            .filter(i => i.currency === 'PKR' && i.status !== 'paid' && i.status !== 'waived')
-                            .reduce((s, i) => s + Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0)), 0)
-                        ));
-                        setCloseMonthAmount(fcyVariance > 0 ? fcyVariance.toFixed(0) : '');
-                        setCloseMonthReason('');
-                        setCloseMonthOpen(true);
-                      }}
-                      title={!monthStatusData.canCloseMonth ? 'Cannot close — genuine unpaid invoices remain' : 'Close this billing month'}
-                    >
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      Close Month
-                    </Button>
-                  </div>
-                </div>
-                <div className="divide-y divide-border">
-                  {monthStatusData.recovered.length > 0 && (
-                    <div
-                      className={cn(
-                        'flex items-center justify-between px-4 py-2.5 transition-colors',
-                        statusViewFilter === 'recovered' ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'hover:bg-muted/30 cursor-pointer'
-                      )}
-                      onClick={() => setStatusViewFilter(prev => prev === 'recovered' ? null : 'recovered')}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
-                          <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">Recovered via arrears</p>
-                          <p className="text-xs text-muted-foreground">Arrears paid in a later month — these can be closed</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 font-semibold">
-                          {monthStatusData.recovered.length} student{monthStatusData.recovered.length !== 1 ? 's' : ''}
-                        </Badge>
-                        <ChevronRight className={cn('h-4 w-4 text-muted-foreground transition-transform', statusViewFilter === 'recovered' && 'rotate-90')} />
-                      </div>
-                    </div>
-                  )}
-                  {monthStatusData.arrearsStillPending.length > 0 && (
-                    <div
-                      className={cn(
-                        'flex items-center justify-between px-4 py-2.5 transition-colors',
-                        statusViewFilter === 'arrears_pending' ? 'bg-amber-50 dark:bg-amber-950/30' : 'hover:bg-muted/30 cursor-pointer'
-                      )}
-                      onClick={() => setStatusViewFilter(prev => prev === 'arrears_pending' ? null : 'arrears_pending')}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
-                          <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">Arrears created — still pending</p>
-                          <p className="text-xs text-muted-foreground">Arrears invoice exists in a future month but not yet paid</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 font-semibold">
-                          {monthStatusData.arrearsStillPending.length} student{monthStatusData.arrearsStillPending.length !== 1 ? 's' : ''}
-                        </Badge>
-                        <ChevronRight className={cn('h-4 w-4 text-muted-foreground transition-transform', statusViewFilter === 'arrears_pending' && 'rotate-90')} />
-                      </div>
-                    </div>
-                  )}
-                  {monthStatusData.genuinelyUnpaid.length > 0 && (
-                    <div
-                      className={cn(
-                        'flex items-center justify-between px-4 py-2.5 transition-colors',
-                        statusViewFilter === 'genuine' ? 'bg-red-50 dark:bg-red-950/30' : 'hover:bg-muted/30 cursor-pointer'
-                      )}
-                      onClick={() => setStatusViewFilter(prev => prev === 'genuine' ? null : 'genuine')}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-7 h-7 rounded-lg bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
-                          <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">Genuinely unpaid</p>
-                          <p className="text-xs text-muted-foreground">No arrears created — student still owes this amount</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge className="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 font-semibold">
-                          {monthStatusData.genuinelyUnpaid.length} student{monthStatusData.genuinelyUnpaid.length !== 1 ? 's' : ''}
-                        </Badge>
-                        <ChevronRight className={cn('h-4 w-4 text-muted-foreground transition-transform', statusViewFilter === 'genuine' && 'rotate-90')} />
-                      </div>
-                    </div>
-                  )}
-                  {monthStatusData.genuinelyUnpaid.length === 0 && monthStatusData.arrearsStillPending.length === 0 && (
-                    <div className="flex items-center gap-3 px-4 py-2.5 bg-emerald-50/50 dark:bg-emerald-950/20">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                      <p className="text-sm text-emerald-700 dark:text-emerald-400 font-medium">
-                        All partial invoices recovered — month is ready to close
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
+              <MonthStatusBanner
+                monthFilter={monthFilter}
+                formatBillingMonth={formatBillingMonth}
+                monthStatusData={monthStatusData}
+                statusViewFilter={statusViewFilter}
+                setStatusViewFilter={setStatusViewFilter}
+                onCloseMonth={() => {
+                  const fcyVariance = Math.max(0, pendingPKR - (
+                    invoices
+                      .filter(i => i.currency === 'PKR' && i.status !== 'paid' && i.status !== 'waived')
+                      .reduce((s, i) => s + Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0)), 0)
+                  ));
+                  setCloseMonthAmount(fcyVariance > 0 ? fcyVariance.toFixed(0) : '');
+                  setCloseMonthReason('');
+                  setCloseMonthOpen(true);
+                }}
+              />
             )}
 
             {/* Status view filter indicator */}
