@@ -119,10 +119,11 @@ export function DailySlotCalendar({ assignments, schedules, onEditSchedule }: Da
   const { data: zoomLicenses } = useQuery({
     queryKey: ['zoom-license-status'],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('zoom_licenses')
+      const query = supabase
+        .from('zoom_licenses' as any)
         .select('id, status')
-        .eq('is_active', true) as any;
+        .eq('is_active', true);
+      const { data } = await query;
       return (data || []) as { id: string; status: string }[];
     },
     refetchInterval: 30000,
