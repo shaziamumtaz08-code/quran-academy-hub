@@ -50,6 +50,7 @@ import logoDark from '@/assets/logo-dark.jpg';
 const DashboardLayoutContext = createContext(false);
 export const useIsInsideDashboard = () => useContext(DashboardLayoutContext);
 
+const ROLE_LABELS: Record<AppRole, string> = {
   super_admin: 'Super Admin',
   admin: 'Admin',
   admin_admissions: 'Admissions',
