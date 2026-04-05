@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Video, Clock, User, BookOpen, ChevronRight, RefreshCw } from 'lucide-react';
-import { format, addDays, setHours, setMinutes, addMinutes, subMinutes, differenceInMinutes } from 'date-fns';
+import { format, addMinutes, subMinutes, differenceInMinutes } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from 'react-router-dom';
@@ -119,62 +119,44 @@ export function LiveClassQueue({ className }: LiveClassQueueProps) {
       const pktNow = new Date(pktNowStr);
       const pktDayIndex = pktNow.getDay();
 
-      // Process schedules
+      // Filter to only today's day name
+      const todayDayName = dayNames[pktDayIndex];
+
+      // Process schedules — only today's classes
       const processedClasses = schedules
-        .filter(s => s.assignment)
+        .filter(s => {
+          if (!s.assignment) return false;
+          // Normalize day_of_week comparison (DB may store lowercase)
+          const schedDay = s.day_of_week?.charAt(0).toUpperCase() + s.day_of_week?.slice(1).toLowerCase();
+          return schedDay === todayDayName;
+        })
         .map(schedule => {
           const assignment = schedule.assignment as any;
           const scheduleTime = schedule.teacher_local_time;
           if (!scheduleTime) return null;
 
-          const scheduleDayIndex = dayNames.indexOf(schedule.day_of_week);
-
-          // Calculate days until this schedule using PKT day
-          let daysUntil = scheduleDayIndex - pktDayIndex;
-          if (daysUntil < 0) daysUntil += 7;
-
-          // Build scheduled datetime in PKT then convert to local Date
+          // Build scheduled datetime in PKT
           const [hours, minutes] = scheduleTime.split(':').map(Number);
-          const pktDateStr = new Date(pktNow.getTime() + daysUntil * 86400000)
-            .toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' }); // YYYY-MM-DD
+          const pktDateStr = pktNow.toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
           const scheduledDateTime = new Date(`${pktDateStr}T${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:00+05:00`);
 
-          // Check if today's class has already ended
-          if (daysUntil === 0) {
-            const classEndTime = addMinutes(scheduledDateTime, schedule.duration_minutes + GRACE_PERIOD_MINUTES);
-            if (currentNow > classEndTime) {
-              // Move to next week
-              const nextWeek = new Date(pktNow.getTime() + 7 * 86400000)
-                .toLocaleDateString('en-CA', { timeZone: 'Asia/Karachi' });
-              const rescheduled = new Date(`${nextWeek}T${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:00+05:00`);
-              const windowStart2 = subMinutes(rescheduled, GRACE_PERIOD_MINUTES);
-              const classEnd2 = addMinutes(rescheduled, schedule.duration_minutes);
-              const minutesUntil2 = differenceInMinutes(rescheduled, currentNow);
-              return {
-                id: `${schedule.id}-${assignment.teacher_id}`,
-                scheduleId: schedule.id,
-                subjectName: assignment.subject?.name || 'Quran',
-                teacherName: assignment.teacher?.full_name || 'Unknown',
-                studentName: assignment.student?.full_name || 'Unknown',
-                scheduledTime: scheduleTime,
-                scheduledDateTime: rescheduled,
-                status: 'waiting' as ClassStatus,
-                minutesUntil: minutesUntil2,
-                teacherId: assignment.teacher_id,
-                studentId: assignment.student_id,
-                sessionId: liveSessionMap.get(assignment.teacher_id),
-              };
-            }
-          }
+          const classEndTime = addMinutes(scheduledDateTime, schedule.duration_minutes + GRACE_PERIOD_MINUTES);
+          
+          // Skip classes that ended more than grace period ago
+          if (currentNow > classEndTime) return null;
+
+          // Only show classes within ±2 hours window (unless live)
+          const minutesUntil = differenceInMinutes(scheduledDateTime, currentNow);
+          const isTeacherLive = liveTeacherIds.has(assignment.teacher_id);
+          
+          if (!isTeacherLive && minutesUntil > 120) return null;
 
           // Calculate status
           const windowStart = subMinutes(scheduledDateTime, GRACE_PERIOD_MINUTES);
-          const classEnd = addMinutes(scheduledDateTime, schedule.duration_minutes);
-          const windowEnd = addMinutes(classEnd, GRACE_PERIOD_MINUTES);
-          const minutesUntil = differenceInMinutes(scheduledDateTime, currentNow);
+          const windowEnd = addMinutes(scheduledDateTime, schedule.duration_minutes + GRACE_PERIOD_MINUTES);
 
           let status: ClassStatus = 'waiting';
-          if (liveTeacherIds.has(assignment.teacher_id)) {
+          if (isTeacherLive) {
             status = 'live';
           } else if (currentNow >= windowStart && currentNow <= windowEnd) {
             status = 'ready';
@@ -197,14 +179,13 @@ export function LiveClassQueue({ className }: LiveClassQueueProps) {
         })
         .filter((item) => item !== null)
         .sort((a: QueuedClass, b: QueuedClass) => {
-          // Live first, then ready, then waiting
           const statusOrder = { live: 0, ready: 1, waiting: 2 };
           if (statusOrder[a.status] !== statusOrder[b.status]) {
             return statusOrder[a.status] - statusOrder[b.status];
           }
           return a.scheduledDateTime.getTime() - b.scheduledDateTime.getTime();
         })
-        .slice(0, 5); // Limit to 5 classes
+        .slice(0, 10);
 
       return processedClasses;
     },
