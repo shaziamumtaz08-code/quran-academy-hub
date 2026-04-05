@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, BookOpen, Clock, User, AlertTriangle, Ban, Calendar } from 'lucide-react';
+import { VoiceNoteRecorder } from './VoiceNoteRecorder';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -97,6 +98,7 @@ export function UnifiedAttendanceForm({
   const [duration, setDuration] = useState('30');
   const [homework, setHomework] = useState('');
   const [remarks, setRemarks] = useState('');
+  const [voiceNoteUrl, setVoiceNoteUrl] = useState<string | null>(null);
   
   // Reason fields
   const [reasonCategory, setReasonCategory] = useState<ReasonCategory | ''>('');
@@ -241,6 +243,7 @@ export function UnifiedAttendanceForm({
       setDuration('30');
       setHomework('');
       setRemarks('');
+      setVoiceNoteUrl(null);
       setReasonCategory('');
       setReasonText('');
       setRescheduleDate('');
@@ -319,6 +322,7 @@ export function UnifiedAttendanceForm({
         sabaq_ayah_to: (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') && ayahToNumber ? parseInt(ayahToNumber) : null,
         sabqi_done: currentSubjectType === 'hifz' ? sabqiDone : null,
         manzil_done: (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') ? manzilDone : null,
+        voice_note_url: voiceNoteUrl || null,
       }).select('id').single();
 
       if (error) throw error;
@@ -693,6 +697,12 @@ export function UnifiedAttendanceForm({
               )}
             </div>
           )}
+
+          {/* Voice Note */}
+          <VoiceNoteRecorder
+            onUploadComplete={setVoiceNoteUrl}
+            uploadPath={`${student.id}/${classDate}`}
+          />
 
           {/* Remarks (optional) */}
           <div className="space-y-2">
