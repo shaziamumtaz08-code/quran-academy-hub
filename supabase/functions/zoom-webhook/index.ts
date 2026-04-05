@@ -160,6 +160,13 @@ Deno.serve(async (req) => {
           .maybeSingle();
 
         if (license) {
+          // Get live sessions BEFORE marking completed (need teacher_id + assignment_id)
+          const { data: liveSessions } = await supabase
+            .from("live_sessions")
+            .select("id, teacher_id, assignment_id, actual_start")
+            .eq("license_id", license.id)
+            .eq("status", "live");
+
           await supabase
             .from("zoom_licenses")
             .update({ status: "available" })
@@ -176,6 +183,59 @@ Deno.serve(async (req) => {
             .eq("status", "live");
 
           console.log("License released and sessions completed:", license.id);
+
+          // Auto-mark absent students who didn't join
+          for (const session of (liveSessions || [])) {
+            if (!session.teacher_id) continue;
+
+            // Get all students assigned to this teacher
+            const { data: assignments } = await supabase
+              .from("student_teacher_assignments")
+              .select("student_id")
+              .eq("teacher_id", session.teacher_id)
+              .eq("status", "active");
+
+            if (!assignments || assignments.length === 0) continue;
+
+            // Get students who actually joined this session
+            const { data: joinLogs } = await supabase
+              .from("zoom_attendance_logs")
+              .select("user_id")
+              .eq("session_id", session.id);
+
+            const joinedUserIds = new Set((joinLogs || []).map((l: any) => l.user_id));
+
+            // Find students who were expected but didn't join
+            const absentStudents = assignments.filter(a => !joinedUserIds.has(a.student_id));
+
+            if (absentStudents.length > 0) {
+              const today = new Date().toISOString().split("T")[0];
+              const classTime = session.actual_start
+                ? new Date(session.actual_start).toTimeString().slice(0, 5)
+                : "00:00";
+
+              // Insert absent attendance records
+              const absentRecords = absentStudents.map(a => ({
+                student_id: a.student_id,
+                teacher_id: session.teacher_id,
+                class_date: today,
+                class_time: classTime,
+                status: "student_absent",
+                duration_minutes: 30,
+                lesson_notes: `Auto-marked absent — did not join Zoom session ${session.id}`,
+              }));
+
+              const { error: insertErr } = await supabase
+                .from("attendance")
+                .insert(absentRecords);
+
+              if (insertErr) {
+                console.error("Error auto-marking absents:", insertErr);
+              } else {
+                console.log(`Auto-marked ${absentStudents.length} students absent for session ${session.id}`);
+              }
+            }
+          }
         }
         break;
       }
