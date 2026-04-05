@@ -25,7 +25,7 @@ export default function FinanceLanding() {
       const feesRes = await supabase.from('fee_invoices').select('amount, amount_paid, status').eq('billing_month', currentMonth);
       const salaryRes = await supabase.from('salary_payouts').select('net_salary, status').eq('month', currentMonth);
       const expensesRes = await supabase.from('expenses').select('amount').gte('expense_date', `${currentMonth}-01`);
-      const advancesRes = await (supabase.from('cash_advances').select('remaining_balance').eq('status', 'active') as unknown as Promise<{ data: { remaining_balance: number }[] | null }>);
+      const advancesRes = await supabase.from('cash_advances').select('remaining_balance, status');
 
       const fees = feesRes.data || [];
       const pending = fees.filter(f => f.status !== 'paid' && f.status !== 'waived')
@@ -36,7 +36,8 @@ export default function FinanceLanding() {
         .reduce((s, p) => s + Number(p.net_salary), 0);
 
       const expTotal = (expensesRes.data || []).reduce((s, e) => s + Number(e.amount), 0);
-      const advOutstanding = (advancesRes.data || []).reduce((s, a) => s + Number(a.remaining_balance), 0);
+      const activeAdvances = (advancesRes.data || []).filter(a => a.status === 'active');
+      const advOutstanding = activeAdvances.reduce((s, a) => s + Number(a.remaining_balance), 0);
 
       return { pending, salaryDue, expTotal, advOutstanding };
     },

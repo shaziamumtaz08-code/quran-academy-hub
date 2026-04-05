@@ -23,8 +23,7 @@ export default function PeopleLanding() {
       const teachersRes = await supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'teacher');
       const studentsRes = await supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'student');
       const usersRes = await supabase.from('profiles').select('id', { count: 'exact', head: true });
-      const leadsRes = await (supabase.from('leads').select('id', { count: 'exact', head: true }) as unknown as Promise<{ count: number | null }>);
-      ]);
+      const leadsRes = await supabase.from('leads').select('*', { count: 'exact', head: true });
       return {
         teachers: teachersRes.count || 0,
         students: studentsRes.count || 0,
