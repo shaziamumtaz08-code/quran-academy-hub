@@ -362,11 +362,11 @@ export default function ZoomManagement() {
                         <Badge className={cn(
                           license.status === 'available'
                             ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                            : license.status === 'cooldown'
+                            : (license.status as string) === 'cooldown'
                               ? 'bg-amber-500/10 text-amber-600 border-amber-500/20'
                               : 'bg-destructive/10 text-destructive border-destructive/20'
                         )} variant="outline">
-                          {license.status === 'available' ? '● Ready' : license.status === 'cooldown' ? '● Cooldown' : '● Live'}
+                          {license.status === 'available' ? '● Ready' : (license.status as string) === 'cooldown' ? '● Cooldown' : '● Live'}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
