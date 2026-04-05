@@ -248,8 +248,19 @@ export default function KPI() {
                         {t.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                       </div>
                       <div>
-                        <p className="font-bold text-foreground text-sm">{t.name}</p>
-                        <p className="text-xs text-muted-foreground">{t.studentsAssigned} students</p>
+                        <EntityLink
+                          to="#"
+                          variant="name"
+                          className="text-sm"
+                          onClick={(e) => { e.preventDefault(); setDrawerTeacher({ id: t.id, full_name: t.name }); }}
+                        >
+                          {t.name}
+                        </EntityLink>
+                        <p className="text-xs text-muted-foreground">
+                          <EntityLink to={`/students?search=`} variant="count" className="text-[11px]">
+                            {t.studentsAssigned} students
+                          </EntityLink>
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
