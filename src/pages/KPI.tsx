@@ -31,23 +31,25 @@ export default function KPI() {
       const monthStart = `${monthKey}-01`;
       const monthEnd = format(endOfMonth(parseISO(monthStart)), 'yyyy-MM-dd');
 
-      // 1) Teachers with assignments in this division
+      // 1) Teachers with assignments in this division — only those with requires_planning=true
       let assignmentQuery = supabase
         .from('student_teacher_assignments')
-        .select('teacher_id, student_id, id')
+        .select('teacher_id, student_id, id, requires_planning')
         .eq('status', 'active');
       if (activeDivisionId) assignmentQuery = assignmentQuery.eq('division_id', activeDivisionId);
       const { data: assignments } = await assignmentQuery;
 
-      const teacherMap: Record<string, { studentIds: Set<string>; assignmentIds: string[] }> = {};
+      // Build teacher map — only count students that require planning for plan KPIs
+      const teacherMap: Record<string, { studentIds: Set<string>; planningStudentIds: Set<string>; assignmentIds: string[] }> = {};
       (assignments || []).forEach(a => {
-        if (!teacherMap[a.teacher_id]) teacherMap[a.teacher_id] = { studentIds: new Set(), assignmentIds: [] };
+        if (!teacherMap[a.teacher_id]) teacherMap[a.teacher_id] = { studentIds: new Set(), planningStudentIds: new Set(), assignmentIds: [] };
         teacherMap[a.teacher_id].studentIds.add(a.student_id);
+        if (a.requires_planning) teacherMap[a.teacher_id].planningStudentIds.add(a.student_id);
         teacherMap[a.teacher_id].assignmentIds.push(a.id);
       });
 
       const teacherIds = Object.keys(teacherMap);
-      if (!teacherIds.length) return { teachers: [], planningKpis: { submitted: 0, total: 0, pending: 0, avgTat: 0, breached: 0 } };
+      if (!teacherIds.length) return { teachers: [], planningKpis: { submitted: 0, total: 0, pending: 0, avgTat: 0, breached: 0, onTime: 0, late: 0 } };
 
       // 2) Teacher profiles
       const { data: profiles } = await supabase
@@ -65,18 +67,16 @@ export default function KPI() {
         .gte('class_date', monthStart)
         .lte('class_date', monthEnd);
 
-      // 4) Monthly plans (table may not exist yet — handle gracefully)
-      let plans: any[] = [];
-      try {
-        const { data: planData } = await (supabase as any)
-          .from('monthly_plans')
-          .select('id, teacher_id, student_id, month, status, created_at, approved_at, approved_by')
-          .in('teacher_id', teacherIds)
-          .eq('month', monthKey);
-        plans = planData || [];
-      } catch {
-        plans = [];
-      }
+      // 4) Monthly plans — read from student_monthly_plans (the real table)
+      const { data: planData } = await supabase
+        .from('student_monthly_plans')
+        .select('id, teacher_id, student_id, month, status, created_at, approved_at, approved_by')
+        .in('teacher_id', teacherIds)
+        .eq('month', monthKey);
+      const plans = planData || [];
+
+      // Deadline: 3rd of the month
+      const deadlineDate = new Date(Number(selectedYear), Number(selectedMonth) - 1, 3, 23, 59, 59);
 
       // Build teacher KPIs
       const teachers = teacherIds.map(tid => {
@@ -91,12 +91,16 @@ export default function KPI() {
         const deliveryRate = totalClasses > 0 ? Math.round(((totalClasses - teacherAbsent) / totalClasses) * 100) : 0;
 
         const teacherPlans = plans.filter((p: any) => p.teacher_id === tid);
-        const expectedPlans = info.studentIds.size;
+        const expectedPlans = info.planningStudentIds.size; // Only count students with requires_planning
         const submittedPlans = teacherPlans.length;
         const approvedPlans = teacherPlans.filter((p: any) => p.status === 'approved').length;
 
+        // Plan timing: on-time (submitted by 3rd) vs late
+        const onTimePlans = teacherPlans.filter((p: any) => p.created_at && new Date(p.created_at) <= deadlineDate).length;
+        const latePlans = teacherPlans.filter((p: any) => p.created_at && new Date(p.created_at) > deadlineDate).length;
+
         // Score: weighted (delivery 40%, attendance 30%, planning 30%)
-        const planRate = expectedPlans > 0 ? submittedPlans / expectedPlans : 0;
+        const planRate = expectedPlans > 0 ? submittedPlans / expectedPlans : 1; // If no planning required, full marks
         const score = Math.round(((deliveryRate / 100) * 40 + (attendanceRate / 100) * 30 + planRate * 30)) / 10;
 
         return {
@@ -112,15 +116,19 @@ export default function KPI() {
           submittedPlans,
           expectedPlans,
           approvedPlans,
+          onTimePlans,
+          latePlans,
           score: Math.min(5, Math.max(0, score)),
           trend: deliveryRate >= 95 ? 'up' as const : deliveryRate >= 80 ? 'stable' as const : 'down' as const,
         };
       }).sort((a, b) => b.score - a.score);
 
       // Planning KPIs (global)
-      const totalExpected = Object.values(teacherMap).reduce((s, t) => s + t.studentIds.size, 0);
+      const totalExpected = Object.values(teacherMap).reduce((s, t) => s + t.planningStudentIds.size, 0);
       const totalSubmitted = plans.length;
       const totalPending = plans.filter((p: any) => p.status === 'pending').length;
+      const totalOnTime = plans.filter((p: any) => p.created_at && new Date(p.created_at) <= deadlineDate).length;
+      const totalLate = plans.filter((p: any) => p.created_at && new Date(p.created_at) > deadlineDate).length;
 
       // TAT: hours from created_at to approved_at
       const approvedWithTat = plans.filter((p: any) => p.approved_at && p.created_at);
@@ -132,7 +140,7 @@ export default function KPI() {
 
       return {
         teachers,
-        planningKpis: { submitted: totalSubmitted, total: totalExpected, pending: totalPending, avgTat, breached },
+        planningKpis: { submitted: totalSubmitted, total: totalExpected, pending: totalPending, avgTat, breached, onTime: totalOnTime, late: totalLate },
       };
     },
   });
