@@ -681,6 +681,21 @@ export default function Payments() {
     }, 0), [fcyInvoicesAll, ledgerPaidMap, liveRates, getRate]);
   const pending = totalFees - collected;
 
+  // Per-currency native totals for FCY (never mix currencies)
+  const fcyCurrencyBreakdown = useMemo(() => {
+    const map: Record<string, { total: number; collected: number; pending: number }> = {};
+    fcyInvoicesAll.forEach(inv => {
+      const c = inv.currency;
+      if (!map[c]) map[c] = { total: 0, collected: 0, pending: 0 };
+      map[c].total += Number(inv.amount);
+      map[c].collected += (ledgerPaidMap[inv.id] || 0);
+      if (inv.status !== 'paid' && inv.status !== 'waived') {
+        map[c].pending += Math.max(0, Number(inv.amount) - (ledgerPaidMap[inv.id] || 0) - Number(inv.forgiven_amount || 0));
+      }
+    });
+    return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [fcyInvoicesAll, ledgerPaidMap]);
+
   const monthOptions = Array.from({ length: 12 }, (_, i) => {
     const m = String(i + 1).padStart(2, '0');
     return { value: `${now.getFullYear()}-${m}`, label: `${MONTHS[i].label} ${now.getFullYear()}` };
