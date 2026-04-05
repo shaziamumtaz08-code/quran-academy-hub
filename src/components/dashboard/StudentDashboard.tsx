@@ -407,11 +407,25 @@ export function StudentDashboard() {
     shortDay = SHORT_DAYS[nc.dayOfWeek] || nc.dayOfWeek;
   }
 
-  // Is class within 15 minutes?
+  // Is class within 30 minutes or currently in session?
   const minutesUntil = nc ? (nc.dateTime.getTime() - Date.now()) / 60000 : Infinity;
-  const isJoinable = minutesUntil <= 15 && minutesUntil > -60;
+  const isJoinable = minutesUntil <= 30 && minutesUntil > -90;
 
   const stats = dashData?.overallStats;
+
+  // Show join button area — always show JoinClassButton when within window, countdown otherwise
+  const renderJoinArea = () => {
+    if (isJoinable) {
+      return <JoinClassButton teacherId={ncEnrollment?.teacherId} />;
+    }
+    return (
+      <div className="flex items-center gap-1 shrink-0">
+        {countdown.days > 0 && <span className="bg-primary-foreground/15 rounded-md px-2 py-0.5 text-[11px] font-bold">{countdown.days}d</span>}
+        <span className="bg-primary-foreground/15 rounded-md px-2 py-0.5 text-[11px] font-bold">{countdown.hours}h</span>
+        <span className="bg-primary-foreground/15 rounded-md px-2 py-0.5 text-[11px] font-bold">{String(countdown.mins).padStart(2, '0')}m</span>
+      </div>
+    );
+  };
 
   const leftContent = (
     <>
@@ -420,15 +434,7 @@ export function StudentDashboard() {
         <div className="bg-gradient-to-br from-primary to-[hsl(var(--navy-light))] rounded-2xl px-4 py-3.5 text-primary-foreground shadow-card">
           <div className="flex items-center justify-between mb-1">
             <p className="text-[10px] opacity-70 font-extrabold tracking-widest uppercase">⏰ Next Class</p>
-            {isJoinable ? (
-              <JoinClassButton teacherId={ncEnrollment?.teacherId} />
-            ) : (
-              <div className="flex items-center gap-1 shrink-0">
-                {countdown.days > 0 && <span className="bg-primary-foreground/15 rounded-md px-2 py-0.5 text-[11px] font-bold">{countdown.days}d</span>}
-                <span className="bg-primary-foreground/15 rounded-md px-2 py-0.5 text-[11px] font-bold">{countdown.hours}h</span>
-                <span className="bg-primary-foreground/15 rounded-md px-2 py-0.5 text-[11px] font-bold">{String(countdown.mins).padStart(2, '0')}m</span>
-              </div>
-            )}
+            {renderJoinArea()}
           </div>
           <p className="text-base font-black truncate">{ncEnrollment.courseName}</p>
           <p className="text-[11px] text-primary-foreground/70 font-semibold mt-0.5">

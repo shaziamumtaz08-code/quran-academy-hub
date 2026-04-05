@@ -13,7 +13,7 @@ interface JoinClassButtonProps {
   className?: string;
 }
 
-const GRACE_PERIOD_MINUTES = 15;
+const GRACE_PERIOD_MINUTES = 30;
 
 /**
  * Record student_join_time on today's attendance record.
@@ -299,7 +299,9 @@ export function JoinClassButton({ teacherId, className }: JoinClassButtonProps) 
     return (
       <Button disabled variant="outline" className={cn("gap-2", className)}>
         <Clock className="h-4 w-4" />
-        Opens in {scheduleStatus.minutesUntil}m
+        {scheduleStatus.minutesUntil <= 60
+          ? `Join in ${scheduleStatus.minutesUntil}m`
+          : `Class at ${scheduleStatus.classTime}`}
       </Button>
     );
   }
@@ -318,7 +320,7 @@ export function JoinClassButton({ teacherId, className }: JoinClassButtonProps) 
   return (
     <Button disabled variant="outline" className={cn("gap-2 opacity-60", className)}>
       <Video className="h-4 w-4" />
-      Class Not Available
+      No Class Now
     </Button>
   );
 }
