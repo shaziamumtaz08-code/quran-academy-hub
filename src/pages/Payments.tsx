@@ -152,7 +152,7 @@ export default function Payments() {
   const [editInvoiceData, setEditInvoiceData] = useState<{ id: string; amount: string; due_date: string; billing_month: string; currency: string; remark: string; status: string; amount_paid: string; forgiven_amount: string; payment_method: string; paid_at: string; period_from: string; period_to: string; amount_local: string; receipt_url: string } | null>(null);
   const editReceiptInputRef = useRef<HTMLInputElement>(null);
   const [editReceiptFile, setEditReceiptFile] = useState<File | null>(null);
-  const [actionModal, setActionModal] = useState<{ type: 'mark_unpaid' | 'apply_discount' | 'waive_fee' | 'reverse_payment' | 'view_history' | 'restore_to_pending'; invoice: InvoiceRow } | null>(null);
+  const [actionModal, setActionModal] = useState<{ type: 'mark_unpaid' | 'apply_discount' | 'waive_fee' | 'reverse_payment' | 'view_history' | 'restore_to_pending' | 'reset_invoice'; invoice: InvoiceRow } | null>(null);
   const [receiptViewInvoice, setReceiptViewInvoice] = useState<InvoiceRow | null>(null);
   const [receiptTransactions, setReceiptTransactions] = useState<any[]>([]);
   const [actionReason, setActionReason] = useState('');
@@ -681,6 +681,21 @@ export default function Payments() {
     }, 0), [fcyInvoicesAll, ledgerPaidMap, liveRates, getRate]);
   const pending = totalFees - collected;
 
+  // Per-currency native totals for FCY (never mix currencies)
+  const fcyCurrencyBreakdown = useMemo(() => {
+    const map: Record<string, { total: number; collected: number; pending: number }> = {};
+    fcyInvoicesAll.forEach(inv => {
+      const c = inv.currency;
+      if (!map[c]) map[c] = { total: 0, collected: 0, pending: 0 };
+      map[c].total += Number(inv.amount);
+      map[c].collected += (ledgerPaidMap[inv.id] || 0);
+      if (inv.status !== 'paid' && inv.status !== 'waived') {
+        map[c].pending += Math.max(0, Number(inv.amount) - (ledgerPaidMap[inv.id] || 0) - Number(inv.forgiven_amount || 0));
+      }
+    });
+    return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [fcyInvoicesAll, ledgerPaidMap]);
+
   const monthOptions = Array.from({ length: 12 }, (_, i) => {
     const m = String(i + 1).padStart(2, '0');
     return { value: `${now.getFullYear()}-${m}`, label: `${MONTHS[i].label} ${now.getFullYear()}` };
@@ -864,16 +879,14 @@ export default function Payments() {
       // Helper to check if existing invoice needs updating
       const checkAndQueueUpdate = (existingInv: any, prorated: { amount: number; period_from: string; period_to: string }, currency: string) => {
         if (!existingInv) return false;
+        // CRITICAL: Never update paid or partially_paid invoices — past invoices are immutable
+        if (existingInv.status === 'paid' || existingInv.status === 'partially_paid') return false;
+        
         const amountChanged = Math.abs(existingInv.amount - prorated.amount) > 0.01;
         const periodChanged = existingInv.period_from !== prorated.period_from || existingInv.period_to !== prorated.period_to;
         const currencyChanged = existingInv.currency !== currency;
         
         if (existingInv.status === 'pending' && (amountChanged || periodChanged || currencyChanged)) {
-          updatedInvoices.push({ id: existingInv.id, amount: prorated.amount, currency, period_from: prorated.period_from, period_to: prorated.period_to });
-          return true;
-        }
-        // For paid/partially_paid invoices, update amount/currency if changed (preserve payment state)
-        if ((existingInv.status === 'paid' || existingInv.status === 'partially_paid') && (amountChanged || currencyChanged)) {
           updatedInvoices.push({ id: existingInv.id, amount: prorated.amount, currency, period_from: prorated.period_from, period_to: prorated.period_to });
           return true;
         }
@@ -1273,6 +1286,31 @@ export default function Payments() {
           await supabase.from('fee_invoices').update({ status: 'pending' as any, amount_paid: 0, paid_at: null, forgiven_amount: 0 }).eq('id', invoice.id);
           break;
         }
+        case 'reset_invoice': {
+          // Delete all adjustments, transactions; recalculate from billing plan
+          await supabase.from('invoice_adjustments').delete().eq('invoice_id', invoice.id);
+          await supabase.from('payment_transactions').delete().eq('invoice_id', invoice.id);
+          
+          // Get the correct base fee from the billing plan
+          let correctAmount = Number(invoice.amount);
+          if (invoice.plan_id) {
+            const { data: plan } = await supabase.from('student_billing_plans')
+              .select('net_recurring_fee, currency').eq('id', invoice.plan_id).maybeSingle();
+            if (plan) {
+              correctAmount = Number(plan.net_recurring_fee);
+            }
+          }
+          
+          await createAdjustment(invoice.id, 'reset_invoice', prev, { 
+            status: 'pending', amount: correctAmount, amount_paid: 0, forgiven_amount: 0 
+          }, reason);
+          
+          await supabase.from('fee_invoices').update({ 
+            amount: correctAmount, status: 'pending' as any, 
+            amount_paid: 0, paid_at: null, forgiven_amount: 0 
+          }).eq('id', invoice.id);
+          break;
+        }
       }
       return invoice.id;
     },
@@ -1430,78 +1468,83 @@ export default function Payments() {
           )}
         </div>
 
-        {/* Summary Cards — all values in PKR */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Total Fees Card */}
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[hsl(var(--navy)/0.06)] to-[hsl(var(--primary)/0.12)] border border-primary/10 p-5">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full -translate-y-1/3 translate-x-1/3" />
-            <div className="flex items-start gap-3 relative z-10">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                <span className="text-lg font-bold text-primary">₨</span>
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">Total Fees (PKR)</p>
-                <p className="text-2xl font-serif font-bold text-foreground">₨ {totalFeesPKR.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted-foreground">
-                  <span>Local: ₨ {localTotalPKR.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-                  <span>•</span>
-                  <span>Foreign (est.): ₨ {foreignEstPKR.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+        {/* Summary Cards — per-currency native totals */}
+        <div className="space-y-3">
+          {/* PKR Row */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/10 p-5">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <span className="text-lg font-bold text-primary">₨</span>
                 </div>
-                {ratesAreLive && (
-                  <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                    Live rates · spread −2 PKR
-                  </p>
-                )}
-                {!ratesAreLive && ratesLastUpdated && (
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    Cached rates from {ratesLastUpdated.toLocaleTimeString()}
-                  </p>
-                )}
-                {ratesError && !ratesLastUpdated && (
-                  <p className="text-[10px] text-destructive mt-1">{ratesError}</p>
-                )}
+                <div className="min-w-0">
+                  <p className="text-xs text-muted-foreground">Total Fees (PKR)</p>
+                  <p className="text-2xl font-serif font-bold text-foreground">₨ {localTotalPKR.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                </div>
               </div>
             </div>
-          </div>
-
-          {/* Collected Card */}
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20 border border-emerald-100 dark:border-emerald-900/30 p-5">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-100/50 dark:bg-emerald-900/20 rounded-full -translate-y-1/3 translate-x-1/3" />
-            <div className="flex items-start gap-3 relative z-10">
-              <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center shrink-0">
-                <CheckCircle className="h-5 w-5 text-emerald-600" />
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20 border border-emerald-100 dark:border-emerald-900/30 p-5">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center shrink-0">
+                  <CheckCircle className="h-5 w-5 text-emerald-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-muted-foreground">Collected (PKR)</p>
+                  <p className="text-2xl font-serif font-bold text-emerald-700 dark:text-emerald-400">₨ {lcyCollected.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">Collected (PKR)</p>
-                <p className="text-2xl font-serif font-bold text-emerald-700 dark:text-emerald-400">₨ {collectedPKR.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted-foreground">
-                  <span>PKR: ₨ {lcyCollected.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-                  <span>•</span>
-                  <span>FCY: ₨ {fcyCollected.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+            </div>
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-950/20 dark:to-rose-950/20 border border-red-100 dark:border-red-900/30 p-5">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/50 flex items-center justify-center shrink-0">
+                  <XCircle className="h-5 w-5 text-red-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-muted-foreground">Pending (PKR)</p>
+                  <p className="text-2xl font-serif font-bold text-red-600 dark:text-red-400">₨ {lcyPending.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Pending Card */}
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-950/20 dark:to-rose-950/20 border border-red-100 dark:border-red-900/30 p-5">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-red-100/50 dark:bg-red-900/20 rounded-full -translate-y-1/3 translate-x-1/3" />
-            <div className="flex items-start gap-3 relative z-10">
-              <div className="w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/50 flex items-center justify-center shrink-0">
-                <XCircle className="h-5 w-5 text-red-600" />
+          {/* FCY Rows — one per currency */}
+          {fcyCurrencyBreakdown.map(([currency, data]) => (
+            <div key={currency} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-secondary/30 to-secondary/50 border border-border p-5">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center shrink-0">
+                    <DollarSign className="h-5 w-5 text-secondary-foreground" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Total Fees ({currency})</p>
+                    <p className="text-2xl font-serif font-bold text-foreground">{currency} {data.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                  </div>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">Pending (PKR)</p>
-                <p className="text-2xl font-serif font-bold text-red-600 dark:text-red-400">₨ {pendingPKR.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted-foreground">
-                  <span>PKR: ₨ {lcyPending.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-                  <span>•</span>
-                  <span>FCY (est.): ₨ {fcyPending.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50/50 to-teal-50/50 dark:from-emerald-950/10 dark:to-teal-950/10 border border-emerald-100/50 dark:border-emerald-900/20 p-5">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-emerald-100/70 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
+                    <CheckCircle className="h-5 w-5 text-emerald-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Collected ({currency})</p>
+                    <p className="text-2xl font-serif font-bold text-emerald-700 dark:text-emerald-400">{currency} {data.collected.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-50/50 to-rose-50/50 dark:from-red-950/10 dark:to-rose-950/10 border border-red-100/50 dark:border-red-900/20 p-5">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-red-100/70 dark:bg-red-900/30 flex items-center justify-center shrink-0">
+                    <XCircle className="h-5 w-5 text-red-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Pending ({currency})</p>
+                    <p className="text-2xl font-serif font-bold text-red-600 dark:text-red-400">{currency} {data.pending.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          ))}
         </div>
 
         {/* Tabs: Invoices | Billing Plans */}
@@ -1906,6 +1949,7 @@ export default function Payments() {
                                   {(inv.status === 'paid' || inv.status === 'partially_paid') && <DropdownMenuItem onClick={() => setActionModal({ type: 'reverse_payment', invoice: inv })}><ArrowRightLeft className="h-3.5 w-3.5 mr-2" /> Reverse Payment</DropdownMenuItem>}
                                   {(inv.status === 'paid' || inv.status === 'partially_paid') && <DropdownMenuItem onClick={async () => { const { data: txns } = await supabase.from('payment_transactions').select('*').eq('invoice_id', inv.id).order('created_at', { ascending: false }).limit(1); const tx = txns?.[0]; if (!tx) { toast({ title: 'No payment transaction found', variant: 'destructive' }); return; } setEditPaymentForm({ amount_foreign: String(tx.amount_foreign || ''), amount_local: String(tx.amount_local || ''), payment_date: tx.payment_date || '', payment_method: tx.payment_method || '', notes: tx.notes || '', reason: '' }); setEditPaymentData({ invoiceId: inv.id, transaction: tx, invoice: inv }); }}><Pencil className="h-3.5 w-3.5 mr-2" /> Edit Payment</DropdownMenuItem>}
                                   <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => setActionModal({ type: 'reset_invoice', invoice: inv })}><RotateCcw className="h-3.5 w-3.5 mr-2" /> Reset Invoice</DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => { setActionModal({ type: 'view_history', invoice: inv }); fetchHistory(inv.id); }}><History className="h-3.5 w-3.5 mr-2" /> View History</DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
@@ -2022,6 +2066,7 @@ export default function Payments() {
                                   {(inv.status === 'paid' || inv.status === 'partially_paid') && <DropdownMenuItem onClick={() => setActionModal({ type: 'reverse_payment', invoice: inv })}><ArrowRightLeft className="h-3.5 w-3.5 mr-2" /> Reverse Payment</DropdownMenuItem>}
                                   {(inv.status === 'paid' || inv.status === 'partially_paid') && <DropdownMenuItem onClick={async () => { const { data: txns } = await supabase.from('payment_transactions').select('*').eq('invoice_id', inv.id).order('created_at', { ascending: false }).limit(1); const tx = txns?.[0]; if (!tx) { toast({ title: 'No payment transaction found', variant: 'destructive' }); return; } setEditPaymentForm({ amount_foreign: String(tx.amount_foreign || ''), amount_local: String(tx.amount_local || ''), payment_date: tx.payment_date || '', payment_method: tx.payment_method || '', notes: tx.notes || '', reason: '' }); setEditPaymentData({ invoiceId: inv.id, transaction: tx, invoice: inv }); }}><Pencil className="h-3.5 w-3.5 mr-2" /> Edit Payment</DropdownMenuItem>}
                                   <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => setActionModal({ type: 'reset_invoice', invoice: inv })}><RotateCcw className="h-3.5 w-3.5 mr-2" /> Reset Invoice</DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => { setActionModal({ type: 'view_history', invoice: inv }); fetchHistory(inv.id); }}><History className="h-3.5 w-3.5 mr-2" /> View History</DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
@@ -2707,6 +2752,7 @@ export default function Payments() {
                 {actionModal?.type === 'apply_discount' && <><Tag className="h-5 w-5" /> Apply Discount</>}
                 {actionModal?.type === 'waive_fee' && <><Ban className="h-5 w-5" /> Waive Fee</>}
                 {actionModal?.type === 'reverse_payment' && <><ArrowRightLeft className="h-5 w-5" /> Reverse Payment</>}
+                {actionModal?.type === 'reset_invoice' && <><RotateCcw className="h-5 w-5 text-destructive" /> Reset Invoice</>}
                 
               </DialogTitle>
               <DialogDescription>
@@ -2715,7 +2761,7 @@ export default function Payments() {
                 {actionModal?.type === 'apply_discount' && 'Apply an additional discount to reduce the invoice amount.'}
                 {actionModal?.type === 'waive_fee' && 'Waive the remaining balance. This will mark the fee as forgiven.'}
                 {actionModal?.type === 'reverse_payment' && 'Reverse all payments on this invoice and remove the linked payment records.'}
-                
+                {actionModal?.type === 'reset_invoice' && 'Delete ALL adjustments, payments, and history for this invoice, then recalculate the correct amount from the billing plan. This is destructive.'}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-2">
