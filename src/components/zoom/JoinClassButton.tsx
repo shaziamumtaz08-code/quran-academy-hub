@@ -141,21 +141,26 @@ export function JoinClassButton({ teacherId, className }: JoinClassButtonProps) 
 
           if (now >= windowStart && now <= windowEnd) {
             // Check for live session first
-            const { data: liveSession } = await supabase
+            const { data: liveSession, error: lsError } = await supabase
               .from('live_sessions')
-              .select('id, license:zoom_licenses(meeting_link)')
+              .select('id, license_id, license:zoom_licenses(meeting_link)')
               .eq('teacher_id', targetTeacherId)
               .eq('status', 'live')
               .maybeSingle();
 
-            if (liveSession?.license) {
-              return {
-                canJoin: true,
-                sessionId: liveSession.id,
-                meetingLink: (liveSession.license as any).meeting_link,
-                isLive: true,
-                teacherId: targetTeacherId,
-              };
+            console.log('[JoinClass] live session check:', { targetTeacherId, liveSession, lsError });
+
+            if (liveSession) {
+              const meetingLink = (liveSession.license as any)?.meeting_link;
+              if (meetingLink) {
+                return {
+                  canJoin: true,
+                  sessionId: liveSession.id,
+                  meetingLink,
+                  isLive: true,
+                  teacherId: targetTeacherId,
+                };
+              }
             }
 
             // Get available license for autonomous join
