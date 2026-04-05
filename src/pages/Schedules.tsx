@@ -10,8 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Calendar, CalendarDays, Clock, User, ChevronDown, ChevronRight, Loader2, AlertCircle, Globe, Pencil, Trash2, Upload, ArrowUpDown, ArrowUp, ArrowDown, Search, X, List } from 'lucide-react';
+import { Plus, Calendar, CalendarDays, Clock, User, ChevronDown, ChevronRight, Loader2, AlertCircle, Globe, Pencil, Trash2, Upload, ArrowUpDown, ArrowUp, ArrowDown, Search, X, List, LayoutGrid } from 'lucide-react';
 import { MonthlyCalendarView } from '@/components/schedules/MonthlyCalendarView';
+import { DailySlotCalendar } from '@/components/schedules/DailySlotCalendar';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -216,7 +217,7 @@ export default function Schedules() {
   const [filterStatus, setFilterStatus] = useState<string>(''); // 'scheduled' | 'not_scheduled' | ''
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [showAllDivisions, setShowAllDivisions] = useState(false);
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'daily'>('list');
   
   // Sorting state
   type ScheduleSortField = 'student' | 'teacher' | 'subject' | 'status' | 'classes';
@@ -1288,6 +1289,15 @@ export default function Schedules() {
                 List
               </Button>
               <Button
+                variant={viewMode === 'daily' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('daily')}
+                className="h-10 rounded-none"
+              >
+                <LayoutGrid className="h-4 w-4 mr-1" />
+                Daily
+              </Button>
+              <Button
                 variant={viewMode === 'calendar' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setViewMode('calendar')}
@@ -1317,6 +1327,22 @@ export default function Schedules() {
               </div>
             ) : (
               <MonthlyCalendarView
+                assignments={filteredAssignments}
+                schedules={schedules}
+              />
+            )}
+          </div>
+        )}
+
+        {/* Daily Slot Calendar View */}
+        {viewMode === 'daily' && (
+          <div className="bg-card rounded-xl border border-border p-4">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : (
+              <DailySlotCalendar
                 assignments={filteredAssignments}
                 schedules={schedules}
               />
