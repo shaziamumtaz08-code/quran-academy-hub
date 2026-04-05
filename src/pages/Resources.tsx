@@ -14,7 +14,10 @@ import {
   Search,
   Loader2,
   FolderOpen,
+  Star,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { FileDetailPanel } from "@/components/resources/FileDetailPanel";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -88,12 +91,13 @@ function getFileType(filename: string): string {
 }
 
 export default function Resources() {
-  const { user, isSuperAdmin, profile } = useAuth();
+  const { user, isSuperAdmin, profile, activeRole } = useAuth();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Current folder from URL
   const currentFolderId = searchParams.get("folder") || null;
+  const activeTab = searchParams.get("tab") || "browse";
 
   // UI state
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
@@ -104,9 +108,36 @@ export default function Resources() {
   const [renameItem, setRenameItem] = useState<{ type: "folder" | "file"; item: Folder | Resource } | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteItem, setDeleteItem] = useState<{ type: "folder" | "file"; item: Folder | Resource } | null>(null);
+  const [detailResource, setDetailResource] = useState<any>(null);
 
   // Permissions - Admin & Super Admin can manage, others can view
   const canManage = isSuperAdmin || profile?.role === "admin";
+
+  // Fetch assigned resources for "My Assigned" tab
+  const { data: assignedResources = [] } = useQuery({
+    queryKey: ['my-assigned-resources', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data: assignments } = await supabase
+        .from('resource_assignments')
+        .select('resource_id')
+        .eq('assigned_to', user.id);
+      const resourceIds = (assignments || []).map((a: any) => a.resource_id);
+      if (!resourceIds.length) return [];
+      const { data: res } = await supabase
+        .from('resources')
+        .select('*')
+        .in('id', resourceIds);
+      return (res || []).map((r: any) => ({ ...r, isAssigned: true }));
+    },
+    enabled: !!user?.id && activeTab === 'assigned',
+  });
+
+  const setActiveTab = (tab: string) => {
+    const params: Record<string, string> = { tab };
+    if (tab === 'browse' && currentFolderId) params.folder = currentFolderId;
+    setSearchParams(params);
+  };
 
   // Fetch all folders
   const { data: folders = [], isLoading: foldersLoading } = useQuery({
@@ -617,7 +648,7 @@ export default function Resources() {
       <div className="page-header-premium rounded-xl p-6 mb-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            {currentFolderId && (
+            {currentFolderId && activeTab === 'browse' && (
               <Button 
                 variant="ghost" 
                 size="icon" 
@@ -629,17 +660,19 @@ export default function Resources() {
             )}
             <div>
               <h1 className="text-2xl font-bold text-white">Resources</h1>
-              <div className="mt-1">
-                <ResourcesBreadcrumb
-                  folderPath={folderPath}
-                  onNavigate={navigateToFolder}
-                  onDrop={handleDropOnBreadcrumb}
-                />
-              </div>
+              {activeTab === 'browse' && (
+                <div className="mt-1">
+                  <ResourcesBreadcrumb
+                    folderPath={folderPath}
+                    onNavigate={navigateToFolder}
+                    onDrop={handleDropOnBreadcrumb}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
-          {canManage && (
+          {canManage && activeTab === 'browse' && (
             <div className="flex items-center gap-3">
               <Button 
                 variant="outline" 
@@ -659,152 +692,217 @@ export default function Resources() {
             </div>
           )}
         </div>
-      </div>
 
-      {/* Toolbar Card */}
-      <div className="premium-card p-4">
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="relative flex-1 min-w-[200px] max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search in folder..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 premium-input"
-            />
-          </div>
-
-          <div className="flex items-center border border-border/50 rounded-xl p-1 bg-muted/30">
-            <button
-              onClick={() => setViewMode("grid")}
-              className={`p-2 rounded-lg transition-all duration-200 ${
-                viewMode === "grid"
-                  ? "bg-accent text-white shadow-md"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-              }`}
-            >
-              <Grid3X3 className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setViewMode("list")}
-              className={`p-2 rounded-lg transition-all duration-200 ${
-                viewMode === "list"
-                  ? "bg-accent text-white shadow-md"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-              }`}
-            >
-              <List className="h-4 w-4" />
-            </button>
-          </div>
+        {/* Tabs */}
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={() => setActiveTab('browse')}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+              activeTab === 'browse'
+                ? 'bg-white text-primary shadow-md'
+                : 'text-white/70 hover:text-white hover:bg-white/10'
+            }`}
+          >
+            <FolderOpen className="h-3.5 w-3.5 inline mr-1.5" />
+            Browse
+          </button>
+          <button
+            onClick={() => setActiveTab('assigned')}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+              activeTab === 'assigned'
+                ? 'bg-white text-primary shadow-md'
+                : 'text-white/70 hover:text-white hover:bg-white/10'
+            }`}
+          >
+            <Star className="h-3.5 w-3.5 inline mr-1.5" />
+            My Assigned
+            {assignedResources.length > 0 && (
+              <Badge className="ml-1.5 text-[10px] px-1.5 py-0 h-4 bg-accent/20 text-white border-0">
+                {assignedResources.length}
+              </Badge>
+            )}
+          </button>
         </div>
       </div>
 
-      {/* Content */}
-      {isEmpty ? (
-        <div className="premium-card p-12 flex flex-col items-center justify-center text-muted-foreground">
-          <div className="w-20 h-20 rounded-full bg-accent/10 flex items-center justify-center mb-4">
-            <FolderOpen className="h-10 w-10 text-accent" />
-          </div>
-          <p className="font-semibold text-lg text-foreground">This folder is empty</p>
-          {canManage && (
-            <p className="text-sm mt-2 text-muted-foreground">
-              Create a folder or upload files to get started
-            </p>
-          )}
-        </div>
-      ) : viewMode === "grid" ? (
-        <div className="space-y-6">
-          {/* Folders section */}
-          {currentFolders.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">
-                Folders ({currentFolders.length})
-              </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
-                {currentFolders.map((folder, index) => (
-                  <div key={folder.id} className="animate-fade-in" style={{ animationDelay: `${index * 30}ms` }}>
-                    <FolderItem
-                      folder={folder}
-                      viewMode="grid"
-                      canManage={canManage}
-                      itemCount={folderItemCounts[folder.id] ?? 0}
-                      onOpen={navigateToFolder}
-                      onRename={openRenameFolder}
-                      onDelete={openDeleteFolder}
-                      onDrop={handleDropOnFolder}
-                    />
-                  </div>
-                ))}
+      {/* Browse Tab */}
+      {activeTab === 'browse' && (
+        <>
+          {/* Toolbar Card */}
+          <div className="premium-card p-4">
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="relative flex-1 min-w-[200px] max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search in folder..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 premium-input"
+                />
               </div>
-            </div>
-          )}
 
-          {/* Files section */}
-          {currentFiles.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">
-                Files ({currentFiles.length})
-              </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
-                {currentFiles.map((file, index) => (
-                  <div key={file.id} className="animate-fade-in" style={{ animationDelay: `${index * 30}ms` }}>
-                    <FileItem
-                      resource={file}
-                      viewMode="grid"
-                      canManage={canManage}
-                      onRename={openRenameFile}
-                      onDelete={openDeleteFile}
-                    />
-                  </div>
-                ))}
+              <div className="flex items-center border border-border/50 rounded-xl p-1 bg-muted/30">
+                <button
+                  onClick={() => setViewMode("grid")}
+                  className={`p-2 rounded-lg transition-all duration-200 ${
+                    viewMode === "grid"
+                      ? "bg-accent text-white shadow-md"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  }`}
+                >
+                  <Grid3X3 className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode("list")}
+                  className={`p-2 rounded-lg transition-all duration-200 ${
+                    viewMode === "list"
+                      ? "bg-accent text-white shadow-md"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  }`}
+                >
+                  <List className="h-4 w-4" />
+                </button>
               </div>
             </div>
+          </div>
+
+          {/* Content */}
+          {isEmpty ? (
+            <div className="premium-card p-12 flex flex-col items-center justify-center text-muted-foreground">
+              <div className="w-20 h-20 rounded-full bg-accent/10 flex items-center justify-center mb-4">
+                <FolderOpen className="h-10 w-10 text-accent" />
+              </div>
+              <p className="font-semibold text-lg text-foreground">This folder is empty</p>
+              {canManage && (
+                <p className="text-sm mt-2 text-muted-foreground">
+                  Create a folder or upload files to get started
+                </p>
+              )}
+            </div>
+          ) : viewMode === "grid" ? (
+            <div className="space-y-6">
+              {currentFolders.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">
+                    Folders ({currentFolders.length})
+                  </h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+                    {currentFolders.map((folder, index) => (
+                      <div key={folder.id} className="animate-fade-in" style={{ animationDelay: `${index * 30}ms` }}>
+                        <FolderItem
+                          folder={folder}
+                          viewMode="grid"
+                          canManage={canManage}
+                          itemCount={folderItemCounts[folder.id] ?? 0}
+                          onOpen={navigateToFolder}
+                          onRename={openRenameFolder}
+                          onDelete={openDeleteFolder}
+                          onDrop={handleDropOnFolder}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {currentFiles.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">
+                    Files ({currentFiles.length})
+                  </h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+                    {currentFiles.map((file, index) => (
+                      <div key={file.id} className="animate-fade-in" style={{ animationDelay: `${index * 30}ms` }}>
+                        <FileItem
+                          resource={file}
+                          viewMode="grid"
+                          canManage={canManage}
+                          onRename={openRenameFile}
+                          onDelete={openDeleteFile}
+                          onSelect={setDetailResource}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {currentFolders.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
+                    Folders ({currentFolders.length})
+                  </h3>
+                  <div className="premium-card divide-y divide-border/50">
+                    {currentFolders.map((folder) => (
+                      <FolderItem
+                        key={folder.id}
+                        folder={folder}
+                        viewMode="list"
+                        canManage={canManage}
+                        itemCount={folderItemCounts[folder.id] ?? 0}
+                        onOpen={navigateToFolder}
+                        onRename={openRenameFolder}
+                        onDelete={openDeleteFolder}
+                        onDrop={handleDropOnFolder}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {currentFiles.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
+                    Files ({currentFiles.length})
+                  </h3>
+                  <div className="premium-card divide-y divide-border/50">
+                    {currentFiles.map((file) => (
+                      <FileItem
+                        key={file.id}
+                        resource={file}
+                        viewMode="list"
+                        canManage={canManage}
+                        onRename={openRenameFile}
+                        onDelete={openDeleteFile}
+                        onSelect={setDetailResource}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
-        </div>
-      ) : (
+        </>
+      )}
+
+      {/* My Assigned Tab */}
+      {activeTab === 'assigned' && (
         <div className="space-y-4">
-          {/* Folders section - list */}
-          {currentFolders.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
-                Folders ({currentFolders.length})
-              </h3>
-              <div className="premium-card divide-y divide-border/50">
-                {currentFolders.map((folder) => (
-                  <FolderItem
-                    key={folder.id}
-                    folder={folder}
-                    viewMode="list"
-                    canManage={canManage}
-                    itemCount={folderItemCounts[folder.id] ?? 0}
-                    onOpen={navigateToFolder}
-                    onRename={openRenameFolder}
-                    onDelete={openDeleteFolder}
-                    onDrop={handleDropOnFolder}
-                  />
-                ))}
+          {assignedResources.length === 0 ? (
+            <div className="premium-card p-12 flex flex-col items-center justify-center text-muted-foreground">
+              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                <Star className="h-10 w-10 text-primary" />
               </div>
+              <p className="font-semibold text-lg text-foreground">No assigned resources</p>
+              <p className="text-sm mt-2 text-muted-foreground">
+                Resources assigned to you by admins will appear here
+              </p>
             </div>
-          )}
-
-          {/* Files section - list */}
-          {currentFiles.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
-                Files ({currentFiles.length})
-              </h3>
-              <div className="premium-card divide-y divide-border/50">
-                {currentFiles.map((file) => (
-                  <FileItem
-                    key={file.id}
-                    resource={file}
-                    viewMode="list"
-                    canManage={canManage}
-                    onRename={openRenameFile}
-                    onDelete={openDeleteFile}
-                  />
-                ))}
-              </div>
+          ) : (
+            <div className="premium-card divide-y divide-border/50">
+              {assignedResources.map((file: any) => (
+                <FileItem
+                  key={file.id}
+                  resource={file}
+                  viewMode="list"
+                  canManage={false}
+                  onRename={() => {}}
+                  onDelete={() => {}}
+                  onSelect={setDetailResource}
+                />
+              ))}
             </div>
           )}
         </div>
@@ -873,6 +971,13 @@ export default function Resources() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* File Detail Panel */}
+      <FileDetailPanel
+        open={!!detailResource}
+        onOpenChange={(open) => !open && setDetailResource(null)}
+        resource={detailResource}
+      />
     </div>
   );
 }

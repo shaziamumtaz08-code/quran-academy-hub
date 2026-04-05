@@ -53,7 +53,7 @@ import CourseCatalog from "./pages/CourseCatalog";
 import RecordedCourses from "./pages/RecordedCourses";
 import NotificationCenter from "./pages/NotificationCenter";
 import GroupChat from "./pages/GroupChat";
-import MyResources from "./pages/MyResources";
+
 import WhatsAppInbox from "./pages/WhatsAppInbox";
 
 const queryClient = new QueryClient();
@@ -322,8 +322,8 @@ function AppRoutes() {
       <Route path="/chat" element={<ProtectedRoute><GroupChat /></ProtectedRoute>} />
       {/* WhatsApp Inbox - admin only */}
       <Route path="/whatsapp" element={<ProtectedRoute><AdminRoute><WhatsAppInbox /></AdminRoute></ProtectedRoute>} />
-      {/* My Resources - all authenticated users */}
-      <Route path="/my-resources" element={<ProtectedRoute><MyResources /></ProtectedRoute>} />
+      {/* My Resources - redirect to unified Resources page */}
+      <Route path="/my-resources" element={<Navigate to="/resources?tab=assigned" replace />} />
       {/* Printable Routes - standalone, no layout */}
       <Route path="/reports/print/:reportId" element={<ProtectedRoute><PrintReport /></ProtectedRoute>} />
       <Route path="/finance/print/invoice/:invoiceId" element={<ProtectedRoute><PrintInvoice /></ProtectedRoute>} />

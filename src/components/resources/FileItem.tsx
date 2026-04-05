@@ -29,7 +29,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -50,6 +50,7 @@ interface FileItemProps {
   canManage: boolean;
   onRename: (resource: Resource) => void;
   onDelete: (resource: Resource) => void;
+  onSelect?: (resource: Resource) => void;
 }
 
 const TYPE_CONFIG: Record<string, { icon: typeof FileText; color: string; bg: string; label: string }> = {
@@ -72,11 +73,24 @@ export function FileItem({
   canManage,
   onRename,
   onDelete,
+  onSelect,
 }: FileItemProps) {
   const [isDragging, setIsDragging] = useState(false);
+  const [thumbUrl, setThumbUrl] = useState<string | null>(null);
   const config = getConfig(resource.type);
   const Icon = config.icon;
   const isRestricted = resource.visibility && resource.visibility !== "all";
+
+  // Generate thumbnail for images
+  useEffect(() => {
+    if (resource.type !== 'image') return;
+    supabase.storage
+      .from('resources')
+      .createSignedUrl(resource.url, 3600)
+      .then(({ data }) => {
+        if (data) setThumbUrl(data.signedUrl);
+      });
+  }, [resource.url, resource.type]);
 
   const getSignedUrl = async (): Promise<string | null> => {
     if (resource.type === "link") return resource.url;
@@ -88,6 +102,15 @@ export function FileItem({
       return null;
     }
     return data.signedUrl;
+  };
+
+  const handleClick = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (onSelect) {
+      onSelect(resource);
+    } else {
+      handleOpen(e);
+    }
   };
 
   const handleOpen = async (e?: React.MouseEvent) => {
@@ -128,7 +151,7 @@ export function FileItem({
               className={`group relative flex flex-col items-center justify-center h-[160px] sm:h-[180px] p-4 rounded-xl bg-card border border-border/50 shadow-sm hover:shadow-md cursor-pointer transition-all duration-200 hover:border-accent/30 ${
                 isDragging ? "opacity-50" : ""
               }`}
-              onClick={handleOpen}
+              onClick={handleClick}
               draggable={canManage}
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
@@ -195,11 +218,17 @@ export function FileItem({
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* Icon area */}
+              {/* Thumbnail or Icon */}
               <div className="flex-1 flex items-center justify-center">
-                <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center ${config.bg}`}>
-                  <Icon className={`h-7 w-7 sm:h-8 sm:w-8 ${config.color}`} />
-                </div>
+                {resource.type === 'image' && thumbUrl ? (
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden">
+                    <img src={thumbUrl} alt={resource.title} className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center ${config.bg}`}>
+                    <Icon className={`h-7 w-7 sm:h-8 sm:w-8 ${config.color}`} />
+                  </div>
+                )}
               </div>
 
               {/* Name */}
@@ -225,7 +254,7 @@ export function FileItem({
       className={`group flex items-center gap-3 sm:gap-4 p-3 sm:p-4 hover:bg-muted/30 cursor-pointer transition-all duration-200 min-h-[52px] ${
         isDragging ? "opacity-50" : ""
       }`}
-      onClick={handleOpen}
+      onClick={handleClick}
       draggable={canManage}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
@@ -235,9 +264,15 @@ export function FileItem({
           <GripVertical className="h-4 w-4 text-muted-foreground" />
         </div>
       )}
-      <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${config.bg}`}>
-        <Icon className={`h-5 w-5 ${config.color}`} />
-      </div>
+      {resource.type === 'image' && thumbUrl ? (
+        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg overflow-hidden flex-shrink-0">
+          <img src={thumbUrl} alt={resource.title} className="w-full h-full object-cover" />
+        </div>
+      ) : (
+        <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${config.bg}`}>
+          <Icon className={`h-5 w-5 ${config.color}`} />
+        </div>
+      )}
       <div className="flex-1 min-w-0">
         <p className="font-medium truncate text-foreground text-sm sm:text-base">{resource.title}</p>
       </div>
