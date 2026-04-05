@@ -47,6 +47,7 @@ export default function Reports() {
       case "fees": return <FeeReports />;
       case "engagement": return <StudentEngagement />;
       case "teacher": return <TeacherPerformance />;
+      case "accountability": return <AccountabilityReport />;
       case "courses": return <CourseReports />;
       case "logs": return <ActivityLogs />;
       case "alerts": return <AlertsAutomation />;
@@ -75,7 +76,7 @@ export default function Reports() {
             <nav className="p-1 space-y-0.5">
               {sections.map((section) => {
                 // Non-admin only sees limited sections
-                if (!isAdmin && ["logs", "alerts", "custom", "teacher"].includes(section.id)) return null;
+                if (!isAdmin && ["logs", "alerts", "custom", "teacher", "accountability"].includes(section.id)) return null;
                 return (
                   <button
                     key={section.id}
