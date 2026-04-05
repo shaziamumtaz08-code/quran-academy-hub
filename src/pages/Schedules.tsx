@@ -1334,6 +1334,22 @@ export default function Schedules() {
           </div>
         )}
 
+        {/* Daily Slot Calendar View */}
+        {viewMode === 'daily' && (
+          <div className="bg-card rounded-xl border border-border p-4">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : (
+              <DailySlotCalendar
+                assignments={filteredAssignments}
+                schedules={schedules}
+              />
+            )}
+          </div>
+        )}
+
         {/* Master Schedule Table */}
         {viewMode === 'list' && <div className="bg-card rounded-xl border border-border overflow-hidden">
           {isLoading ? (
