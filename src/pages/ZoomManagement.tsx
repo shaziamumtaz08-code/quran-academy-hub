@@ -141,6 +141,12 @@ export default function ZoomManagement() {
   // Delete license mutation
   const deleteLicenseMutation = useMutation({
     mutationFn: async (licenseId: string) => {
+      // First, detach the license from any live_sessions to avoid FK violation
+      await supabase
+        .from('live_sessions')
+        .update({ license_id: null, status: 'completed', actual_end: new Date().toISOString() } as any)
+        .eq('license_id', licenseId);
+
       const { error } = await supabase
         .from('zoom_licenses')
         .delete()
