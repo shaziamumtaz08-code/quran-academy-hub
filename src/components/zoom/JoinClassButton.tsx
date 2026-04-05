@@ -13,7 +13,7 @@ interface JoinClassButtonProps {
   className?: string;
 }
 
-const GRACE_PERIOD_MINUTES = 15;
+const GRACE_PERIOD_MINUTES = 30;
 
 /**
  * Record student_join_time on today's attendance record.
