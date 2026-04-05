@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, CalendarCheck, DollarSign, Users, GraduationCap,
-  BookOpen, Activity, AlertTriangle, Wrench, ChevronLeft, ChevronRight, Menu,
+  BookOpen, Activity, AlertTriangle, Wrench, ChevronLeft, ChevronRight, Menu, ShieldCheck,
 } from "lucide-react";
 import ExecutiveDashboard from "@/components/reports/ExecutiveDashboard";
 import AttendanceReports from "@/components/reports/AttendanceReports";
@@ -18,6 +18,7 @@ import CourseReports from "@/components/reports/CourseReports";
 import ActivityLogs from "@/components/reports/ActivityLogs";
 import AlertsAutomation from "@/components/reports/AlertsAutomation";
 import CustomReportBuilder from "@/components/reports/CustomReportBuilder";
+import AccountabilityReport from "@/components/reports/AccountabilityReport";
 
 const sections = [
   { id: "executive", label: "Executive Dashboard", icon: LayoutDashboard },
@@ -25,6 +26,7 @@ const sections = [
   { id: "fees", label: "Fee & Financial", icon: DollarSign },
   { id: "engagement", label: "Student Engagement", icon: Users },
   { id: "teacher", label: "Teacher Performance", icon: GraduationCap },
+  { id: "accountability", label: "Accountability", icon: ShieldCheck },
   { id: "courses", label: "Course / Batch", icon: BookOpen },
   { id: "logs", label: "Activity Logs", icon: Activity },
   { id: "alerts", label: "Alerts & Automation", icon: AlertTriangle },
@@ -45,6 +47,7 @@ export default function Reports() {
       case "fees": return <FeeReports />;
       case "engagement": return <StudentEngagement />;
       case "teacher": return <TeacherPerformance />;
+      case "accountability": return <AccountabilityReport />;
       case "courses": return <CourseReports />;
       case "logs": return <ActivityLogs />;
       case "alerts": return <AlertsAutomation />;
@@ -73,7 +76,7 @@ export default function Reports() {
             <nav className="p-1 space-y-0.5">
               {sections.map((section) => {
                 // Non-admin only sees limited sections
-                if (!isAdmin && ["logs", "alerts", "custom", "teacher"].includes(section.id)) return null;
+                if (!isAdmin && ["logs", "alerts", "custom", "teacher", "accountability"].includes(section.id)) return null;
                 return (
                   <button
                     key={section.id}
@@ -106,6 +109,7 @@ export default function Reports() {
                 {activeSection === "fees" && "Revenue tracking, pending dues, and payment analysis"}
                 {activeSection === "engagement" && "Student progress tracking — Hifz, Tajweed, consistency"}
                 {activeSection === "teacher" && "Classes taken, punctuality, student retention analysis"}
+                {activeSection === "accountability" && "Zoom session accountability — late starts, no-shows, student punctuality & duration"}
                 {activeSection === "courses" && "Enrollment counts, completion rates, drop-off analysis"}
                 {activeSection === "logs" && "Complete audit trail of all system actions"}
                 {activeSection === "alerts" && "Auto-generated alerts for low attendance, overdue fees, teacher absences"}

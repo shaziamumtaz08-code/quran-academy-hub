@@ -2398,12 +2398,14 @@ export type Database = {
         Row: {
           actual_end: string | null
           actual_start: string | null
+          assignment_id: string | null
           created_at: string
           group_id: string | null
           id: string
           license_id: string | null
           recording_link: string | null
           recording_password: string | null
+          schedule_id: string | null
           scheduled_start: string | null
           status: Database["public"]["Enums"]["session_status"]
           stream_url: string | null
@@ -2413,12 +2415,14 @@ export type Database = {
         Insert: {
           actual_end?: string | null
           actual_start?: string | null
+          assignment_id?: string | null
           created_at?: string
           group_id?: string | null
           id?: string
           license_id?: string | null
           recording_link?: string | null
           recording_password?: string | null
+          schedule_id?: string | null
           scheduled_start?: string | null
           status?: Database["public"]["Enums"]["session_status"]
           stream_url?: string | null
@@ -2428,12 +2432,14 @@ export type Database = {
         Update: {
           actual_end?: string | null
           actual_start?: string | null
+          assignment_id?: string | null
           created_at?: string
           group_id?: string | null
           id?: string
           license_id?: string | null
           recording_link?: string | null
           recording_password?: string | null
+          schedule_id?: string | null
           scheduled_start?: string | null
           status?: Database["public"]["Enums"]["session_status"]
           stream_url?: string | null
@@ -2442,10 +2448,24 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "live_sessions_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "student_teacher_assignments"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "live_sessions_license_id_fkey"
             columns: ["license_id"]
             isOneToOne: false
             referencedRelation: "zoom_licenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_sessions_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "schedules"
             referencedColumns: ["id"]
           },
         ]

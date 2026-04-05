@@ -50,13 +50,58 @@ export function StartClassButton({ sessionId, onSessionCreated }: StartClassButt
       let sessionToUse = currentSessionId;
       
       if (!sessionToUse) {
+        // Look up today's schedule slot for this teacher (±15 min window in PKT)
+        const now = new Date();
+        const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        const pktOffset = 5 * 60; // PKT = UTC+5
+        const pktNow = new Date(now.getTime() + pktOffset * 60000);
+        const todayDay = dayNames[pktNow.getUTCDay()];
+        const pktHours = pktNow.getUTCHours();
+        const pktMinutes = pktNow.getUTCMinutes();
+        const currentMinutes = pktHours * 60 + pktMinutes;
+        
+        // Find matching schedule within ±15 min
+        const { data: schedules } = await supabase
+          .from('schedules')
+          .select('id, assignment_id, teacher_local_time, duration_minutes')
+          .eq('is_active', true)
+          .eq('day_of_week', todayDay);
+        
+        // Filter schedules belonging to this teacher via assignment
+        let matchedSchedule: { id: string; assignment_id: string } | null = null;
+        if (schedules && schedules.length > 0) {
+          // Get teacher's assignments
+          const { data: assignments } = await supabase
+            .from('student_teacher_assignments')
+            .select('id')
+            .eq('teacher_id', user.id)
+            .eq('status', 'active');
+          const assignmentIds = new Set((assignments || []).map(a => a.id));
+          
+          for (const sch of schedules) {
+            if (!assignmentIds.has(sch.assignment_id)) continue;
+            const [h, m] = (sch.teacher_local_time || '00:00').split(':').map(Number);
+            const schMinutes = h * 60 + m;
+            if (Math.abs(schMinutes - currentMinutes) <= 15) {
+              matchedSchedule = { id: sch.id, assignment_id: sch.assignment_id };
+              break;
+            }
+          }
+        }
+
+        const insertPayload: any = {
+          teacher_id: user.id,
+          status: 'scheduled',
+          scheduled_start: new Date().toISOString(),
+        };
+        if (matchedSchedule) {
+          insertPayload.schedule_id = matchedSchedule.id;
+          insertPayload.assignment_id = matchedSchedule.assignment_id;
+        }
+
         const { data: newSession, error: sessionError } = await supabase
           .from('live_sessions')
-          .insert({
-            teacher_id: user.id,
-            status: 'scheduled',
-            scheduled_start: new Date().toISOString(),
-          })
+          .insert(insertPayload)
           .select('id')
           .single();
 
