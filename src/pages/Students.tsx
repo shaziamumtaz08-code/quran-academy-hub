@@ -224,6 +224,7 @@ export default function Students() {
         .from('student_teacher_assignments')
         .select(`
           student_id,
+          teacher_id,
           subject_id,
           teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name),
           subject:subjects(id, name)
@@ -234,10 +235,12 @@ export default function Students() {
       if (assignError) throw assignError;
 
       const teacherMap = new Map<string, string>();
+      const teacherIdMap = new Map<string, string>();
       const subjectMap = new Map<string, { id: string; name: string }[]>();
       assignments?.forEach((a: any) => {
         if (!teacherMap.has(a.student_id)) {
           teacherMap.set(a.student_id, a.teacher?.full_name || null);
+          teacherIdMap.set(a.student_id, a.teacher_id || null);
         }
         if (a.subject?.id) {
           const existing = subjectMap.get(a.student_id) || [];
@@ -253,6 +256,7 @@ export default function Students() {
         full_name: p.full_name,
         email: p.email,
         teacher_name: teacherMap.get(p.id) || null,
+        teacher_id: teacherIdMap.get(p.id) || null,
         country: p.country || null,
         city: p.city || null,
         gender: p.gender || null,
