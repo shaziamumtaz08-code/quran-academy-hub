@@ -121,15 +121,30 @@ export default function OrganizationSettings() {
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
-  const deleteBranch = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('branches').update({ is_active: false }).eq('id', id);
+  const toggleBranchStatus = useMutation({
+    mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
+      const { error } = await supabase.from('branches').update({ is_active }).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['branches'] });
-      toast({ title: 'Branch deactivated' });
+      queryClient.invalidateQueries({ queryKey: ['divisions'] });
+      toast({ title: 'Branch status updated' });
     },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const deleteBranch = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('branches').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['branches'] });
+      queryClient.invalidateQueries({ queryKey: ['divisions'] });
+      toast({ title: 'Branch deleted' });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
   // ── Divisions ──
@@ -334,13 +349,19 @@ export default function OrganizationSettings() {
                         </TableCell>
                         <TableCell className="text-muted-foreground">{b.timezone || '—'}</TableCell>
                         <TableCell>
-                          <Badge variant={b.is_active ? 'default' : 'destructive'}>{b.is_active ? 'Active' : 'Inactive'}</Badge>
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={b.is_active}
+                              onCheckedChange={checked => toggleBranchStatus.mutate({ id: b.id, is_active: checked })}
+                            />
+                            <span className={`text-xs font-medium ${b.is_active ? 'text-green-600' : 'text-muted-foreground'}`}>
+                              {b.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           <Button variant="ghost" size="icon" onClick={() => openEditBranch(b)}><Pencil className="h-4 w-4" /></Button>
-                          {b.is_active && (
-                            <Button variant="ghost" size="icon" onClick={() => deleteBranch.mutate(b.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                          )}
+                          <Button variant="ghost" size="icon" onClick={() => deleteBranch.mutate(b.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                         </TableCell>
                       </TableRow>
                     ))}
