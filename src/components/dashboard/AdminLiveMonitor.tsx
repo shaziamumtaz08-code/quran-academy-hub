@@ -86,6 +86,21 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
     return () => clearInterval(interval);
   }, []);
 
+  // Realtime subscription for instant session/license updates (e.g. webhook releases)
+  React.useEffect(() => {
+    const channel = supabase
+      .channel('admin-live-monitor')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'live_sessions' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['active-live-sessions-monitor'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'zoom_licenses' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['zoom-licenses-monitor'] });
+        queryClient.invalidateQueries({ queryKey: ['active-live-sessions-monitor'] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
+
   // End session mutation - releases the license and optionally saves recording link
   const endSessionMutation = useMutation({
     mutationFn: async ({
