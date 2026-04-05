@@ -108,6 +108,7 @@ Deno.serve(async (req) => {
     console.log("Zoom signature verified successfully");
 
     const event: ZoomEvent = JSON.parse(body);
+    console.log("=== ZOOM WEBHOOK RECEIVED ===", event.event, new Date().toISOString());
     console.log("Received Zoom webhook event:", event.event);
 
     // Handle Zoom URL validation challenge (required for webhook setup)
