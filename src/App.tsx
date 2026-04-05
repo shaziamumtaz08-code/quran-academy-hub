@@ -53,8 +53,15 @@ import CourseCatalog from "./pages/CourseCatalog";
 import RecordedCourses from "./pages/RecordedCourses";
 import NotificationCenter from "./pages/NotificationCenter";
 import GroupChat from "./pages/GroupChat";
-
 import WhatsAppInbox from "./pages/WhatsAppInbox";
+
+// Landing pages
+import TeachingLanding from "./pages/TeachingLanding";
+import PeopleLanding from "./pages/PeopleLanding";
+import FinanceLanding from "./pages/FinanceLanding";
+import ReportsLanding from "./pages/ReportsLanding";
+import CommunicationLanding from "./pages/CommunicationLanding";
+import SettingsLanding from "./pages/SettingsLanding";
 
 const queryClient = new QueryClient();
 

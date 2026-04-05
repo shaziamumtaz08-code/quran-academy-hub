@@ -168,15 +168,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     [activeRole, activeModelType, activeBranch?.type],
   );
 
-  // Filter items by role
-  const visibleItems = useMemo(() => {
-    return allItems.filter(item => {
-      if (item.href === '/dashboard') return true;
-      if (activeRole === 'super_admin') return true;
-      if (item.roles && activeRole && item.roles.includes(activeRole)) return true;
-      return false;
-    });
-  }, [allItems, activeRole]);
+  // All items are already role-filtered by buildFlatNav
+  const visibleItems = allItems;
 
   const handleLogout = async () => {
     await logout();
