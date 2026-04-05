@@ -1468,78 +1468,83 @@ export default function Payments() {
           )}
         </div>
 
-        {/* Summary Cards — all values in PKR */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Total Fees Card */}
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[hsl(var(--navy)/0.06)] to-[hsl(var(--primary)/0.12)] border border-primary/10 p-5">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full -translate-y-1/3 translate-x-1/3" />
-            <div className="flex items-start gap-3 relative z-10">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                <span className="text-lg font-bold text-primary">₨</span>
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">Total Fees (PKR)</p>
-                <p className="text-2xl font-serif font-bold text-foreground">₨ {totalFeesPKR.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted-foreground">
-                  <span>Local: ₨ {localTotalPKR.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-                  <span>•</span>
-                  <span>Foreign (est.): ₨ {foreignEstPKR.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+        {/* Summary Cards — per-currency native totals */}
+        <div className="space-y-3">
+          {/* PKR Row */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/10 p-5">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <span className="text-lg font-bold text-primary">₨</span>
                 </div>
-                {ratesAreLive && (
-                  <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                    Live rates · spread −2 PKR
-                  </p>
-                )}
-                {!ratesAreLive && ratesLastUpdated && (
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    Cached rates from {ratesLastUpdated.toLocaleTimeString()}
-                  </p>
-                )}
-                {ratesError && !ratesLastUpdated && (
-                  <p className="text-[10px] text-destructive mt-1">{ratesError}</p>
-                )}
+                <div className="min-w-0">
+                  <p className="text-xs text-muted-foreground">Total Fees (PKR)</p>
+                  <p className="text-2xl font-serif font-bold text-foreground">₨ {localTotalPKR.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                </div>
               </div>
             </div>
-          </div>
-
-          {/* Collected Card */}
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20 border border-emerald-100 dark:border-emerald-900/30 p-5">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-100/50 dark:bg-emerald-900/20 rounded-full -translate-y-1/3 translate-x-1/3" />
-            <div className="flex items-start gap-3 relative z-10">
-              <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center shrink-0">
-                <CheckCircle className="h-5 w-5 text-emerald-600" />
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20 border border-emerald-100 dark:border-emerald-900/30 p-5">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center shrink-0">
+                  <CheckCircle className="h-5 w-5 text-emerald-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-muted-foreground">Collected (PKR)</p>
+                  <p className="text-2xl font-serif font-bold text-emerald-700 dark:text-emerald-400">₨ {lcyCollected.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">Collected (PKR)</p>
-                <p className="text-2xl font-serif font-bold text-emerald-700 dark:text-emerald-400">₨ {collectedPKR.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted-foreground">
-                  <span>PKR: ₨ {lcyCollected.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-                  <span>•</span>
-                  <span>FCY: ₨ {fcyCollected.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+            </div>
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-950/20 dark:to-rose-950/20 border border-red-100 dark:border-red-900/30 p-5">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/50 flex items-center justify-center shrink-0">
+                  <XCircle className="h-5 w-5 text-red-600" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-muted-foreground">Pending (PKR)</p>
+                  <p className="text-2xl font-serif font-bold text-red-600 dark:text-red-400">₨ {lcyPending.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Pending Card */}
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-950/20 dark:to-rose-950/20 border border-red-100 dark:border-red-900/30 p-5">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-red-100/50 dark:bg-red-900/20 rounded-full -translate-y-1/3 translate-x-1/3" />
-            <div className="flex items-start gap-3 relative z-10">
-              <div className="w-10 h-10 rounded-lg bg-red-100 dark:bg-red-900/50 flex items-center justify-center shrink-0">
-                <XCircle className="h-5 w-5 text-red-600" />
+          {/* FCY Rows — one per currency */}
+          {fcyCurrencyBreakdown.map(([currency, data]) => (
+            <div key={currency} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-secondary/30 to-secondary/50 border border-border p-5">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center shrink-0">
+                    <DollarSign className="h-5 w-5 text-secondary-foreground" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Total Fees ({currency})</p>
+                    <p className="text-2xl font-serif font-bold text-foreground">{currency} {data.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                  </div>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">Pending (PKR)</p>
-                <p className="text-2xl font-serif font-bold text-red-600 dark:text-red-400">₨ {pendingPKR.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted-foreground">
-                  <span>PKR: ₨ {lcyPending.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-                  <span>•</span>
-                  <span>FCY (est.): ₨ {fcyPending.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-50/50 to-teal-50/50 dark:from-emerald-950/10 dark:to-teal-950/10 border border-emerald-100/50 dark:border-emerald-900/20 p-5">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-emerald-100/70 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
+                    <CheckCircle className="h-5 w-5 text-emerald-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Collected ({currency})</p>
+                    <p className="text-2xl font-serif font-bold text-emerald-700 dark:text-emerald-400">{currency} {data.collected.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-50/50 to-rose-50/50 dark:from-red-950/10 dark:to-rose-950/10 border border-red-100/50 dark:border-red-900/20 p-5">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-red-100/70 dark:bg-red-900/30 flex items-center justify-center shrink-0">
+                    <XCircle className="h-5 w-5 text-red-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Pending ({currency})</p>
+                    <p className="text-2xl font-serif font-bold text-red-600 dark:text-red-400">{currency} {data.pending.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          ))}
         </div>
 
         {/* Tabs: Invoices | Billing Plans */}
