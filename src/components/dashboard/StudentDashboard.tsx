@@ -426,6 +426,15 @@ export function StudentDashboard() {
       </div>
     );
   };
+
+  const leftContent = (
+    <>
+      {/* ═══ NEXT ACTION PANEL ═══ */}
+      {nc && ncEnrollment ? (
+        <div className="bg-gradient-to-br from-primary to-[hsl(var(--navy-light))] rounded-2xl px-4 py-3.5 text-primary-foreground shadow-card">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-[10px] opacity-70 font-extrabold tracking-widest uppercase">⏰ Next Class</p>
+            {renderJoinArea()}
           </div>
           <p className="text-base font-black truncate">{ncEnrollment.courseName}</p>
           <p className="text-[11px] text-primary-foreground/70 font-semibold mt-0.5">
