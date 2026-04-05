@@ -13,7 +13,7 @@ import { StudentCard } from '@/components/students/StudentCard';
 import { StudentDetailDrawer } from '@/components/students/StudentDetailDrawer';
 import { StudentHistoryDialog } from '@/components/students/StudentHistoryDialog';
 import { StudentScheduleDialog } from '@/components/students/StudentScheduleDialog';
-import { QuickAttendanceModal } from '@/components/attendance/QuickAttendanceModal';
+import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
 import { useSearchParams } from 'react-router-dom';
 
 interface Student {
@@ -611,10 +611,17 @@ export default function Students() {
 
         {/* Quick Attendance Modal */}
         {isTeacher && attendanceStudent && (
-          <QuickAttendanceModal
+          <UnifiedAttendanceForm
             open={!!attendanceStudent}
             onOpenChange={(open) => !open && setAttendanceStudent(null)}
-            student={attendanceStudent}
+            student={{
+              id: attendanceStudent.id,
+              full_name: attendanceStudent.full_name,
+              subject_name: attendanceStudent.subject_name,
+              last_lesson: attendanceStudent.last_lesson,
+              daily_target_lines: attendanceStudent.daily_target_lines,
+              preferred_unit: attendanceStudent.preferred_unit,
+            }}
           />
         )}
       </div>
