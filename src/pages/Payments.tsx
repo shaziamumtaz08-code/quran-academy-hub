@@ -152,7 +152,7 @@ export default function Payments() {
   const [editInvoiceData, setEditInvoiceData] = useState<{ id: string; amount: string; due_date: string; billing_month: string; currency: string; remark: string; status: string; amount_paid: string; forgiven_amount: string; payment_method: string; paid_at: string; period_from: string; period_to: string; amount_local: string; receipt_url: string } | null>(null);
   const editReceiptInputRef = useRef<HTMLInputElement>(null);
   const [editReceiptFile, setEditReceiptFile] = useState<File | null>(null);
-  const [actionModal, setActionModal] = useState<{ type: 'mark_unpaid' | 'apply_discount' | 'waive_fee' | 'reverse_payment' | 'view_history' | 'restore_to_pending'; invoice: InvoiceRow } | null>(null);
+  const [actionModal, setActionModal] = useState<{ type: 'mark_unpaid' | 'apply_discount' | 'waive_fee' | 'reverse_payment' | 'view_history' | 'restore_to_pending' | 'reset_invoice'; invoice: InvoiceRow } | null>(null);
   const [receiptViewInvoice, setReceiptViewInvoice] = useState<InvoiceRow | null>(null);
   const [receiptTransactions, setReceiptTransactions] = useState<any[]>([]);
   const [actionReason, setActionReason] = useState('');
@@ -864,16 +864,14 @@ export default function Payments() {
       // Helper to check if existing invoice needs updating
       const checkAndQueueUpdate = (existingInv: any, prorated: { amount: number; period_from: string; period_to: string }, currency: string) => {
         if (!existingInv) return false;
+        // CRITICAL: Never update paid or partially_paid invoices — past invoices are immutable
+        if (existingInv.status === 'paid' || existingInv.status === 'partially_paid') return false;
+        
         const amountChanged = Math.abs(existingInv.amount - prorated.amount) > 0.01;
         const periodChanged = existingInv.period_from !== prorated.period_from || existingInv.period_to !== prorated.period_to;
         const currencyChanged = existingInv.currency !== currency;
         
         if (existingInv.status === 'pending' && (amountChanged || periodChanged || currencyChanged)) {
-          updatedInvoices.push({ id: existingInv.id, amount: prorated.amount, currency, period_from: prorated.period_from, period_to: prorated.period_to });
-          return true;
-        }
-        // For paid/partially_paid invoices, update amount/currency if changed (preserve payment state)
-        if ((existingInv.status === 'paid' || existingInv.status === 'partially_paid') && (amountChanged || currencyChanged)) {
           updatedInvoices.push({ id: existingInv.id, amount: prorated.amount, currency, period_from: prorated.period_from, period_to: prorated.period_to });
           return true;
         }
@@ -1271,6 +1269,31 @@ export default function Payments() {
           // Delete all payment transactions for this invoice so ledger is consistent
           await supabase.from('payment_transactions').delete().eq('invoice_id', invoice.id);
           await supabase.from('fee_invoices').update({ status: 'pending' as any, amount_paid: 0, paid_at: null, forgiven_amount: 0 }).eq('id', invoice.id);
+          break;
+        }
+        case 'reset_invoice': {
+          // Delete all adjustments, transactions; recalculate from billing plan
+          await supabase.from('invoice_adjustments').delete().eq('invoice_id', invoice.id);
+          await supabase.from('payment_transactions').delete().eq('invoice_id', invoice.id);
+          
+          // Get the correct base fee from the billing plan
+          let correctAmount = Number(invoice.amount);
+          if (invoice.plan_id) {
+            const { data: plan } = await supabase.from('student_billing_plans')
+              .select('net_recurring_fee, currency').eq('id', invoice.plan_id).maybeSingle();
+            if (plan) {
+              correctAmount = Number(plan.net_recurring_fee);
+            }
+          }
+          
+          await createAdjustment(invoice.id, 'reset_invoice', prev, { 
+            status: 'pending', amount: correctAmount, amount_paid: 0, forgiven_amount: 0 
+          }, reason);
+          
+          await supabase.from('fee_invoices').update({ 
+            amount: correctAmount, status: 'pending' as any, 
+            amount_paid: 0, paid_at: null, forgiven_amount: 0 
+          }).eq('id', invoice.id);
           break;
         }
       }
