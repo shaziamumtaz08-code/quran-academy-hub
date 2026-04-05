@@ -33,7 +33,7 @@ export default function TeachingLanding() {
       const weekEnd = format(endOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
 
       const [liveRes, assignRes, schedRes, attRes, planRes, subRes] = await Promise.all([
-        supabase.from('live_sessions').select('id', { count: 'exact', head: true }).eq('status', 'active'),
+        supabase.from('live_sessions').select('id', { count: 'exact', head: true }).eq('status', 'live'),
         supabase.from('student_teacher_assignments').select('id', { count: 'exact', head: true }).eq('status', 'active'),
         supabase.from('schedules').select('id', { count: 'exact', head: true }).eq('is_active', true),
         supabase.from('attendance').select('status').gte('class_date', weekStart).lte('class_date', weekEnd),
