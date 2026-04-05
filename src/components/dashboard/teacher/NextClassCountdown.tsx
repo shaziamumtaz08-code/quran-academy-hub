@@ -171,6 +171,23 @@ export function NextClassCountdown() {
   parts.push(`${String(t.mins).padStart(2, '0')}m`);
   const countdownText = parts.join('  ');
 
+  // Check if there's an active live session for this teacher
+  const { data: activeSession } = useQuery({
+    queryKey: ['active-session-compact', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data } = await supabase
+        .from('live_sessions')
+        .select('id, status, license:zoom_licenses(meeting_link)')
+        .eq('teacher_id', user.id)
+        .eq('status', 'live')
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!user?.id,
+    refetchInterval: 30000,
+  });
+
   return (
     <div className="bg-gradient-to-br from-primary to-[hsl(var(--navy-light))] rounded-2xl px-3 py-2.5 text-primary-foreground shadow-card">
       {/* Row 1: Label + Name + Start */}
@@ -180,7 +197,21 @@ export function NextClassCountdown() {
           Next
         </p>
         <p className="text-[15px] leading-tight font-extrabold truncate flex-1 min-w-0">{nextClass.studentName}</p>
-        <StartClassButton />
+        {activeSession ? (
+          <Button
+            size="sm"
+            className="h-7 px-2.5 text-[11px] font-bold bg-emerald-500 hover:bg-emerald-600 text-white gap-1"
+            onClick={() => {
+              const link = (activeSession.license as any)?.meeting_link;
+              if (link) window.open(link, '_blank');
+            }}
+          >
+            <Video className="h-3 w-3" />
+            Rejoin
+          </Button>
+        ) : (
+          <StartClassButton />
+        )}
       </div>
 
       {/* Row 2: Details + Countdown pills */}
