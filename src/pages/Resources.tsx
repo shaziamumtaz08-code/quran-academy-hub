@@ -648,7 +648,7 @@ export default function Resources() {
       <div className="page-header-premium rounded-xl p-6 mb-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            {currentFolderId && (
+            {currentFolderId && activeTab === 'browse' && (
               <Button 
                 variant="ghost" 
                 size="icon" 
@@ -660,17 +660,19 @@ export default function Resources() {
             )}
             <div>
               <h1 className="text-2xl font-bold text-white">Resources</h1>
-              <div className="mt-1">
-                <ResourcesBreadcrumb
-                  folderPath={folderPath}
-                  onNavigate={navigateToFolder}
-                  onDrop={handleDropOnBreadcrumb}
-                />
-              </div>
+              {activeTab === 'browse' && (
+                <div className="mt-1">
+                  <ResourcesBreadcrumb
+                    folderPath={folderPath}
+                    onNavigate={navigateToFolder}
+                    onDrop={handleDropOnBreadcrumb}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
-          {canManage && (
+          {canManage && activeTab === 'browse' && (
             <div className="flex items-center gap-3">
               <Button 
                 variant="outline" 
@@ -689,6 +691,37 @@ export default function Resources() {
               </Button>
             </div>
           )}
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={() => setActiveTab('browse')}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+              activeTab === 'browse'
+                ? 'bg-white text-primary shadow-md'
+                : 'text-white/70 hover:text-white hover:bg-white/10'
+            }`}
+          >
+            <FolderOpen className="h-3.5 w-3.5 inline mr-1.5" />
+            Browse
+          </button>
+          <button
+            onClick={() => setActiveTab('assigned')}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+              activeTab === 'assigned'
+                ? 'bg-white text-primary shadow-md'
+                : 'text-white/70 hover:text-white hover:bg-white/10'
+            }`}
+          >
+            <Star className="h-3.5 w-3.5 inline mr-1.5" />
+            My Assigned
+            {assignedResources.length > 0 && (
+              <Badge className="ml-1.5 text-[10px] px-1.5 py-0 h-4 bg-accent/20 text-white border-0">
+                {assignedResources.length}
+              </Badge>
+            )}
+          </button>
         </div>
       </div>
 
