@@ -14,7 +14,10 @@ import {
   Search,
   Loader2,
   FolderOpen,
+  Star,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { FileDetailPanel } from "@/components/resources/FileDetailPanel";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -88,12 +91,13 @@ function getFileType(filename: string): string {
 }
 
 export default function Resources() {
-  const { user, isSuperAdmin, profile } = useAuth();
+  const { user, isSuperAdmin, profile, activeRole } = useAuth();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Current folder from URL
   const currentFolderId = searchParams.get("folder") || null;
+  const activeTab = searchParams.get("tab") || "browse";
 
   // UI state
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
@@ -104,9 +108,36 @@ export default function Resources() {
   const [renameItem, setRenameItem] = useState<{ type: "folder" | "file"; item: Folder | Resource } | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteItem, setDeleteItem] = useState<{ type: "folder" | "file"; item: Folder | Resource } | null>(null);
+  const [detailResource, setDetailResource] = useState<Resource | null>(null);
 
   // Permissions - Admin & Super Admin can manage, others can view
   const canManage = isSuperAdmin || profile?.role === "admin";
+
+  // Fetch assigned resources for "My Assigned" tab
+  const { data: assignedResources = [] } = useQuery({
+    queryKey: ['my-assigned-resources', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data: assignments } = await supabase
+        .from('resource_assignments')
+        .select('resource_id')
+        .eq('assigned_to', user.id);
+      const resourceIds = (assignments || []).map((a: any) => a.resource_id);
+      if (!resourceIds.length) return [];
+      const { data: res } = await supabase
+        .from('resources')
+        .select('*')
+        .in('id', resourceIds);
+      return (res || []).map((r: any) => ({ ...r, isAssigned: true }));
+    },
+    enabled: !!user?.id && activeTab === 'assigned',
+  });
+
+  const setActiveTab = (tab: string) => {
+    const params: Record<string, string> = { tab };
+    if (tab === 'browse' && currentFolderId) params.folder = currentFolderId;
+    setSearchParams(params);
+  };
 
   // Fetch all folders
   const { data: folders = [], isLoading: foldersLoading } = useQuery({
