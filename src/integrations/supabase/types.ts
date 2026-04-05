@@ -167,6 +167,7 @@ export type Database = {
           teacher_join_time: string | null
           updated_at: string
           variance_reason: string | null
+          voice_note_url: string | null
         }
         Insert: {
           absence_type?: string | null
@@ -216,6 +217,7 @@ export type Database = {
           teacher_join_time?: string | null
           updated_at?: string
           variance_reason?: string | null
+          voice_note_url?: string | null
         }
         Update: {
           absence_type?: string | null
@@ -265,6 +267,7 @@ export type Database = {
           teacher_join_time?: string | null
           updated_at?: string
           variance_reason?: string | null
+          voice_note_url?: string | null
         }
         Relationships: [
           {
