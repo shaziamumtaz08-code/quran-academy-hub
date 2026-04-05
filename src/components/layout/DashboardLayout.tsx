@@ -108,7 +108,7 @@ function buildFlatNav(role: AppRole | null, modelType: string | null, branchType
     // ── Collaboration ──
     { label: 'Work Hub', href: '/hub', icon: Megaphone, roles: [...adminOnly, 'teacher'], divider: true },
     { label: 'Chat', href: '/chat', icon: MessageSquare, roles: [...adminOnly, 'teacher', 'student', 'parent'] },
-    { label: 'My Resources', href: '/my-resources', icon: FolderOpen, roles: [...adminOnly, 'teacher', 'student'] },
+    { label: 'Resources', href: '/resources', icon: FolderOpen, roles: [...adminOnly, 'teacher', 'student'] },
 
     // ── Admin tools ──
     ...(!isOnsite ? [{ label: 'Zoom Engine', href: '/zoom-management', icon: Video, roles: adminOnly, divider: true }] : []),
