@@ -13,6 +13,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { ExportDialog } from '@/components/export/ExportDialog';
+import { TeacherDetailDrawer } from '@/components/teachers/TeacherDetailDrawer';
+import { EntityLink } from '@/components/shared/EntityLink';
 
 interface StudentWithSchedule {
   id: string;
@@ -43,6 +45,7 @@ export default function Teachers() {
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [formData, setFormData] = useState({ name: '', email: '', bank_name: '', bank_account_title: '', bank_account_number: '', bank_iban: '' });
   const [expandedTeachers, setExpandedTeachers] = useState<Set<string>>(new Set());
+  const [drawerTeacher, setDrawerTeacher] = useState<{ id: string; full_name: string; email: string | null } | null>(null);
   
   // Sorting & Filtering
   const [sortField, setSortField] = useState<SortField>('name');
@@ -497,7 +500,16 @@ export default function Teachers() {
                           </Button>
                         )}
                       </TableCell>
-                      <TableCell className="font-medium">{teacher.full_name}</TableCell>
+                      <TableCell>
+                        <EntityLink
+                          to="#"
+                          variant="name"
+                          className="text-sm"
+                          onClick={(e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); setDrawerTeacher({ id: teacher.id, full_name: teacher.full_name, email: teacher.email }); }}
+                        >
+                          {teacher.full_name}
+                        </EntityLink>
+                      </TableCell>
                       <TableCell>
                         {teacher.email ? (
                           <span className="flex items-center gap-2 text-sm">
@@ -555,7 +567,7 @@ export default function Teachers() {
                                     <User className="h-4 w-4 text-primary" />
                                   </div>
                                   <div className="min-w-0 flex-1">
-                                    <p className="font-medium text-sm">{student.full_name}</p>
+                                    <EntityLink to={`/students?search=${encodeURIComponent(student.full_name)}`} variant="name" className="text-sm">{student.full_name}</EntityLink>
                                     <p className="text-xs text-muted-foreground">
                                       {student.age && `Age ${student.age}`}
                                       {student.age && student.gender && ' • '}
@@ -603,6 +615,13 @@ export default function Teachers() {
             city: t.city || '',
             student_count: t.student_count,
           }))}
+        />
+
+        {/* Teacher Detail Drawer */}
+        <TeacherDetailDrawer
+          open={!!drawerTeacher}
+          onOpenChange={(open) => !open && setDrawerTeacher(null)}
+          teacher={drawerTeacher}
         />
       </div>
     </DashboardLayout>

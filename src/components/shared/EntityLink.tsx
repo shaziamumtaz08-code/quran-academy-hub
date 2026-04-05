@@ -12,17 +12,19 @@ interface EntityLinkProps {
   /** Visual variant */
   variant?: 'name' | 'count' | 'badge';
   className?: string;
+  onClick?: (e: React.MouseEvent) => void;
 }
 
 /**
  * Clickable entity reference — use for student names, teacher names,
  * counts that link to filtered views, etc.
  */
-export function EntityLink({ children, to, state, variant = 'name', className }: EntityLinkProps) {
+export function EntityLink({ children, to, state, variant = 'name', className, onClick }: EntityLinkProps) {
   return (
     <Link
       to={to}
       state={state}
+      onClick={onClick}
       className={cn(
         'inline-flex items-center gap-1 transition-colors duration-150 no-underline',
         variant === 'name' && 'text-primary hover:text-primary/80 font-semibold cursor-pointer hover:underline underline-offset-2',

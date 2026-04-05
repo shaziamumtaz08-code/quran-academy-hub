@@ -15,12 +15,15 @@ import { StudentHistoryDialog } from '@/components/students/StudentHistoryDialog
 import { StudentScheduleDialog } from '@/components/students/StudentScheduleDialog';
 import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
 import { useSearchParams } from 'react-router-dom';
+import { EntityLink } from '@/components/shared/EntityLink';
+import { TeacherDetailDrawer } from '@/components/teachers/TeacherDetailDrawer';
 
 interface Student {
   id: string;
   full_name: string;
   email: string | null;
   teacher_name: string | null;
+  teacher_id: string | null;
   country: string | null;
   city: string | null;
   gender: string | null;
@@ -53,6 +56,7 @@ export default function Students() {
   const [historyStudent, setHistoryStudent] = useState<TeacherStudent | null>(null);
   const [scheduleStudent, setScheduleStudent] = useState<TeacherStudent | null>(null);
   const [attendanceStudent, setAttendanceStudent] = useState<TeacherStudent | null>(null);
+  const [drawerTeacher, setDrawerTeacher] = useState<{ id: string; full_name: string } | null>(null);
   const { user, activeRole } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   
@@ -163,15 +167,17 @@ export default function Students() {
         const childIds = (links || []).map((l: any) => l.student_id);
         const { data: assignments } = await supabase
           .from('student_teacher_assignments')
-          .select(`student_id, teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name), subject:subjects(id, name)`)
+          .select(`student_id, teacher_id, teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name), subject:subjects(id, name)`)
           .in('student_id', childIds)
           .eq('status', 'active');
 
         const teacherMap = new Map<string, string>();
+        const teacherIdMap = new Map<string, string>();
         const subjectMap = new Map<string, { id: string; name: string }[]>();
         assignments?.forEach((a: any) => {
           if (!teacherMap.has(a.student_id)) {
             teacherMap.set(a.student_id, a.teacher?.full_name || null);
+            teacherIdMap.set(a.student_id, a.teacher_id || null);
           }
           if (a.subject?.id) {
             const existing = subjectMap.get(a.student_id) || [];
@@ -187,6 +193,7 @@ export default function Students() {
           full_name: l.student?.full_name || 'Unknown',
           email: l.student?.email || null,
           teacher_name: teacherMap.get(l.student_id) || null,
+          teacher_id: teacherIdMap.get(l.student_id) || null,
           country: null,
           city: null,
           gender: null,
@@ -217,6 +224,7 @@ export default function Students() {
         .from('student_teacher_assignments')
         .select(`
           student_id,
+          teacher_id,
           subject_id,
           teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name),
           subject:subjects(id, name)
@@ -227,10 +235,12 @@ export default function Students() {
       if (assignError) throw assignError;
 
       const teacherMap = new Map<string, string>();
+      const teacherIdMap = new Map<string, string>();
       const subjectMap = new Map<string, { id: string; name: string }[]>();
       assignments?.forEach((a: any) => {
         if (!teacherMap.has(a.student_id)) {
           teacherMap.set(a.student_id, a.teacher?.full_name || null);
+          teacherIdMap.set(a.student_id, a.teacher_id || null);
         }
         if (a.subject?.id) {
           const existing = subjectMap.get(a.student_id) || [];
@@ -246,6 +256,7 @@ export default function Students() {
         full_name: p.full_name,
         email: p.email,
         teacher_name: teacherMap.get(p.id) || null,
+        teacher_id: teacherIdMap.get(p.id) || null,
         country: p.country || null,
         city: p.city || null,
         gender: p.gender || null,
@@ -541,7 +552,17 @@ export default function Students() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {student.teacher_name ? (
+                        {student.teacher_name && student.teacher_id ? (
+                          <EntityLink
+                            to="#"
+                            variant="name"
+                            className="text-sm"
+                            onClick={(e) => { e.preventDefault(); setDrawerTeacher({ id: student.teacher_id!, full_name: student.teacher_name! }); }}
+                          >
+                            <User className="h-3.5 w-3.5" />
+                            {student.teacher_name}
+                          </EntityLink>
+                        ) : student.teacher_name ? (
                           <span className="flex items-center gap-2">
                             <User className="h-4 w-4 text-muted-foreground" />
                             {student.teacher_name}
@@ -624,6 +645,13 @@ export default function Students() {
             }}
           />
         )}
+
+        {/* Teacher Detail Drawer */}
+        <TeacherDetailDrawer
+          open={!!drawerTeacher}
+          onOpenChange={(open) => !open && setDrawerTeacher(null)}
+          teacher={drawerTeacher}
+        />
       </div>
     </DashboardLayout>
   );

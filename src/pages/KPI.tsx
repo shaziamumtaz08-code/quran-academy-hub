@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, differenceInHours, startOfMonth, endOfMonth, parseISO } from 'date-fns';
+import { EntityLink } from '@/components/shared/EntityLink';
+import { TeacherDetailDrawer } from '@/components/teachers/TeacherDetailDrawer';
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => {
   const d = new Date(2025, i, 1);
@@ -17,8 +19,9 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => {
 
 export default function KPI() {
   const now = new Date();
-  const [selectedYear, setSelectedYear] = React.useState(String(now.getFullYear()));
-  const [selectedMonth, setSelectedMonth] = React.useState(String(now.getMonth() + 1).padStart(2, '0'));
+  const [selectedYear, setSelectedYear] = useState(String(now.getFullYear()));
+  const [selectedMonth, setSelectedMonth] = useState(String(now.getMonth() + 1).padStart(2, '0'));
+  const [drawerTeacher, setDrawerTeacher] = useState<{ id: string; full_name: string } | null>(null);
   const { activeDivision } = useDivision();
   const activeDivisionId = activeDivision?.id;
 
@@ -245,8 +248,19 @@ export default function KPI() {
                         {t.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                       </div>
                       <div>
-                        <p className="font-bold text-foreground text-sm">{t.name}</p>
-                        <p className="text-xs text-muted-foreground">{t.studentsAssigned} students</p>
+                        <EntityLink
+                          to="#"
+                          variant="name"
+                          className="text-sm"
+                          onClick={(e) => { e.preventDefault(); setDrawerTeacher({ id: t.id, full_name: t.name }); }}
+                        >
+                          {t.name}
+                        </EntityLink>
+                        <p className="text-xs text-muted-foreground">
+                          <EntityLink to={`/students?search=`} variant="count" className="text-[11px]">
+                            {t.studentsAssigned} students
+                          </EntityLink>
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -256,7 +270,8 @@ export default function KPI() {
                   </div>
                   <div className="p-4 space-y-3">
                     <div className="grid grid-cols-4 gap-2 text-center">
-                      <div>
+                      <div className="cursor-pointer hover:bg-secondary/80 rounded-lg transition-colors"
+                        onClick={() => setDrawerTeacher({ id: t.id, full_name: t.name })}>
                         <p className="text-lg font-black text-foreground">{t.totalClasses}</p>
                         <p className="text-[10px] text-muted-foreground">Total</p>
                       </div>
@@ -309,6 +324,13 @@ export default function KPI() {
           </>
         )}
       </div>
+
+      {/* Teacher Detail Drawer */}
+      <TeacherDetailDrawer
+        open={!!drawerTeacher}
+        onOpenChange={(open) => !open && setDrawerTeacher(null)}
+        teacher={drawerTeacher}
+      />
     </DashboardLayout>
   );
 }
