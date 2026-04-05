@@ -1,7 +1,6 @@
 import React, { Suspense, lazy, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useDivision } from '@/contexts/DivisionContext';
 import { LandingPageShell, LandingCard } from '@/components/layout/LandingPageShell';
 import { GraduationCap, Users, UserCheck, UserPlus } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,22 +13,20 @@ const LeadsPipeline = lazy(() => import('./LeadsPipeline'));
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
 
 export default function PeopleLanding() {
-  const { activeDivision } = useDivision();
-  const divisionId = activeDivision?.id;
-
   const { data: counts, isLoading } = useQuery({
-    queryKey: ['people-landing-counts', divisionId],
+    queryKey: ['people-landing-counts'],
     queryFn: async () => {
-      const sb = supabase as any;
-      const teachersRes = await sb.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'teacher');
-      const studentsRes = await sb.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'student');
-      const usersRes = await sb.from('profiles').select('id', { count: 'exact', head: true });
-      const leadsRes = await sb.from('leads').select('*', { count: 'exact', head: true });
+      const [teacherRoles, studentRoles, allProfiles, openLeads] = await Promise.all([
+        supabase.from('user_roles').select('id', { count: 'exact', head: true }).eq('role', 'teacher'),
+        supabase.from('user_roles').select('id', { count: 'exact', head: true }).eq('role', 'student'),
+        supabase.from('profiles').select('id', { count: 'exact', head: true }),
+        supabase.from('leads').select('id', { count: 'exact', head: true }).neq('status', 'closed'),
+      ]);
       return {
-        teachers: teachersRes.count || 0,
-        students: studentsRes.count || 0,
-        users: usersRes.count || 0,
-        leads: leadsRes.count || 0,
+        teachers: teacherRoles.count || 0,
+        students: studentRoles.count || 0,
+        users: allProfiles.count || 0,
+        leads: openLeads.count || 0,
       };
     },
   });

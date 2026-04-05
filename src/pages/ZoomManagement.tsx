@@ -7,128 +7,111 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { AdminLiveMonitor } from '@/components/dashboard/AdminLiveMonitor';
-import { LiveClassQueue } from '@/components/dashboard/LiveClassQueue';
 import { useToast } from '@/hooks/use-toast';
-import { Video, Plus, Trash2, Wifi, WifiOff, Settings, Users, Clock, ExternalLink, RefreshCw } from 'lucide-react';
-import { format, differenceInMinutes } from 'date-fns';
+import { Video, Plus, Trash2, Wifi, WifiOff, Settings, Users, Clock, ExternalLink, RefreshCw, Radio, ArrowUpRight, ArrowDownLeft, Timer } from 'lucide-react';
+import { format, differenceInMinutes, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Progress } from '@/components/ui/progress';
+
+function LiveTimer({ startTime }: { startTime: string }) {
+  const [elapsed, setElapsed] = React.useState(0);
+  React.useEffect(() => {
+    const calc = () => setElapsed(differenceInMinutes(new Date(), new Date(startTime)));
+    calc();
+    const interval = setInterval(calc, 30000);
+    return () => clearInterval(interval);
+  }, [startTime]);
+  return <span className="tabular-nums font-mono text-sm font-semibold">{elapsed} min</span>;
+}
 
 export default function ZoomManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [newLicense, setNewLicense] = React.useState({ zoom_email: '', meeting_link: '', host_id: '' });
   const [addDialogOpen, setAddDialogOpen] = React.useState(false);
+  const [activeSection, setActiveSection] = React.useState<'rooms' | 'sessions' | 'logs'>('rooms');
 
-  // Fetch all zoom licenses
   const { data: licenses, isLoading: licensesLoading } = useQuery({
     queryKey: ['zoom-licenses-management'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('zoom_licenses')
-        .select('*')
-        .order('created_at', { ascending: true });
-      
+      const { data, error } = await supabase.from('zoom_licenses').select('*').order('created_at', { ascending: true });
       if (error) throw error;
       return data || [];
     },
+    refetchInterval: 15000,
   });
 
-  // Fetch all live sessions with details
-  const { data: liveSessions, isLoading: sessionsLoading } = useQuery({
+  const { data: liveSessions } = useQuery({
     queryKey: ['all-live-sessions'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('live_sessions')
-        .select(`
-          id,
-          teacher_id,
-          actual_start,
-          actual_end,
-          status,
-          created_at,
-          recording_link,
-          stream_url,
-          license:zoom_licenses(id, zoom_email, meeting_link)
-        `)
+        .select('id, teacher_id, actual_start, actual_end, status, created_at, recording_link, license_id, schedule_id')
         .order('created_at', { ascending: false })
         .limit(50);
-
       if (error) throw error;
-
       if (!data || data.length === 0) return [];
 
-      // Get teacher names
-      const teacherIds = [...new Set(data.map(s => s.teacher_id))];
-      const { data: teachers } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .in('id', teacherIds);
-
+      const teacherIds = [...new Set(data.map((s: any) => s.teacher_id))] as string[];
+      const { data: teachers } = await supabase.from('profiles').select('id, full_name').in('id', teacherIds);
       const teacherMap = new Map(teachers?.map(t => [t.id, t.full_name]) || []);
 
-      return data.map(session => ({
+      return data.map((session: any) => ({
         ...session,
         teacherName: teacherMap.get(session.teacher_id) || 'Unknown',
       }));
     },
-    refetchInterval: 30000,
+    refetchInterval: 15000,
   });
 
-  // Fetch attendance logs
   const { data: attendanceLogs } = useQuery({
     queryKey: ['all-attendance-logs'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('zoom_attendance_logs')
-        .select(`
-          id,
-          user_id,
-          action,
-          timestamp,
-          session_id
-        `)
+        .select('id, user_id, action, timestamp, session_id, join_time, leave_time, total_duration_minutes')
         .order('timestamp', { ascending: false })
         .limit(100);
-
       if (error) throw error;
       if (!data || data.length === 0) return [];
 
-      const userIds = [...new Set(data.map(l => l.user_id))];
-      const { data: users } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .in('id', userIds);
-
+      const userIds = [...new Set(data.map((l: any) => l.user_id))] as string[];
+      const { data: users } = await supabase.from('profiles').select('id, full_name').in('id', userIds);
       const userMap = new Map(users?.map(u => [u.id, u.full_name]) || []);
 
-      return data.map(log => ({
+      return data.map((log: any) => ({
         ...log,
         userName: userMap.get(log.user_id) || 'Unknown',
       }));
     },
-    refetchInterval: 30000,
+    refetchInterval: 15000,
   });
 
-  // Add license mutation
+  // Active sessions mapped by license_id
+  const activeSessionsByLicense = React.useMemo(() => {
+    const map = new Map<string, any>();
+    liveSessions?.filter((s: any) => s.status === 'live').forEach((s: any) => {
+      if (s.license_id) map.set(s.license_id, s);
+    });
+    return map;
+  }, [liveSessions]);
+
   const addLicenseMutation = useMutation({
     mutationFn: async (license: typeof newLicense) => {
-      const { error } = await supabase
-        .from('zoom_licenses')
-        .insert({
-          zoom_email: license.zoom_email,
-          meeting_link: license.meeting_link,
-          host_id: license.host_id || null,
-          status: 'available',
-        });
+      const { error } = await supabase.from('zoom_licenses').insert({
+        zoom_email: license.zoom_email,
+        meeting_link: license.meeting_link,
+        host_id: license.host_id || null,
+        status: 'available',
+      });
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: 'License Added', description: 'New Zoom license has been added successfully.' });
+      toast({ title: 'License Added' });
       setNewLicense({ zoom_email: '', meeting_link: '', host_id: '' });
       setAddDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ['zoom-licenses-management'] });
@@ -138,23 +121,16 @@ export default function ZoomManagement() {
     },
   });
 
-  // Delete license mutation
   const deleteLicenseMutation = useMutation({
     mutationFn: async (licenseId: string) => {
-      // First, detach the license from any live_sessions to avoid FK violation
-      await supabase
-        .from('live_sessions')
-        .update({ license_id: null, status: 'completed', actual_end: new Date().toISOString() } as any)
+      await (supabase as any).from('live_sessions')
+        .update({ license_id: null, status: 'completed', actual_end: new Date().toISOString() })
         .eq('license_id', licenseId);
-
-      const { error } = await supabase
-        .from('zoom_licenses')
-        .delete()
-        .eq('id', licenseId);
+      const { error } = await supabase.from('zoom_licenses').delete().eq('id', licenseId);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: 'License Removed', description: 'Zoom license has been removed.' });
+      toast({ title: 'License Removed' });
       queryClient.invalidateQueries({ queryKey: ['zoom-licenses-management'] });
     },
     onError: (error: Error) => {
@@ -164,6 +140,15 @@ export default function ZoomManagement() {
 
   const availableCount = licenses?.filter(l => l.status === 'available').length || 0;
   const busyCount = licenses?.filter(l => l.status === 'busy').length || 0;
+  const totalCount = licenses?.length || 0;
+  const liveSessionsList = liveSessions?.filter((s: any) => s.status === 'live') || [];
+  const completedSessions = liveSessions?.filter((s: any) => s.status === 'completed') || [];
+
+  const sectionButtons = [
+    { id: 'rooms' as const, label: 'Rooms', icon: Settings, count: totalCount },
+    { id: 'sessions' as const, label: 'Sessions', icon: Video, count: liveSessions?.length || 0 },
+    { id: 'logs' as const, label: 'Join Logs', icon: Users, count: attendanceLogs?.length || 0 },
+  ];
 
   return (
     <DashboardLayout>
@@ -171,329 +156,381 @@ export default function ZoomManagement() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">Zoom Management</h1>
-            <p className="text-muted-foreground text-sm mt-1">Manage Zoom licenses and monitor live sessions</p>
+            <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">Zoom Engine</h1>
+            <p className="text-muted-foreground text-sm mt-1">Live room management & session monitoring</p>
           </div>
-          <div className="flex items-center gap-3">
-            <Badge variant="secondary" className="gap-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
-              <Wifi className="h-3 w-3" />
-              {availableCount} Available
-            </Badge>
-            <Badge variant="secondary" className="gap-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
-              <WifiOff className="h-3 w-3" />
-              {busyCount} In Use
-            </Badge>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+              <div className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{availableCount} Ready</span>
+            </div>
+            <div className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-destructive/10 border border-destructive/20">
+              <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
+              <span className="text-sm font-semibold text-destructive">{busyCount} Live</span>
+            </div>
           </div>
         </div>
 
-        {/* Quick Stats Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <LiveClassQueue />
-          <AdminLiveMonitor />
-        </div>
-
-        {/* Main Content Tabs */}
-        <Tabs defaultValue="licenses" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="licenses" className="gap-2">
-              <Settings className="h-4 w-4" />
-              Licenses
-            </TabsTrigger>
-            <TabsTrigger value="sessions" className="gap-2">
-              <Video className="h-4 w-4" />
-              Session History
-            </TabsTrigger>
-            <TabsTrigger value="logs" className="gap-2">
-              <Users className="h-4 w-4" />
-              Join Logs
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Licenses Tab */}
-          <TabsContent value="licenses" className="space-y-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="font-serif">Zoom Licenses</CardTitle>
-                  <CardDescription>Manage your Zoom meeting room licenses</CardDescription>
-                </div>
-                <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button className="gap-2">
-                      <Plus className="h-4 w-4" />
-                      Add License
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle className="font-serif">Add New Zoom License</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="zoom_email">Zoom Email</Label>
-                        <Input
-                          id="zoom_email"
-                          placeholder="room1@academy.com"
-                          value={newLicense.zoom_email}
-                          onChange={(e) => setNewLicense({ ...newLicense, zoom_email: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="meeting_link">Meeting Link (PMI)</Label>
-                        <Input
-                          id="meeting_link"
-                          placeholder="https://zoom.us/j/1234567890"
-                          value={newLicense.meeting_link}
-                          onChange={(e) => setNewLicense({ ...newLicense, meeting_link: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="host_id">Host ID (Optional)</Label>
-                        <Input
-                          id="host_id"
-                          placeholder="Optional Zoom Host ID"
-                          value={newLicense.host_id}
-                          onChange={(e) => setNewLicense({ ...newLicense, host_id: e.target.value })}
-                        />
-                      </div>
+        {/* Room Cards Grid */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <Radio className="h-4 w-4 text-primary" />
+            <h2 className="font-semibold text-sm text-foreground uppercase tracking-wide">Room Status</h2>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {licenses?.map((license, idx) => {
+              const session = activeSessionsByLicense.get(license.id);
+              const isBusy = license.status === 'busy';
+              const statusColor = isBusy ? 'border-destructive/40 bg-destructive/5' : 'border-emerald-500/30 bg-emerald-500/5';
+              return (
+                <Card key={license.id} className={cn("relative overflow-hidden transition-all hover:shadow-md", statusColor)}>
+                  {isBusy && (
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-destructive to-destructive/60 animate-pulse" />
+                  )}
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-bold text-sm">Room {idx + 1}</span>
+                      <Badge className={cn(
+                        "text-[10px] px-2",
+                        isBusy
+                          ? 'bg-destructive/10 text-destructive border-destructive/20'
+                          : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                      )} variant="outline">
+                        {isBusy ? '● Live' : '● Ready'}
+                      </Badge>
                     </div>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setAddDialogOpen(false)}>Cancel</Button>
-                      <Button 
-                        onClick={() => addLicenseMutation.mutate(newLicense)}
-                        disabled={!newLicense.zoom_email || !newLicense.meeting_link || addLicenseMutation.isPending}
-                      >
-                        Add License
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </CardHeader>
-              <CardContent>
+                    <p className="text-[11px] text-muted-foreground truncate mb-2">
+                      {license.zoom_email?.split('@')[0]}@...
+                    </p>
+                    {session ? (
+                      <div className="space-y-1.5">
+                        <p className="text-xs font-medium text-foreground truncate">{session.teacherName}</p>
+                        <div className="flex items-center gap-1 text-destructive">
+                          <Timer className="h-3 w-3" />
+                          <LiveTimer startTime={session.actual_start} />
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {license.last_used_at
+                          ? `Last used ${formatDistanceToNow(new Date(license.last_used_at), { addSuffix: true })}`
+                          : 'Never used'}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+            {(!licenses || licenses.length === 0) && (
+              <Card className="col-span-full border-dashed">
+                <CardContent className="p-8 text-center text-muted-foreground">
+                  No Zoom rooms configured yet.
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+
+        {/* Live Class Queue - Horizontal Scrollable */}
+        {liveSessionsList.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Video className="h-4 w-4 text-destructive" />
+              <h2 className="font-semibold text-sm text-foreground uppercase tracking-wide">Live Now</h2>
+              <Badge className="bg-destructive/10 text-destructive border-destructive/20 animate-pulse" variant="outline">
+                {liveSessionsList.length} active
+              </Badge>
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
+              {liveSessionsList.map((session: any) => (
+                <Card key={session.id} className="min-w-[260px] snap-start border-destructive/20 bg-gradient-to-br from-destructive/5 to-transparent flex-shrink-0">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-destructive/10 flex items-center justify-center">
+                          <span className="text-xs font-bold text-destructive">{session.teacherName?.charAt(0)}</span>
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold truncate max-w-[140px]">{session.teacherName}</p>
+                        </div>
+                      </div>
+                      <Badge className="bg-destructive text-destructive-foreground animate-pulse text-[10px]">LIVE</Badge>
+                    </div>
+                    <Separator className="my-2" />
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Duration</span>
+                      {session.actual_start && <LiveTimer startTime={session.actual_start} />}
+                    </div>
+                    <div className="flex items-center justify-between text-xs mt-1">
+                      <span className="text-muted-foreground">Started</span>
+                      <span className="text-muted-foreground">
+                        {session.actual_start ? format(new Date(session.actual_start), 'HH:mm') : '-'}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Section Switcher */}
+        <div className="flex gap-2 border-b border-border pb-0">
+          {sectionButtons.map(btn => (
+            <button
+              key={btn.id}
+              onClick={() => setActiveSection(btn.id)}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors",
+                activeSection === btn.id
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <btn.icon className="h-4 w-4" />
+              {btn.label}
+              <span className="text-[11px] bg-muted px-1.5 py-0.5 rounded-full">{btn.count}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Rooms Section */}
+        {activeSection === 'rooms' && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="font-serif">Zoom Licenses</CardTitle>
+                <CardDescription>Manage your Zoom meeting room licenses</CardDescription>
+              </div>
+              <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="gap-2" size="sm">
+                    <Plus className="h-4 w-4" />
+                    Add Room
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle className="font-serif">Add New Zoom Room</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="zoom_email">Zoom Email</Label>
+                      <Input id="zoom_email" placeholder="room1@academy.com" value={newLicense.zoom_email} onChange={(e) => setNewLicense({ ...newLicense, zoom_email: e.target.value })} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="meeting_link">Meeting Link (PMI)</Label>
+                      <Input id="meeting_link" placeholder="https://zoom.us/j/1234567890" value={newLicense.meeting_link} onChange={(e) => setNewLicense({ ...newLicense, meeting_link: e.target.value })} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="host_id">Host ID (Optional)</Label>
+                      <Input id="host_id" placeholder="Optional Zoom Host ID" value={newLicense.host_id} onChange={(e) => setNewLicense({ ...newLicense, host_id: e.target.value })} />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setAddDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={() => addLicenseMutation.mutate(newLicense)} disabled={!newLicense.zoom_email || !newLicense.meeting_link || addLicenseMutation.isPending}>
+                      Add Room
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Room</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Link</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Last Used</TableHead>
+                    <TableHead className="w-[60px]" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {licenses?.map((license, idx) => (
+                    <TableRow key={license.id}>
+                      <TableCell className="font-semibold">Room {idx + 1}</TableCell>
+                      <TableCell className="text-sm">{license.zoom_email}</TableCell>
+                      <TableCell>
+                        <a href={license.meeting_link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary hover:underline text-sm">
+                          Open <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={cn(
+                          license.status === 'available'
+                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                            : license.status === 'cooldown'
+                              ? 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+                              : 'bg-destructive/10 text-destructive border-destructive/20'
+                        )} variant="outline">
+                          {license.status === 'available' ? '● Ready' : license.status === 'cooldown' ? '● Cooldown' : '● Live'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {license.last_used_at ? formatDistanceToNow(new Date(license.last_used_at), { addSuffix: true }) : 'Never'}
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => { if (confirm('Delete this room?')) deleteLicenseMutation.mutate(license.id); }} disabled={license.status === 'busy'}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {(!licenses || licenses.length === 0) && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No rooms configured.</TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Sessions Section */}
+        {activeSection === 'sessions' && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="font-serif">Session History</CardTitle>
+                <CardDescription>All live sessions with duration and recording</CardDescription>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ['all-live-sessions'] })} className="gap-2">
+                <RefreshCw className="h-4 w-4" /> Refresh
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[500px]">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Room</TableHead>
-                      <TableHead>Zoom Email</TableHead>
-                      <TableHead>Meeting Link</TableHead>
+                      <TableHead>Teacher</TableHead>
+                      <TableHead>Started</TableHead>
+                      <TableHead>Ended</TableHead>
+                      <TableHead>Duration</TableHead>
+                      <TableHead>Recording</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Last Used</TableHead>
-                      <TableHead className="w-[80px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {licenses?.map((license, idx) => (
-                      <TableRow key={license.id}>
-                        <TableCell className="font-medium">Room {idx + 1}</TableCell>
-                        <TableCell>{license.zoom_email}</TableCell>
-                        <TableCell>
-                          <a 
-                            href={license.meeting_link} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-accent hover:underline text-sm"
-                          >
-                            Open Link
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={cn(
-                            license.status === 'available' 
-                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                              : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                          )}>
-                            {license.status === 'available' ? 'Available' : 'In Use'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground text-sm">
-                          {license.last_used_at 
-                            ? format(new Date(license.last_used_at), 'MMM d, HH:mm')
-                            : 'Never'
-                          }
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => {
-                              if (confirm('Are you sure you want to delete this license?')) {
-                                deleteLicenseMutation.mutate(license.id);
-                              }
-                            }}
-                            disabled={license.status === 'busy'}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {(!licenses || licenses.length === 0) && (
+                    {liveSessions?.map((session: any) => {
+                      const duration = session.actual_start && session.actual_end
+                        ? differenceInMinutes(new Date(session.actual_end), new Date(session.actual_start))
+                        : session.actual_start && session.status === 'live'
+                          ? differenceInMinutes(new Date(), new Date(session.actual_start))
+                          : 0;
+                      const expectedDuration = 30;
+                      const durationPct = Math.min(100, Math.round((duration / expectedDuration) * 100));
+
+                      return (
+                        <TableRow key={session.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                <span className="text-xs font-bold text-primary">{session.teacherName?.charAt(0)}</span>
+                              </div>
+                              <span className="font-medium text-sm">{session.teacherName}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-sm">{session.actual_start ? format(new Date(session.actual_start), 'MMM d, HH:mm') : '-'}</TableCell>
+                          <TableCell className="text-sm">{session.actual_end ? format(new Date(session.actual_end), 'HH:mm') : '-'}</TableCell>
+                          <TableCell>
+                            <div className="space-y-1 w-24">
+                              <span className="text-sm font-medium">{duration > 0 ? `${duration} min` : '-'}</span>
+                              {duration > 0 && (
+                                <Progress value={durationPct} className={cn("h-1.5", durationPct < 60 ? "[&>div]:bg-amber-500" : "[&>div]:bg-emerald-500")} />
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {session.recording_link ? (
+                              <a href={session.recording_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline text-sm">
+                                <Video className="h-3 w-3" /> Watch
+                              </a>
+                            ) : <span className="text-muted-foreground text-sm">—</span>}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={cn(
+                              session.status === 'live' && 'bg-destructive/10 text-destructive border-destructive/20 animate-pulse',
+                              session.status === 'completed' && 'bg-muted text-muted-foreground border-border',
+                              session.status === 'scheduled' && 'bg-blue-500/10 text-blue-600 border-blue-500/20'
+                            )} variant="outline">
+                              {session.status === 'live' ? '● Live' : session.status}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    {(!liveSessions || liveSessions.length === 0) && (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                          No Zoom licenses configured. Add your first license to get started.
-                        </TableCell>
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No sessions yet.</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
                 </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        )}
 
-          {/* Sessions Tab */}
-          <TabsContent value="sessions">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="font-serif">Session History</CardTitle>
-                  <CardDescription>All live sessions and their durations</CardDescription>
+        {/* Join Logs Section */}
+        {activeSection === 'logs' && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-serif">Join & Leave Logs</CardTitle>
+              <CardDescription>Real-time tracking of participant activity</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[500px]">
+                <div className="space-y-2">
+                  {attendanceLogs?.map((log: any) => {
+                    const isJoin = log.action === 'join' || log.action === 'join_intent';
+                    const isLeave = log.action === 'leave';
+                    return (
+                      <div key={log.id} className={cn(
+                        "flex items-center gap-3 p-3 rounded-xl border transition-colors",
+                        isJoin ? "border-emerald-500/20 bg-emerald-500/5" : isLeave ? "border-amber-500/20 bg-amber-500/5" : "border-border bg-card"
+                      )}>
+                        <div className={cn(
+                          "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+                          isJoin ? "bg-emerald-500/10" : "bg-amber-500/10"
+                        )}>
+                          {isJoin
+                            ? <ArrowUpRight className="h-4 w-4 text-emerald-600" />
+                            : <ArrowDownLeft className="h-4 w-4 text-amber-600" />
+                          }
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{log.userName}</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <Badge variant="outline" className={cn(
+                            "text-[10px]",
+                            isJoin ? "text-emerald-600 border-emerald-500/20" : "text-amber-600 border-amber-500/20"
+                          )}>
+                            {isJoin ? 'Joined' : isLeave ? 'Left' : log.action}
+                          </Badge>
+                          {log.total_duration_minutes && log.total_duration_minutes > 0 && (
+                            <p className="text-[10px] text-muted-foreground mt-0.5">{Math.round(log.total_duration_minutes)} min session</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {(!attendanceLogs || attendanceLogs.length === 0) && (
+                    <div className="text-center py-8 text-muted-foreground">No join logs recorded yet.</div>
+                  )}
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => queryClient.invalidateQueries({ queryKey: ['all-live-sessions'] })}
-                  className="gap-2"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Refresh
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[400px]">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Teacher</TableHead>
-                        <TableHead>Zoom Room</TableHead>
-                        <TableHead>Started</TableHead>
-                        <TableHead>Ended</TableHead>
-                        <TableHead>Duration</TableHead>
-                        <TableHead>Recording</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {liveSessions?.map((session) => {
-                        const duration = session.actual_start && session.actual_end
-                          ? differenceInMinutes(new Date(session.actual_end), new Date(session.actual_start))
-                          : session.actual_start && session.status === 'live'
-                            ? differenceInMinutes(new Date(), new Date(session.actual_start))
-                            : 0;
-
-                        return (
-                          <TableRow key={session.id}>
-                            <TableCell className="font-medium">{session.teacherName}</TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              {(session.license as any)?.zoom_email?.split('@')[0] || 'N/A'}
-                            </TableCell>
-                            <TableCell>
-                              {session.actual_start 
-                                ? format(new Date(session.actual_start), 'MMM d, HH:mm')
-                                : '-'
-                              }
-                            </TableCell>
-                            <TableCell>
-                              {session.actual_end 
-                                ? format(new Date(session.actual_end), 'HH:mm')
-                                : '-'
-                              }
-                            </TableCell>
-                            <TableCell>
-                              {duration > 0 ? `${duration} min` : '-'}
-                            </TableCell>
-                            <TableCell>
-                              {(session as any).recording_link ? (
-                                <a 
-                                  href={(session as any).recording_link}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center gap-1 text-accent hover:underline text-sm"
-                                >
-                                  <Video className="h-3 w-3" />
-                                  View
-                                </a>
-                              ) : (
-                                <span className="text-muted-foreground text-sm">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <Badge className={cn(
-                                session.status === 'live' && 'bg-emerald-100 text-emerald-700 animate-pulse',
-                                session.status === 'completed' && 'bg-gray-100 text-gray-700',
-                                session.status === 'scheduled' && 'bg-blue-100 text-blue-700'
-                              )}>
-                                {session.status}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                      {(!liveSessions || liveSessions.length === 0) && (
-                        <TableRow>
-                          <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                            No session history available.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Logs Tab */}
-          <TabsContent value="logs">
-            <Card>
-              <CardHeader>
-                <CardTitle className="font-serif">Student Join Logs</CardTitle>
-                <CardDescription>Track when students join their classes</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[400px]">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Student</TableHead>
-                        <TableHead>Action</TableHead>
-                        <TableHead>Time</TableHead>
-                        <TableHead>Session</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {attendanceLogs?.map((log) => (
-                        <TableRow key={log.id}>
-                          <TableCell className="font-medium">{log.userName}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="gap-1">
-                              <Video className="h-3 w-3" />
-                              {log.action === 'join_intent' ? 'Joined' : log.action}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {format(new Date(log.timestamp), 'MMM d, HH:mm:ss')}
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground font-mono">
-                            {log.session_id?.slice(0, 8)}...
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {(!attendanceLogs || attendanceLogs.length === 0) && (
-                        <TableRow>
-                          <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                            No join logs recorded yet.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </DashboardLayout>
   );
