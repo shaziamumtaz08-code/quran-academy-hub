@@ -567,7 +567,7 @@ export default function Teachers() {
                                     <User className="h-4 w-4 text-primary" />
                                   </div>
                                   <div className="min-w-0 flex-1">
-                                    <p className="font-medium text-sm">{student.full_name}</p>
+                                    <EntityLink to={`/students?search=${encodeURIComponent(student.full_name)}`} variant="name" className="text-sm">{student.full_name}</EntityLink>
                                     <p className="text-xs text-muted-foreground">
                                       {student.age && `Age ${student.age}`}
                                       {student.age && student.gender && ' • '}
@@ -615,6 +615,13 @@ export default function Teachers() {
             city: t.city || '',
             student_count: t.student_count,
           }))}
+        />
+
+        {/* Teacher Detail Drawer */}
+        <TeacherDetailDrawer
+          open={!!drawerTeacher}
+          onOpenChange={(open) => !open && setDrawerTeacher(null)}
+          teacher={drawerTeacher}
         />
       </div>
     </DashboardLayout>
