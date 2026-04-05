@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, differenceInHours, startOfMonth, endOfMonth, parseISO } from 'date-fns';
+import { EntityLink } from '@/components/shared/EntityLink';
+import { TeacherDetailDrawer } from '@/components/teachers/TeacherDetailDrawer';
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => {
   const d = new Date(2025, i, 1);
@@ -17,8 +19,9 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => {
 
 export default function KPI() {
   const now = new Date();
-  const [selectedYear, setSelectedYear] = React.useState(String(now.getFullYear()));
-  const [selectedMonth, setSelectedMonth] = React.useState(String(now.getMonth() + 1).padStart(2, '0'));
+  const [selectedYear, setSelectedYear] = useState(String(now.getFullYear()));
+  const [selectedMonth, setSelectedMonth] = useState(String(now.getMonth() + 1).padStart(2, '0'));
+  const [drawerTeacher, setDrawerTeacher] = useState<{ id: string; full_name: string } | null>(null);
   const { activeDivision } = useDivision();
   const activeDivisionId = activeDivision?.id;
 
