@@ -41,7 +41,7 @@ export function TeacherDetailDrawer({ open, onOpenChange, teacher }: TeacherDeta
       // Profile
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id, full_name, email, country, city, phone')
+        .select('id, full_name, email, country, city')
         .eq('id', teacher.id)
         .maybeSingle();
 
