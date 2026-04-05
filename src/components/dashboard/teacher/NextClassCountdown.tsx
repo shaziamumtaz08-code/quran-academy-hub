@@ -179,10 +179,7 @@ export function NextClassCountdown() {
           Next
         </p>
         <p className="text-[15px] leading-tight font-extrabold truncate flex-1 min-w-0">{nextClass.studentName}</p>
-        <button className="bg-primary-foreground text-primary border-none rounded-lg px-2.5 py-1.5 font-extrabold text-xs cursor-pointer flex items-center gap-1 hover:opacity-90 transition-opacity shrink-0">
-          <Video className="h-3.5 w-3.5" />
-          Start
-        </button>
+        <StartClassButton />
       </div>
 
       {/* Row 2: Details + Countdown pills */}
