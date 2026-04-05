@@ -47,7 +47,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import logoLight from '@/assets/logo-light.png';
 import logoDark from '@/assets/logo-dark.jpg';
 
-const ROLE_LABELS: Record<AppRole, string> = {
+const DashboardLayoutContext = createContext(false);
+export const useIsInsideDashboard = () => useContext(DashboardLayoutContext);
+
   super_admin: 'Super Admin',
   admin: 'Admin',
   admin_admissions: 'Admissions',
