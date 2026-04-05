@@ -126,7 +126,10 @@ export function JoinClassButton({ teacherId, className }: JoinClassButtonProps) 
 
       // Check each schedule for grace period
       for (const schedule of schedules) {
-        const scheduleDayIndex = dayNames.indexOf(schedule.day_of_week);
+        const normalizedDay = schedule.day_of_week
+          ? schedule.day_of_week.charAt(0).toUpperCase() + schedule.day_of_week.slice(1).toLowerCase()
+          : '';
+        const scheduleDayIndex = dayNames.indexOf(normalizedDay);
         const todayIndex = now.getDay();
 
         if (scheduleDayIndex === todayIndex) {
