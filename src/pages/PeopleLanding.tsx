@@ -20,17 +20,11 @@ export default function PeopleLanding() {
   const { data: counts, isLoading } = useQuery({
     queryKey: ['people-landing-counts', divisionId],
     queryFn: async () => {
-      type CR = { count: number | null };
-      const q1 = supabase.from('profiles').select('id', { count: 'exact', head: true });
-      const q2 = supabase.from('profiles').select('id', { count: 'exact', head: true });
-      const q3 = supabase.from('profiles').select('id', { count: 'exact', head: true });
-      const q4 = supabase.from('leads').select('*', { count: 'exact', head: true });
-      const [teachersRes, studentsRes, usersRes, leadsRes] = await Promise.all([
-        q1.eq('role', 'teacher') as unknown as Promise<CR>,
-        q2.eq('role', 'student') as unknown as Promise<CR>,
-        q3 as unknown as Promise<CR>,
-        q4 as unknown as Promise<CR>,
-      ]);
+      const sb = supabase as any;
+      const teachersRes = await sb.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'teacher');
+      const studentsRes = await sb.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'student');
+      const usersRes = await sb.from('profiles').select('id', { count: 'exact', head: true });
+      const leadsRes = await sb.from('leads').select('*', { count: 'exact', head: true });
       return {
         teachers: teachersRes.count || 0,
         students: studentsRes.count || 0,
