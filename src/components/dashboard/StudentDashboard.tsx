@@ -86,6 +86,7 @@ interface Enrollment {
   type: '1-on-1' | 'group' | 'recorded';
   courseName: string;
   teacherName: string;
+  teacherId?: string;
   lastClassStatus: 'attended' | 'missed' | 'not_marked' | null;
   lastClassDate: string | null;
   attendanceRate: number;
@@ -247,6 +248,7 @@ export function StudentDashboard() {
           type: '1-on-1',
           courseName: subjectName,
           teacherName,
+          teacherId: a.teacher_id,
           lastClassStatus,
           lastClassDate: lastAtt?.class_date || null,
           attendanceRate: teacherAtt.length > 0 ? Math.round((present / teacherAtt.length) * 100) : 0,
@@ -419,7 +421,7 @@ export function StudentDashboard() {
           <div className="flex items-center justify-between mb-1">
             <p className="text-[10px] opacity-70 font-extrabold tracking-widest uppercase">⏰ Next Class</p>
             {isJoinable ? (
-              <JoinClassButton />
+              <JoinClassButton teacherId={ncEnrollment?.teacherId} />
             ) : (
               <div className="flex items-center gap-1 shrink-0">
                 {countdown.days > 0 && <span className="bg-primary-foreground/15 rounded-md px-2 py-0.5 text-[11px] font-bold">{countdown.days}d</span>}

@@ -99,29 +99,25 @@ export function JoinClassButton({ teacherId, className }: JoinClassButtonProps) 
 
       if (!targetTeacherId) return { canJoin: false, reason: 'no_assignment' };
 
-      // Get student's schedules with this teacher
+      // Get only THIS student's assignments with THIS teacher
+      const { data: assignments } = await supabase
+        .from('student_teacher_assignments')
+        .select('id')
+        .eq('student_id', user.id)
+        .eq('teacher_id', targetTeacherId)
+        .eq('status', 'active');
+
+      const assignmentIds = (assignments || []).map(a => a.id);
+      if (!assignmentIds.length) return { canJoin: false, reason: 'no_schedule', teacherId: targetTeacherId };
+
+      // Get schedules only for these assignments
       const { data: schedules } = await supabase
         .from('schedules')
-        .select(`
-          id,
-          day_of_week,
-          student_local_time,
-          duration_minutes,
-          assignment:student_teacher_assignments!inner(teacher_id, student_id)
-        `)
+        .select('id, day_of_week, student_local_time, duration_minutes')
+        .in('assignment_id', assignmentIds)
         .eq('is_active', true);
 
       if (!schedules || schedules.length === 0) {
-        return { canJoin: false, reason: 'no_schedule', teacherId: targetTeacherId };
-      }
-
-      // Filter for this student and teacher
-      const studentSchedules = schedules.filter(s => {
-        const assignment = s.assignment as any;
-        return assignment?.student_id === user.id && assignment?.teacher_id === targetTeacherId;
-      });
-
-      if (studentSchedules.length === 0) {
         return { canJoin: false, reason: 'no_schedule', teacherId: targetTeacherId };
       }
 
@@ -129,7 +125,7 @@ export function JoinClassButton({ teacherId, className }: JoinClassButtonProps) 
       const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
       // Check each schedule for grace period
-      for (const schedule of studentSchedules) {
+      for (const schedule of schedules) {
         const scheduleDayIndex = dayNames.indexOf(schedule.day_of_week);
         const todayIndex = now.getDay();
 
