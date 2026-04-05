@@ -388,7 +388,7 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
             ))}
           </div>
 
-          {/* Active Sessions - Simple Headcount */}
+          {/* Active Sessions - Enhanced Cards */}
           {liveSessions && liveSessions.length > 0 && (
             <div className="space-y-3">
               <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -403,200 +403,197 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
                   const isLive = session.status === "live";
                   const displayTime = session.actual_start || session.scheduled_start;
 
+                  // Duration progress bar
+                  const durationSec = session.actual_start ? differenceInSeconds(now, new Date(session.actual_start)) : 0;
+                  const durationMin = Math.floor(durationSec / 60);
+                  const expectedMin = 30;
+                  const progressPct = Math.min(100, Math.round((durationMin / expectedMin) * 100));
+
+                  // Recording status from session
+                  const hasRecording = !!(session as any).recording_link;
+
                   return (
                     <div
                       key={session.id}
                       className={cn(
-                        "rounded-xl p-4 border",
+                        "rounded-xl border overflow-hidden",
                         isLive
-                          ? "bg-gradient-to-r from-accent/5 to-transparent border-accent/20"
-                          : "bg-gradient-to-r from-amber-50 dark:from-amber-900/10 to-transparent border-amber-200 dark:border-amber-800/30",
+                          ? "bg-card border-destructive/20"
+                          : "bg-card border-amber-200 dark:border-amber-800/30",
                       )}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="relative">
-                            <div
-                              className={cn(
-                                "w-12 h-12 rounded-full flex items-center justify-center",
-                                isLive ? "bg-accent/10" : "bg-amber-100 dark:bg-amber-900/30",
-                              )}
-                            >
-                              <Video className={cn("h-5 w-5", isLive ? "text-accent" : "text-amber-600")} />
-                            </div>
-                            {/* Status Badge */}
-                            <Badge
-                              variant="secondary"
-                              className={cn(
-                                "absolute -bottom-1 -right-1 text-[9px] px-1.5 py-0",
-                                isLive ? "bg-red-500 text-white animate-pulse" : "bg-amber-500 text-white",
-                              )}
-                            >
-                              {isLive ? "LIVE" : "Ready"}
-                            </Badge>
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-foreground">{session.teacherName}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {licenseData?.zoom_email?.split("@")[0] || "No license assigned"}
-                            </p>
-                          </div>
-                        </div>
+                      {/* Color band at top */}
+                      <div className={cn("h-1", isLive ? "bg-destructive" : "bg-amber-400")} />
 
-                        {/* Simple Active Participant Count with Tooltip */}
-                        <div className="flex items-center gap-4">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div
-                                className={cn(
-                                  "flex items-center gap-2 cursor-pointer px-4 py-2 rounded-xl border",
-                                  isLive
-                                    ? "bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800"
-                                    : "bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800",
-                                )}
-                              >
-                                <div
-                                  className={cn(
-                                    "w-3 h-3 rounded-full",
-                                    isLive ? "bg-emerald-500 animate-pulse" : "bg-amber-500",
-                                  )}
-                                />
-                                <span
-                                  className={cn(
-                                    "text-2xl font-bold",
-                                    isLive
-                                      ? "text-emerald-700 dark:text-emerald-400"
-                                      : "text-amber-700 dark:text-amber-400",
-                                  )}
-                                >
-                                  {session.activeCount}
-                                </span>
-                                <span
-                                  className={cn(
-                                    "text-xs",
-                                    isLive
-                                      ? "text-emerald-600 dark:text-emerald-400"
-                                      : "text-amber-600 dark:text-amber-400",
-                                  )}
-                                >
-                                  {isLive ? "Active" : "Waiting"}
-                                </span>
+                      <div className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            {/* Teacher avatar */}
+                            <div className="relative">
+                              <div className={cn(
+                                "w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-sm",
+                                isLive ? "bg-primary" : "bg-amber-500"
+                              )}>
+                                {session.teacherName.charAt(0)}
                               </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="left" className="max-w-xs">
-                              <div className="space-y-1">
-                                <p className="font-semibold text-xs mb-2">Participants:</p>
-                                {session.participants.map((p, idx) => (
-                                  <div key={idx} className="flex items-center gap-2 text-xs">
-                                    <div
-                                      className={cn("w-2 h-2 rounded-full", p.isTeacher ? "bg-accent" : "bg-primary")}
-                                    />
-                                    <span>{p.userName}</span>
-                                    {p.isTeacher && (
-                                      <Badge variant="outline" className="text-[9px] px-1 py-0">
-                                        Teacher
-                                      </Badge>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
-
-                          <div className="text-right">
-                            <div className={cn("flex items-center gap-1.5", isLive ? "text-accent" : "text-amber-600")}>
-                              <Clock className="h-4 w-4" />
-                              <span className="text-lg font-mono font-bold">
-                                {isLive
-                                  ? formatDuration(session.actual_start)
-                                  : format(new Date(displayTime || new Date()), "HH:mm")}
-                              </span>
+                              <div className={cn(
+                                "absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-card",
+                                isLive ? "bg-destructive animate-pulse" : "bg-amber-400"
+                              )} />
                             </div>
-                            <p className="text-[10px] text-muted-foreground mt-0.5">
-                              {isLive ? "Duration" : "Scheduled"}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Admin Action Buttons */}
-                      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/50">
-                        {meetingLink && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1 gap-2 text-xs"
-                            onClick={() => handleJoinAsAdmin(meetingLink)}
-                          >
-                            <UserPlus className="h-3.5 w-3.5" />
-                            Join as Admin
-                            <ExternalLink className="h-3 w-3 ml-auto opacity-50" />
-                          </Button>
-                        )}
-
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              className="flex-1 gap-2 text-xs"
-                              disabled={endSessionMutation.isPending}
-                            >
-                              <Power className="h-3.5 w-3.5" />
-                              End Session
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>End this session?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will mark the session as completed and release the Zoom license for{" "}
-                                {session.teacherName}'s class. This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-
-                            {/* Recording Link Input */}
-                            <div className="py-3 space-y-2">
-                              <Label htmlFor={`recording-${session.id}`} className="text-sm flex items-center gap-2">
-                                <Link className="h-3.5 w-3.5" />
-                                Recording Link (Optional)
-                              </Label>
-                              <Input
-                                id={`recording-${session.id}`}
-                                placeholder="Paste Zoom recording link..."
-                                value={recordingLinks[session.id] || ""}
-                                onChange={(e) =>
-                                  setRecordingLinks((prev) => ({
-                                    ...prev,
-                                    [session.id]: e.target.value,
-                                  }))
-                                }
-                                className="text-sm"
-                              />
-                              <p className="text-[10px] text-muted-foreground">
-                                If provided, students will be able to view the recording in their past classes.
+                            <div>
+                              <p className="text-sm font-semibold text-foreground">{session.teacherName}</p>
+                              <p className="text-[11px] text-muted-foreground">
+                                {licenseData?.zoom_email?.split("@")[0] || "No license"}
                               </p>
                             </div>
+                          </div>
 
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => {
-                                  if (licenseId) {
-                                    endSessionMutation.mutate({
-                                      sessionId: session.id,
-                                      licenseId,
-                                      recordingLink: recordingLinks[session.id],
-                                    });
-                                  }
-                                }}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          {/* Participant list */}
+                          <div className="flex items-center gap-2">
+                            {session.participants.filter((p: any) => !p.isTeacher).length > 0 && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="flex -space-x-2">
+                                    {session.participants.filter((p: any) => !p.isTeacher).slice(0, 3).map((p: any, idx: number) => (
+                                      <div key={idx} className="w-7 h-7 rounded-full bg-primary/20 border-2 border-card flex items-center justify-center">
+                                        <span className="text-[9px] font-bold text-primary">{p.userName.charAt(0)}</span>
+                                      </div>
+                                    ))}
+                                    {session.participants.filter((p: any) => !p.isTeacher).length > 3 && (
+                                      <div className="w-7 h-7 rounded-full bg-muted border-2 border-card flex items-center justify-center">
+                                        <span className="text-[9px] font-bold text-muted-foreground">+{session.participants.filter((p: any) => !p.isTeacher).length - 3}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent side="left" className="max-w-xs">
+                                  <p className="font-semibold text-xs mb-1">Students:</p>
+                                  {session.participants.filter((p: any) => !p.isTeacher).map((p: any, idx: number) => (
+                                    <p key={idx} className="text-xs">{p.userName}</p>
+                                  ))}
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                            <Badge variant="secondary" className={cn("text-[10px] gap-1", isLive ? "bg-destructive/10 text-destructive" : "")}>
+                              <User className="h-3 w-3" />
+                              {session.activeCount}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        {/* Duration progress bar */}
+                        {isLive && (
+                          <div className="mt-3 space-y-1">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-muted-foreground">Duration</span>
+                              <span className="font-mono font-semibold text-foreground">
+                                {durationMin}/{expectedMin} min
+                              </span>
+                            </div>
+                            <div className="h-2 rounded-full bg-muted overflow-hidden">
+                              <div
+                                className={cn(
+                                  "h-full rounded-full transition-all duration-1000",
+                                  progressPct >= 100 ? "bg-amber-500" : "bg-primary"
+                                )}
+                                style={{ width: `${progressPct}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Recording badge + time */}
+                        <div className="flex items-center justify-between mt-3 pt-2 border-t border-border/40">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className={cn(
+                              "text-[9px] px-1.5",
+                              hasRecording ? "bg-emerald-500/10 text-emerald-600 border-emerald-200" : "bg-muted text-muted-foreground"
+                            )}>
+                              {hasRecording ? "📹 Recording Ready" : "No Recording"}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-1 text-muted-foreground">
+                            <Clock className="h-3.5 w-3.5" />
+                            <span className="text-xs font-mono">
+                              {isLive ? formatDuration(session.actual_start) : format(new Date(displayTime || new Date()), "HH:mm")}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Admin actions */}
+                        <div className="flex items-center gap-2 mt-3 pt-2 border-t border-border/40">
+                          {meetingLink && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1 gap-2 text-xs"
+                              onClick={() => handleJoinAsAdmin(meetingLink)}
+                            >
+                              <UserPlus className="h-3.5 w-3.5" />
+                              Join
+                              <ExternalLink className="h-3 w-3 ml-auto opacity-50" />
+                            </Button>
+                          )}
+
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                className="flex-1 gap-2 text-xs"
+                                disabled={endSessionMutation.isPending}
                               >
-                                End Session
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                                <Power className="h-3.5 w-3.5" />
+                                End
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>End this session?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will mark the session as completed and release the Zoom license for{" "}
+                                  {session.teacherName}'s class.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <div className="py-3 space-y-2">
+                                <Label htmlFor={`recording-${session.id}`} className="text-sm flex items-center gap-2">
+                                  <Link className="h-3.5 w-3.5" />
+                                  Recording Link (Optional)
+                                </Label>
+                                <Input
+                                  id={`recording-${session.id}`}
+                                  placeholder="Paste Zoom recording link..."
+                                  value={recordingLinks[session.id] || ""}
+                                  onChange={(e) =>
+                                    setRecordingLinks((prev) => ({
+                                      ...prev,
+                                      [session.id]: e.target.value,
+                                    }))
+                                  }
+                                  className="text-sm"
+                                />
+                              </div>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => {
+                                    if (licenseId) {
+                                      endSessionMutation.mutate({
+                                        sessionId: session.id,
+                                        licenseId,
+                                        recordingLink: recordingLinks[session.id],
+                                      });
+                                    }
+                                  }}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  End Session
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </div>
                     </div>
                   );
