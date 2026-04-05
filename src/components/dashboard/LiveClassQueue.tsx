@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Video, Clock, User, BookOpen, ChevronRight, RefreshCw } from 'lucide-react';
-import { format, addDays, setHours, setMinutes, addMinutes, subMinutes, differenceInMinutes } from 'date-fns';
+import { format, addMinutes, subMinutes, differenceInMinutes } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from 'react-router-dom';
