@@ -122,8 +122,8 @@ export function DailySlotCalendar({ assignments, schedules, onEditSchedule }: Da
       const { data } = await supabase
         .from('zoom_licenses')
         .select('id, status')
-        .eq('is_active', true);
-      return data || [];
+        .eq('is_active', true) as any;
+      return (data || []) as { id: string; status: string }[];
     },
     refetchInterval: 30000,
   });
