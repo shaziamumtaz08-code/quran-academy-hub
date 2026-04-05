@@ -421,7 +421,7 @@ export function StudentDashboard() {
           <div className="flex items-center justify-between mb-1">
             <p className="text-[10px] opacity-70 font-extrabold tracking-widest uppercase">⏰ Next Class</p>
             {isJoinable ? (
-              <JoinClassButton teacherId={globalNextEnrollment?.teacherId} />
+              <JoinClassButton teacherId={ncEnrollment?.teacherId} />
             ) : (
               <div className="flex items-center gap-1 shrink-0">
                 {countdown.days > 0 && <span className="bg-primary-foreground/15 rounded-md px-2 py-0.5 text-[11px] font-bold">{countdown.days}d</span>}
