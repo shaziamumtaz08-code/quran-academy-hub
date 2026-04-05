@@ -45,6 +45,7 @@ export default function Teachers() {
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [formData, setFormData] = useState({ name: '', email: '', bank_name: '', bank_account_title: '', bank_account_number: '', bank_iban: '' });
   const [expandedTeachers, setExpandedTeachers] = useState<Set<string>>(new Set());
+  const [drawerTeacher, setDrawerTeacher] = useState<{ id: string; full_name: string; email: string | null } | null>(null);
   
   // Sorting & Filtering
   const [sortField, setSortField] = useState<SortField>('name');
@@ -499,7 +500,16 @@ export default function Teachers() {
                           </Button>
                         )}
                       </TableCell>
-                      <TableCell className="font-medium">{teacher.full_name}</TableCell>
+                      <TableCell>
+                        <EntityLink
+                          to="#"
+                          variant="name"
+                          className="text-sm"
+                          onClick={(e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); setDrawerTeacher({ id: teacher.id, full_name: teacher.full_name, email: teacher.email }); }}
+                        >
+                          {teacher.full_name}
+                        </EntityLink>
+                      </TableCell>
                       <TableCell>
                         {teacher.email ? (
                           <span className="flex items-center gap-2 text-sm">
