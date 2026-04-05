@@ -146,6 +146,23 @@ export function NextClassCountdown() {
 
   const t = useCountdown(nextClass?.dateTime || null);
 
+  // Must be before any early returns to maintain hooks order
+  const { data: activeSession } = useQuery({
+    queryKey: ['active-session-compact', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data } = await supabase
+        .from('live_sessions')
+        .select('id, status, license:zoom_licenses(meeting_link)')
+        .eq('teacher_id', user.id)
+        .eq('status', 'live')
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!user?.id,
+    refetchInterval: 30000,
+  });
+
   if (isLoading) return <Skeleton className="h-14 rounded-xl" />;
 
   if (!nextClass) {
@@ -163,30 +180,6 @@ export function NextClassCountdown() {
   const timeDisplay = `${h12}:${String(mm).padStart(2, '0')} ${ampm}`;
 
   const shortDay = SHORT_DAYS[nextClass.dayOfWeek] || nextClass.dayOfWeek;
-
-  // Countdown text
-  const parts: string[] = [];
-  if (t.days > 0) parts.push(`${t.days}d`);
-  parts.push(`${t.hours}h`);
-  parts.push(`${String(t.mins).padStart(2, '0')}m`);
-  const countdownText = parts.join('  ');
-
-  // Check if there's an active live session for this teacher
-  const { data: activeSession } = useQuery({
-    queryKey: ['active-session-compact', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return null;
-      const { data } = await supabase
-        .from('live_sessions')
-        .select('id, status, license:zoom_licenses(meeting_link)')
-        .eq('teacher_id', user.id)
-        .eq('status', 'live')
-        .maybeSingle();
-      return data;
-    },
-    enabled: !!user?.id,
-    refetchInterval: 30000,
-  });
 
   return (
     <div className="bg-gradient-to-br from-primary to-[hsl(var(--navy-light))] rounded-2xl px-3 py-2.5 text-primary-foreground shadow-card">
