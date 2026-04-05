@@ -275,12 +275,18 @@ export default function KPI() {
                     </div>
 
                     {/* Planning row */}
-                    <div className="flex items-center gap-2 bg-secondary/50 rounded-lg px-3 py-2">
+                    <div className="flex flex-wrap items-center gap-2 bg-secondary/50 rounded-lg px-3 py-2">
                       <FileText className="h-4 w-4 text-muted-foreground" />
                       <span className="text-xs text-muted-foreground flex-1">Monthly Plans</span>
                       <Badge variant={t.submittedPlans >= t.expectedPlans ? 'default' : 'destructive'} className="text-[10px]">
                         {t.submittedPlans}/{t.expectedPlans} submitted
                       </Badge>
+                      {t.onTimePlans > 0 && (
+                        <Badge className="text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200">{t.onTimePlans} on-time</Badge>
+                      )}
+                      {t.latePlans > 0 && (
+                        <Badge className="text-[10px] bg-amber-100 text-amber-700 border-amber-200">{t.latePlans} late</Badge>
+                      )}
                       {t.approvedPlans > 0 && (
                         <Badge variant="secondary" className="text-[10px]">{t.approvedPlans} approved</Badge>
                       )}
