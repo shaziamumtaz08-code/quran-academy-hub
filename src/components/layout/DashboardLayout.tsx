@@ -483,5 +483,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
       </main>
     </div>
+    </DashboardLayoutContext.Provider>
   );
 }
