@@ -665,7 +665,7 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
             <div className="space-y-2">
               <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <User className="h-4 w-4 text-muted-foreground" />
-                Recent Joins (History)
+                Recent Joins
               </h4>
               <ScrollArea className="h-28">
                 <div className="space-y-1 pr-4">
@@ -682,7 +682,7 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
                         </div>
                         <span className="text-foreground font-medium">{log.userName}</span>
                       </div>
-                      <span className="text-muted-foreground">{log.timeAgo}</span>
+                      <span className="text-muted-foreground">{getTimeAgo(new Date(log.timestamp))}</span>
                     </div>
                   ))}
                 </div>
