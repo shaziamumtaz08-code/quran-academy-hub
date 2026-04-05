@@ -1,4 +1,4 @@
-import React, { ReactNode, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { ReactNode, useState, useEffect, useCallback, useMemo, createContext, useContext } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth, AppRole } from '@/contexts/AuthContext';
 import { useDivision } from '@/contexts/DivisionContext';
@@ -46,6 +46,9 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import logoLight from '@/assets/logo-light.png';
 import logoDark from '@/assets/logo-dark.jpg';
+
+const DashboardLayoutContext = createContext(false);
+export const useIsInsideDashboard = () => useContext(DashboardLayoutContext);
 
 const ROLE_LABELS: Record<AppRole, string> = {
   super_admin: 'Super Admin',
@@ -276,6 +279,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   );
 
   return (
+    <DashboardLayoutContext.Provider value={true}>
     <div className="min-h-screen bg-background islamic-pattern">
       {/* Mobile Header */}
       <header className={`lg:hidden fixed top-0 left-0 right-0 z-50 h-14 bg-card border-b border-border flex items-center justify-between px-3 safe-area-inset ${location.pathname === '/dashboard' && activeRole !== 'teacher' && activeRole !== 'examiner' ? 'hidden' : ''}`}>
@@ -479,5 +483,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
       </main>
     </div>
+    </DashboardLayoutContext.Provider>
   );
 }

@@ -36,13 +36,13 @@ export default function TeachingLanding() {
         supabase.from('live_sessions').select('id', { count: 'exact', head: true }).eq('status', 'live'),
         supabase.from('student_teacher_assignments').select('id', { count: 'exact', head: true }).eq('status', 'active'),
         supabase.from('schedules').select('id', { count: 'exact', head: true }).eq('is_active', true),
-        supabase.from('attendance').select('status').gte('class_date', weekStart).lte('class_date', weekEnd),
+        (supabase as any).from('attendance').select('status').gte('class_date', weekStart).lte('class_date', weekEnd),
         supabase.from('student_monthly_plans').select('id', { count: 'exact', head: true }).eq('month', format(new Date(), 'yyyy-MM')),
         supabase.from('subjects').select('id', { count: 'exact', head: true }).eq('is_active', true),
       ]);
 
       const attData = attRes.data || [];
-      const presentCount = attData.filter(a => a.status === 'present').length;
+      const presentCount = attData.filter((a: any) => a.status === 'present').length;
       const attRate = attData.length > 0 ? Math.round((presentCount / attData.length) * 100) : 0;
 
       return {
@@ -55,7 +55,6 @@ export default function TeachingLanding() {
       };
     },
   });
-
   const cards: LandingCard[] = [
     { id: 'live-classes', title: 'Live Classes', subtitle: 'Currently active', count: counts?.live, countLoading: isLoading, icon: <Video className="h-5 w-5" />, color: 'bg-destructive' },
     { id: 'assignments', title: 'Assignments', subtitle: 'Active assignments', count: counts?.assignments, countLoading: isLoading, icon: <UserCheck className="h-5 w-5" />, color: 'bg-primary' },

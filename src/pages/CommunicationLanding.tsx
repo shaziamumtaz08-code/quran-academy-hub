@@ -21,11 +21,11 @@ export default function CommunicationLanding() {
     queryKey: ['comm-landing-counts', user?.id],
     queryFn: async () => {
       const [ticketsRes, zoomRes] = await Promise.all([
-        supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('status', 'open'),
-        supabase.from('zoom_licenses').select('id, status'),
+        (supabase as any).from('tasks').select('id', { count: 'exact', head: true }).eq('status', 'open'),
+        (supabase as any).from('zoom_licenses').select('id, status'),
       ]);
 
-      const licenses = zoomRes.data || [];
+      const licenses = (zoomRes.data || []) as { id: string; status: string }[];
       const busy = licenses.filter(l => l.status === 'busy').length;
       const total = licenses.length;
 
@@ -35,7 +35,6 @@ export default function CommunicationLanding() {
       };
     },
   });
-
   const cards: LandingCard[] = [
     { id: 'chat', title: 'Group Chat', subtitle: 'Messages & channels', count: '💬', countLoading: false, icon: <MessageSquare className="h-5 w-5" />, color: 'bg-primary' },
     { id: 'whatsapp', title: 'WhatsApp', subtitle: 'Inbox & broadcasts', count: '📱', countLoading: false, icon: <Phone className="h-5 w-5" />, color: 'bg-emerald-500' },
