@@ -109,6 +109,7 @@ export default function Reports() {
                 {activeSection === "fees" && "Revenue tracking, pending dues, and payment analysis"}
                 {activeSection === "engagement" && "Student progress tracking — Hifz, Tajweed, consistency"}
                 {activeSection === "teacher" && "Classes taken, punctuality, student retention analysis"}
+                {activeSection === "accountability" && "Zoom session accountability — late starts, no-shows, student punctuality & duration"}
                 {activeSection === "courses" && "Enrollment counts, completion rates, drop-off analysis"}
                 {activeSection === "logs" && "Complete audit trail of all system actions"}
                 {activeSection === "alerts" && "Auto-generated alerts for low attendance, overdue fees, teacher absences"}
