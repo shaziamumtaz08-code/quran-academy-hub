@@ -53,8 +53,15 @@ import CourseCatalog from "./pages/CourseCatalog";
 import RecordedCourses from "./pages/RecordedCourses";
 import NotificationCenter from "./pages/NotificationCenter";
 import GroupChat from "./pages/GroupChat";
-
 import WhatsAppInbox from "./pages/WhatsAppInbox";
+
+// Landing pages
+import TeachingLanding from "./pages/TeachingLanding";
+import PeopleLanding from "./pages/PeopleLanding";
+import FinanceLanding from "./pages/FinanceLanding";
+import ReportsLanding from "./pages/ReportsLanding";
+import CommunicationLanding from "./pages/CommunicationLanding";
+import SettingsLanding from "./pages/SettingsLanding";
 
 const queryClient = new QueryClient();
 
@@ -260,7 +267,15 @@ function AppRoutes() {
       {/* Teacher Routes */}
       <Route path="/teacher" element={<ProtectedRoute><TeacherRoute><TeacherNazraDashboard /></TeacherRoute></ProtectedRoute>} />
       
-      {/* General Protected Routes */}
+      {/* Landing Pages */}
+      <Route path="/teaching" element={<ProtectedRoute><DashboardLayout><TeachingLanding /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/people" element={<ProtectedRoute><AdminRoute><DashboardLayout><PeopleLanding /></DashboardLayout></AdminRoute></ProtectedRoute>} />
+      <Route path="/finance" element={<ProtectedRoute><DashboardLayout><FinanceLanding /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/reports-hub" element={<ProtectedRoute><DashboardLayout><ReportsLanding /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/communication" element={<ProtectedRoute><DashboardLayout><CommunicationLanding /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute><AdminRoute><DashboardLayout><SettingsLanding /></DashboardLayout></AdminRoute></ProtectedRoute>} />
+
+      {/* General Protected Routes — old direct URLs still work */}
       <Route path="/dashboard" element={<ProtectedRoute><DashboardWrapper /></ProtectedRoute>} />
       <Route path="/user-management" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
       <Route path="/assignments" element={<ProtectedRoute><Assignments /></ProtectedRoute>} />

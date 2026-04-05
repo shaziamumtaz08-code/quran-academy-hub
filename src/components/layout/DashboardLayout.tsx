@@ -68,61 +68,70 @@ interface NavItem {
 }
 
 // ── Flat navigation per role ──────────────────────────────────────
-// Each role gets a compact, flat list — no accordions.
-// Pages that previously had sub-items now use internal tabs.
+// 7 items max for admin, role-specific for others. No accordions.
 function buildFlatNav(role: AppRole | null, modelType: string | null, branchType: string | null): NavItem[] {
-  const isOnsite = branchType === 'onsite';
   const adminRoles = ['super_admin', 'admin', 'admin_admissions', 'admin_fees', 'admin_academic'];
   const adminOnly = ['super_admin', 'admin'];
 
-  const items: NavItem[] = [
-    // ── Always visible ──
-    { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  // Admin: 7 items
+  if (role && (adminOnly.includes(role) || role.startsWith('admin_'))) {
+    return [
+      { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
+      { label: 'Teaching', href: '/teaching', icon: BookOpen },
+      { label: 'People', href: '/people', icon: Users },
+      { label: 'Finance', href: '/finance', icon: DollarSign },
+      { label: 'Reports', href: '/reports-hub', icon: BarChart3 },
+      { label: 'Communication', href: '/communication', icon: MessageSquare },
+      { label: 'Settings', href: '/settings', icon: Cog },
+    ];
+  }
 
-    // ── Academics ──
-    { label: 'Attendance', href: '/attendance', icon: ClipboardCheck, roles: [...adminOnly, 'teacher'] },
-    { label: 'Students', href: '/students', icon: GraduationCap, roles: [...adminOnly, 'teacher'] },
-    { label: 'Planning', href: '/monthly-planning', icon: Target, roles: [...adminOnly, 'teacher'] },
+  // Teacher: 7 items
+  if (role === 'teacher') {
+    return [
+      { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
+      { label: 'My Classes', href: '/teaching', icon: BookOpen },
+      { label: 'My Students', href: '/students', icon: GraduationCap },
+      { label: 'Attendance', href: '/attendance', icon: ClipboardCheck },
+      { label: 'Planning', href: '/monthly-planning', icon: Target },
+      { label: 'Resources', href: '/resources', icon: FolderOpen },
+      { label: 'Chat', href: '/chat', icon: MessageSquare },
+    ];
+  }
 
-    // ── People (admin-only) — Teachers/Users/Leads are tabs in People page ──
-    { label: 'People', href: '/user-management', icon: Users, roles: adminOnly, divider: true },
+  // Student: 5 items
+  if (role === 'student') {
+    return [
+      { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
+      { label: 'My Class', href: '/student-reports', icon: BookOpen },
+      { label: 'Progress', href: '/student-reports', icon: BarChart3 },
+      { label: 'Resources', href: '/resources', icon: FolderOpen },
+      { label: 'Chat', href: '/chat', icon: MessageSquare },
+    ];
+  }
 
-    // ── Schedules & Assignments ──
-    ...(modelType === 'one_to_one'
-      ? [{ label: 'Assignments', href: '/assignments', icon: UserCheck, roles: adminOnly }]
-      : [{ label: 'Courses', href: '/courses', icon: BookOpen, roles: ['super_admin', 'admin', 'admin_academic'] }]
-    ),
-    { label: 'Schedules', href: '/schedules', icon: Calendar, roles: adminOnly },
-    { label: 'Subjects', href: '/subjects', icon: BookOpen, roles: adminOnly },
+  // Parent: 3 items
+  if (role === 'parent') {
+    return [
+      { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
+      { label: 'Reports', href: '/student-reports', icon: BarChart3 },
+      { label: 'Chat', href: '/chat', icon: MessageSquare },
+    ];
+  }
 
-    // ── Finance (tabbed page) ──
-    { label: 'Finance', href: '/payments', icon: DollarSign, roles: ['super_admin', 'admin', 'admin_fees'], divider: true },
-    { label: 'Salary', href: '/salary', icon: Wallet, roles: [...adminOnly, 'admin_fees', 'teacher'] },
+  // Examiner
+  if (role === 'examiner') {
+    return [
+      { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
+      { label: 'Exam Center', href: '/report-card-templates', icon: Award },
+      { label: 'Student Reports', href: '/student-reports', icon: FileText },
+    ];
+  }
 
-    // ── Reports & Exams ──
-    { label: 'Reports', href: '/reports', icon: BarChart3, roles: [...adminOnly, 'parent'], divider: true },
-    { label: 'Exam Center', href: '/report-card-templates', icon: Award, roles: [...adminOnly, 'examiner'] },
-    { label: 'Student Reports', href: '/student-reports', icon: FileText, roles: [...adminRoles, 'examiner', 'teacher', 'student', 'parent'] },
-    { label: 'KPI', href: '/kpi', icon: BarChart3, roles: adminOnly },
-
-    // ── Collaboration ──
-    { label: 'Work Hub', href: '/hub', icon: Megaphone, roles: [...adminOnly, 'teacher'], divider: true },
-    { label: 'Chat', href: '/chat', icon: MessageSquare, roles: [...adminOnly, 'teacher', 'student', 'parent'] },
-    { label: 'Resources', href: '/resources', icon: FolderOpen, roles: [...adminOnly, 'teacher', 'student'] },
-
-    // ── Admin tools ──
-    ...(!isOnsite ? [{ label: 'Zoom Engine', href: '/zoom-management', icon: Video, roles: adminOnly, divider: true }] : []),
-    { label: 'WhatsApp', href: '/whatsapp', icon: Phone, roles: adminOnly },
-    { label: 'Leads', href: '/leads', icon: UserCheck, roles: ['super_admin', 'admin', 'admin_admissions'] },
-    { label: 'Integrity', href: '/integrity-audit', icon: AlertTriangle, roles: adminOnly },
-
-    // ── Settings ──
-    { label: 'Settings', href: '/organization-settings', icon: Cog, roles: adminOnly, divider: true },
-    { label: 'Resources', href: '/resources', icon: FolderOpen, roles: ['super_admin'] },
-    { label: 'Course Library', href: '/course-assets', icon: Library, roles: ['super_admin', 'admin', 'admin_academic'] },
+  // Default
+  return [
+    { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
   ];
-
-  return items;
 }
 
 const SIDEBAR_COLLAPSED_KEY = 'sidebar-collapsed';
@@ -159,15 +168,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     [activeRole, activeModelType, activeBranch?.type],
   );
 
-  // Filter items by role
-  const visibleItems = useMemo(() => {
-    return allItems.filter(item => {
-      if (item.href === '/dashboard') return true;
-      if (activeRole === 'super_admin') return true;
-      if (item.roles && activeRole && item.roles.includes(activeRole)) return true;
-      return false;
-    });
-  }, [allItems, activeRole]);
+  // All items are already role-filtered by buildFlatNav
+  const visibleItems = allItems;
 
   const handleLogout = async () => {
     await logout();
