@@ -400,6 +400,55 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case "recording.completed": {
+        console.log("Recording completed for meeting:", meetingId);
+
+        const recordingFiles = (event.payload.object as any)?.recording_files || [];
+        const recordingPassword = (event.payload.object as any)?.password || null;
+
+        // Find the first MP4 file
+        const mp4File = recordingFiles.find((f: any) => f.file_type === "MP4");
+        if (!mp4File) {
+          console.log("No MP4 recording file found");
+          break;
+        }
+
+        const playUrl = mp4File.play_url || mp4File.download_url;
+        console.log("Recording URL:", playUrl);
+
+        // Find completed session by host_id
+        const { data: license } = await supabase
+          .from("zoom_licenses")
+          .select("id")
+          .eq("host_id", hostId)
+          .maybeSingle();
+
+        if (license) {
+          const { data: session } = await supabase
+            .from("live_sessions")
+            .select("id")
+            .eq("license_id", license.id)
+            .eq("status", "completed")
+            .order("actual_end", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (session) {
+            await supabase
+              .from("live_sessions")
+              .update({
+                recording_link: playUrl,
+                recording_password: recordingPassword,
+              })
+              .eq("id", session.id);
+            console.log("Recording saved to session:", session.id);
+          } else {
+            console.log("No completed session found for license:", license.id);
+          }
+        }
+        break;
+      }
+
       default:
         console.log("Unhandled Zoom event:", event.event);
     }
