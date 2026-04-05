@@ -2732,6 +2732,7 @@ export default function Payments() {
                 {actionModal?.type === 'apply_discount' && <><Tag className="h-5 w-5" /> Apply Discount</>}
                 {actionModal?.type === 'waive_fee' && <><Ban className="h-5 w-5" /> Waive Fee</>}
                 {actionModal?.type === 'reverse_payment' && <><ArrowRightLeft className="h-5 w-5" /> Reverse Payment</>}
+                {actionModal?.type === 'reset_invoice' && <><RotateCcw className="h-5 w-5 text-destructive" /> Reset Invoice</>}
                 
               </DialogTitle>
               <DialogDescription>
