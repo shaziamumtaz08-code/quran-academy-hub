@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Video } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { StartClassButton } from '@/components/zoom/StartClassButton';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
