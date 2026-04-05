@@ -2403,6 +2403,7 @@ export type Database = {
           id: string
           license_id: string | null
           recording_link: string | null
+          recording_password: string | null
           scheduled_start: string | null
           status: Database["public"]["Enums"]["session_status"]
           stream_url: string | null
@@ -2417,6 +2418,7 @@ export type Database = {
           id?: string
           license_id?: string | null
           recording_link?: string | null
+          recording_password?: string | null
           scheduled_start?: string | null
           status?: Database["public"]["Enums"]["session_status"]
           stream_url?: string | null
@@ -2431,6 +2433,7 @@ export type Database = {
           id?: string
           license_id?: string | null
           recording_link?: string | null
+          recording_password?: string | null
           scheduled_start?: string | null
           status?: Database["public"]["Enums"]["session_status"]
           stream_url?: string | null
