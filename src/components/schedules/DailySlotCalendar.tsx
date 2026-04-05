@@ -124,7 +124,7 @@ export function DailySlotCalendar({ assignments, schedules, onEditSchedule }: Da
         .select('id, status')
         .eq('is_active', true);
       const { data } = await query;
-      return (data || []) as { id: string; status: string }[];
+      return (data || []) as unknown as { id: string; status: string }[];
     },
     refetchInterval: 30000,
   });
