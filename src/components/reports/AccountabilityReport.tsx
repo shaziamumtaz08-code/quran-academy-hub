@@ -15,7 +15,8 @@ import { cn } from "@/lib/utils";
 type DateRange = "this_week" | "this_month" | "custom";
 
 export default function AccountabilityReport() {
-  const { activeDivisionId } = useDivision();
+  const { activeDivision } = useDivision();
+  const activeDivisionId = activeDivision?.id || null;
   const [dateRange, setDateRange] = useState<DateRange>("this_week");
   const [customFrom, setCustomFrom] = useState(format(subDays(new Date(), 7), "yyyy-MM-dd"));
   const [customTo, setCustomTo] = useState(format(new Date(), "yyyy-MM-dd"));

@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, CalendarCheck, DollarSign, Users, GraduationCap,
-  BookOpen, Activity, AlertTriangle, Wrench, ChevronLeft, ChevronRight, Menu,
+  BookOpen, Activity, AlertTriangle, Wrench, ChevronLeft, ChevronRight, Menu, ShieldCheck,
 } from "lucide-react";
 import ExecutiveDashboard from "@/components/reports/ExecutiveDashboard";
 import AttendanceReports from "@/components/reports/AttendanceReports";
@@ -18,6 +18,7 @@ import CourseReports from "@/components/reports/CourseReports";
 import ActivityLogs from "@/components/reports/ActivityLogs";
 import AlertsAutomation from "@/components/reports/AlertsAutomation";
 import CustomReportBuilder from "@/components/reports/CustomReportBuilder";
+import AccountabilityReport from "@/components/reports/AccountabilityReport";
 
 const sections = [
   { id: "executive", label: "Executive Dashboard", icon: LayoutDashboard },
@@ -25,6 +26,7 @@ const sections = [
   { id: "fees", label: "Fee & Financial", icon: DollarSign },
   { id: "engagement", label: "Student Engagement", icon: Users },
   { id: "teacher", label: "Teacher Performance", icon: GraduationCap },
+  { id: "accountability", label: "Accountability", icon: ShieldCheck },
   { id: "courses", label: "Course / Batch", icon: BookOpen },
   { id: "logs", label: "Activity Logs", icon: Activity },
   { id: "alerts", label: "Alerts & Automation", icon: AlertTriangle },
