@@ -20,10 +20,11 @@ export default function PeopleLanding() {
   const { data: counts, isLoading } = useQuery({
     queryKey: ['people-landing-counts', divisionId],
     queryFn: async () => {
-      const teachersRes = await supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'teacher');
-      const studentsRes = await supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'student');
-      const usersRes = await supabase.from('profiles').select('id', { count: 'exact', head: true });
-      const leadsRes = await supabase.from('leads').select('*', { count: 'exact', head: true });
+      type CountRes = { count: number | null };
+      const teachersRes = await supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'teacher') as unknown as CountRes;
+      const studentsRes = await supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'student') as unknown as CountRes;
+      const usersRes = await supabase.from('profiles').select('id', { count: 'exact', head: true }) as unknown as CountRes;
+      const leadsRes = await supabase.from('leads').select('*', { count: 'exact', head: true }) as unknown as CountRes;
       return {
         teachers: teachersRes.count || 0,
         students: studentsRes.count || 0,

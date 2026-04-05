@@ -22,10 +22,10 @@ export default function FinanceLanding() {
   const { data: counts, isLoading } = useQuery({
     queryKey: ['finance-landing-counts', activeDivision?.id],
     queryFn: async () => {
-      const feesRes = await supabase.from('fee_invoices').select('amount, amount_paid, status').eq('billing_month', currentMonth);
-      const salaryRes = await supabase.from('salary_payouts').select('net_salary, status').eq('month', currentMonth);
-      const expensesRes = await supabase.from('expenses').select('amount').gte('expense_date', `${currentMonth}-01`);
-      const advancesRes = await supabase.from('cash_advances').select('remaining_balance, status');
+      const feesRes = await supabase.from('fee_invoices').select('amount, amount_paid, status').eq('billing_month', currentMonth) as unknown as { data: { amount: number; amount_paid: number; status: string }[] | null };
+      const salaryRes = await supabase.from('salary_payouts').select('net_salary, status').eq('month', currentMonth) as unknown as { data: { net_salary: number; status: string }[] | null };
+      const expensesRes = await supabase.from('expenses').select('amount').gte('expense_date', `${currentMonth}-01`) as unknown as { data: { amount: number }[] | null };
+      const advancesRes = await supabase.from('cash_advances').select('remaining_balance, status') as unknown as { data: { remaining_balance: number; status: string }[] | null };
 
       const fees = feesRes.data || [];
       const pending = fees.filter(f => f.status !== 'paid' && f.status !== 'waived')
