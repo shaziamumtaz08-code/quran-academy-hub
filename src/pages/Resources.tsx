@@ -108,7 +108,7 @@ export default function Resources() {
   const [renameItem, setRenameItem] = useState<{ type: "folder" | "file"; item: Folder | Resource } | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteItem, setDeleteItem] = useState<{ type: "folder" | "file"; item: Folder | Resource } | null>(null);
-  const [detailResource, setDetailResource] = useState<Resource | null>(null);
+  const [detailResource, setDetailResource] = useState<any>(null);
 
   // Permissions - Admin & Super Admin can manage, others can view
   const canManage = isSuperAdmin || profile?.role === "admin";
