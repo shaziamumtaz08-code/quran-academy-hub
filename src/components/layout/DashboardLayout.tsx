@@ -26,7 +26,6 @@ import {
   BookOpen,
   Video,
   AlertTriangle,
-  ChevronDown,
   Settings,
   MessageSquare,
   CreditCard,
@@ -44,7 +43,6 @@ import {
   Phone,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import logoLight from '@/assets/logo-light.png';
 import logoDark from '@/assets/logo-dark.jpg';
@@ -65,152 +63,69 @@ interface NavItem {
   label: string;
   href: string;
   icon: React.ElementType;
-  permission?: string;
   roles?: string[];
+  divider?: boolean; // thin separator before this item
 }
 
-interface NavSubGroup {
-  id: string;
-  label: string;
-  icon: React.ElementType;
-  items: NavItem[];
-}
-
-interface NavGroup {
-  id: string;
-  label: string;
-  icon: React.ElementType;
-  items?: NavItem[];
-  subGroups?: NavSubGroup[];
-}
-
-// Build navigation groups dynamically based on active division model type and branch type
-function buildNavGroups(modelType: string | null, branchType: string | null): NavGroup[] {
-  const isOneToOne = modelType === 'one_to_one';
-  const isGroup = modelType === 'group';
+// ── Flat navigation per role ──────────────────────────────────────
+// Each role gets a compact, flat list — no accordions.
+// Pages that previously had sub-items now use internal tabs.
+function buildFlatNav(role: AppRole | null, modelType: string | null, branchType: string | null): NavItem[] {
   const isOnsite = branchType === 'onsite';
+  const adminRoles = ['super_admin', 'admin', 'admin_admissions', 'admin_fees', 'admin_academic'];
+  const adminOnly = ['super_admin', 'admin'];
 
-  // Admin roles shorthand
-  const adminRoles = ['super_admin', 'admin', 'admin_admissions', 'admin_fees', 'admin_academic'] as string[];
-  const adminOnly = ['super_admin', 'admin'] as string[];
+  const items: NavItem[] = [
+    // ── Always visible ──
+    { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
 
-  // Context-aware teaching items
-  const teachingItems: NavItem[] = isOneToOne
-    ? [
-        { label: 'Assignments', href: '/assignments', icon: UserCheck, roles: adminOnly },
-        { label: 'Schedules', href: '/schedules', icon: Calendar, roles: adminOnly },
-      ]
-    : [
-        { label: 'Courses', href: '/courses', icon: BookOpen, roles: ['super_admin', 'admin', 'admin_academic'] },
-        { label: 'Schedules', href: '/schedules', icon: CalendarClock, roles: adminOnly },
-      ];
+    // ── Academics ──
+    { label: 'Attendance', href: '/attendance', icon: ClipboardCheck, roles: [...adminOnly, 'teacher'] },
+    { label: 'Students', href: '/students', icon: GraduationCap, roles: [...adminOnly, 'teacher'] },
+    { label: 'Planning', href: '/monthly-planning', icon: Target, roles: [...adminOnly, 'teacher'] },
 
-  return [
-    {
-      id: 'academics',
-      label: 'Academics',
-      icon: GraduationCap,
-      items: [
-        ...teachingItems,
-        { label: 'Attendance', href: '/attendance', icon: ClipboardCheck, roles: [...adminOnly, 'teacher'] },
-        { label: 'Planning', href: '/monthly-planning', icon: Target, roles: ['super_admin', 'admin', 'teacher'] },
-        { label: 'Subjects', href: '/subjects', icon: BookOpen, roles: adminOnly },
-      ],
-      subGroups: [
-        {
-          id: 'exam-center',
-          label: 'Exam Center',
-          icon: Award,
-          items: [
-            { label: 'Report Templates', href: '/report-card-templates', icon: FileText, roles: ['super_admin', 'admin', 'examiner'] },
-            { label: 'Generate Reports', href: '/generate-report-card', icon: ClipboardCheck, roles: ['super_admin', 'admin', 'examiner'] },
-            { label: 'Student Reports', href: '/student-reports', icon: BarChart3, roles: ['super_admin', 'admin', 'examiner', 'teacher', 'student', 'parent'] },
-            { label: 'Reports', href: '/reports', icon: FileText, roles: [...adminOnly, 'parent'] },
-          ],
-        },
-      ],
-    },
-    {
-      id: 'people',
-      label: 'People',
-      icon: Users,
-      items: [
-        { label: 'All Users', href: '/user-management', icon: Shield, roles: adminOnly },
-        { label: 'Teachers', href: '/teachers', icon: Users, roles: adminOnly },
-        { label: 'Students', href: '/students', icon: GraduationCap, roles: [...adminOnly, 'teacher'] },
-        { label: 'Leads Pipeline', href: '/leads', icon: UserCheck, roles: ['super_admin', 'admin', 'admin_admissions'] },
-      ],
-    },
-    {
-      id: 'finance',
-      label: 'Finance',
-      icon: DollarSign,
-      items: [
-        { label: 'Fees', href: '/payments', icon: CreditCard, roles: ['super_admin', 'admin', 'admin_fees'] },
-        { label: 'Salary Engine', href: '/salary', icon: Wallet, roles: ['super_admin', 'admin', 'admin_fees', 'teacher'] },
-        { label: 'Staff Salaries', href: '/staff-salaries', icon: Users, roles: ['super_admin', 'admin', 'admin_fees'] },
-        { label: 'Expenses', href: '/expenses', icon: Receipt, roles: ['super_admin', 'admin', 'admin_fees'] },
-        { label: 'Cash Advances', href: '/cash-advances', icon: Wallet, roles: ['super_admin', 'admin', 'admin_fees'] },
-        { label: 'Finance Setup', href: '/finance-setup', icon: Wallet, roles: ['super_admin'] },
-        { label: 'KPI', href: '/kpi', icon: BarChart3, roles: adminOnly },
-      ],
-    },
-    {
-      id: 'collaboration',
-      label: 'Collaboration',
-      icon: MessageSquare,
-      items: [
-        { label: 'Work Hub', href: '/hub', icon: Megaphone, roles: [...adminOnly, 'teacher'] },
-        { label: 'Group Chat', href: '/chat', icon: MessageSquare, roles: [...adminOnly, 'teacher', 'student', 'parent'] },
-        { label: 'WhatsApp', href: '/whatsapp', icon: Phone, roles: adminOnly },
-        { label: 'My Resources', href: '/my-resources', icon: FolderOpen, roles: [...adminOnly, 'teacher', 'student'] },
-        ...(!isOnsite ? [{ label: 'Zoom Engine', href: '/zoom-management', icon: Video, roles: adminOnly }] : []),
-        { label: 'Integrity Audit', href: '/integrity-audit', icon: AlertTriangle, roles: adminOnly },
-      ],
-    },
-    {
-      id: 'settings',
-      label: 'Settings',
-      icon: Settings,
-      items: [
-        { label: 'System Control', href: '/organization-settings', icon: Cog, roles: adminOnly },
-        { label: 'Resources', href: '/resources', icon: FolderOpen, roles: ['super_admin'] },
-        { label: 'Course Library', href: '/course-assets', icon: Library, roles: ['super_admin', 'admin', 'admin_academic'] },
-      ],
-    },
+    // ── People (admin-only) — Teachers/Users/Leads are tabs in People page ──
+    { label: 'People', href: '/user-management', icon: Users, roles: adminOnly, divider: true },
+
+    // ── Schedules & Assignments ──
+    ...(modelType === 'one_to_one'
+      ? [{ label: 'Assignments', href: '/assignments', icon: UserCheck, roles: adminOnly }]
+      : [{ label: 'Courses', href: '/courses', icon: BookOpen, roles: ['super_admin', 'admin', 'admin_academic'] }]
+    ),
+    { label: 'Schedules', href: '/schedules', icon: Calendar, roles: adminOnly },
+    { label: 'Subjects', href: '/subjects', icon: BookOpen, roles: adminOnly },
+
+    // ── Finance (tabbed page) ──
+    { label: 'Finance', href: '/payments', icon: DollarSign, roles: ['super_admin', 'admin', 'admin_fees'], divider: true },
+    { label: 'Salary', href: '/salary', icon: Wallet, roles: [...adminOnly, 'admin_fees', 'teacher'] },
+
+    // ── Reports & Exams ──
+    { label: 'Reports', href: '/reports', icon: BarChart3, roles: [...adminOnly, 'parent'], divider: true },
+    { label: 'Exam Center', href: '/report-card-templates', icon: Award, roles: [...adminOnly, 'examiner'] },
+    { label: 'Student Reports', href: '/student-reports', icon: FileText, roles: [...adminRoles, 'examiner', 'teacher', 'student', 'parent'] },
+    { label: 'KPI', href: '/kpi', icon: BarChart3, roles: adminOnly },
+
+    // ── Collaboration ──
+    { label: 'Work Hub', href: '/hub', icon: Megaphone, roles: [...adminOnly, 'teacher'], divider: true },
+    { label: 'Chat', href: '/chat', icon: MessageSquare, roles: [...adminOnly, 'teacher', 'student', 'parent'] },
+    { label: 'My Resources', href: '/my-resources', icon: FolderOpen, roles: [...adminOnly, 'teacher', 'student'] },
+
+    // ── Admin tools ──
+    ...(!isOnsite ? [{ label: 'Zoom Engine', href: '/zoom-management', icon: Video, roles: adminOnly, divider: true }] : []),
+    { label: 'WhatsApp', href: '/whatsapp', icon: Phone, roles: adminOnly },
+    { label: 'Leads', href: '/leads', icon: UserCheck, roles: ['super_admin', 'admin', 'admin_admissions'] },
+    { label: 'Integrity', href: '/integrity-audit', icon: AlertTriangle, roles: adminOnly },
+
+    // ── Settings ──
+    { label: 'Settings', href: '/organization-settings', icon: Cog, roles: adminOnly, divider: true },
+    { label: 'Resources', href: '/resources', icon: FolderOpen, roles: ['super_admin'] },
+    { label: 'Course Library', href: '/course-assets', icon: Library, roles: ['super_admin', 'admin', 'admin_academic'] },
   ];
+
+  return items;
 }
 
-const SIDEBAR_STATE_KEY = 'sidebar-groups-state';
 const SIDEBAR_COLLAPSED_KEY = 'sidebar-collapsed';
-
-function useSidebarState() {
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => {
-    try {
-      const saved = localStorage.getItem(SIDEBAR_STATE_KEY);
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
-
-  useEffect(() => {
-    localStorage.setItem(SIDEBAR_STATE_KEY, JSON.stringify(expandedGroups));
-  }, [expandedGroups]);
-
-  const toggleGroup = useCallback((groupId: string) => {
-    setExpandedGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }));
-  }, []);
-
-  const expandGroup = useCallback((groupId: string) => {
-    setExpandedGroups(prev => {
-      if (prev[groupId]) return prev;
-      return { ...prev, [groupId]: true };
-    });
-  }, []);
-
-  return { expandedGroups, toggleGroup, expandGroup };
-}
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -223,72 +138,36 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Listen for teacher top bar menu toggle event
   useEffect(() => {
     const handler = () => setSidebarOpen(prev => !prev);
     window.addEventListener('teacher-menu-toggle', handler);
     return () => window.removeEventListener('teacher-menu-toggle', handler);
   }, []);
+
   const [collapsed, setCollapsed] = useState(() => {
     try { return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true'; } catch { return false; }
   });
   const isMobile = useIsMobile();
-  const { expandedGroups, toggleGroup, expandGroup } = useSidebarState();
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed));
   }, [collapsed]);
 
-  // Build nav groups based on active division and branch
-  const navGroups = useMemo(() => buildNavGroups(activeModelType, activeBranch?.type || null), [activeModelType, activeBranch?.type]);
+  // Build flat nav
+  const allItems = useMemo(
+    () => buildFlatNav(activeRole, activeModelType, activeBranch?.type || null),
+    [activeRole, activeModelType, activeBranch?.type],
+  );
 
-  // Check item visibility
-  const isItemVisible = useCallback((item: NavItem) => {
-    if (activeRole === 'super_admin') return true;
-    if (item.href === '/dashboard') return true;
-    // If roles are specified, check them
-    if (item.roles && activeRole && item.roles.includes(activeRole)) return true;
-    // If permission is specified, check it (fallback for items with permission but no roles)
-    if (item.permission && hasPermission(item.permission)) return true;
-    // Items with neither roles nor permission: hidden to non-super_admin
-    if (!item.roles && !item.permission) return false;
-    return false;
-  }, [activeRole, hasPermission]);
-
-  // Helper: get all nav items from a group (including sub-groups)
-  const getAllGroupItems = useCallback((group: NavGroup): NavItem[] => {
-    const direct = group.items ?? [];
-    const nested = (group.subGroups ?? []).flatMap(sg => sg.items);
-    return [...direct, ...nested];
-  }, []);
-
-  // Filter groups: only show groups that have at least one visible item
-  const visibleGroups = useMemo(() => {
-    return navGroups.map(group => ({
-      ...group,
-      items: (group.items ?? []).filter(isItemVisible),
-      subGroups: (group.subGroups ?? []).map(sg => ({
-        ...sg,
-        items: sg.items.filter(isItemVisible),
-      })).filter(sg => sg.items.length > 0),
-    })).filter(group => (group.items?.length ?? 0) > 0 || (group.subGroups?.length ?? 0) > 0);
-  }, [isItemVisible, navGroups]);
-
-  // Auto-expand group & sub-group containing the active route
-  useEffect(() => {
-    for (const group of navGroups) {
-      const allItems = getAllGroupItems(group);
-      if (allItems.some(item => location.pathname === item.href)) {
-        expandGroup(group.id);
-        for (const sg of (group.subGroups ?? [])) {
-          if (sg.items.some(item => location.pathname === item.href)) {
-            expandGroup(sg.id);
-          }
-        }
-        break;
-      }
-    }
-  }, [location.pathname, expandGroup, getAllGroupItems, navGroups]);
+  // Filter items by role
+  const visibleItems = useMemo(() => {
+    return allItems.filter(item => {
+      if (item.href === '/dashboard') return true;
+      if (activeRole === 'super_admin') return true;
+      if (item.roles && activeRole && item.roles.includes(activeRole)) return true;
+      return false;
+    });
+  }, [allItems, activeRole]);
 
   const handleLogout = async () => {
     await logout();
@@ -337,147 +216,66 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     );
   }
 
-  const sidebarWidthPx = collapsed ? 68 : 256;
-  const sidebarWidth = collapsed ? 'w-[68px]' : 'w-64';
+  const sidebarWidthPx = collapsed ? 68 : 220;
+  const sidebarWidth = collapsed ? 'w-[68px]' : 'w-[220px]';
 
   const renderNavLink = (item: NavItem, closeMobile?: boolean) => {
     const isActive = location.pathname === item.href;
     if (collapsed) {
       return (
-        <Tooltip key={item.href} delayDuration={0}>
-          <TooltipTrigger asChild>
-            <Link
-              to={item.href}
-              onClick={() => closeMobile && setSidebarOpen(false)}
-              className={cn(
-                "flex items-center justify-center w-10 h-10 rounded-lg mx-auto transition-all duration-200",
-                isActive
-                  ? "bg-accent text-accent-foreground shadow-glow"
-                  : "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              )}
-            >
-              <item.icon className="h-4 w-4" />
-            </Link>
-          </TooltipTrigger>
-          <TooltipContent side="right" sideOffset={8}>
-            {item.label}
-          </TooltipContent>
-        </Tooltip>
+        <React.Fragment key={item.href}>
+          {item.divider && <div className="h-px bg-sidebar-border my-1 mx-2" />}
+          <Tooltip delayDuration={0}>
+            <TooltipTrigger asChild>
+              <Link
+                to={item.href}
+                onClick={() => closeMobile && setSidebarOpen(false)}
+                className={cn(
+                  "flex items-center justify-center w-10 h-10 rounded-lg mx-auto transition-all duration-200",
+                  isActive
+                    ? "bg-accent text-accent-foreground shadow-glow"
+                    : "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                )}
+              >
+                <item.icon className="h-4 w-4" />
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={8}>
+              {item.label}
+            </TooltipContent>
+          </Tooltip>
+        </React.Fragment>
       );
     }
     return (
-      <Link
-        key={item.href}
-        to={item.href}
-        onClick={() => closeMobile && setSidebarOpen(false)}
-        className={cn(
-          "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
-          isActive
-            ? "bg-accent text-accent-foreground shadow-glow"
-            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-        )}
-      >
-        <item.icon className="h-4 w-4 shrink-0" />
-        <span className="truncate">{item.label}</span>
-      </Link>
-    );
-  };
-
-  const renderSubGroup = (sg: NavSubGroup, closeMobile?: boolean) => {
-    if (collapsed) {
-      return (
-        <div key={sg.id} className="space-y-0.5">
-          {sg.items.map(item => renderNavLink(item, closeMobile))}
-        </div>
-      );
-    }
-    const isOpen = expandedGroups[sg.id] ?? false;
-    return (
-      <Collapsible key={sg.id} open={isOpen} onOpenChange={() => toggleGroup(sg.id)}>
-        <CollapsibleTrigger className={cn(
-          "flex items-center justify-between w-full px-3 py-1.5 rounded-md text-xs font-semibold uppercase tracking-wider transition-all duration-200",
-          isOpen ? "text-accent" : "text-sidebar-foreground/50 hover:text-sidebar-foreground/70"
-        )}>
-          <span className="flex items-center gap-2">
-            <sg.icon className="h-3.5 w-3.5" />
-            {sg.label}
-          </span>
-          <ChevronDown className={cn("h-3 w-3 transition-transform duration-200", isOpen && "rotate-180")} />
-        </CollapsibleTrigger>
-        <CollapsibleContent className="pl-2 mt-0.5 space-y-0.5">
-          {sg.items.map(item => renderNavLink(item, closeMobile))}
-        </CollapsibleContent>
-      </Collapsible>
+      <React.Fragment key={item.href}>
+        {item.divider && <div className="h-px bg-sidebar-border my-2" />}
+        <Link
+          to={item.href}
+          onClick={() => closeMobile && setSidebarOpen(false)}
+          className={cn(
+            "flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-200",
+            isActive
+              ? "bg-accent text-accent-foreground shadow-glow"
+              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          )}
+        >
+          <item.icon className="h-4 w-4 shrink-0" />
+          <span className="truncate">{item.label}</span>
+        </Link>
+      </React.Fragment>
     );
   };
 
   const renderSidebarContent = (closeMobile?: boolean) => (
     <>
-      {/* Dashboard - always top */}
-      {renderNavLink({ label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: 'dashboard.admin' }, closeMobile)}
-
-      {/* Separator */}
-      {!collapsed && <div className="h-px bg-sidebar-border my-2" />}
-      {collapsed && <div className="h-px bg-sidebar-border my-1 mx-2" />}
-
-      {/* Grouped items */}
-      {visibleGroups.map(group => {
-        const isOpen = expandedGroups[group.id] ?? false;
-
-        if (collapsed) {
-          // In collapsed mode, show group icon as a tooltip trigger
-          return (
-            <div key={group.id} className="space-y-0.5">
-              <Tooltip delayDuration={0}>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => { setCollapsed(false); expandGroup(group.id); }}
-                    className={cn(
-                      "flex items-center justify-center w-10 h-10 rounded-lg mx-auto transition-all duration-200",
-                      isOpen
-                        ? "bg-accent/20 text-accent"
-                        : "text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                    )}
-                  >
-                    <group.icon className="h-5 w-5" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right" sideOffset={8}>
-                  {group.label}
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          );
-        }
-
-        return (
-          <Collapsible key={group.id} open={isOpen} onOpenChange={() => toggleGroup(group.id)}>
-            <CollapsibleTrigger className={cn(
-              "flex items-center justify-between w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group",
-              isOpen
-                ? "bg-accent/15 text-accent"
-                : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-            )}>
-              <span className="flex items-center gap-3">
-                <group.icon className="h-5 w-5" />
-                {group.label}
-              </span>
-              <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", isOpen && "rotate-180")} />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pl-3 mt-0.5 space-y-0.5">
-              {(group.items ?? []).map(item => renderNavLink(item, closeMobile))}
-              {(group.subGroups ?? []).map(sg => renderSubGroup(sg, closeMobile))}
-            </CollapsibleContent>
-          </Collapsible>
-        );
-      })}
+      {visibleItems.map(item => renderNavLink(item, closeMobile))}
     </>
   );
 
-
   return (
     <div className="min-h-screen bg-background islamic-pattern">
-      {/* Mobile Header - hidden on dashboard page where each role has its own top bar */}
+      {/* Mobile Header */}
       <header className={`lg:hidden fixed top-0 left-0 right-0 z-50 h-14 bg-card border-b border-border flex items-center justify-between px-3 safe-area-inset ${location.pathname === '/dashboard' && activeRole !== 'teacher' && activeRole !== 'examiner' ? 'hidden' : ''}`}>
         <div className="flex items-center gap-2 min-w-0">
           <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0" onClick={() => setSidebarOpen(!sidebarOpen)}>
@@ -496,111 +294,110 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <aside
         className={cn("hidden lg:block fixed top-0 left-0 z-40 h-full bg-sidebar border-r border-sidebar-border transition-all duration-300", sidebarWidth)}
       >
-          <div className="flex flex-col h-full">
-            {/* Logo Area */}
-            <div className="flex items-center justify-between p-3 border-b border-sidebar-border">
-              <div className={cn("flex items-center gap-3 overflow-hidden", collapsed && "justify-center w-full")}>
-                <img src={logoDark} alt="Al-Quran Time Academy" className={cn("object-contain rounded-lg shrink-0", collapsed ? "h-9 w-9" : "h-10 w-10")} />
-                {!collapsed && (
-                  <div className="min-w-0">
-                    <h1 className="font-serif text-sm font-bold text-sidebar-foreground truncate">Al-Quran Time</h1>
-                    <p className="text-[10px] text-sidebar-foreground/60">Academy LMS</p>
-                  </div>
-                )}
-              </div>
-              <button
-                onClick={() => setCollapsed(!collapsed)}
-                className={cn(
-                  "p-1.5 rounded-md text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors shrink-0",
-                  collapsed && "hidden"
-                )}
-              >
-                <PanelLeftClose className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Active Context Badge */}
-            {activeBranch && activeDivision && !collapsed && (
-              <div className="px-3 pt-2">
-                <div className="px-2.5 py-1.5 rounded-md bg-accent/10 border border-accent/20">
-                  <p className="text-[10px] font-semibold text-accent truncate">
-                    {activeBranch.name} · {activeDivision.name}
-                  </p>
+        <div className="flex flex-col h-full">
+          {/* Logo */}
+          <div className="flex items-center justify-between p-3 border-b border-sidebar-border">
+            <div className={cn("flex items-center gap-3 overflow-hidden", collapsed && "justify-center w-full")}>
+              <img src={logoDark} alt="Al-Quran Time Academy" className={cn("object-contain rounded-lg shrink-0", collapsed ? "h-9 w-9" : "h-10 w-10")} />
+              {!collapsed && (
+                <div className="min-w-0">
+                  <h1 className="font-serif text-sm font-bold text-sidebar-foreground truncate">Al-Quran Time</h1>
+                  <p className="text-[10px] text-sidebar-foreground/60">Academy LMS</p>
                 </div>
-              </div>
-            )}
-
-            {/* Navigation */}
-            <nav className={cn("flex-1 overflow-y-auto scrollbar-thin", collapsed ? "p-2 space-y-0.5" : "p-3 space-y-0.5")}>
-              {renderSidebarContent(false)}
-            </nav>
-
-            {/* Collapse toggle at bottom for collapsed state */}
-            {collapsed && (
-              <div className="p-2 border-t border-sidebar-border">
-                <Tooltip delayDuration={0}>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={() => setCollapsed(false)}
-                      className="flex items-center justify-center w-10 h-10 rounded-lg mx-auto text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-                    >
-                      <PanelLeft className="h-4 w-4" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">Expand sidebar</TooltipContent>
-                </Tooltip>
-              </div>
-            )}
-
-            {/* User Section */}
-            <div className={cn("border-t border-sidebar-border", collapsed ? "p-2" : "p-3")}>
-              {collapsed ? (
-                <Tooltip delayDuration={0}>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={handleLogout}
-                      className="flex items-center justify-center w-10 h-10 rounded-lg mx-auto text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-                    >
-                      <LogOut className="h-4 w-4" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">{profile.full_name} · Sign Out</TooltipContent>
-                </Tooltip>
-              ) : (
-                <>
-                  <div className="flex items-center gap-3 mb-2 px-2">
-                    <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center shrink-0">
-                      <User className="h-3.5 w-3.5 text-accent" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-sidebar-foreground truncate">{profile.full_name}</p>
-                      <p className="text-[10px] text-sidebar-foreground/50 capitalize">
-                        {activeRole ? ROLE_LABELS[activeRole] : 'User'}
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start gap-2 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent h-8 text-xs"
-                    onClick={handleLogout}
-                  >
-                    <LogOut className="h-3.5 w-3.5" />
-                    Sign Out
-                  </Button>
-                </>
               )}
             </div>
+            <button
+              onClick={() => setCollapsed(!collapsed)}
+              className={cn(
+                "p-1.5 rounded-md text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors shrink-0",
+                collapsed && "hidden"
+              )}
+            >
+              <PanelLeftClose className="h-4 w-4" />
+            </button>
           </div>
+
+          {/* Context Badge */}
+          {activeBranch && activeDivision && !collapsed && (
+            <div className="px-3 pt-2">
+              <div className="px-2.5 py-1.5 rounded-md bg-accent/10 border border-accent/20">
+                <p className="text-[10px] font-semibold text-accent truncate">
+                  {activeBranch.name} · {activeDivision.name}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Navigation */}
+          <nav className={cn("flex-1 overflow-y-auto scrollbar-thin", collapsed ? "p-2 space-y-0.5" : "p-3 space-y-0.5")}>
+            {renderSidebarContent(false)}
+          </nav>
+
+          {/* Collapse toggle */}
+          {collapsed && (
+            <div className="p-2 border-t border-sidebar-border">
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setCollapsed(false)}
+                    className="flex items-center justify-center w-10 h-10 rounded-lg mx-auto text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+                  >
+                    <PanelLeft className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Expand sidebar</TooltipContent>
+              </Tooltip>
+            </div>
+          )}
+
+          {/* User Section */}
+          <div className={cn("border-t border-sidebar-border", collapsed ? "p-2" : "p-3")}>
+            {collapsed ? (
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center justify-center w-10 h-10 rounded-lg mx-auto text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">{profile.full_name} · Sign Out</TooltipContent>
+              </Tooltip>
+            ) : (
+              <>
+                <div className="flex items-center gap-3 mb-2 px-2">
+                  <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center shrink-0">
+                    <User className="h-3.5 w-3.5 text-accent" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-sidebar-foreground truncate">{profile.full_name}</p>
+                    <p className="text-[10px] text-sidebar-foreground/50 capitalize">
+                      {activeRole ? ROLE_LABELS[activeRole] : 'User'}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start gap-2 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent h-8 text-xs"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  Sign Out
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
       </aside>
 
-      {/* Mobile Sidebar - slide-over drawer */}
+      {/* Mobile Sidebar */}
       <aside className={cn(
         "lg:hidden fixed top-0 left-0 z-[210] h-full w-[280px] max-w-[85vw] bg-sidebar border-r border-sidebar-border transition-transform duration-300 ease-in-out",
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="flex flex-col h-full">
-          {/* Mobile sidebar header */}
           <div className="flex items-center gap-3 p-4 pt-5 border-b border-sidebar-border">
             <img src={logoDark} alt="Al-Quran Time Academy" className="h-9 w-9 object-contain rounded-lg shrink-0" />
             <div className="min-w-0">
@@ -609,7 +406,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
           </div>
 
-          {/* Active Context Badge - mobile */}
           {activeBranch && activeDivision && (
             <div className="px-3 pt-3">
               <div className="px-2.5 py-1.5 rounded-md bg-accent/10 border border-accent/20">
@@ -623,6 +419,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto overscroll-contain -webkit-overflow-scrolling-touch">
             {renderSidebarContent(true)}
           </nav>
+
           <div className="p-3 border-t border-sidebar-border safe-area-bottom">
             <div className="flex items-center gap-3 mb-2 px-2">
               <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center shrink-0">
