@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Video } from 'lucide-react';
+import { Video, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StartClassButton } from '@/components/zoom/StartClassButton';
+import { Button } from '@/components/ui/button';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
