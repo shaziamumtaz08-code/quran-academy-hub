@@ -90,15 +90,19 @@ function buildNavGroups(modelType: string | null, branchType: string | null): Na
   const isGroup = modelType === 'group';
   const isOnsite = branchType === 'onsite';
 
+  // Admin roles shorthand
+  const adminRoles = ['super_admin', 'admin', 'admin_admissions', 'admin_fees', 'admin_academic'] as string[];
+  const adminOnly = ['super_admin', 'admin'] as string[];
+
   // Context-aware teaching items
   const teachingItems: NavItem[] = isOneToOne
     ? [
-        { label: 'Assignments', href: '/assignments', icon: UserCheck, roles: ['super_admin', 'admin'] },
-        { label: 'Schedules', href: '/schedules', icon: Calendar, roles: ['super_admin', 'admin'] },
+        { label: 'Assignments', href: '/assignments', icon: UserCheck, roles: adminOnly },
+        { label: 'Schedules', href: '/schedules', icon: Calendar, roles: adminOnly },
       ]
     : [
         { label: 'Courses', href: '/courses', icon: BookOpen, roles: ['super_admin', 'admin', 'admin_academic'] },
-        { label: 'Schedules', href: '/schedules', icon: CalendarClock, roles: ['super_admin', 'admin'] },
+        { label: 'Schedules', href: '/schedules', icon: CalendarClock, roles: adminOnly },
       ];
 
   return [
@@ -108,9 +112,9 @@ function buildNavGroups(modelType: string | null, branchType: string | null): Na
       icon: GraduationCap,
       items: [
         ...teachingItems,
-        { label: 'Attendance', href: '/attendance', icon: ClipboardCheck, permission: 'attendance.view' },
+        { label: 'Attendance', href: '/attendance', icon: ClipboardCheck, roles: [...adminOnly, 'teacher'] },
         { label: 'Planning', href: '/monthly-planning', icon: Target, roles: ['super_admin', 'admin', 'teacher'] },
-        { label: 'Subjects', href: '/subjects', icon: BookOpen, roles: ['super_admin', 'admin'] },
+        { label: 'Subjects', href: '/subjects', icon: BookOpen, roles: adminOnly },
       ],
       subGroups: [
         {
@@ -121,7 +125,7 @@ function buildNavGroups(modelType: string | null, branchType: string | null): Na
             { label: 'Report Templates', href: '/report-card-templates', icon: FileText, roles: ['super_admin', 'admin', 'examiner'] },
             { label: 'Generate Reports', href: '/generate-report-card', icon: ClipboardCheck, roles: ['super_admin', 'admin', 'examiner'] },
             { label: 'Student Reports', href: '/student-reports', icon: BarChart3, roles: ['super_admin', 'admin', 'examiner', 'teacher', 'student', 'parent'] },
-            { label: 'Reports', href: '/reports', icon: FileText, permission: 'reports.view' },
+            { label: 'Reports', href: '/reports', icon: FileText, roles: [...adminOnly, 'parent'] },
           ],
         },
       ],
@@ -131,9 +135,9 @@ function buildNavGroups(modelType: string | null, branchType: string | null): Na
       label: 'People',
       icon: Users,
       items: [
-        { label: 'All Users', href: '/user-management', icon: Shield, roles: ['super_admin', 'admin'] },
-        { label: 'Teachers', href: '/teachers', icon: Users, permission: 'teachers.view' },
-        { label: 'Students', href: '/students', icon: GraduationCap, permission: 'students.view' },
+        { label: 'All Users', href: '/user-management', icon: Shield, roles: adminOnly },
+        { label: 'Teachers', href: '/teachers', icon: Users, roles: adminOnly },
+        { label: 'Students', href: '/students', icon: GraduationCap, roles: [...adminOnly, 'teacher'] },
         { label: 'Leads Pipeline', href: '/leads', icon: UserCheck, roles: ['super_admin', 'admin', 'admin_admissions'] },
       ],
     },
@@ -142,13 +146,13 @@ function buildNavGroups(modelType: string | null, branchType: string | null): Na
       label: 'Finance',
       icon: DollarSign,
       items: [
-        { label: 'Fees', href: '/payments', icon: CreditCard, permission: 'payments.view' },
+        { label: 'Fees', href: '/payments', icon: CreditCard, roles: ['super_admin', 'admin', 'admin_fees'] },
         { label: 'Salary Engine', href: '/salary', icon: Wallet, roles: ['super_admin', 'admin', 'admin_fees', 'teacher'] },
         { label: 'Staff Salaries', href: '/staff-salaries', icon: Users, roles: ['super_admin', 'admin', 'admin_fees'] },
         { label: 'Expenses', href: '/expenses', icon: Receipt, roles: ['super_admin', 'admin', 'admin_fees'] },
         { label: 'Cash Advances', href: '/cash-advances', icon: Wallet, roles: ['super_admin', 'admin', 'admin_fees'] },
         { label: 'Finance Setup', href: '/finance-setup', icon: Wallet, roles: ['super_admin'] },
-        { label: 'KPI', href: '/kpi', icon: BarChart3, roles: ['super_admin', 'admin'] },
+        { label: 'KPI', href: '/kpi', icon: BarChart3, roles: adminOnly },
       ],
     },
     {
@@ -156,12 +160,12 @@ function buildNavGroups(modelType: string | null, branchType: string | null): Na
       label: 'Collaboration',
       icon: MessageSquare,
       items: [
-        { label: 'Work Hub', href: '/hub', icon: Megaphone },
-        { label: 'Group Chat', href: '/chat', icon: MessageSquare },
-        { label: 'WhatsApp', href: '/whatsapp', icon: Phone, roles: ['super_admin', 'admin'] as string[] },
-        { label: 'My Resources', href: '/my-resources', icon: FolderOpen },
-        ...(!isOnsite ? [{ label: 'Zoom Engine', href: '/zoom-management', icon: Video, roles: ['super_admin', 'admin'] as string[] }] : []),
-        { label: 'Integrity Audit', href: '/integrity-audit', icon: AlertTriangle, roles: ['super_admin', 'admin'] },
+        { label: 'Work Hub', href: '/hub', icon: Megaphone, roles: [...adminOnly, 'teacher'] },
+        { label: 'Group Chat', href: '/chat', icon: MessageSquare, roles: [...adminOnly, 'teacher', 'student', 'parent'] },
+        { label: 'WhatsApp', href: '/whatsapp', icon: Phone, roles: adminOnly },
+        { label: 'My Resources', href: '/my-resources', icon: FolderOpen, roles: [...adminOnly, 'teacher', 'student'] },
+        ...(!isOnsite ? [{ label: 'Zoom Engine', href: '/zoom-management', icon: Video, roles: adminOnly }] : []),
+        { label: 'Integrity Audit', href: '/integrity-audit', icon: AlertTriangle, roles: adminOnly },
       ],
     },
     {
@@ -169,7 +173,7 @@ function buildNavGroups(modelType: string | null, branchType: string | null): Na
       label: 'Settings',
       icon: Settings,
       items: [
-        { label: 'System Control', href: '/organization-settings', icon: Cog, roles: ['super_admin', 'admin'] },
+        { label: 'System Control', href: '/organization-settings', icon: Cog, roles: adminOnly },
         { label: 'Resources', href: '/resources', icon: FolderOpen, roles: ['super_admin'] },
         { label: 'Course Library', href: '/course-assets', icon: Library, roles: ['super_admin', 'admin', 'admin_academic'] },
       ],
