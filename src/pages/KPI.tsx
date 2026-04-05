@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { ConditionalDashboardLayout as DashboardLayout } from '@/components/layout/ConditionalDashboardLayout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { BarChart3, Users, Calendar, CheckCircle, Star, TrendingUp, TrendingDown, Clock, AlertTriangle, FileText } from 'lucide-react';
