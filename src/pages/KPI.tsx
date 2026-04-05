@@ -193,7 +193,7 @@ export default function KPI() {
         ) : (
           <>
             {/* Planning KPI Summary */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
               <div className="bg-primary text-primary-foreground rounded-xl p-4">
                 <FileText className="h-5 w-5 mb-1 opacity-70" />
                 <p className="text-2xl font-black">{kpis?.submitted || 0}<span className="text-sm font-medium opacity-70">/{kpis?.total || 0}</span></p>
@@ -203,6 +203,16 @@ export default function KPI() {
                 <CheckCircle className="h-5 w-5 mb-1 text-teal" />
                 <p className="text-2xl font-black text-foreground">{completionRate}%</p>
                 <p className="text-[11px] text-muted-foreground font-semibold">Completion Rate</p>
+              </div>
+              <div className="bg-card border border-border rounded-xl p-4">
+                <CheckCircle className="h-5 w-5 mb-1 text-emerald-500" />
+                <p className="text-2xl font-black text-emerald-600">{kpis?.onTime || 0}</p>
+                <p className="text-[11px] text-muted-foreground font-semibold">On-Time (by 3rd)</p>
+              </div>
+              <div className="bg-card border border-border rounded-xl p-4">
+                <AlertTriangle className="h-5 w-5 mb-1 text-amber-500" />
+                <p className="text-2xl font-black text-amber-600">{kpis?.late || 0}</p>
+                <p className="text-[11px] text-muted-foreground font-semibold">Late Submissions</p>
               </div>
               <div className="bg-card border border-border rounded-xl p-4">
                 <Clock className="h-5 w-5 mb-1 text-gold" />
