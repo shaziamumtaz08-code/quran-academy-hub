@@ -270,7 +270,8 @@ export default function KPI() {
                   </div>
                   <div className="p-4 space-y-3">
                     <div className="grid grid-cols-4 gap-2 text-center">
-                      <div>
+                      <div className="cursor-pointer hover:bg-secondary/80 rounded-lg transition-colors"
+                        onClick={() => setDrawerTeacher({ id: t.id, full_name: t.name })}>
                         <p className="text-lg font-black text-foreground">{t.totalClasses}</p>
                         <p className="text-[10px] text-muted-foreground">Total</p>
                       </div>
@@ -323,6 +324,13 @@ export default function KPI() {
           </>
         )}
       </div>
+
+      {/* Teacher Detail Drawer */}
+      <TeacherDetailDrawer
+        open={!!drawerTeacher}
+        onOpenChange={(open) => !open && setDrawerTeacher(null)}
+        teacher={drawerTeacher}
+      />
     </DashboardLayout>
   );
 }
