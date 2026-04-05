@@ -552,7 +552,17 @@ export default function Students() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {student.teacher_name ? (
+                        {student.teacher_name && student.teacher_id ? (
+                          <EntityLink
+                            to="#"
+                            variant="name"
+                            className="text-sm"
+                            onClick={(e) => { e.preventDefault(); setDrawerTeacher({ id: student.teacher_id!, full_name: student.teacher_name! }); }}
+                          >
+                            <User className="h-3.5 w-3.5" />
+                            {student.teacher_name}
+                          </EntityLink>
+                        ) : student.teacher_name ? (
                           <span className="flex items-center gap-2">
                             <User className="h-4 w-4 text-muted-foreground" />
                             {student.teacher_name}
