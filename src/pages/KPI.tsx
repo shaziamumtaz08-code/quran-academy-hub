@@ -31,23 +31,25 @@ export default function KPI() {
       const monthStart = `${monthKey}-01`;
       const monthEnd = format(endOfMonth(parseISO(monthStart)), 'yyyy-MM-dd');
 
-      // 1) Teachers with assignments in this division
+      // 1) Teachers with assignments in this division — only those with requires_planning=true
       let assignmentQuery = supabase
         .from('student_teacher_assignments')
-        .select('teacher_id, student_id, id')
+        .select('teacher_id, student_id, id, requires_planning')
         .eq('status', 'active');
       if (activeDivisionId) assignmentQuery = assignmentQuery.eq('division_id', activeDivisionId);
       const { data: assignments } = await assignmentQuery;
 
-      const teacherMap: Record<string, { studentIds: Set<string>; assignmentIds: string[] }> = {};
+      // Build teacher map — only count students that require planning for plan KPIs
+      const teacherMap: Record<string, { studentIds: Set<string>; planningStudentIds: Set<string>; assignmentIds: string[] }> = {};
       (assignments || []).forEach(a => {
-        if (!teacherMap[a.teacher_id]) teacherMap[a.teacher_id] = { studentIds: new Set(), assignmentIds: [] };
+        if (!teacherMap[a.teacher_id]) teacherMap[a.teacher_id] = { studentIds: new Set(), planningStudentIds: new Set(), assignmentIds: [] };
         teacherMap[a.teacher_id].studentIds.add(a.student_id);
+        if (a.requires_planning) teacherMap[a.teacher_id].planningStudentIds.add(a.student_id);
         teacherMap[a.teacher_id].assignmentIds.push(a.id);
       });
 
       const teacherIds = Object.keys(teacherMap);
-      if (!teacherIds.length) return { teachers: [], planningKpis: { submitted: 0, total: 0, pending: 0, avgTat: 0, breached: 0 } };
+      if (!teacherIds.length) return { teachers: [], planningKpis: { submitted: 0, total: 0, pending: 0, avgTat: 0, breached: 0, onTime: 0, late: 0 } };
 
       // 2) Teacher profiles
       const { data: profiles } = await supabase
@@ -65,18 +67,16 @@ export default function KPI() {
         .gte('class_date', monthStart)
         .lte('class_date', monthEnd);
 
-      // 4) Monthly plans (table may not exist yet — handle gracefully)
-      let plans: any[] = [];
-      try {
-        const { data: planData } = await (supabase as any)
-          .from('monthly_plans')
-          .select('id, teacher_id, student_id, month, status, created_at, approved_at, approved_by')
-          .in('teacher_id', teacherIds)
-          .eq('month', monthKey);
-        plans = planData || [];
-      } catch {
-        plans = [];
-      }
+      // 4) Monthly plans — read from student_monthly_plans (the real table)
+      const { data: planData } = await supabase
+        .from('student_monthly_plans')
+        .select('id, teacher_id, student_id, month, status, created_at, approved_at, approved_by')
+        .in('teacher_id', teacherIds)
+        .eq('month', monthKey);
+      const plans = planData || [];
+
+      // Deadline: 3rd of the month
+      const deadlineDate = new Date(Number(selectedYear), Number(selectedMonth) - 1, 3, 23, 59, 59);
 
       // Build teacher KPIs
       const teachers = teacherIds.map(tid => {
@@ -91,12 +91,16 @@ export default function KPI() {
         const deliveryRate = totalClasses > 0 ? Math.round(((totalClasses - teacherAbsent) / totalClasses) * 100) : 0;
 
         const teacherPlans = plans.filter((p: any) => p.teacher_id === tid);
-        const expectedPlans = info.studentIds.size;
+        const expectedPlans = info.planningStudentIds.size; // Only count students with requires_planning
         const submittedPlans = teacherPlans.length;
         const approvedPlans = teacherPlans.filter((p: any) => p.status === 'approved').length;
 
+        // Plan timing: on-time (submitted by 3rd) vs late
+        const onTimePlans = teacherPlans.filter((p: any) => p.created_at && new Date(p.created_at) <= deadlineDate).length;
+        const latePlans = teacherPlans.filter((p: any) => p.created_at && new Date(p.created_at) > deadlineDate).length;
+
         // Score: weighted (delivery 40%, attendance 30%, planning 30%)
-        const planRate = expectedPlans > 0 ? submittedPlans / expectedPlans : 0;
+        const planRate = expectedPlans > 0 ? submittedPlans / expectedPlans : 1; // If no planning required, full marks
         const score = Math.round(((deliveryRate / 100) * 40 + (attendanceRate / 100) * 30 + planRate * 30)) / 10;
 
         return {
@@ -112,15 +116,19 @@ export default function KPI() {
           submittedPlans,
           expectedPlans,
           approvedPlans,
+          onTimePlans,
+          latePlans,
           score: Math.min(5, Math.max(0, score)),
           trend: deliveryRate >= 95 ? 'up' as const : deliveryRate >= 80 ? 'stable' as const : 'down' as const,
         };
       }).sort((a, b) => b.score - a.score);
 
       // Planning KPIs (global)
-      const totalExpected = Object.values(teacherMap).reduce((s, t) => s + t.studentIds.size, 0);
+      const totalExpected = Object.values(teacherMap).reduce((s, t) => s + t.planningStudentIds.size, 0);
       const totalSubmitted = plans.length;
       const totalPending = plans.filter((p: any) => p.status === 'pending').length;
+      const totalOnTime = plans.filter((p: any) => p.created_at && new Date(p.created_at) <= deadlineDate).length;
+      const totalLate = plans.filter((p: any) => p.created_at && new Date(p.created_at) > deadlineDate).length;
 
       // TAT: hours from created_at to approved_at
       const approvedWithTat = plans.filter((p: any) => p.approved_at && p.created_at);
@@ -132,7 +140,7 @@ export default function KPI() {
 
       return {
         teachers,
-        planningKpis: { submitted: totalSubmitted, total: totalExpected, pending: totalPending, avgTat, breached },
+        planningKpis: { submitted: totalSubmitted, total: totalExpected, pending: totalPending, avgTat, breached, onTime: totalOnTime, late: totalLate },
       };
     },
   });
@@ -185,7 +193,7 @@ export default function KPI() {
         ) : (
           <>
             {/* Planning KPI Summary */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
               <div className="bg-primary text-primary-foreground rounded-xl p-4">
                 <FileText className="h-5 w-5 mb-1 opacity-70" />
                 <p className="text-2xl font-black">{kpis?.submitted || 0}<span className="text-sm font-medium opacity-70">/{kpis?.total || 0}</span></p>
@@ -195,6 +203,16 @@ export default function KPI() {
                 <CheckCircle className="h-5 w-5 mb-1 text-teal" />
                 <p className="text-2xl font-black text-foreground">{completionRate}%</p>
                 <p className="text-[11px] text-muted-foreground font-semibold">Completion Rate</p>
+              </div>
+              <div className="bg-card border border-border rounded-xl p-4">
+                <CheckCircle className="h-5 w-5 mb-1 text-emerald-500" />
+                <p className="text-2xl font-black text-emerald-600">{kpis?.onTime || 0}</p>
+                <p className="text-[11px] text-muted-foreground font-semibold">On-Time (by 3rd)</p>
+              </div>
+              <div className="bg-card border border-border rounded-xl p-4">
+                <AlertTriangle className="h-5 w-5 mb-1 text-amber-500" />
+                <p className="text-2xl font-black text-amber-600">{kpis?.late || 0}</p>
+                <p className="text-[11px] text-muted-foreground font-semibold">Late Submissions</p>
               </div>
               <div className="bg-card border border-border rounded-xl p-4">
                 <Clock className="h-5 w-5 mb-1 text-gold" />
@@ -257,12 +275,18 @@ export default function KPI() {
                     </div>
 
                     {/* Planning row */}
-                    <div className="flex items-center gap-2 bg-secondary/50 rounded-lg px-3 py-2">
+                    <div className="flex flex-wrap items-center gap-2 bg-secondary/50 rounded-lg px-3 py-2">
                       <FileText className="h-4 w-4 text-muted-foreground" />
                       <span className="text-xs text-muted-foreground flex-1">Monthly Plans</span>
                       <Badge variant={t.submittedPlans >= t.expectedPlans ? 'default' : 'destructive'} className="text-[10px]">
                         {t.submittedPlans}/{t.expectedPlans} submitted
                       </Badge>
+                      {t.onTimePlans > 0 && (
+                        <Badge className="text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200">{t.onTimePlans} on-time</Badge>
+                      )}
+                      {t.latePlans > 0 && (
+                        <Badge className="text-[10px] bg-amber-100 text-amber-700 border-amber-200">{t.latePlans} late</Badge>
+                      )}
                       {t.approvedPlans > 0 && (
                         <Badge variant="secondary" className="text-[10px]">{t.approvedPlans} approved</Badge>
                       )}

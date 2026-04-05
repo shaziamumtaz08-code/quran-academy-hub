@@ -991,12 +991,18 @@ export default function SalaryEngine() {
                       <TableCell className="text-right tabular-nums text-red-600">PKR {teacher.deductions.toFixed(2)}</TableCell>
                       <TableCell className="text-right font-bold tabular-nums">
                         {(() => {
-                          const amountPaid = payout?.amount_paid || 0;
+                          const amountPaid = Number(payout?.amount_paid) || 0;
                           const balance = teacher.netSalary - amountPaid;
                           return (
-                            <div>
+                            <div className="space-y-0.5">
                               <div>PKR {balance.toFixed(2)}</div>
-                              {amountPaid > 0 && balance !== teacher.netSalary && (
+                              {amountPaid > 0 && (
+                                <div className="text-xs font-normal text-emerald-600">Paid: PKR {amountPaid.toFixed(2)}</div>
+                              )}
+                              {amountPaid > 0 && balance > 0.01 && (
+                                <div className="text-xs font-normal text-amber-600">Remaining: PKR {balance.toFixed(2)}</div>
+                              )}
+                              {balance !== teacher.netSalary && (
                                 <div className="text-xs font-normal text-muted-foreground">Net: PKR {teacher.netSalary.toFixed(2)}</div>
                               )}
                             </div>

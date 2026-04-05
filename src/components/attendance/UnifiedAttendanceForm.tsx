@@ -362,6 +362,15 @@ export function UnifiedAttendanceForm({
     return isAfter(selected, today);
   }, [classDate]);
 
+  // Check if lesson details are filled for "present" status
+  const hasLessonDetails = useMemo(() => {
+    if (selectedStatus !== 'present') return true;
+    if (currentSubjectType === 'qaida') return !!lessonNumber;
+    if (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') return !!(ayahFromSurah && ayahFromNumber);
+    if (currentSubjectType === 'academic') return !!academicLessonTopic?.trim();
+    return true;
+  }, [selectedStatus, currentSubjectType, lessonNumber, ayahFromSurah, ayahFromNumber, academicLessonTopic]);
+
   const isFormValid = useMemo(() => {
     if (!classTime || !classDate) return false;
     if (isFutureDate) return false;
@@ -370,8 +379,9 @@ export function UnifiedAttendanceForm({
     if (requiresReason(selectedStatus) && !reasonCategory) return false;
     if (requiresReason(selectedStatus) && reasonCategory === 'other' && !reasonText.trim()) return false;
     if (requiresReschedule(selectedStatus) && (!rescheduleDate || !rescheduleTime)) return false;
+    if (selectedStatus === 'present' && !hasLessonDetails) return false;
     return true;
-  }, [selectedStatus, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleTime, hasDuplicateAttendance, isScheduledDay, isFutureDate]);
+  }, [selectedStatus, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleTime, hasDuplicateAttendance, isScheduledDay, isFutureDate, hasLessonDetails]);
 
   const studentTzAbbr = getTimezoneAbbr(student.timezone);
   const teacherTzAbbr = getTimezoneAbbr(effectiveTeacherTz);
@@ -695,6 +705,16 @@ export function UnifiedAttendanceForm({
             />
           </div>
         </div>
+
+        {/* Lesson details validation warning */}
+        {selectedStatus === 'present' && !hasLessonDetails && (
+          <Alert className="bg-amber-500/20 border-amber-500/50 text-amber-200">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Lesson details are required when marking attendance as Present.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Actions */}
         <div className="flex justify-end gap-3 pt-4 border-t border-[#2d4a6f]">
