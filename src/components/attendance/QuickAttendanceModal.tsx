@@ -608,6 +608,16 @@ export function QuickAttendanceModal({ open, onOpenChange, student }: QuickAtten
             </div>
           )}
 
+          {/* Lesson details validation warning */}
+          {selectedStatus === 'present' && !hasLessonDetails && (
+            <Alert className="bg-amber-500/20 border-amber-500/50 text-amber-200">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                Lesson details are required when marking attendance as Present.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Submit Button */}
           <Button
             onClick={() => markAttendance.mutate()}
