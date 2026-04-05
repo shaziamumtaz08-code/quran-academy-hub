@@ -279,6 +279,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   );
 
   return (
+    <DashboardLayoutContext.Provider value={true}>
     <div className="min-h-screen bg-background islamic-pattern">
       {/* Mobile Header */}
       <header className={`lg:hidden fixed top-0 left-0 right-0 z-50 h-14 bg-card border-b border-border flex items-center justify-between px-3 safe-area-inset ${location.pathname === '/dashboard' && activeRole !== 'teacher' && activeRole !== 'examiner' ? 'hidden' : ''}`}>
