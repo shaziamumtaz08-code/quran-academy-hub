@@ -260,7 +260,7 @@ export default function Subjects() {
                               <Badge
                                 variant="secondary"
                                 className="cursor-pointer hover:bg-primary/20 transition-colors"
-                                onClick={() => navigate(`/people/students?subjectId=${subject.id}`)}
+                                onClick={() => navigate(`/students?subjectId=${subject.id}`)}
                               >
                                 <Users className="h-3 w-3 mr-1" />
                                 {count} student{count !== 1 ? 's' : ''}

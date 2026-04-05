@@ -15,6 +15,8 @@ import { StudentHistoryDialog } from '@/components/students/StudentHistoryDialog
 import { StudentScheduleDialog } from '@/components/students/StudentScheduleDialog';
 import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
 import { useSearchParams } from 'react-router-dom';
+import { EntityLink } from '@/components/shared/EntityLink';
+import { TeacherDetailDrawer } from '@/components/teachers/TeacherDetailDrawer';
 
 interface Student {
   id: string;
