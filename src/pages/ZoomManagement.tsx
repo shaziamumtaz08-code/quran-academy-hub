@@ -519,10 +519,20 @@ export default function ZoomManagement() {
                           </TableCell>
                           <TableCell>
                             {session.recording_link ? (
-                              <a href={session.recording_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline text-sm">
-                                <Video className="h-3 w-3" /> Watch
-                              </a>
-                            ) : <span className="text-muted-foreground text-sm">—</span>}
+                              <Button variant="ghost" size="sm" className="gap-1 text-xs h-7 text-primary" onClick={() => window.open(session.recording_link, '_blank')}>
+                                <Play className="h-3 w-3" /> Watch
+                              </Button>
+                            ) : session.status === 'completed' ? (
+                              <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/20">
+                                ⏳ Processing
+                              </Badge>
+                            ) : session.status === 'live' ? (
+                              <Badge variant="outline" className="text-[10px] bg-muted text-muted-foreground">
+                                Recording...
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">—</span>
+                            )}
                           </TableCell>
                           <TableCell>
                             <Badge className={cn(
