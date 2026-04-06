@@ -5019,7 +5019,9 @@ export type Database = {
           host_id: string | null
           id: string
           last_used_at: string | null
+          license_type: string
           meeting_link: string
+          priority: number
           status: Database["public"]["Enums"]["zoom_license_status"]
           updated_at: string
           zoom_email: string
@@ -5029,7 +5031,9 @@ export type Database = {
           host_id?: string | null
           id?: string
           last_used_at?: string | null
+          license_type?: string
           meeting_link: string
+          priority?: number
           status?: Database["public"]["Enums"]["zoom_license_status"]
           updated_at?: string
           zoom_email: string
@@ -5039,7 +5043,9 @@ export type Database = {
           host_id?: string | null
           id?: string
           last_used_at?: string | null
+          license_type?: string
           meeting_link?: string
+          priority?: number
           status?: Database["public"]["Enums"]["zoom_license_status"]
           updated_at?: string
           zoom_email?: string
