@@ -453,6 +453,9 @@ export default function ZoomManagement() {
                           Open <ExternalLink className="h-3 w-3" />
                         </a>
                       </TableCell>
+                      <TableCell className="text-sm text-muted-foreground font-mono">
+                        {(license as any).host_id || <span className="text-amber-500 text-xs">Not set</span>}
+                      </TableCell>
                       <TableCell>
                         <Badge className={cn(
                           license.status === 'available'
@@ -468,9 +471,22 @@ export default function ZoomManagement() {
                         {license.last_used_at ? formatDistanceToNow(new Date(license.last_used_at), { addSuffix: true }) : 'Never'}
                       </TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => { if (confirm('Delete this room?')) deleteLicenseMutation.mutate(license.id); }} disabled={license.status === 'busy'}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+                            setEditingLicense({
+                              id: license.id,
+                              zoom_email: license.zoom_email || '',
+                              meeting_link: license.meeting_link || '',
+                              host_id: (license as any).host_id || '',
+                            });
+                            setEditDialogOpen(true);
+                          }}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => { if (confirm('Delete this room?')) deleteLicenseMutation.mutate(license.id); }} disabled={license.status === 'busy'}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
