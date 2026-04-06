@@ -37,8 +37,30 @@ export default function ZoomManagement() {
   const [newLicense, setNewLicense] = React.useState({ zoom_email: '', meeting_link: '', host_id: '' });
   const [addDialogOpen, setAddDialogOpen] = React.useState(false);
   const [editDialogOpen, setEditDialogOpen] = React.useState(false);
-  const [editingLicense, setEditingLicense] = React.useState<{ id: string; zoom_email: string; meeting_link: string; host_id: string } | null>(null);
+  const [editingLicense, setEditingLicense] = React.useState<{ id: string; zoom_email: string; meeting_link: string; host_id: string; license_type: string; priority: number } | null>(null);
   const [activeSection, setActiveSection] = React.useState<'rooms' | 'sessions' | 'logs'>('rooms');
+
+  // Allocation mode query
+  const { data: allocationMode } = useQuery({
+    queryKey: ['zoom-allocation-mode'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('app_settings').select('setting_value').eq('setting_key', 'zoom_allocation_mode').single();
+      if (error) return 'round_robin';
+      const val = typeof data.setting_value === 'string' ? data.setting_value : JSON.stringify(data.setting_value);
+      return val.replace(/"/g, '') || 'round_robin';
+    },
+  });
+
+  const updateAllocationModeMutation = useMutation({
+    mutationFn: async (mode: string) => {
+      const { error } = await supabase.from('app_settings').update({ setting_value: JSON.stringify(mode) as any }).eq('setting_key', 'zoom_allocation_mode');
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: 'Allocation mode updated' });
+      queryClient.invalidateQueries({ queryKey: ['zoom-allocation-mode'] });
+    },
+  });
 
   const { data: licenses, isLoading: licensesLoading } = useQuery({
     queryKey: ['zoom-licenses-management'],
