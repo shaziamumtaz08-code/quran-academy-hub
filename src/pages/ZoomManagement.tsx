@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Video, Plus, Trash2, Wifi, WifiOff, Settings, Users, Clock, ExternalLink, RefreshCw, Radio, ArrowUpRight, ArrowDownLeft, Timer, Power, UserPlus, Play } from 'lucide-react';
+import { Video, Plus, Trash2, Wifi, WifiOff, Settings, Users, Clock, ExternalLink, RefreshCw, Radio, ArrowUpRight, ArrowDownLeft, Timer, Power, UserPlus, Play, Pencil } from 'lucide-react';
 import { format, differenceInMinutes, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -35,6 +35,8 @@ export default function ZoomManagement() {
   const queryClient = useQueryClient();
   const [newLicense, setNewLicense] = React.useState({ zoom_email: '', meeting_link: '', host_id: '' });
   const [addDialogOpen, setAddDialogOpen] = React.useState(false);
+  const [editDialogOpen, setEditDialogOpen] = React.useState(false);
+  const [editingLicense, setEditingLicense] = React.useState<{ id: string; zoom_email: string; meeting_link: string; host_id: string } | null>(null);
   const [activeSection, setActiveSection] = React.useState<'rooms' | 'sessions' | 'logs'>('rooms');
 
   const { data: licenses, isLoading: licensesLoading } = useQuery({
@@ -133,6 +135,26 @@ export default function ZoomManagement() {
     },
     onSuccess: () => {
       toast({ title: 'License Removed' });
+      queryClient.invalidateQueries({ queryKey: ['zoom-licenses-management'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const editLicenseMutation = useMutation({
+    mutationFn: async (license: { id: string; zoom_email: string; meeting_link: string; host_id: string }) => {
+      const { error } = await supabase.from('zoom_licenses').update({
+        zoom_email: license.zoom_email,
+        meeting_link: license.meeting_link,
+        host_id: license.host_id || null,
+      }).eq('id', license.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: 'License Updated' });
+      setEditDialogOpen(false);
+      setEditingLicense(null);
       queryClient.invalidateQueries({ queryKey: ['zoom-licenses-management'] });
     },
     onError: (error: Error) => {
@@ -367,7 +389,7 @@ export default function ZoomManagement() {
         </div>
 
         {/* Rooms Section */}
-        {activeSection === 'rooms' && (
+        {activeSection === 'rooms' && (<>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
@@ -412,12 +434,13 @@ export default function ZoomManagement() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Room</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Link</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Last Used</TableHead>
-                    <TableHead className="w-[60px]" />
+                     <TableHead>Room</TableHead>
+                     <TableHead>Email</TableHead>
+                     <TableHead>Link</TableHead>
+                     <TableHead>Host ID</TableHead>
+                     <TableHead>Status</TableHead>
+                     <TableHead>Last Used</TableHead>
+                     <TableHead className="w-[100px]" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -429,6 +452,9 @@ export default function ZoomManagement() {
                         <a href={license.meeting_link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary hover:underline text-sm">
                           Open <ExternalLink className="h-3 w-3" />
                         </a>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground font-mono">
+                        {(license as any).host_id || <span className="text-amber-500 text-xs">Not set</span>}
                       </TableCell>
                       <TableCell>
                         <Badge className={cn(
@@ -445,22 +471,67 @@ export default function ZoomManagement() {
                         {license.last_used_at ? formatDistanceToNow(new Date(license.last_used_at), { addSuffix: true }) : 'Never'}
                       </TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => { if (confirm('Delete this room?')) deleteLicenseMutation.mutate(license.id); }} disabled={license.status === 'busy'}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+                            setEditingLicense({
+                              id: license.id,
+                              zoom_email: license.zoom_email || '',
+                              meeting_link: license.meeting_link || '',
+                              host_id: (license as any).host_id || '',
+                            });
+                            setEditDialogOpen(true);
+                          }}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => { if (confirm('Delete this room?')) deleteLicenseMutation.mutate(license.id); }} disabled={license.status === 'busy'}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
                   {(!licenses || licenses.length === 0) && (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No rooms configured.</TableCell>
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No rooms configured.</TableCell>
                     </TableRow>
                   )}
                 </TableBody>
               </Table>
             </CardContent>
           </Card>
-        )}
+
+          {/* Edit License Dialog */}
+          <Dialog open={editDialogOpen} onOpenChange={(open) => { setEditDialogOpen(open); if (!open) setEditingLicense(null); }}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="font-serif">Edit Zoom Room</DialogTitle>
+              </DialogHeader>
+              {editingLicense && (
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Zoom Email</Label>
+                    <Input value={editingLicense.zoom_email} onChange={(e) => setEditingLicense({ ...editingLicense, zoom_email: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Meeting Link (PMI)</Label>
+                    <Input value={editingLicense.meeting_link} onChange={(e) => setEditingLicense({ ...editingLicense, meeting_link: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Host ID</Label>
+                    <Input placeholder="Zoom Host ID for webhook matching" value={editingLicense.host_id} onChange={(e) => setEditingLicense({ ...editingLicense, host_id: e.target.value })} />
+                    <p className="text-xs text-muted-foreground">Required for join/leave tracking via Zoom webhooks. Find this in your Zoom admin panel under each user's profile.</p>
+                  </div>
+                </div>
+              )}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => { setEditDialogOpen(false); setEditingLicense(null); }}>Cancel</Button>
+                <Button onClick={() => editingLicense && editLicenseMutation.mutate(editingLicense)} disabled={!editingLicense?.zoom_email || !editingLicense?.meeting_link || editLicenseMutation.isPending}>
+                  Save Changes
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </>)}
 
         {/* Sessions Section */}
         {activeSection === 'sessions' && (
