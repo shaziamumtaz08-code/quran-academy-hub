@@ -369,9 +369,37 @@ export function StudentDetailDrawer({
               </div>
             </div>
 
+            {/* Transfer / Substitute Button — Admin only */}
+            {isAdmin && currentAssignment && (
+              <>
+                <Separator />
+                <Button
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={() => setTransferOpen(true)}
+                >
+                  <ArrowRightLeft className="h-4 w-4" />
+                  Transfer / Assign Substitute
+                </Button>
+              </>
+            )}
+
           </div>
         )}
       </SheetContent>
+
+      {/* Transfer Dialog */}
+      {student && currentAssignment && (
+        <TransferAssignmentDialog
+          open={transferOpen}
+          onOpenChange={setTransferOpen}
+          studentId={student.id}
+          studentName={student.full_name}
+          currentTeacherId={teacherId}
+          currentTeacherName="" 
+          assignmentId={currentAssignment.id}
+        />
+      )}
     </Sheet>
   );
 }
