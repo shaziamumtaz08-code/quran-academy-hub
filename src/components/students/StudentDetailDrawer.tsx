@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Calendar, Clock, User, BookOpen, Target, CheckSquare, Loader2, FileText, MapPin } from 'lucide-react';
+import { Calendar, Clock, User, BookOpen, Target, CheckSquare, Loader2, FileText, MapPin, ArrowRightLeft } from 'lucide-react';
+import { TransferAssignmentDialog } from './TransferAssignmentDialog';
 import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -86,7 +87,9 @@ export function StudentDetailDrawer({
   student, 
   teacherId
 }: StudentDetailDrawerProps) {
-  const { user } = useAuth();
+  const { user, activeRole } = useAuth();
+  const [transferOpen, setTransferOpen] = useState(false);
+  const isAdmin = activeRole === 'super_admin' || activeRole === 'admin';
   
   // Fetch student's full profile (age, gender, country, city)
   const { data: profile, isLoading: loadingProfile } = useQuery({
@@ -111,14 +114,31 @@ export function StudentDetailDrawer({
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('country, city')
+        .select('full_name, country, city')
         .eq('id', teacherId)
         .single();
       
       if (error) return null;
-      return data as { country: string | null; city: string | null };
+      return data as { full_name: string | null; country: string | null; city: string | null };
     },
     enabled: !!teacherId && open,
+  });
+
+  // Fetch student's active assignment for this teacher
+  const { data: currentAssignment } = useQuery({
+    queryKey: ['student-assignment-detail', student?.id, teacherId],
+    queryFn: async () => {
+      if (!student?.id || !teacherId) return null;
+      const { data } = await supabase
+        .from('student_teacher_assignments')
+        .select('id')
+        .eq('student_id', student.id)
+        .eq('teacher_id', teacherId)
+        .eq('status', 'active')
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!student?.id && !!teacherId && open,
   });
 
   // Fetch student's weekly schedule
@@ -127,20 +147,28 @@ export function StudentDetailDrawer({
     queryFn: async () => {
       if (!student?.id || !teacherId) return [];
       
-      // First get assignment id
-      const { data: assignment, error: assignError } = await supabase
-        .from('student_teacher_assignments')
-        .select('id')
-        .eq('student_id', student.id)
-        .eq('teacher_id', teacherId)
-        .single();
-      
-      if (assignError || !assignment) return [];
+      const assignmentId = currentAssignment?.id;
+      if (!assignmentId) {
+        // fallback: get any assignment
+        const { data: assignment } = await supabase
+          .from('student_teacher_assignments')
+          .select('id')
+          .eq('student_id', student.id)
+          .eq('teacher_id', teacherId)
+          .maybeSingle();
+        if (!assignment) return [];
+        const { data } = await supabase
+          .from('schedules')
+          .select('id, day_of_week, teacher_local_time, student_local_time, duration_minutes')
+          .eq('assignment_id', assignment.id)
+          .eq('is_active', true);
+        return (data || []) as Schedule[];
+      }
       
       const { data, error } = await supabase
         .from('schedules')
         .select('id, day_of_week, teacher_local_time, student_local_time, duration_minutes')
-        .eq('assignment_id', assignment.id)
+        .eq('assignment_id', assignmentId)
         .eq('is_active', true);
       
       if (error) throw error;
@@ -341,9 +369,37 @@ export function StudentDetailDrawer({
               </div>
             </div>
 
+            {/* Transfer / Substitute Button — Admin only */}
+            {isAdmin && currentAssignment && (
+              <>
+                <Separator />
+                <Button
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={() => setTransferOpen(true)}
+                >
+                  <ArrowRightLeft className="h-4 w-4" />
+                  Transfer / Assign Substitute
+                </Button>
+              </>
+            )}
+
           </div>
         )}
       </SheetContent>
+
+      {/* Transfer Dialog */}
+      {student && currentAssignment && (
+        <TransferAssignmentDialog
+          open={transferOpen}
+          onOpenChange={setTransferOpen}
+          studentId={student.id}
+          studentName={student.full_name}
+          currentTeacherId={teacherId}
+          currentTeacherName={teacherProfile?.full_name || 'Current Teacher'} 
+          assignmentId={currentAssignment.id}
+        />
+      )}
     </Sheet>
   );
 }
