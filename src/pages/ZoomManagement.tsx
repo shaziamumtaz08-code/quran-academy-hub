@@ -31,6 +31,7 @@ function LiveTimer({ startTime }: { startTime: string }) {
 
 export default function ZoomManagement() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [newLicense, setNewLicense] = React.useState({ zoom_email: '', meeting_link: '', host_id: '' });
   const [addDialogOpen, setAddDialogOpen] = React.useState(false);
@@ -133,6 +134,31 @@ export default function ZoomManagement() {
     onSuccess: () => {
       toast({ title: 'License Removed' });
       queryClient.invalidateQueries({ queryKey: ['zoom-licenses-management'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // End session mutation for admin
+  const endSessionMutation = useMutation({
+    mutationFn: async ({ sessionId, licenseId }: { sessionId: string; licenseId: string }) => {
+      const { error: sessionError } = await (supabase as any)
+        .from('live_sessions')
+        .update({ status: 'completed', actual_end: new Date().toISOString() })
+        .eq('id', sessionId);
+      if (sessionError) throw sessionError;
+
+      const { error: licenseError } = await supabase
+        .from('zoom_licenses')
+        .update({ status: 'available' })
+        .eq('id', licenseId);
+      if (licenseError) throw licenseError;
+    },
+    onSuccess: () => {
+      toast({ title: 'Session Ended', description: 'License released successfully.' });
+      queryClient.invalidateQueries({ queryKey: ['zoom-licenses-management'] });
+      queryClient.invalidateQueries({ queryKey: ['all-live-sessions'] });
     },
     onError: (error: Error) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
