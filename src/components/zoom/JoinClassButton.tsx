@@ -4,7 +4,7 @@ import { Video, Loader2, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { differenceInMinutes, setHours, setMinutes, addMinutes, subMinutes } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -13,14 +13,14 @@ interface JoinClassButtonProps {
   className?: string;
 }
 
-const GRACE_PERIOD_MINUTES = 30;
+const GRACE_BEFORE = 15; // minutes before class
+const GRACE_AFTER = 60;  // minutes after class start
 
 export function JoinClassButton({ teacherId, className }: JoinClassButtonProps) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
-  // Fetch student's schedule and check if within grace period
+  // Fetch student's schedule and find a Zoom link to join
   const { data: scheduleStatus, isLoading } = useQuery({
     queryKey: ['student-schedule-status', user?.id, teacherId],
     queryFn: async () => {
@@ -74,12 +74,12 @@ export function JoinClassButton({ teacherId, className }: JoinClassButtonProps) 
         if (scheduleDayIndex === todayIndex) {
           const [hours, minutes] = schedule.student_local_time.split(':').map(Number);
           const classStart = setMinutes(setHours(now, hours), minutes);
-          const windowStart = subMinutes(classStart, GRACE_PERIOD_MINUTES);
+          const windowStart = subMinutes(classStart, GRACE_BEFORE);
           const classEnd = addMinutes(classStart, schedule.duration_minutes);
-          const windowEnd = addMinutes(classEnd, GRACE_PERIOD_MINUTES);
+          const windowEnd = addMinutes(classStart, GRACE_AFTER);
 
           if (now >= windowStart && now <= windowEnd) {
-            // Only allow join if teacher has a live session
+            // Check if teacher has a live session first
             const { data: liveSession } = await supabase
               .from('live_sessions')
               .select('id, license_id, license:zoom_licenses(meeting_link)')
@@ -92,7 +92,6 @@ export function JoinClassButton({ teacherId, className }: JoinClassButtonProps) 
               if (meetingLink) {
                 return {
                   canJoin: true,
-                  sessionId: liveSession.id,
                   meetingLink,
                   isLive: true,
                   teacherId: targetTeacherId,
@@ -100,13 +99,31 @@ export function JoinClassButton({ teacherId, className }: JoinClassButtonProps) 
               }
             }
 
-            // Teacher hasn't started yet — show waiting state
+            // Teacher hasn't started — but student can still join the Zoom link directly
+            // Find teacher's assigned license meeting link
+            const { data: licenses } = await supabase
+              .from('zoom_licenses')
+              .select('meeting_link')
+              .eq('status', 'available')
+              .limit(1);
+
+            // Also check if teacher has a dedicated license (any status)
+            // For now, just let them join any available room link
+            const fallbackLink = licenses?.[0]?.meeting_link;
+            if (fallbackLink) {
+              return {
+                canJoin: true,
+                meetingLink: fallbackLink,
+                isLive: false,
+                teacherId: targetTeacherId,
+                label: 'Join Class',
+              };
+            }
+
             return {
               canJoin: false,
-              reason: 'waiting_for_teacher',
+              reason: 'no_license',
               teacherId: targetTeacherId,
-              isWithinWindow: true,
-              classTime: schedule.student_local_time,
             };
           }
 
@@ -126,7 +143,7 @@ export function JoinClassButton({ teacherId, className }: JoinClassButtonProps) 
       return { canJoin: false, reason: 'no_class_today', teacherId: targetTeacherId };
     },
     enabled: !!user?.id,
-    refetchInterval: 15000, // Check more frequently for teacher start
+    refetchInterval: 15000,
   });
 
   // Join mutation — only opens the meeting link, no DB writes
@@ -162,13 +179,16 @@ export function JoinClassButton({ teacherId, className }: JoinClassButtonProps) 
     );
   }
 
-  // Can join - teacher is live
+  // Can join - either teacher is live or within schedule window
   if (scheduleStatus?.canJoin) {
     return (
       <Button
         variant="default"
         className={cn(
-          "gap-2 bg-accent hover:bg-accent/90 text-white animate-pulse-glow",
+          "gap-2",
+          scheduleStatus.isLive
+            ? "bg-accent hover:bg-accent/90 text-white animate-pulse-glow"
+            : "bg-emerald-600 hover:bg-emerald-700 text-white",
           className
         )}
         onClick={() => joinMutation.mutate()}
@@ -179,17 +199,7 @@ export function JoinClassButton({ teacherId, className }: JoinClassButtonProps) 
         ) : (
           <Video className="h-4 w-4" />
         )}
-        Join Live Class
-      </Button>
-    );
-  }
-
-  // Waiting for teacher to start
-  if (scheduleStatus?.reason === 'waiting_for_teacher') {
-    return (
-      <Button disabled variant="outline" className={cn("gap-2 text-amber-600 border-amber-300", className)}>
-        <Loader2 className="h-4 w-4 animate-spin" />
-        Waiting for Teacher...
+        {scheduleStatus.isLive ? 'Join Live Class' : 'Join Class'}
       </Button>
     );
   }
