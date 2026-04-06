@@ -166,12 +166,14 @@ export default function ZoomManagement() {
   });
 
   const editLicenseMutation = useMutation({
-    mutationFn: async (license: { id: string; zoom_email: string; meeting_link: string; host_id: string }) => {
+    mutationFn: async (license: { id: string; zoom_email: string; meeting_link: string; host_id: string; license_type: string; priority: number }) => {
       const { error } = await supabase.from('zoom_licenses').update({
         zoom_email: license.zoom_email,
         meeting_link: license.meeting_link,
         host_id: license.host_id || null,
-      }).eq('id', license.id);
+        license_type: license.license_type,
+        priority: license.priority,
+      } as any).eq('id', license.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -501,6 +503,8 @@ export default function ZoomManagement() {
                               zoom_email: license.zoom_email || '',
                               meeting_link: license.meeting_link || '',
                               host_id: (license as any).host_id || '',
+                              license_type: (license as any).license_type || 'licensed',
+                              priority: (license as any).priority ?? 0,
                             });
                             setEditDialogOpen(true);
                           }}>
