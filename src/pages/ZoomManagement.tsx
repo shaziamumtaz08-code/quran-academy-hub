@@ -39,6 +39,42 @@ export default function ZoomManagement() {
   const [editDialogOpen, setEditDialogOpen] = React.useState(false);
   const [editingLicense, setEditingLicense] = React.useState<{ id: string; zoom_email: string; meeting_link: string; host_id: string; license_type: string; priority: number } | null>(null);
   const [activeSection, setActiveSection] = React.useState<'rooms' | 'sessions' | 'logs'>('rooms');
+  const [zoomSetupOpen, setZoomSetupOpen] = React.useState(false);
+  const [zoomCreds, setZoomCreds] = React.useState({ account_id: '', client_id: '', client_secret: '' });
+  const [hostIdResults, setHostIdResults] = React.useState<Array<{ email: string; host_id: string | null; status: string; error?: string }> | null>(null);
+  const [refreshingHostIds, setRefreshingHostIds] = React.useState(false);
+
+  const fetchHostIds = async (creds?: { account_id: string; client_id: string; client_secret: string }) => {
+    setRefreshingHostIds(true);
+    setHostIdResults(null);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) throw new Error('Not authenticated');
+
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'sienlnxwwdqnybugipdt';
+      const resp = await fetch(`https://${projectId}.supabase.co/functions/v1/zoom-fetch-host-ids`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify(creds || {}),
+      });
+
+      const result = await resp.json();
+      if (!resp.ok) throw new Error(result.error || 'Failed to fetch host IDs');
+
+      setHostIdResults(result.results);
+      queryClient.invalidateQueries({ queryKey: ['zoom-licenses-management'] });
+      toast({ title: 'Host IDs Updated', description: `${result.results.filter((r: any) => r.status === 'updated').length} of ${result.results.length} licenses updated.` });
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+    } finally {
+      setRefreshingHostIds(false);
+    }
+  };
 
   // Allocation mode query
   const { data: allocationMode } = useQuery({
