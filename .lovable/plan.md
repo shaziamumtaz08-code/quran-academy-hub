@@ -1,34 +1,58 @@
 
-# WhatsApp Integration Plan (via WhatsChimp)
 
-## Phase 1: Database Schema
-- Create `whatsapp_messages` table (id, contact_phone, contact_name, direction, message_text, attachment_url, attachment_type, delivery_status, wa_message_id, template_name, source_group_id, forwarded_to_task_id, forwarded_to_group_id, forwarded_to_user_id, is_forwarded, created_at, updated_at)
-- Create `whatsapp_contacts` table (id, phone, name, profile_id, last_message_at, unread_count, created_at)
-- RLS: Admin + Super Admin full access, teachers see their assigned students' threads only
-- Add WhatsChimp API key secret
+## Zoom License Priority & Type System
 
-## Phase 2: Edge Function — Webhook Receiver
-- `whatsapp-webhook` edge function to receive incoming messages from WhatsChimp
-- Parse WhatsChimp webhook payload, store in whatsapp_messages
-- Update whatsapp_contacts on each message
-- Auto-match phone to profile via profiles.phone
+### Problem
+Currently, `get_and_reserve_license` uses round-robin (`ORDER BY last_used_at ASC`), which spreads usage across all rooms equally. You want control over **which room gets picked first** and the ability to distinguish licensed (with recording) vs. free accounts.
 
-## Phase 3: Edge Function — Send Message
-- `whatsapp-send` edge function to send outgoing messages via WhatsChimp API
-- Support text, template, and attachment messages
-- Store sent message in whatsapp_messages with delivery tracking
+### Solution
 
-## Phase 4: WhatsApp Inbox UI
-- New `/whatsapp` page with WhatsApp-style inbox
-- Left panel: contact list with last message preview, unread badges
-- Right panel: thread view with message bubbles, timestamps, delivery status
-- Quick actions: Forward to user/group, Convert to WorkHub task
-- Search bar across all messages
-- Attachment previews (images, PDFs, voice)
-- Template send dialog for bulk/templated messages
+**1. Add two new columns to `zoom_licenses` table**
 
-## Phase 5: Integration with existing systems
-- Forward WhatsApp message → creates task in WorkHub (tasks table)
-- Forward WhatsApp message → sends to chat group/user
-- Link notification_templates to WhatsApp sending
-- Add WhatsApp nav item to Communication Center
+| Column | Type | Purpose |
+|--------|------|---------|
+| `license_type` | `text` (default `'licensed'`) | Values: `licensed`, `basic` (free). Helps identify which rooms have recording capability |
+| `priority` | `integer` (default `0`) | Lower number = higher priority. Rooms with same priority fall back to round-robin |
+
+**2. Add an allocation mode setting**
+
+Add a `zoom_allocation_mode` column to the `organization_settings` table (or create a simple `system_settings` key-value table if none exists). Values:
+- `priority` — Always pick the lowest-priority available room first
+- `round_robin` — Current behavior, spread evenly across all rooms
+
+**3. Update `get_and_reserve_license` RPC**
+
+```text
+IF mode = 'priority':
+  ORDER BY priority ASC, created_at ASC
+ELSE (round_robin):
+  ORDER BY last_used_at ASC NULLS FIRST
+```
+
+**4. Update Zoom Management UI — Edit Dialog**
+
+Add to the existing edit dialog:
+- **License Type** dropdown: `Licensed` / `Basic (Free)`
+- **Priority** number input (1, 2, 3...) with helper text: "Lower number = used first"
+
+Show a badge on each room card: green "Licensed" or gray "Basic".
+
+**5. Update Zoom Management UI — Settings Section**
+
+Add a small settings card at the top of the Rooms tab:
+- **Allocation Mode** dropdown: "Priority-based" / "Round Robin (random)"
+- Brief description of each mode
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| Migration | Add `license_type`, `priority` columns to `zoom_licenses`. Create `system_settings` table for allocation mode |
+| Migration | Update `get_and_reserve_license` function to read allocation mode and sort accordingly |
+| `src/pages/ZoomManagement.tsx` | Add type/priority fields to edit dialog, add allocation mode setting card, show badges on room cards |
+
+### Summary
+- Room 1 and 2 (licensed, with recording) get priority 1 — system picks them first
+- Room 3-5 (basic/free) get priority 2 — only used when priority 1 rooms are busy
+- Admin can switch to round-robin anytime via a dropdown setting
+
