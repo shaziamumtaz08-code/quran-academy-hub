@@ -100,7 +100,7 @@ export function JoinClassButton({ teacherId, className }: JoinClassButtonProps) 
             }
 
             // Teacher hasn't started yet — student can still join early
-            // Find the teacher's last used room, or the next room by allocation priority
+            // Find the teacher's last used room link (any status)
             const { data: lastSession } = await supabase
               .from('live_sessions')
               .select('license:zoom_licenses(meeting_link)')
@@ -119,11 +119,10 @@ export function JoinClassButton({ teacherId, className }: JoinClassButtonProps) 
               };
             }
 
-            // No prior session — pick first available room by priority
+            // No prior session — pick first room by priority (regardless of status)
             const { data: licenses } = await supabase
               .from('zoom_licenses')
               .select('meeting_link')
-              .eq('status', 'available')
               .order('priority', { ascending: true })
               .order('created_at', { ascending: true })
               .limit(1);
