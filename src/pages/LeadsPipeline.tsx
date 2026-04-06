@@ -230,6 +230,68 @@ function ScheduleDemoSection({ lead, onScheduled }: { lead: Lead; onScheduled: (
   );
 }
 
+// ── Reschedule Section ──
+function RescheduleSection({ session, leadId }: { session: any; leadId: string }) {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [newDate, setNewDate] = useState('');
+  const [newTime, setNewTime] = useState('');
+
+  const rescheduleMutation = useMutation({
+    mutationFn: async () => {
+      // Mark old session as rescheduled
+      const { error: updateErr } = await supabase.from('demo_sessions').update({ status: 'rescheduled' }).eq('id', session.id);
+      if (updateErr) throw updateErr;
+      // Create new session
+      const { error: insertErr } = await supabase.from('demo_sessions').insert({
+        lead_id: leadId,
+        scheduled_date: newDate,
+        scheduled_time: newTime,
+        duration_min: session.duration_min || 30,
+        platform: session.platform || 'zoom',
+        meeting_link: session.meeting_link || null,
+        teacher_id: session.teacher_id || null,
+        status: 'scheduled',
+        feedback_token: crypto.randomUUID(),
+      });
+      if (insertErr) throw insertErr;
+      // Update lead status back to demo_scheduled
+      await supabase.from('leads').update({ status: 'demo_scheduled' }).eq('id', leadId);
+    },
+    onSuccess: () => {
+      toast({ title: 'Demo rescheduled!' });
+      queryClient.invalidateQueries({ queryKey: ['demo-sessions', leadId] });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      setOpen(false);
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  if (!open) {
+    return (
+      <Button size="sm" variant="ghost" className="text-[10px] h-6 text-primary" onClick={() => setOpen(true)}>
+        <RefreshCw className="h-3 w-3 mr-1" /> Reschedule
+      </Button>
+    );
+  }
+
+  return (
+    <div className="p-2 border border-dashed border-blue-300 dark:border-blue-700 rounded-lg space-y-2 bg-blue-50/50 dark:bg-blue-900/10">
+      <p className="text-xs font-medium text-blue-700 dark:text-blue-400">Reschedule Demo</p>
+      <div className="grid grid-cols-2 gap-2">
+        <Input type="date" value={newDate} onChange={e => setNewDate(e.target.value)} className="text-xs h-8" />
+        <Input type="time" value={newTime} onChange={e => setNewTime(e.target.value)} className="text-xs h-8" />
+      </div>
+      <div className="flex gap-1">
+        <Button size="sm" onClick={() => rescheduleMutation.mutate()} disabled={!newDate || !newTime || rescheduleMutation.isPending} className="text-[10px] h-7 flex-1">
+          {rescheduleMutation.isPending ? 'Saving...' : 'Confirm Reschedule'}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => setOpen(false)} className="text-[10px] h-7">Cancel</Button>
+      </div>
+    </div>
+  );
+}
+
 // ── Demo Sessions List ──
 function DemoSessionsList({ leadId }: { leadId: string }) {
   const queryClient = useQueryClient();
@@ -292,7 +354,7 @@ function DemoSessionsList({ leadId }: { leadId: string }) {
 
           {/* Actions for scheduled demos */}
           {s.status === 'scheduled' && (
-            <div className="flex gap-1 pt-1">
+            <div className="flex flex-wrap gap-1 pt-1">
               <Button size="sm" variant="outline" className="text-[10px] h-7" onClick={() => updateSession.mutate({ id: s.id, updates: { status: 'completed' } })}>
                 <ThumbsUp className="h-3 w-3 mr-1" /> Done
               </Button>
@@ -303,6 +365,11 @@ function DemoSessionsList({ leadId }: { leadId: string }) {
                 <XIcon className="h-3 w-3 mr-1" /> Cancel
               </Button>
             </div>
+          )}
+
+          {/* Reschedule for scheduled, no_show, or cancelled */}
+          {['scheduled', 'no_show', 'cancelled'].includes(s.status) && (
+            <RescheduleSection session={s} leadId={leadId} />
           )}
 
           {/* Feedback collection for completed demos without feedback */}
