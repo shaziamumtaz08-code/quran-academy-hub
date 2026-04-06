@@ -114,12 +114,12 @@ export function StudentDetailDrawer({
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('country, city')
+        .select('full_name, country, city')
         .eq('id', teacherId)
         .single();
       
       if (error) return null;
-      return data as { country: string | null; city: string | null };
+      return data as { full_name: string | null; country: string | null; city: string | null };
     },
     enabled: !!teacherId && open,
   });
