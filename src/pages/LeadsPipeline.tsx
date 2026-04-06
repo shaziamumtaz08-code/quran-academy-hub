@@ -292,7 +292,7 @@ function DemoSessionsList({ leadId }: { leadId: string }) {
 
           {/* Actions for scheduled demos */}
           {s.status === 'scheduled' && (
-            <div className="flex gap-1 pt-1">
+            <div className="flex flex-wrap gap-1 pt-1">
               <Button size="sm" variant="outline" className="text-[10px] h-7" onClick={() => updateSession.mutate({ id: s.id, updates: { status: 'completed' } })}>
                 <ThumbsUp className="h-3 w-3 mr-1" /> Done
               </Button>
@@ -303,6 +303,11 @@ function DemoSessionsList({ leadId }: { leadId: string }) {
                 <XIcon className="h-3 w-3 mr-1" /> Cancel
               </Button>
             </div>
+          )}
+
+          {/* Reschedule for scheduled, no_show, or cancelled */}
+          {['scheduled', 'no_show', 'cancelled'].includes(s.status) && (
+            <RescheduleSection session={s} leadId={leadId} />
           )}
 
           {/* Feedback collection for completed demos without feedback */}
