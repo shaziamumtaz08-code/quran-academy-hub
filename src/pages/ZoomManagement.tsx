@@ -434,12 +434,13 @@ export default function ZoomManagement() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Room</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Link</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Last Used</TableHead>
-                    <TableHead className="w-[60px]" />
+                     <TableHead>Room</TableHead>
+                     <TableHead>Email</TableHead>
+                     <TableHead>Link</TableHead>
+                     <TableHead>Host ID</TableHead>
+                     <TableHead>Status</TableHead>
+                     <TableHead>Last Used</TableHead>
+                     <TableHead className="w-[100px]" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
