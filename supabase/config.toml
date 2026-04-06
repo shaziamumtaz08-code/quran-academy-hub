@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.send-notification]
 verify_jwt = false
+
+[functions.zoom-fetch-host-ids]
+verify_jwt = false
