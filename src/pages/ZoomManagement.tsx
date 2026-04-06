@@ -142,6 +142,26 @@ export default function ZoomManagement() {
     },
   });
 
+  const editLicenseMutation = useMutation({
+    mutationFn: async (license: { id: string; zoom_email: string; meeting_link: string; host_id: string }) => {
+      const { error } = await supabase.from('zoom_licenses').update({
+        zoom_email: license.zoom_email,
+        meeting_link: license.meeting_link,
+        host_id: license.host_id || null,
+      }).eq('id', license.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: 'License Updated' });
+      setEditDialogOpen(false);
+      setEditingLicense(null);
+      queryClient.invalidateQueries({ queryKey: ['zoom-licenses-management'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
   // End session mutation for admin
   const endSessionMutation = useMutation({
     mutationFn: async ({ sessionId, licenseId }: { sessionId: string; licenseId: string }) => {
