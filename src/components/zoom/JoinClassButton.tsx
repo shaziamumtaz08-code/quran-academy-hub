@@ -99,16 +99,35 @@ export function JoinClassButton({ teacherId, className }: JoinClassButtonProps) 
               }
             }
 
-            // Teacher hasn't started — but student can still join the Zoom link directly
-            // Find teacher's assigned license meeting link
+            // Teacher hasn't started yet — student can still join early
+            // Find the teacher's last used room, or the next room by allocation priority
+            const { data: lastSession } = await supabase
+              .from('live_sessions')
+              .select('license:zoom_licenses(meeting_link)')
+              .eq('teacher_id', targetTeacherId)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            const lastLink = (lastSession?.license as any)?.meeting_link;
+            if (lastLink) {
+              return {
+                canJoin: true,
+                meetingLink: lastLink,
+                isLive: false,
+                teacherId: targetTeacherId,
+              };
+            }
+
+            // No prior session — pick first available room by priority
             const { data: licenses } = await supabase
               .from('zoom_licenses')
               .select('meeting_link')
               .eq('status', 'available')
+              .order('priority', { ascending: true })
+              .order('created_at', { ascending: true })
               .limit(1);
 
-            // Also check if teacher has a dedicated license (any status)
-            // For now, just let them join any available room link
             const fallbackLink = licenses?.[0]?.meeting_link;
             if (fallbackLink) {
               return {
@@ -116,7 +135,6 @@ export function JoinClassButton({ teacherId, className }: JoinClassButtonProps) 
                 meetingLink: fallbackLink,
                 isLive: false,
                 teacherId: targetTeacherId,
-                label: 'Join Class',
               };
             }
 
