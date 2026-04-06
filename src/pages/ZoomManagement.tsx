@@ -458,21 +458,34 @@ export default function ZoomManagement() {
             <CardContent>
               <Table>
                 <TableHeader>
-                  <TableRow>
+                   <TableRow>
                      <TableHead>Room</TableHead>
                      <TableHead>Email</TableHead>
+                     <TableHead>Type</TableHead>
+                     <TableHead>Priority</TableHead>
                      <TableHead>Link</TableHead>
                      <TableHead>Host ID</TableHead>
                      <TableHead>Status</TableHead>
                      <TableHead>Last Used</TableHead>
                      <TableHead className="w-[100px]" />
-                  </TableRow>
+                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {licenses?.map((license, idx) => (
                     <TableRow key={license.id}>
-                      <TableCell className="font-semibold">Room {idx + 1}</TableCell>
+                       <TableCell className="font-semibold">Room {idx + 1}</TableCell>
                       <TableCell className="text-sm">{license.zoom_email}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={cn(
+                          "text-[10px]",
+                          (license as any).license_type === 'basic'
+                            ? 'bg-muted text-muted-foreground border-border'
+                            : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                        )}>
+                          {(license as any).license_type === 'basic' ? 'Basic' : '● Licensed'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm font-mono">{(license as any).priority ?? 0}</TableCell>
                       <TableCell>
                         <a href={license.meeting_link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary hover:underline text-sm">
                           Open <ExternalLink className="h-3 w-3" />
