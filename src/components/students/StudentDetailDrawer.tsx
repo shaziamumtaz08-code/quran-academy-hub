@@ -124,26 +124,51 @@ export function StudentDetailDrawer({
     enabled: !!teacherId && open,
   });
 
+  // Fetch student's active assignment for this teacher
+  const { data: currentAssignment } = useQuery({
+    queryKey: ['student-assignment-detail', student?.id, teacherId],
+    queryFn: async () => {
+      if (!student?.id || !teacherId) return null;
+      const { data } = await supabase
+        .from('student_teacher_assignments')
+        .select('id')
+        .eq('student_id', student.id)
+        .eq('teacher_id', teacherId)
+        .eq('status', 'active')
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!student?.id && !!teacherId && open,
+  });
+
   // Fetch student's weekly schedule
   const { data: schedules = [], isLoading: loadingSchedules } = useQuery({
     queryKey: ['student-schedules', student?.id, teacherId],
     queryFn: async () => {
       if (!student?.id || !teacherId) return [];
       
-      // First get assignment id
-      const { data: assignment, error: assignError } = await supabase
-        .from('student_teacher_assignments')
-        .select('id')
-        .eq('student_id', student.id)
-        .eq('teacher_id', teacherId)
-        .single();
-      
-      if (assignError || !assignment) return [];
+      const assignmentId = currentAssignment?.id;
+      if (!assignmentId) {
+        // fallback: get any assignment
+        const { data: assignment } = await supabase
+          .from('student_teacher_assignments')
+          .select('id')
+          .eq('student_id', student.id)
+          .eq('teacher_id', teacherId)
+          .maybeSingle();
+        if (!assignment) return [];
+        const { data } = await supabase
+          .from('schedules')
+          .select('id, day_of_week, teacher_local_time, student_local_time, duration_minutes')
+          .eq('assignment_id', assignment.id)
+          .eq('is_active', true);
+        return (data || []) as Schedule[];
+      }
       
       const { data, error } = await supabase
         .from('schedules')
         .select('id, day_of_week, teacher_local_time, student_local_time, duration_minutes')
-        .eq('assignment_id', assignment.id)
+        .eq('assignment_id', assignmentId)
         .eq('is_active', true);
       
       if (error) throw error;
