@@ -39,6 +39,42 @@ export default function ZoomManagement() {
   const [editDialogOpen, setEditDialogOpen] = React.useState(false);
   const [editingLicense, setEditingLicense] = React.useState<{ id: string; zoom_email: string; meeting_link: string; host_id: string; license_type: string; priority: number } | null>(null);
   const [activeSection, setActiveSection] = React.useState<'rooms' | 'sessions' | 'logs'>('rooms');
+  const [zoomSetupOpen, setZoomSetupOpen] = React.useState(false);
+  const [zoomCreds, setZoomCreds] = React.useState({ account_id: '', client_id: '', client_secret: '' });
+  const [hostIdResults, setHostIdResults] = React.useState<Array<{ email: string; host_id: string | null; status: string; error?: string }> | null>(null);
+  const [refreshingHostIds, setRefreshingHostIds] = React.useState(false);
+
+  const fetchHostIds = async (creds?: { account_id: string; client_id: string; client_secret: string }) => {
+    setRefreshingHostIds(true);
+    setHostIdResults(null);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) throw new Error('Not authenticated');
+
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'sienlnxwwdqnybugipdt';
+      const resp = await fetch(`https://${projectId}.supabase.co/functions/v1/zoom-fetch-host-ids`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify(creds || {}),
+      });
+
+      const result = await resp.json();
+      if (!resp.ok) throw new Error(result.error || 'Failed to fetch host IDs');
+
+      setHostIdResults(result.results);
+      queryClient.invalidateQueries({ queryKey: ['zoom-licenses-management'] });
+      toast({ title: 'Host IDs Updated', description: `${result.results.filter((r: any) => r.status === 'updated').length} of ${result.results.length} licenses updated.` });
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+    } finally {
+      setRefreshingHostIds(false);
+    }
+  };
 
   // Allocation mode query
   const { data: allocationMode } = useQuery({
@@ -446,39 +482,97 @@ export default function ZoomManagement() {
                 <CardTitle className="font-serif">Zoom Licenses</CardTitle>
                 <CardDescription>Manage your Zoom meeting room licenses</CardDescription>
               </div>
-              <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="gap-2" size="sm">
-                    <Plus className="h-4 w-4" />
-                    Add Room
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle className="font-serif">Add New Zoom Room</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="zoom_email">Zoom Email</Label>
-                      <Input id="zoom_email" placeholder="room1@academy.com" value={newLicense.zoom_email} onChange={(e) => setNewLicense({ ...newLicense, zoom_email: e.target.value })} />
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="gap-2" onClick={() => fetchHostIds()} disabled={refreshingHostIds}>
+                  <RefreshCw className={cn("h-4 w-4", refreshingHostIds && "animate-spin")} />
+                  {refreshingHostIds ? 'Fetching...' : 'Refresh Host IDs'}
+                </Button>
+                <Dialog open={zoomSetupOpen} onOpenChange={setZoomSetupOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <Shield className="h-4 w-4" /> Zoom API Setup
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                      <DialogTitle className="font-serif">Zoom API Credentials</DialogTitle>
+                    </DialogHeader>
+                    <p className="text-xs text-muted-foreground">
+                      Enter your Server-to-Server OAuth credentials from <a href="https://marketplace.zoom.us" target="_blank" rel="noopener noreferrer" className="text-primary underline">Zoom Marketplace</a>. These are used to auto-fetch Host IDs for all rooms.
+                    </p>
+                    <div className="space-y-3 py-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Account ID</Label>
+                        <Input placeholder="KhGiGCUa..." value={zoomCreds.account_id} onChange={(e) => setZoomCreds(p => ({ ...p, account_id: e.target.value }))} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Client ID</Label>
+                        <Input placeholder="QO1NrH6s..." value={zoomCreds.client_id} onChange={(e) => setZoomCreds(p => ({ ...p, client_id: e.target.value }))} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Client Secret</Label>
+                        <Input type="password" placeholder="••••••••" value={zoomCreds.client_secret} onChange={(e) => setZoomCreds(p => ({ ...p, client_secret: e.target.value }))} />
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="meeting_link">Meeting Link (PMI)</Label>
-                      <Input id="meeting_link" placeholder="https://zoom.us/j/1234567890" value={newLicense.meeting_link} onChange={(e) => setNewLicense({ ...newLicense, meeting_link: e.target.value })} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="host_id">Host ID (Optional)</Label>
-                      <Input id="host_id" placeholder="Optional Zoom Host ID" value={newLicense.host_id} onChange={(e) => setNewLicense({ ...newLicense, host_id: e.target.value })} />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setAddDialogOpen(false)}>Cancel</Button>
-                    <Button onClick={() => addLicenseMutation.mutate(newLicense)} disabled={!newLicense.zoom_email || !newLicense.meeting_link || addLicenseMutation.isPending}>
+                    {hostIdResults && (
+                      <div className="border rounded-md p-3 bg-muted/50 max-h-48 overflow-y-auto">
+                        <p className="text-xs font-semibold mb-2">Results:</p>
+                        {hostIdResults.map((r, i) => (
+                          <div key={i} className="flex items-center gap-2 text-xs py-1 border-b last:border-0">
+                            <span className={cn("w-2 h-2 rounded-full flex-shrink-0",
+                              r.status === 'updated' ? 'bg-emerald-500' : 'bg-destructive'
+                            )} />
+                            <span className="truncate flex-1">{r.email}</span>
+                            <span className="font-mono text-muted-foreground">{r.host_id || r.error || 'failed'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => { setZoomSetupOpen(false); setHostIdResults(null); }}>Close</Button>
+                      <Button
+                        onClick={() => fetchHostIds(zoomCreds)}
+                        disabled={!zoomCreds.account_id || !zoomCreds.client_id || !zoomCreds.client_secret || refreshingHostIds}
+                      >
+                        {refreshingHostIds ? 'Fetching...' : 'Fetch & Update Host IDs'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+                <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="gap-2" size="sm">
+                      <Plus className="h-4 w-4" />
                       Add Room
                     </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle className="font-serif">Add New Zoom Room</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="zoom_email">Zoom Email</Label>
+                        <Input id="zoom_email" placeholder="room1@academy.com" value={newLicense.zoom_email} onChange={(e) => setNewLicense({ ...newLicense, zoom_email: e.target.value })} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="meeting_link">Meeting Link (PMI)</Label>
+                        <Input id="meeting_link" placeholder="https://zoom.us/j/1234567890" value={newLicense.meeting_link} onChange={(e) => setNewLicense({ ...newLicense, meeting_link: e.target.value })} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="host_id">Host ID (Optional)</Label>
+                        <Input id="host_id" placeholder="Optional Zoom Host ID" value={newLicense.host_id} onChange={(e) => setNewLicense({ ...newLicense, host_id: e.target.value })} />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setAddDialogOpen(false)}>Cancel</Button>
+                      <Button onClick={() => addLicenseMutation.mutate(newLicense)} disabled={!newLicense.zoom_email || !newLicense.meeting_link || addLicenseMutation.isPending}>
+                        Add Room
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </CardHeader>
             <CardContent>
               <Table>
