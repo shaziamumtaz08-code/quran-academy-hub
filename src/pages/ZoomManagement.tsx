@@ -492,13 +492,45 @@ export default function ZoomManagement() {
                   ))}
                   {(!licenses || licenses.length === 0) && (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No rooms configured.</TableCell>
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No rooms configured.</TableCell>
                     </TableRow>
                   )}
                 </TableBody>
               </Table>
             </CardContent>
           </Card>
+
+          {/* Edit License Dialog */}
+          <Dialog open={editDialogOpen} onOpenChange={(open) => { setEditDialogOpen(open); if (!open) setEditingLicense(null); }}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="font-serif">Edit Zoom Room</DialogTitle>
+              </DialogHeader>
+              {editingLicense && (
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Zoom Email</Label>
+                    <Input value={editingLicense.zoom_email} onChange={(e) => setEditingLicense({ ...editingLicense, zoom_email: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Meeting Link (PMI)</Label>
+                    <Input value={editingLicense.meeting_link} onChange={(e) => setEditingLicense({ ...editingLicense, meeting_link: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Host ID</Label>
+                    <Input placeholder="Zoom Host ID for webhook matching" value={editingLicense.host_id} onChange={(e) => setEditingLicense({ ...editingLicense, host_id: e.target.value })} />
+                    <p className="text-xs text-muted-foreground">Required for join/leave tracking via Zoom webhooks. Find this in your Zoom admin panel under each user's profile.</p>
+                  </div>
+                </div>
+              )}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => { setEditDialogOpen(false); setEditingLicense(null); }}>Cancel</Button>
+                <Button onClick={() => editingLicense && editLicenseMutation.mutate(editingLicense)} disabled={!editingLicense?.zoom_email || !editingLicense?.meeting_link || editLicenseMutation.isPending}>
+                  Save Changes
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         )}
 
         {/* Sessions Section */}
