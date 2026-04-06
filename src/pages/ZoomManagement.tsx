@@ -236,6 +236,25 @@ export default function ZoomManagement() {
                           <Timer className="h-3 w-3" />
                           <LiveTimer startTime={session.actual_start} />
                         </div>
+                        <div className="flex gap-1 mt-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-6 text-[10px] gap-1 flex-1"
+                            onClick={() => window.open(license.meeting_link, '_blank')}
+                          >
+                            <UserPlus className="h-3 w-3" /> Join
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="h-6 text-[10px] gap-1 flex-1"
+                            onClick={() => endSessionMutation.mutate({ sessionId: session.id, licenseId: license.id })}
+                            disabled={endSessionMutation.isPending}
+                          >
+                            <Power className="h-3 w-3" /> End
+                          </Button>
+                        </div>
                       </div>
                     ) : (
                       <p className="text-xs text-muted-foreground mt-1">
@@ -293,6 +312,32 @@ export default function ZoomManagement() {
                       <span className="text-muted-foreground">
                         {session.actual_start ? format(new Date(session.actual_start), 'HH:mm') : '-'}
                       </span>
+                    </div>
+                    <div className="flex gap-2 mt-3 pt-2 border-t border-border/30">
+                      {session.license_id && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 gap-1 text-[10px] h-7"
+                            onClick={() => {
+                              const lic = licenses?.find(l => l.id === session.license_id);
+                              if (lic?.meeting_link) window.open(lic.meeting_link, '_blank');
+                            }}
+                          >
+                            <UserPlus className="h-3 w-3" /> Join
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="flex-1 gap-1 text-[10px] h-7"
+                            onClick={() => endSessionMutation.mutate({ sessionId: session.id, licenseId: session.license_id })}
+                            disabled={endSessionMutation.isPending}
+                          >
+                            <Power className="h-3 w-3" /> End
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
