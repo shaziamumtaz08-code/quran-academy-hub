@@ -4072,6 +4072,7 @@ export type Database = {
           first_month_prorated_fee: number | null
           id: string
           is_custom_override: boolean
+          parent_assignment_id: string | null
           payout_amount: number | null
           payout_type: string | null
           requires_attendance: boolean
@@ -4083,8 +4084,10 @@ export type Database = {
           student_id: string
           student_timezone: string | null
           subject_id: string | null
+          substitute_end_date: string | null
           teacher_id: string
           teacher_timezone: string | null
+          transfer_type: string | null
         }
         Insert: {
           branch_id?: string | null
@@ -4099,6 +4102,7 @@ export type Database = {
           first_month_prorated_fee?: number | null
           id?: string
           is_custom_override?: boolean
+          parent_assignment_id?: string | null
           payout_amount?: number | null
           payout_type?: string | null
           requires_attendance?: boolean
@@ -4110,8 +4114,10 @@ export type Database = {
           student_id: string
           student_timezone?: string | null
           subject_id?: string | null
+          substitute_end_date?: string | null
           teacher_id: string
           teacher_timezone?: string | null
+          transfer_type?: string | null
         }
         Update: {
           branch_id?: string | null
@@ -4126,6 +4132,7 @@ export type Database = {
           first_month_prorated_fee?: number | null
           id?: string
           is_custom_override?: boolean
+          parent_assignment_id?: string | null
           payout_amount?: number | null
           payout_type?: string | null
           requires_attendance?: boolean
@@ -4137,8 +4144,10 @@ export type Database = {
           student_id?: string
           student_timezone?: string | null
           subject_id?: string | null
+          substitute_end_date?: string | null
           teacher_id?: string
           teacher_timezone?: string | null
+          transfer_type?: string | null
         }
         Relationships: [
           {
@@ -4167,6 +4176,13 @@ export type Database = {
             columns: ["fee_package_id"]
             isOneToOne: false
             referencedRelation: "fee_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_teacher_assignments_parent_assignment_id_fkey"
+            columns: ["parent_assignment_id"]
+            isOneToOne: false
+            referencedRelation: "student_teacher_assignments"
             referencedColumns: ["id"]
           },
           {
