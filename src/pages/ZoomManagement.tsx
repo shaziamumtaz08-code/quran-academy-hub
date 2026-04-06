@@ -10,12 +10,13 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Video, Plus, Trash2, Wifi, WifiOff, Settings, Users, Clock, ExternalLink, RefreshCw, Radio, ArrowUpRight, ArrowDownLeft, Timer } from 'lucide-react';
+import { Video, Plus, Trash2, Wifi, WifiOff, Settings, Users, Clock, ExternalLink, RefreshCw, Radio, ArrowUpRight, ArrowDownLeft, Timer, Power, UserPlus, Play } from 'lucide-react';
 import { format, differenceInMinutes, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
+import { useAuth } from '@/contexts/AuthContext';
 
 function LiveTimer({ startTime }: { startTime: string }) {
   const [elapsed, setElapsed] = React.useState(0);
@@ -30,6 +31,7 @@ function LiveTimer({ startTime }: { startTime: string }) {
 
 export default function ZoomManagement() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [newLicense, setNewLicense] = React.useState({ zoom_email: '', meeting_link: '', host_id: '' });
   const [addDialogOpen, setAddDialogOpen] = React.useState(false);
@@ -138,6 +140,31 @@ export default function ZoomManagement() {
     },
   });
 
+  // End session mutation for admin
+  const endSessionMutation = useMutation({
+    mutationFn: async ({ sessionId, licenseId }: { sessionId: string; licenseId: string }) => {
+      const { error: sessionError } = await (supabase as any)
+        .from('live_sessions')
+        .update({ status: 'completed', actual_end: new Date().toISOString() })
+        .eq('id', sessionId);
+      if (sessionError) throw sessionError;
+
+      const { error: licenseError } = await supabase
+        .from('zoom_licenses')
+        .update({ status: 'available' })
+        .eq('id', licenseId);
+      if (licenseError) throw licenseError;
+    },
+    onSuccess: () => {
+      toast({ title: 'Session Ended', description: 'License released successfully.' });
+      queryClient.invalidateQueries({ queryKey: ['zoom-licenses-management'] });
+      queryClient.invalidateQueries({ queryKey: ['all-live-sessions'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
   const availableCount = licenses?.filter(l => l.status === 'available').length || 0;
   const busyCount = licenses?.filter(l => l.status === 'busy').length || 0;
   const totalCount = licenses?.length || 0;
@@ -209,6 +236,25 @@ export default function ZoomManagement() {
                           <Timer className="h-3 w-3" />
                           <LiveTimer startTime={session.actual_start} />
                         </div>
+                        <div className="flex gap-1 mt-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-6 text-[10px] gap-1 flex-1"
+                            onClick={() => window.open(license.meeting_link, '_blank')}
+                          >
+                            <UserPlus className="h-3 w-3" /> Join
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="h-6 text-[10px] gap-1 flex-1"
+                            onClick={() => endSessionMutation.mutate({ sessionId: session.id, licenseId: license.id })}
+                            disabled={endSessionMutation.isPending}
+                          >
+                            <Power className="h-3 w-3" /> End
+                          </Button>
+                        </div>
                       </div>
                     ) : (
                       <p className="text-xs text-muted-foreground mt-1">
@@ -266,6 +312,32 @@ export default function ZoomManagement() {
                       <span className="text-muted-foreground">
                         {session.actual_start ? format(new Date(session.actual_start), 'HH:mm') : '-'}
                       </span>
+                    </div>
+                    <div className="flex gap-2 mt-3 pt-2 border-t border-border/30">
+                      {session.license_id && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 gap-1 text-[10px] h-7"
+                            onClick={() => {
+                              const lic = licenses?.find(l => l.id === session.license_id);
+                              if (lic?.meeting_link) window.open(lic.meeting_link, '_blank');
+                            }}
+                          >
+                            <UserPlus className="h-3 w-3" /> Join
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="flex-1 gap-1 text-[10px] h-7"
+                            onClick={() => endSessionMutation.mutate({ sessionId: session.id, licenseId: session.license_id })}
+                            disabled={endSessionMutation.isPending}
+                          >
+                            <Power className="h-3 w-3" /> End
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -447,10 +519,20 @@ export default function ZoomManagement() {
                           </TableCell>
                           <TableCell>
                             {session.recording_link ? (
-                              <a href={session.recording_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline text-sm">
-                                <Video className="h-3 w-3" /> Watch
-                              </a>
-                            ) : <span className="text-muted-foreground text-sm">—</span>}
+                              <Button variant="ghost" size="sm" className="gap-1 text-xs h-7 text-primary" onClick={() => window.open(session.recording_link, '_blank')}>
+                                <Play className="h-3 w-3" /> Watch
+                              </Button>
+                            ) : session.status === 'completed' ? (
+                              <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/20">
+                                ⏳ Processing
+                              </Badge>
+                            ) : session.status === 'live' ? (
+                              <Badge variant="outline" className="text-[10px] bg-muted text-muted-foreground">
+                                Recording...
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">—</span>
+                            )}
                           </TableCell>
                           <TableCell>
                             <Badge className={cn(

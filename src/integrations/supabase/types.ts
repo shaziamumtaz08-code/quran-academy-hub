@@ -2406,8 +2406,10 @@ export type Database = {
           group_id: string | null
           id: string
           license_id: string | null
+          recording_fetched_at: string | null
           recording_link: string | null
           recording_password: string | null
+          recording_status: string | null
           schedule_id: string | null
           scheduled_start: string | null
           status: Database["public"]["Enums"]["session_status"]
@@ -2423,8 +2425,10 @@ export type Database = {
           group_id?: string | null
           id?: string
           license_id?: string | null
+          recording_fetched_at?: string | null
           recording_link?: string | null
           recording_password?: string | null
+          recording_status?: string | null
           schedule_id?: string | null
           scheduled_start?: string | null
           status?: Database["public"]["Enums"]["session_status"]
@@ -2440,8 +2444,10 @@ export type Database = {
           group_id?: string | null
           id?: string
           license_id?: string | null
+          recording_fetched_at?: string | null
           recording_link?: string | null
           recording_password?: string | null
+          recording_status?: string | null
           schedule_id?: string | null
           scheduled_start?: string | null
           status?: Database["public"]["Enums"]["session_status"]
@@ -3664,6 +3670,59 @@ export type Database = {
             columns: ["division_id"]
             isOneToOne: false
             referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      session_recordings: {
+        Row: {
+          created_at: string
+          download_url: string | null
+          file_size_mb: number | null
+          file_type: string | null
+          id: string
+          password: string | null
+          play_url: string | null
+          recording_end: string | null
+          recording_start: string | null
+          recording_type: string
+          session_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          download_url?: string | null
+          file_size_mb?: number | null
+          file_type?: string | null
+          id?: string
+          password?: string | null
+          play_url?: string | null
+          recording_end?: string | null
+          recording_start?: string | null
+          recording_type?: string
+          session_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          download_url?: string | null
+          file_size_mb?: number | null
+          file_type?: string | null
+          id?: string
+          password?: string | null
+          play_url?: string | null
+          recording_end?: string | null
+          recording_start?: string | null
+          recording_type?: string
+          session_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_recordings_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "live_sessions"
             referencedColumns: ["id"]
           },
         ]
