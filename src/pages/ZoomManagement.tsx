@@ -389,7 +389,7 @@ export default function ZoomManagement() {
         </div>
 
         {/* Rooms Section */}
-        {activeSection === 'rooms' && (
+        {activeSection === 'rooms' && (<>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
