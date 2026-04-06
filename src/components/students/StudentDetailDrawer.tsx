@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Calendar, Clock, User, BookOpen, Target, CheckSquare, Loader2, FileText, MapPin } from 'lucide-react';
+import { Calendar, Clock, User, BookOpen, Target, CheckSquare, Loader2, FileText, MapPin, ArrowRightLeft } from 'lucide-react';
+import { TransferAssignmentDialog } from './TransferAssignmentDialog';
 import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 
