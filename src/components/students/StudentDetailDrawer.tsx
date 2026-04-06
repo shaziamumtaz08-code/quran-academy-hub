@@ -396,7 +396,7 @@ export function StudentDetailDrawer({
           studentId={student.id}
           studentName={student.full_name}
           currentTeacherId={teacherId}
-          currentTeacherName="" 
+          currentTeacherName={teacherProfile?.full_name || 'Current Teacher'} 
           assignmentId={currentAssignment.id}
         />
       )}
