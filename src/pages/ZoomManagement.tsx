@@ -415,6 +415,31 @@ export default function ZoomManagement() {
 
         {/* Rooms Section */}
         {activeSection === 'rooms' && (<>
+          {/* Allocation Mode Settings */}
+          <Card className="border-dashed">
+            <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <Settings className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-semibold">Room Allocation Mode</p>
+                  <p className="text-xs text-muted-foreground">
+                    {allocationMode === 'priority'
+                      ? 'Rooms are picked by priority number (lowest first). Licensed rooms get used before basic ones.'
+                      : 'Rooms are picked in round-robin order, spreading usage evenly across all rooms.'}
+                  </p>
+                </div>
+              </div>
+              <Select value={allocationMode || 'round_robin'} onValueChange={(v) => updateAllocationModeMutation.mutate(v)}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="priority">Priority-based</SelectItem>
+                  <SelectItem value="round_robin">Round Robin</SelectItem>
+                </SelectContent>
+              </Select>
+            </CardContent>
+          </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
@@ -532,7 +557,7 @@ export default function ZoomManagement() {
                   ))}
                   {(!licenses || licenses.length === 0) && (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No rooms configured.</TableCell>
+                      <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No rooms configured.</TableCell>
                     </TableRow>
                   )}
                 </TableBody>
@@ -559,7 +584,26 @@ export default function ZoomManagement() {
                   <div className="space-y-2">
                     <Label>Host ID</Label>
                     <Input placeholder="Zoom Host ID for webhook matching" value={editingLicense.host_id} onChange={(e) => setEditingLicense({ ...editingLicense, host_id: e.target.value })} />
-                    <p className="text-xs text-muted-foreground">Required for join/leave tracking via Zoom webhooks. Find this in your Zoom admin panel under each user's profile.</p>
+                    <p className="text-xs text-muted-foreground">Required for join/leave tracking via Zoom webhooks.</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>License Type</Label>
+                      <Select value={editingLicense.license_type} onValueChange={(v) => setEditingLicense({ ...editingLicense, license_type: v })}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="licensed">Licensed (Recording)</SelectItem>
+                          <SelectItem value="basic">Basic (Free)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Priority</Label>
+                      <Input type="number" min={0} value={editingLicense.priority} onChange={(e) => setEditingLicense({ ...editingLicense, priority: parseInt(e.target.value) || 0 })} />
+                      <p className="text-xs text-muted-foreground">Lower = used first</p>
+                    </div>
                   </div>
                 </div>
               )}
