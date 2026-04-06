@@ -531,7 +531,7 @@ export default function ZoomManagement() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        )}
+        </>)}
 
         {/* Sessions Section */}
         {activeSection === 'sessions' && (
