@@ -5,8 +5,6 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { IslamicDateData } from '@/lib/islamicDate';
 
-import { RoleTopBar } from './RoleTopBar';
-import { RoleBottomNav, type BottomNavTab } from './RoleBottomNav';
 import { IslamicDateCard } from '../teacher/IslamicDateCard';
 import { PrayerTimesWidget } from '../teacher/PrayerTimesWidget';
 
