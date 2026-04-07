@@ -389,13 +389,6 @@ export default function Courses() {
                     <span className="ml-auto">{format(new Date(course.start_date), 'MMM yyyy')}</span>
                   </div>
 
-                  {/* Per-course Asset Library button */}
-                  <div className="pt-1">
-                    <Button variant="ghost" size="sm" className="text-xs h-7 px-2 text-muted-foreground hover:text-primary"
-                      onClick={(e) => { e.stopPropagation(); navigate(`/course-assets?course=${course.id}`); }}>
-                      <Library className="h-3.5 w-3.5 mr-1" /> Asset Library
-                    </Button>
-                  </div>
                 </CardContent>
               </Card>
             ))}
