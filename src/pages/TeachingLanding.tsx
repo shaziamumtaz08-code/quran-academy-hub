@@ -60,6 +60,7 @@ export default function TeachingLanding() {
   });
   const cards: LandingCard[] = [
     { id: 'live-classes', title: 'Live Classes', subtitle: 'Currently active', count: counts?.live, countLoading: isLoading, icon: <Video className="h-5 w-5" />, color: 'bg-destructive' },
+    { id: 'courses', title: 'Courses', subtitle: 'Group & batch', count: counts?.courses, countLoading: isLoading, icon: <BookOpen className="h-5 w-5" />, color: 'bg-teal-500' },
     { id: 'assignments', title: 'Assignments', subtitle: 'Active assignments', count: counts?.assignments, countLoading: isLoading, icon: <UserCheck className="h-5 w-5" />, color: 'bg-primary' },
     { id: 'schedules', title: 'Schedules', subtitle: 'Weekly slots', count: counts?.schedules, countLoading: isLoading, icon: <Calendar className="h-5 w-5" />, color: 'bg-blue-500' },
     { id: 'attendance', title: 'Attendance', subtitle: 'This week rate', count: counts?.attRate !== undefined ? `${counts.attRate}%` : undefined, countLoading: isLoading, icon: <ClipboardCheck className="h-5 w-5" />, color: 'bg-emerald-500' },
@@ -69,6 +70,7 @@ export default function TeachingLanding() {
 
   const contentMap: Record<string, React.ReactNode> = useMemo(() => ({
     'live-classes': <Suspense fallback={<Loading />}><ZoomManagement /></Suspense>,
+    'courses': <Suspense fallback={<Loading />}><Courses /></Suspense>,
     'assignments': <Suspense fallback={<Loading />}><Assignments /></Suspense>,
     'schedules': <Suspense fallback={<Loading />}><Schedules /></Suspense>,
     'attendance': <Suspense fallback={<Loading />}><Attendance /></Suspense>,
