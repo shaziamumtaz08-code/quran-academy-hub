@@ -440,7 +440,12 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
                             </div>
                             <div>
                               <p className="text-sm font-semibold text-foreground">{session.teacherName}</p>
-                              <p className="text-[11px] text-muted-foreground">
+                              {session.studentName && (
+                                <p className="text-[11px] text-primary font-medium">
+                                  👨‍🎓 {session.studentName}
+                                </p>
+                              )}
+                              <p className="text-[10px] text-muted-foreground">
                                 {licenseData?.zoom_email?.split("@")[0] || "No license"}
                               </p>
                             </div>
