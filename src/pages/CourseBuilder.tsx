@@ -78,14 +78,14 @@ export default function CourseBuilder() {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  const [activeTab, setActiveTab] = useState('builder');
   const [searchParams] = useSearchParams();
 
-  // Sync activeTab with ?tab= query param from sidebar
-  React.useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab) setActiveTab(tab);
-  }, [searchParams]);
+  const activeTab = searchParams.get('tab') || 'builder';
+  const setActiveTab = (tab: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tab);
+    navigate(`${location.pathname}?tab=${tab}`, { replace: true });
+  };
 
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
 
