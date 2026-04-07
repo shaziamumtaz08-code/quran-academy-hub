@@ -406,6 +406,16 @@ export default function GroupChat() {
               <Input value={newGroupName} onChange={e => setNewGroupName(e.target.value)} placeholder="e.g. Hifz Team" />
             </div>
             <div>
+              <Label>Mode</Label>
+              <Select value={newChannelMode} onValueChange={(v) => setNewChannelMode(v as 'group' | 'channel')}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="group">💬 Group — Everyone can post</SelectItem>
+                  <SelectItem value="channel">📢 Channel — Admin posts only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <Label>Type</Label>
               <Select value={newGroupType} onValueChange={setNewGroupType}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -417,7 +427,9 @@ export default function GroupChat() {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={() => createGroup.mutate()} disabled={!newGroupName.trim()}>Create Group</Button>
+            <Button onClick={() => createGroup.mutate()} disabled={!newGroupName.trim()}>
+              {newChannelMode === 'channel' ? 'Create Channel' : 'Create Group'}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
