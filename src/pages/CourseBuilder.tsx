@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
@@ -598,50 +598,6 @@ export default function CourseBuilder() {
       {/* ─── Tabs ─────────────────────────────────────── */}
       <div className="max-w-[1600px] mx-auto w-full px-3 sm:px-4 pt-4 pb-4 flex-1 flex flex-col">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-          <div className="overflow-x-auto whitespace-nowrap -mx-3 px-3 sm:mx-0 sm:px-0">
-            <TabsList className="bg-background border">
-              <TabsTrigger value="builder" className="gap-1.5 text-xs sm:text-sm">
-                <BookOpen className="h-4 w-4" /><span className="hidden sm:inline">Builder</span>
-              </TabsTrigger>
-              <TabsTrigger value="website" className="gap-1.5 text-xs sm:text-sm">
-                <ExternalLink className="h-4 w-4" /><span className="hidden sm:inline">Website</span>
-              </TabsTrigger>
-              <TabsTrigger value="marketing" className="gap-1.5 text-xs sm:text-sm">
-                <Sparkles className="h-4 w-4" /><span className="hidden sm:inline">Marketing</span>
-              </TabsTrigger>
-              <TabsTrigger value="community" className="gap-1.5 text-xs sm:text-sm">
-                <Users className="h-4 w-4" /><span className="hidden sm:inline">Community</span>
-              </TabsTrigger>
-              <TabsTrigger value="settings" className="gap-1.5 text-xs sm:text-sm">
-                <Settings className="h-4 w-4" /><span className="hidden sm:inline">Settings</span>
-              </TabsTrigger>
-              <TabsTrigger value="roster" className="gap-1.5 text-xs sm:text-sm">
-                <Users className="h-4 w-4" /><span className="hidden sm:inline">Roster</span>
-              </TabsTrigger>
-              <TabsTrigger value="reg-form" className="gap-1.5 text-xs sm:text-sm">
-                <ClipboardList className="h-4 w-4" /><span className="hidden sm:inline">Reg Form</span>
-              </TabsTrigger>
-              <TabsTrigger value="applicants" className="gap-1.5 text-xs sm:text-sm">
-                <UserPlus className="h-4 w-4" /><span className="hidden sm:inline">Applicants</span>
-              </TabsTrigger>
-              <TabsTrigger value="classes" className="gap-1.5 text-xs sm:text-sm">
-                <GraduationCap className="h-4 w-4" /><span className="hidden sm:inline">Classes</span>
-              </TabsTrigger>
-              <TabsTrigger value="finance" className="gap-1.5 text-xs sm:text-sm">
-                <DollarSign className="h-4 w-4" /><span className="hidden sm:inline">Finance</span>
-              </TabsTrigger>
-              <TabsTrigger value="resources" className="gap-1.5 text-xs sm:text-sm">
-                <FolderOpen className="h-4 w-4" /><span className="hidden sm:inline">Resources</span>
-              </TabsTrigger>
-              <TabsTrigger value="assignments" className="gap-1.5 text-xs sm:text-sm">
-                <FileTextIcon className="h-4 w-4" /><span className="hidden sm:inline">Assignments</span>
-              </TabsTrigger>
-              <TabsTrigger value="notifications" className="gap-1.5 text-xs sm:text-sm">
-                <Bell className="h-4 w-4" /><span className="hidden sm:inline">Notifications</span>
-              </TabsTrigger>
-            </TabsList>
-          </div>
-
           {/* ═══ BUILDER TAB ═══ */}
           <TabsContent value="builder" className="mt-4 flex-1">
             {/* Mobile syllabus toggle */}
