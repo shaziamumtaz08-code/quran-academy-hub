@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
 import { LandingPageShell, LandingCard } from '@/components/layout/LandingPageShell';
-import { CreditCard, Wallet, Receipt, Banknote, Settings } from 'lucide-react';
+import { CreditCard, Wallet, Receipt, Banknote, Settings, GraduationCap } from 'lucide-react';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 
