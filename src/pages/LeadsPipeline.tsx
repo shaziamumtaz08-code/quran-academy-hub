@@ -63,9 +63,19 @@ interface Lead {
   enrollment_form_sent_at: string | null;
   enrollment_form_opened_at: string | null;
   enrollment_form_data: any | null;
+  gender: string | null;
+  date_of_birth: string | null;
+  current_level_specimen: string | null;
+  learning_goals: string | null;
+  guardian_name: string | null;
+  guardian_relationship: string | null;
   created_at: string;
   updated_at: string;
 }
+
+const LEAD_SUBJECTS = [
+  'Quran Recitation', 'Tajweed', 'Quran Memorization', 'Arabic Language', 'Islamic Studies', 'Qaida (Beginners)',
+];
 
 // ── Create Lead Dialog ──
 function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
