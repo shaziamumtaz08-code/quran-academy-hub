@@ -57,6 +57,56 @@ function verifyZoomSignature(
   return signature === expectedSignature;
 }
 
+// Helper: get the current day of week as lowercase string
+function getTodayDayOfWeek(): string {
+  const days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+  return days[new Date().getDay()];
+}
+
+// Helper: find the student scheduled with a teacher right now
+async function findScheduledStudent(supabase: any, teacherId: string): Promise<string | null> {
+  const today = getTodayDayOfWeek();
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+  // Get active assignments for this teacher
+  const { data: assignments } = await supabase
+    .from("student_teacher_assignments")
+    .select("id, student_id")
+    .eq("teacher_id", teacherId)
+    .eq("status", "active");
+
+  if (!assignments || assignments.length === 0) return null;
+
+  const assignmentIds = assignments.map((a: any) => a.id);
+
+  // Find a schedule for today within ±15 minutes
+  const { data: schedules } = await supabase
+    .from("schedules")
+    .select("assignment_id, student_local_time, duration_minutes")
+    .in("assignment_id", assignmentIds)
+    .eq("day_of_week", today)
+    .eq("is_active", true);
+
+  if (!schedules || schedules.length === 0) return null;
+
+  for (const sched of schedules) {
+    const [h, m] = (sched.student_local_time || "00:00").split(":").map(Number);
+    const schedMinutes = h * 60 + m;
+    const diff = Math.abs(nowMinutes - schedMinutes);
+    // Within ±60 minutes window (generous for class duration)
+    if (diff <= 60) {
+      const assignment = assignments.find((a: any) => a.id === sched.assignment_id);
+      if (assignment) return assignment.student_id;
+    }
+  }
+
+  // If only one student assigned, return them as fallback
+  if (assignments.length === 1) return assignments[0].student_id;
+
+  return null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -114,7 +164,7 @@ Deno.serve(async (req) => {
     }
 
     const event: ZoomEvent = JSON.parse(body);
-    console.log("=== ZOOM WEBHOOK RECEIVED ===", event.event, new Date().toISOString());
+    console.log("=== ZOOM WEBHOOK ===", event.event, new Date().toISOString());
 
     // Handle URL validation challenge
     if (event.event === "endpoint.url_validation") {
@@ -133,8 +183,7 @@ Deno.serve(async (req) => {
 
     switch (event.event) {
       case "meeting.started": {
-        const meetingId = event.payload.object?.uuid || event.payload.object?.id;
-        console.log("Meeting started:", meetingId, "host:", hostId);
+        console.log("Meeting started, host:", hostId);
         const { data: license } = await supabase
           .from("zoom_licenses")
           .select("id")
@@ -143,13 +192,14 @@ Deno.serve(async (req) => {
         if (license) {
           await supabase.from("zoom_licenses").update({ status: "busy", last_used_at: new Date().toISOString() }).eq("id", license.id);
           console.log("License marked busy:", license.id);
+        } else {
+          console.log("No license found for host_id:", hostId);
         }
         break;
       }
 
       case "meeting.ended": {
-        const meetingId = event.payload.object?.uuid || event.payload.object?.id;
-        console.log("Meeting ended:", meetingId, "host:", hostId);
+        console.log("Meeting ended, host:", hostId);
         const { data: license } = await supabase
           .from("zoom_licenses")
           .select("id")
@@ -168,7 +218,7 @@ Deno.serve(async (req) => {
             .update({ status: "completed", actual_end: new Date().toISOString(), recording_status: "pending" })
             .eq("license_id", license.id)
             .eq("status", "live");
-          console.log("License released and sessions completed:", license.id);
+          console.log("License released, sessions completed:", license.id);
 
           // Auto-mark absent students
           for (const session of (liveSessions || [])) {
@@ -184,7 +234,7 @@ Deno.serve(async (req) => {
               .from("zoom_attendance_logs")
               .select("user_id")
               .eq("session_id", session.id);
-            const joinedUserIds = new Set((joinLogs || []).map((l: any) => l.user_id));
+            const joinedUserIds = new Set((joinLogs || []).filter((l: any) => l.user_id).map((l: any) => l.user_id));
             const absentStudents = assignments.filter(a => !joinedUserIds.has(a.student_id));
 
             if (absentStudents.length > 0) {
@@ -215,22 +265,83 @@ Deno.serve(async (req) => {
 
       case "meeting.participant_joined": {
         const participant = event.payload.object?.participant;
-        if (!participant?.email) { console.log("No participant email in join event"); break; }
-        console.log("Participant joined:", participant.user_name, participant.email);
+        const pName = participant?.user_name || "Unknown";
+        const pEmail = participant?.email || "";
+        console.log("Participant joined:", pName, pEmail, "host:", hostId);
 
-        const { data: user } = await supabase.from("profiles").select("id").eq("email", participant.email).maybeSingle();
-        if (!user) { console.log("User not found for email:", participant.email); break; }
+        // Step 1: Find the license by host_id
+        const { data: license } = await supabase
+          .from("zoom_licenses")
+          .select("id")
+          .eq("host_id", hostId)
+          .maybeSingle();
 
-        const { data: license } = await supabase.from("zoom_licenses").select("id").eq("host_id", hostId).maybeSingle();
+        if (!license) {
+          console.log("No license found for host_id:", hostId);
+          break;
+        }
+
+        // Step 2: Find the active live session for this license
         const { data: session } = await supabase
           .from("live_sessions")
-          .select("id, actual_start")
+          .select("id, teacher_id, actual_start, student_id")
+          .eq("license_id", license.id)
           .eq("status", "live")
-          .eq("license_id", license?.id)
           .maybeSingle();
-        if (!session) { console.log("No active session found for license:", license?.id); break; }
 
-        const joinTime = new Date(participant.join_time || new Date().toISOString());
+        if (!session) {
+          console.log("No active session for license:", license.id, "— logging raw event only");
+          // Still log even without a session
+          await supabase.from("zoom_attendance_logs").insert({
+            session_id: null,
+            user_id: null,
+            action: "join_intent",
+            join_time: new Date(participant?.join_time || new Date().toISOString()).toISOString(),
+            timestamp: new Date().toISOString(),
+            participant_name: pName,
+            participant_email: pEmail,
+            role: "unknown",
+          });
+          break;
+        }
+
+        // Step 3: Determine if this is the teacher or student
+        // Check existing join logs for this session to see who already joined
+        const { data: existingLogs } = await supabase
+          .from("zoom_attendance_logs")
+          .select("id, user_id, role")
+          .eq("session_id", session.id)
+          .eq("action", "join_intent")
+          .is("leave_time", null);
+
+        const teacherAlreadyJoined = (existingLogs || []).some((l: any) => l.role === "teacher");
+
+        let matchedUserId: string | null = null;
+        let matchedRole = "unknown";
+
+        if (!teacherAlreadyJoined) {
+          // First participant → teacher
+          matchedUserId = session.teacher_id;
+          matchedRole = "teacher";
+          console.log("First participant → teacher:", matchedUserId);
+        } else {
+          // Second participant → find scheduled student
+          matchedRole = "student";
+          const studentId = await findScheduledStudent(supabase, session.teacher_id);
+          if (studentId) {
+            matchedUserId = studentId;
+            console.log("Second participant → student:", matchedUserId);
+
+            // Update live_session with student_id
+            await supabase.from("live_sessions")
+              .update({ student_id: studentId })
+              .eq("id", session.id);
+          } else {
+            console.log("Second participant → could not match student from schedule");
+          }
+        }
+
+        const joinTime = new Date(participant?.join_time || new Date().toISOString());
         let isLate = false;
         let lateMinutes = 0;
         if (session.actual_start) {
@@ -240,27 +351,32 @@ Deno.serve(async (req) => {
 
         await supabase.from("zoom_attendance_logs").insert({
           session_id: session.id,
-          user_id: user.id,
+          user_id: matchedUserId,
           action: "join_intent",
           join_time: joinTime.toISOString(),
           timestamp: new Date().toISOString(),
+          participant_name: pName,
+          participant_email: pEmail,
+          role: matchedRole,
         });
-        console.log(`Join logged: ${user.id}, Late: ${isLate} (${lateMinutes} mins)`);
+        console.log(`Join logged: role=${matchedRole}, user=${matchedUserId}, late=${isLate} (${lateMinutes}m)`);
 
-        if (isLate) {
-          const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", user.id).maybeSingle();
-          if (roleData?.role === "student") {
-            const { data: parentLink } = await supabase.from("student_parent_links").select("parent_id").eq("student_id", user.id).maybeSingle();
-            if (parentLink) {
-              await supabase.from("notification_queue").insert({
-                recipient_id: parentLink.parent_id,
-                recipient_type: "parent",
-                notification_type: "late_join",
-                title: "Late Entry Alert",
-                message: `${participant.user_name} joined class ${lateMinutes} minutes late.`,
-                metadata: { user_id: user.id, late_minutes: lateMinutes, session_id: session.id, status: "Late" },
-              });
-            }
+        // Late notification for students
+        if (isLate && matchedRole === "student" && matchedUserId) {
+          const { data: parentLink } = await supabase
+            .from("student_parent_links")
+            .select("parent_id")
+            .eq("student_id", matchedUserId)
+            .maybeSingle();
+          if (parentLink) {
+            await supabase.from("notification_queue").insert({
+              recipient_id: parentLink.parent_id,
+              recipient_type: "parent",
+              notification_type: "late_join",
+              title: "Late Entry Alert",
+              message: `${pName} joined class ${lateMinutes} minutes late.`,
+              metadata: { user_id: matchedUserId, late_minutes: lateMinutes, session_id: session.id, status: "Late" },
+            });
           }
         }
         break;
@@ -268,56 +384,102 @@ Deno.serve(async (req) => {
 
       case "meeting.participant_left": {
         const participant = event.payload.object?.participant;
-        if (!participant?.email) { console.log("No participant email in leave event"); break; }
-        console.log("Participant left:", participant.user_name, participant.email);
+        const pName = participant?.user_name || "Unknown";
+        const pEmail = participant?.email || "";
+        console.log("Participant left:", pName, pEmail, "host:", hostId);
 
-        const { data: user } = await supabase.from("profiles").select("id").eq("email", participant.email).maybeSingle();
-        if (!user) { console.log("User not found for email:", participant.email); break; }
+        // Find license → session
+        const { data: license } = await supabase
+          .from("zoom_licenses")
+          .select("id")
+          .eq("host_id", hostId)
+          .maybeSingle();
 
-        const { data: license } = await supabase.from("zoom_licenses").select("id").eq("host_id", hostId).maybeSingle();
-        const { data: session } = await supabase.from("live_sessions").select("id").eq("license_id", license?.id).maybeSingle();
-        if (!session) { console.log("No session found for license:", license?.id); break; }
+        if (!license) { console.log("No license for host:", hostId); break; }
 
-        const { data: joinLog } = await supabase
-          .from("zoom_attendance_logs")
-          .select("id, join_time, total_duration_minutes")
-          .eq("session_id", session.id)
-          .eq("user_id", user.id)
-          .eq("action", "join_intent")
-          .is("leave_time", null)
-          .order("timestamp", { ascending: false })
+        // Find session (could be live or recently completed)
+        const { data: session } = await supabase
+          .from("live_sessions")
+          .select("id, teacher_id")
+          .eq("license_id", license.id)
+          .in("status", ["live", "completed"])
+          .order("actual_start", { ascending: false })
           .limit(1)
           .maybeSingle();
 
-        if (!joinLog) { console.log("No matching join record found for user:", user.id); break; }
+        if (!session) { console.log("No session found for license:", license.id); break; }
 
-        const leaveTime = new Date(participant.leave_time || new Date().toISOString());
-        const joinTime = new Date(joinLog.join_time);
+        // Find the most recent unresolved join log for this session
+        // Match by participant_name since we may not have user_id
+        const { data: joinLog } = await supabase
+          .from("zoom_attendance_logs")
+          .select("id, user_id, join_time, total_duration_minutes, role")
+          .eq("session_id", session.id)
+          .eq("action", "join_intent")
+          .is("leave_time", null)
+          .order("timestamp", { ascending: false })
+          .limit(5);
+
+        // Try to match by participant name/email
+        let matchedLog = null;
+        if (joinLog && joinLog.length > 0) {
+          // If only one unresolved join, use it
+          if (joinLog.length === 1) {
+            matchedLog = joinLog[0];
+          } else {
+            // Multiple unresolved joins - take the most recent one
+            // (In a 1:1 system there should be at most 2: teacher + student)
+            matchedLog = joinLog[0];
+          }
+        }
+
+        if (!matchedLog) {
+          console.log("No matching join record for leave event, session:", session.id);
+          // Still log a standalone leave
+          await supabase.from("zoom_attendance_logs").insert({
+            session_id: session.id,
+            user_id: null,
+            action: "leave",
+            leave_time: new Date(participant?.leave_time || new Date().toISOString()).toISOString(),
+            timestamp: new Date().toISOString(),
+            participant_name: pName,
+            participant_email: pEmail,
+            role: "unknown",
+          });
+          break;
+        }
+
+        const leaveTime = new Date(participant?.leave_time || new Date().toISOString());
+        const joinTime = new Date(matchedLog.join_time);
         const sessionMinutes = Math.floor((leaveTime.getTime() - joinTime.getTime()) / 60000);
-        const previousTotal = joinLog.total_duration_minutes || 0;
+        const previousTotal = matchedLog.total_duration_minutes || 0;
         const newTotal = previousTotal + sessionMinutes;
 
         await supabase.from("zoom_attendance_logs").update({
           action: "leave",
           leave_time: leaveTime.toISOString(),
           total_duration_minutes: newTotal,
-        }).eq("id", joinLog.id);
-        console.log(`Leave logged: ${user.id}, Session: ${sessionMinutes}min, Total: ${newTotal}min`);
+          participant_name: pName,
+          participant_email: pEmail,
+        }).eq("id", matchedLog.id);
+        console.log(`Leave logged: role=${matchedLog.role}, user=${matchedLog.user_id}, duration=${sessionMinutes}m, total=${newTotal}m`);
 
-        if (sessionMinutes < 25) {
-          const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", user.id).maybeSingle();
-          if (roleData?.role === "student") {
-            const { data: parentLink } = await supabase.from("student_parent_links").select("parent_id").eq("student_id", user.id).maybeSingle();
-            if (parentLink) {
-              await supabase.from("notification_queue").insert({
-                recipient_id: parentLink.parent_id,
-                recipient_type: "parent",
-                notification_type: "short_session",
-                title: "Short Session Alert",
-                message: `${participant.user_name} left class after ${sessionMinutes} minutes (Total: ${newTotal} mins).`,
-                metadata: { user_id: user.id, session_minutes: sessionMinutes, total_minutes: newTotal, session_id: session.id },
-              });
-            }
+        // Short session notification for students
+        if (sessionMinutes < 25 && matchedLog.role === "student" && matchedLog.user_id) {
+          const { data: parentLink } = await supabase
+            .from("student_parent_links")
+            .select("parent_id")
+            .eq("student_id", matchedLog.user_id)
+            .maybeSingle();
+          if (parentLink) {
+            await supabase.from("notification_queue").insert({
+              recipient_id: parentLink.parent_id,
+              recipient_type: "parent",
+              notification_type: "short_session",
+              title: "Short Session Alert",
+              message: `${pName} left class after ${sessionMinutes} minutes (Total: ${newTotal} mins).`,
+              metadata: { user_id: matchedLog.user_id, session_minutes: sessionMinutes, total_minutes: newTotal, session_id: session.id },
+            });
           }
         }
         break;
@@ -328,17 +490,13 @@ Deno.serve(async (req) => {
         const recordingFiles = event.payload.object?.recording_files || [];
         const recordingPassword = event.payload.object?.password || null;
 
-        // Find the most recent completed session for this host
         const { data: license } = await supabase
           .from("zoom_licenses")
           .select("id")
           .eq("host_id", hostId)
           .maybeSingle();
 
-        if (!license) {
-          console.log("No license found for host:", hostId);
-          break;
-        }
+        if (!license) { console.log("No license for host:", hostId); break; }
 
         const { data: session } = await supabase
           .from("live_sessions")
@@ -349,12 +507,8 @@ Deno.serve(async (req) => {
           .limit(1)
           .maybeSingle();
 
-        if (!session) {
-          console.log("No completed session found for license:", license.id);
-          break;
-        }
+        if (!session) { console.log("No completed session for license:", license.id); break; }
 
-        // Insert each recording file into session_recordings
         const recordingInserts = recordingFiles.map((file: any) => ({
           session_id: session.id,
           recording_type: file.recording_type || 'unknown',
@@ -370,14 +524,10 @@ Deno.serve(async (req) => {
 
         if (recordingInserts.length > 0) {
           const { error: recErr } = await supabase.from("session_recordings").insert(recordingInserts);
-          if (recErr) {
-            console.error("Error inserting recordings:", recErr);
-          } else {
-            console.log(`Inserted ${recordingInserts.length} recording(s) for session ${session.id}`);
-          }
+          if (recErr) console.error("Error inserting recordings:", recErr);
+          else console.log(`Inserted ${recordingInserts.length} recording(s) for session ${session.id}`);
         }
 
-        // Find first MP4 play_url for the session's recording_link
         const mp4File = recordingFiles.find((f: any) => f.file_type === "MP4");
         const playUrl = mp4File?.play_url || mp4File?.download_url || null;
 
@@ -388,7 +538,7 @@ Deno.serve(async (req) => {
           recording_fetched_at: new Date().toISOString(),
         }).eq("id", session.id);
 
-        console.log("Recording saved to session:", session.id, "files:", recordingInserts.length);
+        console.log("Recording saved to session:", session.id);
         break;
       }
 

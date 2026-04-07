@@ -2414,6 +2414,7 @@ export type Database = {
           scheduled_start: string | null
           status: Database["public"]["Enums"]["session_status"]
           stream_url: string | null
+          student_id: string | null
           teacher_id: string
           updated_at: string
         }
@@ -2433,6 +2434,7 @@ export type Database = {
           scheduled_start?: string | null
           status?: Database["public"]["Enums"]["session_status"]
           stream_url?: string | null
+          student_id?: string | null
           teacher_id: string
           updated_at?: string
         }
@@ -2452,6 +2454,7 @@ export type Database = {
           scheduled_start?: string | null
           status?: Database["public"]["Enums"]["session_status"]
           stream_url?: string | null
+          student_id?: string | null
           teacher_id?: string
           updated_at?: string
         }
@@ -2475,6 +2478,13 @@ export type Database = {
             columns: ["schedule_id"]
             isOneToOne: false
             referencedRelation: "schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_sessions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -4978,30 +4988,39 @@ export type Database = {
           id: string
           join_time: string | null
           leave_time: string | null
+          participant_email: string | null
+          participant_name: string | null
+          role: string | null
           session_id: string
           timestamp: string
           total_duration_minutes: number | null
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           action: Database["public"]["Enums"]["attendance_action"]
           id?: string
           join_time?: string | null
           leave_time?: string | null
+          participant_email?: string | null
+          participant_name?: string | null
+          role?: string | null
           session_id: string
           timestamp?: string
           total_duration_minutes?: number | null
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           action?: Database["public"]["Enums"]["attendance_action"]
           id?: string
           join_time?: string | null
           leave_time?: string | null
+          participant_email?: string | null
+          participant_name?: string | null
+          role?: string | null
           session_id?: string
           timestamp?: string
           total_duration_minutes?: number | null
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {

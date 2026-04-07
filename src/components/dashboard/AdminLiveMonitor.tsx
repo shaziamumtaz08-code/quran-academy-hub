@@ -180,6 +180,7 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
           `
           id,
           teacher_id,
+          student_id,
           actual_start,
           scheduled_start,
           status,
@@ -193,32 +194,22 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
       if (error) throw error;
       if (!sessions || sessions.length === 0) return [];
 
-      // Get teacher names
+      // Get teacher + student names
       const teacherIds = sessions.map((s) => s.teacher_id);
-      const { data: teachers } = await supabase.from("profiles").select("id, full_name").in("id", teacherIds);
-
-      const teacherMap = new Map(teachers?.map((t) => [t.id, t.full_name]) || []);
+      const studentIds = sessions.map((s) => (s as any).student_id).filter(Boolean);
+      const allProfileIds = [...new Set([...teacherIds, ...studentIds])];
+      const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", allProfileIds);
+      const profileMap = new Map(profiles?.map((p) => [p.id, p.full_name]) || []);
 
       // Get all participants who joined each session and haven't left
       const sessionIds = sessions.map((s) => s.id);
       const { data: attendanceLogs } = await supabase
         .from("zoom_attendance_logs")
-        .select("session_id, user_id, action, leave_time")
+        .select("session_id, user_id, action, leave_time, participant_name, role")
         .in("session_id", sessionIds);
 
       // Filter to get only users who are currently in session (joined but no leave_time)
       const activeParticipants = attendanceLogs?.filter((log) => log.action === "join_intent" && !log.leave_time) || [];
-
-      const allUserIds = new Set<string>();
-      activeParticipants.forEach((log) => allUserIds.add(log.user_id));
-      teacherIds.forEach((id) => allUserIds.add(id));
-
-      const { data: allUsers } = await supabase
-        .from("profiles")
-        .select("id, full_name")
-        .in("id", Array.from(allUserIds));
-
-      const userMap = new Map(allUsers?.map((u) => [u.id, u.full_name]) || []);
 
       // Build participants list per session
       const participantsMap = new Map<string, SessionParticipant[]>();
@@ -229,18 +220,29 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
         // Add teacher as first participant
         participants.push({
           userId: session.teacher_id,
-          userName: teacherMap.get(session.teacher_id) || "Teacher",
+          userName: profileMap.get(session.teacher_id) || "Teacher",
           isTeacher: true,
         });
 
-        // Add students who are currently active (no leave_time)
+        // Add student from live_session.student_id if set
+        const studentId = (session as any).student_id;
+        if (studentId) {
+          participants.push({
+            userId: studentId,
+            userName: profileMap.get(studentId) || "Student",
+            isTeacher: false,
+          });
+        }
+
+        // Also add any from attendance logs not already listed
         activeParticipants
           .filter((log) => log.session_id === session.id)
           .forEach((log) => {
-            if (log.user_id !== session.teacher_id && !participants.some((p) => p.userId === log.user_id)) {
+            const uid = log.user_id;
+            if (uid && uid !== session.teacher_id && uid !== studentId && !participants.some((p) => p.userId === uid)) {
               participants.push({
-                userId: log.user_id,
-                userName: userMap.get(log.user_id) || "Student",
+                userId: uid,
+                userName: profileMap.get(uid) || (log as any).participant_name || "Participant",
                 isTeacher: false,
               });
             }
@@ -251,7 +253,8 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
 
       return sessions.map((session) => ({
         ...session,
-        teacherName: teacherMap.get(session.teacher_id) || "Unknown",
+        teacherName: profileMap.get(session.teacher_id) || "Unknown",
+        studentName: (session as any).student_id ? (profileMap.get((session as any).student_id) || "Student") : null,
         participants: participantsMap.get(session.id) || [],
         activeCount: participantsMap.get(session.id)?.length || 1,
       }));
@@ -265,15 +268,7 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("zoom_attendance_logs")
-        .select(
-          `
-          id,
-          user_id,
-          action,
-          timestamp,
-          session_id
-        `,
-        )
+        .select("id, user_id, action, timestamp, session_id, participant_name, participant_email, role")
         .eq("action", "join_intent")
         .order("timestamp", { ascending: false })
         .limit(20);
@@ -281,14 +276,16 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
       if (error) throw error;
       if (!data || data.length === 0) return [];
 
-      const userIds = [...new Set(data.map((l) => l.user_id))];
-      const { data: users } = await supabase.from("profiles").select("id, full_name").in("id", userIds);
+      const userIds = [...new Set(data.map((l) => l.user_id).filter(Boolean))];
+      const { data: users } = userIds.length > 0
+        ? await supabase.from("profiles").select("id, full_name").in("id", userIds)
+        : { data: [] };
 
-      const userMap = new Map(users?.map((u) => [u.id, u.full_name]) || []);
+      const userMap = new Map((users || []).map((u: any) => [u.id, u.full_name] as [string, string]));
 
       return data.map((log) => ({
         ...log,
-        userName: userMap.get(log.user_id) || "Unknown",
+        userName: log.user_id ? (userMap.get(log.user_id) || (log as any).participant_name || "Unknown") : ((log as any).participant_name || "Unknown"),
         timeAgo: getTimeAgo(new Date(log.timestamp)),
       }));
     },
@@ -443,7 +440,12 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
                             </div>
                             <div>
                               <p className="text-sm font-semibold text-foreground">{session.teacherName}</p>
-                              <p className="text-[11px] text-muted-foreground">
+                              {session.studentName && (
+                                <p className="text-[11px] text-primary font-medium">
+                                  👨‍🎓 {session.studentName}
+                                </p>
+                              )}
+                              <p className="text-[10px] text-muted-foreground">
                                 {licenseData?.zoom_email?.split("@")[0] || "No license"}
                               </p>
                             </div>
