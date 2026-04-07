@@ -7,14 +7,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Search, BookOpen, Users, Eye, Archive, Globe, Pencil, ExternalLink, Clock, Star, ArrowUpDown, MoreHorizontal, Copy, Sparkles, BarChart3 } from 'lucide-react';
+import { FileUploadField } from '@/components/shared/FileUploadField';
+import {
+  Plus, Search, BookOpen, Users, Globe, Clock, Star,
+  Sparkles, Loader2, X, Library
+} from 'lucide-react';
 import { format } from 'date-fns';
 import { useDivision } from '@/contexts/DivisionContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -45,6 +49,7 @@ interface Course {
 }
 
 const LEVELS = ['Beginner', 'Intermediate', 'Advanced', 'All Levels'];
+const TAG_OPTIONS = ['Quran', 'Arabic', 'Tajweed', 'Hifz', 'Islamic Studies', 'Qaida', 'Spoken Arabic', 'Grammar', 'Online', 'Weekend', 'Intensive', 'Kids', 'Adults', 'Sisters Only'];
 
 // ─── Main Component ────────────────────────────────────
 export default function Courses() {
@@ -63,7 +68,6 @@ export default function Courses() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterLevel, setFilterLevel] = useState('all');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // Form state
   const [formName, setFormName] = useState('');
@@ -71,9 +75,21 @@ export default function Courses() {
   const [formTeacherId, setFormTeacherId] = useState('');
   const [formSubjectId, setFormSubjectId] = useState('');
   const [formStartDate, setFormStartDate] = useState('');
+  const [formEndDate, setFormEndDate] = useState('');
   const [formLevel, setFormLevel] = useState('All Levels');
   const [formMaxStudents, setFormMaxStudents] = useState('30');
+  const [formTags, setFormTags] = useState<string[]>([]);
   const [formWebsiteEnabled, setFormWebsiteEnabled] = useState(false);
+  const [aiGenerating, setAiGenerating] = useState(false);
+
+  // Website fields
+  const [webDescription, setWebDescription] = useState('');
+  const [webOutcomes, setWebOutcomes] = useState('');
+  const [webSyllabus, setWebSyllabus] = useState('');
+  const [webFaqs, setWebFaqs] = useState('');
+  const [webContactEmail, setWebContactEmail] = useState('');
+  const [webWhatsapp, setWebWhatsapp] = useState('');
+  const [webHeroImage, setWebHeroImage] = useState('');
 
   // ─── Queries ──────────────────────────────────────────
   const { data: courses = [], isLoading } = useQuery({
@@ -125,6 +141,44 @@ export default function Courses() {
     },
   });
 
+  const { data: staff = [] } = useQuery({
+    queryKey: ['staff-for-courses'],
+    queryFn: async () => {
+      const { data: roleRows } = await supabase.from('user_roles').select('user_id').in('role', ['admin', 'super_admin', 'admin_academic'] as any);
+      if (!roleRows?.length) return [];
+      const { data: profiles } = await supabase.from('profiles').select('id, full_name')
+        .in('id', roleRows.map((r: any) => r.user_id)).is('archived_at', null).order('full_name');
+      return profiles || [];
+    },
+  });
+
+  // ─── AI Assist ────────────────────────────────────────
+  const handleAiAssist = async () => {
+    if (!formName.trim()) {
+      toast({ title: 'Enter a course name first', variant: 'destructive' });
+      return;
+    }
+    setAiGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-course-content', {
+        body: {
+          prompt: `Write a compelling 2-3 sentence course description for a course called "${formName}". Level: ${formLevel}. Subject: ${subjects.find((s: any) => s.id === formSubjectId)?.name || 'General'}. Keep it professional and engaging for an Islamic education academy.`,
+          lessonTitle: formName,
+        },
+      });
+      if (error) throw error;
+      const content = data?.content || '';
+      // Strip HTML tags for plain text description
+      const plainText = content.replace(/<[^>]*>/g, '').trim();
+      setFormDescription(plainText);
+      toast({ title: 'Description generated!' });
+    } catch (err: any) {
+      toast({ title: 'AI generation failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
   // ─── Mutations ────────────────────────────────────────
   const createCourse = useMutation({
     mutationFn: async () => {
@@ -139,18 +193,45 @@ export default function Courses() {
       if (!branchId || !divisionId) throw new Error('Please select a branch/division first');
 
       const slug = formName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+      // Parse FAQs from question|answer format
+      const faqs = webFaqs.trim()
+        ? webFaqs.split('\n').filter(l => l.includes('|')).map(l => {
+            const [q, a] = l.split('|').map(s => s.trim());
+            return { question: q, answer: a };
+          })
+        : null;
+
+      // Parse outcomes
+      const outcomes = webOutcomes.trim()
+        ? webOutcomes.split('\n').filter(l => l.trim()).map(l => l.trim())
+        : null;
+
+      // Contact info
+      const contactInfo = (webContactEmail || webWhatsapp)
+        ? { email: webContactEmail || null, whatsapp: webWhatsapp || null }
+        : null;
+
       const { data, error } = await supabase.from('courses').insert({
-        name: formName.trim() || `Untitled Course`,
+        name: formName.trim() || 'Untitled Course',
         description: formDescription || null,
         teacher_id: formTeacherId || profile?.id,
         subject_id: formSubjectId || null,
         start_date: formStartDate || format(new Date(), 'yyyy-MM-dd'),
+        end_date: formEndDate || null,
         max_students: parseInt(formMaxStudents) || 30,
         level: formLevel,
+        tags: formTags.length ? formTags : null,
         website_enabled: formWebsiteEnabled,
         seo_slug: slug || null,
         branch_id: branchId,
         division_id: divisionId,
+        // Website fields
+        hero_image_url: formWebsiteEnabled ? (webHeroImage || null) : null,
+        syllabus_text: formWebsiteEnabled ? (webSyllabus || null) : null,
+        outcomes: formWebsiteEnabled ? outcomes : null,
+        faqs: formWebsiteEnabled ? faqs : null,
+        contact_info: formWebsiteEnabled ? contactInfo : null,
       }).select('id').single();
       if (error) throw error;
       return data;
@@ -167,8 +248,16 @@ export default function Courses() {
 
   const resetForm = () => {
     setFormName(''); setFormDescription(''); setFormTeacherId('');
-    setFormSubjectId(''); setFormStartDate(''); setFormLevel('All Levels');
-    setFormMaxStudents('30'); setFormWebsiteEnabled(false);
+    setFormSubjectId(''); setFormStartDate(''); setFormEndDate('');
+    setFormLevel('All Levels'); setFormMaxStudents('30'); setFormTags([]);
+    setFormWebsiteEnabled(false);
+    setWebDescription(''); setWebOutcomes(''); setWebSyllabus('');
+    setWebFaqs(''); setWebContactEmail(''); setWebWhatsapp(''); setWebHeroImage('');
+  };
+
+  // ─── Tag toggle ───────────────────────────────────────
+  const toggleTag = (tag: string) => {
+    setFormTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
   };
 
   // ─── Filtering ────────────────────────────────────────
@@ -203,10 +292,6 @@ export default function Courses() {
               <p className="text-white/80 mt-1">Create, manage, and publish courses across your academy</p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-                onClick={() => navigate('/course-assets')}>
-                <Star className="h-4 w-4 mr-1" /> Asset Library
-              </Button>
               {canManage && (
                 <Button onClick={() => setCreateOpen(true)} className="bg-accent text-accent-foreground hover:bg-accent/90">
                   <Plus className="h-4 w-4 mr-1" /> New Course
@@ -303,28 +388,90 @@ export default function Courses() {
                     <Badge variant="outline" className="text-xs">{course.level}</Badge>
                     <span className="ml-auto">{format(new Date(course.start_date), 'MMM yyyy')}</span>
                   </div>
+
+                  {/* Per-course Asset Library button */}
+                  <div className="pt-1">
+                    <Button variant="ghost" size="sm" className="text-xs h-7 px-2 text-muted-foreground hover:text-primary"
+                      onClick={(e) => { e.stopPropagation(); navigate(`/course-assets?course=${course.id}`); }}>
+                      <Library className="h-3.5 w-3.5 mr-1" /> Asset Library
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
           </div>
         )}
 
-        {/* Create Course Dialog */}
+        {/* ─── Create Course Dialog ─────────────────────── */}
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="font-serif">Create New Course</DialogTitle>
+              <DialogTitle className="font-serif text-lg">Create New Course</DialogTitle>
               <DialogDescription>Set up a new course for your academy</DialogDescription>
             </DialogHeader>
+
             <div className="space-y-4 py-2">
+              {/* Course Name + AI Assist */}
               <div className="space-y-1.5">
                 <Label>Course Name *</Label>
-                <Input value={formName} onChange={e => setFormName(e.target.value)} placeholder="e.g. Spoken Arabic for Beginners" />
+                <div className="flex gap-2">
+                  <Input className="flex-1" value={formName} onChange={e => setFormName(e.target.value)} placeholder="e.g. Spoken Arabic for Beginners" />
+                </div>
               </div>
+
+              {/* Description with AI button */}
               <div className="space-y-1.5">
-                <Label>Description</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Description</Label>
+                  <Button type="button" variant="ghost" size="sm" className="h-7 text-xs gap-1 text-accent"
+                    disabled={aiGenerating || !formName.trim()} onClick={handleAiAssist}>
+                    {aiGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                    AI Assist
+                  </Button>
+                </div>
                 <Textarea value={formDescription} onChange={e => setFormDescription(e.target.value)} placeholder="Brief course overview…" rows={3} />
               </div>
+
+              {/* Subject + Level */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Subject</Label>
+                  <Select value={formSubjectId} onValueChange={setFormSubjectId}>
+                    <SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger>
+                    <SelectContent>
+                      {subjects.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Level</Label>
+                  <Select value={formLevel} onValueChange={setFormLevel}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {LEVELS.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Tags */}
+              <div className="space-y-1.5">
+                <Label>Tags</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {TAG_OPTIONS.map(tag => (
+                    <Badge key={tag} variant={formTags.includes(tag) ? 'default' : 'outline'}
+                      className={cn("cursor-pointer text-xs transition-colors",
+                        formTags.includes(tag) ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
+                      )}
+                      onClick={() => toggleTag(tag)}>
+                      {tag}
+                      {formTags.includes(tag) && <X className="h-3 w-3 ml-1" />}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              {/* Teacher + Max Students */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Teacher *</Label>
@@ -336,44 +483,92 @@ export default function Courses() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Subject</Label>
-                  <Select value={formSubjectId} onValueChange={setFormSubjectId}>
-                    <SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger>
-                    <SelectContent>
-                      {subjects.map((s: any) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Level</Label>
-                  <Select value={formLevel} onValueChange={setFormLevel}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {LEVELS.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
                   <Label>Max Students</Label>
                   <Input type="number" value={formMaxStudents} onChange={e => setFormMaxStudents(e.target.value)} />
                 </div>
               </div>
-              <div className="space-y-1.5">
-                <Label>Start Date</Label>
-                <Input type="date" value={formStartDate} onChange={e => setFormStartDate(e.target.value)} />
+
+              {/* Start Date + End Date */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Start Date</Label>
+                  <Input type="date" value={formStartDate} onChange={e => setFormStartDate(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>End Date</Label>
+                  <Input type="date" value={formEndDate} onChange={e => setFormEndDate(e.target.value)} />
+                </div>
               </div>
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+
+              {/* Publish to Website Toggle */}
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-border/50">
                 <Switch checked={formWebsiteEnabled} onCheckedChange={setFormWebsiteEnabled} />
                 <div>
-                  <Label className="text-sm font-medium">Publish to Website</Label>
+                  <Label className="text-sm font-medium flex items-center gap-1.5">
+                    <Globe className="h-4 w-4 text-accent" /> Publish to Website
+                  </Label>
                   <p className="text-xs text-muted-foreground">Make this course visible on the public website</p>
                 </div>
               </div>
+
+              {/* Website Fields (revealed when toggle is ON) */}
+              {formWebsiteEnabled && (
+                <div className="space-y-4 p-4 rounded-lg border border-accent/20 bg-accent/5">
+                  <div className="flex items-center gap-2 text-sm font-medium text-accent">
+                    <Globe className="h-4 w-4" /> Public Website Details
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Public Description</Label>
+                    <Textarea value={webDescription} onChange={e => setWebDescription(e.target.value)}
+                      placeholder="Extended description for the public page…" rows={3} />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Key Outcomes (one per line)</Label>
+                    <Textarea value={webOutcomes} onChange={e => setWebOutcomes(e.target.value)}
+                      placeholder={"Learn proper Tajweed rules\nMemorize Juz 30\nUnderstand Arabic grammar basics"} rows={4} />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Syllabus Text</Label>
+                    <Textarea value={webSyllabus} onChange={e => setWebSyllabus(e.target.value)}
+                      placeholder="Week-by-week or topic-by-topic syllabus outline…" rows={4} />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">FAQs (question|answer per line)</Label>
+                    <Textarea value={webFaqs} onChange={e => setWebFaqs(e.target.value)}
+                      placeholder={"What level is required?|No prior experience needed\nHow long is the course?|12 weeks, 2 sessions/week"} rows={4} />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Contact Email</Label>
+                      <Input type="email" value={webContactEmail} onChange={e => setWebContactEmail(e.target.value)}
+                        placeholder="info@academy.com" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">WhatsApp Number</Label>
+                      <Input value={webWhatsapp} onChange={e => setWebWhatsapp(e.target.value)}
+                        placeholder="+1234567890" />
+                    </div>
+                  </div>
+
+                  <FileUploadField
+                    label="Hero Image"
+                    bucket="course-materials"
+                    value={webHeroImage}
+                    onChange={setWebHeroImage}
+                    accept="image/jpeg,image/png,image/webp"
+                    hint="Recommended: 1200×630px, JPEG or PNG"
+                  />
+                </div>
+              )}
             </div>
+
             <DialogFooter>
-              <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => { setCreateOpen(false); resetForm(); }}>Cancel</Button>
               <Button onClick={() => createCourse.mutate()} disabled={createCourse.isPending || !formName.trim()}>
                 {createCourse.isPending ? 'Creating…' : 'Create Course'}
               </Button>
