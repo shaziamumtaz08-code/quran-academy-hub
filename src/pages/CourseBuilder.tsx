@@ -22,8 +22,10 @@ import { cn } from '@/lib/utils';
 import {
   ChevronLeft, Save, Plus, Trash2, GripVertical, FileText, Video, File,
   Sparkles, Loader2, Upload, ChevronDown, ChevronRight, Users, Settings,
-  BookOpen, X, ExternalLink
+  BookOpen, X, ExternalLink, ClipboardList, UserPlus
 } from 'lucide-react';
+import { RegistrationFormEditor } from '@/components/courses/RegistrationFormEditor';
+import { CourseApplicants } from '@/components/courses/CourseApplicants';
 
 // ─── Types ──────────────────────────────────────────────
 interface Module {
@@ -609,6 +611,12 @@ export default function CourseBuilder() {
               <TabsTrigger value="roster" className="gap-1.5 text-xs sm:text-sm">
                 <Users className="h-4 w-4" /><span className="hidden sm:inline">Roster</span>
               </TabsTrigger>
+              <TabsTrigger value="reg-form" className="gap-1.5 text-xs sm:text-sm">
+                <ClipboardList className="h-4 w-4" /><span className="hidden sm:inline">Reg Form</span>
+              </TabsTrigger>
+              <TabsTrigger value="applicants" className="gap-1.5 text-xs sm:text-sm">
+                <UserPlus className="h-4 w-4" /><span className="hidden sm:inline">Applicants</span>
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -1067,6 +1075,20 @@ export default function CourseBuilder() {
                 </Button>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* ═══ REGISTRATION FORM TAB ═══ */}
+          <TabsContent value="reg-form" className="mt-4">
+            <RegistrationFormEditor
+              courseId={courseId!}
+              courseSlug={course.seo_slug || course.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}
+              courseName={course.name}
+            />
+          </TabsContent>
+
+          {/* ═══ APPLICANTS TAB ═══ */}
+          <TabsContent value="applicants" className="mt-4">
+            <CourseApplicants courseId={courseId!} />
           </TabsContent>
         </Tabs>
       </div>
