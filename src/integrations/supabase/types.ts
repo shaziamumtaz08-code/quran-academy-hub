@@ -1231,6 +1231,7 @@ export type Database = {
           scheduled_time: string
           status: string
           teacher_id: string | null
+          teacher_note: string | null
           teacher_notes: string | null
           updated_at: string
         }
@@ -1250,6 +1251,7 @@ export type Database = {
           scheduled_time: string
           status?: string
           teacher_id?: string | null
+          teacher_note?: string | null
           teacher_notes?: string | null
           updated_at?: string
         }
@@ -1269,6 +1271,7 @@ export type Database = {
           scheduled_time?: string
           status?: string
           teacher_id?: string | null
+          teacher_note?: string | null
           teacher_notes?: string | null
           updated_at?: string
         }
@@ -2198,6 +2201,133 @@ export type Database = {
           },
         ]
       }
+      lead_attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_size: number | null
+          file_type: string
+          file_url: string
+          id: string
+          lead_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          file_type?: string
+          file_url: string
+          id?: string
+          lead_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string
+          file_url?: string
+          id?: string
+          lead_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_attachments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_attachments_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_screenings: {
+        Row: {
+          channel: string
+          confidence_rating: number | null
+          created_at: string
+          duration_minutes: number | null
+          estimated_level: string | null
+          id: string
+          is_skipped: boolean
+          lead_id: string
+          material_tested: string | null
+          observations: string | null
+          proceed_decision: string | null
+          quick_tags: string[] | null
+          screened_at: string
+          screened_by: string | null
+          suggested_teacher_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          channel?: string
+          confidence_rating?: number | null
+          created_at?: string
+          duration_minutes?: number | null
+          estimated_level?: string | null
+          id?: string
+          is_skipped?: boolean
+          lead_id: string
+          material_tested?: string | null
+          observations?: string | null
+          proceed_decision?: string | null
+          quick_tags?: string[] | null
+          screened_at?: string
+          screened_by?: string | null
+          suggested_teacher_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          channel?: string
+          confidence_rating?: number | null
+          created_at?: string
+          duration_minutes?: number | null
+          estimated_level?: string | null
+          id?: string
+          is_skipped?: boolean
+          lead_id?: string
+          material_tested?: string | null
+          observations?: string | null
+          proceed_decision?: string | null
+          quick_tags?: string[] | null
+          screened_at?: string
+          screened_by?: string | null
+          suggested_teacher_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_screenings_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_screenings_screened_by_fkey"
+            columns: ["screened_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_screenings_suggested_teacher_id_fkey"
+            columns: ["suggested_teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           assigned_to: string | null
@@ -2209,6 +2339,8 @@ export type Database = {
           converted_person_ids: string[] | null
           country: string | null
           created_at: string
+          current_level_specimen: string | null
+          date_of_birth: string | null
           division_id: string | null
           email: string | null
           enrollment_form_data: Json | null
@@ -2216,7 +2348,11 @@ export type Database = {
           enrollment_form_sent_at: string | null
           enrollment_form_token: string | null
           for_whom: string
+          gender: string | null
+          guardian_name: string | null
+          guardian_relationship: string | null
           id: string
+          learning_goals: string | null
           lost_reason: string | null
           match_status: string | null
           matched_person_id: string | null
@@ -2241,6 +2377,8 @@ export type Database = {
           converted_person_ids?: string[] | null
           country?: string | null
           created_at?: string
+          current_level_specimen?: string | null
+          date_of_birth?: string | null
           division_id?: string | null
           email?: string | null
           enrollment_form_data?: Json | null
@@ -2248,7 +2386,11 @@ export type Database = {
           enrollment_form_sent_at?: string | null
           enrollment_form_token?: string | null
           for_whom?: string
+          gender?: string | null
+          guardian_name?: string | null
+          guardian_relationship?: string | null
           id?: string
+          learning_goals?: string | null
           lost_reason?: string | null
           match_status?: string | null
           matched_person_id?: string | null
@@ -2273,6 +2415,8 @@ export type Database = {
           converted_person_ids?: string[] | null
           country?: string | null
           created_at?: string
+          current_level_specimen?: string | null
+          date_of_birth?: string | null
           division_id?: string | null
           email?: string | null
           enrollment_form_data?: Json | null
@@ -2280,7 +2424,11 @@ export type Database = {
           enrollment_form_sent_at?: string | null
           enrollment_form_token?: string | null
           for_whom?: string
+          gender?: string | null
+          guardian_name?: string | null
+          guardian_relationship?: string | null
           id?: string
+          learning_goals?: string | null
           lost_reason?: string | null
           match_status?: string | null
           matched_person_id?: string | null
