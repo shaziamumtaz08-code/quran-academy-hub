@@ -487,6 +487,310 @@ function EnrollmentFormSection({ lead }: { lead: Lead }) {
   );
 }
 
+// ── Pre-Screen Form ──
+const QUICK_TAGS = ['Good motivation', 'Needs encouragement', 'Parent involved', 'Irregular availability', 'Strong memory', 'Pronunciation issues', 'Young child — short sessions'];
+const LEVELS = [
+  { value: 'complete_beginner', label: 'Complete Beginner', desc: 'No prior learning' },
+  { value: 'basic', label: 'Basic', desc: 'Knows alphabet, limited reading' },
+  { value: 'intermediate', label: 'Intermediate', desc: 'Reads with errors, needs Tajweed' },
+  { value: 'advanced', label: 'Advanced', desc: 'Reads fluently, refinement needed' },
+];
+
+function PreScreenForm({ lead, onComplete }: { lead: Lead; onComplete: () => void }) {
+  const queryClient = useQueryClient();
+  const { profile } = useAuth();
+  const [isSkipped, setIsSkipped] = useState(false);
+  const [form, setForm] = useState({
+    channel: 'whatsapp', duration_minutes: '', material_tested: '',
+    estimated_level: '', observations: '', confidence_rating: 0,
+    proceed_decision: '', suggested_teacher_id: '',
+  });
+  const [quickTags, setQuickTags] = useState<string[]>([]);
+
+  const { data: existingScreening } = useQuery({
+    queryKey: ['lead-screening', lead.id],
+    queryFn: async () => {
+      const { data } = await supabase.from('lead_screenings').select('*').eq('lead_id', lead.id).order('created_at', { ascending: false }).limit(1);
+      return (data && data.length > 0) ? data[0] : null;
+    },
+  });
+
+  const { data: teachers = [] } = useQuery({
+    queryKey: ['teachers-for-screening'],
+    queryFn: async () => {
+      const { data } = await supabase.from('user_roles').select('user_id, profiles!inner(id, full_name)').eq('role', 'teacher');
+      return (data || []).map((r: any) => ({ id: r.profiles.id, name: r.profiles.full_name }));
+    },
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const payload = {
+        lead_id: lead.id,
+        screened_by: profile?.id || null,
+        channel: form.channel,
+        duration_minutes: form.duration_minutes ? parseInt(form.duration_minutes) : null,
+        material_tested: form.material_tested || null,
+        estimated_level: form.estimated_level || null,
+        quick_tags: quickTags,
+        observations: form.observations || null,
+        confidence_rating: form.confidence_rating || null,
+        proceed_decision: form.proceed_decision || null,
+        suggested_teacher_id: form.suggested_teacher_id || null,
+        is_skipped: isSkipped,
+      };
+      
+      if (existingScreening) {
+        const { error } = await (supabase.from('lead_screenings') as any).update(payload).eq('id', existingScreening.id);
+        if (error) throw error;
+      } else {
+        const { error } = await (supabase.from('lead_screenings') as any).insert(payload);
+        if (error) throw error;
+      }
+      
+      // Advance lead to pre_screen if currently new/contacted
+      if (['new', 'contacted'].includes(lead.status)) {
+        await supabase.from('leads').update({ status: 'pre_screen' as any }).eq('id', lead.id);
+      }
+      // If proceed_decision is yes, advance to demo_scheduled
+      if (form.proceed_decision === 'yes' || form.proceed_decision === 'yes_with_notes') {
+        await supabase.from('leads').update({ status: 'demo_scheduled' as any }).eq('id', lead.id);
+      }
+    },
+    onSuccess: () => {
+      toast({ title: isSkipped ? 'Screening skipped' : 'Screening saved' });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-screening', lead.id] });
+      onComplete();
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const toggleTag = (tag: string) => setQuickTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
+
+  return (
+    <div className="space-y-4">
+      {/* Bypass checkbox */}
+      <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg border">
+        <Checkbox checked={isSkipped} onCheckedChange={(v) => setIsSkipped(!!v)} id="skip-screening" />
+        <div>
+          <label htmlFor="skip-screening" className="text-sm font-medium cursor-pointer">Not required — skip this step</label>
+          <p className="text-xs text-muted-foreground">Tick to bypass screening and proceed directly to demo scheduling</p>
+        </div>
+      </div>
+
+      {isSkipped ? (
+        <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="w-full">
+          {saveMutation.isPending ? 'Saving...' : 'Skip & Continue to Demo'}
+        </Button>
+      ) : (
+        <>
+          <div className="p-3 bg-blue-50 dark:bg-blue-900/10 rounded-lg border border-blue-200 dark:border-blue-800 text-xs text-blue-700 dark:text-blue-400">
+            Pre-demo screening helps the teacher prepare and reduces no-shows. Record the channel used, material tested, and your observations below.
+          </div>
+
+          {/* Screening Logistics */}
+          <Card className="border shadow-sm">
+            <CardContent className="pt-4 space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Screening Logistics</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Screened by</Label>
+                  <Input value={profile?.full_name || 'Current user'} disabled className="text-xs h-9 mt-1" />
+                </div>
+                <div>
+                  <Label className="text-xs">Date & time</Label>
+                  <Input value={format(new Date(), 'dd MMM yyyy — HH:mm')} disabled className="text-xs h-9 mt-1" />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Screening channel *</Label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {['whatsapp', 'zoom', 'in_person', 'phone', 'other'].map(ch => (
+                    <button key={ch} type="button" onClick={() => setForm(p => ({ ...p, channel: ch }))}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                        form.channel === ch ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/50 border-border hover:border-primary/30'
+                      }`}>
+                      {ch === 'whatsapp' ? 'WhatsApp' : ch === 'in_person' ? 'In-person' : ch === 'phone' ? 'Phone call' : ch.charAt(0).toUpperCase() + ch.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Duration (minutes)</Label>
+                <Input type="number" value={form.duration_minutes} onChange={e => setForm(p => ({ ...p, duration_minutes: e.target.value }))} placeholder="e.g. 15" className="text-xs h-9 mt-1" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Material & Level Assessment */}
+          <Card className="border shadow-sm">
+            <CardContent className="pt-4 space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Material & Level Assessment</p>
+              <div>
+                <Label className="text-xs">Material tested</Label>
+                <Input value={form.material_tested} onChange={e => setForm(p => ({ ...p, material_tested: e.target.value }))}
+                  placeholder="e.g. Noorani Qaida lesson 3, Surah Al-Fatiha, Juz Amma" className="text-xs h-9 mt-1" />
+              </div>
+              <div>
+                <Label className="text-xs">Estimated level</Label>
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                  {LEVELS.map(level => (
+                    <button key={level.value} type="button" onClick={() => setForm(p => ({ ...p, estimated_level: level.value }))}
+                      className={`p-3 rounded-lg border-2 text-left transition-all ${
+                        form.estimated_level === level.value ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/30'
+                      }`}>
+                      <p className="text-sm font-medium">{level.label}</p>
+                      <p className="text-xs text-muted-foreground">{level.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Quick observations <span className="text-muted-foreground font-normal">(tap to tag)</span></Label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {QUICK_TAGS.map(tag => (
+                    <button key={tag} type="button" onClick={() => toggleTag(tag)}
+                      className={`px-3 py-1.5 rounded-full text-xs border transition-all ${
+                        quickTags.includes(tag) ? 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700' : 'bg-muted/50 border-border hover:border-primary/30'
+                      }`}>
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Screening notes</Label>
+                <Textarea value={form.observations} onChange={e => setForm(p => ({ ...p, observations: e.target.value }))}
+                  placeholder="Detailed observations, recommended course, anything the teacher should know before the demo..." rows={3} className="text-xs mt-1" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Admin Recommendation */}
+          <Card className="border shadow-sm">
+            <CardContent className="pt-4 space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Admin Recommendation</p>
+              <div>
+                <Label className="text-xs">Proceed to demo? *</Label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {[
+                    { v: 'yes', l: 'Yes — schedule demo' },
+                    { v: 'yes_with_notes', l: 'Yes — with notes for teacher' },
+                    { v: 'hold', l: 'Hold — needs follow-up' },
+                    { v: 'not_suitable', l: 'Not suitable' },
+                  ].map(opt => (
+                    <button key={opt.v} type="button" onClick={() => setForm(p => ({ ...p, proceed_decision: opt.v }))}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                        form.proceed_decision === opt.v ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/50 border-border hover:border-primary/30'
+                      }`}>
+                      {opt.l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Confidence rating</Label>
+                <div className="flex gap-1 mt-1">
+                  {[1, 2, 3, 4, 5].map(n => (
+                    <button key={n} type="button" onClick={() => setForm(p => ({ ...p, confidence_rating: n }))}
+                      className={`w-9 h-9 rounded-lg border-2 text-sm font-bold transition-all ${
+                        form.confidence_rating >= n ? 'bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700' : 'border-border text-muted-foreground'
+                      }`}>
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Suggested teacher (optional)</Label>
+                <Select value={form.suggested_teacher_id} onValueChange={v => setForm(p => ({ ...p, suggested_teacher_id: v }))}>
+                  <SelectTrigger className="text-xs h-9 mt-1"><SelectValue placeholder="Assign preferred teacher for demo" /></SelectTrigger>
+                  <SelectContent>
+                    {teachers.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Button variant="outline" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+              Save Draft
+            </Button>
+            <Button onClick={() => saveMutation.mutate()} disabled={!form.proceed_decision || saveMutation.isPending}>
+              {saveMutation.isPending ? 'Saving...' : 'Complete & Schedule Demo ↗'}
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Lead Attachments Section ──
+function LeadAttachmentsSection({ leadId }: { leadId: string }) {
+  const queryClient = useQueryClient();
+  const { profile } = useAuth();
+
+  const { data: attachments = [] } = useQuery({
+    queryKey: ['lead-attachments', leadId],
+    queryFn: async () => {
+      const { data } = await (supabase.from('lead_attachments') as any).select('*').eq('lead_id', leadId).order('created_at', { ascending: false });
+      return data || [];
+    },
+  });
+
+  const uploadFile = async (file: File, type: string) => {
+    const ext = file.name.split('.').pop();
+    const path = `${leadId}/${Date.now()}.${ext}`;
+    const { error: uploadErr } = await supabase.storage.from('lead-attachments').upload(path, file);
+    if (uploadErr) { toast({ title: 'Upload failed', description: uploadErr.message, variant: 'destructive' }); return; }
+    const { data: urlData } = supabase.storage.from('lead-attachments').getPublicUrl(path);
+    const { error } = await (supabase.from('lead_attachments') as any).insert({
+      lead_id: leadId, file_url: urlData.publicUrl, file_type: type,
+      file_name: file.name, file_size: file.size, uploaded_by: profile?.id,
+    });
+    if (error) { toast({ title: 'Error', description: error.message, variant: 'destructive' }); return; }
+    queryClient.invalidateQueries({ queryKey: ['lead-attachments', leadId] });
+    toast({ title: 'File uploaded' });
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { type: 'image', label: 'Image', desc: 'JPG, PNG, WebP · 5 MB', accept: '.jpg,.jpeg,.png,.webp', icon: Upload },
+          { type: 'pdf', label: 'PDF', desc: 'PDF · 10 MB', accept: '.pdf', icon: FileText },
+          { type: 'voice', label: 'Voice Note', desc: 'OGG, MP4, WebM · 3 min', accept: '.ogg,.opus,.mp4,.webm,.m4a', icon: Mic },
+        ].map(t => (
+          <label key={t.type} className="flex flex-col items-center gap-1 p-3 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/30 transition-all">
+            <t.icon className="h-5 w-5 text-muted-foreground" />
+            <span className="text-xs font-medium">{t.label}</span>
+            <span className="text-[10px] text-muted-foreground text-center">{t.desc}</span>
+            <input type="file" accept={t.accept} className="hidden" onChange={e => {
+              const file = e.target.files?.[0];
+              if (file) uploadFile(file, t.type);
+              e.target.value = '';
+            }} />
+          </label>
+        ))}
+      </div>
+      {attachments.length > 0 && (
+        <div className="space-y-2">
+          {attachments.map((a: any) => (
+            <div key={a.id} className="flex items-center gap-2 p-2 bg-muted/30 rounded text-xs">
+              {a.file_type === 'voice' ? <Mic className="h-3 w-3" /> : a.file_type === 'pdf' ? <FileText className="h-3 w-3" /> : <Upload className="h-3 w-3" />}
+              <a href={a.file_url} target="_blank" rel="noreferrer" className="text-primary hover:underline flex-1 truncate">{a.file_name}</a>
+              <span className="text-muted-foreground">{a.file_size ? `${(a.file_size / 1024).toFixed(0)} KB` : ''}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Lead Detail Dialog ──
 function LeadDetailDialog({ lead, open, onOpenChange }: { lead: Lead | null; open: boolean; onOpenChange: (v: boolean) => void }) {
   const queryClient = useQueryClient();
@@ -541,8 +845,9 @@ function LeadDetailDialog({ lead, open, onOpenChange }: { lead: Lead | null; ope
         </DialogHeader>
 
         <Tabs defaultValue="info" className="mt-2">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="info">Info</TabsTrigger>
+            <TabsTrigger value="screen">Screen</TabsTrigger>
             <TabsTrigger value="demo">Demo</TabsTrigger>
             <TabsTrigger value="notes">Notes</TabsTrigger>
             <TabsTrigger value="enroll">Enroll</TabsTrigger>
