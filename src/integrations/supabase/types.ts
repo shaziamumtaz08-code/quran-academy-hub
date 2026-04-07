@@ -761,6 +761,41 @@ export type Database = {
           },
         ]
       }
+      course_badges: {
+        Row: {
+          course_id: string
+          created_at: string
+          criteria: string | null
+          icon_key: string
+          id: string
+          name: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          criteria?: string | null
+          icon_key?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          criteria?: string | null
+          icon_key?: string
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_badges_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_class_staff: {
         Row: {
           class_id: string
@@ -1041,6 +1076,59 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "course_fee_plans_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_lesson_plans: {
+        Row: {
+          course_id: string
+          created_at: string
+          id: string
+          lesson_date: string | null
+          material_title: string | null
+          material_url: string | null
+          notes: string | null
+          objectives: string | null
+          status: string
+          topic: string
+          updated_at: string
+          week_number: number
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          id?: string
+          lesson_date?: string | null
+          material_title?: string | null
+          material_url?: string | null
+          notes?: string | null
+          objectives?: string | null
+          status?: string
+          topic?: string
+          updated_at?: string
+          week_number?: number
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          id?: string
+          lesson_date?: string | null
+          material_title?: string | null
+          material_url?: string | null
+          notes?: string | null
+          objectives?: string | null
+          status?: string
+          topic?: string
+          updated_at?: string
+          week_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_lesson_plans_course_id_fkey"
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
@@ -1393,6 +1481,38 @@ export type Database = {
           },
         ]
       }
+      course_student_badges: {
+        Row: {
+          awarded_at: string
+          awarded_by: string | null
+          badge_id: string
+          id: string
+          student_id: string
+        }
+        Insert: {
+          awarded_at?: string
+          awarded_by?: string | null
+          badge_id: string
+          id?: string
+          student_id: string
+        }
+        Update: {
+          awarded_at?: string
+          awarded_by?: string | null
+          badge_id?: string
+          id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_student_badges_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "course_badges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_student_fees: {
         Row: {
           course_id: string
@@ -1455,6 +1575,79 @@ export type Database = {
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "course_fee_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_teacher_guide_versions: {
+        Row: {
+          content_html: string
+          created_at: string
+          edited_by: string | null
+          guide_id: string
+          id: string
+          version: number
+        }
+        Insert: {
+          content_html: string
+          created_at?: string
+          edited_by?: string | null
+          guide_id: string
+          id?: string
+          version: number
+        }
+        Update: {
+          content_html?: string
+          created_at?: string
+          edited_by?: string | null
+          guide_id?: string
+          id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_teacher_guide_versions_guide_id_fkey"
+            columns: ["guide_id"]
+            isOneToOne: false
+            referencedRelation: "course_teacher_guides"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_teacher_guides: {
+        Row: {
+          content_html: string
+          course_id: string
+          created_at: string
+          id: string
+          last_edited_by: string | null
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          content_html?: string
+          course_id: string
+          created_at?: string
+          id?: string
+          last_edited_by?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          content_html?: string
+          course_id?: string
+          created_at?: string
+          id?: string
+          last_edited_by?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_teacher_guides_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: true
+            referencedRelation: "courses"
             referencedColumns: ["id"]
           },
         ]
