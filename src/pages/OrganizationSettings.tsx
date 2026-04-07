@@ -21,6 +21,93 @@ import type { Database } from '@/integrations/supabase/types';
 type BranchType = Database['public']['Enums']['branch_type'];
 type DivisionModel = Database['public']['Enums']['division_model'];
 
+// ── Default Payout Rates Section ──
+function DefaultPayoutRatesSection() {
+  const { toast: t } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: teachers = [], isLoading } = useQuery({
+    queryKey: ['teachers-payout-rates'],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from('profiles')
+        .select('id, full_name, email, default_payout_rate')
+        .order('full_name');
+      // filter to teachers via user_roles
+      const { data: roles } = await (supabase as any)
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'teacher');
+      const teacherIds = new Set((roles || []).map((r: any) => r.user_id));
+      return (data || []).filter((p: any) => teacherIds.has(p.id));
+    },
+  });
+
+  const updateRate = useMutation({
+    mutationFn: async ({ id, rate }: { id: string; rate: number | null }) => {
+      const { error } = await (supabase as any)
+        .from('profiles')
+        .update({ default_payout_rate: rate })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teachers-payout-rates'] });
+      t({ title: 'Default rate updated' });
+    },
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm">Default Payout Rates per Teacher</CardTitle>
+        <CardDescription className="text-xs">
+          Set a global default rate for each teacher. This can be overridden per class assignment.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="text-sm text-muted-foreground py-4 text-center">Loading teachers…</div>
+        ) : teachers.length === 0 ? (
+          <div className="text-sm text-muted-foreground py-4 text-center">No teachers found</div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Teacher</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead className="text-right w-[160px]">Default Rate (PKR)</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {teachers.map((t: any) => (
+                <TableRow key={t.id}>
+                  <TableCell className="text-sm font-medium">{t.full_name || '—'}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{t.email}</TableCell>
+                  <TableCell className="text-right">
+                    <Input
+                      type="number"
+                      className="w-28 ml-auto text-right h-8 text-sm"
+                      defaultValue={t.default_payout_rate || ''}
+                      placeholder="0"
+                      onBlur={(e) => {
+                        const val = e.target.value ? Number(e.target.value) : null;
+                        if (val !== t.default_payout_rate) {
+                          updateRate.mutate({ id: t.id, rate: val });
+                        }
+                      }}
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function OrganizationSettings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
