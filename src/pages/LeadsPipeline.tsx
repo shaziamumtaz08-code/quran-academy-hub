@@ -12,13 +12,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Search, Phone, Mail, MapPin, Clock, User, Calendar,
   MessageSquare, ArrowRight, X as XIcon, ChevronRight, Eye,
   UserPlus, Send, Star, ThumbsUp, ThumbsDown, Minus, GripVertical,
-  Filter, RefreshCw, MoreVertical
+  Filter, RefreshCw, MoreVertical, Shield, FileText, Upload, Mic
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
