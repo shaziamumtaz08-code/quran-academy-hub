@@ -268,15 +268,7 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("zoom_attendance_logs")
-        .select(
-          `
-          id,
-          user_id,
-          action,
-          timestamp,
-          session_id
-        `,
-        )
+        .select("id, user_id, action, timestamp, session_id, participant_name, participant_email, role")
         .eq("action", "join_intent")
         .order("timestamp", { ascending: false })
         .limit(20);
@@ -284,14 +276,16 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
       if (error) throw error;
       if (!data || data.length === 0) return [];
 
-      const userIds = [...new Set(data.map((l) => l.user_id))];
-      const { data: users } = await supabase.from("profiles").select("id, full_name").in("id", userIds);
+      const userIds = [...new Set(data.map((l) => l.user_id).filter(Boolean))];
+      const { data: users } = userIds.length > 0
+        ? await supabase.from("profiles").select("id, full_name").in("id", userIds)
+        : { data: [] };
 
-      const userMap = new Map(users?.map((u) => [u.id, u.full_name]) || []);
+      const userMap = new Map(users?.map((u: any) => [u.id, u.full_name]) || []);
 
       return data.map((log) => ({
         ...log,
-        userName: userMap.get(log.user_id) || "Unknown",
+        userName: log.user_id ? (userMap.get(log.user_id) || (log as any).participant_name || "Unknown") : ((log as any).participant_name || "Unknown"),
         timeAgo: getTimeAgo(new Date(log.timestamp)),
       }));
     },
