@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 import {
   ChevronLeft, Save, Plus, Trash2, GripVertical, FileText, Video, File,
   Sparkles, Loader2, Upload, ChevronDown, ChevronRight, Users, Settings,
-  BookOpen, X, ExternalLink, ClipboardList, UserPlus, GraduationCap
+  BookOpen, X, ExternalLink, ClipboardList, UserPlus, GraduationCap, DollarSign
 } from 'lucide-react';
 import { RegistrationFormEditor } from '@/components/courses/RegistrationFormEditor';
 import { CourseApplicants } from '@/components/courses/CourseApplicants';
