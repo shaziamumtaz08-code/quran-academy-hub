@@ -623,6 +623,9 @@ export default function CourseBuilder() {
               <TabsTrigger value="classes" className="gap-1.5 text-xs sm:text-sm">
                 <GraduationCap className="h-4 w-4" /><span className="hidden sm:inline">Classes</span>
               </TabsTrigger>
+              <TabsTrigger value="finance" className="gap-1.5 text-xs sm:text-sm">
+                <DollarSign className="h-4 w-4" /><span className="hidden sm:inline">Finance</span>
+              </TabsTrigger>
             </TabsList>
           </div>
 
