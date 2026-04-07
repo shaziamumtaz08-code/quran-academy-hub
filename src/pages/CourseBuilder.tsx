@@ -28,6 +28,7 @@ import { RegistrationFormEditor } from '@/components/courses/RegistrationFormEdi
 import { CourseApplicants } from '@/components/courses/CourseApplicants';
 import { CourseMarketingTab } from '@/components/courses/CourseMarketingTab';
 import { CourseClassesTab } from '@/components/courses/CourseClassesTab';
+import { CourseFinanceTab } from '@/components/courses/CourseFinanceTab';
 
 // ─── Types ──────────────────────────────────────────────
 interface Module {
