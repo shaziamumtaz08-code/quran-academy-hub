@@ -9,8 +9,8 @@ import { IslamicDateCard } from '../teacher/IslamicDateCard';
 import { PrayerTimesWidget } from '../teacher/PrayerTimesWidget';
 
 interface DashboardShellProps {
-  /** Bottom nav tabs for mobile */
-  tabs: BottomNavTab[];
+  /** Bottom nav tabs for mobile (no longer used, kept for compat) */
+  tabs?: any[];
   /** Primary content — left col on desktop */
   leftContent: React.ReactNode;
   /** Secondary content — right col on desktop */
@@ -19,7 +19,7 @@ interface DashboardShellProps {
   brandLabel?: string;
 }
 
-export function DashboardShell({ tabs, leftContent, rightContent, brandLabel }: DashboardShellProps) {
+export function DashboardShell({ leftContent, rightContent, brandLabel }: DashboardShellProps) {
   const { profile, user } = useAuth();
   const [islamicDate, setIslamicDate] = useState<IslamicDateData | null>(null);
   const [timezone, setTimezone] = useState<string>('Asia/Karachi');
