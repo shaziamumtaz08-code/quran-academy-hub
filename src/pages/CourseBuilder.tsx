@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { CourseBoards } from '@/components/courses/CourseBoards';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -79,6 +79,14 @@ export default function CourseBuilder() {
   const { user } = useAuth();
 
   const [activeTab, setActiveTab] = useState('builder');
+  const [searchParams] = useSearchParams();
+
+  // Sync activeTab with ?tab= query param from sidebar
+  React.useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab) setActiveTab(tab);
+  }, [searchParams]);
+
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
 
   // Website tab state
