@@ -3301,6 +3301,94 @@ export type Database = {
           },
         ]
       }
+      registration_form_fields: {
+        Row: {
+          created_at: string
+          field_key: string
+          field_type: string
+          form_id: string
+          id: string
+          is_default: boolean
+          is_required: boolean
+          label: string
+          options: Json | null
+          placeholder: string | null
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          field_key: string
+          field_type?: string
+          form_id: string
+          id?: string
+          is_default?: boolean
+          is_required?: boolean
+          label: string
+          options?: Json | null
+          placeholder?: string | null
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          field_key?: string
+          field_type?: string
+          form_id?: string
+          id?: string
+          is_default?: boolean
+          is_required?: boolean
+          label?: string
+          options?: Json | null
+          placeholder?: string | null
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registration_form_fields_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "registration_forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      registration_forms: {
+        Row: {
+          course_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          slug: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          slug: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          slug?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registration_forms_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: true
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       registration_sequences: {
         Row: {
           branch_code: string
@@ -3327,6 +3415,63 @@ export type Database = {
           role_code?: string
         }
         Relationships: []
+      }
+      registration_submissions: {
+        Row: {
+          course_id: string
+          created_at: string
+          data: Json
+          form_id: string
+          id: string
+          notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          source_tag: string | null
+          status: string
+          submitted_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          data?: Json
+          form_id: string
+          id?: string
+          notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_tag?: string | null
+          status?: string
+          submitted_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          data?: Json
+          form_id?: string
+          id?: string
+          notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_tag?: string | null
+          status?: string
+          submitted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registration_submissions_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registration_submissions_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "registration_forms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       resource_assignments: {
         Row: {
