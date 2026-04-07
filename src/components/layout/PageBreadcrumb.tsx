@@ -38,10 +38,12 @@ export function PageBreadcrumb() {
   
   const isHome = pathname === '/dashboard';
   const isResources = pathname === '/resources';
+  const isCourseDetail = /^\/courses\/[^/]+$/.test(pathname) || /^\/academics\/courses\/[^/]+$/.test(pathname);
 
   // Resources has its own Drive-style breadcrumb, don't show duplicate
   // Dashboard home is redundant — each role dashboard has its own header
-  if (isResources || isHome) {
+  // Course detail uses sidebar nav — breadcrumb would show raw UUID
+  if (isResources || isHome || isCourseDetail) {
     return null;
   }
 
