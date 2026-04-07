@@ -1065,6 +1065,21 @@ export default function CourseBuilder() {
               whatsappChannelLink={(course as any)?.whatsapp_channel_link}
             />
           </TabsContent>
+
+          {/* ═══ ATTENDANCE TAB ═══ */}
+          <TabsContent value="attendance" className="mt-4">
+            <CourseAttendanceTab courseId={courseId!} />
+          </TabsContent>
+
+          {/* ═══ EXAMS & QUIZZES TAB ═══ */}
+          <TabsContent value="exams" className="mt-4">
+            <CourseExamsTab courseId={courseId!} />
+          </TabsContent>
+
+          {/* ═══ CERTIFICATES TAB ═══ */}
+          <TabsContent value="certificates" className="mt-4">
+            <CourseCertificatesTab courseId={courseId!} />
+          </TabsContent>
         </Tabs>
       </div>
 
