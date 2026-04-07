@@ -281,7 +281,7 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
         ? await supabase.from("profiles").select("id, full_name").in("id", userIds)
         : { data: [] };
 
-      const userMap = new Map(users?.map((u: any) => [u.id, u.full_name]) || []);
+      const userMap = new Map((users || []).map((u: any) => [u.id, u.full_name] as [string, string]));
 
       return data.map((log) => ({
         ...log,
