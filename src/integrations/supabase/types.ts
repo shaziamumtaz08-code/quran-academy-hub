@@ -946,6 +946,59 @@ export type Database = {
           },
         ]
       }
+      course_message_sequences: {
+        Row: {
+          attachment_url: string | null
+          body: string
+          channels: string[]
+          course_id: string
+          created_at: string
+          delay_days: number
+          delay_rule: string
+          id: string
+          is_enabled: boolean
+          sort_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          attachment_url?: string | null
+          body?: string
+          channels?: string[]
+          course_id: string
+          created_at?: string
+          delay_days?: number
+          delay_rule?: string
+          id?: string
+          is_enabled?: boolean
+          sort_order?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          attachment_url?: string | null
+          body?: string
+          channels?: string[]
+          course_id?: string
+          created_at?: string
+          delay_days?: number
+          delay_rule?: string
+          id?: string
+          is_enabled?: boolean
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_message_sequences_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_modules: {
         Row: {
           course_id: string
@@ -3297,6 +3350,56 @@ export type Database = {
             columns: ["division_id"]
             isOneToOne: false
             referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      promotional_posts: {
+        Row: {
+          attachment_url: string | null
+          channels: string[]
+          content: string
+          course_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          scheduled_at: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          attachment_url?: string | null
+          channels?: string[]
+          content?: string
+          course_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          scheduled_at?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          attachment_url?: string | null
+          channels?: string[]
+          content?: string
+          course_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          scheduled_at?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promotional_posts_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
             referencedColumns: ["id"]
           },
         ]
