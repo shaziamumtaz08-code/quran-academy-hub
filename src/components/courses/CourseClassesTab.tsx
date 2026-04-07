@@ -239,7 +239,7 @@ function CreateClassDialog({ open, onOpenChange, courseId }: { open: boolean; on
               <SelectContent>
                 <SelectItem value="none">None (manual link)</SelectItem>
                 {zoomLicenses.map((z: any) => (
-                  <SelectItem key={z.id} value={z.id}>{z.label || z.zoom_email}</SelectItem>
+                  <SelectItem key={z.id} value={z.id}>{z.zoom_email}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
