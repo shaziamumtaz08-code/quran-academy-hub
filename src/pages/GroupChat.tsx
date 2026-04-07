@@ -19,7 +19,7 @@ import { MembersPanel } from '@/components/chat/MembersPanel';
 import { AIAssistantDialog } from '@/components/chat/AIAssistantDialog';
 import { ForwardMessageDialog } from '@/components/chat/ForwardMessageDialog';
 
-const typeIcons: Record<string, string> = { project: '📋', issue: '🐛', salary: '💰', custom: '💬' };
+const typeIcons: Record<string, string> = { project: '📋', issue: '🐛', salary: '💰', custom: '💬', channel: '📢' };
 
 export default function GroupChat() {
   const { user } = useAuth();
@@ -28,6 +28,7 @@ export default function GroupChat() {
   const [createOpen, setCreateOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupType, setNewGroupType] = useState('project');
+  const [newChannelMode, setNewChannelMode] = useState<'group' | 'channel'>('group');
   const [membersOpen, setMembersOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<any | null>(null);
