@@ -22,7 +22,8 @@ import { cn } from '@/lib/utils';
 import {
   ChevronLeft, Save, Plus, Trash2, GripVertical, FileText, Video, File,
   Sparkles, Loader2, Upload, ChevronDown, ChevronRight, Users, Settings,
-  BookOpen, X, ExternalLink, ClipboardList, UserPlus, GraduationCap, DollarSign, FolderOpen
+  BookOpen, X, ExternalLink, ClipboardList, UserPlus, GraduationCap, DollarSign, FolderOpen,
+  Bell, FileText as FileTextIcon
 } from 'lucide-react';
 import { RegistrationFormEditor } from '@/components/courses/RegistrationFormEditor';
 import { CourseApplicants } from '@/components/courses/CourseApplicants';
@@ -30,6 +31,8 @@ import { CourseMarketingTab } from '@/components/courses/CourseMarketingTab';
 import { CourseClassesTab } from '@/components/courses/CourseClassesTab';
 import { CourseFinanceTab } from '@/components/courses/CourseFinanceTab';
 import { CourseResourcesTab } from '@/components/courses/CourseResourcesTab';
+import { CourseNotificationsTab } from '@/components/courses/CourseNotificationsTab';
+import { CourseAssignmentsTab } from '@/components/courses/CourseAssignmentsTab';
 
 // ─── Types ──────────────────────────────────────────────
 interface Module {
@@ -630,6 +633,12 @@ export default function CourseBuilder() {
               <TabsTrigger value="resources" className="gap-1.5 text-xs sm:text-sm">
                 <FolderOpen className="h-4 w-4" /><span className="hidden sm:inline">Resources</span>
               </TabsTrigger>
+              <TabsTrigger value="assignments" className="gap-1.5 text-xs sm:text-sm">
+                <FileTextIcon className="h-4 w-4" /><span className="hidden sm:inline">Assignments</span>
+              </TabsTrigger>
+              <TabsTrigger value="notifications" className="gap-1.5 text-xs sm:text-sm">
+                <Bell className="h-4 w-4" /><span className="hidden sm:inline">Notifications</span>
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -1106,6 +1115,20 @@ export default function CourseBuilder() {
           {/* ═══ RESOURCES TAB ═══ */}
           <TabsContent value="resources" className="mt-4">
             <CourseResourcesTab courseId={courseId!} courseName={course?.name} />
+          </TabsContent>
+
+          {/* ═══ ASSIGNMENTS TAB ═══ */}
+          <TabsContent value="assignments" className="mt-4">
+            <CourseAssignmentsTab courseId={courseId!} />
+          </TabsContent>
+
+          {/* ═══ NOTIFICATIONS TAB ═══ */}
+          <TabsContent value="notifications" className="mt-4">
+            <CourseNotificationsTab
+              courseId={courseId!}
+              courseName={course?.name}
+              whatsappChannelLink={(course as any)?.whatsapp_channel_link}
+            />
           </TabsContent>
         </Tabs>
       </div>
