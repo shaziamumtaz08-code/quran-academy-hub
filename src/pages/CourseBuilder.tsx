@@ -27,6 +27,7 @@ import {
 import { RegistrationFormEditor } from '@/components/courses/RegistrationFormEditor';
 import { CourseApplicants } from '@/components/courses/CourseApplicants';
 import { CourseMarketingTab } from '@/components/courses/CourseMarketingTab';
+import { CourseClassesTab } from '@/components/courses/CourseClassesTab';
 
 // ─── Types ──────────────────────────────────────────────
 interface Module {
@@ -617,6 +618,9 @@ export default function CourseBuilder() {
               </TabsTrigger>
               <TabsTrigger value="applicants" className="gap-1.5 text-xs sm:text-sm">
                 <UserPlus className="h-4 w-4" /><span className="hidden sm:inline">Applicants</span>
+              </TabsTrigger>
+              <TabsTrigger value="classes" className="gap-1.5 text-xs sm:text-sm">
+                <GraduationCap className="h-4 w-4" /><span className="hidden sm:inline">Classes</span>
               </TabsTrigger>
             </TabsList>
           </div>
