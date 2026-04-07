@@ -80,10 +80,13 @@ const LEAD_SUBJECTS = [
 // ── Create Lead Dialog ──
 function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const queryClient = useQueryClient();
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [form, setForm] = useState({
     name: '', email: '', phone_whatsapp: '', country: '', city: '',
-    for_whom: 'self', child_name: '', child_age: '',
-    subject_interest: '', preferred_time: '', message: '',
+    for_whom: 'child', child_name: '', child_age: '',
+    preferred_time: '', message: '', gender: '',
+    current_level_specimen: '', learning_goals: '',
+    guardian_name: '', guardian_relationship: '',
   });
 
   const createMutation = useMutation({
@@ -97,21 +100,29 @@ function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
         for_whom: form.for_whom,
         child_name: form.for_whom === 'child' ? form.child_name || null : null,
         child_age: form.for_whom === 'child' && form.child_age ? parseInt(form.child_age) : null,
-        subject_interest: form.subject_interest || null,
+        subject_interest: selectedSubjects.join(', ') || null,
         preferred_time: form.preferred_time || null,
         message: form.message || null,
+        gender: form.gender || null,
+        current_level_specimen: form.current_level_specimen || null,
+        learning_goals: form.learning_goals || null,
+        guardian_name: form.guardian_name || null,
+        guardian_relationship: form.guardian_relationship || null,
         status: 'new',
-      });
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
       toast({ title: 'Lead created successfully' });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       onOpenChange(false);
-      setForm({ name: '', email: '', phone_whatsapp: '', country: '', city: '', for_whom: 'self', child_name: '', child_age: '', subject_interest: '', preferred_time: '', message: '' });
+      setForm({ name: '', email: '', phone_whatsapp: '', country: '', city: '', for_whom: 'child', child_name: '', child_age: '', preferred_time: '', message: '', gender: '', current_level_specimen: '', learning_goals: '', guardian_name: '', guardian_relationship: '' });
+      setSelectedSubjects([]);
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
+
+  const toggleSubject = (s: string) => setSelectedSubjects(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -120,12 +131,21 @@ function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
           <DialogTitle className="flex items-center gap-2"><UserPlus className="h-5 w-5" /> New Lead</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Student Details</p>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label className="text-xs">Name *</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="Full name" /></div>
-            <div><Label className="text-xs">Email</Label><Input value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} placeholder="Email" type="email" /></div>
+            <div><Label className="text-xs">Student Name *</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="Full name" /></div>
+            <div><Label className="text-xs">Age</Label><Input value={form.child_age} onChange={e => setForm(p => ({ ...p, child_age: e.target.value }))} placeholder="Age" type="number" /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label className="text-xs">WhatsApp</Label><Input value={form.phone_whatsapp} onChange={e => setForm(p => ({ ...p, phone_whatsapp: e.target.value }))} placeholder="+92..." /></div>
+            <div><Label className="text-xs">Gender</Label>
+              <Select value={form.gender} onValueChange={v => setForm(p => ({ ...p, gender: v }))}>
+                <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="male">Male</SelectItem>
+                  <SelectItem value="female">Female</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div><Label className="text-xs">For Whom</Label>
               <Select value={form.for_whom} onValueChange={v => setForm(p => ({ ...p, for_whom: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -137,22 +157,51 @@ function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
               </Select>
             </div>
           </div>
-          {form.for_whom === 'child' && (
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-xs">Child Name</Label><Input value={form.child_name} onChange={e => setForm(p => ({ ...p, child_name: e.target.value }))} /></div>
-              <div><Label className="text-xs">Child Age</Label><Input value={form.child_age} onChange={e => setForm(p => ({ ...p, child_age: e.target.value }))} type="number" /></div>
+
+          {(form.for_whom === 'child' || form.for_whom === 'other') && (
+            <div className="grid grid-cols-2 gap-3 p-3 bg-muted/50 rounded-lg">
+              <div><Label className="text-xs">Guardian Name</Label><Input value={form.guardian_name} onChange={e => setForm(p => ({ ...p, guardian_name: e.target.value }))} placeholder="Parent/Guardian" /></div>
+              <div><Label className="text-xs">Relationship</Label>
+                <Select value={form.guardian_relationship} onValueChange={v => setForm(p => ({ ...p, guardian_relationship: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mother">Mother</SelectItem>
+                    <SelectItem value="father">Father</SelectItem>
+                    <SelectItem value="guardian">Guardian</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label className="text-xs">WhatsApp *</Label><Input value={form.phone_whatsapp} onChange={e => setForm(p => ({ ...p, phone_whatsapp: e.target.value }))} placeholder="+92..." /></div>
+            <div><Label className="text-xs">Email</Label><Input value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} placeholder="Email" type="email" /></div>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div><Label className="text-xs">Country</Label><Input value={form.country} onChange={e => setForm(p => ({ ...p, country: e.target.value }))} /></div>
             <div><Label className="text-xs">City</Label><Input value={form.city} onChange={e => setForm(p => ({ ...p, city: e.target.value }))} /></div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label className="text-xs">Subject Interest</Label><Input value={form.subject_interest} onChange={e => setForm(p => ({ ...p, subject_interest: e.target.value }))} /></div>
-            <div><Label className="text-xs">Preferred Time</Label><Input value={form.preferred_time} onChange={e => setForm(p => ({ ...p, preferred_time: e.target.value }))} /></div>
+
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-2">Academic Info</p>
+          <div>
+            <Label className="text-xs">Subject to Study *</Label>
+            <div className="flex flex-wrap gap-1.5 mt-1">
+              {LEAD_SUBJECTS.map(s => (
+                <button key={s} type="button" onClick={() => toggleSubject(s)}
+                  className={`px-2.5 py-1 rounded-full text-xs border transition-all ${
+                    selectedSubjects.includes(s) ? 'bg-primary/10 text-primary border-primary/30 font-medium' : 'bg-muted/50 border-border hover:border-primary/20'
+                  }`}>{selectedSubjects.includes(s) ? s : `+ ${s}`}</button>
+              ))}
+            </div>
           </div>
-          <div><Label className="text-xs">Message</Label><Textarea value={form.message} onChange={e => setForm(p => ({ ...p, message: e.target.value }))} rows={2} /></div>
-          <Button onClick={() => createMutation.mutate()} disabled={!form.name || createMutation.isPending} className="w-full">
+          <div><Label className="text-xs">Current Level / Specimen</Label><Input value={form.current_level_specimen} onChange={e => setForm(p => ({ ...p, current_level_specimen: e.target.value }))} placeholder="e.g. Noorani Qaida page 5" /></div>
+          <div><Label className="text-xs">Learning Goals</Label><Textarea value={form.learning_goals} onChange={e => setForm(p => ({ ...p, learning_goals: e.target.value }))} placeholder="What does the student want to achieve?" rows={2} /></div>
+
+          <div><Label className="text-xs">Preferred Time</Label><Input value={form.preferred_time} onChange={e => setForm(p => ({ ...p, preferred_time: e.target.value }))} /></div>
+          <div><Label className="text-xs">Notes</Label><Textarea value={form.message} onChange={e => setForm(p => ({ ...p, message: e.target.value }))} rows={2} /></div>
+          <Button onClick={() => createMutation.mutate()} disabled={!form.name || selectedSubjects.length === 0 || createMutation.isPending} className="w-full">
             {createMutation.isPending ? 'Creating...' : 'Create Lead'}
           </Button>
         </div>
