@@ -26,6 +26,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 const PIPELINE_STAGES = [
   { key: 'new', label: 'New', color: 'bg-blue-500' },
   { key: 'contacted', label: 'Contacted', color: 'bg-yellow-500' },
+  { key: 'pre_screen', label: 'Pre-Screen', color: 'bg-[#7F77DD]' },
   { key: 'demo_scheduled', label: 'Demo', color: 'bg-purple-500' },
   { key: 'demo_done', label: 'Demo Done', color: 'bg-indigo-500' },
   { key: 'feedback_pending', label: 'Feedback', color: 'bg-orange-500' },
