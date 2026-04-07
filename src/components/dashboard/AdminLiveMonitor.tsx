@@ -180,6 +180,7 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
           `
           id,
           teacher_id,
+          student_id,
           actual_start,
           scheduled_start,
           status,
