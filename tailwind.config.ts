@@ -14,7 +14,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
         serif: ['Amiri', 'serif'],
       },
       colors: {
@@ -51,6 +51,22 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        /* ── New LMS design tokens ── */
+        "lms-navy": {
+          DEFAULT: "#0f2044",
+          hover: "#1e3a6e",
+        },
+        "lms-accent": "#1a56b0",
+        "lms-surface": "#f4f5f7",
+        "lms-border": "#e8e9eb",
+        "lms-text-1": "#0f2044",
+        "lms-text-2": "#4a5264",
+        "lms-text-3": "#7a7f8a",
+        "lms-text-4": "#aab0bc",
+        "lms-success": "#1a7340",
+        "lms-warning": "#8a5c00",
+        "lms-danger": "#b42a2a",
+        /* ── Preserved legacy tokens ── */
         navy: {
           DEFAULT: "hsl(var(--navy))",
           dark: "hsl(var(--navy-dark))",
