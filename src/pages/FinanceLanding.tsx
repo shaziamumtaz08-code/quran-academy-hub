@@ -12,6 +12,7 @@ const SalaryEngine = lazy(() => import('./SalaryEngine'));
 const Expenses = lazy(() => import('./Expenses'));
 const CashAdvances = lazy(() => import('./CashAdvances'));
 const FinanceSetup = lazy(() => import('./FinanceSetup'));
+const TeacherPayouts = lazy(() => import('./TeacherPayouts'));
 
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
 
