@@ -53,7 +53,7 @@ export function JoinClassButton({ teacherId, className }: JoinClassButtonProps) 
 
       const { data: schedules } = await supabase
         .from('schedules')
-        .select('id, day_of_week, student_local_time, duration_minutes')
+        .select('id, assignment_id, day_of_week, student_local_time, duration_minutes')
         .in('assignment_id', assignmentIds)
         .eq('is_active', true);
 
@@ -93,17 +93,44 @@ export function JoinClassButton({ teacherId, className }: JoinClassButtonProps) 
                 return {
                   canJoin: true,
                   meetingLink,
+                  sessionId: liveSession.id,
                   isLive: true,
                   teacherId: targetTeacherId,
                 };
               }
             }
 
+            // Reuse any already-linked LMS session for this class window
+            const { data: existingSession } = await supabase
+              .from('live_sessions')
+              .select('id, license_id, status, scheduled_start, license:zoom_licenses(meeting_link)')
+              .eq('teacher_id', targetTeacherId)
+              .eq('assignment_id', schedule.assignment_id)
+              .in('status', ['scheduled', 'live'])
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            const existingLink = (existingSession?.license as any)?.meeting_link;
+            if (existingSession && existingLink) {
+              return {
+                canJoin: true,
+                meetingLink: existingLink,
+                sessionId: existingSession.id,
+                licenseId: existingSession.license_id,
+                assignmentId: schedule.assignment_id,
+                scheduleId: schedule.id,
+                scheduledStart: existingSession.scheduled_start || classStart.toISOString(),
+                isLive: existingSession.status === 'live',
+                teacherId: targetTeacherId,
+              };
+            }
+
             // Teacher hasn't started yet — student can still join early
             // Find the teacher's last used room link (any status)
             const { data: lastSession } = await supabase
               .from('live_sessions')
-              .select('license:zoom_licenses(meeting_link)')
+              .select('license_id, license:zoom_licenses(id, meeting_link)')
               .eq('teacher_id', targetTeacherId)
               .order('created_at', { ascending: false })
               .limit(1)
@@ -114,6 +141,10 @@ export function JoinClassButton({ teacherId, className }: JoinClassButtonProps) 
               return {
                 canJoin: true,
                 meetingLink: lastLink,
+                licenseId: lastSession?.license_id,
+                assignmentId: schedule.assignment_id,
+                scheduleId: schedule.id,
+                scheduledStart: classStart.toISOString(),
                 isLive: false,
                 teacherId: targetTeacherId,
               };
@@ -122,7 +153,7 @@ export function JoinClassButton({ teacherId, className }: JoinClassButtonProps) 
             // No prior session — pick first room by priority (regardless of status)
             const { data: licenses } = await supabase
               .from('zoom_licenses')
-              .select('meeting_link')
+              .select('id, meeting_link')
               .order('priority', { ascending: true })
               .order('created_at', { ascending: true })
               .limit(1);
@@ -132,6 +163,10 @@ export function JoinClassButton({ teacherId, className }: JoinClassButtonProps) 
               return {
                 canJoin: true,
                 meetingLink: fallbackLink,
+                licenseId: licenses?.[0]?.id,
+                assignmentId: schedule.assignment_id,
+                scheduleId: schedule.id,
+                scheduledStart: classStart.toISOString(),
                 isLive: false,
                 teacherId: targetTeacherId,
               };
@@ -169,6 +204,28 @@ export function JoinClassButton({ teacherId, className }: JoinClassButtonProps) 
       if (!user?.id || !scheduleStatus?.meetingLink) {
         throw new Error('Unable to join class');
       }
+
+      if (!scheduleStatus.sessionId && scheduleStatus.teacherId) {
+        const { data, error } = await supabase.functions.invoke('zoom-claim-session', {
+          body: {
+            teacherId: scheduleStatus.teacherId,
+            studentId: user.id,
+            assignmentId: scheduleStatus.assignmentId || null,
+            scheduleId: scheduleStatus.scheduleId || null,
+            licenseId: scheduleStatus.licenseId || null,
+            scheduledStart: scheduleStatus.scheduledStart || new Date().toISOString(),
+          },
+        });
+
+        if (error) {
+          throw error;
+        }
+
+        if (!data?.sessionId) {
+          throw new Error('Could not prepare LMS session for this class');
+        }
+      }
+
       return scheduleStatus.meetingLink;
     },
     onSuccess: (meetingLink) => {

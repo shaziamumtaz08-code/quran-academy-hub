@@ -20,18 +20,15 @@ export default function CommunicationLanding() {
   const { data: counts, isLoading } = useQuery({
     queryKey: ['comm-landing-counts', user?.id],
     queryFn: async () => {
-      const [ticketsRes, zoomRes] = await Promise.all([
+      const [ticketsRes, liveRes, totalRes] = await Promise.all([
         (supabase as any).from('tasks').select('id', { count: 'exact', head: true }).eq('status', 'open'),
-        (supabase as any).from('zoom_licenses').select('id, status'),
+        (supabase as any).from('live_sessions').select('id', { count: 'exact', head: true }).eq('status', 'live'),
+        (supabase as any).from('zoom_licenses').select('id', { count: 'exact', head: true }),
       ]);
-
-      const licenses = (zoomRes.data || []) as { id: string; status: string }[];
-      const busy = licenses.filter(l => l.status === 'busy').length;
-      const total = licenses.length;
 
       return {
         tickets: ticketsRes.count || 0,
-        zoomStatus: `${busy}/${total}`,
+        zoomStatus: `${liveRes.count || 0}/${totalRes.count || 0}`,
       };
     },
   });

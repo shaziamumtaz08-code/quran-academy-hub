@@ -113,19 +113,20 @@ export default function ZoomManagement() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('live_sessions')
-        .select('id, teacher_id, actual_start, actual_end, status, created_at, recording_link, license_id, schedule_id')
+        .select('id, teacher_id, student_id, actual_start, actual_end, status, created_at, recording_link, license_id, schedule_id')
         .order('created_at', { ascending: false })
         .limit(50);
       if (error) throw error;
       if (!data || data.length === 0) return [];
 
-      const teacherIds = [...new Set(data.map((s: any) => s.teacher_id))] as string[];
-      const { data: teachers } = await supabase.from('profiles').select('id, full_name').in('id', teacherIds);
-      const teacherMap = new Map(teachers?.map(t => [t.id, t.full_name]) || []);
+      const profileIds = [...new Set(data.flatMap((s: any) => [s.teacher_id, s.student_id]).filter(Boolean))] as string[];
+      const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', profileIds);
+      const profileMap = new Map(profiles?.map(t => [t.id, t.full_name]) || []);
 
       return data.map((session: any) => ({
         ...session,
-        teacherName: teacherMap.get(session.teacher_id) || 'Unknown',
+        teacherName: profileMap.get(session.teacher_id) || 'Unknown',
+        studentName: session.student_id ? (profileMap.get(session.student_id) || 'Student') : null,
       }));
     },
     refetchInterval: 15000,
@@ -136,7 +137,8 @@ export default function ZoomManagement() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('zoom_attendance_logs')
-        .select('id, user_id, action, timestamp, session_id, join_time, leave_time, total_duration_minutes')
+        .select('id, user_id, action, timestamp, session_id, join_time, leave_time, total_duration_minutes, participant_name, participant_email, role')
+        .not('session_id', 'is', null)
         .order('timestamp', { ascending: false })
         .limit(100);
       if (error) throw error;
@@ -148,7 +150,7 @@ export default function ZoomManagement() {
 
       return data.map((log: any) => ({
         ...log,
-        userName: userMap.get(log.user_id) || 'Unknown',
+        userName: userMap.get(log.user_id) || log.participant_name || 'Unknown',
       }));
     },
     refetchInterval: 15000,
@@ -754,6 +756,9 @@ export default function ZoomManagement() {
                                 <span className="text-xs font-bold text-primary">{session.teacherName?.charAt(0)}</span>
                               </div>
                               <span className="font-medium text-sm">{session.teacherName}</span>
+                              {session.studentName && (
+                                <p className="text-xs text-muted-foreground">Student: {session.studentName}</p>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell className="text-sm">{session.actual_start ? format(new Date(session.actual_start), 'MMM d, HH:mm') : '-'}</TableCell>
@@ -838,6 +843,8 @@ export default function ZoomManagement() {
                           <p className="text-sm font-medium truncate">{log.userName}</p>
                           <p className="text-[11px] text-muted-foreground">
                             {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}
+                            {log.role ? ` • ${log.role}` : ''}
+                            {log.participant_email ? ` • ${log.participant_email}` : ''}
                           </p>
                         </div>
                         <div className="text-right shrink-0">
