@@ -297,7 +297,9 @@ export default function GroupChat() {
                   <span className="text-sm">{g.is_dm ? '👤' : (typeIcons[g.type] || '💬')}</span>
                   <div className="min-w-0">
                     <p className="text-[13px] font-bold text-foreground truncate">{g.name}</p>
-                    <p className="text-[10px] text-muted-foreground capitalize">{g.is_dm ? 'Direct message' : g.type}</p>
+                    <p className="text-[10px] text-muted-foreground capitalize">
+                      {g.is_dm ? 'Direct message' : g.channel_mode === 'channel' ? '📢 Channel' : g.type}
+                    </p>
                   </div>
                 </div>
               </button>
@@ -361,12 +363,19 @@ export default function GroupChat() {
                 </div>
               )}
 
-              <ChatInput
-                onSend={(content, attachmentUrl) => sendMessage.mutate({ content, attachmentUrl })}
-                sending={sendMessage.isPending}
-                replyTo={replyTo}
-                onCancelReply={() => setReplyTo(null)}
-              />
+              {/* ChatInput: hide for non-admins in channel mode */}
+              {(activeGroup.channel_mode !== 'channel' || isGroupAdmin) ? (
+                <ChatInput
+                  onSend={(content, attachmentUrl) => sendMessage.mutate({ content, attachmentUrl })}
+                  sending={sendMessage.isPending}
+                  replyTo={replyTo}
+                  onCancelReply={() => setReplyTo(null)}
+                />
+              ) : (
+                <div className="p-3 border-t border-border text-center">
+                  <p className="text-xs text-muted-foreground">📢 This is a channel — only admins can post</p>
+                </div>
+              )}
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center">
