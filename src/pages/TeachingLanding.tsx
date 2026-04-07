@@ -15,6 +15,7 @@ const Schedules = lazy(() => import('./Schedules'));
 const MonthlyPlanning = lazy(() => import('./MonthlyPlanning'));
 const Subjects = lazy(() => import('./Subjects'));
 const ZoomManagement = lazy(() => import('./ZoomManagement'));
+const Courses = lazy(() => import('./Courses'));
 
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
 
