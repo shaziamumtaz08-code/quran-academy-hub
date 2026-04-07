@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDivision } from '@/contexts/DivisionContext';
-import { Plus, Search, ArrowLeft, Users as UsersIcon } from 'lucide-react';
+import { Plus, Search, ArrowLeft } from 'lucide-react';
 
 /* ─── Section configurations ─── */
 
@@ -141,6 +141,30 @@ function isCourseDetailRoute(pathname: string) {
   return /^\/courses\/[^/]+$/.test(pathname) || /^\/academics\/courses\/[^/]+$/.test(pathname);
 }
 
+function getCourseDetailSidebar(pathname: string): { title: string; subtitle: string; items: SidebarNavItem[]; isCourseDetail: true } {
+  const base = pathname;
+  return {
+    title: 'Course',
+    subtitle: '',
+    isCourseDetail: true,
+    items: [
+      { label: 'Overview', href: `${base}?tab=builder` },
+      { label: 'Website', href: `${base}?tab=website`, group: 'SETUP' },
+      { label: 'Settings', href: `${base}?tab=settings` },
+      { label: 'Marketing', href: `${base}?tab=marketing`, group: 'OUTREACH' },
+      { label: 'Reg Form', href: `${base}?tab=reg-form` },
+      { label: 'Applicants', href: `${base}?tab=applicants`, group: 'PEOPLE' },
+      { label: 'Roster', href: `${base}?tab=roster` },
+      { label: 'Classes', href: `${base}?tab=classes`, group: 'OPERATIONS' },
+      { label: 'Finance', href: `${base}?tab=finance` },
+      { label: 'Announcements', href: `${base}?tab=notifications`, group: 'HUB' },
+      { label: 'Group Chat', href: `${base}?tab=community` },
+      { label: 'Assignments', href: `${base}?tab=assignments` },
+      { label: 'Resources', href: `${base}?tab=resources` },
+    ],
+  };
+}
+
 interface AppSidebarProps {
   className?: string;
 }
@@ -151,7 +175,9 @@ export function AppSidebar({ className }: AppSidebarProps) {
   const { activeDivision } = useDivision();
 
   const isCourseDetail = isCourseDetailRoute(location.pathname);
-  const sidebar = getSidebarForRoute(location.pathname);
+  const sidebar = isCourseDetail
+    ? getCourseDetailSidebar(location.pathname)
+    : getSidebarForRoute(location.pathname);
 
   const isItemActive = (item: SidebarNavItem) => {
     if (!item.href) return false;
@@ -159,7 +185,11 @@ export function AppSidebar({ className }: AppSidebarProps) {
     if (query) {
       return location.pathname === path && location.search.includes(query);
     }
-    return location.pathname === path;
+    // For course detail, if no query on current URL and item is the overview tab, mark active
+    if (isCourseDetail && !location.search && item.href.includes('tab=builder')) {
+      return location.pathname === path;
+    }
+    return location.pathname === path && !location.search;
   };
 
   let currentGroup: string | undefined;
@@ -194,20 +224,21 @@ export function AppSidebar({ className }: AppSidebarProps) {
       <nav className="flex-1 overflow-y-auto px-2 pb-2">
         {sidebar.items.map((item, i) => {
           // Group label
-          if (item.group && item.group !== currentGroup) {
+          const showGroup = item.group && item.group !== currentGroup;
+          if (showGroup) {
             currentGroup = item.group;
-            return (
+          }
+          const groupLabel = showGroup ? (
               <p key={`group-${item.group}`} className="text-[9px] uppercase tracking-[.07em] text-lms-text-4 px-2 pt-3 pb-1">
                 {item.group}
               </p>
-            );
-          }
-          if (item.group) return null;
+          ) : null;
 
           const active = isItemActive(item);
           return (
+            <React.Fragment key={item.label + (item.href || '')}>
+              {groupLabel}
             <Link
-              key={item.label + (item.href || '')}
               to={item.href || '#'}
               className={cn(
                 'flex items-center justify-between px-2 py-[7px] rounded-md text-[11.5px] transition-colors',
@@ -226,6 +257,7 @@ export function AppSidebar({ className }: AppSidebarProps) {
                 </span>
               )}
             </Link>
+            </React.Fragment>
           );
         })}
       </nav>
