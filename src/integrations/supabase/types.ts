@@ -761,6 +761,151 @@ export type Database = {
           },
         ]
       }
+      course_class_staff: {
+        Row: {
+          class_id: string
+          created_at: string
+          id: string
+          payout_type: string
+          staff_role: string
+          subjects: string[]
+          user_id: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          id?: string
+          payout_type?: string
+          staff_role?: string
+          subjects?: string[]
+          user_id: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          id?: string
+          payout_type?: string
+          staff_role?: string
+          subjects?: string[]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_class_staff_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "course_classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_class_students: {
+        Row: {
+          class_id: string
+          enrolled_at: string
+          id: string
+          status: string
+          student_id: string
+        }
+        Insert: {
+          class_id: string
+          enrolled_at?: string
+          id?: string
+          status?: string
+          student_id: string
+        }
+        Update: {
+          class_id?: string
+          enrolled_at?: string
+          id?: string
+          status?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_class_students_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "course_classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_classes: {
+        Row: {
+          class_type: string
+          course_id: string
+          created_at: string
+          fee_amount: number
+          fee_currency: string
+          id: string
+          is_volunteer: boolean
+          max_seats: number
+          meeting_link: string | null
+          name: string
+          schedule_days: string[]
+          schedule_time: string | null
+          session_duration: number
+          status: string
+          timezone: string | null
+          updated_at: string
+          zoom_license_id: string | null
+        }
+        Insert: {
+          class_type?: string
+          course_id: string
+          created_at?: string
+          fee_amount?: number
+          fee_currency?: string
+          id?: string
+          is_volunteer?: boolean
+          max_seats?: number
+          meeting_link?: string | null
+          name: string
+          schedule_days?: string[]
+          schedule_time?: string | null
+          session_duration?: number
+          status?: string
+          timezone?: string | null
+          updated_at?: string
+          zoom_license_id?: string | null
+        }
+        Update: {
+          class_type?: string
+          course_id?: string
+          created_at?: string
+          fee_amount?: number
+          fee_currency?: string
+          id?: string
+          is_volunteer?: boolean
+          max_seats?: number
+          meeting_link?: string | null
+          name?: string
+          schedule_days?: string[]
+          schedule_time?: string | null
+          session_duration?: number
+          status?: string
+          timezone?: string | null
+          updated_at?: string
+          zoom_license_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_classes_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_classes_zoom_license_id_fkey"
+            columns: ["zoom_license_id"]
+            isOneToOne: false
+            referencedRelation: "zoom_licenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_enrollments: {
         Row: {
           course_id: string
