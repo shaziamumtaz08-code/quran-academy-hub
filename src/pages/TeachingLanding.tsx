@@ -33,13 +33,14 @@ export default function TeachingLanding() {
       const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
       const weekEnd = format(endOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
 
-      const [liveRes, assignRes, schedRes, attRes, planRes, subRes] = await Promise.all([
+      const [liveRes, assignRes, schedRes, attRes, planRes, subRes, courseRes] = await Promise.all([
         supabase.from('live_sessions').select('id', { count: 'exact', head: true }).eq('status', 'live'),
         supabase.from('student_teacher_assignments').select('id', { count: 'exact', head: true }).eq('status', 'active'),
         supabase.from('schedules').select('id', { count: 'exact', head: true }).eq('is_active', true),
         (supabase as any).from('attendance').select('status').gte('class_date', weekStart).lte('class_date', weekEnd),
         supabase.from('student_monthly_plans').select('id', { count: 'exact', head: true }).eq('month', format(new Date(), 'yyyy-MM')),
         supabase.from('subjects').select('id', { count: 'exact', head: true }).eq('is_active', true),
+        supabase.from('courses').select('id', { count: 'exact', head: true }).eq('status', 'active'),
       ]);
 
       const attData = attRes.data || [];
@@ -53,6 +54,7 @@ export default function TeachingLanding() {
         attRate,
         plans: planRes.count || 0,
         subjects: subRes.count || 0,
+        courses: courseRes.count || 0,
       };
     },
   });
