@@ -138,9 +138,9 @@ export default function GroupChat() {
   const createGroup = useMutation({
     mutationFn: async () => {
       if (!user?.id) return;
-      const { data: group, error } = await supabase
+      const { data: group, error } = await (supabase as any)
         .from('chat_groups')
-        .insert({ name: newGroupName, type: newGroupType, created_by: user.id })
+        .insert({ name: newGroupName, type: newGroupType, created_by: user.id, channel_mode: newChannelMode })
         .select()
         .single();
       if (error) throw error;
@@ -151,8 +151,9 @@ export default function GroupChat() {
       queryClient.invalidateQueries({ queryKey: ['chat-groups'] });
       setCreateOpen(false);
       setNewGroupName('');
+      setNewChannelMode('group');
       if (group) setActiveGroupId(group.id);
-      toast({ title: 'Group created' });
+      toast({ title: newChannelMode === 'channel' ? 'Channel created' : 'Group created' });
     },
   });
 
