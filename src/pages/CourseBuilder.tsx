@@ -22,13 +22,14 @@ import { cn } from '@/lib/utils';
 import {
   ChevronLeft, Save, Plus, Trash2, GripVertical, FileText, Video, File,
   Sparkles, Loader2, Upload, ChevronDown, ChevronRight, Users, Settings,
-  BookOpen, X, ExternalLink, ClipboardList, UserPlus, GraduationCap, DollarSign
+  BookOpen, X, ExternalLink, ClipboardList, UserPlus, GraduationCap, DollarSign, FolderOpen
 } from 'lucide-react';
 import { RegistrationFormEditor } from '@/components/courses/RegistrationFormEditor';
 import { CourseApplicants } from '@/components/courses/CourseApplicants';
 import { CourseMarketingTab } from '@/components/courses/CourseMarketingTab';
 import { CourseClassesTab } from '@/components/courses/CourseClassesTab';
 import { CourseFinanceTab } from '@/components/courses/CourseFinanceTab';
+import { CourseResourcesTab } from '@/components/courses/CourseResourcesTab';
 
 // ─── Types ──────────────────────────────────────────────
 interface Module {
@@ -626,6 +627,9 @@ export default function CourseBuilder() {
               <TabsTrigger value="finance" className="gap-1.5 text-xs sm:text-sm">
                 <DollarSign className="h-4 w-4" /><span className="hidden sm:inline">Finance</span>
               </TabsTrigger>
+              <TabsTrigger value="resources" className="gap-1.5 text-xs sm:text-sm">
+                <FolderOpen className="h-4 w-4" /><span className="hidden sm:inline">Resources</span>
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -1097,6 +1101,11 @@ export default function CourseBuilder() {
           {/* ═══ FINANCE TAB ═══ */}
           <TabsContent value="finance" className="mt-4">
             <CourseFinanceTab courseId={courseId!} />
+          </TabsContent>
+
+          {/* ═══ RESOURCES TAB ═══ */}
+          <TabsContent value="resources" className="mt-4">
+            <CourseResourcesTab courseId={courseId!} courseName={course?.name} />
           </TabsContent>
         </Tabs>
       </div>
