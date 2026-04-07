@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { CourseBoards } from '@/components/courses/CourseBoards';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -74,18 +74,19 @@ const CONTENT_TYPE_EMOJI: Record<string, string> = {
 export default function CourseBuilder() {
   const { id: courseId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
 
-  const [activeTab, setActiveTab] = useState('builder');
   const [searchParams] = useSearchParams();
 
-  // Sync activeTab with ?tab= query param from sidebar
-  React.useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab) setActiveTab(tab);
-  }, [searchParams]);
+  const activeTab = searchParams.get('tab') || 'builder';
+  const setActiveTab = (tab: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tab);
+    navigate(`${location.pathname}?tab=${tab}`, { replace: true });
+  };
 
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
 
