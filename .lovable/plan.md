@@ -1,51 +1,56 @@
 
-## Lead Pipeline v2 — Phased Implementation
+# Responsive LMS Layout Overhaul
 
-### Phase 1: Database Schema & Lead Form Enhancement
-**Migration:**
-- Add to `leads`: `gender`, `date_of_birth`, `current_level_specimen`, `learning_goals`, `guardian_name`, `guardian_relationship`, `attachment_urls` (jsonb)
-- Add `pre_screen` stage to pipeline
-- Create `lead_screenings` table: `lead_id`, `screened_by`, `screened_at`, `channel`, `material_tested`, `estimated_level`, `observations`, `quick_tags` (text[]), `confidence_rating`, `proceed_decision`, `suggested_teacher_id`, `is_skipped`
-- Add to `demo_sessions`: `teacher_note`, `notify_channels` (jsonb)
-- Create `lead_attachments` table for file uploads (image/pdf/voice)
-- Create storage bucket `lead-attachments`
+## Scope
+Visual layout and navigation restructuring only. All existing data, routes, and functional components preserved.
 
-**UI Changes:**
-- Update `PublicInquiryForm` — add academic info section (subject multi-select already exists, add `current_level_specimen`, `learning_goals`)
-- Update `CreateLeadDialog` — add gender, DOB, guardian fields, subject multi-select
-- Update pipeline stages to include `pre_screen` between `contacted` and `demo_scheduled`
+## Phase 1 — Design Tokens & Global Styles
+- Update CSS variables in `index.css` with new design tokens (navy, surface, text hierarchy, status pills)
+- Update `tailwind.config.ts` with new token mappings
+- Update typography: remove Amiri serif from headings, use system-ui/Inter weight 400/500 only
 
-### Phase 2: Pre-Screen Stage UI
-- Add Pre-Screen form in lead detail view with bypass checkbox
-- Screening logistics: screened_by (admin selector), date/time, channel (pill toggles), duration
-- Material & Level Assessment: material_tested, estimated_level (4-card selector), quick observation tags, screening notes
-- Admin Recommendation: proceed decision radio, confidence rating (1-5), suggested teacher
-- Save draft / Complete & schedule demo buttons
+## Phase 2 — Desktop Shell (1024px+)
+- **Rail** (56px, navy): Icon-only nav, always visible, tooltip on hover
+- **Sidebar** (200px, white): Context-sensitive content per active section
+- **Content Area** (flex-1, #f4f5f7): Sticky breadcrumb top bar, scrollable content
+- Replace current `DashboardLayout.tsx` with new responsive shell
+- Sidebar content changes per rail section (Home, Teaching, People, Finance, Communication, Settings)
+- Course Detail sidebar replaces Teaching sidebar when inside a course
 
-### Phase 3: Demo Scheduling Upgrade
-- Enhanced demo scheduling form with teacher note from screening
-- Platform selector, meeting link, notify via toggles (WhatsApp/Email/WorkHub)
-- Auto-advance lead status on schedule
+## Phase 3 — Mobile Layout (<768px)
+- No rail, no sidebar — full-width single column
+- Navy top bar (44px): centered title, bell + avatar right
+- Fixed bottom tab bar (52px): Home, Teaching, People, Chat, More
+- "More" opens bottom sheet with remaining nav items
+- Cards stack 1-col with 10px gap
 
-### Phase 4: Feedback System (Future)
-- Teacher feedback form (public, token-based)
-- Student/parent feedback form (public, token-based)
-- Auto-trigger 30min after demo end
-- Rating, level assessment, recommendation, decision tracking
+## Phase 4 — Tablet Layout (768–1023px)
+- 56px navy rail (always visible)
+- No persistent sidebar — rail icons open 200px slide-in drawer overlay
+- No bottom tab bar
+- 2-column card grid
 
-### Phase 5: Temp User & Notifications (Future)
-- Magic link temp user creation for demo students
-- WhatsApp/Email notifications for teacher and student
-- Calendar integration (.ics generation)
+## Phase 5 — Component Updates
+- Hero dashboard banner (navy card with stats)
+- Course cards (colored top border by subject, grid layout)
+- Stat cards (4/2/2 col responsive grid)
+- Status pills (global consistent styling)
+- Remove horizontal tab bars from pages
+- Remove "Community" label → "HUB"
 
----
+## Key Files to Create/Modify
+- `src/components/layout/AppShell.tsx` — new responsive shell (rail + sidebar + content)
+- `src/components/layout/NavRail.tsx` — desktop/tablet icon rail
+- `src/components/layout/AppSidebar.tsx` — context-sensitive sidebar
+- `src/components/layout/MobileBottomNav.tsx` — mobile tab bar
+- `src/components/layout/MobileTopBar.tsx` — mobile top bar
+- `src/components/layout/MoreSheet.tsx` — mobile "More" bottom sheet
+- `src/components/layout/DashboardLayout.tsx` — refactor to use new shell
+- `src/index.css` — updated tokens
+- `tailwind.config.ts` — updated config
 
-**This plan implements Phases 1-3 now. Phases 4-5 involve external integrations (WhatsApp API, email sending, Google Calendar) and will be planned separately.**
-
-### Files Changed
-
-| File | Change |
-|------|--------|
-| Migration | Add new columns to `leads`, create `lead_screenings` table, create `lead_attachments` table, storage bucket |
-| `src/pages/PublicInquiryForm.tsx` | Add academic info section with current_level_specimen, learning_goals |
-| `src/pages/LeadsPipeline.tsx` | Add pre_screen stage, enhance lead detail with screening form, update create dialog |
+## Constraints
+- Preserve ALL routes in App.tsx
+- Preserve ALL database logic
+- Preserve ALL form components and data
+- No functional changes — layout/style only
