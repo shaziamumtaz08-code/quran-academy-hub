@@ -192,6 +192,42 @@ Deno.serve(async (req) => {
         if (license) {
           await supabase.from("zoom_licenses").update({ status: "busy", last_used_at: new Date().toISOString() }).eq("id", license.id);
           console.log("License marked busy:", license.id);
+
+          // Activate any scheduled session that was pre-created (e.g. by student early join)
+          const { data: pendingSession } = await supabase
+            .from("live_sessions")
+            .select("id, license_id")
+            .eq("license_id", license.id)
+            .eq("status", "scheduled")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (pendingSession) {
+            await supabase.from("live_sessions").update({
+              status: "live",
+              actual_start: new Date().toISOString(),
+            }).eq("id", pendingSession.id);
+            console.log("Activated pending session:", pendingSession.id);
+          } else {
+            // Also check sessions without license_id (teacher may have created session before license assignment)
+            const { data: unlinkedSession } = await supabase
+              .from("live_sessions")
+              .select("id")
+              .is("license_id", null)
+              .eq("status", "scheduled")
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            if (unlinkedSession) {
+              await supabase.from("live_sessions").update({
+                status: "live",
+                actual_start: new Date().toISOString(),
+                license_id: license.id,
+              }).eq("id", unlinkedSession.id);
+              console.log("Linked and activated unlinked session:", unlinkedSession.id);
+            }
+          }
         } else {
           console.log("No license found for host_id:", hostId);
         }
@@ -206,18 +242,19 @@ Deno.serve(async (req) => {
           .eq("host_id", hostId)
           .maybeSingle();
         if (license) {
+          // Find both live AND scheduled sessions for this license
           const { data: liveSessions } = await supabase
             .from("live_sessions")
             .select("id, teacher_id, assignment_id, actual_start")
             .eq("license_id", license.id)
-            .eq("status", "live");
+            .in("status", ["live", "scheduled"]);
 
           await supabase.from("zoom_licenses").update({ status: "available" }).eq("id", license.id);
           await supabase
             .from("live_sessions")
             .update({ status: "completed", actual_end: new Date().toISOString(), recording_status: "pending" })
             .eq("license_id", license.id)
-            .eq("status", "live");
+            .in("status", ["live", "scheduled"]);
           console.log("License released, sessions completed:", license.id);
 
           // Auto-mark absent students
@@ -281,17 +318,18 @@ Deno.serve(async (req) => {
           break;
         }
 
-        // Step 2: Find the active live session for this license
+        // Step 2: Find the active live OR scheduled session for this license
         const { data: session } = await supabase
           .from("live_sessions")
-          .select("id, teacher_id, actual_start, student_id")
+          .select("id, teacher_id, actual_start, student_id, status")
           .eq("license_id", license.id)
-          .eq("status", "live")
+          .in("status", ["live", "scheduled"])
+          .order("created_at", { ascending: false })
+          .limit(1)
           .maybeSingle();
 
         if (!session) {
           console.log("No active session for license:", license.id, "— logging raw event only");
-          // Still log even without a session
           await supabase.from("zoom_attendance_logs").insert({
             session_id: null,
             user_id: null,
@@ -303,6 +341,16 @@ Deno.serve(async (req) => {
             role: "unknown",
           });
           break;
+        }
+
+        // If session is still 'scheduled', activate it now (first person joined)
+        if (session.status === "scheduled") {
+          await supabase.from("live_sessions").update({
+            status: "live",
+            actual_start: new Date().toISOString(),
+          }).eq("id", session.id);
+          session.actual_start = new Date().toISOString();
+          console.log("Session activated by participant join:", session.id);
         }
 
         // Step 3: Determine if this is the teacher or student
@@ -397,12 +445,12 @@ Deno.serve(async (req) => {
 
         if (!license) { console.log("No license for host:", hostId); break; }
 
-        // Find session (could be live or recently completed)
+        // Find session (could be live, scheduled, or recently completed)
         const { data: session } = await supabase
           .from("live_sessions")
           .select("id, teacher_id")
           .eq("license_id", license.id)
-          .in("status", ["live", "completed"])
+          .in("status", ["live", "scheduled", "completed"])
           .order("actual_start", { ascending: false })
           .limit(1)
           .maybeSingle();
