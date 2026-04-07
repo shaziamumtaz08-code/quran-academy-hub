@@ -871,6 +871,10 @@ function LeadDetailDialog({ lead, open, onOpenChange }: { lead: Lead | null; ope
             <div className="text-xs text-muted-foreground">Created {formatDistanceToNow(new Date(lead.created_at))} ago</div>
           </TabsContent>
 
+          <TabsContent value="screen" className="space-y-3 mt-3">
+            <PreScreenForm lead={lead} onComplete={() => {}} />
+          </TabsContent>
+
           <TabsContent value="demo" className="space-y-3 mt-3">
             <div className="flex justify-between items-center">
               <p className="text-sm font-medium">Demo Sessions</p>
