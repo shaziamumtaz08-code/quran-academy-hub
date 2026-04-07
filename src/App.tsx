@@ -30,7 +30,7 @@ import Subjects from "./pages/Subjects";
 import ZoomManagement from "./pages/ZoomManagement";
 import IntegrityAudit from "./pages/IntegrityAudit";
 import Courses from "./pages/Courses";
-import CourseAssetLibrary from "./pages/CourseAssetLibrary";
+// CourseAssetLibrary moved inside per-course Marketing tab
 import CourseBuilder from "./pages/CourseBuilder";
 import PublicCoursePage from "./pages/PublicCoursePage";
 import OrganizationSettings from "./pages/OrganizationSettings";
@@ -293,7 +293,7 @@ function AppRoutes() {
       <Route path="/zoom-management" element={<ProtectedRoute><AdminRoute><ZoomManagement /></AdminRoute></ProtectedRoute>} />
       <Route path="/integrity-audit" element={<ProtectedRoute><AdminRoute><IntegrityAudit /></AdminRoute></ProtectedRoute>} />
       <Route path="/courses" element={<ProtectedRoute><AdminRoute><Courses /></AdminRoute></ProtectedRoute>} />
-      <Route path="/course-assets" element={<ProtectedRoute><AdminRoute><CourseAssetLibrary /></AdminRoute></ProtectedRoute>} />
+      {/* Asset Library now lives inside each course's Marketing tab */}
       <Route path="/courses/:id" element={<ProtectedRoute><AdminRoute><CourseBuilder /></AdminRoute></ProtectedRoute>} />
       <Route path="/academics/courses/:id" element={<ProtectedRoute><AdminRoute><CourseBuilder /></AdminRoute></ProtectedRoute>} />
       <Route path="/organization-settings" element={<ProtectedRoute><AdminRoute><OrganizationSettings /></AdminRoute></ProtectedRoute>} />
