@@ -107,9 +107,9 @@ export function CourseNotificationsTab({ courseId, courseName, whatsappChannelLi
         if (enrollments && enrollments.length > 0) {
           const notifRows = enrollments.map((e: any) => ({
             recipient_id: e.student_id,
-            type: 'course_notification',
+            notification_type: 'course_notification',
             title: title.trim(),
-            body: body.trim(),
+            message: body.trim(),
             metadata: { course_id: courseId, course_name: courseName },
             status: 'pending',
           }));
