@@ -912,6 +912,10 @@ function LeadDetailDialog({ lead, open, onOpenChange }: { lead: Lead | null; ope
                 </div>
               )}
             </ScrollArea>
+            <div className="pt-2 border-t">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Attachments</p>
+              <LeadAttachmentsSection leadId={lead.id} />
+            </div>
           </TabsContent>
 
           <TabsContent value="enroll" className="space-y-3 mt-3">
