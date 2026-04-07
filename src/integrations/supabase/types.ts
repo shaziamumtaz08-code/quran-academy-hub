@@ -3890,6 +3890,7 @@ export type Database = {
           created_at: string
           daily_target_amount: number
           daily_target_lines: number
+          default_payout_rate: number | null
           email: string | null
           full_name: string
           gender: string | null
@@ -3917,6 +3918,7 @@ export type Database = {
           created_at?: string
           daily_target_amount?: number
           daily_target_lines?: number
+          default_payout_rate?: number | null
           email?: string | null
           full_name: string
           gender?: string | null
@@ -3944,6 +3946,7 @@ export type Database = {
           created_at?: string
           daily_target_amount?: number
           daily_target_lines?: number
+          default_payout_rate?: number | null
           email?: string | null
           full_name?: string
           gender?: string | null
@@ -5576,6 +5579,81 @@ export type Database = {
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teacher_payouts: {
+        Row: {
+          calculated_amount: number
+          class_id: string | null
+          course_id: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          paid_at: string | null
+          paid_reference: string | null
+          payout_type: string
+          period_end: string
+          period_start: string
+          rate: number
+          sessions_count: number
+          status: string
+          students_count: number
+          teacher_id: string
+          updated_at: string
+        }
+        Insert: {
+          calculated_amount?: number
+          class_id?: string | null
+          course_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          paid_reference?: string | null
+          payout_type?: string
+          period_end: string
+          period_start: string
+          rate?: number
+          sessions_count?: number
+          status?: string
+          students_count?: number
+          teacher_id: string
+          updated_at?: string
+        }
+        Update: {
+          calculated_amount?: number
+          class_id?: string | null
+          course_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          paid_reference?: string | null
+          payout_type?: string
+          period_end?: string
+          period_start?: string
+          rate?: number
+          sessions_count?: number
+          status?: string
+          students_count?: number
+          teacher_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_payouts_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "course_classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_payouts_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
             referencedColumns: ["id"]
           },
         ]
