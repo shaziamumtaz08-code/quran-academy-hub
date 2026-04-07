@@ -570,41 +570,8 @@ export default function CourseBuilder() {
   }
 
   return (
-    <div className="min-h-screen bg-muted/30 flex flex-col">
-      {/* ─── Top Navigation Bar ─────────────────────────── */}
-      <div className="sticky top-0 z-30 bg-background border-b border-border px-4 py-3">
-        <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-2 sm:gap-4">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/courses')} className="shrink-0 px-2 sm:px-3">
-              <ChevronLeft className="h-4 w-4" /><span className="hidden sm:inline ml-1">Courses</span>
-            </Button>
-            <Separator orientation="vertical" className="h-6 hidden sm:block" />
-            <h1 className="text-sm sm:text-lg font-semibold truncate">{course.name}</h1>
-            <Badge variant={course.status === 'active' ? 'default' : 'secondary'} className="shrink-0 text-[10px] sm:text-xs">
-              {course.status === 'active' ? 'Published' : 'Draft'}
-            </Badge>
-          </div>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="publish-toggle" className="text-xs text-muted-foreground hidden sm:block">Publish</Label>
-              <Switch
-                id="publish-toggle"
-                checked={course.status === 'active'}
-                onCheckedChange={() => togglePublish.mutate()}
-              />
-            </div>
-            {editorDirty && (
-              <Button size="sm" onClick={saveLesson} disabled={saving} className="gap-1.5">
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                <span className="hidden sm:inline">Save Changes</span>
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ─── Tabs ─────────────────────────────────────── */}
-      <div className="max-w-[1600px] mx-auto w-full px-3 sm:px-4 pt-4 pb-4 flex-1 flex flex-col">
+    <div className="flex flex-col">
+      <div className="flex-1 flex flex-col">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
           {/* ═══ BUILDER TAB ═══ */}
           <TabsContent value="builder" className="mt-4 flex-1">
