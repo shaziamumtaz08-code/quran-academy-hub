@@ -15,6 +15,7 @@ const Schedules = lazy(() => import('./Schedules'));
 const MonthlyPlanning = lazy(() => import('./MonthlyPlanning'));
 const Subjects = lazy(() => import('./Subjects'));
 const ZoomManagement = lazy(() => import('./ZoomManagement'));
+const Courses = lazy(() => import('./Courses'));
 
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
 
@@ -32,13 +33,14 @@ export default function TeachingLanding() {
       const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
       const weekEnd = format(endOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
 
-      const [liveRes, assignRes, schedRes, attRes, planRes, subRes] = await Promise.all([
+      const [liveRes, assignRes, schedRes, attRes, planRes, subRes, courseRes] = await Promise.all([
         supabase.from('live_sessions').select('id', { count: 'exact', head: true }).eq('status', 'live'),
         supabase.from('student_teacher_assignments').select('id', { count: 'exact', head: true }).eq('status', 'active'),
         supabase.from('schedules').select('id', { count: 'exact', head: true }).eq('is_active', true),
         (supabase as any).from('attendance').select('status').gte('class_date', weekStart).lte('class_date', weekEnd),
         supabase.from('student_monthly_plans').select('id', { count: 'exact', head: true }).eq('month', format(new Date(), 'yyyy-MM')),
         supabase.from('subjects').select('id', { count: 'exact', head: true }).eq('is_active', true),
+        supabase.from('courses').select('id', { count: 'exact', head: true }).eq('status', 'active'),
       ]);
 
       const attData = attRes.data || [];
@@ -52,11 +54,13 @@ export default function TeachingLanding() {
         attRate,
         plans: planRes.count || 0,
         subjects: subRes.count || 0,
+        courses: courseRes.count || 0,
       };
     },
   });
   const cards: LandingCard[] = [
     { id: 'live-classes', title: 'Live Classes', subtitle: 'Currently active', count: counts?.live, countLoading: isLoading, icon: <Video className="h-5 w-5" />, color: 'bg-destructive' },
+    { id: 'courses', title: 'Courses', subtitle: 'Group & batch', count: counts?.courses, countLoading: isLoading, icon: <BookOpen className="h-5 w-5" />, color: 'bg-teal-500' },
     { id: 'assignments', title: 'Assignments', subtitle: 'Active assignments', count: counts?.assignments, countLoading: isLoading, icon: <UserCheck className="h-5 w-5" />, color: 'bg-primary' },
     { id: 'schedules', title: 'Schedules', subtitle: 'Weekly slots', count: counts?.schedules, countLoading: isLoading, icon: <Calendar className="h-5 w-5" />, color: 'bg-blue-500' },
     { id: 'attendance', title: 'Attendance', subtitle: 'This week rate', count: counts?.attRate !== undefined ? `${counts.attRate}%` : undefined, countLoading: isLoading, icon: <ClipboardCheck className="h-5 w-5" />, color: 'bg-emerald-500' },
@@ -66,6 +70,7 @@ export default function TeachingLanding() {
 
   const contentMap: Record<string, React.ReactNode> = useMemo(() => ({
     'live-classes': <Suspense fallback={<Loading />}><ZoomManagement /></Suspense>,
+    'courses': <Suspense fallback={<Loading />}><Courses /></Suspense>,
     'assignments': <Suspense fallback={<Loading />}><Assignments /></Suspense>,
     'schedules': <Suspense fallback={<Loading />}><Schedules /></Suspense>,
     'attendance': <Suspense fallback={<Loading />}><Attendance /></Suspense>,
