@@ -242,18 +242,19 @@ Deno.serve(async (req) => {
           .eq("host_id", hostId)
           .maybeSingle();
         if (license) {
+          // Find both live AND scheduled sessions for this license
           const { data: liveSessions } = await supabase
             .from("live_sessions")
             .select("id, teacher_id, assignment_id, actual_start")
             .eq("license_id", license.id)
-            .eq("status", "live");
+            .in("status", ["live", "scheduled"]);
 
           await supabase.from("zoom_licenses").update({ status: "available" }).eq("id", license.id);
           await supabase
             .from("live_sessions")
             .update({ status: "completed", actual_end: new Date().toISOString(), recording_status: "pending" })
             .eq("license_id", license.id)
-            .eq("status", "live");
+            .in("status", ["live", "scheduled"]);
           console.log("License released, sessions completed:", license.id);
 
           // Auto-mark absent students

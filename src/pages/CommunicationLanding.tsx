@@ -22,7 +22,7 @@ export default function CommunicationLanding() {
     queryFn: async () => {
       const [ticketsRes, liveRes, totalRes] = await Promise.all([
         (supabase as any).from('tasks').select('id', { count: 'exact', head: true }).eq('status', 'open'),
-        (supabase as any).from('live_sessions').select('id', { count: 'exact', head: true }).eq('status', 'live'),
+        (supabase as any).from('live_sessions').select('id', { count: 'exact', head: true }).in('status', ['live', 'scheduled']),
         (supabase as any).from('zoom_licenses').select('id', { count: 'exact', head: true }),
       ]);
 
@@ -31,6 +31,7 @@ export default function CommunicationLanding() {
         zoomStatus: `${liveRes.count || 0}/${totalRes.count || 0}`,
       };
     },
+    refetchInterval: 15000,
   });
   const cards: LandingCard[] = [
     { id: 'chat', title: 'Group Chat', subtitle: 'Messages & channels', count: '💬', countLoading: false, icon: <MessageSquare className="h-5 w-5" />, color: 'bg-primary' },
