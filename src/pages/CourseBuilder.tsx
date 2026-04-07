@@ -1093,6 +1093,11 @@ export default function CourseBuilder() {
           <TabsContent value="classes" className="mt-4">
             <CourseClassesTab courseId={courseId!} />
           </TabsContent>
+
+          {/* ═══ FINANCE TAB ═══ */}
+          <TabsContent value="finance" className="mt-4">
+            <CourseFinanceTab courseId={courseId!} />
+          </TabsContent>
         </Tabs>
       </div>
 
