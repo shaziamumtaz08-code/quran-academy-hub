@@ -445,12 +445,12 @@ Deno.serve(async (req) => {
 
         if (!license) { console.log("No license for host:", hostId); break; }
 
-        // Find session (could be live or recently completed)
+        // Find session (could be live, scheduled, or recently completed)
         const { data: session } = await supabase
           .from("live_sessions")
           .select("id, teacher_id")
           .eq("license_id", license.id)
-          .in("status", ["live", "completed"])
+          .in("status", ["live", "scheduled", "completed"])
           .order("actual_start", { ascending: false })
           .limit(1)
           .maybeSingle();
