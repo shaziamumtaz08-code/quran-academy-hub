@@ -194,32 +194,22 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
       if (error) throw error;
       if (!sessions || sessions.length === 0) return [];
 
-      // Get teacher names
+      // Get teacher + student names
       const teacherIds = sessions.map((s) => s.teacher_id);
-      const { data: teachers } = await supabase.from("profiles").select("id, full_name").in("id", teacherIds);
-
-      const teacherMap = new Map(teachers?.map((t) => [t.id, t.full_name]) || []);
+      const studentIds = sessions.map((s) => (s as any).student_id).filter(Boolean);
+      const allProfileIds = [...new Set([...teacherIds, ...studentIds])];
+      const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", allProfileIds);
+      const profileMap = new Map(profiles?.map((p) => [p.id, p.full_name]) || []);
 
       // Get all participants who joined each session and haven't left
       const sessionIds = sessions.map((s) => s.id);
       const { data: attendanceLogs } = await supabase
         .from("zoom_attendance_logs")
-        .select("session_id, user_id, action, leave_time")
+        .select("session_id, user_id, action, leave_time, participant_name, role")
         .in("session_id", sessionIds);
 
       // Filter to get only users who are currently in session (joined but no leave_time)
       const activeParticipants = attendanceLogs?.filter((log) => log.action === "join_intent" && !log.leave_time) || [];
-
-      const allUserIds = new Set<string>();
-      activeParticipants.forEach((log) => allUserIds.add(log.user_id));
-      teacherIds.forEach((id) => allUserIds.add(id));
-
-      const { data: allUsers } = await supabase
-        .from("profiles")
-        .select("id, full_name")
-        .in("id", Array.from(allUserIds));
-
-      const userMap = new Map(allUsers?.map((u) => [u.id, u.full_name]) || []);
 
       // Build participants list per session
       const participantsMap = new Map<string, SessionParticipant[]>();
@@ -230,18 +220,29 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
         // Add teacher as first participant
         participants.push({
           userId: session.teacher_id,
-          userName: teacherMap.get(session.teacher_id) || "Teacher",
+          userName: profileMap.get(session.teacher_id) || "Teacher",
           isTeacher: true,
         });
 
-        // Add students who are currently active (no leave_time)
+        // Add student from live_session.student_id if set
+        const studentId = (session as any).student_id;
+        if (studentId) {
+          participants.push({
+            userId: studentId,
+            userName: profileMap.get(studentId) || "Student",
+            isTeacher: false,
+          });
+        }
+
+        // Also add any from attendance logs not already listed
         activeParticipants
           .filter((log) => log.session_id === session.id)
           .forEach((log) => {
-            if (log.user_id !== session.teacher_id && !participants.some((p) => p.userId === log.user_id)) {
+            const uid = log.user_id;
+            if (uid && uid !== session.teacher_id && uid !== studentId && !participants.some((p) => p.userId === uid)) {
               participants.push({
-                userId: log.user_id,
-                userName: userMap.get(log.user_id) || "Student",
+                userId: uid,
+                userName: profileMap.get(uid) || (log as any).participant_name || "Participant",
                 isTeacher: false,
               });
             }
@@ -252,7 +253,8 @@ export function AdminLiveMonitor({ className }: AdminLiveMonitorProps) {
 
       return sessions.map((session) => ({
         ...session,
-        teacherName: teacherMap.get(session.teacher_id) || "Unknown",
+        teacherName: profileMap.get(session.teacher_id) || "Unknown",
+        studentName: (session as any).student_id ? (profileMap.get((session as any).student_id) || "Student") : null,
         participants: participantsMap.get(session.id) || [],
         activeCount: participantsMap.get(session.id)?.length || 1,
       }));
