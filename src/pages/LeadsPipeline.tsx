@@ -12,13 +12,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Search, Phone, Mail, MapPin, Clock, User, Calendar,
   MessageSquare, ArrowRight, X as XIcon, ChevronRight, Eye,
   UserPlus, Send, Star, ThumbsUp, ThumbsDown, Minus, GripVertical,
-  Filter, RefreshCw, MoreVertical
+  Filter, RefreshCw, MoreVertical, Shield, FileText, Upload, Mic
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -26,6 +27,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 const PIPELINE_STAGES = [
   { key: 'new', label: 'New', color: 'bg-blue-500' },
   { key: 'contacted', label: 'Contacted', color: 'bg-yellow-500' },
+  { key: 'pre_screen', label: 'Pre-Screen', color: 'bg-[#7F77DD]' },
   { key: 'demo_scheduled', label: 'Demo', color: 'bg-purple-500' },
   { key: 'demo_done', label: 'Demo Done', color: 'bg-indigo-500' },
   { key: 'feedback_pending', label: 'Feedback', color: 'bg-orange-500' },
@@ -61,17 +63,30 @@ interface Lead {
   enrollment_form_sent_at: string | null;
   enrollment_form_opened_at: string | null;
   enrollment_form_data: any | null;
+  gender: string | null;
+  date_of_birth: string | null;
+  current_level_specimen: string | null;
+  learning_goals: string | null;
+  guardian_name: string | null;
+  guardian_relationship: string | null;
   created_at: string;
   updated_at: string;
 }
 
+const LEAD_SUBJECTS = [
+  'Quran Recitation', 'Tajweed', 'Quran Memorization', 'Arabic Language', 'Islamic Studies', 'Qaida (Beginners)',
+];
+
 // ── Create Lead Dialog ──
 function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const queryClient = useQueryClient();
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [form, setForm] = useState({
     name: '', email: '', phone_whatsapp: '', country: '', city: '',
-    for_whom: 'self', child_name: '', child_age: '',
-    subject_interest: '', preferred_time: '', message: '',
+    for_whom: 'child', child_name: '', child_age: '',
+    preferred_time: '', message: '', gender: '',
+    current_level_specimen: '', learning_goals: '',
+    guardian_name: '', guardian_relationship: '',
   });
 
   const createMutation = useMutation({
@@ -85,21 +100,29 @@ function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
         for_whom: form.for_whom,
         child_name: form.for_whom === 'child' ? form.child_name || null : null,
         child_age: form.for_whom === 'child' && form.child_age ? parseInt(form.child_age) : null,
-        subject_interest: form.subject_interest || null,
+        subject_interest: selectedSubjects.join(', ') || null,
         preferred_time: form.preferred_time || null,
         message: form.message || null,
+        gender: form.gender || null,
+        current_level_specimen: form.current_level_specimen || null,
+        learning_goals: form.learning_goals || null,
+        guardian_name: form.guardian_name || null,
+        guardian_relationship: form.guardian_relationship || null,
         status: 'new',
-      });
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
       toast({ title: 'Lead created successfully' });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       onOpenChange(false);
-      setForm({ name: '', email: '', phone_whatsapp: '', country: '', city: '', for_whom: 'self', child_name: '', child_age: '', subject_interest: '', preferred_time: '', message: '' });
+      setForm({ name: '', email: '', phone_whatsapp: '', country: '', city: '', for_whom: 'child', child_name: '', child_age: '', preferred_time: '', message: '', gender: '', current_level_specimen: '', learning_goals: '', guardian_name: '', guardian_relationship: '' });
+      setSelectedSubjects([]);
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
+
+  const toggleSubject = (s: string) => setSelectedSubjects(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -108,12 +131,21 @@ function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
           <DialogTitle className="flex items-center gap-2"><UserPlus className="h-5 w-5" /> New Lead</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Student Details</p>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label className="text-xs">Name *</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="Full name" /></div>
-            <div><Label className="text-xs">Email</Label><Input value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} placeholder="Email" type="email" /></div>
+            <div><Label className="text-xs">Student Name *</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="Full name" /></div>
+            <div><Label className="text-xs">Age</Label><Input value={form.child_age} onChange={e => setForm(p => ({ ...p, child_age: e.target.value }))} placeholder="Age" type="number" /></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label className="text-xs">WhatsApp</Label><Input value={form.phone_whatsapp} onChange={e => setForm(p => ({ ...p, phone_whatsapp: e.target.value }))} placeholder="+92..." /></div>
+            <div><Label className="text-xs">Gender</Label>
+              <Select value={form.gender} onValueChange={v => setForm(p => ({ ...p, gender: v }))}>
+                <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="male">Male</SelectItem>
+                  <SelectItem value="female">Female</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div><Label className="text-xs">For Whom</Label>
               <Select value={form.for_whom} onValueChange={v => setForm(p => ({ ...p, for_whom: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -125,22 +157,51 @@ function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
               </Select>
             </div>
           </div>
-          {form.for_whom === 'child' && (
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-xs">Child Name</Label><Input value={form.child_name} onChange={e => setForm(p => ({ ...p, child_name: e.target.value }))} /></div>
-              <div><Label className="text-xs">Child Age</Label><Input value={form.child_age} onChange={e => setForm(p => ({ ...p, child_age: e.target.value }))} type="number" /></div>
+
+          {(form.for_whom === 'child' || form.for_whom === 'other') && (
+            <div className="grid grid-cols-2 gap-3 p-3 bg-muted/50 rounded-lg">
+              <div><Label className="text-xs">Guardian Name</Label><Input value={form.guardian_name} onChange={e => setForm(p => ({ ...p, guardian_name: e.target.value }))} placeholder="Parent/Guardian" /></div>
+              <div><Label className="text-xs">Relationship</Label>
+                <Select value={form.guardian_relationship} onValueChange={v => setForm(p => ({ ...p, guardian_relationship: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mother">Mother</SelectItem>
+                    <SelectItem value="father">Father</SelectItem>
+                    <SelectItem value="guardian">Guardian</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label className="text-xs">WhatsApp *</Label><Input value={form.phone_whatsapp} onChange={e => setForm(p => ({ ...p, phone_whatsapp: e.target.value }))} placeholder="+92..." /></div>
+            <div><Label className="text-xs">Email</Label><Input value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} placeholder="Email" type="email" /></div>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div><Label className="text-xs">Country</Label><Input value={form.country} onChange={e => setForm(p => ({ ...p, country: e.target.value }))} /></div>
             <div><Label className="text-xs">City</Label><Input value={form.city} onChange={e => setForm(p => ({ ...p, city: e.target.value }))} /></div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label className="text-xs">Subject Interest</Label><Input value={form.subject_interest} onChange={e => setForm(p => ({ ...p, subject_interest: e.target.value }))} /></div>
-            <div><Label className="text-xs">Preferred Time</Label><Input value={form.preferred_time} onChange={e => setForm(p => ({ ...p, preferred_time: e.target.value }))} /></div>
+
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-2">Academic Info</p>
+          <div>
+            <Label className="text-xs">Subject to Study *</Label>
+            <div className="flex flex-wrap gap-1.5 mt-1">
+              {LEAD_SUBJECTS.map(s => (
+                <button key={s} type="button" onClick={() => toggleSubject(s)}
+                  className={`px-2.5 py-1 rounded-full text-xs border transition-all ${
+                    selectedSubjects.includes(s) ? 'bg-primary/10 text-primary border-primary/30 font-medium' : 'bg-muted/50 border-border hover:border-primary/20'
+                  }`}>{selectedSubjects.includes(s) ? s : `+ ${s}`}</button>
+              ))}
+            </div>
           </div>
-          <div><Label className="text-xs">Message</Label><Textarea value={form.message} onChange={e => setForm(p => ({ ...p, message: e.target.value }))} rows={2} /></div>
-          <Button onClick={() => createMutation.mutate()} disabled={!form.name || createMutation.isPending} className="w-full">
+          <div><Label className="text-xs">Current Level / Specimen</Label><Input value={form.current_level_specimen} onChange={e => setForm(p => ({ ...p, current_level_specimen: e.target.value }))} placeholder="e.g. Noorani Qaida page 5" /></div>
+          <div><Label className="text-xs">Learning Goals</Label><Textarea value={form.learning_goals} onChange={e => setForm(p => ({ ...p, learning_goals: e.target.value }))} placeholder="What does the student want to achieve?" rows={2} /></div>
+
+          <div><Label className="text-xs">Preferred Time</Label><Input value={form.preferred_time} onChange={e => setForm(p => ({ ...p, preferred_time: e.target.value }))} /></div>
+          <div><Label className="text-xs">Notes</Label><Textarea value={form.message} onChange={e => setForm(p => ({ ...p, message: e.target.value }))} rows={2} /></div>
+          <Button onClick={() => createMutation.mutate()} disabled={!form.name || selectedSubjects.length === 0 || createMutation.isPending} className="w-full">
             {createMutation.isPending ? 'Creating...' : 'Create Lead'}
           </Button>
         </div>
@@ -485,6 +546,310 @@ function EnrollmentFormSection({ lead }: { lead: Lead }) {
   );
 }
 
+// ── Pre-Screen Form ──
+const QUICK_TAGS = ['Good motivation', 'Needs encouragement', 'Parent involved', 'Irregular availability', 'Strong memory', 'Pronunciation issues', 'Young child — short sessions'];
+const LEVELS = [
+  { value: 'complete_beginner', label: 'Complete Beginner', desc: 'No prior learning' },
+  { value: 'basic', label: 'Basic', desc: 'Knows alphabet, limited reading' },
+  { value: 'intermediate', label: 'Intermediate', desc: 'Reads with errors, needs Tajweed' },
+  { value: 'advanced', label: 'Advanced', desc: 'Reads fluently, refinement needed' },
+];
+
+function PreScreenForm({ lead, onComplete }: { lead: Lead; onComplete: () => void }) {
+  const queryClient = useQueryClient();
+  const { profile } = useAuth();
+  const [isSkipped, setIsSkipped] = useState(false);
+  const [form, setForm] = useState({
+    channel: 'whatsapp', duration_minutes: '', material_tested: '',
+    estimated_level: '', observations: '', confidence_rating: 0,
+    proceed_decision: '', suggested_teacher_id: '',
+  });
+  const [quickTags, setQuickTags] = useState<string[]>([]);
+
+  const { data: existingScreening } = useQuery({
+    queryKey: ['lead-screening', lead.id],
+    queryFn: async () => {
+      const { data } = await supabase.from('lead_screenings').select('*').eq('lead_id', lead.id).order('created_at', { ascending: false }).limit(1);
+      return (data && data.length > 0) ? data[0] : null;
+    },
+  });
+
+  const { data: teachers = [] } = useQuery({
+    queryKey: ['teachers-for-screening'],
+    queryFn: async () => {
+      const { data } = await supabase.from('user_roles').select('user_id, profiles!inner(id, full_name)').eq('role', 'teacher');
+      return (data || []).map((r: any) => ({ id: r.profiles.id, name: r.profiles.full_name }));
+    },
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const payload = {
+        lead_id: lead.id,
+        screened_by: profile?.id || null,
+        channel: form.channel,
+        duration_minutes: form.duration_minutes ? parseInt(form.duration_minutes) : null,
+        material_tested: form.material_tested || null,
+        estimated_level: form.estimated_level || null,
+        quick_tags: quickTags,
+        observations: form.observations || null,
+        confidence_rating: form.confidence_rating || null,
+        proceed_decision: form.proceed_decision || null,
+        suggested_teacher_id: form.suggested_teacher_id || null,
+        is_skipped: isSkipped,
+      };
+      
+      if (existingScreening) {
+        const { error } = await (supabase.from('lead_screenings') as any).update(payload).eq('id', existingScreening.id);
+        if (error) throw error;
+      } else {
+        const { error } = await (supabase.from('lead_screenings') as any).insert(payload);
+        if (error) throw error;
+      }
+      
+      // Advance lead to pre_screen if currently new/contacted
+      if (['new', 'contacted'].includes(lead.status)) {
+        await supabase.from('leads').update({ status: 'pre_screen' as any }).eq('id', lead.id);
+      }
+      // If proceed_decision is yes, advance to demo_scheduled
+      if (form.proceed_decision === 'yes' || form.proceed_decision === 'yes_with_notes') {
+        await supabase.from('leads').update({ status: 'demo_scheduled' as any }).eq('id', lead.id);
+      }
+    },
+    onSuccess: () => {
+      toast({ title: isSkipped ? 'Screening skipped' : 'Screening saved' });
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-screening', lead.id] });
+      onComplete();
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const toggleTag = (tag: string) => setQuickTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
+
+  return (
+    <div className="space-y-4">
+      {/* Bypass checkbox */}
+      <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg border">
+        <Checkbox checked={isSkipped} onCheckedChange={(v) => setIsSkipped(!!v)} id="skip-screening" />
+        <div>
+          <label htmlFor="skip-screening" className="text-sm font-medium cursor-pointer">Not required — skip this step</label>
+          <p className="text-xs text-muted-foreground">Tick to bypass screening and proceed directly to demo scheduling</p>
+        </div>
+      </div>
+
+      {isSkipped ? (
+        <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="w-full">
+          {saveMutation.isPending ? 'Saving...' : 'Skip & Continue to Demo'}
+        </Button>
+      ) : (
+        <>
+          <div className="p-3 bg-blue-50 dark:bg-blue-900/10 rounded-lg border border-blue-200 dark:border-blue-800 text-xs text-blue-700 dark:text-blue-400">
+            Pre-demo screening helps the teacher prepare and reduces no-shows. Record the channel used, material tested, and your observations below.
+          </div>
+
+          {/* Screening Logistics */}
+          <Card className="border shadow-sm">
+            <CardContent className="pt-4 space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Screening Logistics</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Screened by</Label>
+                  <Input value={profile?.full_name || 'Current user'} disabled className="text-xs h-9 mt-1" />
+                </div>
+                <div>
+                  <Label className="text-xs">Date & time</Label>
+                  <Input value={format(new Date(), 'dd MMM yyyy — HH:mm')} disabled className="text-xs h-9 mt-1" />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Screening channel *</Label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {['whatsapp', 'zoom', 'in_person', 'phone', 'other'].map(ch => (
+                    <button key={ch} type="button" onClick={() => setForm(p => ({ ...p, channel: ch }))}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                        form.channel === ch ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/50 border-border hover:border-primary/30'
+                      }`}>
+                      {ch === 'whatsapp' ? 'WhatsApp' : ch === 'in_person' ? 'In-person' : ch === 'phone' ? 'Phone call' : ch.charAt(0).toUpperCase() + ch.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Duration (minutes)</Label>
+                <Input type="number" value={form.duration_minutes} onChange={e => setForm(p => ({ ...p, duration_minutes: e.target.value }))} placeholder="e.g. 15" className="text-xs h-9 mt-1" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Material & Level Assessment */}
+          <Card className="border shadow-sm">
+            <CardContent className="pt-4 space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Material & Level Assessment</p>
+              <div>
+                <Label className="text-xs">Material tested</Label>
+                <Input value={form.material_tested} onChange={e => setForm(p => ({ ...p, material_tested: e.target.value }))}
+                  placeholder="e.g. Noorani Qaida lesson 3, Surah Al-Fatiha, Juz Amma" className="text-xs h-9 mt-1" />
+              </div>
+              <div>
+                <Label className="text-xs">Estimated level</Label>
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                  {LEVELS.map(level => (
+                    <button key={level.value} type="button" onClick={() => setForm(p => ({ ...p, estimated_level: level.value }))}
+                      className={`p-3 rounded-lg border-2 text-left transition-all ${
+                        form.estimated_level === level.value ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/30'
+                      }`}>
+                      <p className="text-sm font-medium">{level.label}</p>
+                      <p className="text-xs text-muted-foreground">{level.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Quick observations <span className="text-muted-foreground font-normal">(tap to tag)</span></Label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {QUICK_TAGS.map(tag => (
+                    <button key={tag} type="button" onClick={() => toggleTag(tag)}
+                      className={`px-3 py-1.5 rounded-full text-xs border transition-all ${
+                        quickTags.includes(tag) ? 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700' : 'bg-muted/50 border-border hover:border-primary/30'
+                      }`}>
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Screening notes</Label>
+                <Textarea value={form.observations} onChange={e => setForm(p => ({ ...p, observations: e.target.value }))}
+                  placeholder="Detailed observations, recommended course, anything the teacher should know before the demo..." rows={3} className="text-xs mt-1" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Admin Recommendation */}
+          <Card className="border shadow-sm">
+            <CardContent className="pt-4 space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Admin Recommendation</p>
+              <div>
+                <Label className="text-xs">Proceed to demo? *</Label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {[
+                    { v: 'yes', l: 'Yes — schedule demo' },
+                    { v: 'yes_with_notes', l: 'Yes — with notes for teacher' },
+                    { v: 'hold', l: 'Hold — needs follow-up' },
+                    { v: 'not_suitable', l: 'Not suitable' },
+                  ].map(opt => (
+                    <button key={opt.v} type="button" onClick={() => setForm(p => ({ ...p, proceed_decision: opt.v }))}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                        form.proceed_decision === opt.v ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/50 border-border hover:border-primary/30'
+                      }`}>
+                      {opt.l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Confidence rating</Label>
+                <div className="flex gap-1 mt-1">
+                  {[1, 2, 3, 4, 5].map(n => (
+                    <button key={n} type="button" onClick={() => setForm(p => ({ ...p, confidence_rating: n }))}
+                      className={`w-9 h-9 rounded-lg border-2 text-sm font-bold transition-all ${
+                        form.confidence_rating >= n ? 'bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700' : 'border-border text-muted-foreground'
+                      }`}>
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Suggested teacher (optional)</Label>
+                <Select value={form.suggested_teacher_id} onValueChange={v => setForm(p => ({ ...p, suggested_teacher_id: v }))}>
+                  <SelectTrigger className="text-xs h-9 mt-1"><SelectValue placeholder="Assign preferred teacher for demo" /></SelectTrigger>
+                  <SelectContent>
+                    {teachers.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Button variant="outline" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+              Save Draft
+            </Button>
+            <Button onClick={() => saveMutation.mutate()} disabled={!form.proceed_decision || saveMutation.isPending}>
+              {saveMutation.isPending ? 'Saving...' : 'Complete & Schedule Demo ↗'}
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Lead Attachments Section ──
+function LeadAttachmentsSection({ leadId }: { leadId: string }) {
+  const queryClient = useQueryClient();
+  const { profile } = useAuth();
+
+  const { data: attachments = [] } = useQuery({
+    queryKey: ['lead-attachments', leadId],
+    queryFn: async () => {
+      const { data } = await (supabase.from('lead_attachments') as any).select('*').eq('lead_id', leadId).order('created_at', { ascending: false });
+      return data || [];
+    },
+  });
+
+  const uploadFile = async (file: File, type: string) => {
+    const ext = file.name.split('.').pop();
+    const path = `${leadId}/${Date.now()}.${ext}`;
+    const { error: uploadErr } = await supabase.storage.from('lead-attachments').upload(path, file);
+    if (uploadErr) { toast({ title: 'Upload failed', description: uploadErr.message, variant: 'destructive' }); return; }
+    const { data: urlData } = supabase.storage.from('lead-attachments').getPublicUrl(path);
+    const { error } = await (supabase.from('lead_attachments') as any).insert({
+      lead_id: leadId, file_url: urlData.publicUrl, file_type: type,
+      file_name: file.name, file_size: file.size, uploaded_by: profile?.id,
+    });
+    if (error) { toast({ title: 'Error', description: error.message, variant: 'destructive' }); return; }
+    queryClient.invalidateQueries({ queryKey: ['lead-attachments', leadId] });
+    toast({ title: 'File uploaded' });
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { type: 'image', label: 'Image', desc: 'JPG, PNG, WebP · 5 MB', accept: '.jpg,.jpeg,.png,.webp', icon: Upload },
+          { type: 'pdf', label: 'PDF', desc: 'PDF · 10 MB', accept: '.pdf', icon: FileText },
+          { type: 'voice', label: 'Voice Note', desc: 'OGG, MP4, WebM · 3 min', accept: '.ogg,.opus,.mp4,.webm,.m4a', icon: Mic },
+        ].map(t => (
+          <label key={t.type} className="flex flex-col items-center gap-1 p-3 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/30 transition-all">
+            <t.icon className="h-5 w-5 text-muted-foreground" />
+            <span className="text-xs font-medium">{t.label}</span>
+            <span className="text-[10px] text-muted-foreground text-center">{t.desc}</span>
+            <input type="file" accept={t.accept} className="hidden" onChange={e => {
+              const file = e.target.files?.[0];
+              if (file) uploadFile(file, t.type);
+              e.target.value = '';
+            }} />
+          </label>
+        ))}
+      </div>
+      {attachments.length > 0 && (
+        <div className="space-y-2">
+          {attachments.map((a: any) => (
+            <div key={a.id} className="flex items-center gap-2 p-2 bg-muted/30 rounded text-xs">
+              {a.file_type === 'voice' ? <Mic className="h-3 w-3" /> : a.file_type === 'pdf' ? <FileText className="h-3 w-3" /> : <Upload className="h-3 w-3" />}
+              <a href={a.file_url} target="_blank" rel="noreferrer" className="text-primary hover:underline flex-1 truncate">{a.file_name}</a>
+              <span className="text-muted-foreground">{a.file_size ? `${(a.file_size / 1024).toFixed(0)} KB` : ''}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Lead Detail Dialog ──
 function LeadDetailDialog({ lead, open, onOpenChange }: { lead: Lead | null; open: boolean; onOpenChange: (v: boolean) => void }) {
   const queryClient = useQueryClient();
@@ -539,8 +904,9 @@ function LeadDetailDialog({ lead, open, onOpenChange }: { lead: Lead | null; ope
         </DialogHeader>
 
         <Tabs defaultValue="info" className="mt-2">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="info">Info</TabsTrigger>
+            <TabsTrigger value="screen">Screen</TabsTrigger>
             <TabsTrigger value="demo">Demo</TabsTrigger>
             <TabsTrigger value="notes">Notes</TabsTrigger>
             <TabsTrigger value="enroll">Enroll</TabsTrigger>
@@ -559,9 +925,28 @@ function LeadDetailDialog({ lead, open, onOpenChange }: { lead: Lead | null; ope
                 <p className="font-medium">For child: {lead.child_name} {lead.child_age ? `(Age: ${lead.child_age})` : ''}</p>
               </div>
             )}
-            {lead.subject_interest && <div className="text-sm"><span className="text-muted-foreground">Subject:</span> {lead.subject_interest}</div>}
+            {(lead as any).guardian_name && (
+              <div className="text-sm"><span className="text-muted-foreground">Guardian:</span> {(lead as any).guardian_name} {(lead as any).guardian_relationship ? `(${(lead as any).guardian_relationship})` : ''}</div>
+            )}
+            {lead.subject_interest && (
+              <div className="flex flex-wrap gap-1.5">
+                {lead.subject_interest.split(', ').map((s: string) => (
+                  <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>
+                ))}
+              </div>
+            )}
+            {(lead as any).current_level_specimen && (
+              <div className="text-sm"><span className="text-muted-foreground">Level/Specimen:</span> {(lead as any).current_level_specimen}</div>
+            )}
+            {(lead as any).learning_goals && (
+              <div className="text-sm"><span className="text-muted-foreground">Goals:</span> {(lead as any).learning_goals}</div>
+            )}
             {lead.message && <div className="text-sm p-3 bg-muted/30 rounded-lg italic">"{lead.message}"</div>}
             <div className="text-xs text-muted-foreground">Created {formatDistanceToNow(new Date(lead.created_at))} ago</div>
+          </TabsContent>
+
+          <TabsContent value="screen" className="space-y-3 mt-3">
+            <PreScreenForm lead={lead} onComplete={() => {}} />
           </TabsContent>
 
           <TabsContent value="demo" className="space-y-3 mt-3">
@@ -601,6 +986,10 @@ function LeadDetailDialog({ lead, open, onOpenChange }: { lead: Lead | null; ope
                 </div>
               )}
             </ScrollArea>
+            <div className="pt-2 border-t">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Attachments</p>
+              <LeadAttachmentsSection leadId={lead.id} />
+            </div>
           </TabsContent>
 
           <TabsContent value="enroll" className="space-y-3 mt-3">
