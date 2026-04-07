@@ -282,6 +282,7 @@ export default function OrganizationSettings() {
             <TabsTrigger value="branches">🌐 Branches</TabsTrigger>
             <TabsTrigger value="divisions">📦 Divisions</TabsTrigger>
             <TabsTrigger value="holidays">📅 Holidays</TabsTrigger>
+            <TabsTrigger value="payouts">💰 Payouts</TabsTrigger>
           </TabsList>
 
           {/* ── Tab 1: Identity ── */}
@@ -465,6 +466,11 @@ export default function OrganizationSettings() {
                 </Table>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* ── Tab 5: Default Payout Rates ── */}
+          <TabsContent value="payouts">
+            <DefaultPayoutRatesSection />
           </TabsContent>
         </Tabs>
       </div>
