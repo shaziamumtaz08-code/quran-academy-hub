@@ -22,11 +22,12 @@ import { cn } from '@/lib/utils';
 import {
   ChevronLeft, Save, Plus, Trash2, GripVertical, FileText, Video, File,
   Sparkles, Loader2, Upload, ChevronDown, ChevronRight, Users, Settings,
-  BookOpen, X, ExternalLink, ClipboardList, UserPlus
+  BookOpen, X, ExternalLink, ClipboardList, UserPlus, GraduationCap
 } from 'lucide-react';
 import { RegistrationFormEditor } from '@/components/courses/RegistrationFormEditor';
 import { CourseApplicants } from '@/components/courses/CourseApplicants';
 import { CourseMarketingTab } from '@/components/courses/CourseMarketingTab';
+import { CourseClassesTab } from '@/components/courses/CourseClassesTab';
 
 // ─── Types ──────────────────────────────────────────────
 interface Module {
@@ -618,6 +619,9 @@ export default function CourseBuilder() {
               <TabsTrigger value="applicants" className="gap-1.5 text-xs sm:text-sm">
                 <UserPlus className="h-4 w-4" /><span className="hidden sm:inline">Applicants</span>
               </TabsTrigger>
+              <TabsTrigger value="classes" className="gap-1.5 text-xs sm:text-sm">
+                <GraduationCap className="h-4 w-4" /><span className="hidden sm:inline">Classes</span>
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -1079,6 +1083,11 @@ export default function CourseBuilder() {
           {/* ═══ APPLICANTS TAB ═══ */}
           <TabsContent value="applicants" className="mt-4">
             <CourseApplicants courseId={courseId!} />
+          </TabsContent>
+
+          {/* ═══ CLASSES TAB ═══ */}
+          <TabsContent value="classes" className="mt-4">
+            <CourseClassesTab courseId={courseId!} />
           </TabsContent>
         </Tabs>
       </div>
