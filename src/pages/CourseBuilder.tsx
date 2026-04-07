@@ -33,6 +33,9 @@ import { CourseFinanceTab } from '@/components/courses/CourseFinanceTab';
 import { CourseResourcesTab } from '@/components/courses/CourseResourcesTab';
 import { CourseNotificationsTab } from '@/components/courses/CourseNotificationsTab';
 import { CourseAssignmentsTab } from '@/components/courses/CourseAssignmentsTab';
+import { CourseAttendanceTab } from '@/components/courses/CourseAttendanceTab';
+import { CourseExamsTab } from '@/components/courses/CourseExamsTab';
+import { CourseCertificatesTab } from '@/components/courses/CourseCertificatesTab';
 
 // ─── Types ──────────────────────────────────────────────
 interface Module {
@@ -1061,6 +1064,21 @@ export default function CourseBuilder() {
               courseName={course?.name}
               whatsappChannelLink={(course as any)?.whatsapp_channel_link}
             />
+          </TabsContent>
+
+          {/* ═══ ATTENDANCE TAB ═══ */}
+          <TabsContent value="attendance" className="mt-4">
+            <CourseAttendanceTab courseId={courseId!} />
+          </TabsContent>
+
+          {/* ═══ EXAMS & QUIZZES TAB ═══ */}
+          <TabsContent value="exams" className="mt-4">
+            <CourseExamsTab courseId={courseId!} />
+          </TabsContent>
+
+          {/* ═══ CERTIFICATES TAB ═══ */}
+          <TabsContent value="certificates" className="mt-4">
+            <CourseCertificatesTab courseId={courseId!} />
           </TabsContent>
         </Tabs>
       </div>
