@@ -137,7 +137,7 @@ function CreateClassDialog({ open, onOpenChange, courseId }: { open: boolean; on
 
   const { data: zoomLicenses = [] } = useQuery({
     queryKey: ['zoom-licenses-picker'],
-    queryFn: async () => {
+    queryFn: async (): Promise<any[]> => {
       const { data } = await supabase.from('zoom_licenses').select('id, label, zoom_email, meeting_link').order('priority');
       return data || [];
     },
