@@ -570,6 +570,7 @@ export type Database = {
       }
       chat_groups: {
         Row: {
+          channel_mode: string
           course_id: string | null
           created_at: string
           created_by: string
@@ -581,6 +582,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          channel_mode?: string
           course_id?: string | null
           created_at?: string
           created_by: string
@@ -592,6 +594,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          channel_mode?: string
           course_id?: string | null
           created_at?: string
           created_by?: string

@@ -19,7 +19,7 @@ import { MembersPanel } from '@/components/chat/MembersPanel';
 import { AIAssistantDialog } from '@/components/chat/AIAssistantDialog';
 import { ForwardMessageDialog } from '@/components/chat/ForwardMessageDialog';
 
-const typeIcons: Record<string, string> = { project: '📋', issue: '🐛', salary: '💰', custom: '💬' };
+const typeIcons: Record<string, string> = { project: '📋', issue: '🐛', salary: '💰', custom: '💬', channel: '📢' };
 
 export default function GroupChat() {
   const { user } = useAuth();
@@ -28,6 +28,7 @@ export default function GroupChat() {
   const [createOpen, setCreateOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupType, setNewGroupType] = useState('project');
+  const [newChannelMode, setNewChannelMode] = useState<'group' | 'channel'>('group');
   const [membersOpen, setMembersOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<any | null>(null);
@@ -137,9 +138,9 @@ export default function GroupChat() {
   const createGroup = useMutation({
     mutationFn: async () => {
       if (!user?.id) return;
-      const { data: group, error } = await supabase
+      const { data: group, error } = await (supabase as any)
         .from('chat_groups')
-        .insert({ name: newGroupName, type: newGroupType, created_by: user.id })
+        .insert({ name: newGroupName, type: newGroupType, created_by: user.id, channel_mode: newChannelMode })
         .select()
         .single();
       if (error) throw error;
@@ -150,8 +151,9 @@ export default function GroupChat() {
       queryClient.invalidateQueries({ queryKey: ['chat-groups'] });
       setCreateOpen(false);
       setNewGroupName('');
+      setNewChannelMode('group');
       if (group) setActiveGroupId(group.id);
-      toast({ title: 'Group created' });
+      toast({ title: newChannelMode === 'channel' ? 'Channel created' : 'Group created' });
     },
   });
 
@@ -295,7 +297,9 @@ export default function GroupChat() {
                   <span className="text-sm">{g.is_dm ? '👤' : (typeIcons[g.type] || '💬')}</span>
                   <div className="min-w-0">
                     <p className="text-[13px] font-bold text-foreground truncate">{g.name}</p>
-                    <p className="text-[10px] text-muted-foreground capitalize">{g.is_dm ? 'Direct message' : g.type}</p>
+                    <p className="text-[10px] text-muted-foreground capitalize">
+                      {g.is_dm ? 'Direct message' : g.channel_mode === 'channel' ? '📢 Channel' : g.type}
+                    </p>
                   </div>
                 </div>
               </button>
@@ -359,12 +363,19 @@ export default function GroupChat() {
                 </div>
               )}
 
-              <ChatInput
-                onSend={(content, attachmentUrl) => sendMessage.mutate({ content, attachmentUrl })}
-                sending={sendMessage.isPending}
-                replyTo={replyTo}
-                onCancelReply={() => setReplyTo(null)}
-              />
+              {/* ChatInput: hide for non-admins in channel mode */}
+              {(activeGroup.channel_mode !== 'channel' || isGroupAdmin) ? (
+                <ChatInput
+                  onSend={(content, attachmentUrl) => sendMessage.mutate({ content, attachmentUrl })}
+                  sending={sendMessage.isPending}
+                  replyTo={replyTo}
+                  onCancelReply={() => setReplyTo(null)}
+                />
+              ) : (
+                <div className="p-3 border-t border-border text-center">
+                  <p className="text-xs text-muted-foreground">📢 This is a channel — only admins can post</p>
+                </div>
+              )}
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center">
@@ -395,6 +406,16 @@ export default function GroupChat() {
               <Input value={newGroupName} onChange={e => setNewGroupName(e.target.value)} placeholder="e.g. Hifz Team" />
             </div>
             <div>
+              <Label>Mode</Label>
+              <Select value={newChannelMode} onValueChange={(v) => setNewChannelMode(v as 'group' | 'channel')}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="group">💬 Group — Everyone can post</SelectItem>
+                  <SelectItem value="channel">📢 Channel — Admin posts only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <Label>Type</Label>
               <Select value={newGroupType} onValueChange={setNewGroupType}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -406,7 +427,9 @@ export default function GroupChat() {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={() => createGroup.mutate()} disabled={!newGroupName.trim()}>Create Group</Button>
+            <Button onClick={() => createGroup.mutate()} disabled={!newGroupName.trim()}>
+              {newChannelMode === 'channel' ? 'Create Channel' : 'Create Group'}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
