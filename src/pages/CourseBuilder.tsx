@@ -611,6 +611,12 @@ export default function CourseBuilder() {
               <TabsTrigger value="roster" className="gap-1.5 text-xs sm:text-sm">
                 <Users className="h-4 w-4" /><span className="hidden sm:inline">Roster</span>
               </TabsTrigger>
+              <TabsTrigger value="reg-form" className="gap-1.5 text-xs sm:text-sm">
+                <ClipboardList className="h-4 w-4" /><span className="hidden sm:inline">Reg Form</span>
+              </TabsTrigger>
+              <TabsTrigger value="applicants" className="gap-1.5 text-xs sm:text-sm">
+                <UserPlus className="h-4 w-4" /><span className="hidden sm:inline">Applicants</span>
+              </TabsTrigger>
             </TabsList>
           </div>
 
