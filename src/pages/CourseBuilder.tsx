@@ -33,6 +33,9 @@ import { CourseFinanceTab } from '@/components/courses/CourseFinanceTab';
 import { CourseResourcesTab } from '@/components/courses/CourseResourcesTab';
 import { CourseNotificationsTab } from '@/components/courses/CourseNotificationsTab';
 import { CourseAssignmentsTab } from '@/components/courses/CourseAssignmentsTab';
+import { CourseAttendanceTab } from '@/components/courses/CourseAttendanceTab';
+import { CourseExamsTab } from '@/components/courses/CourseExamsTab';
+import { CourseCertificatesTab } from '@/components/courses/CourseCertificatesTab';
 
 // ─── Types ──────────────────────────────────────────────
 interface Module {
