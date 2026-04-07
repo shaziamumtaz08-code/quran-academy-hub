@@ -43,33 +43,29 @@ export function DashboardShell({ tabs, leftContent, rightContent, brandLabel }: 
   });
 
   return (
-    <div className="min-h-screen bg-background relative font-sans">
-      {/* Fixed top bar — mobile only */}
-      <RoleTopBar brandLabel={brandLabel} />
-
+    <div className="relative font-sans">
       {/* Scrollable content */}
-      <div className="p-4 pt-14 md:pt-4 pb-20 md:pb-6 space-y-2 max-w-[680px] md:max-w-[1100px] mx-auto">
-        {/* Desktop greeting + notifications — hidden on mobile (top bar handles it) */}
-        <div className="hidden md:flex items-center justify-between bg-card border border-border rounded-xl px-3 py-1.5">
-          <p className="text-sm font-bold text-foreground truncate">Assalamu Alaikum, {firstName} 👋</p>
-          <button className="relative bg-secondary border border-border rounded-lg w-9 h-9 flex items-center justify-center text-foreground shrink-0">
+      <div className="space-y-2 max-w-[1100px] mx-auto">
+        {/* Greeting */}
+        <div className="hidden md:flex items-center justify-between bg-white border border-lms-border rounded-[10px] px-3 py-1.5">
+          <p className="text-[13px] font-medium text-lms-navy truncate">Assalamu Alaikum, {firstName} 👋</p>
+          <button className="relative bg-lms-surface border border-lms-border rounded-lg w-9 h-9 flex items-center justify-center text-lms-text-1 shrink-0">
             <Bell className="h-4 w-4" />
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center leading-none">
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-lms-danger text-white text-[10px] font-medium flex items-center justify-center leading-none">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
           </button>
         </div>
 
-        {/* Islamic header — full width on both mobile & desktop */}
+        {/* Islamic header */}
         <IslamicDateCard onIslamicDateLoaded={setIslamicDate} onTimezoneResolved={setTimezone} />
 
         {/* Prayer widget */}
         <PrayerTimesWidget islamicDate={islamicDate} timezone={timezone} />
 
-        {/* Mobile: single column stacked (left then right) */}
-        {/* Desktop: 2-col grid 55/45 */}
+        {/* 2-col grid */}
         <div className="md:grid md:grid-cols-[55%_45%] md:gap-6">
           <div className="space-y-2 md:space-y-4">
             {leftContent}
@@ -79,9 +75,6 @@ export function DashboardShell({ tabs, leftContent, rightContent, brandLabel }: 
           </div>
         </div>
       </div>
-
-      {/* Fixed bottom nav — mobile only */}
-      <RoleBottomNav tabs={tabs} />
     </div>
   );
 }
