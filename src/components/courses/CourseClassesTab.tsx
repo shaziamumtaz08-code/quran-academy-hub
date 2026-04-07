@@ -488,10 +488,6 @@ function ClassDetail({ cls, courseId, onBack }: { cls: any; courseId: string; on
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
-              ))}
-                  </button>
-                </div>
-              ))}
             </div>
           )}
 
