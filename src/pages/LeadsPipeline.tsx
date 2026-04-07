@@ -925,7 +925,22 @@ function LeadDetailDialog({ lead, open, onOpenChange }: { lead: Lead | null; ope
                 <p className="font-medium">For child: {lead.child_name} {lead.child_age ? `(Age: ${lead.child_age})` : ''}</p>
               </div>
             )}
-            {lead.subject_interest && <div className="text-sm"><span className="text-muted-foreground">Subject:</span> {lead.subject_interest}</div>}
+            {(lead as any).guardian_name && (
+              <div className="text-sm"><span className="text-muted-foreground">Guardian:</span> {(lead as any).guardian_name} {(lead as any).guardian_relationship ? `(${(lead as any).guardian_relationship})` : ''}</div>
+            )}
+            {lead.subject_interest && (
+              <div className="flex flex-wrap gap-1.5">
+                {lead.subject_interest.split(', ').map((s: string) => (
+                  <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>
+                ))}
+              </div>
+            )}
+            {(lead as any).current_level_specimen && (
+              <div className="text-sm"><span className="text-muted-foreground">Level/Specimen:</span> {(lead as any).current_level_specimen}</div>
+            )}
+            {(lead as any).learning_goals && (
+              <div className="text-sm"><span className="text-muted-foreground">Goals:</span> {(lead as any).learning_goals}</div>
+            )}
             {lead.message && <div className="text-sm p-3 bg-muted/30 rounded-lg italic">"{lead.message}"</div>}
             <div className="text-xs text-muted-foreground">Created {formatDistanceToNow(new Date(lead.created_at))} ago</div>
           </TabsContent>
