@@ -53,6 +53,7 @@ export default function FinanceLanding() {
     { id: 'expenses', title: 'Expenses', subtitle: 'Month total', count: fmt(counts?.expTotal), countLoading: isLoading, icon: <Receipt className="h-5 w-5" />, color: 'bg-amber-500' },
     { id: 'advances', title: 'Cash Advances', subtitle: 'Outstanding', count: fmt(counts?.advOutstanding), countLoading: isLoading, icon: <Banknote className="h-5 w-5" />, color: 'bg-rose-500' },
     { id: 'setup', title: 'Finance Setup', subtitle: 'Plans & config', count: '⚙️', countLoading: false, icon: <Settings className="h-5 w-5" />, color: 'bg-muted' },
+    { id: 'payouts', title: 'Teacher Payouts', subtitle: 'Course staff pay', count: '🎓', countLoading: false, icon: <GraduationCap className="h-5 w-5" />, color: 'bg-violet-500' },
   ];
 
   const contentMap = useMemo(() => ({
@@ -61,6 +62,7 @@ export default function FinanceLanding() {
     'expenses': <Suspense fallback={<Loading />}><Expenses /></Suspense>,
     'advances': <Suspense fallback={<Loading />}><CashAdvances /></Suspense>,
     'setup': <Suspense fallback={<Loading />}><FinanceSetup /></Suspense>,
+    'payouts': <Suspense fallback={<Loading />}><TeacherPayouts /></Suspense>,
   }), []);
 
   return (
