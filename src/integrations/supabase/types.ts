@@ -948,6 +948,106 @@ export type Database = {
           },
         ]
       }
+      course_fee_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          notes: string | null
+          payment_date: string
+          payment_link: string | null
+          payment_method: string | null
+          recorded_by: string | null
+          reference: string | null
+          student_fee_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_link?: string | null
+          payment_method?: string | null
+          recorded_by?: string | null
+          reference?: string | null
+          student_fee_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_link?: string | null
+          payment_method?: string | null
+          recorded_by?: string | null
+          reference?: string | null
+          student_fee_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_fee_payments_student_fee_id_fkey"
+            columns: ["student_fee_id"]
+            isOneToOne: false
+            referencedRelation: "course_student_fees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_fee_plans: {
+        Row: {
+          course_id: string
+          created_at: string
+          currency: string
+          id: string
+          installment_schedule: Json
+          installments: number
+          notes: string | null
+          plan_name: string
+          status: string
+          tax_percent: number
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          currency?: string
+          id?: string
+          installment_schedule?: Json
+          installments?: number
+          notes?: string | null
+          plan_name: string
+          status?: string
+          tax_percent?: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          installment_schedule?: Json
+          installments?: number
+          notes?: string | null
+          plan_name?: string
+          status?: string
+          tax_percent?: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_fee_plans_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_lessons: {
         Row: {
           content_html: string | null
@@ -1289,6 +1389,72 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      course_student_fees: {
+        Row: {
+          course_id: string
+          created_at: string
+          custom_installment_schedule: Json | null
+          discount_type: string
+          discount_value: number
+          id: string
+          is_scholarship: boolean
+          notes: string | null
+          plan_id: string | null
+          status: string
+          student_id: string
+          total_due: number
+          total_paid: number
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          custom_installment_schedule?: Json | null
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          is_scholarship?: boolean
+          notes?: string | null
+          plan_id?: string | null
+          status?: string
+          student_id: string
+          total_due?: number
+          total_paid?: number
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          custom_installment_schedule?: Json | null
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          is_scholarship?: boolean
+          notes?: string | null
+          plan_id?: string | null
+          status?: string
+          student_id?: string
+          total_due?: number
+          total_paid?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_student_fees_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_student_fees_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "course_fee_plans"
             referencedColumns: ["id"]
           },
         ]
