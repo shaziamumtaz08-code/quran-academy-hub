@@ -54,6 +54,7 @@ import RecordedCourses from "./pages/RecordedCourses";
 import NotificationCenter from "./pages/NotificationCenter";
 import GroupChat from "./pages/GroupChat";
 import WhatsAppInbox from "./pages/WhatsAppInbox";
+import PublicApplyForm from "./pages/PublicApplyForm";
 
 // Landing pages
 import TeachingLanding from "./pages/TeachingLanding";
@@ -353,6 +354,8 @@ function AppRoutes() {
       <Route path="/courses-catalog" element={<CourseCatalog />} />
       {/* Recorded Courses Storefront - no auth */}
       <Route path="/recorded-courses" element={<RecordedCourses />} />
+      {/* Public Registration Form - no auth */}
+      <Route path="/apply/:slug" element={<PublicApplyForm />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
