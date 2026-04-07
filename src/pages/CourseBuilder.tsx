@@ -1076,6 +1076,20 @@ export default function CourseBuilder() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* ═══ REGISTRATION FORM TAB ═══ */}
+          <TabsContent value="reg-form" className="mt-4">
+            <RegistrationFormEditor
+              courseId={courseId!}
+              courseSlug={course.seo_slug || course.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}
+              courseName={course.name}
+            />
+          </TabsContent>
+
+          {/* ═══ APPLICANTS TAB ═══ */}
+          <TabsContent value="applicants" className="mt-4">
+            <CourseApplicants courseId={courseId!} />
+          </TabsContent>
         </Tabs>
       </div>
 
