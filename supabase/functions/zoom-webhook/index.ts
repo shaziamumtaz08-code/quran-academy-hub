@@ -413,7 +413,7 @@ Deno.serve(async (req) => {
         // Match by participant_name since we may not have user_id
         const { data: joinLog } = await supabase
           .from("zoom_attendance_logs")
-          .select("id, user_id, join_time, total_duration_minutes, role")
+          .select("id, user_id, join_time, total_duration_minutes, role, participant_name, participant_email")
           .eq("session_id", session.id)
           .eq("action", "join_intent")
           .is("leave_time", null)
@@ -427,31 +427,22 @@ Deno.serve(async (req) => {
           if (joinLog.length === 1) {
             matchedLog = joinLog[0];
           } else {
-            // Multiple unresolved joins - take the most recent one
-            // (In a 1:1 system there should be at most 2: teacher + student)
-            matchedLog = joinLog[0];
+            matchedLog = joinLog.find((entry: any) => {
+              const sameName = entry.participant_name && entry.participant_name === pName;
+              const sameEmail = entry.participant_email && pEmail && entry.participant_email === pEmail;
+              return sameName || sameEmail;
+            }) || joinLog[0];
           }
         }
 
         if (!matchedLog) {
           console.log("No matching join record for leave event, session:", session.id);
-          // Still log a standalone leave
-          await supabase.from("zoom_attendance_logs").insert({
-            session_id: session.id,
-            user_id: null,
-            action: "leave",
-            leave_time: new Date(participant?.leave_time || new Date().toISOString()).toISOString(),
-            timestamp: new Date().toISOString(),
-            participant_name: pName,
-            participant_email: pEmail,
-            role: "unknown",
-          });
           break;
         }
 
         const leaveTime = new Date(participant?.leave_time || new Date().toISOString());
         const joinTime = new Date(matchedLog.join_time);
-        const sessionMinutes = Math.floor((leaveTime.getTime() - joinTime.getTime()) / 60000);
+        const sessionMinutes = Math.max(1, Math.ceil((leaveTime.getTime() - joinTime.getTime()) / 60000));
         const previousTotal = matchedLog.total_duration_minutes || 0;
         const newTotal = previousTotal + sessionMinutes;
 

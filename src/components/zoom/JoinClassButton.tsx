@@ -206,20 +206,23 @@ export function JoinClassButton({ teacherId, className }: JoinClassButtonProps) 
       }
 
       if (!scheduleStatus.sessionId && scheduleStatus.teacherId) {
-        const { error } = await supabase
-          .from('live_sessions')
-          .insert({
-            teacher_id: scheduleStatus.teacherId,
-            student_id: user.id,
-            assignment_id: scheduleStatus.assignmentId || null,
-            schedule_id: scheduleStatus.scheduleId || null,
-            license_id: scheduleStatus.licenseId || null,
-            scheduled_start: scheduleStatus.scheduledStart || new Date().toISOString(),
-            status: 'scheduled',
-          } as any);
+        const { data, error } = await supabase.functions.invoke('zoom-claim-session', {
+          body: {
+            teacherId: scheduleStatus.teacherId,
+            studentId: user.id,
+            assignmentId: scheduleStatus.assignmentId || null,
+            scheduleId: scheduleStatus.scheduleId || null,
+            licenseId: scheduleStatus.licenseId || null,
+            scheduledStart: scheduleStatus.scheduledStart || new Date().toISOString(),
+          },
+        });
 
         if (error) {
           throw error;
+        }
+
+        if (!data?.sessionId) {
+          throw new Error('Could not prepare LMS session for this class');
         }
       }
 

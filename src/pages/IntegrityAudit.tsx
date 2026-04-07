@@ -85,6 +85,7 @@ export default function IntegrityAudit() {
       const { data: zoomLogs, error: zoomError } = await supabase
         .from('zoom_attendance_logs')
         .select('user_id, session_id, action, join_time, leave_time, total_duration_minutes, timestamp')
+        .not('session_id', 'is', null)
         .gte('timestamp', dateRangeStart);
 
       if (zoomError) throw zoomError;
