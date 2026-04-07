@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { RegistrationFormEditor } from '@/components/courses/RegistrationFormEditor';
 import { CourseApplicants } from '@/components/courses/CourseApplicants';
+import { CourseMarketingTab } from '@/components/courses/CourseMarketingTab';
 
 // ─── Types ──────────────────────────────────────────────
 interface Module {
@@ -993,23 +994,12 @@ export default function CourseBuilder() {
           </TabsContent>
 
           {/* ═══ MARKETING TAB ═══ */}
-          <TabsContent value="marketing" className="mt-4 space-y-4">
-            <Card><CardContent className="p-6 space-y-4">
-              <h3 className="font-semibold">Ad Creative</h3>
-              <div className="space-y-2"><Label>Ad Title</Label><Input value={adTitle} onChange={e => setAdTitle(e.target.value)} placeholder="Catchy ad title" /></div>
-              <div className="space-y-2"><Label>Ad Body</Label><Textarea value={adBody} onChange={e => setAdBody(e.target.value)} rows={4} placeholder="Ad copy text…" /></div>
-              <div className="space-y-2"><Label>Hashtags</Label><Input value={adHashtags} onChange={e => setAdHashtags(e.target.value)} placeholder="#LearnArabic #OnlineCourse" /></div>
-            </CardContent></Card>
-            <Card><CardContent className="p-6 space-y-4">
-              <h3 className="font-semibold">Support Messages</h3>
-              <div className="space-y-2"><Label>Welcome Message</Label><Textarea value={supportWelcome} onChange={e => setSupportWelcome(e.target.value)} rows={2} /></div>
-              <div className="space-y-2"><Label>Reminder</Label><Textarea value={supportReminder} onChange={e => setSupportReminder(e.target.value)} rows={2} /></div>
-              <div className="space-y-2"><Label>Last Seat Alert</Label><Textarea value={supportLastSeat} onChange={e => setSupportLastSeat(e.target.value)} rows={2} /></div>
-              <div className="space-y-2"><Label>Closing Message</Label><Textarea value={supportClosing} onChange={e => setSupportClosing(e.target.value)} rows={2} /></div>
-              <Button onClick={() => saveAdCreative.mutate()} disabled={saveAdCreative.isPending}>
-                {saveAdCreative.isPending ? 'Saving…' : 'Save Marketing Content'}
-              </Button>
-            </CardContent></Card>
+          <TabsContent value="marketing" className="mt-4">
+            <CourseMarketingTab
+              courseId={courseId!}
+              courseName={course.name}
+              courseDescription={course.description || ''}
+            />
           </TabsContent>
 
           {/* ═══ COMMUNITY TAB ═══ */}
