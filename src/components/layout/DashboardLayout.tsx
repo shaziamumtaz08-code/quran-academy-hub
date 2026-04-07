@@ -42,10 +42,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [tabletDrawerOpen, setTabletDrawerOpen] = useState(false);
 
   // Close tablet drawer on route change
-  useEffect(() => { setTabletDrawerOpen(false); }, [location.pathname]);
+  useEffect(() => {
+    setMobileDrawerOpen(false);
+    setTabletDrawerOpen(false);
+  }, [location.pathname]);
 
   const railItems = useMemo(() => buildRailNav(activeRole), [activeRole]);
 
@@ -98,7 +102,19 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     return (
       <DashboardLayoutContext.Provider value={true}>
         <div className="min-h-screen bg-lms-surface">
-          <MobileTopBar title={isDashboard ? 'Al-Quran Time' : undefined} />
+          {mobileDrawerOpen && (
+            <>
+              <div className="fixed inset-0 z-[60] bg-black/20" onClick={() => setMobileDrawerOpen(false)} />
+              <div className="fixed top-0 left-0 z-[61] h-full">
+                <AppSidebar />
+              </div>
+            </>
+          )}
+          <MobileTopBar
+            title={isDashboard ? 'Al-Quran Time' : undefined}
+            onMenuClick={() => setMobileDrawerOpen(true)}
+            onLogout={handleLogout}
+          />
           <main className={cn('pb-16', isDashboard ? 'pt-11' : 'pt-11')}>
             <div className={isDashboard ? '' : 'p-3'}>
               {!isDashboard && <PageBreadcrumb />}
