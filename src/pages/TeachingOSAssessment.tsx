@@ -527,7 +527,7 @@ const TeachingOSAssessment: React.FC = () => {
     for (const ins of mockInsights) {
       const { data } = await supabase.from('assessment_insights' as any).insert(ins as any).select().single();
       if (data) inserted.push({
-        ...data,
+        ...(data as any),
         suggested_actions: typeof (data as any).suggested_actions === 'string'
           ? JSON.parse((data as any).suggested_actions)
           : (data as any).suggested_actions || [],
