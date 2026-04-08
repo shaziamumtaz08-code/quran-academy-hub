@@ -195,7 +195,7 @@ const TeachingOSVideo: React.FC = () => {
         </div>
 
         <div className="p-[10px] border-t border-[#e8e9eb]">
-          <Button className="w-full text-[12px] h-8" style={{ backgroundColor: '#0f2044', color: '#fff' }} onClick={() => toast.info('Phase 7: Speaking tutor coming soon')}>
+          <Button className="w-full text-[12px] h-8" style={{ backgroundColor: '#0f2044', color: '#fff' }} onClick={() => navigate(`/teaching-os/speaking-tutor${sessionId ? `?session_id=${sessionId}` : ''}`)}>
             Phase 7: Speaking tutor <ExternalLink className="w-3 h-3 ml-1" />
           </Button>
         </div>
@@ -211,7 +211,7 @@ const TeachingOSVideo: React.FC = () => {
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" className="text-[11px] h-7"><Download className="w-3 h-3 mr-1" />Export playlist</Button>
             <Button variant="outline" size="sm" className="text-[11px] h-7"><Share2 className="w-3 h-3 mr-1" />Share to students</Button>
-            <Button size="sm" className="text-[11px] h-7" style={{ backgroundColor: '#0f2044', color: '#fff' }} onClick={() => toast.info('Phase 7: Speaking tutor coming soon')}>
+            <Button size="sm" className="text-[11px] h-7" style={{ backgroundColor: '#0f2044', color: '#fff' }} onClick={() => navigate(`/teaching-os/speaking-tutor${sessionId ? `?session_id=${sessionId}` : ''}`)}>
               Phase 7: Speaking tutor <ChevronRight className="w-3 h-3 ml-1" />
             </Button>
           </div>
