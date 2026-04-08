@@ -60,6 +60,7 @@ import TeachingOSPlanner from "./pages/TeachingOSPlanner";
 import TeachingOSDayBoard from "./pages/TeachingOSDayBoard";
 import TeachingOSStudentView from "./pages/TeachingOSStudentView";
 import TeachingOSContentKit from "./pages/TeachingOSContentKit";
+import TeachingOSAssessment from "./pages/TeachingOSAssessment";
 
 // Landing pages
 import TeachingLanding from "./pages/TeachingLanding";
