@@ -115,9 +115,9 @@ function getReportsSidebar(): { title: string; subtitle: string; items: SidebarN
 }
 
 /* ─── Route to section mapping ─── */
-function getSidebarForRoute(pathname: string) {
+function getSidebarForRoute(pathname: string, isOneToOne?: boolean) {
   if (pathname.startsWith('/teaching') || pathname.startsWith('/courses') || pathname.startsWith('/assignments') || pathname.startsWith('/subjects') || pathname.startsWith('/attendance') || pathname.startsWith('/schedules') || pathname.startsWith('/monthly-planning')) {
-    return getTeachingSidebar(0);
+    return getTeachingSidebar(0, isOneToOne);
   }
   if (pathname.startsWith('/people') || pathname.startsWith('/students') || pathname.startsWith('/teachers') || pathname.startsWith('/user-management') || pathname.startsWith('/leads')) {
     return getPeopleSidebar();
@@ -134,7 +134,7 @@ function getSidebarForRoute(pathname: string) {
   if (pathname.startsWith('/reports') || pathname.startsWith('/student-reports') || pathname.startsWith('/kpi') || pathname.startsWith('/report-card')) {
     return getReportsSidebar();
   }
-  return getHomeSidebar();
+  return getHomeSidebar(isOneToOne);
 }
 
 /* ─── Course Detail sidebar ─── */
