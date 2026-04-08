@@ -61,6 +61,7 @@ import TeachingOSDayBoard from "./pages/TeachingOSDayBoard";
 import TeachingOSStudentView from "./pages/TeachingOSStudentView";
 import TeachingOSContentKit from "./pages/TeachingOSContentKit";
 import TeachingOSAssessment from "./pages/TeachingOSAssessment";
+import TeachingOSVideo from "./pages/TeachingOSVideo";
 
 // Landing pages
 import TeachingLanding from "./pages/TeachingLanding";
@@ -283,6 +284,7 @@ function AppRoutes() {
       <Route path="/teaching-os/student-view" element={<TeachingOSStudentView />} />
       <Route path="/teaching-os/content-kit" element={<ProtectedRoute><TeachingOSContentKit /></ProtectedRoute>} />
       <Route path="/teaching-os/assessment" element={<ProtectedRoute><TeachingOSAssessment /></ProtectedRoute>} />
+      <Route path="/teaching-os/video" element={<ProtectedRoute><TeachingOSVideo /></ProtectedRoute>} />
       <Route path="/people" element={<ProtectedRoute><AdminRoute><DashboardLayout><PeopleLanding /></DashboardLayout></AdminRoute></ProtectedRoute>} />
       <Route path="/finance" element={<ProtectedRoute><DashboardLayout><FinanceLanding /></DashboardLayout></ProtectedRoute>} />
       <Route path="/reports-hub" element={<ProtectedRoute><DashboardLayout><ReportsLanding /></DashboardLayout></ProtectedRoute>} />

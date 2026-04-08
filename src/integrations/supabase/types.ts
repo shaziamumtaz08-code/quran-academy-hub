@@ -4269,6 +4269,48 @@ export type Database = {
         }
         Relationships: []
       }
+      playlist_videos: {
+        Row: {
+          added_at: string
+          added_by: string | null
+          id: string
+          playlist_id: string
+          position: number
+          video_id: string
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string | null
+          id?: string
+          playlist_id: string
+          position?: number
+          video_id: string
+        }
+        Update: {
+          added_at?: string
+          added_by?: string | null
+          id?: string
+          playlist_id?: string
+          position?: number
+          video_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playlist_videos_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "session_playlists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "playlist_videos_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "video_library"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       poll_options: {
         Row: {
           created_at: string
@@ -5464,6 +5506,51 @@ export type Database = {
             columns: ["syllabus_id"]
             isOneToOne: false
             referencedRelation: "syllabi"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      session_playlists: {
+        Row: {
+          course_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          session_plan_id: string | null
+          shared_at: string | null
+          title: string
+        }
+        Insert: {
+          course_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          session_plan_id?: string | null
+          shared_at?: string | null
+          title?: string
+        }
+        Update: {
+          course_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          session_plan_id?: string | null
+          shared_at?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_playlists_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_playlists_session_plan_id_fkey"
+            columns: ["session_plan_id"]
+            isOneToOne: false
+            referencedRelation: "session_plans"
             referencedColumns: ["id"]
           },
         ]
@@ -7147,6 +7234,200 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_filter_settings: {
+        Row: {
+          academy_id: string | null
+          course_id: string | null
+          id: string
+          rules: Json | null
+          strictness: string
+          updated_at: string
+        }
+        Insert: {
+          academy_id?: string | null
+          course_id?: string | null
+          id?: string
+          rules?: Json | null
+          strictness?: string
+          updated_at?: string
+        }
+        Update: {
+          academy_id?: string | null
+          course_id?: string | null
+          id?: string
+          rules?: Json | null
+          strictness?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_filter_settings_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_insights: {
+        Row: {
+          applied: boolean | null
+          created_at: string
+          description: string
+          id: string
+          session_plan_id: string | null
+          suggested_action: string | null
+          title: string
+          type: string
+        }
+        Insert: {
+          applied?: boolean | null
+          created_at?: string
+          description: string
+          id?: string
+          session_plan_id?: string | null
+          suggested_action?: string | null
+          title: string
+          type?: string
+        }
+        Update: {
+          applied?: boolean | null
+          created_at?: string
+          description?: string
+          id?: string
+          session_plan_id?: string | null
+          suggested_action?: string | null
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_insights_session_plan_id_fkey"
+            columns: ["session_plan_id"]
+            isOneToOne: false
+            referencedRelation: "session_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_library: {
+        Row: {
+          academy_id: string | null
+          added_at: string
+          added_by: string | null
+          ai_score: number | null
+          channel_name: string | null
+          content_tags: Json | null
+          duration_seconds: number | null
+          id: string
+          recommendation_reason: string | null
+          safety_flags: Json | null
+          safety_status: string
+          thumbnail_url: string | null
+          title: string
+          use_count: number | null
+          youtube_id: string
+        }
+        Insert: {
+          academy_id?: string | null
+          added_at?: string
+          added_by?: string | null
+          ai_score?: number | null
+          channel_name?: string | null
+          content_tags?: Json | null
+          duration_seconds?: number | null
+          id?: string
+          recommendation_reason?: string | null
+          safety_flags?: Json | null
+          safety_status?: string
+          thumbnail_url?: string | null
+          title: string
+          use_count?: number | null
+          youtube_id: string
+        }
+        Update: {
+          academy_id?: string | null
+          added_at?: string
+          added_by?: string | null
+          ai_score?: number | null
+          channel_name?: string | null
+          content_tags?: Json | null
+          duration_seconds?: number | null
+          id?: string
+          recommendation_reason?: string | null
+          safety_flags?: Json | null
+          safety_status?: string
+          thumbnail_url?: string | null
+          title?: string
+          use_count?: number | null
+          youtube_id?: string
+        }
+        Relationships: []
+      }
+      video_watch_events: {
+        Row: {
+          completed: boolean | null
+          created_at: string
+          id: string
+          last_watched_at: string | null
+          playlist_id: string | null
+          replay_count: number | null
+          session_id: string | null
+          student_id: string
+          total_seconds: number | null
+          video_id: string
+          watched_seconds: number | null
+        }
+        Insert: {
+          completed?: boolean | null
+          created_at?: string
+          id?: string
+          last_watched_at?: string | null
+          playlist_id?: string | null
+          replay_count?: number | null
+          session_id?: string | null
+          student_id: string
+          total_seconds?: number | null
+          video_id: string
+          watched_seconds?: number | null
+        }
+        Update: {
+          completed?: boolean | null
+          created_at?: string
+          id?: string
+          last_watched_at?: string | null
+          playlist_id?: string | null
+          replay_count?: number | null
+          session_id?: string | null
+          student_id?: string
+          total_seconds?: number | null
+          video_id?: string
+          watched_seconds?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_watch_events_playlist_id_fkey"
+            columns: ["playlist_id"]
+            isOneToOne: false
+            referencedRelation: "session_playlists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_watch_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "session_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_watch_events_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "video_library"
             referencedColumns: ["id"]
           },
         ]
