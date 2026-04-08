@@ -126,6 +126,7 @@ export default function TeachingOS() {
 
   // Syllabus state
   const [rows, setRows] = useState<SyllabusRow[]>([]);
+  const navigate = useNavigate();
   const [generating, setGenerating] = useState(false);
   const [streamingWeek, setStreamingWeek] = useState(0);
   const [completed, setCompleted] = useState(false);
