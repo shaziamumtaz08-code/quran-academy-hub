@@ -2497,6 +2497,50 @@ export type Database = {
           },
         ]
       }
+      drill_phrases: {
+        Row: {
+          audio_url: string | null
+          created_at: string
+          difficulty: number | null
+          drill_id: string
+          english: string | null
+          id: string
+          phrase_arabic: string
+          position: number | null
+          romanised: string | null
+        }
+        Insert: {
+          audio_url?: string | null
+          created_at?: string
+          difficulty?: number | null
+          drill_id: string
+          english?: string | null
+          id?: string
+          phrase_arabic: string
+          position?: number | null
+          romanised?: string | null
+        }
+        Update: {
+          audio_url?: string | null
+          created_at?: string
+          difficulty?: number | null
+          drill_id?: string
+          english?: string | null
+          id?: string
+          phrase_arabic?: string
+          position?: number | null
+          romanised?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drill_phrases_drill_id_fkey"
+            columns: ["drill_id"]
+            isOneToOne: false
+            referencedRelation: "speaking_drills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       enrollments: {
         Row: {
           created_at: string
@@ -4269,6 +4313,47 @@ export type Database = {
         }
         Relationships: []
       }
+      phrase_mastery: {
+        Row: {
+          attempt_count: number | null
+          id: string
+          last_score: number | null
+          mastered_at: string | null
+          phrase_id: string
+          status: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number | null
+          id?: string
+          last_score?: number | null
+          mastered_at?: string | null
+          phrase_id: string
+          status?: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number | null
+          id?: string
+          last_score?: number | null
+          mastered_at?: string | null
+          phrase_id?: string
+          status?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "phrase_mastery_phrase_id_fkey"
+            columns: ["phrase_id"]
+            isOneToOne: false
+            referencedRelation: "drill_phrases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       playlist_videos: {
         Row: {
           added_at: string
@@ -5660,6 +5745,252 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "slides_kit_id_fkey"
+            columns: ["kit_id"]
+            isOneToOne: false
+            referencedRelation: "content_kits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      speaking_assignment_submissions: {
+        Row: {
+          assignment_id: string
+          completed_at: string | null
+          created_at: string
+          final_score: number | null
+          id: string
+          status: string
+          student_id: string
+        }
+        Insert: {
+          assignment_id: string
+          completed_at?: string | null
+          created_at?: string
+          final_score?: number | null
+          id?: string
+          status?: string
+          student_id: string
+        }
+        Update: {
+          assignment_id?: string
+          completed_at?: string | null
+          created_at?: string
+          final_score?: number | null
+          id?: string
+          status?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "speaking_assignment_submissions_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "speaking_assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      speaking_assignments: {
+        Row: {
+          assigned_to: Json | null
+          created_at: string
+          created_by: string | null
+          due_at: string | null
+          id: string
+          instructions: string | null
+          mode: string
+          phrase_ids: Json | null
+          session_id: string | null
+          title: string
+        }
+        Insert: {
+          assigned_to?: Json | null
+          created_at?: string
+          created_by?: string | null
+          due_at?: string | null
+          id?: string
+          instructions?: string | null
+          mode?: string
+          phrase_ids?: Json | null
+          session_id?: string | null
+          title: string
+        }
+        Update: {
+          assigned_to?: Json | null
+          created_at?: string
+          created_by?: string | null
+          due_at?: string | null
+          id?: string
+          instructions?: string | null
+          mode?: string
+          phrase_ids?: Json | null
+          session_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "speaking_assignments_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "session_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      speaking_attempts: {
+        Row: {
+          assignment_id: string | null
+          attempted_at: string
+          audio_url: string | null
+          feedback: string | null
+          fluency: number | null
+          id: string
+          overall_score: number | null
+          phrase_id: string | null
+          pronunciation: number | null
+          session_id: string | null
+          student_id: string
+          tip: string | null
+          transcription: string | null
+          word_breakdown: Json | null
+        }
+        Insert: {
+          assignment_id?: string | null
+          attempted_at?: string
+          audio_url?: string | null
+          feedback?: string | null
+          fluency?: number | null
+          id?: string
+          overall_score?: number | null
+          phrase_id?: string | null
+          pronunciation?: number | null
+          session_id?: string | null
+          student_id: string
+          tip?: string | null
+          transcription?: string | null
+          word_breakdown?: Json | null
+        }
+        Update: {
+          assignment_id?: string | null
+          attempted_at?: string
+          audio_url?: string | null
+          feedback?: string | null
+          fluency?: number | null
+          id?: string
+          overall_score?: number | null
+          phrase_id?: string | null
+          pronunciation?: number | null
+          session_id?: string | null
+          student_id?: string
+          tip?: string | null
+          transcription?: string | null
+          word_breakdown?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "speaking_attempts_phrase_id_fkey"
+            columns: ["phrase_id"]
+            isOneToOne: false
+            referencedRelation: "drill_phrases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "speaking_attempts_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "session_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      speaking_conversations: {
+        Row: {
+          assignment_id: string | null
+          duration_sec: number | null
+          ended_at: string | null
+          id: string
+          messages: Json | null
+          session_id: string | null
+          started_at: string
+          student_id: string
+          vocab_used: Json | null
+        }
+        Insert: {
+          assignment_id?: string | null
+          duration_sec?: number | null
+          ended_at?: string | null
+          id?: string
+          messages?: Json | null
+          session_id?: string | null
+          started_at?: string
+          student_id: string
+          vocab_used?: Json | null
+        }
+        Update: {
+          assignment_id?: string | null
+          duration_sec?: number | null
+          ended_at?: string | null
+          id?: string
+          messages?: Json | null
+          session_id?: string | null
+          started_at?: string
+          student_id?: string
+          vocab_used?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "speaking_conversations_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "session_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      speaking_drills: {
+        Row: {
+          category: string | null
+          course_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_library: boolean | null
+          kit_id: string | null
+          level: string | null
+          title: string
+        }
+        Insert: {
+          category?: string | null
+          course_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_library?: boolean | null
+          kit_id?: string | null
+          level?: string | null
+          title: string
+        }
+        Update: {
+          category?: string | null
+          course_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_library?: boolean | null
+          kit_id?: string | null
+          level?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "speaking_drills_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "speaking_drills_kit_id_fkey"
             columns: ["kit_id"]
             isOneToOne: false
             referencedRelation: "content_kits"
