@@ -13,6 +13,7 @@ interface SidebarNavItem {
   param?: string; // query param value for section=
   badge?: number;
   badgeType?: 'alert' | 'info';
+  badgeText?: string;
   group?: string;
 }
 
@@ -37,6 +38,7 @@ function getTeachingSidebar(courseCount: number, isOneToOne?: boolean): { title:
     { label: '1-to-1', href: '/teaching?section=assignments' },
     ...(!isOneToOne ? [{ label: 'Recorded', href: '/teaching?section=recorded' }] : []),
     ...(!isOneToOne ? [{ label: 'Archived', href: '/courses?type=archived' }] : []),
+    { label: 'AI Teaching OS', href: '/teaching-os', badgeText: 'AI' },
   ];
   return {
     title: isOneToOne ? '1-to-1 Teaching' : 'Course Management',
@@ -259,6 +261,11 @@ export function AppSidebar({ className }: AppSidebarProps) {
                   item.badgeType === 'alert' ? 'bg-[#fde8e8] text-lms-danger' : 'bg-[#e8f0fe] text-lms-accent'
                 )}>
                   {item.badge}
+                </span>
+              )}
+              {item.badgeText && (
+                <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700">
+                  {item.badgeText}
                 </span>
               )}
             </Link>
