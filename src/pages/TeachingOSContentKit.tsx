@@ -417,7 +417,7 @@ const TeachingOSContentKit: React.FC = () => {
   if (loading) {
     return (
       <div className="flex h-screen">
-        <NavRail />
+        <NavRail items={railItems} />
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
@@ -429,7 +429,7 @@ const TeachingOSContentKit: React.FC = () => {
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#f4f5f7]">
-      <NavRail />
+      <NavRail items={railItems} />
 
       {/* Tool Sidebar */}
       <div className="w-[200px] bg-white border-r border-[#e8e9eb] flex flex-col shrink-0">
