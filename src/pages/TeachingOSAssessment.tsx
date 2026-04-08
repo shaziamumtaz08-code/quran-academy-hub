@@ -475,7 +475,7 @@ const TeachingOSAssessment: React.FC = () => {
         submitted_at: new Date().toISOString(),
       };
       const { data } = await supabase.from('teaching_exam_submissions' as any).insert(sub as any).select().single();
-      if (data) newSubmissions.push({ ...data, studentName: name });
+      if (data) newSubmissions.push({ ...(data as any), studentName: name });
     }
     setSubmissions(newSubmissions as any);
     toast.success('Mock results generated');
