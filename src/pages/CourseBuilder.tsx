@@ -400,8 +400,8 @@ export default function CourseBuilder() {
 
   const saveWebsite = useMutation({
     mutationFn: async () => {
+      const outcomesArr = webOutcomes.split('\n').filter(Boolean).map(t => ({ text: t.trim() }));
       const faqsArr = webFaqs.filter(f => f.question.trim());
-      });
       const { error } = await supabase.from('courses').update({
         description: webDescription || null,
         level: webLevel,
