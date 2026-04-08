@@ -96,7 +96,7 @@ export default function CourseBuilder() {
   // Website tab state
   const [webDescription, setWebDescription] = useState('');
   const [webOutcomes, setWebOutcomes] = useState('');
-  const [webFaqs, setWebFaqs] = useState('');
+  const [webFaqs, setWebFaqs] = useState<{question: string; answer: string}[]>([]);
   const [webSyllabus, setWebSyllabus] = useState('');
   const [webPricingAmount, setWebPricingAmount] = useState('');
   const [webPricingCurrency, setWebPricingCurrency] = useState('USD');
