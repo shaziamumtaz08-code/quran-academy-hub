@@ -112,6 +112,56 @@ export type Database = {
         }
         Relationships: []
       }
+      assessment_insights: {
+        Row: {
+          affected_percent: number | null
+          affected_students: number | null
+          applied_to_plan: boolean | null
+          created_at: string
+          description: string
+          dismissed: boolean | null
+          exam_id: string
+          id: string
+          suggested_actions: Json | null
+          title: string
+          type: string
+        }
+        Insert: {
+          affected_percent?: number | null
+          affected_students?: number | null
+          applied_to_plan?: boolean | null
+          created_at?: string
+          description: string
+          dismissed?: boolean | null
+          exam_id: string
+          id?: string
+          suggested_actions?: Json | null
+          title: string
+          type?: string
+        }
+        Update: {
+          affected_percent?: number | null
+          affected_students?: number | null
+          applied_to_plan?: boolean | null
+          created_at?: string
+          description?: string
+          dismissed?: boolean | null
+          exam_id?: string
+          id?: string
+          suggested_actions?: Json | null
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_insights_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "teaching_exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assignment_history: {
         Row: {
           assignment_id: string
@@ -6517,6 +6567,265 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teaching_exam_questions: {
+        Row: {
+          auto_mark: boolean | null
+          blank_sentence: string | null
+          blooms_level: string | null
+          correct_answer: string | null
+          created_at: string
+          difficulty: string | null
+          exam_id: string
+          id: string
+          model_answer: string | null
+          options: Json | null
+          points: number
+          question_index: number
+          question_text: string
+          rubric: Json | null
+          scenario_context: string | null
+          type: string
+        }
+        Insert: {
+          auto_mark?: boolean | null
+          blank_sentence?: string | null
+          blooms_level?: string | null
+          correct_answer?: string | null
+          created_at?: string
+          difficulty?: string | null
+          exam_id: string
+          id?: string
+          model_answer?: string | null
+          options?: Json | null
+          points?: number
+          question_index?: number
+          question_text: string
+          rubric?: Json | null
+          scenario_context?: string | null
+          type?: string
+        }
+        Update: {
+          auto_mark?: boolean | null
+          blank_sentence?: string | null
+          blooms_level?: string | null
+          correct_answer?: string | null
+          created_at?: string
+          difficulty?: string | null
+          exam_id?: string
+          id?: string
+          model_answer?: string | null
+          options?: Json | null
+          points?: number
+          question_index?: number
+          question_text?: string
+          rubric?: Json | null
+          scenario_context?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teaching_exam_questions_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "teaching_exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teaching_exam_responses: {
+        Row: {
+          ai_confidence: number | null
+          ai_feedback: string | null
+          ai_score: number | null
+          created_at: string
+          id: string
+          is_correct: boolean | null
+          marked_at: string | null
+          question_id: string
+          rubric_breakdown: Json | null
+          score_awarded: number | null
+          student_answer: string | null
+          submission_id: string
+          teacher_feedback: string | null
+          teacher_reviewed: boolean | null
+          teacher_score: number | null
+        }
+        Insert: {
+          ai_confidence?: number | null
+          ai_feedback?: string | null
+          ai_score?: number | null
+          created_at?: string
+          id?: string
+          is_correct?: boolean | null
+          marked_at?: string | null
+          question_id: string
+          rubric_breakdown?: Json | null
+          score_awarded?: number | null
+          student_answer?: string | null
+          submission_id: string
+          teacher_feedback?: string | null
+          teacher_reviewed?: boolean | null
+          teacher_score?: number | null
+        }
+        Update: {
+          ai_confidence?: number | null
+          ai_feedback?: string | null
+          ai_score?: number | null
+          created_at?: string
+          id?: string
+          is_correct?: boolean | null
+          marked_at?: string | null
+          question_id?: string
+          rubric_breakdown?: Json | null
+          score_awarded?: number | null
+          student_answer?: string | null
+          submission_id?: string
+          teacher_feedback?: string | null
+          teacher_reviewed?: boolean | null
+          teacher_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teaching_exam_responses_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "teaching_exam_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teaching_exam_responses_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "teaching_exam_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teaching_exam_submissions: {
+        Row: {
+          created_at: string
+          exam_id: string
+          id: string
+          passed: boolean | null
+          percentage: number | null
+          started_at: string | null
+          status: string
+          student_id: string
+          submitted_at: string | null
+          time_taken_minutes: number | null
+          total_possible: number | null
+          total_score: number | null
+        }
+        Insert: {
+          created_at?: string
+          exam_id: string
+          id?: string
+          passed?: boolean | null
+          percentage?: number | null
+          started_at?: string | null
+          status?: string
+          student_id: string
+          submitted_at?: string | null
+          time_taken_minutes?: number | null
+          total_possible?: number | null
+          total_score?: number | null
+        }
+        Update: {
+          created_at?: string
+          exam_id?: string
+          id?: string
+          passed?: boolean | null
+          percentage?: number | null
+          started_at?: string | null
+          status?: string
+          student_id?: string
+          submitted_at?: string | null
+          time_taken_minutes?: number | null
+          total_possible?: number | null
+          total_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teaching_exam_submissions_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "teaching_exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teaching_exams: {
+        Row: {
+          closes_at: string | null
+          course_id: string | null
+          created_at: string
+          created_by: string | null
+          duration_minutes: number | null
+          id: string
+          instructions: string | null
+          opens_at: string | null
+          pass_mark_percent: number | null
+          published_at: string | null
+          session_plan_id: string | null
+          settings: Json | null
+          status: string
+          title: string
+          total_marks: number | null
+          updated_at: string
+        }
+        Insert: {
+          closes_at?: string | null
+          course_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          duration_minutes?: number | null
+          id?: string
+          instructions?: string | null
+          opens_at?: string | null
+          pass_mark_percent?: number | null
+          published_at?: string | null
+          session_plan_id?: string | null
+          settings?: Json | null
+          status?: string
+          title?: string
+          total_marks?: number | null
+          updated_at?: string
+        }
+        Update: {
+          closes_at?: string | null
+          course_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          duration_minutes?: number | null
+          id?: string
+          instructions?: string | null
+          opens_at?: string | null
+          pass_mark_percent?: number | null
+          published_at?: string | null
+          session_plan_id?: string | null
+          settings?: Json | null
+          status?: string
+          title?: string
+          total_marks?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teaching_exams_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teaching_exams_session_plan_id_fkey"
+            columns: ["session_plan_id"]
+            isOneToOne: false
+            referencedRelation: "session_plans"
             referencedColumns: ["id"]
           },
         ]

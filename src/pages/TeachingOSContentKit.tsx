@@ -515,8 +515,8 @@ const TeachingOSContentKit: React.FC = () => {
             <Share2 className="w-3 h-3" /> Share to students
           </Button>
 
-          <Button size="sm" className="text-[11px] gap-1 h-7 bg-[#0f2044] hover:bg-[#1a2d5a]" onClick={() => toast.info("Phase 5: Assessment coming soon")}>
-            Phase 5: Assessment <ChevronRight className="w-3 h-3" />
+         <Button size="sm" className="text-[11px] gap-1 h-7 bg-[#0f2044] hover:bg-[#1a2d5a]" onClick={() => navigate(`/teaching-os/assessment?session_id=${sessionId}`)}>
+           Phase 5: Assessment <ChevronRight className="w-3 h-3" />
           </Button>
         </div>
 
