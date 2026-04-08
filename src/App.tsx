@@ -282,6 +282,7 @@ function AppRoutes() {
       <Route path="/teaching-os/dayboard/live" element={<ProtectedRoute><TeachingOSDayBoard /></ProtectedRoute>} />
       <Route path="/teaching-os/student-view" element={<TeachingOSStudentView />} />
       <Route path="/teaching-os/content-kit" element={<ProtectedRoute><TeachingOSContentKit /></ProtectedRoute>} />
+      <Route path="/teaching-os/assessment" element={<ProtectedRoute><TeachingOSAssessment /></ProtectedRoute>} />
       <Route path="/people" element={<ProtectedRoute><AdminRoute><DashboardLayout><PeopleLanding /></DashboardLayout></AdminRoute></ProtectedRoute>} />
       <Route path="/finance" element={<ProtectedRoute><DashboardLayout><FinanceLanding /></DashboardLayout></ProtectedRoute>} />
       <Route path="/reports-hub" element={<ProtectedRoute><DashboardLayout><ReportsLanding /></DashboardLayout></ProtectedRoute>} />
