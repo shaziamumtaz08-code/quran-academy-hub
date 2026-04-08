@@ -752,6 +752,51 @@ export type Database = {
           },
         ]
       }
+      content_kits: {
+        Row: {
+          course_id: string | null
+          created_at: string
+          generated_at: string | null
+          id: string
+          session_plan_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          course_id?: string | null
+          created_at?: string
+          generated_at?: string | null
+          id?: string
+          session_plan_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string | null
+          created_at?: string
+          generated_at?: string | null
+          id?: string
+          session_plan_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_kits_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_kits_session_plan_id_fkey"
+            columns: ["session_plan_id"]
+            isOneToOne: false
+            referencedRelation: "session_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_assets: {
         Row: {
           ad_creative: Json
@@ -3073,6 +3118,88 @@ export type Database = {
           },
         ]
       }
+      flashcard_progress: {
+        Row: {
+          attempts: number | null
+          flashcard_id: string
+          id: string
+          last_seen: string | null
+          status: string
+          student_id: string
+        }
+        Insert: {
+          attempts?: number | null
+          flashcard_id: string
+          id?: string
+          last_seen?: string | null
+          status?: string
+          student_id: string
+        }
+        Update: {
+          attempts?: number | null
+          flashcard_id?: string
+          id?: string
+          last_seen?: string | null
+          status?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flashcard_progress_flashcard_id_fkey"
+            columns: ["flashcard_id"]
+            isOneToOne: false
+            referencedRelation: "flashcards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      flashcards: {
+        Row: {
+          arabic: string
+          card_index: number
+          created_at: string
+          english: string
+          example_sentence: string | null
+          example_translation: string | null
+          id: string
+          kit_id: string
+          part_of_speech: string | null
+          transliteration: string | null
+        }
+        Insert: {
+          arabic: string
+          card_index?: number
+          created_at?: string
+          english: string
+          example_sentence?: string | null
+          example_translation?: string | null
+          id?: string
+          kit_id: string
+          part_of_speech?: string | null
+          transliteration?: string | null
+        }
+        Update: {
+          arabic?: string
+          card_index?: number
+          created_at?: string
+          english?: string
+          example_sentence?: string | null
+          example_translation?: string | null
+          id?: string
+          kit_id?: string
+          part_of_speech?: string | null
+          transliteration?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flashcards_kit_id_fkey"
+            columns: ["kit_id"]
+            isOneToOne: false
+            referencedRelation: "content_kits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       folders: {
         Row: {
           created_at: string
@@ -3211,6 +3338,53 @@ export type Database = {
             columns: ["invoice_id"]
             isOneToOne: false
             referencedRelation: "fee_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kit_shares: {
+        Row: {
+          content_types: Json | null
+          created_at: string
+          delivery_channels: Json | null
+          id: string
+          kit_id: string
+          message: string | null
+          scheduled_for: string | null
+          sent_at: string | null
+          shared_by: string
+          shared_with: Json | null
+        }
+        Insert: {
+          content_types?: Json | null
+          created_at?: string
+          delivery_channels?: Json | null
+          id?: string
+          kit_id: string
+          message?: string | null
+          scheduled_for?: string | null
+          sent_at?: string | null
+          shared_by: string
+          shared_with?: Json | null
+        }
+        Update: {
+          content_types?: Json | null
+          created_at?: string
+          delivery_channels?: Json | null
+          id?: string
+          kit_id?: string
+          message?: string | null
+          scheduled_for?: string | null
+          sent_at?: string | null
+          shared_by?: string
+          shared_with?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kit_shares_kit_id_fkey"
+            columns: ["kit_id"]
+            isOneToOne: false
+            referencedRelation: "content_kits"
             referencedColumns: ["id"]
           },
         ]
@@ -4368,6 +4542,91 @@ export type Database = {
           },
         ]
       }
+      quiz_questions: {
+        Row: {
+          blooms_level: string | null
+          correct_answer: string | null
+          created_at: string
+          difficulty: string | null
+          explanation: string | null
+          id: string
+          kit_id: string
+          options: Json | null
+          question: string
+          question_index: number
+          type: string
+        }
+        Insert: {
+          blooms_level?: string | null
+          correct_answer?: string | null
+          created_at?: string
+          difficulty?: string | null
+          explanation?: string | null
+          id?: string
+          kit_id: string
+          options?: Json | null
+          question: string
+          question_index?: number
+          type?: string
+        }
+        Update: {
+          blooms_level?: string | null
+          correct_answer?: string | null
+          created_at?: string
+          difficulty?: string | null
+          explanation?: string | null
+          id?: string
+          kit_id?: string
+          options?: Json | null
+          question?: string
+          question_index?: number
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_questions_kit_id_fkey"
+            columns: ["kit_id"]
+            isOneToOne: false
+            referencedRelation: "content_kits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_submissions: {
+        Row: {
+          answer: string | null
+          id: string
+          is_correct: boolean | null
+          quiz_question_id: string
+          student_id: string
+          submitted_at: string
+        }
+        Insert: {
+          answer?: string | null
+          id?: string
+          is_correct?: boolean | null
+          quiz_question_id: string
+          student_id: string
+          submitted_at?: string
+        }
+        Update: {
+          answer?: string | null
+          id?: string
+          is_correct?: boolean | null
+          quiz_question_id?: string
+          student_id?: string
+          submitted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_submissions_quiz_question_id_fkey"
+            columns: ["quiz_question_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       registration_form_fields: {
         Row: {
           created_at: string
@@ -5208,6 +5467,65 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "live_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      slides: {
+        Row: {
+          activity_instruction: string | null
+          arabic_text: string | null
+          bullets: Json | null
+          created_at: string
+          edited: boolean | null
+          edited_content: Json | null
+          id: string
+          kit_id: string
+          layout_type: string | null
+          phase: string | null
+          slide_index: number
+          teacher_note: string | null
+          title: string | null
+          transliteration: string | null
+        }
+        Insert: {
+          activity_instruction?: string | null
+          arabic_text?: string | null
+          bullets?: Json | null
+          created_at?: string
+          edited?: boolean | null
+          edited_content?: Json | null
+          id?: string
+          kit_id: string
+          layout_type?: string | null
+          phase?: string | null
+          slide_index?: number
+          teacher_note?: string | null
+          title?: string | null
+          transliteration?: string | null
+        }
+        Update: {
+          activity_instruction?: string | null
+          arabic_text?: string | null
+          bullets?: Json | null
+          created_at?: string
+          edited?: boolean | null
+          edited_content?: Json | null
+          id?: string
+          kit_id?: string
+          layout_type?: string | null
+          phase?: string | null
+          slide_index?: number
+          teacher_note?: string | null
+          title?: string | null
+          transliteration?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "slides_kit_id_fkey"
+            columns: ["kit_id"]
+            isOneToOne: false
+            referencedRelation: "content_kits"
             referencedColumns: ["id"]
           },
         ]
@@ -6654,6 +6972,38 @@ export type Database = {
             columns: ["sent_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      worksheets: {
+        Row: {
+          created_at: string
+          exercises: Json | null
+          id: string
+          kit_id: string
+          title: string | null
+        }
+        Insert: {
+          created_at?: string
+          exercises?: Json | null
+          id?: string
+          kit_id: string
+          title?: string | null
+        }
+        Update: {
+          created_at?: string
+          exercises?: Json | null
+          id?: string
+          kit_id?: string
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worksheets_kit_id_fkey"
+            columns: ["kit_id"]
+            isOneToOne: false
+            referencedRelation: "content_kits"
             referencedColumns: ["id"]
           },
         ]
