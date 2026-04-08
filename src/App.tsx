@@ -55,6 +55,7 @@ import NotificationCenter from "./pages/NotificationCenter";
 import GroupChat from "./pages/GroupChat";
 import WhatsAppInbox from "./pages/WhatsAppInbox";
 import PublicApplyForm from "./pages/PublicApplyForm";
+import TeachingOS from "./pages/TeachingOS";
 
 // Landing pages
 import TeachingLanding from "./pages/TeachingLanding";
@@ -270,6 +271,7 @@ function AppRoutes() {
       
       {/* Landing Pages */}
       <Route path="/teaching" element={<ProtectedRoute><DashboardLayout><TeachingLanding /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/teaching-os" element={<ProtectedRoute><TeachingOS /></ProtectedRoute>} />
       <Route path="/people" element={<ProtectedRoute><AdminRoute><DashboardLayout><PeopleLanding /></DashboardLayout></AdminRoute></ProtectedRoute>} />
       <Route path="/finance" element={<ProtectedRoute><DashboardLayout><FinanceLanding /></DashboardLayout></ProtectedRoute>} />
       <Route path="/reports-hub" element={<ProtectedRoute><DashboardLayout><ReportsLanding /></DashboardLayout></ProtectedRoute>} />
