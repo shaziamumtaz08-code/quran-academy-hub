@@ -64,6 +64,7 @@ import TeachingOSAssessment from "./pages/TeachingOSAssessment";
 import TeachingOSVideo from "./pages/TeachingOSVideo";
 import TeachingOSSpeakingTutor from "./pages/TeachingOSSpeakingTutor";
 import TeachingOSAnalytics from "./pages/TeachingOSAnalytics";
+import ParentDashboard from "./pages/ParentDashboard";
 
 // Landing pages
 import TeachingLanding from "./pages/TeachingLanding";
