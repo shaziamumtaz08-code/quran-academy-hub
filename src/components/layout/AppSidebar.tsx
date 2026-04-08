@@ -178,10 +178,11 @@ export function AppSidebar({ className }: AppSidebarProps) {
   const { activeRole } = useAuth();
   const { activeDivision } = useDivision();
 
+  const isOneToOne = activeDivision?.model_type === 'one_to_one';
   const isCourseDetail = isCourseDetailRoute(location.pathname);
   const sidebar = isCourseDetail
     ? getCourseDetailSidebar(location.pathname)
-    : getSidebarForRoute(location.pathname);
+    : getSidebarForRoute(location.pathname, isOneToOne);
 
   const isItemActive = (item: SidebarNavItem) => {
     if (!item.href) return false;
