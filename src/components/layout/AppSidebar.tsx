@@ -16,32 +16,33 @@ interface SidebarNavItem {
   group?: string;
 }
 
-function getHomeSidebar(): { title: string; subtitle: string; items: SidebarNavItem[] } {
+function getHomeSidebar(isOneToOne?: boolean): { title: string; subtitle: string; items: SidebarNavItem[] } {
   return {
     title: 'Academy',
     subtitle: 'Dashboard',
     items: [
       { label: 'Dashboard', href: '/dashboard' },
       { label: 'Divisions', group: 'DIVISIONS' },
-      { label: 'Group Academy', href: '/teaching?section=courses' },
+      ...(!isOneToOne ? [{ label: 'Group Academy', href: '/teaching?section=courses' }] : []),
       { label: '1-to-1', href: '/teaching?section=assignments' },
-      { label: 'Recorded', href: '/teaching?section=recorded' },
+      ...(!isOneToOne ? [{ label: 'Recorded', href: '/teaching?section=recorded' }] : []),
     ],
   };
 }
 
-function getTeachingSidebar(courseCount: number): { title: string; subtitle: string; items: SidebarNavItem[]; showNewCourse?: boolean } {
+function getTeachingSidebar(courseCount: number, isOneToOne?: boolean): { title: string; subtitle: string; items: SidebarNavItem[]; showNewCourse?: boolean } {
+  const items: SidebarNavItem[] = [
+    ...(!isOneToOne ? [{ label: 'All Courses', href: '/teaching?section=courses' }] : []),
+    ...(!isOneToOne ? [{ label: 'Group Academy', href: '/courses?type=group' }] : []),
+    { label: '1-to-1', href: '/teaching?section=assignments' },
+    ...(!isOneToOne ? [{ label: 'Recorded', href: '/teaching?section=recorded' }] : []),
+    ...(!isOneToOne ? [{ label: 'Archived', href: '/courses?type=archived' }] : []),
+  ];
   return {
-    title: 'Course Management',
-    subtitle: `${courseCount} active courses`,
-    items: [
-      { label: 'All Courses', href: '/teaching?section=courses' },
-      { label: 'Group Academy', href: '/courses?type=group' },
-      { label: '1-to-1', href: '/teaching?section=assignments' },
-      { label: 'Recorded', href: '/teaching?section=recorded' },
-      { label: 'Archived', href: '/courses?type=archived' },
-    ],
-    showNewCourse: true,
+    title: isOneToOne ? '1-to-1 Teaching' : 'Course Management',
+    subtitle: isOneToOne ? 'Assignments & schedules' : `${courseCount} active courses`,
+    items,
+    showNewCourse: !isOneToOne,
   };
 }
 
@@ -114,9 +115,9 @@ function getReportsSidebar(): { title: string; subtitle: string; items: SidebarN
 }
 
 /* ─── Route to section mapping ─── */
-function getSidebarForRoute(pathname: string) {
+function getSidebarForRoute(pathname: string, isOneToOne?: boolean) {
   if (pathname.startsWith('/teaching') || pathname.startsWith('/courses') || pathname.startsWith('/assignments') || pathname.startsWith('/subjects') || pathname.startsWith('/attendance') || pathname.startsWith('/schedules') || pathname.startsWith('/monthly-planning')) {
-    return getTeachingSidebar(0);
+    return getTeachingSidebar(0, isOneToOne);
   }
   if (pathname.startsWith('/people') || pathname.startsWith('/students') || pathname.startsWith('/teachers') || pathname.startsWith('/user-management') || pathname.startsWith('/leads')) {
     return getPeopleSidebar();
@@ -133,7 +134,7 @@ function getSidebarForRoute(pathname: string) {
   if (pathname.startsWith('/reports') || pathname.startsWith('/student-reports') || pathname.startsWith('/kpi') || pathname.startsWith('/report-card')) {
     return getReportsSidebar();
   }
-  return getHomeSidebar();
+  return getHomeSidebar(isOneToOne);
 }
 
 /* ─── Course Detail sidebar ─── */
@@ -177,10 +178,11 @@ export function AppSidebar({ className }: AppSidebarProps) {
   const { activeRole } = useAuth();
   const { activeDivision } = useDivision();
 
+  const isOneToOne = activeDivision?.model_type === 'one_to_one';
   const isCourseDetail = isCourseDetailRoute(location.pathname);
   const sidebar = isCourseDetail
     ? getCourseDetailSidebar(location.pathname)
-    : getSidebarForRoute(location.pathname);
+    : getSidebarForRoute(location.pathname, isOneToOne);
 
   const isItemActive = (item: SidebarNavItem) => {
     if (!item.href) return false;
