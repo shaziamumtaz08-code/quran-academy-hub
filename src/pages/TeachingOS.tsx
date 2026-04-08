@@ -131,7 +131,7 @@ export default function TeachingOS() {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [syllabusId, setSyllabusId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const durationWeeks = parseInt(duration) || 8;
   const totalSessions = durationWeeks * (parseInt(sessionsPerWeek) || 2);
@@ -150,13 +150,13 @@ export default function TeachingOS() {
         target_audience: targetAudience,
         learning_goals: learningGoals,
         source_text: pdfText || pasteText || '',
-        rows: currentRows,
-        status: 'draft',
+        rows: JSON.parse(JSON.stringify(currentRows)),
+        status: 'draft' as const,
       };
       if (syllabusId) {
-        await supabase.from('syllabi').update(payload).eq('id', syllabusId);
+        await (supabase.from('syllabi') as any).update(payload).eq('id', syllabusId);
       } else {
-        const { data } = await supabase.from('syllabi').insert(payload).select('id').single();
+        const { data } = await (supabase.from('syllabi') as any).insert(payload).select('id').single();
         if (data) setSyllabusId(data.id);
       }
       setSaveStatus('saved');
