@@ -225,7 +225,7 @@ export default function CourseBuilder() {
       setWebSyllabus(course.syllabus_text || '');
       const outcomes = Array.isArray(course.outcomes) ? (course.outcomes as any[]).map((o: any) => o.text || '').join('\n') : '';
       setWebOutcomes(outcomes);
-      const faqs = Array.isArray(course.faqs) ? (course.faqs as any[]).map((f: any) => `${f.question || ''}|${f.answer || ''}`).join('\n') : '';
+      const faqs = Array.isArray(course.faqs) ? (course.faqs as any[]).map((f: any) => ({ question: f.question || '', answer: f.answer || '' })) : [];
       setWebFaqs(faqs);
       const pricing = (course.pricing || {}) as any;
       setWebPricingAmount(String(pricing.amount || ''));
@@ -400,10 +400,7 @@ export default function CourseBuilder() {
 
   const saveWebsite = useMutation({
     mutationFn: async () => {
-      const outcomesArr = webOutcomes.split('\n').filter(Boolean).map(t => ({ text: t.trim() }));
-      const faqsArr = webFaqs.split('\n').filter(Boolean).map(line => {
-        const [q, a] = line.split('|');
-        return { question: (q || '').trim(), answer: (a || '').trim() };
+      const faqsArr = webFaqs.filter(f => f.question.trim());
       });
       const { error } = await supabase.from('courses').update({
         description: webDescription || null,
@@ -938,7 +935,56 @@ export default function CourseBuilder() {
               </div>
               <div className="space-y-2"><Label>Key Outcomes (one per line)</Label><Textarea value={webOutcomes} onChange={e => setWebOutcomes(e.target.value)} rows={4} placeholder="Learn conversational Arabic&#10;Master essential grammar" /></div>
               <div className="space-y-2"><Label>Syllabus Text</Label><Textarea value={webSyllabus} onChange={e => setWebSyllabus(e.target.value)} rows={4} placeholder="Week 1: Introduction&#10;Week 2: Basics" /></div>
-              <div className="space-y-2"><Label>FAQs (question|answer per line)</Label><Textarea value={webFaqs} onChange={e => setWebFaqs(e.target.value)} rows={3} placeholder="Who is this for?|Beginners with no prior knowledge" /></div>
+              {/* FAQ Builder */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-semibold">FAQs</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setWebFaqs([...webFaqs, { question: '', answer: '' }])}>
+                    <Plus className="h-3 w-3 mr-1" /> Add FAQ
+                  </Button>
+                </div>
+                {webFaqs.length === 0 && (
+                  <p className="text-xs text-muted-foreground">No FAQs added yet. Click "Add FAQ" to get started.</p>
+                )}
+                {webFaqs.map((faq, i) => (
+                  <Card key={i} className="border-border/50">
+                    <CardContent className="p-3 space-y-2">
+                      <div className="flex items-start gap-2">
+                        <div className="flex-1 space-y-2">
+                          <Input
+                            placeholder="Question"
+                            value={faq.question}
+                            onChange={e => {
+                              const updated = [...webFaqs];
+                              updated[i] = { ...updated[i], question: e.target.value };
+                              setWebFaqs(updated);
+                            }}
+                          />
+                          <Textarea
+                            placeholder="Answer"
+                            value={faq.answer}
+                            rows={2}
+                            onChange={e => {
+                              const updated = [...webFaqs];
+                              updated[i] = { ...updated[i], answer: e.target.value };
+                              setWebFaqs(updated);
+                            }}
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0 text-destructive hover:text-destructive"
+                          onClick={() => setWebFaqs(webFaqs.filter((_, idx) => idx !== i))}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2"><Label>Contact Email</Label><Input value={webContactEmail} onChange={e => setWebContactEmail(e.target.value)} /></div>
                 <div className="space-y-2"><Label>WhatsApp</Label><Input value={webContactWhatsapp} onChange={e => setWebContactWhatsapp(e.target.value)} placeholder="+92..." /></div>
