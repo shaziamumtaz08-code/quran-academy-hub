@@ -57,6 +57,8 @@ import WhatsAppInbox from "./pages/WhatsAppInbox";
 import PublicApplyForm from "./pages/PublicApplyForm";
 import TeachingOS from "./pages/TeachingOS";
 import TeachingOSPlanner from "./pages/TeachingOSPlanner";
+import TeachingOSDayBoard from "./pages/TeachingOSDayBoard";
+import TeachingOSStudentView from "./pages/TeachingOSStudentView";
 
 // Landing pages
 import TeachingLanding from "./pages/TeachingLanding";
