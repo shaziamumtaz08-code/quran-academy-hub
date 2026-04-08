@@ -498,7 +498,11 @@ export default function TeachingOS() {
                   <button onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success('Link copied'); }} className="flex items-center gap-1.5 px-3 py-1.5 border border-[#d0d4dc] rounded-[6px] text-[11px] text-[#4a5264] hover:bg-[#f4f5f7]">
                     <Share2 className="h-3.5 w-3.5" /> Share
                   </button>
-                  <button className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0f2044] text-white rounded-[6px] text-[11px] font-medium hover:bg-[#1a2d54]">
+                  <button
+                    onClick={() => syllabusId && navigate(`/teaching-os/planner?syllabus_id=${syllabusId}`)}
+                    disabled={!syllabusId}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0f2044] text-white rounded-[6px] text-[11px] font-medium hover:bg-[#1a2d54] disabled:opacity-50"
+                  >
                     Next: Planner <ArrowRight className="h-3.5 w-3.5" />
                   </button>
                 </>
