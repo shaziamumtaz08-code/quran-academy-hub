@@ -16,16 +16,16 @@ interface SidebarNavItem {
   group?: string;
 }
 
-function getHomeSidebar(): { title: string; subtitle: string; items: SidebarNavItem[] } {
+function getHomeSidebar(isOneToOne?: boolean): { title: string; subtitle: string; items: SidebarNavItem[] } {
   return {
     title: 'Academy',
     subtitle: 'Dashboard',
     items: [
       { label: 'Dashboard', href: '/dashboard' },
       { label: 'Divisions', group: 'DIVISIONS' },
-      { label: 'Group Academy', href: '/teaching?section=courses' },
+      ...(!isOneToOne ? [{ label: 'Group Academy', href: '/teaching?section=courses' }] : []),
       { label: '1-to-1', href: '/teaching?section=assignments' },
-      { label: 'Recorded', href: '/teaching?section=recorded' },
+      ...(!isOneToOne ? [{ label: 'Recorded', href: '/teaching?section=recorded' }] : []),
     ],
   };
 }
