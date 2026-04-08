@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      academy_reports: {
+        Row: {
+          academy_id: string | null
+          created_at: string
+          generated_by: string | null
+          id: string
+          pdf_url: string | null
+          period_end: string
+          period_start: string
+          report_json: Json
+        }
+        Insert: {
+          academy_id?: string | null
+          created_at?: string
+          generated_by?: string | null
+          id?: string
+          pdf_url?: string | null
+          period_end: string
+          period_start: string
+          report_json?: Json
+        }
+        Update: {
+          academy_id?: string | null
+          created_at?: string
+          generated_by?: string | null
+          id?: string
+          pdf_url?: string | null
+          period_end?: string
+          period_start?: string
+          report_json?: Json
+        }
+        Relationships: []
+      }
       ai_assists: {
         Row: {
           activity_index: number
@@ -84,6 +117,62 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      analytics_snapshots: {
+        Row: {
+          assessment_avg: number | null
+          assignment_completion_rate: number | null
+          attendance_rate: number | null
+          course_id: string | null
+          created_at: string
+          flashcard_usage_rate: number | null
+          growth_delta: number | null
+          id: string
+          phase_usage: Json | null
+          snapshot_date: string
+          speaking_avg: number | null
+          student_id: string
+          video_completion_rate: number | null
+        }
+        Insert: {
+          assessment_avg?: number | null
+          assignment_completion_rate?: number | null
+          attendance_rate?: number | null
+          course_id?: string | null
+          created_at?: string
+          flashcard_usage_rate?: number | null
+          growth_delta?: number | null
+          id?: string
+          phase_usage?: Json | null
+          snapshot_date?: string
+          speaking_avg?: number | null
+          student_id: string
+          video_completion_rate?: number | null
+        }
+        Update: {
+          assessment_avg?: number | null
+          assignment_completion_rate?: number | null
+          attendance_rate?: number | null
+          course_id?: string | null
+          created_at?: string
+          flashcard_usage_rate?: number | null
+          growth_delta?: number | null
+          id?: string
+          phase_usage?: Json | null
+          snapshot_date?: string
+          speaking_avg?: number | null
+          student_id?: string
+          video_completion_rate?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_snapshots_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       app_settings: {
         Row: {
@@ -202,6 +291,53 @@ export type Database = {
             columns: ["assignment_id"]
             isOneToOne: false
             referencedRelation: "student_teacher_assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      at_risk_flags: {
+        Row: {
+          ai_summary: string | null
+          course_id: string | null
+          created_at: string
+          flagged_at: string
+          id: string
+          intervention_plan: Json | null
+          resolved_at: string | null
+          resolved_by: string | null
+          risk_reasons: Json | null
+          student_id: string
+        }
+        Insert: {
+          ai_summary?: string | null
+          course_id?: string | null
+          created_at?: string
+          flagged_at?: string
+          id?: string
+          intervention_plan?: Json | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          risk_reasons?: Json | null
+          student_id: string
+        }
+        Update: {
+          ai_summary?: string | null
+          course_id?: string | null
+          created_at?: string
+          flagged_at?: string
+          id?: string
+          intervention_plan?: Json | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          risk_reasons?: Json | null
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "at_risk_flags_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
             referencedColumns: ["id"]
           },
         ]
