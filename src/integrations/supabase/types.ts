@@ -4311,6 +4311,212 @@ export type Database = {
         }
         Relationships: []
       }
+      parent_messages: {
+        Row: {
+          attachment_url: string | null
+          content: string
+          created_at: string
+          id: string
+          parent_id: string
+          read_at: string | null
+          sender_role: string
+          student_id: string
+          teacher_id: string
+        }
+        Insert: {
+          attachment_url?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          parent_id: string
+          read_at?: string | null
+          sender_role?: string
+          student_id: string
+          teacher_id: string
+        }
+        Update: {
+          attachment_url?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          parent_id?: string
+          read_at?: string | null
+          sender_role?: string
+          student_id?: string
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parent_messages_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "parent_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parent_notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          link: string | null
+          parent_id: string
+          read_at: string | null
+          title: string
+          type: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          link?: string | null
+          parent_id: string
+          read_at?: string | null
+          title: string
+          type?: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          link?: string | null
+          parent_id?: string
+          read_at?: string | null
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parent_notifications_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "parent_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parent_profiles: {
+        Row: {
+          created_at: string
+          id: string
+          phone: string | null
+          preferred_language: string
+          relationship: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          phone?: string | null
+          preferred_language?: string
+          relationship?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          phone?: string | null
+          preferred_language?: string
+          relationship?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      parent_reports: {
+        Row: {
+          course_id: string | null
+          created_at: string
+          generated_at: string
+          id: string
+          language: string
+          pdf_url: string | null
+          period_end: string
+          period_start: string
+          read_at: string | null
+          report_json: Json
+          student_id: string
+        }
+        Insert: {
+          course_id?: string | null
+          created_at?: string
+          generated_at?: string
+          id?: string
+          language?: string
+          pdf_url?: string | null
+          period_end: string
+          period_start: string
+          read_at?: string | null
+          report_json?: Json
+          student_id: string
+        }
+        Update: {
+          course_id?: string | null
+          created_at?: string
+          generated_at?: string
+          id?: string
+          language?: string
+          pdf_url?: string | null
+          period_end?: string
+          period_start?: string
+          read_at?: string | null
+          report_json?: Json
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parent_reports_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parent_student_links: {
+        Row: {
+          id: string
+          linked_at: string
+          linked_by: string | null
+          messaging_on: boolean
+          notifications_on: boolean
+          parent_id: string
+          reports_on: boolean
+          student_id: string
+        }
+        Insert: {
+          id?: string
+          linked_at?: string
+          linked_by?: string | null
+          messaging_on?: boolean
+          notifications_on?: boolean
+          parent_id: string
+          reports_on?: boolean
+          student_id: string
+        }
+        Update: {
+          id?: string
+          linked_at?: string
+          linked_by?: string | null
+          messaging_on?: boolean
+          notifications_on?: boolean
+          parent_id?: string
+          reports_on?: boolean
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parent_student_links_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "parent_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_transactions: {
         Row: {
           amount_foreign: number
