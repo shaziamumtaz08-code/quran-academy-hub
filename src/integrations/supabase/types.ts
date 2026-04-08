@@ -5006,6 +5006,68 @@ export type Database = {
           },
         ]
       }
+      session_plans: {
+        Row: {
+          activities: Json | null
+          created_at: string
+          homework_suggestion: string | null
+          id: string
+          session_date: string | null
+          session_day: string | null
+          session_number: number
+          session_objective: string | null
+          session_title: string | null
+          status: string
+          syllabus_id: string
+          teacher_notes: string | null
+          total_minutes: number | null
+          updated_at: string
+          week_number: number
+        }
+        Insert: {
+          activities?: Json | null
+          created_at?: string
+          homework_suggestion?: string | null
+          id?: string
+          session_date?: string | null
+          session_day?: string | null
+          session_number: number
+          session_objective?: string | null
+          session_title?: string | null
+          status?: string
+          syllabus_id: string
+          teacher_notes?: string | null
+          total_minutes?: number | null
+          updated_at?: string
+          week_number: number
+        }
+        Update: {
+          activities?: Json | null
+          created_at?: string
+          homework_suggestion?: string | null
+          id?: string
+          session_date?: string | null
+          session_day?: string | null
+          session_number?: number
+          session_objective?: string | null
+          session_title?: string | null
+          status?: string
+          syllabus_id?: string
+          teacher_notes?: string | null
+          total_minutes?: number | null
+          updated_at?: string
+          week_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_plans_syllabus_id_fkey"
+            columns: ["syllabus_id"]
+            isOneToOne: false
+            referencedRelation: "syllabi"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       session_recordings: {
         Row: {
           created_at: string
