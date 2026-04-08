@@ -273,6 +273,7 @@ function AppRoutes() {
       {/* Landing Pages */}
       <Route path="/teaching" element={<ProtectedRoute><DashboardLayout><TeachingLanding /></DashboardLayout></ProtectedRoute>} />
       <Route path="/teaching-os" element={<ProtectedRoute><TeachingOS /></ProtectedRoute>} />
+      <Route path="/teaching-os/planner" element={<ProtectedRoute><TeachingOSPlanner /></ProtectedRoute>} />
       <Route path="/people" element={<ProtectedRoute><AdminRoute><DashboardLayout><PeopleLanding /></DashboardLayout></AdminRoute></ProtectedRoute>} />
       <Route path="/finance" element={<ProtectedRoute><DashboardLayout><FinanceLanding /></DashboardLayout></ProtectedRoute>} />
       <Route path="/reports-hub" element={<ProtectedRoute><DashboardLayout><ReportsLanding /></DashboardLayout></ProtectedRoute>} />
