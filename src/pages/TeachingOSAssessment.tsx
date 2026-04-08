@@ -549,9 +549,12 @@ const TeachingOSAssessment: React.FC = () => {
     return { index: i + 1, type: q.type, correctPct, points: q.points };
   });
 
+  const { activeRole } = useAuth();
+  const railItems = buildRailNav(activeRole);
+
   return (
     <div className="flex h-screen bg-[#f4f5f7] overflow-hidden">
-      <NavRail />
+      <NavRail items={railItems} />
 
       {/* Section Sidebar */}
       <div className="w-[210px] bg-white border-r border-[#e8e9eb] flex flex-col flex-shrink-0">
