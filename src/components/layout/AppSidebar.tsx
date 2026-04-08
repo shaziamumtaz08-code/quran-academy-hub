@@ -263,6 +263,11 @@ export function AppSidebar({ className }: AppSidebarProps) {
                   {item.badge}
                 </span>
               )}
+              {item.badgeText && (
+                <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700">
+                  {item.badgeText}
+                </span>
+              )}
             </Link>
             </React.Fragment>
           );
