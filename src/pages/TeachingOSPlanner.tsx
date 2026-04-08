@@ -581,9 +581,12 @@ export default function TeachingOSPlanner() {
                     </div>
                     <div className="px-3 py-1.5 border-t border-[#f0f1f3] bg-[#fafbfc] rounded-b-[10px] flex justify-between items-center">
                       <span className="text-[10px] text-[#aab0bc]">{plan.total_minutes} min</span>
-                      <span className="text-[10px] text-[#1a56b0] bg-[#eef2fa] border border-[#b5d0f8] rounded px-2 py-0.5">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); navigate(`/teaching-os/dayboard?session_id=${plan.id}`); }}
+                        className="text-[10px] text-[#1a56b0] bg-[#eef2fa] border border-[#b5d0f8] rounded px-2 py-0.5 hover:bg-[#dde8f7]"
+                      >
                         Open day board
-                      </span>
+                      </button>
                     </div>
                   </div>
                 );
