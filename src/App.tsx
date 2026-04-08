@@ -56,6 +56,7 @@ import GroupChat from "./pages/GroupChat";
 import WhatsAppInbox from "./pages/WhatsAppInbox";
 import PublicApplyForm from "./pages/PublicApplyForm";
 import TeachingOS from "./pages/TeachingOS";
+import TeachingOSPlanner from "./pages/TeachingOSPlanner";
 
 // Landing pages
 import TeachingLanding from "./pages/TeachingLanding";
