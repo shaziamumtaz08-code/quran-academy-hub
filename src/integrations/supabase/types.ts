@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_assists: {
+        Row: {
+          activity_index: number
+          assist_type: string
+          created_at: string
+          id: string
+          prompt: string | null
+          response: string | null
+          session_plan_id: string
+        }
+        Insert: {
+          activity_index?: number
+          assist_type?: string
+          created_at?: string
+          id?: string
+          prompt?: string | null
+          response?: string | null
+          session_plan_id: string
+        }
+        Update: {
+          activity_index?: number
+          assist_type?: string
+          created_at?: string
+          id?: string
+          prompt?: string | null
+          response?: string | null
+          session_plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_assists_session_plan_id_fkey"
+            columns: ["session_plan_id"]
+            isOneToOne: false
+            referencedRelation: "session_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_insights: {
         Row: {
           created_at: string
@@ -5006,6 +5044,59 @@ export type Database = {
           },
         ]
       }
+      session_logs: {
+        Row: {
+          activities_done: number | null
+          activities_total: number | null
+          actual_duration: number | null
+          created_at: string
+          ended_at: string | null
+          id: string
+          session_notes: string | null
+          session_plan_id: string
+          started_at: string
+          status: string
+          students_present: number | null
+          updated_at: string
+        }
+        Insert: {
+          activities_done?: number | null
+          activities_total?: number | null
+          actual_duration?: number | null
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          session_notes?: string | null
+          session_plan_id: string
+          started_at?: string
+          status?: string
+          students_present?: number | null
+          updated_at?: string
+        }
+        Update: {
+          activities_done?: number | null
+          activities_total?: number | null
+          actual_duration?: number | null
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          session_notes?: string | null
+          session_plan_id?: string
+          started_at?: string
+          status?: string
+          students_present?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_logs_session_plan_id_fkey"
+            columns: ["session_plan_id"]
+            isOneToOne: false
+            referencedRelation: "session_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       session_plans: {
         Row: {
           activities: Json | null
@@ -5507,6 +5598,38 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_signals: {
+        Row: {
+          created_at: string
+          id: string
+          session_log_id: string
+          signal_type: string
+          student_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          session_log_id: string
+          signal_type?: string
+          student_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          session_log_id?: string
+          signal_type?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_signals_session_log_id_fkey"
+            columns: ["session_log_id"]
+            isOneToOne: false
+            referencedRelation: "session_logs"
             referencedColumns: ["id"]
           },
         ]
