@@ -677,6 +677,7 @@ export default function TeachingOSAnalytics() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { activeRole } = useAuth();
   const courseId = params.get('course_id');
   const [section, setSection] = useState<Section>('dashboard');
   const [period, setPeriod] = useState('month');
@@ -713,7 +714,7 @@ export default function TeachingOSAnalytics() {
     outcomes: 'Learning outcomes',
   };
 
-  const railNav = buildRailNav(navigate, '/teaching-os');
+  const railNav = buildRailNav(activeRole);
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ backgroundColor: '#f4f5f7' }}>
