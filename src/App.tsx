@@ -290,6 +290,9 @@ function AppRoutes() {
       <Route path="/teaching-os/video" element={<ProtectedRoute><TeachingOSVideo /></ProtectedRoute>} />
       <Route path="/teaching-os/speaking-tutor" element={<ProtectedRoute><TeachingOSSpeakingTutor /></ProtectedRoute>} />
       <Route path="/teaching-os/analytics" element={<ProtectedRoute><TeachingOSAnalytics /></ProtectedRoute>} />
+      {/* Parent Portal */}
+      <Route path="/parent" element={<ProtectedRoute><ParentDashboard /></ProtectedRoute>} />
+      <Route path="/parent/child/:studentId" element={<ProtectedRoute><ParentDashboard /></ProtectedRoute>} />
       <Route path="/people" element={<ProtectedRoute><AdminRoute><DashboardLayout><PeopleLanding /></DashboardLayout></AdminRoute></ProtectedRoute>} />
       <Route path="/finance" element={<ProtectedRoute><DashboardLayout><FinanceLanding /></DashboardLayout></ProtectedRoute>} />
       <Route path="/reports-hub" element={<ProtectedRoute><DashboardLayout><ReportsLanding /></DashboardLayout></ProtectedRoute>} />
