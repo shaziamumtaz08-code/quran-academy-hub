@@ -174,8 +174,8 @@ function parseJSONFromStream(raw: string): any {
 const TeachingOSContentKit: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { role } = useAuth();
-  const railItems = buildRailNav(role);
+  const { activeRole } = useAuth();
+  const railItems = buildRailNav(activeRole);
   const sessionId = searchParams.get("session_id");
 
   const [sessionPlan, setSessionPlan] = useState<SessionPlan | null>(null);
