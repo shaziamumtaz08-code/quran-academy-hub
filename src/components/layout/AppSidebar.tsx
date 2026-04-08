@@ -30,18 +30,19 @@ function getHomeSidebar(): { title: string; subtitle: string; items: SidebarNavI
   };
 }
 
-function getTeachingSidebar(courseCount: number): { title: string; subtitle: string; items: SidebarNavItem[]; showNewCourse?: boolean } {
+function getTeachingSidebar(courseCount: number, isOneToOne?: boolean): { title: string; subtitle: string; items: SidebarNavItem[]; showNewCourse?: boolean } {
+  const items: SidebarNavItem[] = [
+    ...(!isOneToOne ? [{ label: 'All Courses', href: '/teaching?section=courses' }] : []),
+    ...(!isOneToOne ? [{ label: 'Group Academy', href: '/courses?type=group' }] : []),
+    { label: '1-to-1', href: '/teaching?section=assignments' },
+    ...(!isOneToOne ? [{ label: 'Recorded', href: '/teaching?section=recorded' }] : []),
+    ...(!isOneToOne ? [{ label: 'Archived', href: '/courses?type=archived' }] : []),
+  ];
   return {
-    title: 'Course Management',
-    subtitle: `${courseCount} active courses`,
-    items: [
-      { label: 'All Courses', href: '/teaching?section=courses' },
-      { label: 'Group Academy', href: '/courses?type=group' },
-      { label: '1-to-1', href: '/teaching?section=assignments' },
-      { label: 'Recorded', href: '/teaching?section=recorded' },
-      { label: 'Archived', href: '/courses?type=archived' },
-    ],
-    showNewCourse: true,
+    title: isOneToOne ? '1-to-1 Teaching' : 'Course Management',
+    subtitle: isOneToOne ? 'Assignments & schedules' : `${courseCount} active courses`,
+    items,
+    showNewCourse: !isOneToOne,
   };
 }
 
