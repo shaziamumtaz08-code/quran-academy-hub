@@ -5656,6 +5656,100 @@ export type Database = {
         }
         Relationships: []
       }
+      syllabi: {
+        Row: {
+          course_id: string | null
+          course_name: string
+          created_at: string
+          duration_weeks: number | null
+          id: string
+          learning_goals: string | null
+          level: string | null
+          rows: Json | null
+          sessions_week: number | null
+          source_text: string | null
+          status: string
+          subject: string | null
+          target_audience: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          course_id?: string | null
+          course_name: string
+          created_at?: string
+          duration_weeks?: number | null
+          id?: string
+          learning_goals?: string | null
+          level?: string | null
+          rows?: Json | null
+          sessions_week?: number | null
+          source_text?: string | null
+          status?: string
+          subject?: string | null
+          target_audience?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          course_id?: string | null
+          course_name?: string
+          created_at?: string
+          duration_weeks?: number | null
+          id?: string
+          learning_goals?: string | null
+          level?: string | null
+          rows?: Json | null
+          sessions_week?: number | null
+          source_text?: string | null
+          status?: string
+          subject?: string | null
+          target_audience?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syllabi_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      syllabus_exports: {
+        Row: {
+          exported_at: string
+          exported_by: string
+          format: string
+          id: string
+          syllabus_id: string
+        }
+        Insert: {
+          exported_at?: string
+          exported_by: string
+          format: string
+          id?: string
+          syllabus_id: string
+        }
+        Update: {
+          exported_at?: string
+          exported_by?: string
+          format?: string
+          id?: string
+          syllabus_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syllabus_exports_syllabus_id_fkey"
+            columns: ["syllabus_id"]
+            isOneToOne: false
+            referencedRelation: "syllabi"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       system_logs: {
         Row: {
           action: string
