@@ -295,12 +295,29 @@
     @apply text-destructive;
   }
 
-  /* Urdu/Arabic text styling with Nastaleeq font */
+  /* Urdu text — Nastaliq script (distinct from Arabic Naskh) */
   .urdu-text {
-    font-family: 'Urdu Nastaleeq', 'Jameel Noori Nastaleeq', 'Noto Nastaliq Urdu', 'Noto Naskh Arabic', serif;
+    font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif;
     direction: rtl;
     unicode-bidi: embed;
-    line-height: 2;
+    line-height: 2.2;
+    font-size: 1.15em;
+  }
+
+  /* Arabic text — Naskh script */
+  .arabic-text {
+    font-family: 'Noto Naskh Arabic', 'Amiri', 'Traditional Arabic', serif;
+    direction: rtl;
+    unicode-bidi: embed;
+    line-height: 1.8;
+    font-size: 1.1em;
+  }
+
+  /* Combined RTL helper for mixed Urdu/Arabic content */
+  .rtl-text {
+    direction: rtl;
+    unicode-bidi: embed;
+    text-align: right;
   }
 
   /* Print-optimized styles for report cards — single A4 page output */
