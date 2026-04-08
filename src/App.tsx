@@ -63,6 +63,7 @@ import TeachingOSContentKit from "./pages/TeachingOSContentKit";
 import TeachingOSAssessment from "./pages/TeachingOSAssessment";
 import TeachingOSVideo from "./pages/TeachingOSVideo";
 import TeachingOSSpeakingTutor from "./pages/TeachingOSSpeakingTutor";
+import TeachingOSAnalytics from "./pages/TeachingOSAnalytics";
 
 // Landing pages
 import TeachingLanding from "./pages/TeachingLanding";
@@ -287,6 +288,7 @@ function AppRoutes() {
       <Route path="/teaching-os/assessment" element={<ProtectedRoute><TeachingOSAssessment /></ProtectedRoute>} />
       <Route path="/teaching-os/video" element={<ProtectedRoute><TeachingOSVideo /></ProtectedRoute>} />
       <Route path="/teaching-os/speaking-tutor" element={<ProtectedRoute><TeachingOSSpeakingTutor /></ProtectedRoute>} />
+      <Route path="/teaching-os/analytics" element={<ProtectedRoute><TeachingOSAnalytics /></ProtectedRoute>} />
       <Route path="/people" element={<ProtectedRoute><AdminRoute><DashboardLayout><PeopleLanding /></DashboardLayout></AdminRoute></ProtectedRoute>} />
       <Route path="/finance" element={<ProtectedRoute><DashboardLayout><FinanceLanding /></DashboardLayout></ProtectedRoute>} />
       <Route path="/reports-hub" element={<ProtectedRoute><DashboardLayout><ReportsLanding /></DashboardLayout></ProtectedRoute>} />

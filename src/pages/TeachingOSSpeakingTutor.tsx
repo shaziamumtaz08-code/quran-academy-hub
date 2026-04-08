@@ -228,7 +228,7 @@ const TeachingOSSpeakingTutor: React.FC = () => {
         </div>
 
         <div className="p-[10px] border-t" style={{ borderColor: '#e8e9eb' }}>
-          <Button className="w-full text-[12px] h-8" style={{ backgroundColor: '#0f2044', color: '#fff' }} onClick={() => toast.info('Phase 8: Analytics coming soon')}>
+          <Button className="w-full text-[12px] h-8" style={{ backgroundColor: '#0f2044', color: '#fff' }} onClick={() => navigate('/teaching-os/analytics')}>
             Phase 8: Analytics <ExternalLink className="w-3 h-3 ml-1" />
           </Button>
         </div>
@@ -244,7 +244,7 @@ const TeachingOSSpeakingTutor: React.FC = () => {
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" className="text-[11px] h-7"><ClipboardList className="w-3 h-3 mr-1" />Assign to students</Button>
             <Button variant="outline" size="sm" className="text-[11px] h-7"><BarChart3 className="w-3 h-3 mr-1" />Export report</Button>
-            <Button size="sm" className="text-[11px] h-7" style={{ backgroundColor: '#0f2044', color: '#fff' }} onClick={() => toast.info('Phase 8: Analytics coming soon')}>
+            <Button size="sm" className="text-[11px] h-7" style={{ backgroundColor: '#0f2044', color: '#fff' }} onClick={() => navigate('/teaching-os/analytics')}>
               Phase 8: Analytics <ChevronRight className="w-3 h-3 ml-1" />
             </Button>
           </div>
