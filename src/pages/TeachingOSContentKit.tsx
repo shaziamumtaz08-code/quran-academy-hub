@@ -158,6 +158,10 @@ const TeachingOSContentKit: React.FC = () => {
   const [genProgress, setGenProgress] = useState<Record<string, string>>({});
   const [kitId, setKitId] = useState<string | null>(null);
 
+  // Custom prompt per tool
+  const [customPrompts, setCustomPrompts] = useState<Record<string, string>>({});
+  const [showPromptBox, setShowPromptBox] = useState<Record<string, boolean>>({});
+
   // UI state
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -275,9 +279,18 @@ const TeachingOSContentKit: React.FC = () => {
     abortRef.current = abort;
 
     try {
+      const extraParams: Record<string, any> = {};
+      if (type === "quiz") {
+        extraParams.questionCount = 10;
+        extraParams.questionTypes = ["mcq", "short_answer", "true_false"];
+        extraParams.difficulty = "Mixed";
+      }
+      if (customPrompts[type]?.trim()) {
+        extraParams.customPrompt = customPrompts[type].trim();
+      }
       const parsed = await fetchAIContent(
         type, sessionPlan, courseName, subject, level,
-        type === "quiz" ? { questionCount: 10, questionTypes: ["mcq", "short_answer", "true_false"], difficulty: "Mixed" } : {},
+        extraParams,
         abort.signal
       );
       if (!parsed) throw new Error("Failed to parse AI response");
