@@ -429,7 +429,8 @@ export default function TeachingOS() {
         <div className="w-[320px] min-w-[320px] bg-white border-r border-[#e8e9eb] flex flex-col overflow-hidden">
           <div className="px-[18px] pt-4 pb-[14px] border-b border-[#e8e9eb]">
             <h2 className="text-[15px] font-medium text-[#0f2044]">Input engine</h2>
-            <p className="text-[11px] text-[#7a7f8a]">Define your course — AI builds the syllabus</p>
+            <p className="text-[11px] text-[#7a7f8a] mb-2">Define your course — AI builds the syllabus</p>
+            <LanguageSelector showLabel />
           </div>
           <div className="flex-1 overflow-y-auto px-[18px] py-4 flex flex-col gap-[14px]">
             {/* Course selector */}
@@ -717,10 +718,11 @@ export default function TeachingOS() {
                           </div>
                         </td>
                         <td className="px-[10px] py-1">
-                          <EditableCell value={row.topic} onChange={(v) => updateRow(idx, 'topic', v)} />
+                          <div className={langClass}><EditableCell value={row.topic} onChange={(v) => updateRow(idx, 'topic', v)} /></div>
                         </td>
                         <td className="px-[10px] py-1">
-                          <EditableCell value={row.objectives} onChange={(v) => updateRow(idx, 'objectives', v)} />
+                          <div className={langClass}><EditableCell value={row.objectives} onChange={(v) => updateRow(idx, 'objectives', v)} /></div>
+                        </td>
                         </td>
                         <td className="px-[10px] py-[10px]">
                           <ContentTypeBadges types={row.contentTypes} onChange={(t) => updateRow(idx, 'contentTypes', t)} />
