@@ -3,10 +3,11 @@ import { Link, useLocation } from 'react-router-dom';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { AppRole } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   LayoutDashboard, BookOpen, Users, DollarSign, BarChart3,
-  MessageSquare, Cog,ClipboardCheck, Target,
-  Award, FileText, CalendarDays,
+  MessageSquare, Cog, ClipboardCheck, Target,
+  Award, FileText, CalendarDays, LogOut,
 } from 'lucide-react';
 import logoDark from '@/assets/logo-dark.jpg';
 
