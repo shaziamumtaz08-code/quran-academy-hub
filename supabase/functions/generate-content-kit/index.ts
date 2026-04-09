@@ -7,7 +7,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { contentType, sessionPlan, courseName, subject, level, questionCount, questionTypes, difficulty, exerciseTypes, language } = await req.json();
+    const { contentType, sessionPlan, courseName, subject, level, questionCount, questionTypes, difficulty, exerciseTypes, language, customPrompt } = await req.json();
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) {
