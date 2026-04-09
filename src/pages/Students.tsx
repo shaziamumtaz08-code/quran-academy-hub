@@ -216,7 +216,8 @@ export default function Students() {
       const { data: profiles, error: profileError } = await supabase
         .from('profiles')
         .select('id, full_name, email, country, city, gender, age')
-        .in('id', studentIds);
+        .in('id', studentIds)
+        .is('archived_at', null);
 
       if (profileError) throw profileError;
 
