@@ -679,6 +679,7 @@ export default function TeachingOSAnalytics() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { activeRole } = useAuth();
+  const { langClass } = useLanguage();
   const courseId = params.get('course_id');
   const [section, setSection] = useState<Section>('dashboard');
   const [period, setPeriod] = useState('month');
