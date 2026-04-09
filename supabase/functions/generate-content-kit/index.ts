@@ -68,7 +68,7 @@ Each question:
   "difficulty": "easy" | "medium" | "hard",
   "bloomsLevel": "remember" | "understand" | "apply"
 }
-Return ONLY the JSON array.`;
+Return ONLY the JSON array.${customSpec}`;
         break;
       }
 
@@ -86,7 +86,7 @@ Each flashcard:
   "exampleSentence": string | null (Arabic example),
   "exampleTranslation": string | null
 }
-Include 10-15 cards covering all key vocabulary. Return ONLY the JSON array.`;
+Include 10-15 cards covering all key vocabulary. Return ONLY the JSON array.${customSpec}`;
         maxTokens = 3000;
         break;
       }
@@ -116,7 +116,7 @@ Return JSON:
       ]
     }
   ]
-}`;
+}${customSpec}`;
         maxTokens = 3000;
         break;
       }
