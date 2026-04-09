@@ -346,7 +346,7 @@ function AIReportView() {
                   <button className="text-[10px]" style={{ color: '#1a56b0' }}>Share</button>
                   <button className="text-[10px]" style={{ color: '#1a56b0' }}>Export PDF</button>
                 </div>
-                <div className={`text-[12px] leading-[1.6] whitespace-pre-line ${langClass}`} style={{ color: '#4a5264' }} dangerouslySetInnerHTML={{ __html: parseArabicTags(s.content) }} />
+                <div className={`text-[12px] leading-[1.6] whitespace-pre-line ${localStorage.getItem('tos-language') === 'ur' ? 'lang-ur' : localStorage.getItem('tos-language') === 'ar' ? 'lang-ar' : 'lang-en'}`} style={{ color: '#4a5264' }} dangerouslySetInnerHTML={{ __html: parseArabicTags(s.content) }} />
               </div>
             );
           })}
