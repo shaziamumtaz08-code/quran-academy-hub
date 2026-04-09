@@ -76,15 +76,16 @@ function getFinanceSidebar(): { title: string; subtitle: string; items: SidebarN
   };
 }
 
-function getCommunicationSidebar(): { title: string; subtitle: string; items: SidebarNavItem[] } {
+function getCommunicationSidebar(role?: string | null): { title: string; subtitle: string; items: SidebarNavItem[] } {
+  const isAdmin = role === 'super_admin' || role === 'admin' || role?.startsWith('admin_');
   return {
     title: 'Communication',
     subtitle: '',
     items: [
       { label: 'Group Chat', href: '/chat' },
-      { label: 'WhatsApp Inbox', href: '/whatsapp' },
+      ...(isAdmin ? [{ label: 'WhatsApp Inbox', href: '/whatsapp' }] : []),
       { label: 'Notifications', href: '/notifications' },
-      { label: 'Zoom', href: '/zoom-management' },
+      ...(isAdmin ? [{ label: 'Zoom', href: '/zoom-management' }] : []),
       { label: 'Work Hub', href: '/hub' },
     ],
   };
