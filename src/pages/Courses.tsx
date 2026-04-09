@@ -9,15 +9,18 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
 import { FileUploadField } from '@/components/shared/FileUploadField';
 import {
   Plus, Search, BookOpen, Users, Globe, Clock, Star,
-  Sparkles, Loader2, X, Library
+  Sparkles, Loader2, X, Library, MoreVertical, Trash2, Copy
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDivision } from '@/contexts/DivisionContext';
@@ -68,6 +71,12 @@ export default function Courses() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterLevel, setFilterLevel] = useState('all');
+  const [deleteTarget, setDeleteTarget] = useState<Course | null>(null);
+  const [duplicateTarget, setDuplicateTarget] = useState<Course | null>(null);
+  const [dupName, setDupName] = useState('');
+  const [dupOptions, setDupOptions] = useState({ modules: true, classes: true, assignments: false, feePlans: false, marketing: false });
+  const [deleting, setDeleting] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
 
   // Form state
   const [formName, setFormName] = useState('');
@@ -260,6 +269,156 @@ export default function Courses() {
     setFormTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
   };
 
+  // ─── Delete Course (cascade) ─────────────────────────
+  const handleDeleteCourse = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const cid = deleteTarget.id;
+      // Cascade delete in FK order
+      await supabase.from('course_lesson_plans').delete().eq('course_id', cid);
+      await supabase.from('course_lessons').delete().eq('course_id', cid);
+      await supabase.from('course_modules').delete().eq('course_id', cid);
+      await supabase.from('course_enrollments').delete().eq('course_id', cid);
+      await supabase.from('course_assignment_submissions').delete().in('assignment_id',
+        (await supabase.from('course_assignments').select('id').eq('course_id', cid)).data?.map((a: any) => a.id) || []
+      );
+      await supabase.from('course_assignments').delete().eq('course_id', cid);
+      await supabase.from('course_notifications').delete().eq('course_id', cid);
+      await supabase.from('course_message_sequences').delete().eq('course_id', cid);
+      await supabase.from('course_fee_payments').delete().in('student_fee_id',
+        (await supabase.from('course_student_fees').select('id').eq('course_id', cid)).data?.map((f: any) => f.id) || []
+      );
+      await supabase.from('course_student_fees').delete().eq('course_id', cid);
+      await supabase.from('course_fee_plans').delete().eq('course_id', cid);
+      await supabase.from('course_certificate_awards').delete().eq('course_id', cid);
+      await supabase.from('course_certificates').delete().eq('course_id', cid);
+      await supabase.from('course_badges').delete().eq('course_id', cid);
+      await supabase.from('course_post_replies').delete().in('post_id',
+        (await supabase.from('course_posts').select('id').eq('course_id', cid)).data?.map((p: any) => p.id) || []
+      );
+      await supabase.from('course_posts').delete().eq('course_id', cid);
+      // Classes: remove students/staff first, nullify zoom refs
+      const classIds = (await supabase.from('course_classes').select('id').eq('course_id', cid)).data?.map((c: any) => c.id) || [];
+      if (classIds.length) {
+        await supabase.from('course_class_students').delete().in('class_id', classIds);
+        await supabase.from('course_class_staff').delete().in('class_id', classIds);
+      }
+      await supabase.from('course_classes').delete().eq('course_id', cid);
+      // Syllabi & session plans
+      const syllabiIds = (await supabase.from('syllabi').select('id').eq('course_id', cid)).data?.map((s: any) => s.id) || [];
+      if (syllabiIds.length) {
+        await supabase.from('session_plans').delete().in('syllabus_id', syllabiIds);
+      }
+      await supabase.from('syllabi').delete().eq('course_id', cid);
+      // Finally delete the course
+      const { error } = await supabase.from('courses').delete().eq('id', cid);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['courses'] });
+      toast({ title: 'Course deleted permanently' });
+    } catch (err: any) {
+      toast({ title: 'Delete failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setDeleting(false);
+      setDeleteTarget(null);
+    }
+  };
+
+  // ─── Duplicate Course ────────────────────────────────
+  const handleDuplicateCourse = async () => {
+    if (!duplicateTarget) return;
+    setDuplicating(true);
+    try {
+      const src = duplicateTarget;
+      // Insert new course as draft
+      const { data: newCourse, error } = await supabase.from('courses').insert({
+        name: dupName.trim() || `Copy of ${src.name}`,
+        description: src.description,
+        teacher_id: src.teacher_id,
+        subject_id: src.subject_id,
+        start_date: format(new Date(), 'yyyy-MM-dd'),
+        end_date: null,
+        max_students: src.max_students,
+        level: src.level,
+        tags: src.tags,
+        status: 'draft',
+        website_enabled: dupOptions.marketing ? src.website_enabled : false,
+        seo_slug: null,
+        is_group_class: src.is_group_class,
+        enrollment_type: src.enrollment_type,
+        hero_image_url: dupOptions.marketing ? src.hero_image_url : null,
+      } as any).select('id').single();
+      if (error) throw error;
+      const newId = newCourse.id;
+
+      // Duplicate modules & lessons
+      if (dupOptions.modules) {
+        const { data: modules } = await supabase.from('course_modules').select('*').eq('course_id', src.id).order('sort_order');
+        for (const mod of modules || []) {
+          const { data: newMod } = await supabase.from('course_modules').insert({
+            course_id: newId, title: mod.title, sort_order: mod.sort_order,
+          }).select('id').single();
+          if (newMod) {
+            const { data: lessons } = await supabase.from('course_lessons').select('*').eq('module_id', mod.id).order('sort_order');
+            for (const les of lessons || []) {
+              await supabase.from('course_lessons').insert({
+                course_id: newId, module_id: newMod.id, title: les.title,
+                content_type: les.content_type, content_html: les.content_html,
+                video_url: les.video_url, file_url: les.file_url, sort_order: les.sort_order,
+              });
+            }
+          }
+        }
+      }
+
+      // Duplicate classes (schedule only, no students)
+      if (dupOptions.classes) {
+        const { data: srcClasses } = await supabase.from('course_classes').select('*').eq('course_id', src.id);
+        for (const cls of srcClasses || []) {
+          await supabase.from('course_classes').insert({
+            course_id: newId, name: cls.name, schedule_days: cls.schedule_days,
+            schedule_time: cls.schedule_time, timezone: cls.timezone,
+            session_duration: cls.session_duration, max_seats: cls.max_seats,
+            class_type: cls.class_type, fee_amount: cls.fee_amount,
+            fee_currency: cls.fee_currency, is_volunteer: cls.is_volunteer,
+          });
+        }
+      }
+
+      // Duplicate assignments
+      if (dupOptions.assignments) {
+        const { data: srcAssignments } = await supabase.from('course_assignments').select('*').eq('course_id', src.id);
+        for (const a of srcAssignments || []) {
+          await supabase.from('course_assignments').insert({
+            course_id: newId, title: a.title, instructions: a.instructions,
+            file_url: a.file_url, file_name: a.file_name, status: 'draft',
+          });
+        }
+      }
+
+      // Duplicate fee plans
+      if (dupOptions.feePlans) {
+        const { data: srcPlans } = await supabase.from('course_fee_plans').select('*').eq('course_id', src.id);
+        for (const p of srcPlans || []) {
+          await supabase.from('course_fee_plans').insert({
+            course_id: newId, plan_name: p.plan_name, total_amount: p.total_amount,
+            currency: p.currency, installments: p.installments,
+            installment_schedule: p.installment_schedule, tax_percent: p.tax_percent,
+          });
+        }
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['courses'] });
+      toast({ title: 'Course duplicated' });
+      setDuplicateTarget(null);
+      navigate(`/courses/${newId}`);
+    } catch (err: any) {
+      toast({ title: 'Duplicate failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setDuplicating(false);
+    }
+  };
+
   // ─── Filtering ────────────────────────────────────────
   const filtered = useMemo(() => {
     return courses.filter(c => {
@@ -354,7 +513,7 @@ export default function Courses() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map(course => (
               <Card key={course.id}
-                className="group cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.01] overflow-hidden border-border/60"
+                className="group cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.01] overflow-hidden border-border/60 relative"
                 onClick={() => navigate(`/courses/${course.id}`)}>
                 {/* Hero strip */}
                 <div className="h-2 bg-gradient-to-r from-primary via-accent to-primary/60" />
@@ -366,14 +525,33 @@ export default function Courses() {
                         {(course as any).teacher?.full_name || 'Unassigned'}
                       </p>
                     </div>
-                    <div className="flex flex-col gap-1 items-end shrink-0">
-                      <Badge variant={course.status === 'active' ? 'default' : 'secondary'} className="text-xs">
-                        {course.status}
-                      </Badge>
-                      {course.website_enabled && (
-                        <Badge variant="outline" className="text-xs text-accent border-accent/30">
-                          <Globe className="h-3 w-3 mr-1" /> Live
+                    <div className="flex items-center gap-1 shrink-0">
+                      <div className="flex flex-col gap-1 items-end">
+                        <Badge variant={course.status === 'active' ? 'default' : 'secondary'} className="text-xs">
+                          {course.status}
                         </Badge>
+                        {course.website_enabled && (
+                          <Badge variant="outline" className="text-xs text-accent border-accent/30">
+                            <Globe className="h-3 w-3 mr-1" /> Live
+                          </Badge>
+                        )}
+                      </div>
+                      {canManage && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
+                            <DropdownMenuItem onClick={() => { setDupName(`Copy of ${course.name}`); setDupOptions({ modules: true, classes: true, assignments: false, feePlans: false, marketing: false }); setDuplicateTarget(course); }}>
+                              <Copy className="h-4 w-4 mr-2" /> Duplicate
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive" onClick={() => setDeleteTarget(course)}>
+                              <Trash2 className="h-4 w-4 mr-2" /> Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       )}
                     </div>
                   </div>
@@ -564,6 +742,65 @@ export default function Courses() {
               <Button variant="outline" onClick={() => { setCreateOpen(false); resetForm(); }}>Cancel</Button>
               <Button onClick={() => createCourse.mutate()} disabled={createCourse.isPending || !formName.trim()}>
                 {createCourse.isPending ? 'Creating…' : 'Create Course'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* ─── Delete Course Confirmation ────────────────── */}
+        <AlertDialog open={!!deleteTarget} onOpenChange={v => !v && setDeleteTarget(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Course Permanently?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete <strong>{deleteTarget?.name}</strong> and all its classes, enrollments, modules, lessons, assignments, and resources. This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteCourse} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                {deleting ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Deleting…</> : 'Delete Forever'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* ─── Duplicate Course Dialog ───────────────────── */}
+        <Dialog open={!!duplicateTarget} onOpenChange={v => !v && setDuplicateTarget(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Duplicate Course</DialogTitle>
+              <DialogDescription>Choose what to copy from "{duplicateTarget?.name}"</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">New Course Name</Label>
+                <Input value={dupName} onChange={e => setDupName(e.target.value)} />
+              </div>
+              <Separator />
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">What to duplicate</p>
+              <div className="space-y-2">
+                {[
+                  { key: 'modules', label: 'Modules & Lessons' },
+                  { key: 'classes', label: 'Classes (schedule only, no students)' },
+                  { key: 'assignments', label: 'Assignments' },
+                  { key: 'feePlans', label: 'Fee Plans' },
+                  { key: 'marketing', label: 'Marketing / Website settings' },
+                ].map(opt => (
+                  <label key={opt.key} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={(dupOptions as any)[opt.key]}
+                      onCheckedChange={v => setDupOptions(prev => ({ ...prev, [opt.key]: !!v }))}
+                    />
+                    {opt.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDuplicateTarget(null)}>Cancel</Button>
+              <Button onClick={handleDuplicateCourse} disabled={duplicating || !dupName.trim()}>
+                {duplicating ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Duplicating…</> : 'Duplicate'}
               </Button>
             </DialogFooter>
           </DialogContent>
