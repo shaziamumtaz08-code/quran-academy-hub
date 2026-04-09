@@ -13,6 +13,7 @@ import {
   Mic, ListChecks, PenTool, MessageSquare, Hand, Lightbulb, Zap,
   Square, Eye
 } from 'lucide-react';
+import { PhaseStepperCompact, NextPhaseButton, PhaseBreadcrumb } from '@/components/teaching/PhaseNavBar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
