@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { detectScriptClass } from '@/lib/scriptFont';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { NavRail, buildRailNav } from '@/components/layout/NavRail';
 import { useAuth } from '@/contexts/AuthContext';
