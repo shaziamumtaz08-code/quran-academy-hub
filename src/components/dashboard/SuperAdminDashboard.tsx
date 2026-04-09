@@ -22,7 +22,7 @@ export function SuperAdminDashboard() {
     queryKey: ['super-admin-dashboard-v2'],
     queryFn: async () => {
       const [profilesRes, rolesRes, feeRes] = await Promise.all([
-        supabase.from('profiles').select('id', { count: 'exact', head: true }),
+        supabase.from('profiles').select('id', { count: 'exact', head: true }).is('archived_at', null),
         supabase.from('user_roles').select('role'),
         supabase.from('fee_invoices').select('amount, amount_paid, status').eq('billing_month', format(new Date(), 'yyyy-MM')),
       ]);
