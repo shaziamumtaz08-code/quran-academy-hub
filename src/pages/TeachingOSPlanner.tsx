@@ -136,6 +136,7 @@ export default function TeachingOSPlanner() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const { language, langClass } = useLanguage();
   const syllabusId = searchParams.get('syllabus_id');
 
   const [syllabus, setSyllabus] = useState<Syllabus | null>(null);

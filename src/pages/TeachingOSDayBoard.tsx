@@ -108,6 +108,7 @@ export default function TeachingOSDayBoard() {
   const navigate = useNavigate();
   const location = useLocation();
   const { profile } = useAuth();
+  const { language, langClass } = useLanguage();
 
   const sessionId = searchParams.get('session_id');
   const isLiveRoute = location.pathname.includes('/live');
