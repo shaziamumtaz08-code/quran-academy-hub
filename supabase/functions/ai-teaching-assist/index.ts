@@ -7,7 +7,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { assistType, activityTitle, activityDesc, subject, level, courseName, userMessage, language } = await req.json();
+    const { assistType, activityTitle, activityDesc, subject, level, courseName, userMessage, language, context } = await req.json();
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) {
@@ -40,6 +40,13 @@ Deno.serve(async (req) => {
         maxTokens = 200;
         break;
 
+      case "improve_question": {
+        systemPrompt = `${langInstruction}You are an expert assessment designer. Improve the given exam question to be more pedagogically sound, clearer, and better aligned with learning objectives. Return ONLY a raw JSON object (no markdown, no backticks). Keep the same type and structure but improve the wording, options quality, and model answers. All JSON keys must remain in English.`;
+        userPrompt = `Improve this exam question:\n${context}\n\nReturn a JSON object with fields: question (improved text), options (array if MCQ, null otherwise), correctAnswer, modelAnswer, scenarioContext, blankSentence. Only include fields relevant to this question type.`;
+        maxTokens = 800;
+        break;
+      }
+
       case "assistant":
       default:
         systemPrompt = `${langInstruction}You are an assistant for a teacher currently running a live ${subject || 'Islamic Studies'} class at ${level || 'Intermediate'} level. Current activity: ${activityTitle}. Description: ${activityDesc || 'N/A'}. Course: ${courseName || 'N/A'}. Provide brief, immediately actionable teaching suggestions. Maximum 150 words.`;
@@ -47,6 +54,8 @@ Deno.serve(async (req) => {
         maxTokens = 300;
         break;
     }
+
+    const useStream = assistType !== "improve_question";
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -61,7 +70,7 @@ Deno.serve(async (req) => {
           { role: "user", content: userPrompt },
         ],
         max_tokens: maxTokens,
-        stream: true,
+        stream: useStream,
       }),
     });
 
@@ -80,6 +89,23 @@ Deno.serve(async (req) => {
       }
       return new Response(JSON.stringify({ error: "AI generation failed" }), {
         status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!useStream) {
+      // Non-streaming JSON response for improve_question
+      const aiResult = await response.json();
+      const rawContent = aiResult.choices?.[0]?.message?.content || "";
+      let cleaned = rawContent.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+      const jsonStart = cleaned.search(/[\{\[]/);
+      const lastBrace = cleaned.lastIndexOf("}");
+      if (jsonStart !== -1 && lastBrace !== -1) {
+        cleaned = cleaned.substring(jsonStart, lastBrace + 1);
+      }
+      let parsed;
+      try { parsed = JSON.parse(cleaned); } catch { parsed = rawContent; }
+      return new Response(JSON.stringify({ data: parsed }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
