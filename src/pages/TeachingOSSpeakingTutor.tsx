@@ -187,7 +187,7 @@ const TeachingOSSpeakingTutor: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: '#f4f5f7' }}>
+    <div className="flex h-screen overflow-hidden pl-14" style={{ backgroundColor: '#f4f5f7' }}>
       <NavRail items={railItems} />
 
       {/* Section Sidebar */}
