@@ -20,11 +20,12 @@ const Courses = lazy(() => import('./Courses'));
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
 
 export default function TeachingLanding() {
-  const { user } = useAuth();
+  const { user, activeRole } = useAuth();
   const { activeDivision } = useDivision();
   const divisionId = activeDivision?.id;
   const [searchParams, setSearchParams] = useSearchParams();
-  const section = searchParams.get('section') || 'live-classes';
+  const isTeacher = activeRole === 'teacher';
+  const section = searchParams.get('section') || (isTeacher ? 'assignments' : 'live-classes');
 
   const { data: counts, isLoading } = useQuery({
     queryKey: ['teaching-landing-counts', divisionId],
@@ -33,12 +34,25 @@ export default function TeachingLanding() {
       const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
       const weekEnd = format(endOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
 
+      let assignQuery = supabase.from('student_teacher_assignments').select('id', { count: 'exact', head: true }).eq('status', 'active') as any;
+      let schedQuery = supabase.from('schedules').select('id', { count: 'exact', head: true }).eq('is_active', true) as any;
+      let attQuery = (supabase as any).from('attendance').select('status').gte('class_date', weekStart).lte('class_date', weekEnd);
+      let planQuery = supabase.from('student_monthly_plans').select('id', { count: 'exact', head: true }).eq('month', format(new Date(), 'yyyy-MM')) as any;
+
+      // Filter by teacher_id for teacher role
+      if (isTeacher && user?.id) {
+        assignQuery = assignQuery.eq('teacher_id', user.id);
+        schedQuery = schedQuery.eq('teacher_id', user.id);
+        attQuery = attQuery.eq('teacher_id', user.id);
+        planQuery = planQuery.eq('teacher_id', user.id);
+      }
+
       const [liveRes, assignRes, schedRes, attRes, planRes, subRes, courseRes] = await Promise.all([
         supabase.from('live_sessions').select('id', { count: 'exact', head: true }).eq('status', 'live'),
-        supabase.from('student_teacher_assignments').select('id', { count: 'exact', head: true }).eq('status', 'active'),
-        supabase.from('schedules').select('id', { count: 'exact', head: true }).eq('is_active', true),
-        (supabase as any).from('attendance').select('status').gte('class_date', weekStart).lte('class_date', weekEnd),
-        supabase.from('student_monthly_plans').select('id', { count: 'exact', head: true }).eq('month', format(new Date(), 'yyyy-MM')),
+        assignQuery,
+        schedQuery,
+        attQuery,
+        planQuery,
         supabase.from('subjects').select('id', { count: 'exact', head: true }).eq('is_active', true),
         supabase.from('courses').select('id', { count: 'exact', head: true }).eq('status', 'active'),
       ]);
@@ -60,13 +74,14 @@ export default function TeachingLanding() {
   });
   const isOneToOne = activeDivision?.model_type === 'one_to_one';
   const allCards: LandingCard[] = [
-    { id: 'live-classes', title: 'Live Classes', subtitle: 'Currently active', count: counts?.live, countLoading: isLoading, icon: <Video className="h-5 w-5" />, color: 'bg-destructive' },
-    ...(!isOneToOne ? [{ id: 'courses', title: 'Courses', subtitle: 'Group & batch', count: counts?.courses, countLoading: isLoading, icon: <BookOpen className="h-5 w-5" />, color: 'bg-teal-500' }] : []),
-    { id: 'assignments', title: 'Assignments', subtitle: 'Active assignments', count: counts?.assignments, countLoading: isLoading, icon: <UserCheck className="h-5 w-5" />, color: 'bg-primary' },
-    { id: 'schedules', title: 'Schedules', subtitle: 'Weekly slots', count: counts?.schedules, countLoading: isLoading, icon: <Calendar className="h-5 w-5" />, color: 'bg-blue-500' },
+    // Admin-only cards hidden from teachers
+    ...(!isTeacher ? [{ id: 'live-classes', title: 'Live Classes', subtitle: 'Currently active', count: counts?.live, countLoading: isLoading, icon: <Video className="h-5 w-5" />, color: 'bg-destructive' }] : []),
+    ...(!isOneToOne && !isTeacher ? [{ id: 'courses', title: 'Courses', subtitle: 'Group & batch', count: counts?.courses, countLoading: isLoading, icon: <BookOpen className="h-5 w-5" />, color: 'bg-teal-500' }] : []),
+    { id: 'assignments', title: isTeacher ? 'My Students' : 'Assignments', subtitle: 'Active assignments', count: counts?.assignments, countLoading: isLoading, icon: <UserCheck className="h-5 w-5" />, color: 'bg-primary' },
+    { id: 'schedules', title: isTeacher ? 'My Schedules' : 'Schedules', subtitle: 'Weekly slots', count: counts?.schedules, countLoading: isLoading, icon: <Calendar className="h-5 w-5" />, color: 'bg-blue-500' },
     { id: 'attendance', title: 'Attendance', subtitle: 'This week rate', count: counts?.attRate !== undefined ? `${counts.attRate}%` : undefined, countLoading: isLoading, icon: <ClipboardCheck className="h-5 w-5" />, color: 'bg-emerald-500' },
     { id: 'planning', title: 'Planning', subtitle: 'This month', count: counts?.plans, countLoading: isLoading, icon: <Target className="h-5 w-5" />, color: 'bg-amber-500' },
-    { id: 'subjects', title: 'Subjects', subtitle: 'Active subjects', count: counts?.subjects, countLoading: isLoading, icon: <BookOpen className="h-5 w-5" />, color: 'bg-violet-500' },
+    ...(!isTeacher ? [{ id: 'subjects', title: 'Subjects', subtitle: 'Active subjects', count: counts?.subjects, countLoading: isLoading, icon: <BookOpen className="h-5 w-5" />, color: 'bg-violet-500' }] : []),
   ];
   const cards = allCards;
 

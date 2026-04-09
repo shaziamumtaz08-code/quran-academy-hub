@@ -104,9 +104,38 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="min-h-screen bg-lms-surface">
           {mobileDrawerOpen && (
             <>
-              <div className="fixed inset-0 z-[60] bg-black/20" onClick={() => setMobileDrawerOpen(false)} />
-              <div className="fixed top-0 left-0 z-[61] h-full">
-                <AppSidebar />
+              <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => setMobileDrawerOpen(false)} />
+              <div className="fixed top-0 left-0 z-[61] h-full w-56 bg-lms-navy flex flex-col py-4 animate-in slide-in-from-left duration-200">
+                {/* Nav items */}
+                <nav className="flex-1 overflow-y-auto px-3 space-y-0.5">
+                  {railItems.map((item) => {
+                    const active = location.pathname === item.href || (item.href !== '/dashboard' && location.pathname.startsWith(item.href));
+                    return (
+                      <Link
+                        key={item.href + item.label}
+                        to={item.href}
+                        onClick={() => setMobileDrawerOpen(false)}
+                        className={cn(
+                          'flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] transition-colors',
+                          active ? 'bg-white/10 text-white font-medium' : 'text-white/50 hover:bg-white/5 hover:text-white/80'
+                        )}
+                      >
+                        <item.icon className="h-[18px] w-[18px]" strokeWidth={1.8} />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </nav>
+                {/* Sign out */}
+                <div className="px-3 pt-2 border-t border-white/10">
+                  <button
+                    onClick={() => { setMobileDrawerOpen(false); handleLogout(); }}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] text-white/50 hover:bg-white/5 hover:text-white/80 w-full"
+                  >
+                    <LogOut className="h-[18px] w-[18px]" strokeWidth={1.8} />
+                    Sign Out
+                  </button>
+                </div>
               </div>
             </>
           )}

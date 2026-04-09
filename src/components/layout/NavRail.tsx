@@ -6,7 +6,7 @@ import type { AppRole } from '@/contexts/AuthContext';
 import {
   LayoutDashboard, BookOpen, Users, DollarSign, BarChart3,
   MessageSquare, Cog, GraduationCap, ClipboardCheck, Target,
-  FolderOpen, Award, FileText,
+  FolderOpen, Award, FileText, CalendarDays,
 } from 'lucide-react';
 import logoDark from '@/assets/logo-dark.jpg';
 
@@ -37,24 +37,23 @@ export function buildRailNav(role: AppRole | null): RailItem[] {
       { label: 'My Students', href: '/students', icon: GraduationCap },
       { label: 'Attendance', href: '/attendance', icon: ClipboardCheck },
       { label: 'Planning', href: '/monthly-planning', icon: Target },
-      { label: 'Resources', href: '/resources', icon: FolderOpen },
-      { label: 'Chat', href: '/chat', icon: MessageSquare },
+      { label: 'Salary', href: '/salary-engine', icon: DollarSign },
+      { label: 'Communication', href: '/communication', icon: MessageSquare },
     ];
   }
   if (role === 'student') {
     return [
       { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
-      { label: 'My Class', href: '/student-reports', icon: BookOpen },
-      { label: 'Progress', href: '/student-reports', icon: BarChart3 },
-      { label: 'Resources', href: '/resources', icon: FolderOpen },
-      { label: 'Chat', href: '/chat', icon: MessageSquare },
+      { label: 'Classes', href: '/teaching', icon: BookOpen },
+      { label: 'Calendar', href: '/schedules', icon: CalendarDays },
+      { label: 'Communication', href: '/communication', icon: MessageSquare },
     ];
   }
   if (role === 'parent') {
     return [
       { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
       { label: 'Reports', href: '/student-reports', icon: BarChart3 },
-      { label: 'Chat', href: '/chat', icon: MessageSquare },
+      { label: 'Communication', href: '/communication', icon: MessageSquare },
     ];
   }
   if (role === 'examiner') {

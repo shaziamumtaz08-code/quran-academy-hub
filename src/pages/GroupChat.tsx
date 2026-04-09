@@ -22,7 +22,8 @@ import { ForwardMessageDialog } from '@/components/chat/ForwardMessageDialog';
 const typeIcons: Record<string, string> = { project: '📋', issue: '🐛', salary: '💰', custom: '💬', channel: '📢' };
 
 export default function GroupChat() {
-  const { user } = useAuth();
+  const { user, activeRole } = useAuth();
+  const isAdmin = activeRole && ['super_admin', 'admin', 'admin_admissions', 'admin_fees', 'admin_academic'].includes(activeRole) || activeRole?.startsWith('admin_');
   const queryClient = useQueryClient();
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
@@ -263,9 +264,11 @@ export default function GroupChat() {
               <Button size="sm" variant="ghost" onClick={() => setDmOpen(true)} title="New DM">
                 <MessageCircle className="h-4 w-4" />
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => setCreateOpen(true)} title="New Group">
-                <Plus className="h-4 w-4" />
-              </Button>
+              {isAdmin && (
+                <Button size="sm" variant="ghost" onClick={() => setCreateOpen(true)} title="New Group">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </div>
 
@@ -312,9 +315,11 @@ export default function GroupChat() {
                   <Button size="sm" variant="outline" className="text-xs" onClick={() => setDmOpen(true)}>
                     <MessageCircle className="h-3 w-3 mr-1" /> New DM
                   </Button>
-                  <Button size="sm" variant="outline" className="text-xs" onClick={() => setCreateOpen(true)}>
-                    <Plus className="h-3 w-3 mr-1" /> New Group
-                  </Button>
+                  {isAdmin && (
+                    <Button size="sm" variant="outline" className="text-xs" onClick={() => setCreateOpen(true)}>
+                      <Plus className="h-3 w-3 mr-1" /> New Group
+                    </Button>
+                  )}
                 </div>
               </div>
             )}
@@ -386,9 +391,11 @@ export default function GroupChat() {
                   <Button size="sm" variant="outline" onClick={() => setDmOpen(true)}>
                     <MessageCircle className="h-3.5 w-3.5 mr-1" /> New DM
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => setCreateOpen(true)}>
-                    <Plus className="h-3.5 w-3.5 mr-1" /> New Group
-                  </Button>
+                  {isAdmin && (
+                    <Button size="sm" variant="outline" onClick={() => setCreateOpen(true)}>
+                      <Plus className="h-3.5 w-3.5 mr-1" /> New Group
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
