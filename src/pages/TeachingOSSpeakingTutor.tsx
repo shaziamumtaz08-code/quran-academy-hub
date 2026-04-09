@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { parseArabicTags } from '@/lib/languageUtils';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useTeachingSession } from '@/hooks/useTeachingSession';
 import { supabase } from '@/integrations/supabase/client';
 import { NavRail, buildRailNav } from '@/components/layout/NavRail';
 import { useAuth } from '@/contexts/AuthContext';
@@ -61,7 +62,7 @@ const TeachingOSSpeakingTutor: React.FC = () => {
   const navigate = useNavigate();
   const { activeRole } = useAuth();
   const railItems = buildRailNav(activeRole);
-  const sessionId = searchParams.get('session_id');
+  const { sessionId } = useTeachingSession();
 
   const [activeSection, setActiveSection] = useState<Section>('drill');
   const [courseName, setCourseName] = useState('');

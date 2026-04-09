@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useTeachingSession } from '@/hooks/useTeachingSession';
 import { supabase } from '@/integrations/supabase/client';
 import { NavRail, buildRailNav } from '@/components/layout/NavRail';
 import { useAuth } from '@/contexts/AuthContext';
@@ -116,7 +117,7 @@ const TYPE_COLORS: Record<string, { bg: string; text: string; label: string }> =
 const TeachingOSAssessment: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const sessionId = searchParams.get('session_id');
+  const { sessionId } = useTeachingSession();
 
   const [activeSection, setActiveSection] = useState<Section>('builder');
   const [builderView, setBuilderView] = useState<'builder' | 'preview' | 'student'>('builder');
