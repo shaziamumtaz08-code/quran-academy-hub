@@ -312,6 +312,7 @@ const TeachingOSAssessment: React.FC = () => {
             questionCount: count,
             questionTypes: ['mcq', 'short_answer', 'true_false', 'fill_blank', 'translation'],
             difficulty: 'mixed',
+            language: localStorage.getItem('tos-language') || 'en',
           }),
         }
       );

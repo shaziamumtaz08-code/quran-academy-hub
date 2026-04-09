@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { parseArabicTags } from '@/lib/languageUtils';
 import { detectScriptClass } from '@/lib/scriptFont';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
