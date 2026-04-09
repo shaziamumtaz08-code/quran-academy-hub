@@ -596,7 +596,7 @@ export default function TeachingOSDayBoard() {
                             <Loader2 className="w-3.5 h-3.5 animate-spin" /> Thinking…
                           </div>
                         )}
-                        <div className={`text-[12px] text-[#0f2044] leading-relaxed whitespace-pre-wrap ${detectScriptClass(aiResponse)}`}>{aiResponse}</div>
+                        <div className={`text-[12px] text-[#0f2044] leading-relaxed whitespace-pre-wrap ${langClass}`} dangerouslySetInnerHTML={{ __html: parseArabicTags(aiResponse) }} />
                       </div>
                     )}
                   </div>
