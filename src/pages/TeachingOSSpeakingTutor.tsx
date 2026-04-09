@@ -30,12 +30,6 @@ interface DrillPhrase {
   status?: string;
 }
 
-const PHASE_STEPS = [
-  { key: 'syllabus', label: 'Syllabus' }, { key: 'planner', label: 'Planner' },
-  { key: 'board', label: 'Board' }, { key: 'kit', label: 'Kit' },
-  { key: 'assess', label: 'Assess' }, { key: 'video', label: 'Video' },
-  { key: 'speaking', label: 'Speaking' },
-];
 
 const MOCK_PHRASES: DrillPhrase[] = [
   { id: 'p1', phrase_arabic: 'اسمي أحمد، أنا من باكستان', romanised: 'is-mee Ah-mad, ana min Ba-kis-tan', english: 'My name is Ahmad, I am from Pakistan', difficulty: 1, position: 1, lastScore: 87, status: 'improving' },

@@ -102,13 +102,6 @@ interface MarkingItem {
 
 type Section = 'builder' | 'settings' | 'results' | 'marking' | 'insights' | 'past' | 'progress';
 
-const PHASE_STEPS = [
-  { key: 'syllabus', label: 'Syllabus' },
-  { key: 'planner', label: 'Planner' },
-  { key: 'board', label: 'Board' },
-  { key: 'kit', label: 'Kit' },
-  { key: 'assess', label: 'Assess' },
-];
 
 const TYPE_COLORS: Record<string, { bg: string; text: string; label: string }> = {
   mcq: { bg: '#eef2fa', text: '#1a56b0', label: 'MCQ' },

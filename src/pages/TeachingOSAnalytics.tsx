@@ -17,16 +17,6 @@ import {
 
 type Section = 'dashboard' | 'ai-report' | 'growth' | 'at-risk' | 'teacher' | 'curriculum' | 'engagement' | 'outcomes';
 
-const PHASE_STEPS = [
-  { key: 'syllabus', label: 'Syllabus', num: 1 },
-  { key: 'planner', label: 'Planner', num: 2 },
-  { key: 'dayboard', label: 'Day Board', num: 3 },
-  { key: 'contentkit', label: 'Content Kit', num: 4 },
-  { key: 'assessment', label: 'Assessment', num: 5 },
-  { key: 'video', label: 'Video', num: 6 },
-  { key: 'speaking', label: 'Speaking', num: 7 },
-  { key: 'analytics', label: 'Analytics', num: 8 },
-];
 
 // Mock data
 const MOCK_STATS = { activeStudents: 47, studentDelta: 4, assessmentAvg: 74, assessmentDelta: 6, attendanceAvg: 92, atRisk: 3 };

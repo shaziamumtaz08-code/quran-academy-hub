@@ -50,14 +50,6 @@ interface SessionPlan {
   syllabus_id: string;
 }
 
-const PHASE_STEPS = [
-  { key: 'syllabus', label: 'Syllabus' },
-  { key: 'planner', label: 'Planner' },
-  { key: 'board', label: 'Board' },
-  { key: 'kit', label: 'Kit' },
-  { key: 'assess', label: 'Assess' },
-  { key: 'video', label: 'Video' },
-];
 
 const FILTERS = ['All', 'Beginner', 'Intermediate', '5-10 min', '10-20 min', 'Arabic', 'No music', 'Islamic context', 'Subtitled'];
 
