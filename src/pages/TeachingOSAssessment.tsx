@@ -289,17 +289,19 @@ const TeachingOSAssessment: React.FC = () => {
     setIsGenerating(true);
 
     try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-content-kit`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            Authorization: `Bearer ${authSession?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
           },
           body: JSON.stringify({
-            type: 'quiz',
-            session_plan: sessionPlan,
+            contentType: 'quiz',
+            sessionPlan: sessionPlan,
             courseName,
             subject: 'Arabic',
             level: 'Beginner',
@@ -311,61 +313,37 @@ const TeachingOSAssessment: React.FC = () => {
         }
       );
 
-      if (!response.ok) throw new Error('Generation failed');
+      const json = await response.json().catch(() => ({ error: 'Invalid response' }));
+      if (!response.ok) throw new Error(json.error || 'Generation failed');
 
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('No stream');
-      const decoder = new TextDecoder();
-      let buffer = '';
+      const generated = json.data;
+      if (!Array.isArray(generated)) throw new Error('AI did not return questions array');
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        let idx;
-        while ((idx = buffer.indexOf('\n')) !== -1) {
-          const line = buffer.slice(0, idx).trim();
-          buffer = buffer.slice(idx + 1);
-          if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;
-          try {
-            const parsed = JSON.parse(line.slice(6));
-            const content = parsed.choices?.[0]?.delta?.content;
-            if (content) buffer += content;
-          } catch {}
-        }
+      const newQuestions: any[] = [];
+      for (const g of generated) {
+        const q = {
+          exam_id: exam.id,
+          question_index: questions.length + newQuestions.length,
+          type: g.type || 'mcq',
+          question_text: g.question || g.questionText || g.question_text || '',
+          options: g.options || null,
+          correct_answer: g.correctAnswer || g.correct_answer || null,
+          model_answer: g.modelAnswer || g.model_answer || null,
+          scenario_context: g.scenarioContext || g.scenario_context || null,
+          blank_sentence: g.blankSentence || g.blank_sentence || null,
+          rubric: g.rubric || null,
+          points: g.points || 2,
+          difficulty: g.difficulty || 'medium',
+          blooms_level: g.bloomsLevel || g.blooms_level || 'remember',
+          auto_mark: ['mcq', 'true_false', 'fill_blank'].includes(g.type || 'mcq'),
+        };
+        const { data } = await supabase.from('teaching_exam_questions' as any).insert(q as any).select().single();
+        if (data) newQuestions.push(data);
       }
-
-      // Try to parse final JSON
-      const jsonMatch = buffer.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        const generated = JSON.parse(jsonMatch[0]);
-        const newQuestions: any[] = [];
-        for (const g of generated) {
-          const q = {
-            exam_id: exam.id,
-            question_index: questions.length + newQuestions.length,
-            type: g.type || 'mcq',
-            question_text: g.question || g.questionText || g.question_text || '',
-            options: g.options || null,
-            correct_answer: g.correctAnswer || g.correct_answer || null,
-            model_answer: g.modelAnswer || g.model_answer || null,
-            scenario_context: g.scenarioContext || g.scenario_context || null,
-            blank_sentence: g.blankSentence || g.blank_sentence || null,
-            rubric: g.rubric || null,
-            points: g.points || 2,
-            difficulty: g.difficulty || 'medium',
-            blooms_level: g.bloomsLevel || g.blooms_level || 'remember',
-            auto_mark: ['mcq', 'true_false', 'fill_blank'].includes(g.type || 'mcq'),
-          };
-          const { data } = await supabase.from('teaching_exam_questions' as any).insert(q as any).select().single();
-          if (data) newQuestions.push(data);
-        }
-        setQuestions(prev => [...prev, ...newQuestions as any]);
-        const totalMarks = [...questions, ...newQuestions].reduce((s: number, x: any) => s + (x.points || 0), 0);
-        await supabase.from('teaching_exams' as any).update({ total_marks: totalMarks } as any).eq('id', exam.id);
-        toast.success(`Generated ${newQuestions.length} questions`);
-      }
+      setQuestions(prev => [...prev, ...newQuestions as any]);
+      const totalMarks = [...questions, ...newQuestions].reduce((s: number, x: any) => s + (x.points || 0), 0);
+      await supabase.from('teaching_exams' as any).update({ total_marks: totalMarks } as any).eq('id', exam.id);
+      toast.success(`Generated ${newQuestions.length} questions`);
     } catch (err) {
       // Fallback: create mock questions
       const mockTypes = ['mcq', 'short_answer', 'true_false', 'fill_blank', 'translation', 'mcq', 'scenario'];
