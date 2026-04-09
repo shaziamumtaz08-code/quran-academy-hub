@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import PptxGenJS from "pptxgenjs";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { NavRail, buildRailNav } from "@/components/layout/NavRail";
@@ -731,6 +732,120 @@ function downloadFile(content: string, filename: string, mime: string) {
   const a = document.createElement("a");
   a.href = url; a.download = filename; a.click();
   URL.revokeObjectURL(url);
+}
+
+// ─── PPTX Download ───────────────────────────────────
+const PPTX_THEMES: Record<string, { bg: string; accent: string; titleColor: string; bodyColor: string }> = {
+  Opening:    { bg: '0f2044', accent: '4a90d9', titleColor: 'FFFFFF', bodyColor: 'c8d6e5' },
+  Input:      { bg: 'FFFFFF', accent: '1a7340', titleColor: '0f2044', bodyColor: '4a5264' },
+  Practice:   { bg: 'fdf8f0', accent: 'b85c1a', titleColor: '0f2044', bodyColor: '4a5264' },
+  Production: { bg: 'f5f0ff', accent: '534AB7', titleColor: '0f2044', bodyColor: '4a5264' },
+  'Wrap-up':  { bg: '1a2d5a', accent: 'f9c846', titleColor: 'FFFFFF', bodyColor: 'b0c4de' },
+  Quiz:       { bg: 'fff5f5', accent: 'b42a2a', titleColor: '0f2044', bodyColor: '4a5264' },
+};
+
+async function downloadPptx(slides: SlideData[], courseName: string, subject: string, level: string, sessionPlan: any) {
+  if (!slides.length) return;
+  const pptx = new PptxGenJS();
+  pptx.layout = "LAYOUT_WIDE";
+  pptx.author = courseName || "Teaching OS";
+  pptx.title = sessionPlan?.session_title || "Session Slides";
+
+  slides.forEach((s, i) => {
+    const t = PPTX_THEMES[s.phase] || PPTX_THEMES.Input;
+    const isDark = ['Opening', 'Wrap-up'].includes(s.phase);
+    const slide = pptx.addSlide();
+    slide.background = { color: t.bg };
+
+    // Phase badge
+    slide.addText(s.phase.toUpperCase(), {
+      x: 0.5, y: 0.3, w: 2, h: 0.35,
+      fontSize: 8, bold: true, color: t.accent,
+      fontFace: "Arial",
+    });
+
+    // Slide number
+    slide.addText(`${i + 1} / ${slides.length}`, {
+      x: 11, y: 0.3, w: 1.5, h: 0.3,
+      fontSize: 8, color: isDark ? '666666' : 'AAAAAA',
+      align: "right", fontFace: "Arial",
+    });
+
+    // Title
+    slide.addText(s.title, {
+      x: 0.5, y: 0.8, w: 12, h: 0.7,
+      fontSize: 28, bold: true, color: t.titleColor,
+      fontFace: "Arial",
+    });
+
+    // Accent line
+    slide.addShape(pptx.ShapeType.rect, {
+      x: 0.5, y: 1.55, w: 1.2, h: 0.04,
+      fill: { color: t.accent },
+    });
+
+    let yPos = 1.9;
+
+    // Arabic text
+    if (s.arabicText) {
+      slide.addText(s.arabicText, {
+        x: 1, y: yPos, w: 11, h: 0.8,
+        fontSize: 32, color: t.titleColor, align: "center",
+        fontFace: "Arial",
+      });
+      yPos += 0.85;
+      if (s.transliteration) {
+        slide.addText(s.transliteration, {
+          x: 1, y: yPos, w: 11, h: 0.4,
+          fontSize: 12, italic: true, color: isDark ? '888888' : '888888',
+          align: "center", fontFace: "Arial",
+        });
+        yPos += 0.5;
+      }
+    }
+
+    // Bullets
+    if (s.bullets?.length) {
+      const bulletRows = s.bullets.map(b => ({
+        text: b,
+        options: { fontSize: 14, color: t.bodyColor, bullet: { code: '25CF', color: t.accent }, breakLine: true, paraSpaceAfter: 6 },
+      }));
+      slide.addText(bulletRows, {
+        x: 0.5, y: yPos, w: 12, h: Math.min(s.bullets.length * 0.45, 3.5),
+        fontFace: "Arial", valign: "top",
+      });
+      yPos += Math.min(s.bullets.length * 0.45, 3.5) + 0.2;
+    }
+
+    // Activity instruction
+    if (s.activityInstruction) {
+      slide.addShape(pptx.ShapeType.rect, {
+        x: 0.5, y: yPos, w: 12, h: 0.7,
+        fill: { color: isDark ? '1a3355' : 'f0f4ff' },
+        rectRadius: 0.08,
+      });
+      slide.addText(`Activity: ${s.activityInstruction}`, {
+        x: 0.7, y: yPos + 0.05, w: 11.6, h: 0.6,
+        fontSize: 11, color: t.accent, fontFace: "Arial",
+      });
+      yPos += 0.9;
+    }
+
+    // Footer
+    slide.addText(courseName || "", {
+      x: 0.5, y: 7.0, w: 6, h: 0.3,
+      fontSize: 8, color: isDark ? '444466' : 'CCCCCC', fontFace: "Arial",
+    });
+    if (s.teacherNote) {
+      slide.addText(`📝 ${s.teacherNote}`, {
+        x: 6, y: 7.0, w: 6.5, h: 0.3,
+        fontSize: 8, italic: true, color: isDark ? '555577' : 'BBBBBB',
+        align: "right", fontFace: "Arial",
+      });
+    }
+  });
+
+  await pptx.writeFile({ fileName: `${courseName || 'slides'}-session-${sessionPlan?.session_number || '1'}.pptx` });
 }
 
 // ─── Sub-components ───────────────────────────────────
