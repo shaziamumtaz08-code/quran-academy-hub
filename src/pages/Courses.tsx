@@ -746,6 +746,65 @@ export default function Courses() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* ─── Delete Course Confirmation ────────────────── */}
+        <AlertDialog open={!!deleteTarget} onOpenChange={v => !v && setDeleteTarget(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Course Permanently?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete <strong>{deleteTarget?.name}</strong> and all its classes, enrollments, modules, lessons, assignments, and resources. This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteCourse} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                {deleting ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Deleting…</> : 'Delete Forever'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* ─── Duplicate Course Dialog ───────────────────── */}
+        <Dialog open={!!duplicateTarget} onOpenChange={v => !v && setDuplicateTarget(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Duplicate Course</DialogTitle>
+              <DialogDescription>Choose what to copy from "{duplicateTarget?.name}"</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">New Course Name</Label>
+                <Input value={dupName} onChange={e => setDupName(e.target.value)} />
+              </div>
+              <Separator />
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">What to duplicate</p>
+              <div className="space-y-2">
+                {[
+                  { key: 'modules', label: 'Modules & Lessons' },
+                  { key: 'classes', label: 'Classes (schedule only, no students)' },
+                  { key: 'assignments', label: 'Assignments' },
+                  { key: 'feePlans', label: 'Fee Plans' },
+                  { key: 'marketing', label: 'Marketing / Website settings' },
+                ].map(opt => (
+                  <label key={opt.key} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={(dupOptions as any)[opt.key]}
+                      onCheckedChange={v => setDupOptions(prev => ({ ...prev, [opt.key]: !!v }))}
+                    />
+                    {opt.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDuplicateTarget(null)}>Cancel</Button>
+              <Button onClick={handleDuplicateCourse} disabled={duplicating || !dupName.trim()}>
+                {duplicating ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Duplicating…</> : 'Duplicate'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
