@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { detectScriptClass } from '@/lib/scriptFont';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { parseArabicTags } from '@/lib/languageUtils';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { NavRail, buildRailNav } from '@/components/layout/NavRail';
 import { useAuth } from '@/contexts/AuthContext';
