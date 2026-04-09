@@ -27,13 +27,16 @@ Deno.serve(async (req) => {
     const durationWeeks = parseInt(duration) || 8;
     const langInstruction = getLanguageInstruction(language);
 
+    const langName = language === 'ur' ? 'Urdu (اردو script)' : language === 'ar' ? 'Arabic (عربي script)' : 'English';
     const systemPrompt = `${langInstruction}You are an expert Islamic education curriculum designer. Create structured, pedagogically sound syllabi for Arabic, Quran, Tajweed, and Islamic Studies courses.
+
+CRITICAL: The "topic" and "objectives" values in the JSON MUST be written in ${langName}. Do NOT write them in English${language !== 'en' ? ' — write every word in ' + langName : ''}.
 
 Generate a weekly syllabus as a JSON array. Return ONLY the raw JSON array with no markdown, no backticks, no preamble. Each element:
 {
   "week": number,
-  "topic": string (concise, max 60 chars),
-  "objectives": string (2-3 measurable outcomes, max 120 chars),
+  "topic": string in ${langName} (concise, max 60 chars),
+  "objectives": string in ${langName} (2-3 measurable outcomes, max 120 chars),
   "contentTypes": array of strings from: ["Lesson", "Practice", "Quiz", "Discussion", "Project"]
 }`;
 
