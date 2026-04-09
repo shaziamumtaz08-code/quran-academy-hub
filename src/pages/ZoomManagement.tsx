@@ -188,9 +188,14 @@ export default function ZoomManagement() {
 
   const deleteLicenseMutation = useMutation({
     mutationFn: async (licenseId: string) => {
+      // Clear FK references in live_sessions
       await (supabase as any).from('live_sessions')
         .update({ license_id: null, status: 'completed', actual_end: new Date().toISOString() })
         .eq('license_id', licenseId);
+      // Clear FK references in course_classes
+      await (supabase as any).from('course_classes')
+        .update({ zoom_license_id: null })
+        .eq('zoom_license_id', licenseId);
       const { error } = await supabase.from('zoom_licenses').delete().eq('id', licenseId);
       if (error) throw error;
     },
