@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { detectScriptClass } from '@/lib/scriptFont';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -591,7 +592,7 @@ export default function TeachingOSDayBoard() {
                             <Loader2 className="w-3.5 h-3.5 animate-spin" /> Thinking…
                           </div>
                         )}
-                        <div className="text-[12px] text-[#0f2044] leading-relaxed whitespace-pre-wrap">{aiResponse}</div>
+                        <div className={`text-[12px] text-[#0f2044] leading-relaxed whitespace-pre-wrap ${detectScriptClass(aiResponse)}`}>{aiResponse}</div>
                       </div>
                     )}
                   </div>

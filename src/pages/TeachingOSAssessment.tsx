@@ -1149,7 +1149,7 @@ const MarkingSection: React.FC<{ questions: ExamQuestion[] }> = ({ questions }) 
           <div className="px-[13px] py-[11px] space-y-2">
             <div>
               <div className="text-[10px] font-medium uppercase mb-1" style={{ color: '#7a7f8a' }}>Student answer</div>
-              <div className="bg-[#fafbfc] border border-[#e8e9eb] rounded-[6px] p-2 text-[12px]" style={{ color: '#0f2044', direction: 'rtl' }}>
+              <div className="bg-[#fafbfc] border border-[#e8e9eb] rounded-[6px] p-2 text-[12px] arabic-text" style={{ color: '#0f2044' }}>
                 {i === 0 ? 'اسمي عائشة. أنا من باكستان.' : i === 1 ? 'السلام عليكم! اسمي عمر وأنا طالب جديد.' : 'مرحبا، اسمي فاطمة وأحب التعلم.'}
               </div>
             </div>

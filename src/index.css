@@ -295,22 +295,22 @@
     @apply text-destructive;
   }
 
-  /* Urdu text — Nastaliq script (distinct from Arabic Naskh) */
+  /* Urdu text — Nastaliq script (Jameel Noori preferred, Noto web fallback) */
   .urdu-text {
-    font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif;
+    font-family: 'Jameel Noori Nastaleeq', 'Urdu Nastaleeq', 'Noto Nastaliq Urdu', serif;
     direction: rtl;
     unicode-bidi: embed;
-    line-height: 2.2;
-    font-size: 1.15em;
+    line-height: 2.4;
+    font-size: 1.2em;
   }
 
-  /* Arabic text — Naskh script */
+  /* Arabic text — Naskh script (Noto Naskh Arabic preferred) */
   .arabic-text {
     font-family: 'Noto Naskh Arabic', 'Amiri', 'Traditional Arabic', serif;
     direction: rtl;
     unicode-bidi: embed;
-    line-height: 1.8;
-    font-size: 1.1em;
+    line-height: 2;
+    font-size: 1.15em;
   }
 
   /* Combined RTL helper for mixed Urdu/Arabic content */

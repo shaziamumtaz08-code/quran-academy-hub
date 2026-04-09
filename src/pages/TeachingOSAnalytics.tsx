@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { detectScriptClass } from '@/lib/scriptFont';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { NavRail, buildRailNav } from '@/components/layout/NavRail';
 import { useAuth } from '@/contexts/AuthContext';
@@ -344,7 +345,7 @@ function AIReportView() {
                   <button className="text-[10px]" style={{ color: '#1a56b0' }}>Share</button>
                   <button className="text-[10px]" style={{ color: '#1a56b0' }}>Export PDF</button>
                 </div>
-                <div className="text-[12px] leading-[1.6] whitespace-pre-line" style={{ color: '#4a5264' }}>{s.content}</div>
+                <div className={`text-[12px] leading-[1.6] whitespace-pre-line ${detectScriptClass(s.content)}`} style={{ color: '#4a5264' }}>{s.content}</div>
               </div>
             );
           })}
