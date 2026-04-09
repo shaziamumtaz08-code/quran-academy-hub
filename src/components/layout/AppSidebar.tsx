@@ -185,7 +185,7 @@ export function AppSidebar({ className }: AppSidebarProps) {
   const isCourseDetail = isCourseDetailRoute(location.pathname);
   const sidebar = isCourseDetail
     ? getCourseDetailSidebar(location.pathname)
-    : getSidebarForRoute(location.pathname, isOneToOne);
+    : getSidebarForRoute(location.pathname, isOneToOne, activeRole);
 
   const isItemActive = (item: SidebarNavItem) => {
     if (!item.href) return false;
