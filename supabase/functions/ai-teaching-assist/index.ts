@@ -55,6 +55,8 @@ Deno.serve(async (req) => {
         break;
     }
 
+    const useStream = assistType !== "improve_question";
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -68,7 +70,7 @@ Deno.serve(async (req) => {
           { role: "user", content: userPrompt },
         ],
         max_tokens: maxTokens,
-        stream: true,
+        stream: useStream,
       }),
     });
 
@@ -87,6 +89,23 @@ Deno.serve(async (req) => {
       }
       return new Response(JSON.stringify({ error: "AI generation failed" }), {
         status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!useStream) {
+      // Non-streaming JSON response for improve_question
+      const aiResult = await response.json();
+      const rawContent = aiResult.choices?.[0]?.message?.content || "";
+      let cleaned = rawContent.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+      const jsonStart = cleaned.search(/[\{\[]/);
+      const lastBrace = cleaned.lastIndexOf("}");
+      if (jsonStart !== -1 && lastBrace !== -1) {
+        cleaned = cleaned.substring(jsonStart, lastBrace + 1);
+      }
+      let parsed;
+      try { parsed = JSON.parse(cleaned); } catch { parsed = rawContent; }
+      return new Response(JSON.stringify({ data: parsed }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
