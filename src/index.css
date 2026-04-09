@@ -5,6 +5,9 @@
 /* Google Fonts: Inter (sans), Amiri (serif for Arabic titles) */
 @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
+/* Noto Naskh Arabic for proper Arabic rendering */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;700&display=swap');
+
 /* Urdu Nastaleeq font for proper rendering */
 @import url('https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap');
 
