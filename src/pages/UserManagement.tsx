@@ -1098,6 +1098,17 @@ export default function UserManagement() {
                 </SelectContent>
               </Select>
               
+              {/* Archive Toggle */}
+              <Button
+                variant={showArchived ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowArchived(!showArchived)}
+                className={showArchived ? "bg-amber-600 hover:bg-amber-700 text-white" : ""}
+              >
+                <Archive className="h-4 w-4 mr-1" />
+                {showArchived ? "Showing Archived" : "Archived"}
+              </Button>
+              
               {/* Country Filter */}
               <Select 
                 value={filterCountry || "all"} 

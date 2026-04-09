@@ -19,7 +19,7 @@ export default function PeopleLanding() {
       const [teacherRoles, studentRoles, allProfiles, openLeads] = await Promise.all([
         supabase.from('user_roles').select('id', { count: 'exact', head: true }).eq('role', 'teacher'),
         supabase.from('user_roles').select('id', { count: 'exact', head: true }).eq('role', 'student'),
-        supabase.from('profiles').select('id', { count: 'exact', head: true }),
+        supabase.from('profiles').select('id', { count: 'exact', head: true }).is('archived_at', null),
         supabase.from('leads').select('id', { count: 'exact', head: true }).neq('status', 'closed'),
       ]);
       return {
