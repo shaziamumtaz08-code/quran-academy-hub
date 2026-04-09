@@ -237,7 +237,7 @@ export default function TeachingOS() {
 
   // ─── Generate ───
   const handleGenerate = async () => {
-    if (!courseName.trim()) { setNameError(true); return; }
+    if (!selectedCourseId || !courseName.trim()) { setNameError(true); return; }
     setNameError(false);
     setGenerating(true);
     setCompleted(false);
