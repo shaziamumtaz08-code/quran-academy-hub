@@ -215,7 +215,7 @@ export default function TeachingOS() {
         course_id: selectedCourseId || null,
         subject, level,
         duration_weeks: durationWeeks,
-        sessions_week: parseInt(sessionsPerWeek) || 2,
+        sessions_week: effectiveSessions,
         target_audience: targetAudience,
         learning_goals: learningGoals,
         source_text: pdfText || pasteText || '',
