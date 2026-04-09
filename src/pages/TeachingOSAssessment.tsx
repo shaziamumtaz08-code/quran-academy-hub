@@ -345,40 +345,8 @@ const TeachingOSAssessment: React.FC = () => {
       await supabase.from('teaching_exams' as any).update({ total_marks: totalMarks } as any).eq('id', exam.id);
       toast.success(`Generated ${newQuestions.length} questions`);
     } catch (err) {
-      // Fallback: create mock questions
-      const mockTypes = ['mcq', 'short_answer', 'true_false', 'fill_blank', 'translation', 'mcq', 'scenario'];
-      const mockQuestions = Array.from({ length: count }, (_, i) => ({
-        exam_id: exam.id,
-        question_index: questions.length + i,
-        type: mockTypes[i % mockTypes.length],
-        question_text: getMockQuestion(mockTypes[i % mockTypes.length], i),
-        options: mockTypes[i % mockTypes.length] === 'mcq' ? ['My name is', 'How are you', 'Where are you from', 'My teacher is'] :
-          mockTypes[i % mockTypes.length] === 'true_false' ? ['True', 'False'] : null,
-        correct_answer: mockTypes[i % mockTypes.length] === 'mcq' ? 'My name is' :
-          mockTypes[i % mockTypes.length] === 'true_false' ? 'True' : 'اسمي',
-        model_answer: mockTypes[i % mockTypes.length] === 'short_answer' ? 'اسمي [name]. أنا من [country].' : null,
-        scenario_context: mockTypes[i % mockTypes.length] === 'scenario' ? 'You meet a new student at your Islamic school who only speaks Arabic. They ask you about yourself.' : null,
-        blank_sentence: mockTypes[i % mockTypes.length] === 'fill_blank' ? 'أنا ___ باكستان' : null,
-        rubric: mockTypes[i % mockTypes.length] === 'scenario' ? [
-          { points: 3, criterion: 'Uses correct greeting' },
-          { points: 3, criterion: 'Introduces name properly' },
-          { points: 2, criterion: 'Grammar accuracy' },
-        ] : null,
-        points: mockTypes[i % mockTypes.length] === 'scenario' ? 8 : mockTypes[i % mockTypes.length] === 'short_answer' ? 5 : 2,
-        difficulty: i < 2 ? 'easy' : i < 5 ? 'medium' : 'hard',
-        blooms_level: i < 2 ? 'remember' : i < 5 ? 'understand' : 'apply',
-        auto_mark: ['mcq', 'true_false', 'fill_blank'].includes(mockTypes[i % mockTypes.length]),
-      }));
-
-      const inserted: any[] = [];
-      for (const q of mockQuestions) {
-        const { data } = await supabase.from('teaching_exam_questions' as any).insert(q as any).select().single();
-        if (data) inserted.push(data);
-      }
-      setQuestions(prev => [...prev, ...inserted as any]);
-      const totalMarks = [...questions, ...inserted].reduce((s: number, x: any) => s + (x.points || 0), 0);
-      await supabase.from('teaching_exams' as any).update({ total_marks: totalMarks } as any).eq('id', exam.id);
-      toast.success(`Generated ${inserted.length} questions`);
+      console.error('Question generation failed:', err);
+      toast.error('AI generation failed — please try again');
     } finally {
       setIsGenerating(false);
     }
