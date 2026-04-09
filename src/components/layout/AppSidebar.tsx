@@ -76,15 +76,16 @@ function getFinanceSidebar(): { title: string; subtitle: string; items: SidebarN
   };
 }
 
-function getCommunicationSidebar(): { title: string; subtitle: string; items: SidebarNavItem[] } {
+function getCommunicationSidebar(role?: string | null): { title: string; subtitle: string; items: SidebarNavItem[] } {
+  const isAdmin = role === 'super_admin' || role === 'admin' || role?.startsWith('admin_');
   return {
     title: 'Communication',
     subtitle: '',
     items: [
       { label: 'Group Chat', href: '/chat' },
-      { label: 'WhatsApp Inbox', href: '/whatsapp' },
+      ...(isAdmin ? [{ label: 'WhatsApp Inbox', href: '/whatsapp' }] : []),
       { label: 'Notifications', href: '/notifications' },
-      { label: 'Zoom', href: '/zoom-management' },
+      ...(isAdmin ? [{ label: 'Zoom', href: '/zoom-management' }] : []),
       { label: 'Work Hub', href: '/hub' },
     ],
   };
@@ -117,7 +118,7 @@ function getReportsSidebar(): { title: string; subtitle: string; items: SidebarN
 }
 
 /* ─── Route to section mapping ─── */
-function getSidebarForRoute(pathname: string, isOneToOne?: boolean) {
+function getSidebarForRoute(pathname: string, isOneToOne?: boolean, role?: string | null) {
   if (pathname.startsWith('/teaching') || pathname.startsWith('/courses') || pathname.startsWith('/assignments') || pathname.startsWith('/subjects') || pathname.startsWith('/attendance') || pathname.startsWith('/schedules') || pathname.startsWith('/monthly-planning')) {
     return getTeachingSidebar(0, isOneToOne);
   }
@@ -128,7 +129,7 @@ function getSidebarForRoute(pathname: string, isOneToOne?: boolean) {
     return getFinanceSidebar();
   }
   if (pathname.startsWith('/communication') || pathname.startsWith('/chat') || pathname.startsWith('/whatsapp') || pathname.startsWith('/notifications') || pathname.startsWith('/zoom') || pathname.startsWith('/hub')) {
-    return getCommunicationSidebar();
+    return getCommunicationSidebar(role);
   }
   if (pathname.startsWith('/settings') || pathname.startsWith('/organization') || pathname.startsWith('/finance-setup') || pathname.startsWith('/identity') || pathname.startsWith('/integrity')) {
     return getSettingsSidebar();
@@ -184,7 +185,7 @@ export function AppSidebar({ className }: AppSidebarProps) {
   const isCourseDetail = isCourseDetailRoute(location.pathname);
   const sidebar = isCourseDetail
     ? getCourseDetailSidebar(location.pathname)
-    : getSidebarForRoute(location.pathname, isOneToOne);
+    : getSidebarForRoute(location.pathname, isOneToOne, activeRole);
 
   const isItemActive = (item: SidebarNavItem) => {
     if (!item.href) return false;
