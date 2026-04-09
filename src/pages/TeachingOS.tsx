@@ -567,7 +567,7 @@ export default function TeachingOS() {
                         <Upload className="h-[22px] w-[22px] text-[#aab0bc] mx-auto mb-1" />
                         <p className="text-[12px] text-[#4a5264]">Drop PDF here or click to upload</p>
         <p className="text-[11px] text-[#aab0bc]">Max 50MB · PDF only</p>
-                        <input type="file" accept=".pdf" className="hidden" onChange={(e) => {
+                        <input type="file" accept=".pdf" className="hidden" onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (!file) return;
                           if (file.size > 50 * 1024 * 1024) { toast.error('File too large (max 50MB)'); return; }
