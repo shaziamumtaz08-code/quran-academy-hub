@@ -11,6 +11,7 @@ import {
   RotateCcw, Loader2, Plus, Clock, BookOpen, Users, CheckCircle2, Play,
   GripVertical, Pencil, Trash2, X
 } from 'lucide-react';
+import { PhaseStepperTopBar, NextPhaseButton, PhaseBreadcrumb } from '@/components/teaching/PhaseNavBar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 
@@ -384,35 +385,8 @@ export default function TeachingOSPlanner() {
       <div className="flex flex-col h-[calc(100vh-56px)] overflow-hidden">
         {/* ─── TOP BAR (Zone C) ─── */}
         <div className="h-[48px] bg-white border-b border-[#e8e9eb] px-4 flex items-center justify-between shrink-0">
-          <div className="text-[11px] text-[#7a7f8a]">
-            Teaching OS <ChevronRight className="inline w-3 h-3 mx-1" />
-            <span className="text-[#4a5264]">{syllabus.course_name}</span>
-            <ChevronRight className="inline w-3 h-3 mx-1" />
-            <span className="text-[#4a5264] font-medium">Planner</span>
-          </div>
-
-          {/* Stepper */}
-          <div className="flex items-center gap-3">
-            {[
-              { label: 'Syllabus', done: true, path: `/teaching-os` },
-              { label: 'Planner', active: true },
-              { label: 'Day board', future: true },
-              { label: 'Content kit', future: true },
-            ].map((step, i) => (
-              <React.Fragment key={step.label}>
-                {i > 0 && <div className="w-4 h-px bg-[#d0d4dc]" />}
-                <button
-                  onClick={() => step.done && step.path ? navigate(step.path) : null}
-                  className={`flex items-center gap-1.5 text-[11px] ${step.active ? 'text-[#0f2044] font-medium' : step.done ? 'text-green-600 cursor-pointer' : 'text-[#aab0bc]'}`}
-                >
-                  {step.done ? <Check className="w-3.5 h-3.5 text-green-600" /> :
-                    step.active ? <div className="w-3 h-3 rounded-full bg-[#0f2044]" /> :
-                      <Circle className="w-3 h-3 text-[#d0d4dc]" />}
-                  {step.label}
-                </button>
-              </React.Fragment>
-            ))}
-          </div>
+          <PhaseBreadcrumb courseName={syllabus.course_name} sectionLabel="Planner" />
+          <PhaseStepperTopBar currentPhase={2} syllabusId={syllabusId} />
 
           {/* Right buttons */}
           <div className="flex items-center gap-2">
@@ -428,12 +402,7 @@ export default function TeachingOSPlanner() {
             >
               <Sparkles className="w-3.5 h-3.5" /> Plan all weeks
             </button>
-            <button
-              onClick={() => navigate(`/teaching-os/dayboard?syllabus_id=${syllabusId}`)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-white bg-[#0f2044] rounded-md hover:bg-[#1a2d54]"
-            >
-              Next: Day board <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+            <NextPhaseButton currentPhase={2} syllabusId={syllabusId} />
           </div>
         </div>
 
