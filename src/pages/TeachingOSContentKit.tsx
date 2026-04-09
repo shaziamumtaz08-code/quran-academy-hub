@@ -100,16 +100,15 @@ function getPhaseStyle(phase: string) {
   return phaseColors[phase] || { bg: "bg-gray-50", text: "text-gray-600" };
 }
 
-async function streamAIContent(
+async function fetchAIContent(
   contentType: string,
   sessionPlan: any,
   courseName: string,
   subject: string,
   level: string,
   extraParams: Record<string, any> = {},
-  onChunk: (text: string) => void,
   abortSignal?: AbortSignal
-): Promise<string> {
+): Promise<any> {
   const { data: { session } } = await supabase.auth.getSession();
   const res = await fetch(
     `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-content-kit`,
@@ -125,64 +124,11 @@ async function streamAIContent(
     }
   );
 
+  const json = await res.json().catch(() => ({ error: "Invalid response" }));
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: "Generation failed" }));
-    throw new Error(err.error || "Generation failed");
+    throw new Error(json.error || "Generation failed");
   }
-
-  const reader = res.body?.getReader();
-  if (!reader) throw new Error("No stream");
-  const decoder = new TextDecoder();
-  let full = "";
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    const chunk = decoder.decode(value, { stream: true });
-    for (const line of chunk.split("\n")) {
-      if (!line.startsWith("data: ")) continue;
-      const payload = line.slice(6).trim();
-      if (payload === "[DONE]") break;
-      try {
-        const j = JSON.parse(payload);
-        const token = j.choices?.[0]?.delta?.content || "";
-        if (token) {
-          full += token;
-          onChunk(full);
-        }
-      } catch {}
-    }
-  }
-  return full;
-}
-
-function parseJSONFromStream(raw: string): any {
-  let cleaned = raw.trim();
-  // Strip markdown code fences
-  cleaned = cleaned.replace(/```(?:json)?\s*/gi, "").replace(/```\s*/g, "");
-  // Strip [ARABIC]...[/ARABIC] tags that break JSON
-  cleaned = cleaned.replace(/\[ARABIC\]\s*([\s\S]*?)\s*\[\/ARABIC\]/gi, "$1");
-  cleaned = cleaned.replace(/\[\/?ARABIC\]/gi, "");
-  cleaned = cleaned.trim();
-  
-  const startArr = cleaned.indexOf("[");
-  const startObj = cleaned.indexOf("{");
-  const start = startArr >= 0 && (startArr < startObj || startObj < 0) ? startArr : startObj;
-  if (start < 0) return null;
-  cleaned = cleaned.slice(start);
-  const endArr = cleaned.lastIndexOf("]");
-  const endObj = cleaned.lastIndexOf("}");
-  const end = Math.max(endArr, endObj);
-  if (end < 0) return null;
-  cleaned = cleaned.slice(0, end + 1);
-  
-  // Remove trailing commas before ] or }
-  cleaned = cleaned.replace(/,\s*([\]}])/g, "$1");
-  
-  try { return JSON.parse(cleaned); } catch (e) {
-    console.error("JSON parse failed:", e, "Raw (first 500):", cleaned.slice(0, 500));
-    return null;
-  }
+  return json.data;
 }
 
 // ─── Main Component ──────────────────────────────────
