@@ -1,4 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { parseArabicTags } from '@/lib/languageUtils';
+import { LanguageSelector } from '@/components/teaching/LanguageSelector';
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Set worker source
@@ -266,6 +269,7 @@ export default function TeachingOS() {
             courseName, subject, level, duration, sessionsPerWeek,
             targetAudience, learningGoals,
             sourceText: pdfText || pasteText || '',
+            language,
           }),
           signal: controller.signal,
         }
