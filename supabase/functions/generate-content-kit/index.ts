@@ -51,7 +51,7 @@ Return ONLY the JSON array.`;
         const qCount = questionCount || 10;
         const qTypes = questionTypes?.join(", ") || "MCQ, Short answer, True/False";
         const diff = difficulty || "Mixed";
-        systemPrompt = `${langInstruction}You are an Islamic education assessment designer. Create pedagogically sound quiz questions. Return ONLY a raw JSON array, no markdown, no backticks.`;
+        systemPrompt = `${langInstruction}You are an Islamic education assessment designer. Create pedagogically sound quiz questions. Return ONLY a raw JSON array. NEVER wrap in markdown code blocks. NEVER use backticks. Do NOT include [ARABIC] tags — just write Arabic text directly.`;
         userPrompt = `Create ${qCount} quiz questions for a ${level || 'Intermediate'} ${subject || 'Arabic'} session on '${sessionTitle}'.
 Session objectives: ${sessionObjective}
 Activities: ${JSON.stringify(activities.map((a: any) => a.title + ': ' + a.description))}
@@ -73,7 +73,7 @@ Return ONLY the JSON array.`;
       }
 
       case "flashcards": {
-        systemPrompt = `${langInstruction}Extract vocabulary and key phrases from this lesson for Arabic language flashcards. Include transliteration. Return ONLY a raw JSON array, no markdown, no backticks.`;
+        systemPrompt = `${langInstruction}Extract vocabulary and key phrases from this lesson for Arabic language flashcards. Include transliteration. Return ONLY a raw JSON array. NEVER wrap in markdown code blocks. NEVER use backticks. Do NOT include [ARABIC] tags — just write Arabic text directly.`;
         userPrompt = `Generate flashcards for vocabulary in this ${level || 'Intermediate'} Arabic session on '${sessionTitle}'.
 Session activities: ${JSON.stringify(activities.map((a: any) => a.title + ': ' + a.description))}
 
@@ -93,7 +93,7 @@ Include 10-15 cards covering all key vocabulary. Return ONLY the JSON array.`;
 
       case "worksheet": {
         const exTypes = exerciseTypes?.join(", ") || "fill_blank, translate_to_arabic, match, short_answer";
-        systemPrompt = `${langInstruction}You are a worksheet designer for Islamic education. Create printable exercises. Return ONLY raw JSON, no markdown, no backticks.`;
+        systemPrompt = `${langInstruction}You are a worksheet designer for Islamic education. Create printable exercises. Return ONLY raw JSON. NEVER wrap in markdown code blocks. NEVER use backticks. Do NOT include [ARABIC] tags — just write Arabic text directly.`;
         userPrompt = `Create a printable worksheet for ${level || 'Intermediate'} ${subject || 'Arabic'} students on '${sessionTitle}'.
 Objectives: ${sessionObjective}
 Activities: ${JSON.stringify(activities.map((a: any) => a.title + ': ' + a.description))}
