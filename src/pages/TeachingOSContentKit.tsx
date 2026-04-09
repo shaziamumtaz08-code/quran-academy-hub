@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import PptxGenJS from "pptxgenjs";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { NavRail, buildRailNav } from "@/components/layout/NavRail";
@@ -545,15 +546,18 @@ const TeachingOSContentKit: React.FC = () => {
               ) : (
                 <div>
                   {/* Slide canvas */}
-                  <div className="bg-white border border-[#e8e9eb] rounded-[10px] overflow-hidden mb-3">
-                    <div className="aspect-video p-6 flex flex-col justify-center relative" style={{ minHeight: 320 }}>
-                      {currentSlide && <SlideContent slide={currentSlide} />}
+                  <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-[10px] overflow-hidden mb-3 shadow-lg">
+                    <div className="aspect-video relative" style={{ minHeight: 320 }}>
+                      {currentSlide && <SlideContent slide={currentSlide} courseName={courseName} slideIndex={activeSlideIndex} totalSlides={slides.length} />}
                     </div>
-                    <div className="px-3 py-2 bg-[#f4f5f7] border-t border-[#e8e9eb] flex items-center justify-between">
-                      <span className="text-[10px] text-[#aab0bc]">Slide {activeSlideIndex + 1} of {slides.length} · {currentSlide?.phase}</span>
+                    <div className="px-3 py-2 bg-[#111827] border-t border-[#2a2a3e] flex items-center justify-between">
+                      <span className="text-[10px] text-[#6b7280]">Slide {activeSlideIndex + 1} of {slides.length} · {currentSlide?.phase}</span>
                       <div className="flex gap-1.5">
-                        <Button variant="outline" size="sm" className="text-[10px] h-6 px-2" onClick={() => generateContent("slides")} disabled={generating.slides}>
-                          <Sparkles className="w-3 h-3 mr-1" /> AI regen
+                        <Button variant="outline" size="sm" className="text-[10px] h-6 px-2 border-[#374151] text-[#9ca3af] hover:text-white hover:bg-[#1f2937]" onClick={() => downloadPptx(slides, courseName, subject, level, sessionPlan)}>
+                          <Download className="w-3 h-3 mr-1" /> PPTX
+                        </Button>
+                        <Button variant="outline" size="sm" className="text-[10px] h-6 px-2 border-[#374151] text-[#9ca3af] hover:text-white hover:bg-[#1f2937]" onClick={() => generateContent("slides")} disabled={generating.slides}>
+                          <Sparkles className="w-3 h-3 mr-1" /> Regenerate
                         </Button>
                       </div>
                     </div>
@@ -730,6 +734,120 @@ function downloadFile(content: string, filename: string, mime: string) {
   URL.revokeObjectURL(url);
 }
 
+// ─── PPTX Download ───────────────────────────────────
+const PPTX_THEMES: Record<string, { bg: string; accent: string; titleColor: string; bodyColor: string }> = {
+  Opening:    { bg: '0f2044', accent: '4a90d9', titleColor: 'FFFFFF', bodyColor: 'c8d6e5' },
+  Input:      { bg: 'FFFFFF', accent: '1a7340', titleColor: '0f2044', bodyColor: '4a5264' },
+  Practice:   { bg: 'fdf8f0', accent: 'b85c1a', titleColor: '0f2044', bodyColor: '4a5264' },
+  Production: { bg: 'f5f0ff', accent: '534AB7', titleColor: '0f2044', bodyColor: '4a5264' },
+  'Wrap-up':  { bg: '1a2d5a', accent: 'f9c846', titleColor: 'FFFFFF', bodyColor: 'b0c4de' },
+  Quiz:       { bg: 'fff5f5', accent: 'b42a2a', titleColor: '0f2044', bodyColor: '4a5264' },
+};
+
+async function downloadPptx(slides: SlideData[], courseName: string, subject: string, level: string, sessionPlan: any) {
+  if (!slides.length) return;
+  const pptx = new PptxGenJS();
+  pptx.layout = "LAYOUT_WIDE";
+  pptx.author = courseName || "Teaching OS";
+  pptx.title = sessionPlan?.session_title || "Session Slides";
+
+  slides.forEach((s, i) => {
+    const t = PPTX_THEMES[s.phase] || PPTX_THEMES.Input;
+    const isDark = ['Opening', 'Wrap-up'].includes(s.phase);
+    const slide = pptx.addSlide();
+    slide.background = { color: t.bg };
+
+    // Phase badge
+    slide.addText(s.phase.toUpperCase(), {
+      x: 0.5, y: 0.3, w: 2, h: 0.35,
+      fontSize: 8, bold: true, color: t.accent,
+      fontFace: "Arial",
+    });
+
+    // Slide number
+    slide.addText(`${i + 1} / ${slides.length}`, {
+      x: 11, y: 0.3, w: 1.5, h: 0.3,
+      fontSize: 8, color: isDark ? '666666' : 'AAAAAA',
+      align: "right", fontFace: "Arial",
+    });
+
+    // Title
+    slide.addText(s.title, {
+      x: 0.5, y: 0.8, w: 12, h: 0.7,
+      fontSize: 28, bold: true, color: t.titleColor,
+      fontFace: "Arial",
+    });
+
+    // Accent line
+    slide.addShape(pptx.ShapeType.rect, {
+      x: 0.5, y: 1.55, w: 1.2, h: 0.04,
+      fill: { color: t.accent },
+    });
+
+    let yPos = 1.9;
+
+    // Arabic text
+    if (s.arabicText) {
+      slide.addText(s.arabicText, {
+        x: 1, y: yPos, w: 11, h: 0.8,
+        fontSize: 32, color: t.titleColor, align: "center",
+        fontFace: "Arial",
+      });
+      yPos += 0.85;
+      if (s.transliteration) {
+        slide.addText(s.transliteration, {
+          x: 1, y: yPos, w: 11, h: 0.4,
+          fontSize: 12, italic: true, color: isDark ? '888888' : '888888',
+          align: "center", fontFace: "Arial",
+        });
+        yPos += 0.5;
+      }
+    }
+
+    // Bullets
+    if (s.bullets?.length) {
+      const bulletRows = s.bullets.map(b => ({
+        text: b,
+        options: { fontSize: 14, color: t.bodyColor, bullet: { code: '25CF', color: t.accent }, breakLine: true, paraSpaceAfter: 6 },
+      }));
+      slide.addText(bulletRows, {
+        x: 0.5, y: yPos, w: 12, h: Math.min(s.bullets.length * 0.45, 3.5),
+        fontFace: "Arial", valign: "top",
+      });
+      yPos += Math.min(s.bullets.length * 0.45, 3.5) + 0.2;
+    }
+
+    // Activity instruction
+    if (s.activityInstruction) {
+      slide.addShape(pptx.ShapeType.rect, {
+        x: 0.5, y: yPos, w: 12, h: 0.7,
+        fill: { color: isDark ? '1a3355' : 'f0f4ff' },
+        rectRadius: 0.08,
+      });
+      slide.addText(`Activity: ${s.activityInstruction}`, {
+        x: 0.7, y: yPos + 0.05, w: 11.6, h: 0.6,
+        fontSize: 11, color: t.accent, fontFace: "Arial",
+      });
+      yPos += 0.9;
+    }
+
+    // Footer
+    slide.addText(courseName || "", {
+      x: 0.5, y: 7.0, w: 6, h: 0.3,
+      fontSize: 8, color: isDark ? '444466' : 'CCCCCC', fontFace: "Arial",
+    });
+    if (s.teacherNote) {
+      slide.addText(`📝 ${s.teacherNote}`, {
+        x: 6, y: 7.0, w: 6.5, h: 0.3,
+        fontSize: 8, italic: true, color: isDark ? '555577' : 'BBBBBB',
+        align: "right", fontFace: "Arial",
+      });
+    }
+  });
+
+  await pptx.writeFile({ fileName: `${courseName || 'slides'}-session-${sessionPlan?.session_number || '1'}.pptx` });
+}
+
 // ─── Sub-components ───────────────────────────────────
 
 function EmptyState({ icon, title, sub, onGenerate, generating }: { icon: React.ReactNode; title: string; sub: string; onGenerate?: () => void; generating?: boolean }) {
@@ -748,33 +866,164 @@ function EmptyState({ icon, title, sub, onGenerate, generating }: { icon: React.
   );
 }
 
-function SlideContent({ slide }: { slide: SlideData }) {
-  const ps = getPhaseStyle(slide.phase);
+// ─── Professional Slide Themes ────────────────────────
+const SLIDE_THEMES: Record<string, {
+  bg: string; accent: string; accentLight: string; titleColor: string;
+  bodyColor: string; bulletColor: string; badgeBg: string; badgeText: string;
+  gradientFrom: string; gradientTo: string;
+}> = {
+  Opening: {
+    bg: '#0f2044', accent: '#4a90d9', accentLight: '#1a3a6c', titleColor: '#ffffff',
+    bodyColor: '#c8d6e5', bulletColor: '#4a90d9', badgeBg: 'rgba(74,144,217,0.2)', badgeText: '#7ab8ff',
+    gradientFrom: '#0f2044', gradientTo: '#1a3a6c',
+  },
+  Input: {
+    bg: '#ffffff', accent: '#1a7340', accentLight: '#e6f4ea', titleColor: '#0f2044',
+    bodyColor: '#4a5264', bulletColor: '#1a7340', badgeBg: '#e6f4ea', badgeText: '#1a7340',
+    gradientFrom: '#ffffff', gradientTo: '#f0faf4',
+  },
+  Practice: {
+    bg: '#fdf8f0', accent: '#b85c1a', accentLight: '#fff3e6', titleColor: '#0f2044',
+    bodyColor: '#4a5264', bulletColor: '#b85c1a', badgeBg: '#fff3e6', badgeText: '#b85c1a',
+    gradientFrom: '#fdf8f0', gradientTo: '#fff8f0',
+  },
+  Production: {
+    bg: '#f5f0ff', accent: '#534AB7', accentLight: '#ede8ff', titleColor: '#0f2044',
+    bodyColor: '#4a5264', bulletColor: '#534AB7', badgeBg: '#ede8ff', badgeText: '#534AB7',
+    gradientFrom: '#f5f0ff', gradientTo: '#ede8ff',
+  },
+  'Wrap-up': {
+    bg: '#1a2d5a', accent: '#f9c846', accentLight: '#243a6e', titleColor: '#ffffff',
+    bodyColor: '#b0c4de', bulletColor: '#f9c846', badgeBg: 'rgba(249,200,70,0.2)', badgeText: '#f9c846',
+    gradientFrom: '#1a2d5a', gradientTo: '#243a6e',
+  },
+  Quiz: {
+    bg: '#fff5f5', accent: '#b42a2a', accentLight: '#ffe0e0', titleColor: '#0f2044',
+    bodyColor: '#4a5264', bulletColor: '#b42a2a', badgeBg: '#ffe0e0', badgeText: '#b42a2a',
+    gradientFrom: '#fff5f5', gradientTo: '#ffe8e8',
+  },
+};
+
+const DEFAULT_THEME = SLIDE_THEMES.Input;
+
+function SlideContent({ slide, courseName, slideIndex, totalSlides }: { slide: SlideData; courseName?: string; slideIndex?: number; totalSlides?: number }) {
+  const theme = SLIDE_THEMES[slide.phase] || DEFAULT_THEME;
+  const isDark = ['Opening', 'Wrap-up'].includes(slide.phase);
+  const isArabicLayout = slide.layoutType === 'arabic-vocab' || slide.layoutType === 'two-column-vocab';
+
   return (
-    <div className="flex flex-col gap-3">
-      <span className={`text-[9px] uppercase tracking-wider font-medium ${ps.text}`}>{slide.phase} · Session</span>
-      <div className="text-[20px] font-medium text-[#0f2044] leading-tight">{slide.title}</div>
-      {slide.arabicText && (
-        <div className="text-[28px] text-[#0f2044] text-center my-2" dir="rtl">{slide.arabicText}</div>
-      )}
-      {slide.transliteration && (
-        <div className="text-[13px] text-[#7a7f8a] italic text-center">{slide.transliteration}</div>
-      )}
-      {slide.bullets && slide.bullets.length > 0 && (
-        <ul className="space-y-1.5 mt-2">
-          {slide.bullets.map((b, i) => (
-            <li key={i} className="flex items-start gap-2 text-[13px] text-[#4a5264]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#1a56b0] mt-1.5 shrink-0" />
-              {b}
-            </li>
-          ))}
-        </ul>
-      )}
-      {slide.activityInstruction && (
-        <div className="mt-2 p-2.5 bg-[#f9f9fb] rounded-lg border-l-[3px] border-[#d0d4dc] text-[11px] text-[#7a7f8a]">
-          {slide.activityInstruction}
-        </div>
-      )}
+    <div
+      className="relative w-full h-full flex flex-col overflow-hidden select-none"
+      style={{
+        background: `linear-gradient(135deg, ${theme.gradientFrom}, ${theme.gradientTo})`,
+        fontFamily: "'Inter', sans-serif",
+      }}
+    >
+      {/* Decorative corner accent */}
+      <div className="absolute top-0 right-0 w-[200px] h-[200px] opacity-10" style={{
+        background: `radial-gradient(circle at top right, ${theme.accent}, transparent 70%)`,
+      }} />
+
+      {/* Top bar */}
+      <div className="flex items-center justify-between px-6 pt-4 pb-2 z-10">
+        <span
+          className="text-[9px] uppercase tracking-[0.15em] font-semibold px-2.5 py-1 rounded-full"
+          style={{ background: theme.badgeBg, color: theme.badgeText }}
+        >
+          {slide.phase}
+        </span>
+        {slideIndex != null && totalSlides && (
+          <span className="text-[9px]" style={{ color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.25)' }}>
+            {slideIndex + 1} / {totalSlides}
+          </span>
+        )}
+      </div>
+
+      {/* Content area */}
+      <div className="flex-1 flex flex-col px-6 pb-5 z-10">
+        {/* Title */}
+        <h2
+          className="text-[22px] font-bold leading-tight mb-3 tracking-tight"
+          style={{ color: theme.titleColor }}
+        >
+          {slide.title}
+        </h2>
+
+        {/* Accent line */}
+        <div className="w-12 h-[3px] rounded-full mb-4" style={{ background: theme.accent }} />
+
+        {/* Arabic text block */}
+        {slide.arabicText && (
+          <div className={`${isArabicLayout ? 'flex-1 flex items-center justify-center' : 'mb-3'}`}>
+            <div
+              className="text-center py-3 px-4 rounded-xl"
+              style={{ background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.03)' }}
+            >
+              <div
+                className="text-[32px] leading-relaxed"
+                dir="rtl"
+                style={{ color: theme.titleColor, fontFamily: "'Noto Naskh Arabic', 'Amiri', serif" }}
+              >
+                {slide.arabicText}
+              </div>
+              {slide.transliteration && (
+                <div
+                  className="text-[12px] italic mt-1.5 tracking-wide"
+                  style={{ color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)' }}
+                >
+                  {slide.transliteration}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Bullets */}
+        {slide.bullets && slide.bullets.length > 0 && (
+          <ul className="space-y-2 flex-1">
+            {slide.bullets.map((b, i) => (
+              <li key={i} className="flex items-start gap-3 text-[13px] leading-relaxed" style={{ color: theme.bodyColor }}>
+                <span
+                  className="w-2 h-2 rounded-full mt-[5px] shrink-0"
+                  style={{ background: theme.bulletColor }}
+                />
+                <span>{b}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {/* Activity instruction callout */}
+        {slide.activityInstruction && (
+          <div
+            className="mt-auto pt-3 px-3.5 py-2.5 rounded-lg border-l-[3px] text-[11px] leading-relaxed"
+            style={{
+              borderColor: theme.accent,
+              background: isDark ? 'rgba(255,255,255,0.06)' : theme.accentLight,
+              color: isDark ? 'rgba(255,255,255,0.7)' : theme.bodyColor,
+            }}
+          >
+            <span className="font-semibold" style={{ color: theme.accent }}>Activity: </span>
+            {slide.activityInstruction}
+          </div>
+        )}
+      </div>
+
+      {/* Bottom bar */}
+      <div
+        className="flex items-center justify-between px-6 py-2 text-[9px] z-10"
+        style={{
+          borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'}`,
+          color: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)',
+        }}
+      >
+        <span>{courseName || ''}</span>
+        {slide.teacherNote && (
+          <span className="italic max-w-[60%] truncate" style={{ color: isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.3)' }}>
+            📝 {slide.teacherNote}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
