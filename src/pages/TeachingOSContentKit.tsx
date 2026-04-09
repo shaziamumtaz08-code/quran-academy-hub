@@ -1069,19 +1069,53 @@ function QuizCard({ q, index, total, showAnswer }: { q: QuizQuestion; index: num
 
 function FlashcardItem({ card }: { card: Flashcard }) {
   const [flipped, setFlipped] = useState(false);
+  const posColors = { noun: '#1a7340', verb: '#b85c1a', phrase: '#534AB7', expression: '#b42a2a' };
+  const posColor = posColors[card.partOfSpeech as keyof typeof posColors] || '#4a90d9';
+
   return (
-    <div onClick={() => setFlipped(!flipped)} className="bg-white border border-[#e8e9eb] rounded-[10px] overflow-hidden cursor-pointer hover:border-[#b0bcd4] transition-colors" style={{ minHeight: 100 }}>
+    <div
+      onClick={() => setFlipped(!flipped)}
+      className="relative rounded-xl overflow-hidden cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-lg group"
+      style={{
+        minHeight: 160,
+        background: !flipped
+          ? 'linear-gradient(135deg, #0f2044, #1a3a6c)'
+          : 'linear-gradient(135deg, #ffffff, #f0faf4)',
+        border: !flipped ? '1px solid rgba(74,144,217,0.3)' : '1px solid #d0e8d9',
+      }}
+    >
+      {/* Decorative circle */}
+      <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full opacity-10"
+        style={{ background: !flipped ? '#4a90d9' : posColor }} />
+
       {!flipped ? (
-        <div className="p-4 flex items-center justify-center h-full">
-          <div className="text-[22px] text-[#0f2044] text-center" dir="rtl">{card.arabic}</div>
+        <div className="p-5 flex flex-col items-center justify-center h-full gap-2">
+          <div className="text-[28px] text-white text-center leading-snug" dir="rtl"
+            style={{ fontFamily: "'Noto Naskh Arabic', 'Amiri', serif" }}>
+            {card.arabic}
+          </div>
+          <span className="text-[9px] uppercase tracking-[0.15em] text-[#4a90d9] opacity-70 mt-1">
+            Tap to reveal
+          </span>
         </div>
       ) : (
-        <div className="p-4 flex flex-col items-center justify-center h-full gap-1">
-          <div className="text-[14px] text-[#0f2044] text-center">{card.english}</div>
-          <div className="text-[11px] text-[#7a7f8a] italic">{card.transliteration}</div>
-          <span className="text-[9px] text-[#aab0bc] mt-1">{card.partOfSpeech}</span>
+        <div className="p-5 flex flex-col items-center justify-center h-full gap-1.5">
+          <div className="text-[16px] font-bold text-[#0f2044] text-center">{card.english}</div>
+          <div className="text-[12px] italic" style={{ color: '#6b7280' }}>{card.transliteration}</div>
+          <span className="text-[8px] uppercase tracking-[0.15em] font-semibold px-2 py-0.5 rounded-full mt-1"
+            style={{ background: `${posColor}18`, color: posColor }}>
+            {card.partOfSpeech}
+          </span>
           {card.exampleSentence && (
-            <div className="text-[11px] text-[#4a5264] mt-1 text-center" dir="rtl">{card.exampleSentence}</div>
+            <div className="mt-2 px-3 py-2 rounded-lg w-full text-center" style={{ background: 'rgba(0,0,0,0.03)' }}>
+              <div className="text-[13px] text-[#0f2044]" dir="rtl"
+                style={{ fontFamily: "'Noto Naskh Arabic', 'Amiri', serif" }}>
+                {card.exampleSentence}
+              </div>
+              {card.exampleTranslation && (
+                <div className="text-[10px] text-[#9ca3af] mt-1">{card.exampleTranslation}</div>
+              )}
+            </div>
           )}
         </div>
       )}
@@ -1107,30 +1141,86 @@ function StudyMode({ cards, index, flipped, onFlip, onNext, onPrev, onShuffle, o
 
   const card = cards[index];
   if (!card) return null;
+  const progress = ((index + 1) / cards.length) * 100;
+  const posColors = { noun: '#1a7340', verb: '#b85c1a', phrase: '#534AB7', expression: '#b42a2a' };
+  const posColor = posColors[card.partOfSpeech as keyof typeof posColors] || '#4a90d9';
 
   return (
-    <div className="flex flex-col items-center justify-center py-12">
-      <div className="flex items-center gap-3 mb-4">
-        <span className="text-[11px] text-[#7a7f8a]">Card {index + 1} of {cards.length}</span>
-        <Button variant="outline" size="sm" className="text-[10px] h-6" onClick={onShuffle}><Shuffle className="w-3 h-3 mr-1" /> Shuffle</Button>
-        <Button variant="outline" size="sm" className="text-[10px] h-6" onClick={onExit}><X className="w-3 h-3 mr-1" /> Exit</Button>
+    <div className="flex flex-col items-center justify-center py-8">
+      {/* Progress bar */}
+      <div className="w-[440px] mb-4">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-[11px] font-medium text-[#6b7280]">Card {index + 1} of {cards.length}</span>
+          <div className="flex gap-1.5">
+            <Button variant="outline" size="sm" className="text-[10px] h-6 px-2" onClick={onShuffle}><Shuffle className="w-3 h-3 mr-1" /> Shuffle</Button>
+            <Button variant="outline" size="sm" className="text-[10px] h-6 px-2" onClick={onExit}><X className="w-3 h-3 mr-1" /> Exit</Button>
+          </div>
+        </div>
+        <div className="w-full h-1.5 rounded-full bg-[#e5e7eb] overflow-hidden">
+          <div className="h-full rounded-full transition-all duration-300" style={{ width: `${progress}%`, background: 'linear-gradient(90deg, #4a90d9, #1a7340)' }} />
+        </div>
       </div>
-      <div onClick={onFlip} className="bg-white border-2 border-[#e8e9eb] rounded-2xl w-[400px] h-[260px] flex items-center justify-center cursor-pointer hover:border-[#1a56b0] transition-all shadow-sm">
+
+      {/* Card */}
+      <div
+        onClick={onFlip}
+        className="rounded-2xl w-[440px] h-[300px] flex items-center justify-center cursor-pointer transition-all duration-300 hover:shadow-xl relative overflow-hidden"
+        style={{
+          background: !flipped
+            ? 'linear-gradient(135deg, #0f2044, #1a3a6c)'
+            : 'linear-gradient(135deg, #ffffff, #f8fafb)',
+          border: !flipped ? '2px solid rgba(74,144,217,0.3)' : '2px solid #e5e7eb',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+        }}
+      >
+        {/* Decorative elements */}
+        <div className="absolute -top-12 -right-12 w-40 h-40 rounded-full opacity-10"
+          style={{ background: !flipped ? '#4a90d9' : posColor }} />
+        <div className="absolute -bottom-8 -left-8 w-28 h-28 rounded-full opacity-5"
+          style={{ background: !flipped ? '#4a90d9' : posColor }} />
+
         {!flipped ? (
-          <div className="text-[36px] text-[#0f2044]" dir="rtl">{card.arabic}</div>
+          <div className="text-center z-10 px-8">
+            <div className="text-[44px] text-white leading-snug" dir="rtl"
+              style={{ fontFamily: "'Noto Naskh Arabic', 'Amiri', serif" }}>
+              {card.arabic}
+            </div>
+            <div className="mt-4 text-[10px] uppercase tracking-[0.2em] text-[#4a90d9] opacity-60">
+              Tap or press Space to reveal
+            </div>
+          </div>
         ) : (
-          <div className="text-center px-6">
-            <div className="text-[20px] text-[#0f2044] mb-1">{card.english}</div>
-            <div className="text-[14px] text-[#7a7f8a] italic">{card.transliteration}</div>
-            {card.exampleSentence && <div className="text-[13px] text-[#4a5264] mt-3" dir="rtl">{card.exampleSentence}</div>}
-            {card.exampleTranslation && <div className="text-[11px] text-[#7a7f8a] mt-1">{card.exampleTranslation}</div>}
+          <div className="text-center px-8 z-10">
+            <div className="text-[26px] font-bold text-[#0f2044] mb-1">{card.english}</div>
+            <div className="text-[15px] italic text-[#9ca3af]">{card.transliteration}</div>
+            <span className="inline-block text-[9px] uppercase tracking-[0.15em] font-semibold px-2.5 py-0.5 rounded-full mt-2"
+              style={{ background: `${posColor}18`, color: posColor }}>
+              {card.partOfSpeech}
+            </span>
+            {card.exampleSentence && (
+              <div className="mt-4 px-4 py-2.5 rounded-xl" style={{ background: 'rgba(0,0,0,0.03)' }}>
+                <div className="text-[16px] text-[#0f2044]" dir="rtl"
+                  style={{ fontFamily: "'Noto Naskh Arabic', 'Amiri', serif" }}>
+                  {card.exampleSentence}
+                </div>
+                {card.exampleTranslation && (
+                  <div className="text-[11px] text-[#9ca3af] mt-1">{card.exampleTranslation}</div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
-      <div className="flex items-center gap-3 mt-4">
-        <Button variant="outline" size="sm" onClick={onPrev} disabled={index === 0}><ArrowLeft className="w-3 h-3" /></Button>
-        <span className="text-[11px] text-[#aab0bc]">Space to flip · Arrows to navigate</span>
-        <Button variant="outline" size="sm" onClick={onNext} disabled={index === cards.length - 1}><ArrowRight className="w-3 h-3" /></Button>
+
+      {/* Navigation */}
+      <div className="flex items-center gap-4 mt-5">
+        <Button variant="outline" size="sm" onClick={onPrev} disabled={index === 0} className="h-9 w-9 p-0 rounded-full">
+          <ArrowLeft className="w-4 h-4" />
+        </Button>
+        <span className="text-[10px] text-[#aab0bc] tracking-wide">Space to flip · Arrows to navigate</span>
+        <Button variant="outline" size="sm" onClick={onNext} disabled={index === cards.length - 1} className="h-9 w-9 p-0 rounded-full">
+          <ArrowRight className="w-4 h-4" />
+        </Button>
       </div>
     </div>
   );
