@@ -513,7 +513,7 @@ export default function Courses() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map(course => (
               <Card key={course.id}
-                className="group cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.01] overflow-hidden border-border/60"
+                className="group cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.01] overflow-hidden border-border/60 relative"
                 onClick={() => navigate(`/courses/${course.id}`)}>
                 {/* Hero strip */}
                 <div className="h-2 bg-gradient-to-r from-primary via-accent to-primary/60" />
@@ -525,14 +525,33 @@ export default function Courses() {
                         {(course as any).teacher?.full_name || 'Unassigned'}
                       </p>
                     </div>
-                    <div className="flex flex-col gap-1 items-end shrink-0">
-                      <Badge variant={course.status === 'active' ? 'default' : 'secondary'} className="text-xs">
-                        {course.status}
-                      </Badge>
-                      {course.website_enabled && (
-                        <Badge variant="outline" className="text-xs text-accent border-accent/30">
-                          <Globe className="h-3 w-3 mr-1" /> Live
+                    <div className="flex items-center gap-1 shrink-0">
+                      <div className="flex flex-col gap-1 items-end">
+                        <Badge variant={course.status === 'active' ? 'default' : 'secondary'} className="text-xs">
+                          {course.status}
                         </Badge>
+                        {course.website_enabled && (
+                          <Badge variant="outline" className="text-xs text-accent border-accent/30">
+                            <Globe className="h-3 w-3 mr-1" /> Live
+                          </Badge>
+                        )}
+                      </div>
+                      {canManage && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
+                            <DropdownMenuItem onClick={() => { setDupName(`Copy of ${course.name}`); setDupOptions({ modules: true, classes: true, assignments: false, feePlans: false, marketing: false }); setDuplicateTarget(course); }}>
+                              <Copy className="h-4 w-4 mr-2" /> Duplicate
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive" onClick={() => setDeleteTarget(course)}>
+                              <Trash2 className="h-4 w-4 mr-2" /> Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       )}
                     </div>
                   </div>
