@@ -115,6 +115,7 @@ function ContentTypeBadges({ types, onChange }: { types: string[]; onChange: (t:
 // ─── Main Component ───
 export default function TeachingOS() {
   const { user } = useAuth();
+  const { language, langClass } = useLanguage();
 
   // Course selection state
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
