@@ -548,7 +548,7 @@ const TeachingOSAssessment: React.FC = () => {
   const railItems = buildRailNav(activeRole);
 
   return (
-    <div className="flex h-screen bg-[#f4f5f7] overflow-hidden">
+    <div className="flex h-screen bg-[#f4f5f7] overflow-hidden pl-14">
       <NavRail items={railItems} />
 
       {/* Section Sidebar */}
