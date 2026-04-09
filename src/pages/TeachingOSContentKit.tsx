@@ -545,15 +545,18 @@ const TeachingOSContentKit: React.FC = () => {
               ) : (
                 <div>
                   {/* Slide canvas */}
-                  <div className="bg-white border border-[#e8e9eb] rounded-[10px] overflow-hidden mb-3">
-                    <div className="aspect-video p-6 flex flex-col justify-center relative" style={{ minHeight: 320 }}>
-                      {currentSlide && <SlideContent slide={currentSlide} />}
+                  <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-[10px] overflow-hidden mb-3 shadow-lg">
+                    <div className="aspect-video relative" style={{ minHeight: 320 }}>
+                      {currentSlide && <SlideContent slide={currentSlide} courseName={courseName} slideIndex={activeSlideIndex} totalSlides={slides.length} />}
                     </div>
-                    <div className="px-3 py-2 bg-[#f4f5f7] border-t border-[#e8e9eb] flex items-center justify-between">
-                      <span className="text-[10px] text-[#aab0bc]">Slide {activeSlideIndex + 1} of {slides.length} · {currentSlide?.phase}</span>
+                    <div className="px-3 py-2 bg-[#111827] border-t border-[#2a2a3e] flex items-center justify-between">
+                      <span className="text-[10px] text-[#6b7280]">Slide {activeSlideIndex + 1} of {slides.length} · {currentSlide?.phase}</span>
                       <div className="flex gap-1.5">
-                        <Button variant="outline" size="sm" className="text-[10px] h-6 px-2" onClick={() => generateContent("slides")} disabled={generating.slides}>
-                          <Sparkles className="w-3 h-3 mr-1" /> AI regen
+                        <Button variant="outline" size="sm" className="text-[10px] h-6 px-2 border-[#374151] text-[#9ca3af] hover:text-white hover:bg-[#1f2937]" onClick={() => downloadPptx(slides, courseName, subject, level, sessionPlan)}>
+                          <Download className="w-3 h-3 mr-1" /> PPTX
+                        </Button>
+                        <Button variant="outline" size="sm" className="text-[10px] h-6 px-2 border-[#374151] text-[#9ca3af] hover:text-white hover:bg-[#1f2937]" onClick={() => generateContent("slides")} disabled={generating.slides}>
+                          <Sparkles className="w-3 h-3 mr-1" /> Regenerate
                         </Button>
                       </div>
                     </div>
