@@ -548,10 +548,9 @@ export default function TeachingOSDayBoard() {
                     ) : (
                       <div
                         onClick={() => { setEditDraft(currentActivity.description); setEditingDesc(true); }}
-                        className="text-[12.5px] text-[#0f2044] leading-relaxed cursor-text hover:bg-[#f9f9fb] rounded p-1 -m-1 mb-2"
-                      >
-                        {currentActivity.description}
-                      </div>
+                        className={`text-[12.5px] text-[#0f2044] leading-relaxed cursor-text hover:bg-[#f9f9fb] rounded p-1 -m-1 mb-2 ${langClass}`}
+                        dangerouslySetInnerHTML={{ __html: parseArabicTags(currentActivity.description) }}
+                      />
                     )}
 
                     {currentActivity.materials && (
