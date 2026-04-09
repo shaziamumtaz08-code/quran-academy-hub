@@ -431,7 +431,7 @@ const TeachingOSContentKit: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex h-screen">
+      <div className="flex h-screen pl-14">
         <NavRail items={railItems} />
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
