@@ -1,75 +1,70 @@
 
 
-# Navigation & UX Fixes — Revised Plan
+# Course Delete, Class Delete & Duplicate Feature
 
-## Issues Addressed
+## What We're Building
 
-1. **Teachers see full admin Teaching menu** — Live Classes opens Zoom Engine, Subjects shows 10, Schedules shows 10. Teachers should only see their own data (My Students, Attendance, Schedules for their classes).
-2. **Chat allows DMs but should NOT allow Group creation** for non-admins.
-3. **Mobile: Role Switcher invisible**, only tiny logout arrow visible.
-4. **Mobile hamburger opens full white AppSidebar** instead of a sleek nav drawer.
-5. **Resources link opens home page** — remove from teacher/student nav.
-6. **Chat renamed to Communication**, landing on card page not messages.
-7. **Sign out button too small/invisible** — integrate into user menu.
-8. **Breadcrumbs not sticky** — forces scroll up.
-9. **Teaching OS hidden from 1-to-1**.
-10. **Teacher needs Salary tab; Student needs Classes tab and Calendar**.
+Three new capabilities in the Course management area:
+
+1. **Delete entire course** — with cascading cleanup of all related data (classes, enrollments, modules, lessons, etc.)
+2. **Delete a single class** — remove one class from a course without affecting the rest
+3. **Duplicate a course** — with a checklist dialog asking which internal resources to copy
 
 ---
 
-## Changes by File
+## Implementation
 
-### 1. `src/pages/TeachingLanding.tsx`
-- Add role check using `useAuth().activeRole`
-- **If teacher**: filter cards to show only: **My Students** (assignments count, filtered by teacher_id), **Schedules** (filtered by teacher), **Attendance** (filtered by teacher), **Planning**
-- Hide: Live Classes, Subjects, Courses (these are admin-only)
-- Adjust queries to filter by `user.id` for teacher role so counts reflect their data only
+### 1. Delete Course (Courses.tsx)
 
-### 2. `src/components/layout/NavRail.tsx`
-**Teacher nav:**
-- Remove: `Resources` (FolderOpen)
-- Rename `Chat` → `Communication`, href `/chat` → `/communication`
-- Add: `Salary` (DollarSign icon, href `/salary-engine`)
-- Keep: Home, My Classes, My Students, Attendance, Planning, Communication, Salary
+Add a "Delete" action to each course card (three-dot menu or long-press). Opens a confirmation dialog warning about permanent deletion. On confirm:
 
-**Student nav:**
-- Remove: Resources, Progress (duplicate)
-- Add: `Classes` (BookOpen, href `/teaching`), `Calendar` (CalendarDays, href `/schedules`)
-- Rename Chat → Communication, href → `/communication`
+- Delete in order to respect FK constraints:
+  1. `course_lessons` (by course_id)
+  2. `course_modules` (by course_id)
+  3. `course_enrollments` (by course_id)
+  4. `course_classes` (by course_id) — also nullify `zoom_license_id` refs
+  5. `session_plans` (via syllabi linked to course_id)
+  6. `syllabi` (by course_id)
+  7. `course_assignments`, `course_resources`, `course_notifications` (by course_id)
+  8. Finally delete the `courses` row itself
 
-**Parent nav:**
-- Rename Chat → Communication, href → `/communication`
+The dialog shows: "This will permanently delete **[Course Name]** and all its classes, enrollments, modules, and resources. This cannot be undone."
 
-### 3. `src/components/layout/MobileBottomNav.tsx`
-**Teacher tabs:** Home, Classes (`/teaching`), Attendance (`/attendance`), Calendar (`/schedules`), Communication (`/communication`)
-- Remove "More" sheet for teachers
+### 2. Delete Single Class (CourseClassesTab.tsx)
 
-**Student tabs:** Home, Classes (`/teaching`), Attendance (`/attendance`), Calendar (`/schedules`), Communication (`/communication`)
+Add a delete button per class row. Confirmation dialog: "Delete class **[Class Name]**? Students enrolled in this class will be removed."
 
-**Admin tabs:** Home, Teaching, People, Communication (`/communication`), More
+- Nullify `zoom_license_id` references
+- Delete `course_class_students` for that class
+- Delete the `course_classes` row
 
-### 4. `src/components/layout/MobileTopBar.tsx`
-- Import and render `RoleSwitcher` between the title and the right icons
-- Replace the tiny `LogOut` button with a dropdown menu containing: user name, role label, role switcher options, divider, Sign Out button (red, clearly visible)
+### 3. Duplicate Course (Courses.tsx)
 
-### 5. `src/components/layout/DashboardLayout.tsx` (mobile section)
-- Replace `AppSidebar` in the mobile drawer with a **styled NavRail list**: dark navy background (`bg-lms-navy`), vertical list of rail items with icon + label, sign-out at bottom
-- Remove the white AppSidebar entirely from mobile drawer
+Add a "Duplicate" action next to Delete on each course card. Opens a **Duplicate Course Dialog** with:
 
-### 6. `src/pages/GroupChat.tsx`
-- Import `useAuth` and check `activeRole`
-- Hide "New Group" button (`setCreateOpen`) unless role is admin/super_admin/admin_*
-- Keep "New DM" button (`setDmOpen`) visible for all roles
+- **New course name** field (pre-filled: "Copy of [Original Name]")
+- **Checklist of what to duplicate**:
+  - [ ] Modules & Lessons (content structure)
+  - [ ] Classes (schedule/time slots — without enrolled students)
+  - [ ] Assignments
+  - [ ] Resources
+  - [ ] Registration Form config
+  - [ ] Fee Plans
+  - [ ] Marketing/Website settings
 
-### 7. `src/components/layout/PageBreadcrumb.tsx`
-- Add `sticky top-0 z-10 bg-[#f4f5f7]` to the breadcrumb wrapper so Home/Back is always accessible without scrolling
-
-### 8. `src/components/layout/AppSidebar.tsx`
-- In `getTeachingSidebar()`: hide "AI Teaching OS" item when `isOneToOne` is true (already partially done, verify and fix)
+On confirm:
+1. Insert new `courses` row with same metadata, status = 'draft'
+2. For each checked item, copy the related rows with new course_id
+3. Navigate to the new course builder page
 
 ---
 
-## No Database Changes Required
+## Files Changed
 
-All changes are frontend navigation and UI only.
+| File | Change |
+|------|--------|
+| `src/pages/Courses.tsx` | Add three-dot menu on cards with Delete and Duplicate actions. Add DeleteCourseDialog and DuplicateCourseDialog components inline. |
+| `src/components/courses/CourseClassesTab.tsx` | Add delete button per class with confirmation dialog. |
+
+No database changes needed — all operations use existing tables with standard delete/insert queries.
 
