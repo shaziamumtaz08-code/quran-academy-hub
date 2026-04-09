@@ -122,6 +122,7 @@ export default function TeachingOS() {
   const [level, setLevel] = useState('');
   const [duration, setDuration] = useState('8 weeks');
   const [sessionsPerWeek, setSessionsPerWeek] = useState('2');
+  const [customSessions, setCustomSessions] = useState('');
   const [targetAudience, setTargetAudience] = useState('');
   const [learningGoals, setLearningGoals] = useState('');
   const [sourceTab, setSourceTab] = useState<'pdf' | 'paste' | 'url'>('pdf');
@@ -200,7 +201,8 @@ export default function TeachingOS() {
   );
 
   const durationWeeks = parseInt(duration) || 8;
-  const totalSessions = durationWeeks * (parseInt(sessionsPerWeek) || 2);
+  const effectiveSessions = sessionsPerWeek === 'Custom' ? (parseInt(customSessions) || 2) : (parseInt(sessionsPerWeek) || 2);
+  const totalSessions = durationWeeks * effectiveSessions;
 
   // ─── Auto-save ───
   const autoSave = useCallback(async (currentRows: SyllabusRow[]) => {
