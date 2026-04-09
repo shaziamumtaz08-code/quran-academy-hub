@@ -15,6 +15,7 @@ import {
   ScrollText, ExternalLink, Send, Sparkles, ArrowRight, Users, Clock,
   Calendar, Plus, Check, AlertTriangle, TrendingUp, Lightbulb, X
 } from 'lucide-react';
+import { PhaseStepperCompact, NextPhaseButton } from '@/components/teaching/PhaseNavBar';
 
 type Section = 'drill' | 'conversation' | 'shadowing' | 'assign' | 'progress' | 'library' | 'scripts';
 

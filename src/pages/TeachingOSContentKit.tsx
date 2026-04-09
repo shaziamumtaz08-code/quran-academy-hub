@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { PhaseStepperCompact, PhaseBreadcrumb } from '@/components/teaching/PhaseNavBar';
 
 // ─── Types ────────────────────────────────────────────
 interface Activity {

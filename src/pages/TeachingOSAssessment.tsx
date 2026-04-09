@@ -17,6 +17,7 @@ import {
   Download, Send, Eye, Copy, Trash2, Edit2, ArrowRight,
   CheckCircle2, CircleDot, Circle
 } from 'lucide-react';
+import { PhaseStepperCompact } from '@/components/teaching/PhaseNavBar';
 
 // Types
 interface ExamQuestion {

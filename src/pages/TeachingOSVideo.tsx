@@ -14,6 +14,7 @@ import {
   GripVertical, Share2, Download, ExternalLink, CheckCircle2, CircleDot,
   Clock, Ban, X, Sparkles, Video, ChevronDown
 } from 'lucide-react';
+import { PhaseStepperCompact, NextPhaseButton } from '@/components/teaching/PhaseNavBar';
 
 type Section = 'search' | 'library' | 'playlists' | 'filter' | 'flagged' | 'analytics' | 'insights';
 

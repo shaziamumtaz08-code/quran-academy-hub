@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { parseArabicTags } from '@/lib/languageUtils';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { PhaseStepperCompact, NextPhaseButton } from '@/components/teaching/PhaseNavBar';
 import { NavRail, buildRailNav } from '@/components/layout/NavRail';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
