@@ -265,6 +265,7 @@ export default function TeachingOSPlanner() {
         previousSessionSummary: prevSession?.session_title || '',
         sessionsPerWeek: syllabus.sessions_week,
         sessionDurationMinutes: 45,
+        language,
       }, (delta) => setStreamText(prev => prev + delta), controller.signal);
 
       const parsed = parseJsonFromStream(fullText);

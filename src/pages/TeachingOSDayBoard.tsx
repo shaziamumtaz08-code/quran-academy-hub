@@ -278,6 +278,7 @@ export default function TeachingOSDayBoard() {
         level: (plan as any).syllabi?.level || '',
         courseName,
         userMessage: userMsg,
+        language,
       }, (delta) => setAiResponse(prev => prev + delta));
       // Save to DB
       await supabase.from('ai_assists').insert({
