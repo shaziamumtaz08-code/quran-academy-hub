@@ -41,6 +41,8 @@ export function CourseClassesTab({ courseId }: CourseClassesTabProps) {
   const qc = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const [deleteClassTarget, setDeleteClassTarget] = useState<any>(null);
+  const [classDeleting, setClassDeleting] = useState(false);
 
   const { data: classes = [], isLoading } = useQuery({
     queryKey: ['course-classes', courseId],
@@ -55,10 +57,49 @@ export function CourseClassesTab({ courseId }: CourseClassesTabProps) {
     },
   });
 
+  const handleDeleteClass = async () => {
+    if (!deleteClassTarget) return;
+    setClassDeleting(true);
+    try {
+      await supabase.from('course_class_students').delete().eq('class_id', deleteClassTarget.id);
+      await supabase.from('course_class_staff').delete().eq('class_id', deleteClassTarget.id);
+      const { error } = await supabase.from('course_classes').delete().eq('id', deleteClassTarget.id);
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ['course-classes', courseId] });
+      if (selectedClassId === deleteClassTarget.id) setSelectedClassId(null);
+      toast({ title: 'Class deleted' });
+    } catch (err: any) {
+      toast({ title: 'Delete failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setClassDeleting(false);
+      setDeleteClassTarget(null);
+    }
+  };
+
   if (selectedClassId) {
     const cls = classes.find((c: any) => c.id === selectedClassId);
     if (!cls) return null;
-    return <ClassDetail cls={cls} courseId={courseId} onBack={() => setSelectedClassId(null)} />;
+    return (
+      <>
+        <ClassDetail cls={cls} courseId={courseId} onBack={() => setSelectedClassId(null)} onDelete={() => setDeleteClassTarget(cls)} />
+        <AlertDialog open={!!deleteClassTarget} onOpenChange={v => !v && setDeleteClassTarget(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Class?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Delete class <strong>{deleteClassTarget?.name}</strong>? All enrolled students will be removed from this class.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={classDeleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteClass} disabled={classDeleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                {classDeleting ? 'Deleting…' : 'Delete Class'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
+    );
   }
 
   return (
@@ -80,7 +121,7 @@ export function CourseClassesTab({ courseId }: CourseClassesTabProps) {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {classes.map((cls: any) => (
-            <Card key={cls.id} className="cursor-pointer hover:shadow-md transition-shadow"
+            <Card key={cls.id} className="cursor-pointer hover:shadow-md transition-shadow group relative"
               onClick={() => setSelectedClassId(cls.id)}>
               <CardContent className="p-4 space-y-2">
                 <div className="flex items-start justify-between">
@@ -88,7 +129,13 @@ export function CourseClassesTab({ courseId }: CourseClassesTabProps) {
                     <p className="font-medium text-sm">{cls.name}</p>
                     <Badge variant="outline" className="text-[10px] mt-1">{cls.class_type}</Badge>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 text-destructive"
+                      onClick={e => { e.stopPropagation(); setDeleteClassTarget(cls); }}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {(cls.schedule_days || []).map((d: string) => (
@@ -116,6 +163,24 @@ export function CourseClassesTab({ courseId }: CourseClassesTabProps) {
       )}
 
       <CreateClassDialog open={createOpen} onOpenChange={setCreateOpen} courseId={courseId} />
+
+      {/* Delete class confirmation from list view */}
+      <AlertDialog open={!!deleteClassTarget && !selectedClassId} onOpenChange={v => !v && setDeleteClassTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Class?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Delete class <strong>{deleteClassTarget?.name}</strong>? All enrolled students will be removed from this class.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={classDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteClass} disabled={classDeleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {classDeleting ? 'Deleting…' : 'Delete Class'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
