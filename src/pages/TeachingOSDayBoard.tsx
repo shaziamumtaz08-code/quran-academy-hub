@@ -112,6 +112,7 @@ export default function TeachingOSDayBoard() {
   const { language, langClass } = useLanguage();
 
   const sessionId = searchParams.get('session_id');
+  const syllabusIdFromUrl = searchParams.get('syllabus_id');
   const isLiveRoute = location.pathname.includes('/live');
 
   const [plan, setPlan] = useState<SessionPlan | null>(null);
@@ -314,7 +315,10 @@ export default function TeachingOSDayBoard() {
           <div className="text-center">
             <BookOpen className="w-10 h-10 text-[#d0d4dc] mx-auto mb-3" />
             <p className="text-[14px] text-[#7a7f8a]">No session selected</p>
-            <button onClick={() => navigate('/teaching-os')} className="mt-3 text-[12px] text-[#1a56b0] hover:underline">
+            <button
+              onClick={() => navigate(syllabusIdFromUrl ? `/teaching-os/planner?syllabus_id=${syllabusIdFromUrl}` : '/teaching-os')}
+              className="mt-3 text-[12px] text-[#1a56b0] hover:underline"
+            >
               Go to Teaching OS →
             </button>
           </div>
@@ -457,6 +461,9 @@ export default function TeachingOSDayBoard() {
               </div>
               <div className="h-1 bg-[#e8e9eb] rounded-full overflow-hidden">
                 <div className="h-full bg-[#1a56b0] rounded-full transition-all" style={{ width: `${progress}%` }} />
+              </div>
+              <div className="mt-3">
+                <NextPhaseButton currentPhase={3} syllabusId={plan?.syllabus_id || syllabusIdFromUrl} sessionId={plan?.id || sessionId} />
               </div>
             </div>
           </div>

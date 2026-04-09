@@ -32,18 +32,22 @@ const PHASES = [
 function buildPhaseUrl(phase: typeof PHASES[number], syllabusId?: string | null, sessionId?: string | null, courseId?: string | null): string {
   const params = new URLSearchParams();
 
-  if (phase.num === 1) {
-    // Syllabus master page - no params needed
-    return phase.path;
-  }
-  if (phase.num === 2 && syllabusId) {
+  if (syllabusId) {
     params.set('syllabus_id', syllabusId);
   }
-  if (phase.num >= 3 && phase.num <= 7 && sessionId) {
+  if (sessionId) {
     params.set('session_id', sessionId);
   }
-  if ((phase.num === 8 || phase.num === 9) && courseId) {
+  if (courseId) {
     params.set('course_id', courseId);
+  }
+
+  if (phase.num >= 3 && phase.num <= 7 && !sessionId) {
+    const plannerParams = new URLSearchParams();
+    if (syllabusId) plannerParams.set('syllabus_id', syllabusId);
+    if (courseId) plannerParams.set('course_id', courseId);
+    const plannerQs = plannerParams.toString();
+    return plannerQs ? `/teaching-os/planner?${plannerQs}` : '/teaching-os/planner';
   }
 
   const qs = params.toString();
@@ -166,13 +170,31 @@ export function NextPhaseButton({ currentPhase, syllabusId, sessionId, courseId 
  * Breadcrumb: Teaching OS > CourseName > SectionLabel
  */
 export function PhaseBreadcrumb({ courseName, sectionLabel }: { courseName?: string; sectionLabel?: string }) {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const syllabusId = searchParams.get('syllabus_id');
+  const sessionId = searchParams.get('session_id');
+  const courseId = searchParams.get('course_id');
+
   return (
     <div className="text-[11px] text-[#7a7f8a]">
-      Teaching OS
+      <button
+        type="button"
+        onClick={() => navigate(buildPhaseUrl(PHASES[0], syllabusId, sessionId, courseId))}
+        className="hover:text-[#1a56b0]"
+      >
+        Teaching OS
+      </button>
       {courseName && (
         <>
           <ChevronRight className="inline w-3 h-3 mx-1" />
-          <span className="text-[#4a5264]">{courseName}</span>
+          <button
+            type="button"
+            onClick={() => navigate(buildPhaseUrl(PHASES[1], syllabusId, sessionId, courseId))}
+            className="text-[#4a5264] hover:text-[#1a56b0]"
+          >
+            {courseName}
+          </button>
         </>
       )}
       {sectionLabel && (
