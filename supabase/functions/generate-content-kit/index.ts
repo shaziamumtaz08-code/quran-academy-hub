@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
 
     switch (contentType) {
       case "slides": {
-        systemPrompt = `${langInstruction}You are an educational slide designer for an Islamic academy. Create clean, minimal slide content. Return ONLY a raw JSON array, no markdown, no backticks.`;
+        systemPrompt = `${langInstruction}You are an educational slide designer for an Islamic academy. Create clean, minimal slide content. Return ONLY a raw JSON array. NEVER wrap in markdown code blocks. NEVER use backticks. Do NOT include [ARABIC] tags — just write Arabic text directly.`;
         userPrompt = `Generate ${activities.length || 6} presentation slides for a ${level || 'Intermediate'} ${subject || 'Arabic'} session titled '${sessionTitle}'.
 Activities: ${JSON.stringify(activities)}
 
