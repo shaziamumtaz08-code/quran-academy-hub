@@ -158,6 +158,10 @@ const TeachingOSContentKit: React.FC = () => {
   const [genProgress, setGenProgress] = useState<Record<string, string>>({});
   const [kitId, setKitId] = useState<string | null>(null);
 
+  // Custom prompt per tool
+  const [customPrompts, setCustomPrompts] = useState<Record<string, string>>({});
+  const [showPromptBox, setShowPromptBox] = useState<Record<string, boolean>>({});
+
   // UI state
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -275,9 +279,18 @@ const TeachingOSContentKit: React.FC = () => {
     abortRef.current = abort;
 
     try {
+      const extraParams: Record<string, any> = {};
+      if (type === "quiz") {
+        extraParams.questionCount = 10;
+        extraParams.questionTypes = ["mcq", "short_answer", "true_false"];
+        extraParams.difficulty = "Mixed";
+      }
+      if (customPrompts[type]?.trim()) {
+        extraParams.customPrompt = customPrompts[type].trim();
+      }
       const parsed = await fetchAIContent(
         type, sessionPlan, courseName, subject, level,
-        type === "quiz" ? { questionCount: 10, questionTypes: ["mcq", "short_answer", "true_false"], difficulty: "Mixed" } : {},
+        extraParams,
         abort.signal
       );
       if (!parsed) throw new Error("Failed to parse AI response");
@@ -475,23 +488,44 @@ const TeachingOSContentKit: React.FC = () => {
           <div className="flex-1 overflow-y-auto p-3.5">
             {/* Generator bar */}
             {["slides", "quiz", "flashcards", "worksheet"].includes(activeTool) && (
-              <div className="bg-[#f0f4ff] border border-[#b5d0f8] rounded-[9px] p-3 flex items-center gap-3 mb-3">
-                <div className="w-[30px] h-[30px] rounded-lg bg-[#1a56b0] flex items-center justify-center shrink-0">
-                  <Star className="w-3.5 h-3.5 text-white" />
+              <div className="bg-[#f0f4ff] border border-[#b5d0f8] rounded-[9px] p-3 mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-[30px] h-[30px] rounded-lg bg-[#1a56b0] flex items-center justify-center shrink-0">
+                    <Star className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[12px] font-medium text-[#0f2044]">{genBarInfo[activeTool]?.title}</div>
+                    <div className="text-[11px] text-[#7a7f8a]">{genBarInfo[activeTool]?.desc}</div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-[11px] h-7 text-[#1a56b0]"
+                    onClick={() => setShowPromptBox(prev => ({ ...prev, [activeTool]: !prev[activeTool] }))}
+                  >
+                    {showPromptBox[activeTool] ? "Hide specs" : "Add specs"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="text-[11px] h-7 bg-[#0f2044] hover:bg-[#1a2d5a]"
+                    onClick={() => generateContent(activeTool)}
+                    disabled={generating[activeTool]}
+                  >
+                    {generating[activeTool] ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
+                    {generating[activeTool] ? "Generating..." : slides.length > 0 || quizQuestions.length > 0 || flashcards.length > 0 || worksheetExercises.length > 0 ? "Regenerate" : "Generate"}
+                  </Button>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[12px] font-medium text-[#0f2044]">{genBarInfo[activeTool]?.title}</div>
-                  <div className="text-[11px] text-[#7a7f8a]">{genBarInfo[activeTool]?.desc}</div>
-                </div>
-                <Button
-                  size="sm"
-                  className="text-[11px] h-7 bg-[#0f2044] hover:bg-[#1a2d5a]"
-                  onClick={() => generateContent(activeTool)}
-                  disabled={generating[activeTool]}
-                >
-                  {generating[activeTool] ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
-                  {generating[activeTool] ? "Generating..." : slides.length > 0 || quizQuestions.length > 0 || flashcards.length > 0 || worksheetExercises.length > 0 ? "Regenerate all" : "Generate"}
-                </Button>
+                {showPromptBox[activeTool] && (
+                  <div className="mt-2.5">
+                    <Textarea
+                      placeholder={`Add custom instructions for ${activeTool} generation...\ne.g. "Focus on Surah Al-Fatiha vocabulary" or "Include 5 extra hard questions"`}
+                      value={customPrompts[activeTool] || ""}
+                      onChange={e => setCustomPrompts(prev => ({ ...prev, [activeTool]: e.target.value }))}
+                      className="text-[12px] min-h-[60px] bg-white border-[#d0d4dc] resize-none"
+                      rows={3}
+                    />
+                  </div>
+                )}
               </div>
             )}
 
