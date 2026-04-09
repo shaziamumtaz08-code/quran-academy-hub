@@ -109,6 +109,13 @@ function ContentTypeBadges({ types, onChange }: { types: string[]; onChange: (t:
 export default function TeachingOS() {
   const { user } = useAuth();
 
+  // Course selection state
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const [courseSearchOpen, setCourseSearchOpen] = useState(false);
+  const [courseSearch, setCourseSearch] = useState('');
+  const courseDropdownRef = useRef<HTMLDivElement>(null);
+
   // Input state
   const [courseName, setCourseName] = useState('');
   const [subject, setSubject] = useState('');
@@ -135,6 +142,62 @@ export default function TeachingOS() {
   const [syllabusId, setSyllabusId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Fetch existing courses
+  const { data: courses = [] } = useQuery({
+    queryKey: ['teaching-os-courses'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('courses')
+        .select('id, name, level, subject_id, subjects:subjects!courses_subject_id_fkey(name)')
+        .eq('status', 'active')
+        .order('name');
+      return (data || []) as any[];
+    },
+  });
+
+  // Fetch classes for selected course
+  const { data: courseClasses = [] } = useQuery({
+    queryKey: ['teaching-os-course-classes', selectedCourseId],
+    queryFn: async () => {
+      if (!selectedCourseId) return [];
+      const { data } = await supabase
+        .from('course_classes')
+        .select('id, name, schedule_days, schedule_time, status')
+        .eq('course_id', selectedCourseId)
+        .eq('status', 'active')
+        .order('name');
+      return data || [];
+    },
+    enabled: !!selectedCourseId,
+  });
+
+  // Close course dropdown on outside click
+  useEffect(() => {
+    if (!courseSearchOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (courseDropdownRef.current && !courseDropdownRef.current.contains(e.target as Node)) setCourseSearchOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [courseSearchOpen]);
+
+  // Handle course selection
+  const handleCourseSelect = (course: any) => {
+    setSelectedCourseId(course.id);
+    setCourseName(course.name);
+    setSelectedClassId(null);
+    // Auto-fill subject and level from course
+    if (course.subjects?.name) setSubject(course.subjects.name);
+    if (course.level) setLevel(course.level);
+    setCourseSearchOpen(false);
+    setCourseSearch('');
+    setNameError(false);
+  };
+
+  const filteredCourses = courses.filter((c: any) =>
+    c.name.toLowerCase().includes(courseSearch.toLowerCase())
+  );
 
   const durationWeeks = parseInt(duration) || 8;
   const totalSessions = durationWeeks * (parseInt(sessionsPerWeek) || 2);
