@@ -19,7 +19,7 @@ interface SyllabusRow {
 const SUBJECTS = ['Arabic Language', 'Hifz / Quran Memorisation', 'Tajweed', 'Islamic Studies', 'Fiqh', 'Seerah', 'Urdu', 'Other'];
 const LEVELS = ['Beginner', 'Elementary', 'Intermediate', 'Upper Intermediate', 'Advanced', 'All Levels'];
 const DURATIONS = ['4 weeks', '6 weeks', '8 weeks', '10 weeks', '12 weeks', '16 weeks', '24 weeks', 'Custom'];
-const SESSIONS = ['1', '2', '3', '5 (daily)', 'Custom'];
+const SESSIONS = ['1', '2', '3', '5 (daily)', '6', '7', 'Custom'];
 const CONTENT_TYPES = ['Lesson', 'Practice', 'Quiz', 'Discussion', 'Project'];
 const TYPE_COLORS: Record<string, { bg: string; text: string }> = {
   Lesson: { bg: 'bg-emerald-50', text: 'text-emerald-700' },
@@ -502,7 +502,14 @@ export default function TeachingOS() {
             {/* Duration + Sessions */}
             <div className="grid grid-cols-2 gap-[10px]">
               <SelectField label="Duration" value={duration} onChange={setDuration} options={DURATIONS} />
-              <SelectField label="Sessions/week" value={sessionsPerWeek} onChange={setSessionsPerWeek} options={SESSIONS} />
+              <SelectField label="Sessions/week" value={sessionsPerWeek} onChange={(v) => { setSessionsPerWeek(v); if (v !== 'Custom') setCustomSessions(''); }} options={SESSIONS} />
+              {sessionsPerWeek === 'Custom' && (
+                <div>
+                  <label className="text-[11px] font-medium text-[#4a5264] mb-[5px] block">Enter sessions/week</label>
+                  <input type="number" min={1} max={14} value={customSessions} onChange={(e) => setCustomSessions(e.target.value)}
+                    placeholder="e.g. 4" className="w-full border border-[#d0d4dc] rounded-[7px] px-[10px] py-[7px] text-[12.5px] text-[#0f2044] focus:border-blue-600 focus:ring-2 focus:ring-blue-600/10 outline-none" />
+                </div>
+              )}
             </div>
 
             {/* Target audience */}
@@ -553,11 +560,11 @@ export default function TeachingOS() {
                       <label className="border border-dashed border-[#c8d4e8] rounded-[9px] p-[18px] text-center bg-[#f9fbff] cursor-pointer block">
                         <Upload className="h-[22px] w-[22px] text-[#aab0bc] mx-auto mb-1" />
                         <p className="text-[12px] text-[#4a5264]">Drop PDF here or click to upload</p>
-                        <p className="text-[11px] text-[#aab0bc]">Max 10MB · PDF only</p>
+        <p className="text-[11px] text-[#aab0bc]">Max 50MB · PDF only</p>
                         <input type="file" accept=".pdf" className="hidden" onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (!file) return;
-                          if (file.size > 10 * 1024 * 1024) { toast.error('File too large (max 10MB)'); return; }
+                          if (file.size > 50 * 1024 * 1024) { toast.error('File too large (max 50MB)'); return; }
                           setPdfFile(file);
                           // For now, store the file name as placeholder
                           setPdfText(`[PDF content from: ${file.name}]`);
