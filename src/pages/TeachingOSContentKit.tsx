@@ -158,6 +158,13 @@ async function streamAIContent(
 
 function parseJSONFromStream(raw: string): any {
   let cleaned = raw.trim();
+  // Strip markdown code fences
+  cleaned = cleaned.replace(/```(?:json)?\s*/gi, "").replace(/```\s*/g, "");
+  // Strip [ARABIC]...[/ARABIC] tags that break JSON
+  cleaned = cleaned.replace(/\[ARABIC\]\s*([\s\S]*?)\s*\[\/ARABIC\]/gi, "$1");
+  cleaned = cleaned.replace(/\[\/?ARABIC\]/gi, "");
+  cleaned = cleaned.trim();
+  
   const startArr = cleaned.indexOf("[");
   const startObj = cleaned.indexOf("{");
   const start = startArr >= 0 && (startArr < startObj || startObj < 0) ? startArr : startObj;
@@ -168,7 +175,14 @@ function parseJSONFromStream(raw: string): any {
   const end = Math.max(endArr, endObj);
   if (end < 0) return null;
   cleaned = cleaned.slice(0, end + 1);
-  try { return JSON.parse(cleaned); } catch { return null; }
+  
+  // Remove trailing commas before ] or }
+  cleaned = cleaned.replace(/,\s*([\]}])/g, "$1");
+  
+  try { return JSON.parse(cleaned); } catch (e) {
+    console.error("JSON parse failed:", e, "Raw (first 500):", cleaned.slice(0, 500));
+    return null;
+  }
 }
 
 // ─── Main Component ──────────────────────────────────
