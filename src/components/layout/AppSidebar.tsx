@@ -118,7 +118,7 @@ function getReportsSidebar(): { title: string; subtitle: string; items: SidebarN
 }
 
 /* ─── Route to section mapping ─── */
-function getSidebarForRoute(pathname: string, isOneToOne?: boolean) {
+function getSidebarForRoute(pathname: string, isOneToOne?: boolean, role?: string | null) {
   if (pathname.startsWith('/teaching') || pathname.startsWith('/courses') || pathname.startsWith('/assignments') || pathname.startsWith('/subjects') || pathname.startsWith('/attendance') || pathname.startsWith('/schedules') || pathname.startsWith('/monthly-planning')) {
     return getTeachingSidebar(0, isOneToOne);
   }
@@ -129,7 +129,7 @@ function getSidebarForRoute(pathname: string, isOneToOne?: boolean) {
     return getFinanceSidebar();
   }
   if (pathname.startsWith('/communication') || pathname.startsWith('/chat') || pathname.startsWith('/whatsapp') || pathname.startsWith('/notifications') || pathname.startsWith('/zoom') || pathname.startsWith('/hub')) {
-    return getCommunicationSidebar();
+    return getCommunicationSidebar(role);
   }
   if (pathname.startsWith('/settings') || pathname.startsWith('/organization') || pathname.startsWith('/finance-setup') || pathname.startsWith('/identity') || pathname.startsWith('/integrity')) {
     return getSettingsSidebar();
