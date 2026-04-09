@@ -140,7 +140,7 @@ Return JSON:
           { role: "user", content: userPrompt },
         ],
         max_tokens: maxTokens,
-        stream: true,
+        stream: false,
       }),
     });
 
@@ -157,8 +157,47 @@ Return JSON:
       });
     }
 
-    return new Response(response.body, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+    const aiResult = await response.json();
+    const rawContent = aiResult.choices?.[0]?.message?.content || "";
+    console.log("Raw AI content (first 300):", rawContent.slice(0, 300));
+
+    // Extract JSON from response, stripping markdown fences and tags
+    let cleaned = rawContent
+      .replace(/```json\s*/gi, "")
+      .replace(/```\s*/g, "")
+      .replace(/\[ARABIC\]\s*([\s\S]*?)\s*\[\/ARABIC\]/gi, "$1")
+      .replace(/\[\/?ARABIC\]/gi, "")
+      .trim();
+
+    const jsonStart = cleaned.search(/[\{\[]/);
+    const lastBracket = cleaned.lastIndexOf("]");
+    const lastBrace = cleaned.lastIndexOf("}");
+    const jsonEnd = Math.max(lastBracket, lastBrace);
+
+    if (jsonStart === -1 || jsonEnd === -1) {
+      console.error("No JSON found in AI response:", rawContent.slice(0, 500));
+      return new Response(JSON.stringify({ error: "AI did not return valid JSON" }), {
+        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    cleaned = cleaned.substring(jsonStart, jsonEnd + 1)
+      .replace(/,\s*}/g, "}")
+      .replace(/,\s*]/g, "]")
+      .replace(/[\x00-\x1F\x7F]/g, "");
+
+    let parsed;
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch (e) {
+      console.error("JSON parse failed:", e.message, "Cleaned (first 500):", cleaned.slice(0, 500));
+      return new Response(JSON.stringify({ error: "Failed to parse AI response as JSON" }), {
+        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(JSON.stringify({ data: parsed }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
     console.error("Error:", error);
