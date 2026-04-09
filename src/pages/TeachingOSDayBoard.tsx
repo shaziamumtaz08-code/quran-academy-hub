@@ -3,6 +3,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { parseArabicTags } from '@/lib/languageUtils';
 import { detectScriptClass } from '@/lib/scriptFont';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
+import { useTeachingSession } from '@/hooks/useTeachingSession';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -111,8 +112,7 @@ export default function TeachingOSDayBoard() {
   const { profile } = useAuth();
   const { language, langClass } = useLanguage();
 
-  const sessionId = searchParams.get('session_id');
-  const syllabusIdFromUrl = searchParams.get('syllabus_id');
+  const { sessionId, syllabusId: syllabusIdFromUrl } = useTeachingSession();
   const isLiveRoute = location.pathname.includes('/live');
 
   const [plan, setPlan] = useState<SessionPlan | null>(null);

@@ -3,6 +3,7 @@ import PptxGenJS from "pptxgenjs";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { NavRail, buildRailNav } from "@/components/layout/NavRail";
+import { useTeachingSession } from "@/hooks/useTeachingSession";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -138,7 +139,7 @@ const TeachingOSContentKit: React.FC = () => {
   const navigate = useNavigate();
   const { activeRole } = useAuth();
   const railItems = buildRailNav(activeRole);
-  const sessionId = searchParams.get("session_id");
+  const { sessionId } = useTeachingSession();
 
   const [sessionPlan, setSessionPlan] = useState<SessionPlan | null>(null);
   const [courseName, setCourseName] = useState("");

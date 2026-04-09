@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useTeachingSession } from '@/hooks/useTeachingSession';
 import { supabase } from '@/integrations/supabase/client';
 import { NavRail, buildRailNav } from '@/components/layout/NavRail';
 import { useAuth } from '@/contexts/AuthContext';
@@ -78,7 +79,7 @@ const TeachingOSVideo: React.FC = () => {
   const navigate = useNavigate();
   const { activeRole } = useAuth();
   const railItems = buildRailNav(activeRole);
-  const sessionId = searchParams.get('session_id');
+  const { sessionId } = useTeachingSession();
 
   const [activeSection, setActiveSection] = useState<Section>('search');
   const [sessionPlan, setSessionPlan] = useState<SessionPlan | null>(null);
