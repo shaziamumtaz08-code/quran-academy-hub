@@ -729,16 +729,7 @@ export default function TeachingOSAnalytics() {
         </div>
 
         {/* Phase stepper */}
-        <div className="px-[14px] pb-2 flex gap-[3px]">
-          {PHASE_STEPS.map(p => (
-            <div key={p.key} className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-medium" style={{
-              backgroundColor: p.num < 8 ? '#1a7340' : '#185FA5',
-              color: '#fff',
-            }}>
-              {p.num < 8 ? '✓' : p.num}
-            </div>
-          ))}
-        </div>
+        <PhaseStepperCompact currentPhase={8} courseId={searchParams.get('course_id')} />
 
         <div className="flex-1 overflow-y-auto px-[6px] py-1">
           {sidebarItems.map(g => (
@@ -757,9 +748,7 @@ export default function TeachingOSAnalytics() {
         </div>
 
         <div className="p-[10px] border-t" style={{ borderColor: '#e8e9eb' }}>
-          <Button className="w-full text-[12px] h-8" style={{ backgroundColor: '#0f2044', color: '#fff' }} onClick={() => toast.info('Phase 9: Parent dashboard coming soon')}>
-            Phase 9: Parent dashboard <ExternalLink className="w-3 h-3 ml-1" />
-          </Button>
+          <NextPhaseButton currentPhase={8} courseId={searchParams.get('course_id')} />
         </div>
       </div>
 

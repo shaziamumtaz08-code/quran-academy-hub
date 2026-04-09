@@ -568,23 +568,7 @@ const TeachingOSAssessment: React.FC = () => {
         </div>
 
         {/* Phase stepper */}
-        <div className="flex items-center gap-1 px-4 py-2 border-b border-[#f0f1f3]">
-          {PHASE_STEPS.map((step, i) => (
-            <React.Fragment key={step.key}>
-              {i > 0 && <ChevronRight className="w-3 h-3 text-[#aab0bc]" />}
-              <div className="flex items-center gap-[3px]">
-                {i < 4 ? (
-                  <CheckCircle2 className="w-[14px] h-[14px] text-[#1a7340]" />
-                ) : (
-                  <CircleDot className="w-[14px] h-[14px] text-[#0f2044]" />
-                )}
-                <span className={`text-[9px] font-medium ${i === 4 ? 'text-[#0f2044]' : 'text-[#7a7f8a]'}`}>
-                  {step.label}
-                </span>
-              </div>
-            </React.Fragment>
-          ))}
-        </div>
+        <PhaseStepperCompact currentPhase={5} sessionId={searchParams.get('session_id')} syllabusId={sessionPlan?.syllabus_id} courseId={searchParams.get('course_id')} />
 
         {/* Nav sections */}
         <div className="flex-1 overflow-y-auto py-2">

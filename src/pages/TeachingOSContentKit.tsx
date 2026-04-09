@@ -437,16 +437,7 @@ const TeachingOSContentKit: React.FC = () => {
           <div className="text-[13px] font-medium text-[#0f2044]">Content kit</div>
           <div className="text-[11px] text-[#7a7f8a]">Session {sessionPlan?.session_number} · Week {sessionPlan?.week_number}</div>
           {/* Phase stepper */}
-          <div className="flex items-center gap-1 mt-2 text-[9px]">
-            {["Syllabus", "Planner", "Board", "Kit", "Assess"].map((s, i) => (
-              <React.Fragment key={s}>
-                {i > 0 && <span className="text-[#aab0bc]">›</span>}
-                <span className={i < 3 ? "text-green-600" : i === 3 ? "text-[#0f2044] font-medium" : "text-[#aab0bc]"}>
-                  {i < 3 ? "✓" : i === 3 ? "●" : "○"} {s}
-                </span>
-              </React.Fragment>
-            ))}
-          </div>
+          <PhaseStepperCompact currentPhase={4} sessionId={sessionId} syllabusId={sessionPlan?.syllabus_id} />
         </div>
 
         <div className="flex-1 overflow-y-auto py-1">
@@ -495,7 +486,7 @@ const TeachingOSContentKit: React.FC = () => {
         {/* Top bar */}
         <div className="h-12 bg-white border-b border-[#e8e9eb] flex items-center px-4 gap-3 shrink-0">
           <div className="flex-1 text-[11px] text-[#7a7f8a]">
-            Teaching OS › <span className="text-[#4a5264]">{courseName}</span> › Session {sessionPlan?.session_number} › <span className="text-[#4a5264]">Content kit</span>
+            <PhaseBreadcrumb courseName={courseName} sectionLabel={`Session ${sessionPlan?.session_number} · Content Kit`} />
           </div>
 
           <DropdownMenu>
