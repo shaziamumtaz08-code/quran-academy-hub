@@ -473,7 +473,7 @@ function ClassDetail({ cls, courseId, onBack, onDelete }: { cls: any; courseId: 
             {cls.is_volunteer && <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-200">Volunteer</Badge>}
           </div>
         </div>
-        <Button variant="destructive" size="sm" className="gap-1" onClick={() => { if (confirm('Delete this class?')) deleteClass.mutate(); }}>
+        <Button variant="destructive" size="sm" className="gap-1" onClick={onDelete}>
           <Trash2 className="h-3.5 w-3.5" /> Delete
         </Button>
       </div>
