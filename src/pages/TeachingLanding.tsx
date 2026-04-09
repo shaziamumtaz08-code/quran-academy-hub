@@ -34,10 +34,10 @@ export default function TeachingLanding() {
       const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
       const weekEnd = format(endOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
 
-      let assignQuery = supabase.from('student_teacher_assignments').select('id', { count: 'exact', head: true }).eq('status', 'active');
-      let schedQuery = supabase.from('schedules').select('id', { count: 'exact', head: true }).eq('is_active', true);
+      let assignQuery = supabase.from('student_teacher_assignments').select('id', { count: 'exact', head: true }).eq('status', 'active') as any;
+      let schedQuery = supabase.from('schedules').select('id', { count: 'exact', head: true }).eq('is_active', true) as any;
       let attQuery = (supabase as any).from('attendance').select('status').gte('class_date', weekStart).lte('class_date', weekEnd);
-      let planQuery = supabase.from('student_monthly_plans').select('id', { count: 'exact', head: true }).eq('month', format(new Date(), 'yyyy-MM'));
+      let planQuery = supabase.from('student_monthly_plans').select('id', { count: 'exact', head: true }).eq('month', format(new Date(), 'yyyy-MM')) as any;
 
       // Filter by teacher_id for teacher role
       if (isTeacher && user?.id) {
