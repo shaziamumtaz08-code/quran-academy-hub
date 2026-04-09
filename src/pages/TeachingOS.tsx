@@ -723,7 +723,6 @@ export default function TeachingOS() {
                         <td className="px-[10px] py-1">
                           <div className={langClass}><EditableCell value={row.objectives} onChange={(v) => updateRow(idx, 'objectives', v)} /></div>
                         </td>
-                        </td>
                         <td className="px-[10px] py-[10px]">
                           <ContentTypeBadges types={row.contentTypes} onChange={(t) => updateRow(idx, 'contentTypes', t)} />
                         </td>
