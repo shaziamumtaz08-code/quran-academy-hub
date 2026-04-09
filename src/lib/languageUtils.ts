@@ -21,10 +21,9 @@ Write ALL generated text in clear, simple Modern Standard Arabic (فصحى). Use
  * Parse [ARABIC]...[/ARABIC] tags into HTML spans for rendering.
  */
 export function parseArabicTags(text: string): string {
-  return text.replace(
-    /\[ARABIC\](.*?)\[\/ARABIC\]/g,
-    '<span class="arabic-in-urdu">$1</span>'
-  );
+  return text
+    .replace(/\[ARABIC\]\s*([\s\S]*?)\s*\[\/ARABIC\]/gi, '<span class="arabic-in-urdu">$1</span>')
+    .replace(/\[\/?ARABIC\]/gi, '');
 }
 
 /**

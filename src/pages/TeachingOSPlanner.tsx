@@ -139,6 +139,7 @@ export default function TeachingOSPlanner() {
   const { profile } = useAuth();
   const { language, langClass } = useLanguage();
   const syllabusId = searchParams.get('syllabus_id');
+  const courseId = searchParams.get('course_id');
 
   const [syllabus, setSyllabus] = useState<Syllabus | null>(null);
   const [selectedWeek, setSelectedWeek] = useState(1);
@@ -227,6 +228,7 @@ export default function TeachingOSPlanner() {
   const weekSessions = sessionPlans.filter(p => p.week_number === selectedWeek);
   const selectedPlan = selectedSession !== null
     ? weekSessions.find(p => p.session_number === selectedSession) : null;
+  const nextSessionId = selectedPlan?.id || weekSessions[0]?.id || sessionPlans[0]?.id || null;
 
   const getWeekStatus = (weekNum: number) => {
     const sessions = sessionPlans.filter(p => p.week_number === weekNum);
@@ -386,7 +388,7 @@ export default function TeachingOSPlanner() {
         {/* ─── TOP BAR (Zone C) ─── */}
         <div className="h-[48px] bg-white border-b border-[#e8e9eb] px-4 flex items-center justify-between shrink-0">
           <PhaseBreadcrumb courseName={syllabus.course_name} sectionLabel="Planner" />
-          <PhaseStepperTopBar currentPhase={2} syllabusId={syllabusId} />
+          <PhaseStepperTopBar currentPhase={2} syllabusId={syllabusId} sessionId={nextSessionId} courseId={courseId} />
 
           {/* Right buttons */}
           <div className="flex items-center gap-2">
@@ -402,7 +404,7 @@ export default function TeachingOSPlanner() {
             >
               <Sparkles className="w-3.5 h-3.5" /> Plan all weeks
             </button>
-            <NextPhaseButton currentPhase={2} syllabusId={syllabusId} />
+            <NextPhaseButton currentPhase={2} syllabusId={syllabusId} sessionId={nextSessionId} courseId={courseId} />
           </div>
         </div>
 
@@ -555,7 +557,13 @@ export default function TeachingOSPlanner() {
                     <div className="px-3 py-1.5 border-t border-[#f0f1f3] bg-[#fafbfc] rounded-b-[10px] flex justify-between items-center">
                       <span className="text-[10px] text-[#aab0bc]">{plan.total_minutes} min</span>
                       <button
-                        onClick={(e) => { e.stopPropagation(); navigate(`/teaching-os/dayboard?session_id=${plan.id}`); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const params = new URLSearchParams({ session_id: plan.id! });
+                          if (syllabusId) params.set('syllabus_id', syllabusId);
+                          if (courseId) params.set('course_id', courseId);
+                          navigate(`/teaching-os/dayboard?${params.toString()}`);
+                        }}
                         className="text-[10px] text-[#1a56b0] bg-[#eef2fa] border border-[#b5d0f8] rounded px-2 py-0.5 hover:bg-[#dde8f7]"
                       >
                         Open day board

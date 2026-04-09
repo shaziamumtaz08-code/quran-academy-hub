@@ -6,7 +6,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 
 // Set worker source
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs`;
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
@@ -116,6 +116,8 @@ function ContentTypeBadges({ types, onChange }: { types: string[]; onChange: (t:
 export default function TeachingOS() {
   const { user } = useAuth();
   const { language, langClass } = useLanguage();
+  const [searchParams] = useSearchParams();
+  const requestedSyllabusId = searchParams.get('syllabus_id');
 
   // Course selection state
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
@@ -207,6 +209,47 @@ export default function TeachingOS() {
   const filteredCourses = courses.filter((c: any) =>
     c.name.toLowerCase().includes(courseSearch.toLowerCase())
   );
+
+  useEffect(() => {
+    if (!requestedSyllabusId || syllabusId === requestedSyllabusId) return;
+
+    (async () => {
+      const { data, error } = await (supabase.from('syllabi') as any)
+        .select('*')
+        .eq('id', requestedSyllabusId)
+        .single();
+
+      if (error || !data) return;
+
+      const restoredRows = Array.isArray(data.rows)
+        ? data.rows
+        : typeof data.rows === 'string'
+          ? JSON.parse(data.rows)
+          : [];
+      const restoredSessions = data.sessions_week ? String(data.sessions_week) : '2';
+      const restoredDuration = data.duration_weeks ? `${data.duration_weeks} weeks` : '8 weeks';
+
+      setSyllabusId(data.id);
+      setSelectedCourseId(data.course_id || null);
+      setCourseName(data.course_name || '');
+      setSubject(data.subject || '');
+      setLevel(data.level || '');
+      setDuration(DURATIONS.includes(restoredDuration) ? restoredDuration : '8 weeks');
+      if (SESSIONS.includes(restoredSessions)) {
+        setSessionsPerWeek(restoredSessions);
+        setCustomSessions('');
+      } else {
+        setSessionsPerWeek('Custom');
+        setCustomSessions(restoredSessions);
+      }
+      setTargetAudience(data.target_audience || '');
+      setLearningGoals(data.learning_goals || '');
+      setPasteText(data.source_text || '');
+      setRows(restoredRows);
+      setCompleted(restoredRows.length > 0);
+      setNameError(false);
+    })();
+  }, [requestedSyllabusId, syllabusId]);
 
   const durationWeeks = parseInt(duration) || 8;
   const effectiveSessions = sessionsPerWeek === 'Custom' ? (parseInt(customSessions) || 2) : (parseInt(sessionsPerWeek) || 2);
@@ -664,7 +707,12 @@ export default function TeachingOS() {
                     <Share2 className="h-3.5 w-3.5" /> Share
                   </button>
                   <button
-                    onClick={() => syllabusId && navigate(`/teaching-os/planner?syllabus_id=${syllabusId}`)}
+                    onClick={() => {
+                      if (!syllabusId) return;
+                      const params = new URLSearchParams({ syllabus_id: syllabusId });
+                      if (selectedCourseId) params.set('course_id', selectedCourseId);
+                      navigate(`/teaching-os/planner?${params.toString()}`);
+                    }}
                     disabled={!syllabusId}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0f2044] text-white rounded-[6px] text-[11px] font-medium hover:bg-[#1a2d54] disabled:opacity-50"
                   >
