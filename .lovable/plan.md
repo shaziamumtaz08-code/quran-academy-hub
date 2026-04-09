@@ -1,56 +1,75 @@
 
-# Responsive LMS Layout Overhaul
 
-## Scope
-Visual layout and navigation restructuring only. All existing data, routes, and functional components preserved.
+# Navigation & UX Fixes — Revised Plan
 
-## Phase 1 — Design Tokens & Global Styles
-- Update CSS variables in `index.css` with new design tokens (navy, surface, text hierarchy, status pills)
-- Update `tailwind.config.ts` with new token mappings
-- Update typography: remove Amiri serif from headings, use system-ui/Inter weight 400/500 only
+## Issues Addressed
 
-## Phase 2 — Desktop Shell (1024px+)
-- **Rail** (56px, navy): Icon-only nav, always visible, tooltip on hover
-- **Sidebar** (200px, white): Context-sensitive content per active section
-- **Content Area** (flex-1, #f4f5f7): Sticky breadcrumb top bar, scrollable content
-- Replace current `DashboardLayout.tsx` with new responsive shell
-- Sidebar content changes per rail section (Home, Teaching, People, Finance, Communication, Settings)
-- Course Detail sidebar replaces Teaching sidebar when inside a course
+1. **Teachers see full admin Teaching menu** — Live Classes opens Zoom Engine, Subjects shows 10, Schedules shows 10. Teachers should only see their own data (My Students, Attendance, Schedules for their classes).
+2. **Chat allows DMs but should NOT allow Group creation** for non-admins.
+3. **Mobile: Role Switcher invisible**, only tiny logout arrow visible.
+4. **Mobile hamburger opens full white AppSidebar** instead of a sleek nav drawer.
+5. **Resources link opens home page** — remove from teacher/student nav.
+6. **Chat renamed to Communication**, landing on card page not messages.
+7. **Sign out button too small/invisible** — integrate into user menu.
+8. **Breadcrumbs not sticky** — forces scroll up.
+9. **Teaching OS hidden from 1-to-1**.
+10. **Teacher needs Salary tab; Student needs Classes tab and Calendar**.
 
-## Phase 3 — Mobile Layout (<768px)
-- No rail, no sidebar — full-width single column
-- Navy top bar (44px): centered title, bell + avatar right
-- Fixed bottom tab bar (52px): Home, Teaching, People, Chat, More
-- "More" opens bottom sheet with remaining nav items
-- Cards stack 1-col with 10px gap
+---
 
-## Phase 4 — Tablet Layout (768–1023px)
-- 56px navy rail (always visible)
-- No persistent sidebar — rail icons open 200px slide-in drawer overlay
-- No bottom tab bar
-- 2-column card grid
+## Changes by File
 
-## Phase 5 — Component Updates
-- Hero dashboard banner (navy card with stats)
-- Course cards (colored top border by subject, grid layout)
-- Stat cards (4/2/2 col responsive grid)
-- Status pills (global consistent styling)
-- Remove horizontal tab bars from pages
-- Remove "Community" label → "HUB"
+### 1. `src/pages/TeachingLanding.tsx`
+- Add role check using `useAuth().activeRole`
+- **If teacher**: filter cards to show only: **My Students** (assignments count, filtered by teacher_id), **Schedules** (filtered by teacher), **Attendance** (filtered by teacher), **Planning**
+- Hide: Live Classes, Subjects, Courses (these are admin-only)
+- Adjust queries to filter by `user.id` for teacher role so counts reflect their data only
 
-## Key Files to Create/Modify
-- `src/components/layout/AppShell.tsx` — new responsive shell (rail + sidebar + content)
-- `src/components/layout/NavRail.tsx` — desktop/tablet icon rail
-- `src/components/layout/AppSidebar.tsx` — context-sensitive sidebar
-- `src/components/layout/MobileBottomNav.tsx` — mobile tab bar
-- `src/components/layout/MobileTopBar.tsx` — mobile top bar
-- `src/components/layout/MoreSheet.tsx` — mobile "More" bottom sheet
-- `src/components/layout/DashboardLayout.tsx` — refactor to use new shell
-- `src/index.css` — updated tokens
-- `tailwind.config.ts` — updated config
+### 2. `src/components/layout/NavRail.tsx`
+**Teacher nav:**
+- Remove: `Resources` (FolderOpen)
+- Rename `Chat` → `Communication`, href `/chat` → `/communication`
+- Add: `Salary` (DollarSign icon, href `/salary-engine`)
+- Keep: Home, My Classes, My Students, Attendance, Planning, Communication, Salary
 
-## Constraints
-- Preserve ALL routes in App.tsx
-- Preserve ALL database logic
-- Preserve ALL form components and data
-- No functional changes — layout/style only
+**Student nav:**
+- Remove: Resources, Progress (duplicate)
+- Add: `Classes` (BookOpen, href `/teaching`), `Calendar` (CalendarDays, href `/schedules`)
+- Rename Chat → Communication, href → `/communication`
+
+**Parent nav:**
+- Rename Chat → Communication, href → `/communication`
+
+### 3. `src/components/layout/MobileBottomNav.tsx`
+**Teacher tabs:** Home, Classes (`/teaching`), Attendance (`/attendance`), Calendar (`/schedules`), Communication (`/communication`)
+- Remove "More" sheet for teachers
+
+**Student tabs:** Home, Classes (`/teaching`), Attendance (`/attendance`), Calendar (`/schedules`), Communication (`/communication`)
+
+**Admin tabs:** Home, Teaching, People, Communication (`/communication`), More
+
+### 4. `src/components/layout/MobileTopBar.tsx`
+- Import and render `RoleSwitcher` between the title and the right icons
+- Replace the tiny `LogOut` button with a dropdown menu containing: user name, role label, role switcher options, divider, Sign Out button (red, clearly visible)
+
+### 5. `src/components/layout/DashboardLayout.tsx` (mobile section)
+- Replace `AppSidebar` in the mobile drawer with a **styled NavRail list**: dark navy background (`bg-lms-navy`), vertical list of rail items with icon + label, sign-out at bottom
+- Remove the white AppSidebar entirely from mobile drawer
+
+### 6. `src/pages/GroupChat.tsx`
+- Import `useAuth` and check `activeRole`
+- Hide "New Group" button (`setCreateOpen`) unless role is admin/super_admin/admin_*
+- Keep "New DM" button (`setDmOpen`) visible for all roles
+
+### 7. `src/components/layout/PageBreadcrumb.tsx`
+- Add `sticky top-0 z-10 bg-[#f4f5f7]` to the breadcrumb wrapper so Home/Back is always accessible without scrolling
+
+### 8. `src/components/layout/AppSidebar.tsx`
+- In `getTeachingSidebar()`: hide "AI Teaching OS" item when `isOneToOne` is true (already partially done, verify and fix)
+
+---
+
+## No Database Changes Required
+
+All changes are frontend navigation and UI only.
+
