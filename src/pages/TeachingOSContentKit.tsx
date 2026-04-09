@@ -138,7 +138,32 @@ const TeachingOSContentKit: React.FC = () => {
   const navigate = useNavigate();
   const { activeRole } = useAuth();
   const railItems = buildRailNav(activeRole);
-  const sessionId = searchParams.get("session_id");
+  const sessionIdFromUrl = searchParams.get("session_id");
+
+  // Persist session context so navigating away and back doesn't lose work
+  useEffect(() => {
+    if (sessionIdFromUrl) {
+      localStorage.setItem('tos-last-session-id', sessionIdFromUrl);
+      const sylId = searchParams.get('syllabus_id');
+      if (sylId) localStorage.setItem('tos-last-syllabus-id', sylId);
+    }
+  }, [sessionIdFromUrl, searchParams]);
+
+  // Auto-restore from localStorage if URL has no session_id
+  useEffect(() => {
+    if (!sessionIdFromUrl) {
+      const savedSessionId = localStorage.getItem('tos-last-session-id');
+      if (savedSessionId) {
+        const params = new URLSearchParams(searchParams);
+        params.set('session_id', savedSessionId);
+        const savedSylId = localStorage.getItem('tos-last-syllabus-id');
+        if (savedSylId) params.set('syllabus_id', savedSylId);
+        navigate(`/teaching-os/content-kit?${params.toString()}`, { replace: true });
+      }
+    }
+  }, [sessionIdFromUrl]);
+
+  const sessionId = sessionIdFromUrl;
 
   const [sessionPlan, setSessionPlan] = useState<SessionPlan | null>(null);
   const [courseName, setCourseName] = useState("");
