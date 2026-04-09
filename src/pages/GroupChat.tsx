@@ -112,7 +112,7 @@ export default function GroupChat() {
   const { data: allUsers = [] } = useQuery({
     queryKey: ['all-users-dm'],
     queryFn: async () => {
-      const { data } = await supabase.from('profiles').select('id, full_name').order('full_name').limit(200);
+      const { data } = await supabase.from('profiles').select('id, full_name').is('archived_at', null).order('full_name').limit(200);
       return (data || []).filter((u: any) => u.id !== user?.id);
     },
     enabled: dmOpen,

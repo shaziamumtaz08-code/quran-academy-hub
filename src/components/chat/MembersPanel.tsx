@@ -41,7 +41,7 @@ export function MembersPanel({ open, onOpenChange, groupId, isAdmin }: MembersPa
     queryFn: async () => {
       if (search.length < 2) return [];
       const memberIds = members.map((m: any) => m.user_id);
-      const { data } = await supabase.from('profiles').select('id, full_name').ilike('full_name', `%${search}%`).limit(10);
+      const { data } = await supabase.from('profiles').select('id, full_name').is('archived_at', null).ilike('full_name', `%${search}%`).limit(10);
       return (data || []).filter(p => !memberIds.includes(p.id));
     },
     enabled: addMode && search.length >= 2,

@@ -73,7 +73,8 @@ export default function Teachers() {
       const { data: profiles, error: profileError } = await supabase
         .from('profiles')
         .select('id, full_name, email, country, city')
-        .in('id', teacherIds);
+        .in('id', teacherIds)
+        .is('archived_at', null);
 
       if (profileError) throw profileError;
 
