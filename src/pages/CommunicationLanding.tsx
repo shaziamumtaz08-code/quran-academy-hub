@@ -15,7 +15,8 @@ const Resources = lazy(() => import('./Resources'));
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
 
 export default function CommunicationLanding() {
-  const { user } = useAuth();
+  const { user, activeRole } = useAuth();
+  const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_');
 
   const { data: counts, isLoading } = useQuery({
     queryKey: ['comm-landing-counts', user?.id],
@@ -33,12 +34,19 @@ export default function CommunicationLanding() {
     },
     refetchInterval: 15000,
   });
+
+  // Build cards based on role
   const cards: LandingCard[] = [
     { id: 'chat', title: 'Group Chat', subtitle: 'Messages & channels', count: '💬', countLoading: false, icon: <MessageSquare className="h-5 w-5" />, color: 'bg-primary' },
-    { id: 'whatsapp', title: 'WhatsApp', subtitle: 'Inbox & broadcasts', count: '📱', countLoading: false, icon: <Phone className="h-5 w-5" />, color: 'bg-emerald-500' },
+    // WhatsApp, Zoom, Resources — admin only
+    ...(isAdmin ? [
+      { id: 'whatsapp', title: 'WhatsApp', subtitle: 'Inbox & broadcasts', count: '📱', countLoading: false, icon: <Phone className="h-5 w-5" />, color: 'bg-emerald-500' },
+    ] : []),
     { id: 'workhub', title: 'Work Hub', subtitle: 'Open tickets', count: counts?.tickets, countLoading: isLoading, icon: <Megaphone className="h-5 w-5" />, color: 'bg-amber-500' },
-    { id: 'zoom', title: 'Zoom Engine', subtitle: 'Room status', count: counts?.zoomStatus, countLoading: isLoading, icon: <Video className="h-5 w-5" />, color: 'bg-blue-500' },
-    { id: 'resources', title: 'Resources', subtitle: 'Files & materials', count: '📂', countLoading: false, icon: <FolderOpen className="h-5 w-5" />, color: 'bg-violet-500' },
+    ...(isAdmin ? [
+      { id: 'zoom', title: 'Zoom Engine', subtitle: 'Room status', count: counts?.zoomStatus, countLoading: isLoading, icon: <Video className="h-5 w-5" />, color: 'bg-blue-500' },
+      { id: 'resources', title: 'Resources', subtitle: 'Files & materials', count: '📂', countLoading: false, icon: <FolderOpen className="h-5 w-5" />, color: 'bg-violet-500' },
+    ] : []),
   ];
 
   const contentMap = useMemo(() => ({
@@ -52,7 +60,7 @@ export default function CommunicationLanding() {
   return (
     <LandingPageShell
       title="Communication"
-      subtitle="Chat, WhatsApp, tickets, Zoom, and shared resources"
+      subtitle="Chat, tickets, and collaboration"
       cards={cards}
       contentMap={contentMap}
       defaultCard="chat"
