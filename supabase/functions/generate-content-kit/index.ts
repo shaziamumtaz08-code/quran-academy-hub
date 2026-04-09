@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
     let userPrompt = "";
     let maxTokens = 4000;
 
-    const activities = sessionPlan?.activities || [];
+    const customSpec = customPrompt ? `\n\nAdditional instructor specifications: ${customPrompt}` : "";
     const sessionTitle = sessionPlan?.session_title || "Untitled Session";
     const sessionObjective = sessionPlan?.session_objective || "";
 
@@ -43,7 +43,7 @@ For each activity, return one slide:
   "teacherNote": string | null (max 60 chars),
   "activityInstruction": string | null (for practice slides)
 }
-Return ONLY the JSON array.`;
+Return ONLY the JSON array.${customSpec}`;
         break;
       }
 
