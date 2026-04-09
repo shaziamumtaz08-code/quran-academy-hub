@@ -3,10 +3,11 @@ import { Link, useLocation } from 'react-router-dom';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { AppRole } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   LayoutDashboard, BookOpen, Users, DollarSign, BarChart3,
-  MessageSquare, Cog,ClipboardCheck, Target,
-  Award, FileText, CalendarDays,
+  MessageSquare, Cog, ClipboardCheck, Target,
+  Award, FileText, CalendarDays, LogOut,
 } from 'lucide-react';
 import logoDark from '@/assets/logo-dark.jpg';
 
@@ -37,7 +38,7 @@ export function buildRailNav(role: AppRole | null): RailItem[] {
       { label: 'Attendance', href: '/attendance', icon: ClipboardCheck },
       { label: 'Planning', href: '/monthly-planning', icon: Target },
       { label: 'Reports', href: '/student-reports', icon: BarChart3 },
-      { label: 'Exams', href: '/report-card-templates', icon: Award },
+      { label: 'Exams', href: '/student-reports', icon: Award },
       { label: 'Salary', href: '/salary', icon: DollarSign },
       { label: 'Communication', href: '/communication', icon: MessageSquare },
     ];
@@ -74,6 +75,7 @@ interface NavRailProps {
 
 export function NavRail({ items, orgInitials = 'AQ' }: NavRailProps) {
   const location = useLocation();
+  const { logout } = useAuth();
 
   const isActive = (href: string) => {
     if (href === '/dashboard') return location.pathname === '/dashboard';
@@ -113,6 +115,24 @@ export function NavRail({ items, orgInitials = 'AQ' }: NavRailProps) {
           </React.Fragment>
         ))}
       </nav>
+
+      {/* Sign Out at bottom */}
+      <div className="w-full px-[9px] pb-1">
+        <Tooltip delayDuration={0}>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => logout()}
+              className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors text-white/30 hover:bg-red-600/20 hover:text-red-400 mx-auto"
+              aria-label="Sign out"
+            >
+              <LogOut className="h-[18px] w-[18px]" strokeWidth={1.8} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right" sideOffset={8} className="text-xs">
+            Sign Out
+          </TooltipContent>
+        </Tooltip>
+      </div>
     </div>
   );
 }
