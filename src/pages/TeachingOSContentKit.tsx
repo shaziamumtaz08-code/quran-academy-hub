@@ -470,7 +470,7 @@ const TeachingOSContentKit: React.FC = () => {
             <DropdownMenuContent>
               <DropdownMenuItem onClick={() => exportAsCSV()}>Export slides as CSV</DropdownMenuItem>
               <DropdownMenuItem onClick={() => exportQuizAsCSV()}>Export quiz as CSV</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => toast.info("PDF export coming soon")}>Export as PDF</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => exportAsPDF()}>Export as PDF</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -723,6 +723,123 @@ const TeachingOSContentKit: React.FC = () => {
     if (!quizQuestions.length) return;
     const csv = "Q#,Type,Question,Answer,Difficulty\n" + quizQuestions.map((q, i) => `${i + 1},"${q.type}","${q.question}","${q.correctAnswer}","${q.difficulty}"`).join("\n");
     downloadFile(csv, `${courseName}-quiz.csv`, "text/csv");
+  }
+
+  function exportAsPDF() {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) { toast.error("Popup blocked — please allow popups"); return; }
+
+    const lang = localStorage.getItem("tos-language") || "en";
+    const isRtl = lang === "ar" || lang === "ur";
+
+    let html = `<!DOCTYPE html><html dir="${isRtl ? 'rtl' : 'ltr'}"><head><meta charset="utf-8">
+    <title>${courseName} - Content Kit</title>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Amiri&family=Inter:wght@400;600;700&display=swap');
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: 'Inter', sans-serif; color: #0f2044; padding: 40px; font-size: 13px; line-height: 1.6; }
+      h1 { font-size: 22px; margin-bottom: 4px; }
+      h2 { font-size: 16px; margin: 24px 0 10px; color: #1a56b0; border-bottom: 2px solid #e8e9eb; padding-bottom: 4px; }
+      h3 { font-size: 13px; margin: 12px 0 6px; }
+      .meta { font-size: 11px; color: #7a7f8a; margin-bottom: 20px; }
+      .slide-card { background: #f8f9fb; border: 1px solid #e8e9eb; border-radius: 8px; padding: 14px 16px; margin-bottom: 10px; page-break-inside: avoid; }
+      .slide-card .phase { font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: #1a56b0; font-weight: 600; margin-bottom: 4px; }
+      .slide-card .title { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+      .slide-card .arabic { font-family: 'Amiri', serif; font-size: 24px; text-align: center; direction: rtl; margin: 8px 0; color: #1a3a6c; }
+      .slide-card .translit { font-size: 11px; text-align: center; color: #888; font-style: italic; }
+      .slide-card ul { padding-left: 18px; margin: 6px 0; }
+      .slide-card li { margin-bottom: 3px; }
+      .slide-card .note { font-size: 10px; color: #888; font-style: italic; margin-top: 6px; }
+      .quiz-q { background: #fff; border: 1px solid #e8e9eb; border-radius: 6px; padding: 10px 14px; margin-bottom: 8px; page-break-inside: avoid; }
+      .quiz-q .qnum { font-size: 10px; color: #1a56b0; font-weight: 600; }
+      .quiz-q .diff { font-size: 9px; padding: 1px 6px; border-radius: 10px; background: #f0f4ff; color: #4a5264; }
+      .quiz-q .opts { margin: 6px 0 0 16px; }
+      .quiz-q .opts div { margin-bottom: 2px; }
+      .quiz-q .answer { font-size: 11px; color: #1a7340; margin-top: 4px; }
+      .flash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .flash-card { border: 1px solid #e8e9eb; border-radius: 8px; padding: 12px; page-break-inside: avoid; }
+      .flash-card .ar { font-family: 'Amiri', serif; font-size: 22px; direction: rtl; color: #0f2044; }
+      .flash-card .en { font-size: 13px; font-weight: 600; margin-top: 4px; }
+      .flash-card .tr { font-size: 11px; color: #888; font-style: italic; }
+      .flash-card .ex { font-size: 11px; color: #4a5264; margin-top: 6px; border-top: 1px solid #f0f1f3; padding-top: 4px; }
+      .ws-exercise { margin-bottom: 16px; page-break-inside: avoid; }
+      .ws-exercise .items { margin-left: 16px; }
+      .ws-exercise .items div { margin-bottom: 4px; }
+      @media print { body { padding: 20px; } }
+    </style></head><body>`;
+
+    html += `<h1>${courseName || "Content Kit"}</h1>`;
+    html += `<div class="meta">${sessionPlan?.session_title || ""} · ${subject} · ${level} · Session ${sessionPlan?.session_number || ""}, Week ${sessionPlan?.week_number || ""}</div>`;
+
+    // Slides section
+    if (slides.length > 0) {
+      html += `<h2>📊 Slides (${slides.length})</h2>`;
+      slides.forEach((s, i) => {
+        html += `<div class="slide-card">`;
+        html += `<div class="phase">${s.phase} · Slide ${i + 1}</div>`;
+        html += `<div class="title">${s.title}</div>`;
+        if (s.arabicText) html += `<div class="arabic">${s.arabicText}</div>`;
+        if (s.transliteration) html += `<div class="translit">${s.transliteration}</div>`;
+        if (s.bullets?.length) {
+          html += `<ul>${s.bullets.map(b => `<li>${b}</li>`).join("")}</ul>`;
+        }
+        if (s.activityInstruction) html += `<div class="note">🎯 ${s.activityInstruction}</div>`;
+        if (s.teacherNote) html += `<div class="note">📝 ${s.teacherNote}</div>`;
+        html += `</div>`;
+      });
+    }
+
+    // Quiz section
+    if (quizQuestions.length > 0) {
+      html += `<h2>❓ Quiz (${quizQuestions.length} questions)</h2>`;
+      quizQuestions.forEach((q, i) => {
+        html += `<div class="quiz-q">`;
+        html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><span class="qnum">Q${i + 1} · ${q.type.toUpperCase()}</span><span class="diff">${q.difficulty}</span></div>`;
+        html += `<div>${q.question}</div>`;
+        if (q.options?.length) {
+          html += `<div class="opts">${q.options.map((o, j) => `<div>${String.fromCharCode(65 + j)}) ${o}</div>`).join("")}</div>`;
+        }
+        html += `<div class="answer">✓ ${q.correctAnswer}</div>`;
+        if (q.explanation) html += `<div style="font-size:10px;color:#7a7f8a;margin-top:2px;">💡 ${q.explanation}</div>`;
+        html += `</div>`;
+      });
+    }
+
+    // Flashcards section
+    if (flashcards.length > 0) {
+      html += `<h2>🃏 Flashcards (${flashcards.length})</h2>`;
+      html += `<div class="flash-grid">`;
+      flashcards.forEach(f => {
+        html += `<div class="flash-card">`;
+        html += `<div class="ar">${f.arabic}</div>`;
+        html += `<div class="en">${f.english}</div>`;
+        html += `<div class="tr">${f.transliteration} · ${f.partOfSpeech}</div>`;
+        if (f.exampleSentence) html += `<div class="ex" dir="rtl">${f.exampleSentence}</div>`;
+        if (f.exampleTranslation) html += `<div class="ex">${f.exampleTranslation}</div>`;
+        html += `</div>`;
+      });
+      html += `</div>`;
+    }
+
+    // Worksheet section
+    if (worksheetExercises.length > 0) {
+      html += `<h2>📝 Worksheet: ${worksheetTitle || sessionPlan?.session_title}</h2>`;
+      html += `<div style="text-align:right;margin-bottom:12px;font-size:12px;">Name: _________________________</div>`;
+      worksheetExercises.forEach((ex, i) => {
+        html += `<div class="ws-exercise">`;
+        html += `<h3>Exercise ${i + 1}: ${ex.title}</h3>`;
+        html += `<div style="font-size:11px;color:#7a7f8a;font-style:italic;margin-bottom:6px;">${ex.instructions}</div>`;
+        html += `<div class="items">${ex.items.map((item, j) => `<div>${j + 1}. ${item.blankedSentence || item.question}</div>`).join("")}</div>`;
+        html += `</div>`;
+      });
+    }
+
+    html += `</body></html>`;
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.onload = () => {
+      setTimeout(() => { printWindow.print(); }, 500);
+    };
   }
 };
 
