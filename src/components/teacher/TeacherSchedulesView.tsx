@@ -21,30 +21,44 @@ export default function TeacherSchedulesView() {
     queryKey: ['teacher-my-schedules', user?.id, activeDivision?.id],
     queryFn: async () => {
       if (!user?.id) return [];
-      let query = supabase
-        .from('schedules')
-        .select('*')
+      
+      // Get assignment IDs for this teacher
+      let assignQuery = supabase
+        .from('student_teacher_assignments')
+        .select('id, student_id')
         .eq('teacher_id', user.id)
-        .eq('is_active', true);
+        .eq('status', 'active') as any;
 
       if (activeDivision?.id) {
-        query = query.eq('division_id', activeDivision.id);
+        assignQuery = assignQuery.eq('division_id', activeDivision.id);
       }
 
-      const { data, error } = await query;
+      const { data: assignments, error: assignErr } = await assignQuery;
+      if (assignErr) throw assignErr;
+      if (!assignments || assignments.length === 0) return [];
+
+      const assignmentIds = assignments.map((a: any) => a.id);
+      const studentMap = Object.fromEntries(assignments.map((a: any) => [a.id, a.student_id]));
+
+      const { data: schedData, error } = await (supabase as any)
+        .from('schedules')
+        .select('*')
+        .in('assignment_id', assignmentIds)
+        .eq('is_active', true);
+
       if (error) throw error;
 
       // Fetch student names
-      const studentIds = [...new Set((data || []).map(s => s.student_id))];
+      const studentIds = [...new Set(Object.values(studentMap))] as string[];
       const { data: profiles } = studentIds.length > 0
         ? await supabase.from('profiles').select('id, full_name').in('id', studentIds)
         : { data: [] };
 
-      const nameMap = Object.fromEntries((profiles || []).map(p => [p.id, p.full_name]));
+      const nameMap = Object.fromEntries((profiles || []).map((p: any) => [p.id, p.full_name]));
 
-      return (data || []).map(s => ({
+      return (schedData || []).map((s: any) => ({
         ...s,
-        student_name: nameMap[s.student_id] || 'Unknown',
+        student_name: nameMap[studentMap[s.assignment_id]] || 'Unknown',
       }));
     },
     enabled: !!user?.id,
@@ -59,7 +73,7 @@ export default function TeacherSchedulesView() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-lms-navy">My Schedules</h2>
-          <p className="text-sm text-lms-text-3">Your active class schedule</p>
+          <p className="text-sm text-muted-foreground">Your active class schedule</p>
         </div>
         <Badge variant="secondary" className="gap-1">
           <Calendar className="h-3 w-3" />
@@ -68,39 +82,35 @@ export default function TeacherSchedulesView() {
       </div>
 
       {schedules.length === 0 ? (
-        <div className="text-center py-12 text-lms-text-3">
+        <div className="text-center py-12 text-muted-foreground">
           <Calendar className="h-10 w-10 mx-auto mb-2 opacity-40" />
           <p className="text-sm">No active schedules</p>
         </div>
       ) : (
-        <div className="rounded-lg border border-lms-border overflow-hidden">
+        <div className="rounded-lg border border-border overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="bg-lms-surface">
+              <TableRow className="bg-muted/50">
                 <TableHead className="text-xs">Student</TableHead>
-                <TableHead className="text-xs">Days</TableHead>
+                <TableHead className="text-xs">Day</TableHead>
                 <TableHead className="text-xs">Time</TableHead>
                 <TableHead className="text-xs">Duration</TableHead>
                 <TableHead className="text-xs">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {schedules.map(s => (
+              {schedules.map((s: any) => (
                 <TableRow key={s.id}>
                   <TableCell className="font-medium text-sm">{s.student_name}</TableCell>
                   <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {(s.days_of_week || []).map((d: string) => (
-                        <Badge key={d} variant="outline" className="text-[9px] px-1.5 py-0">
-                          {DAYS_LABELS[d] || d}
-                        </Badge>
-                      ))}
-                    </div>
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                      {DAYS_LABELS[s.day_of_week] || s.day_of_week}
+                    </Badge>
                   </TableCell>
-                  <TableCell className="text-sm">{s.start_time || '—'}</TableCell>
+                  <TableCell className="text-sm">{s.student_local_time || s.teacher_local_time || '—'}</TableCell>
                   <TableCell className="text-sm">{s.duration_minutes ? `${s.duration_minutes}m` : '—'}</TableCell>
                   <TableCell>
-                    <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px]">Active</Badge>
+                    <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px]">Active</Badge>
                   </TableCell>
                 </TableRow>
               ))}

@@ -25,7 +25,7 @@ export default function TeacherStudentsView() {
           student_id, teacher_id, subject_id
         `)
         .eq('teacher_id', user.id)
-        .eq('status', 'active');
+        .eq('status', 'active') as any;
 
       if (activeDivision?.id) {
         query = query.eq('division_id', activeDivision.id);
@@ -34,23 +34,22 @@ export default function TeacherStudentsView() {
       const { data, error } = await query.order('created_at', { ascending: false });
       if (error) throw error;
 
-      // Fetch student and subject names
-      const studentIds = [...new Set((data || []).map(a => a.student_id))];
-      const subjectIds = [...new Set((data || []).map(a => a.subject_id).filter(Boolean))];
+      const studentIds = [...new Set((data || []).map((a: any) => a.student_id))];
+      const subjectIds = [...new Set((data || []).map((a: any) => a.subject_id).filter(Boolean))];
 
       const [studentsRes, subjectsRes] = await Promise.all([
         studentIds.length > 0
-          ? supabase.from('profiles').select('id, full_name').in('id', studentIds)
+          ? supabase.from('profiles').select('id, full_name').in('id', studentIds as string[])
           : { data: [] },
         subjectIds.length > 0
           ? supabase.from('subjects').select('id, name').in('id', subjectIds as string[])
           : { data: [] },
       ]);
 
-      const studentMap = Object.fromEntries((studentsRes.data || []).map(s => [s.id, s.full_name]));
-      const subjectMap = Object.fromEntries((subjectsRes.data || []).map(s => [s.id, s.name]));
+      const studentMap = Object.fromEntries((studentsRes.data || []).map((s: any) => [s.id, s.full_name]));
+      const subjectMap = Object.fromEntries((subjectsRes.data || []).map((s: any) => [s.id, s.name]));
 
-      return (data || []).map(a => ({
+      return (data || []).map((a: any) => ({
         ...a,
         student_name: studentMap[a.student_id] || 'Unknown',
         subject_name: a.subject_id ? subjectMap[a.subject_id] || '—' : '—',
@@ -68,7 +67,7 @@ export default function TeacherStudentsView() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-lms-navy">My Students</h2>
-          <p className="text-sm text-lms-text-3">Your active student assignments</p>
+          <p className="text-sm text-muted-foreground">Your active student assignments</p>
         </div>
         <Badge variant="secondary" className="gap-1">
           <Users className="h-3 w-3" />
@@ -77,15 +76,15 @@ export default function TeacherStudentsView() {
       </div>
 
       {assignments.length === 0 ? (
-        <div className="text-center py-12 text-lms-text-3">
+        <div className="text-center py-12 text-muted-foreground">
           <Users className="h-10 w-10 mx-auto mb-2 opacity-40" />
           <p className="text-sm">No active student assignments</p>
         </div>
       ) : (
-        <div className="rounded-lg border border-lms-border overflow-hidden">
+        <div className="rounded-lg border border-border overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="bg-lms-surface">
+              <TableRow className="bg-muted/50">
                 <TableHead className="text-xs">Student</TableHead>
                 <TableHead className="text-xs">Subject</TableHead>
                 <TableHead className="text-xs">Tracking</TableHead>
@@ -93,12 +92,12 @@ export default function TeacherStudentsView() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {assignments.map(a => (
+              {assignments.map((a: any) => (
                 <TableRow key={a.id}>
                   <TableCell className="font-medium text-sm">{a.student_name}</TableCell>
                   <TableCell>
                     {a.subject_name !== '—' ? (
-                      <SubjectBadge subject={a.subject_name} />
+                      <SubjectBadge name={a.subject_name} />
                     ) : '—'}
                   </TableCell>
                   <TableCell>
@@ -109,7 +108,7 @@ export default function TeacherStudentsView() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px]">Active</Badge>
+                    <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px]">Active</Badge>
                   </TableCell>
                 </TableRow>
               ))}
