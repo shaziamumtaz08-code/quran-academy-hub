@@ -493,7 +493,7 @@ const ConversationMode: React.FC<{
               borderTopLeftRadius: m.role === 'assistant' ? 2 : undefined,
               borderTopRightRadius: m.role === 'user' ? 2 : undefined,
             }}>
-              <div className={`text-[12px] ${detectScriptClass(m.content)}`} style={{ lineHeight: 1.5 }}>{m.content}</div>
+              <div className={`text-[12px] ${langClass}`} style={{ lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: parseArabicTags(m.content) }} />
               {m.score && <span className="text-[10px] mt-1 inline-block px-[5px] py-[1px] rounded" style={{ backgroundColor: `${scoreColor(m.score)}20`, color: scoreColor(m.score) }}>Score: {m.score}</span>}
             </div>
           </div>
