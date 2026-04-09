@@ -16,6 +16,8 @@ const MonthlyPlanning = lazy(() => import('./MonthlyPlanning'));
 const Subjects = lazy(() => import('./Subjects'));
 const ZoomManagement = lazy(() => import('./ZoomManagement'));
 const Courses = lazy(() => import('./Courses'));
+const TeacherStudentsView = lazy(() => import('@/components/teacher/TeacherStudentsView'));
+const TeacherSchedulesView = lazy(() => import('@/components/teacher/TeacherSchedulesView'));
 
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
 
@@ -28,29 +30,50 @@ export default function TeachingLanding() {
   const section = searchParams.get('section') || (isTeacher ? 'assignments' : 'live-classes');
 
   const { data: counts, isLoading } = useQuery({
-    queryKey: ['teaching-landing-counts', divisionId],
+    queryKey: ['teaching-landing-counts', divisionId, user?.id, isTeacher],
     queryFn: async () => {
       const today = format(new Date(), 'yyyy-MM-dd');
       const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
       const weekEnd = format(endOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
 
       let assignQuery = supabase.from('student_teacher_assignments').select('id', { count: 'exact', head: true }).eq('status', 'active') as any;
-      let schedQuery = supabase.from('schedules').select('id', { count: 'exact', head: true }).eq('is_active', true) as any;
       let attQuery = (supabase as any).from('attendance').select('status').gte('class_date', weekStart).lte('class_date', weekEnd);
       let planQuery = supabase.from('student_monthly_plans').select('id', { count: 'exact', head: true }).eq('month', format(new Date(), 'yyyy-MM')) as any;
 
-      // Filter by teacher_id for teacher role
       if (isTeacher && user?.id) {
         assignQuery = assignQuery.eq('teacher_id', user.id);
-        schedQuery = schedQuery.eq('teacher_id', user.id);
         attQuery = attQuery.eq('teacher_id', user.id);
         planQuery = planQuery.eq('teacher_id', user.id);
       }
 
-      const [liveRes, assignRes, schedRes, attRes, planRes, subRes, courseRes] = await Promise.all([
+      // For teachers, count schedules via assignment_id lookup
+      let schedCount = 0;
+      if (isTeacher && user?.id) {
+        const { data: myAssignments } = await (supabase as any)
+          .from('student_teacher_assignments')
+          .select('id')
+          .eq('teacher_id', user.id)
+          .eq('status', 'active');
+        const assignmentIds = (myAssignments || []).map((a: any) => a.id);
+        if (assignmentIds.length > 0) {
+          const { count } = await (supabase as any)
+            .from('schedules')
+            .select('id', { count: 'exact', head: true })
+            .in('assignment_id', assignmentIds)
+            .eq('is_active', true);
+          schedCount = count || 0;
+        }
+      } else {
+        const { count } = await (supabase as any)
+          .from('schedules')
+          .select('id', { count: 'exact', head: true })
+          .eq('is_active', true);
+        schedCount = count || 0;
+      }
+
+      const [liveRes, assignRes, attRes, planRes, subRes, courseRes] = await Promise.all([
         supabase.from('live_sessions').select('id', { count: 'exact', head: true }).eq('status', 'live'),
         assignQuery,
-        schedQuery,
         attQuery,
         planQuery,
         supabase.from('subjects').select('id', { count: 'exact', head: true }).eq('is_active', true),
@@ -64,7 +87,7 @@ export default function TeachingLanding() {
       return {
         live: liveRes.count || 0,
         assignments: assignRes.count || 0,
-        schedules: schedRes.count || 0,
+        schedules: schedCount,
         attRate,
         plans: planRes.count || 0,
         subjects: subRes.count || 0,
@@ -72,6 +95,7 @@ export default function TeachingLanding() {
       };
     },
   });
+
   const isOneToOne = activeDivision?.model_type === 'one_to_one';
   const allCards: LandingCard[] = [
     // Admin-only cards hidden from teachers
@@ -83,23 +107,28 @@ export default function TeachingLanding() {
     { id: 'planning', title: 'Planning', subtitle: 'This month', count: counts?.plans, countLoading: isLoading, icon: <Target className="h-5 w-5" />, color: 'bg-amber-500' },
     ...(!isTeacher ? [{ id: 'subjects', title: 'Subjects', subtitle: 'Active subjects', count: counts?.subjects, countLoading: isLoading, icon: <BookOpen className="h-5 w-5" />, color: 'bg-violet-500' }] : []),
   ];
-  const cards = allCards;
 
+  // For teachers, use read-only components; for admins, use full pages
   const contentMap: Record<string, React.ReactNode> = useMemo(() => ({
     'live-classes': <Suspense fallback={<Loading />}><ZoomManagement /></Suspense>,
     'courses': <Suspense fallback={<Loading />}><Courses /></Suspense>,
-    'assignments': <Suspense fallback={<Loading />}><Assignments /></Suspense>,
-    'schedules': <Suspense fallback={<Loading />}><Schedules /></Suspense>,
+    'assignments': isTeacher
+      ? <Suspense fallback={<Loading />}><TeacherStudentsView /></Suspense>
+      : <Suspense fallback={<Loading />}><Assignments /></Suspense>,
+    'schedules': isTeacher
+      ? <Suspense fallback={<Loading />}><TeacherSchedulesView /></Suspense>
+      : <Suspense fallback={<Loading />}><Schedules /></Suspense>,
     'attendance': <Suspense fallback={<Loading />}><Attendance /></Suspense>,
     'planning': <Suspense fallback={<Loading />}><MonthlyPlanning /></Suspense>,
     'subjects': <Suspense fallback={<Loading />}><Subjects /></Suspense>,
-  }), []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [isTeacher]);
 
   return (
     <LandingPageShell
       title="Teaching"
-      subtitle="Manage classes, assignments, schedules, and academic progress"
-      cards={cards}
+      subtitle={isTeacher ? "Your classes, students, and academic progress" : "Manage classes, assignments, schedules, and academic progress"}
+      cards={allCards}
       contentMap={contentMap}
       defaultCard={section}
     />
