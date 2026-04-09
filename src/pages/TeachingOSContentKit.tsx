@@ -360,7 +360,7 @@ const TeachingOSContentKit: React.FC = () => {
       setGenerating(prev => ({ ...prev, [type]: false }));
       setGenProgress(prev => { const n = { ...prev }; delete n[type]; return n; });
     }
-  }, [sessionPlan, courseName, subject, level, kitId, generating]);
+  }, [sessionPlan, courseName, subject, level, kitId, generating, customPrompts]);
 
   const generateFullKit = useCallback(async () => {
     const types: ActiveTool[] = ["slides", "quiz", "flashcards", "worksheet"];
