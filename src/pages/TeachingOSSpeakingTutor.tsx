@@ -15,6 +15,7 @@ import {
   ScrollText, ExternalLink, Send, Sparkles, ArrowRight, Users, Clock,
   Calendar, Plus, Check, AlertTriangle, TrendingUp, Lightbulb, X
 } from 'lucide-react';
+import { PhaseStepperCompact, NextPhaseButton } from '@/components/teaching/PhaseNavBar';
 
 type Section = 'drill' | 'conversation' | 'shadowing' | 'assign' | 'progress' | 'library' | 'scripts';
 
@@ -29,12 +30,6 @@ interface DrillPhrase {
   status?: string;
 }
 
-const PHASE_STEPS = [
-  { key: 'syllabus', label: 'Syllabus' }, { key: 'planner', label: 'Planner' },
-  { key: 'board', label: 'Board' }, { key: 'kit', label: 'Kit' },
-  { key: 'assess', label: 'Assess' }, { key: 'video', label: 'Video' },
-  { key: 'speaking', label: 'Speaking' },
-];
 
 const MOCK_PHRASES: DrillPhrase[] = [
   { id: 'p1', phrase_arabic: 'اسمي أحمد، أنا من باكستان', romanised: 'is-mee Ah-mad, ana min Ba-kis-tan', english: 'My name is Ahmad, I am from Pakistan', difficulty: 1, position: 1, lastScore: 87, status: 'improving' },
@@ -202,17 +197,7 @@ const TeachingOSSpeakingTutor: React.FC = () => {
           <div className="text-[11px] mt-[2px]" style={{ color: '#7a7f8a' }}>Teaching OS · Phase 7</div>
         </div>
 
-        <div className="flex items-center gap-[3px] px-3 py-2 border-b flex-wrap" style={{ borderColor: '#f0f1f3' }}>
-          {PHASE_STEPS.map((step, i) => (
-            <React.Fragment key={step.key}>
-              {i > 0 && <ChevronRight className="w-[10px] h-[10px] text-[#aab0bc]" />}
-              <div className="flex items-center gap-[2px]">
-                {i < 6 ? <CheckCircle2 className="w-[12px] h-[12px] text-[#1a7340]" /> : <CircleDot className="w-[12px] h-[12px] text-[#0f2044]" />}
-                <span className={`text-[8px] font-medium ${i === 6 ? 'text-[#0f2044]' : 'text-[#7a7f8a]'}`}>{step.label}</span>
-              </div>
-            </React.Fragment>
-          ))}
-        </div>
+        <PhaseStepperCompact currentPhase={7} sessionId={searchParams.get('session_id')} />
 
         <div className="flex-1 overflow-y-auto py-2">
           <SideLabel>Practice Modes</SideLabel>
@@ -230,9 +215,7 @@ const TeachingOSSpeakingTutor: React.FC = () => {
         </div>
 
         <div className="p-[10px] border-t" style={{ borderColor: '#e8e9eb' }}>
-          <Button className="w-full text-[12px] h-8" style={{ backgroundColor: '#0f2044', color: '#fff' }} onClick={() => navigate('/teaching-os/analytics')}>
-            Phase 8: Analytics <ExternalLink className="w-3 h-3 ml-1" />
-          </Button>
+          <NextPhaseButton currentPhase={7} sessionId={searchParams.get('session_id')} />
         </div>
       </div>
 

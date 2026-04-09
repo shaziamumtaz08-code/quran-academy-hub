@@ -13,6 +13,7 @@ import {
   Mic, ListChecks, PenTool, MessageSquare, Hand, Lightbulb, Zap,
   Square, Eye
 } from 'lucide-react';
+import { PhaseStepperCompact, NextPhaseButton, PhaseBreadcrumb } from '@/components/teaching/PhaseNavBar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -345,14 +346,7 @@ export default function TeachingOSDayBoard() {
 
         {/* Top bar */}
         <div className="h-[50px] bg-white border-b border-[#e8e9eb] px-4 flex items-center justify-between shrink-0">
-          <div className="text-[11px] text-[#7a7f8a]">
-            Teaching OS <ChevronRight className="inline w-3 h-3 mx-1" />
-            <span className="text-[#4a5264]">{courseName}</span>
-            <ChevronRight className="inline w-3 h-3 mx-1" />
-            <span className="text-[#4a5264]">Session {plan.session_number}</span>
-            <ChevronRight className="inline w-3 h-3 mx-1" />
-            <span className="text-[#4a5264] font-medium">Day board</span>
-          </div>
+          <PhaseBreadcrumb courseName={courseName} sectionLabel={`Session ${plan.session_number} · Day Board`} />
           <div className="flex items-center gap-2">
             <button className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-[#4a5264] bg-white border border-[#d0d4dc] rounded-md hover:bg-[#f9f9fb]">
               <Eye className="w-3.5 h-3.5" /> Student view

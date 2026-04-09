@@ -14,6 +14,7 @@ import {
   GripVertical, Share2, Download, ExternalLink, CheckCircle2, CircleDot,
   Clock, Ban, X, Sparkles, Video, ChevronDown
 } from 'lucide-react';
+import { PhaseStepperCompact, NextPhaseButton } from '@/components/teaching/PhaseNavBar';
 
 type Section = 'search' | 'library' | 'playlists' | 'filter' | 'flagged' | 'analytics' | 'insights';
 
@@ -49,14 +50,6 @@ interface SessionPlan {
   syllabus_id: string;
 }
 
-const PHASE_STEPS = [
-  { key: 'syllabus', label: 'Syllabus' },
-  { key: 'planner', label: 'Planner' },
-  { key: 'board', label: 'Board' },
-  { key: 'kit', label: 'Kit' },
-  { key: 'assess', label: 'Assess' },
-  { key: 'video', label: 'Video' },
-];
 
 const FILTERS = ['All', 'Beginner', 'Intermediate', '5-10 min', '10-20 min', 'Arabic', 'No music', 'Islamic context', 'Subtitled'];
 
@@ -165,17 +158,7 @@ const TeachingOSVideo: React.FC = () => {
         </div>
 
         {/* Phase stepper */}
-        <div className="flex items-center gap-[3px] px-3 py-2 border-b border-[#f0f1f3] flex-wrap">
-          {PHASE_STEPS.map((step, i) => (
-            <React.Fragment key={step.key}>
-              {i > 0 && <ChevronRight className="w-[10px] h-[10px] text-[#aab0bc]" />}
-              <div className="flex items-center gap-[2px]">
-                {i < 5 ? <CheckCircle2 className="w-[12px] h-[12px] text-[#1a7340]" /> : <CircleDot className="w-[12px] h-[12px] text-[#0f2044]" />}
-                <span className={`text-[8px] font-medium ${i === 5 ? 'text-[#0f2044]' : 'text-[#7a7f8a]'}`}>{step.label}</span>
-              </div>
-            </React.Fragment>
-          ))}
-        </div>
+        <PhaseStepperCompact currentPhase={6} sessionId={sessionId} />
 
         <div className="flex-1 overflow-y-auto py-2">
           <SideLabel>Search</SideLabel>
@@ -195,9 +178,7 @@ const TeachingOSVideo: React.FC = () => {
         </div>
 
         <div className="p-[10px] border-t border-[#e8e9eb]">
-          <Button className="w-full text-[12px] h-8" style={{ backgroundColor: '#0f2044', color: '#fff' }} onClick={() => navigate(`/teaching-os/speaking-tutor${sessionId ? `?session_id=${sessionId}` : ''}`)}>
-            Phase 7: Speaking tutor <ExternalLink className="w-3 h-3 ml-1" />
-          </Button>
+          <NextPhaseButton currentPhase={6} sessionId={sessionId} />
         </div>
       </div>
 
