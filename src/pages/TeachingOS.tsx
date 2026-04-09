@@ -210,6 +210,7 @@ export default function TeachingOS() {
       const payload = {
         user_id: user.id,
         course_name: courseName || 'Untitled',
+        course_id: selectedCourseId || null,
         subject, level,
         duration_weeks: durationWeeks,
         sessions_week: parseInt(sessionsPerWeek) || 2,
@@ -227,7 +228,7 @@ export default function TeachingOS() {
       }
       setSaveStatus('saved');
     } catch { setSaveStatus('error'); }
-  }, [user, courseName, subject, level, durationWeeks, sessionsPerWeek, targetAudience, learningGoals, pdfText, pasteText, syllabusId]);
+  }, [user, courseName, selectedCourseId, subject, level, durationWeeks, sessionsPerWeek, targetAudience, learningGoals, pdfText, pasteText, syllabusId]);
 
   const debouncedSave = useCallback((currentRows: SyllabusRow[]) => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
