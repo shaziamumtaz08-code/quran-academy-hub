@@ -443,7 +443,7 @@ const TeachingOSContentKit: React.FC = () => {
   const currentSlide = slides[activeSlideIndex];
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#f4f5f7]">
+    <div className="flex h-screen overflow-hidden bg-[#f4f5f7] pl-14">
       <NavRail items={railItems} />
 
       {/* Tool Sidebar */}
