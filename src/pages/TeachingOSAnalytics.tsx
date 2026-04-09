@@ -730,7 +730,7 @@ export default function TeachingOSAnalytics() {
         </div>
 
         {/* Phase stepper */}
-        <PhaseStepperCompact currentPhase={8} courseId={searchParams.get('course_id')} />
+        <PhaseStepperCompact currentPhase={8} courseId={courseId} />
 
         <div className="flex-1 overflow-y-auto px-[6px] py-1">
           {sidebarItems.map(g => (
@@ -749,7 +749,7 @@ export default function TeachingOSAnalytics() {
         </div>
 
         <div className="p-[10px] border-t" style={{ borderColor: '#e8e9eb' }}>
-          <NextPhaseButton currentPhase={8} courseId={searchParams.get('course_id')} />
+          <NextPhaseButton currentPhase={8} courseId={courseId} />
         </div>
       </div>
 
