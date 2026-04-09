@@ -183,6 +183,47 @@ export default function TeachingOS() {
     enabled: !!selectedCourseId,
   });
 
+  // Fetch existing syllabi for selected course to avoid duplication
+  const { data: existingSyllabi = [] } = useQuery({
+    queryKey: ['teaching-os-existing-syllabi', selectedCourseId],
+    queryFn: async () => {
+      if (!selectedCourseId) return [];
+      const { data } = await (supabase.from('syllabi') as any)
+        .select('id, course_name, subject, level, created_at, status, duration_weeks, sessions_week')
+        .eq('course_id', selectedCourseId)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (!data || data.length === 0) return [];
+
+      // Enrich with session plan and kit counts
+      const enriched = await Promise.all(
+        data.map(async (s: any) => {
+          const { count: sessionCount } = await supabase
+            .from('session_plans')
+            .select('*', { count: 'exact', head: true })
+            .eq('syllabus_id', s.id);
+          const { data: sessions } = await supabase
+            .from('session_plans')
+            .select('id')
+            .eq('syllabus_id', s.id);
+          let kitCount = 0;
+          if (sessions && sessions.length > 0) {
+            const sessionIds = sessions.map((sp: any) => sp.id);
+            const { count } = await supabase
+              .from('content_kits')
+              .select('*', { count: 'exact', head: true })
+              .in('session_plan_id', sessionIds);
+            kitCount = count || 0;
+          }
+          return { ...s, session_count: sessionCount || 0, kit_count: kitCount };
+        })
+      );
+      return enriched;
+    },
+    enabled: !!selectedCourseId,
+  });
+
   // Close course dropdown on outside click
   useEffect(() => {
     if (!courseSearchOpen) return;
