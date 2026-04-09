@@ -48,7 +48,7 @@ export function PageBreadcrumb() {
   }
 
   return (
-    <div className="mb-6 flex items-center gap-3">
+    <div className="mb-6 flex items-center gap-3 sticky top-0 z-10 bg-[hsl(var(--lms-surface,220_14%_96%))] py-2 -mt-2">
       {/* Back to Home Button */}
       <Link 
         to="/dashboard"

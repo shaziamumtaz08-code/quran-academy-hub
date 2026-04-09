@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import type { AppRole } from '@/contexts/AuthContext';
-import { LayoutDashboard, BookOpen, Users, MessageSquare, MoreHorizontal, DollarSign, BarChart3, Cog, Video, Briefcase, GraduationCap, ClipboardCheck, Target, FolderOpen, Award, FileText } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Users, MessageSquare, MoreHorizontal, DollarSign, BarChart3, Cog, Video, Briefcase, GraduationCap, ClipboardCheck, CalendarDays } from 'lucide-react';
+import { useState } from 'react';
 
 interface MobileTabItem {
   label: string;
@@ -17,35 +18,37 @@ function getMobileTabs(role: AppRole | null): MobileTabItem[] {
       { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
       { label: 'Teaching', href: '/teaching', icon: BookOpen },
       { label: 'People', href: '/people', icon: Users },
-      { label: 'Chat', href: '/chat', icon: MessageSquare },
+      { label: 'Comms', href: '/communication', icon: MessageSquare },
     ];
   }
   if (role === 'teacher') {
     return [
       { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
       { label: 'Classes', href: '/teaching', icon: BookOpen },
-      { label: 'Students', href: '/students', icon: GraduationCap },
-      { label: 'Chat', href: '/chat', icon: MessageSquare },
+      { label: 'Attendance', href: '/attendance', icon: ClipboardCheck },
+      { label: 'Calendar', href: '/schedules', icon: CalendarDays },
+      { label: 'Comms', href: '/communication', icon: MessageSquare },
     ];
   }
   if (role === 'student') {
     return [
       { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
-      { label: 'Class', href: '/student-reports', icon: BookOpen },
-      { label: 'Resources', href: '/resources', icon: FolderOpen },
-      { label: 'Chat', href: '/chat', icon: MessageSquare },
+      { label: 'Classes', href: '/teaching', icon: BookOpen },
+      { label: 'Attendance', href: '/attendance', icon: ClipboardCheck },
+      { label: 'Calendar', href: '/schedules', icon: CalendarDays },
+      { label: 'Comms', href: '/communication', icon: MessageSquare },
     ];
   }
   if (role === 'parent') {
     return [
       { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
       { label: 'Reports', href: '/student-reports', icon: BarChart3 },
-      { label: 'Chat', href: '/chat', icon: MessageSquare },
+      { label: 'Comms', href: '/communication', icon: MessageSquare },
     ];
   }
   return [
     { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
-    { label: 'Chat', href: '/chat', icon: MessageSquare },
+    { label: 'Comms', href: '/communication', icon: MessageSquare },
   ];
 }
 
@@ -55,17 +58,9 @@ function getMoreItems(role: AppRole | null): MobileTabItem[] {
     return [
       { label: 'Finance', href: '/finance', icon: DollarSign },
       { label: 'Reports', href: '/reports-hub', icon: BarChart3 },
-      { label: 'Communication', href: '/communication', icon: MessageSquare },
       { label: 'Zoom', href: '/zoom-management', icon: Video },
       { label: 'Work Hub', href: '/hub', icon: Briefcase },
       { label: 'Settings', href: '/settings', icon: Cog },
-    ];
-  }
-  if (role === 'teacher') {
-    return [
-      { label: 'Attendance', href: '/attendance', icon: ClipboardCheck },
-      { label: 'Planning', href: '/monthly-planning', icon: Target },
-      { label: 'Resources', href: '/resources', icon: FolderOpen },
     ];
   }
   return [];

@@ -22,7 +22,8 @@ import { ForwardMessageDialog } from '@/components/chat/ForwardMessageDialog';
 const typeIcons: Record<string, string> = { project: '📋', issue: '🐛', salary: '💰', custom: '💬', channel: '📢' };
 
 export default function GroupChat() {
-  const { user } = useAuth();
+  const { user, activeRole } = useAuth();
+  const isAdmin = activeRole && ['super_admin', 'admin', 'admin_admissions', 'admin_fees', 'admin_academic'].includes(activeRole) || activeRole?.startsWith('admin_');
   const queryClient = useQueryClient();
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
