@@ -107,6 +107,10 @@
     --gold-light: 40 88% 55%;
     --sky: 204 65% 54%;
     --alert-red: 0 65% 55%;
+    /* Font stacks */
+    --font-urdu: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Urdu Nastaleeq', serif;
+    --font-arabic: 'Noto Naskh Arabic', 'Traditional Arabic', 'Amiri', serif;
+    --font-en: 'Inter', sans-serif;
   }
 
   .dark {
