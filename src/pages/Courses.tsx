@@ -71,6 +71,12 @@ export default function Courses() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterLevel, setFilterLevel] = useState('all');
+  const [deleteTarget, setDeleteTarget] = useState<Course | null>(null);
+  const [duplicateTarget, setDuplicateTarget] = useState<Course | null>(null);
+  const [dupName, setDupName] = useState('');
+  const [dupOptions, setDupOptions] = useState({ modules: true, classes: true, assignments: false, feePlans: false, marketing: false });
+  const [deleting, setDeleting] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
 
   // Form state
   const [formName, setFormName] = useState('');
