@@ -182,7 +182,7 @@ export default function UserManagement() {
   const [filterCountry, setFilterCountry] = useState<string>('');
   const [filterCity, setFilterCity] = useState<string>('');
   const [filterRole, setFilterRole] = useState<string>('');
-
+  const [showArchived, setShowArchived] = useState(false);
   // Sorting state
   type SortField = 'name' | 'role' | 'gender' | 'age' | 'country' | 'city';
   type SortDirection = 'asc' | 'desc';
@@ -671,6 +671,9 @@ export default function UserManagement() {
 
   const filteredUsers = users
     ?.filter(user => {
+      // Archive filter — show only archived or only active
+      const matchesArchive = showArchived ? !!user.archived_at : !user.archived_at;
+      
       // Text search filter
       const matchesSearch = !searchTerm || 
         user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -685,7 +688,7 @@ export default function UserManagement() {
       // Role filter
       const matchesRole = !filterRole || user.roles?.includes(filterRole as AppRole);
       
-      return matchesSearch && matchesCountry && matchesCity && matchesRole;
+      return matchesArchive && matchesSearch && matchesCountry && matchesCity && matchesRole;
     })
     ?.sort((a, b) => {
       let comparison = 0;
@@ -714,13 +717,14 @@ export default function UserManagement() {
       return sortDirection === 'asc' ? comparison : -comparison;
     });
 
-  const hasActiveFilters = !!filterCountry || !!filterCity || !!filterRole;
+  const hasActiveFilters = !!filterCountry || !!filterCity || !!filterRole || showArchived;
 
   const resetFilters = () => {
     setFilterCountry('');
     setFilterCity('');
     setFilterRole('');
     setSearchTerm('');
+    setShowArchived(false);
   };
 
   const getRoleTemplate = (role: AppRole | null) => {
