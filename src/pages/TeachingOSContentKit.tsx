@@ -275,14 +275,11 @@ const TeachingOSContentKit: React.FC = () => {
     abortRef.current = abort;
 
     try {
-      const raw = await streamAIContent(
+      const parsed = await fetchAIContent(
         type, sessionPlan, courseName, subject, level,
         type === "quiz" ? { questionCount: 10, questionTypes: ["mcq", "short_answer", "true_false"], difficulty: "Mixed" } : {},
-        (text) => setGenProgress(prev => ({ ...prev, [type]: `Streaming ${type}...` })),
         abort.signal
       );
-
-      const parsed = parseJSONFromStream(raw);
       if (!parsed) throw new Error("Failed to parse AI response");
 
       // Ensure kit exists
