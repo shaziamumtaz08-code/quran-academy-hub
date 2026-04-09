@@ -572,9 +572,26 @@ export default function TeachingOS() {
                           if (!file) return;
                           if (file.size > 50 * 1024 * 1024) { toast.error('File too large (max 50MB)'); return; }
                           setPdfFile(file);
-                          // For now, store the file name as placeholder
-                          setPdfText(`[PDF content from: ${file.name}]`);
-                          setPdfParsed(true);
+                          setPdfParsed(false);
+                          // Extract text from PDF
+                          const arrayBuffer = await file.arrayBuffer();
+                          try {
+                            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                            let fullText = '';
+                            for (let i = 1; i <= pdf.numPages; i++) {
+                              const page = await pdf.getPage(i);
+                              const content = await page.getTextContent();
+                              const pageText = content.items.map((item: any) => item.str).join(' ');
+                              fullText += pageText + '\n';
+                            }
+                            setPdfText(fullText.trim().slice(0, 15000));
+                            setPdfParsed(true);
+                            toast.success(`PDF parsed · ${fullText.length} chars extracted from ${pdf.numPages} pages`);
+                          } catch (err) {
+                            console.error('PDF parse error:', err);
+                            toast.error('Failed to parse PDF. Please try paste instead.');
+                            setPdfFile(null);
+                          }
                         }} />
                       </label>
                     )
