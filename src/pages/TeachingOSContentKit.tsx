@@ -119,7 +119,7 @@ async function streamAIContent(
         Authorization: `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
       },
-      body: JSON.stringify({ contentType, sessionPlan, courseName, subject, level, ...extraParams }),
+      body: JSON.stringify({ contentType, sessionPlan, courseName, subject, level, language: localStorage.getItem('tos-language') || 'en', ...extraParams }),
       signal: abortSignal,
     }
   );

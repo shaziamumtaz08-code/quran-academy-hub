@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { DivisionProvider } from "@/contexts/DivisionContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -280,16 +281,16 @@ function AppRoutes() {
       
       {/* Landing Pages */}
       <Route path="/teaching" element={<ProtectedRoute><DashboardLayout><TeachingLanding /></DashboardLayout></ProtectedRoute>} />
-      <Route path="/teaching-os" element={<ProtectedRoute><TeachingOS /></ProtectedRoute>} />
-      <Route path="/teaching-os/planner" element={<ProtectedRoute><TeachingOSPlanner /></ProtectedRoute>} />
-      <Route path="/teaching-os/dayboard" element={<ProtectedRoute><TeachingOSDayBoard /></ProtectedRoute>} />
-      <Route path="/teaching-os/dayboard/live" element={<ProtectedRoute><TeachingOSDayBoard /></ProtectedRoute>} />
-      <Route path="/teaching-os/student-view" element={<TeachingOSStudentView />} />
-      <Route path="/teaching-os/content-kit" element={<ProtectedRoute><TeachingOSContentKit /></ProtectedRoute>} />
-      <Route path="/teaching-os/assessment" element={<ProtectedRoute><TeachingOSAssessment /></ProtectedRoute>} />
-      <Route path="/teaching-os/video" element={<ProtectedRoute><TeachingOSVideo /></ProtectedRoute>} />
-      <Route path="/teaching-os/speaking-tutor" element={<ProtectedRoute><TeachingOSSpeakingTutor /></ProtectedRoute>} />
-      <Route path="/teaching-os/analytics" element={<ProtectedRoute><TeachingOSAnalytics /></ProtectedRoute>} />
+      <Route path="/teaching-os" element={<ProtectedRoute><LanguageProvider><TeachingOS /></LanguageProvider></ProtectedRoute>} />
+      <Route path="/teaching-os/planner" element={<ProtectedRoute><LanguageProvider><TeachingOSPlanner /></LanguageProvider></ProtectedRoute>} />
+      <Route path="/teaching-os/dayboard" element={<ProtectedRoute><LanguageProvider><TeachingOSDayBoard /></LanguageProvider></ProtectedRoute>} />
+      <Route path="/teaching-os/dayboard/live" element={<ProtectedRoute><LanguageProvider><TeachingOSDayBoard /></LanguageProvider></ProtectedRoute>} />
+      <Route path="/teaching-os/student-view" element={<LanguageProvider><TeachingOSStudentView /></LanguageProvider>} />
+      <Route path="/teaching-os/content-kit" element={<ProtectedRoute><LanguageProvider><TeachingOSContentKit /></LanguageProvider></ProtectedRoute>} />
+      <Route path="/teaching-os/assessment" element={<ProtectedRoute><LanguageProvider><TeachingOSAssessment /></LanguageProvider></ProtectedRoute>} />
+      <Route path="/teaching-os/video" element={<ProtectedRoute><LanguageProvider><TeachingOSVideo /></LanguageProvider></ProtectedRoute>} />
+      <Route path="/teaching-os/speaking-tutor" element={<ProtectedRoute><LanguageProvider><TeachingOSSpeakingTutor /></LanguageProvider></ProtectedRoute>} />
+      <Route path="/teaching-os/analytics" element={<ProtectedRoute><LanguageProvider><TeachingOSAnalytics /></LanguageProvider></ProtectedRoute>} />
       {/* Parent Portal */}
       <Route path="/parent" element={<ProtectedRoute><ParentDashboard /></ProtectedRoute>} />
       <Route path="/parent/child/:studentId" element={<ProtectedRoute><ParentDashboard /></ProtectedRoute>} />

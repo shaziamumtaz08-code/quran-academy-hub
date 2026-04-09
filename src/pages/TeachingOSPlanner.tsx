@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { LanguageSelector } from '@/components/teaching/LanguageSelector';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -134,6 +136,7 @@ export default function TeachingOSPlanner() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const { language, langClass } = useLanguage();
   const syllabusId = searchParams.get('syllabus_id');
 
   const [syllabus, setSyllabus] = useState<Syllabus | null>(null);
@@ -262,6 +265,7 @@ export default function TeachingOSPlanner() {
         previousSessionSummary: prevSession?.session_title || '',
         sessionsPerWeek: syllabus.sessions_week,
         sessionDurationMinutes: 45,
+        language,
       }, (delta) => setStreamText(prev => prev + delta), controller.signal);
 
       const parsed = parseJsonFromStream(fullText);

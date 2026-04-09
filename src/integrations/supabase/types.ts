@@ -944,6 +944,7 @@ export type Database = {
           created_at: string
           generated_at: string | null
           id: string
+          language: string
           session_plan_id: string
           status: string
           updated_at: string
@@ -953,6 +954,7 @@ export type Database = {
           created_at?: string
           generated_at?: string | null
           id?: string
+          language?: string
           session_plan_id: string
           status?: string
           updated_at?: string
@@ -962,6 +964,7 @@ export type Database = {
           created_at?: string
           generated_at?: string | null
           id?: string
+          language?: string
           session_plan_id?: string
           status?: string
           updated_at?: string
@@ -4898,6 +4901,7 @@ export type Database = {
           preferred_unit: string
           region: string | null
           registration_id: string | null
+          teaching_os_language: string
           timezone: string | null
           updated_at: string
           whatsapp_number: string | null
@@ -4926,6 +4930,7 @@ export type Database = {
           preferred_unit?: string
           region?: string | null
           registration_id?: string | null
+          teaching_os_language?: string
           timezone?: string | null
           updated_at?: string
           whatsapp_number?: string | null
@@ -4954,6 +4959,7 @@ export type Database = {
           preferred_unit?: string
           region?: string | null
           registration_id?: string | null
+          teaching_os_language?: string
           timezone?: string | null
           updated_at?: string
           whatsapp_number?: string | null
@@ -5881,6 +5887,7 @@ export type Database = {
           created_at: string
           homework_suggestion: string | null
           id: string
+          language: string
           session_date: string | null
           session_day: string | null
           session_number: number
@@ -5898,6 +5905,7 @@ export type Database = {
           created_at?: string
           homework_suggestion?: string | null
           id?: string
+          language?: string
           session_date?: string | null
           session_day?: string | null
           session_number: number
@@ -5915,6 +5923,7 @@ export type Database = {
           created_at?: string
           homework_suggestion?: string | null
           id?: string
+          language?: string
           session_date?: string | null
           session_day?: string | null
           session_number?: number
@@ -6976,6 +6985,7 @@ export type Database = {
           created_at: string
           duration_weeks: number | null
           id: string
+          language: string
           learning_goals: string | null
           level: string | null
           rows: Json | null
@@ -6993,6 +7003,7 @@ export type Database = {
           created_at?: string
           duration_weeks?: number | null
           id?: string
+          language?: string
           learning_goals?: string | null
           level?: string | null
           rows?: Json | null
@@ -7010,6 +7021,7 @@ export type Database = {
           created_at?: string
           duration_weeks?: number | null
           id?: string
+          language?: string
           learning_goals?: string | null
           level?: string | null
           rows?: Json | null
@@ -7527,6 +7539,7 @@ export type Database = {
           duration_minutes: number | null
           id: string
           instructions: string | null
+          language: string
           opens_at: string | null
           pass_mark_percent: number | null
           published_at: string | null
@@ -7545,6 +7558,7 @@ export type Database = {
           duration_minutes?: number | null
           id?: string
           instructions?: string | null
+          language?: string
           opens_at?: string | null
           pass_mark_percent?: number | null
           published_at?: string | null
@@ -7563,6 +7577,7 @@ export type Database = {
           duration_minutes?: number | null
           id?: string
           instructions?: string | null
+          language?: string
           opens_at?: string | null
           pass_mark_percent?: number | null
           published_at?: string | null

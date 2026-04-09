@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { detectScriptClass } from '@/lib/scriptFont';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { parseArabicTags } from '@/lib/languageUtils';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { NavRail, buildRailNav } from '@/components/layout/NavRail';
@@ -491,7 +492,7 @@ const ConversationMode: React.FC<{
               borderTopLeftRadius: m.role === 'assistant' ? 2 : undefined,
               borderTopRightRadius: m.role === 'user' ? 2 : undefined,
             }}>
-              <div className={`text-[12px] ${detectScriptClass(m.content)}`} style={{ lineHeight: 1.5 }}>{m.content}</div>
+              <div className={`text-[12px] ${localStorage.getItem('tos-language') === 'ur' ? 'lang-ur' : localStorage.getItem('tos-language') === 'ar' ? 'lang-ar' : 'lang-en'}`} style={{ lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: parseArabicTags(m.content) }} />
               {m.score && <span className="text-[10px] mt-1 inline-block px-[5px] py-[1px] rounded" style={{ backgroundColor: `${scoreColor(m.score)}20`, color: scoreColor(m.score) }}>Score: {m.score}</span>}
             </div>
           </div>

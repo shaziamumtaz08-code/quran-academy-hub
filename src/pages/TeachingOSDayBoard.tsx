@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { parseArabicTags } from '@/lib/languageUtils';
 import { detectScriptClass } from '@/lib/scriptFont';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -106,6 +108,7 @@ export default function TeachingOSDayBoard() {
   const navigate = useNavigate();
   const location = useLocation();
   const { profile } = useAuth();
+  const { language, langClass } = useLanguage();
 
   const sessionId = searchParams.get('session_id');
   const isLiveRoute = location.pathname.includes('/live');
@@ -275,6 +278,7 @@ export default function TeachingOSDayBoard() {
         level: (plan as any).syllabi?.level || '',
         courseName,
         userMessage: userMsg,
+        language,
       }, (delta) => setAiResponse(prev => prev + delta));
       // Save to DB
       await supabase.from('ai_assists').insert({
@@ -544,10 +548,9 @@ export default function TeachingOSDayBoard() {
                     ) : (
                       <div
                         onClick={() => { setEditDraft(currentActivity.description); setEditingDesc(true); }}
-                        className="text-[12.5px] text-[#0f2044] leading-relaxed cursor-text hover:bg-[#f9f9fb] rounded p-1 -m-1 mb-2"
-                      >
-                        {currentActivity.description}
-                      </div>
+                        className={`text-[12.5px] text-[#0f2044] leading-relaxed cursor-text hover:bg-[#f9f9fb] rounded p-1 -m-1 mb-2 ${langClass}`}
+                        dangerouslySetInnerHTML={{ __html: parseArabicTags(currentActivity.description) }}
+                      />
                     )}
 
                     {currentActivity.materials && (
@@ -592,7 +595,7 @@ export default function TeachingOSDayBoard() {
                             <Loader2 className="w-3.5 h-3.5 animate-spin" /> Thinking…
                           </div>
                         )}
-                        <div className={`text-[12px] text-[#0f2044] leading-relaxed whitespace-pre-wrap ${detectScriptClass(aiResponse)}`}>{aiResponse}</div>
+                        <div className={`text-[12px] text-[#0f2044] leading-relaxed whitespace-pre-wrap ${langClass}`} dangerouslySetInnerHTML={{ __html: parseArabicTags(aiResponse) }} />
                       </div>
                     )}
                   </div>

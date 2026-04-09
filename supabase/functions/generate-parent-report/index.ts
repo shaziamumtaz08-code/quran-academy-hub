@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { getLanguageInstruction } from "../_shared/languageInstruction.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,13 +15,9 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    const langInstruction = language === 'ur'
-      ? 'Write this report entirely in clear, simple Pakistani Urdu. Use common Urdu words, not overly formal. This is for a parent.'
-      : language === 'ar'
-      ? 'Write this report entirely in simple Modern Standard Arabic. This is for a parent.'
-      : '';
+    const langInstruction = getLanguageInstruction(language);
 
-    const systemPrompt = `You are writing a monthly student progress report FOR PARENTS — not teachers. Use plain, warm, encouraging language. Avoid technical jargon. Keep sentences short. Write as if speaking to a caring parent who is not an educator. ${langInstruction}`;
+    const systemPrompt = `${langInstruction}You are writing a monthly student progress report FOR PARENTS — not teachers. Use plain, warm, encouraging language. Avoid technical jargon. Keep sentences short. Write as if speaking to a caring parent who is not an educator.`;
 
     const userPrompt = `Write a parent-facing monthly report for ${studentName} in ${courseName}.
 

@@ -5,6 +5,9 @@
 /* Google Fonts: Inter (sans), Amiri (serif for Arabic titles) */
 @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
+/* Noto Naskh Arabic for proper Arabic rendering */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;700&display=swap');
+
 /* Urdu Nastaleeq font for proper rendering */
 @import url('https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap');
 
@@ -104,6 +107,10 @@
     --gold-light: 40 88% 55%;
     --sky: 204 65% 54%;
     --alert-red: 0 65% 55%;
+    /* Font stacks */
+    --font-urdu: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Urdu Nastaleeq', serif;
+    --font-arabic: 'Noto Naskh Arabic', 'Traditional Arabic', 'Amiri', serif;
+    --font-en: 'Inter', sans-serif;
   }
 
   .dark {
@@ -320,7 +327,47 @@
     text-align: right;
   }
 
-  /* Print-optimized styles for report cards — single A4 page output */
+  /* Language-specific classes for AI-generated content */
+  .lang-ur {
+    font-family: var(--font-urdu);
+    direction: rtl;
+    text-align: right;
+    font-size: 1.25em;
+    line-height: 2.4;
+  }
+  .lang-ar {
+    font-family: var(--font-arabic);
+    direction: rtl;
+    text-align: right;
+    font-size: 1.15em;
+    line-height: 2;
+  }
+  .lang-en {
+    font-family: var(--font-en);
+    direction: ltr;
+    text-align: left;
+    font-size: 1em;
+    line-height: 1.6;
+  }
+
+  /* Arabic vocab embedded in Urdu text */
+  .arabic-in-urdu {
+    font-family: var(--font-arabic);
+    font-size: 1.3em;
+    color: #1a56b0;
+    padding: 0 4px;
+  }
+
+  /* Font labels for language selector */
+  .font-urdu-label {
+    font-family: var(--font-urdu);
+    line-height: 2;
+  }
+  .font-arabic-label {
+    font-family: var(--font-arabic);
+  }
+
+
   @media print {
     /* Reset page */
     html, body {
