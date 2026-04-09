@@ -745,6 +745,162 @@ const QuestionCard: React.FC<{
   isStudent: boolean;
 }> = ({ question, index, isEditing, onEdit, onCancelEdit, onDelete, onDuplicate, onSave, isPreview, isStudent }) => {
   const tc = TYPE_COLORS[question.type] || TYPE_COLORS.mcq;
+  const [editState, setEditState] = useState({ ...question });
+  const [aiImproving, setAiImproving] = useState(false);
+
+  useEffect(() => { setEditState({ ...question }); }, [question, isEditing]);
+
+  const handleAiImprove = async () => {
+    setAiImproving(true);
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      const lang = localStorage.getItem('tos-language') || 'en';
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-teaching-assist`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authSession?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({
+          assistType: 'improve_question',
+          language: lang,
+          context: JSON.stringify(question),
+        }),
+      });
+      const json = await resp.json().catch(() => null);
+      if (json?.data) {
+        const improved = typeof json.data === 'string' ? JSON.parse(json.data) : json.data;
+        const updated: ExamQuestion = {
+          ...question,
+          question_text: improved.question || improved.question_text || question.question_text,
+          options: improved.options || question.options,
+          correct_answer: improved.correctAnswer || improved.correct_answer || question.correct_answer,
+          model_answer: improved.modelAnswer || improved.model_answer || question.model_answer,
+          scenario_context: improved.scenarioContext || improved.scenario_context || question.scenario_context,
+          blank_sentence: improved.blankSentence || improved.blank_sentence || question.blank_sentence,
+        };
+        onSave(updated);
+        toast.success('Question improved by AI');
+      } else {
+        toast.error('AI could not improve this question');
+      }
+    } catch (err) {
+      toast.error('AI improve failed');
+    } finally {
+      setAiImproving(false);
+    }
+  };
+
+  // ─── Inline Edit Form ──────────────────────────────
+  if (isEditing) {
+    return (
+      <div className="bg-white border-2 rounded-[10px] overflow-hidden" style={{ borderColor: '#4a90d9' }}>
+        <div className="px-4 py-3 border-b bg-[#f0f4ff]" style={{ borderColor: '#b5d0f8' }}>
+          <div className="text-[12px] font-medium" style={{ color: '#1a56b0' }}>Editing Q{index + 1} · {tc.label}</div>
+        </div>
+        <div className="p-4 space-y-3">
+          <div>
+            <Label className="text-[11px]">Question text</Label>
+            <Textarea value={editState.question_text} onChange={e => setEditState(s => ({ ...s, question_text: e.target.value }))} className="mt-1 text-[12px]" rows={2} />
+          </div>
+
+          {editState.type === 'mcq' && editState.options && (
+            <div>
+              <Label className="text-[11px]">Options (one per line, mark correct with ✓ prefix)</Label>
+              {(editState.options as string[]).map((opt, oi) => (
+                <div key={oi} className="flex items-center gap-2 mt-1">
+                  <input type="radio" name={`correct-${editState.id}`} checked={opt === editState.correct_answer}
+                    onChange={() => setEditState(s => ({ ...s, correct_answer: opt }))} />
+                  <Input value={opt} className="text-[12px] h-7 flex-1"
+                    onChange={e => {
+                      const newOpts = [...(editState.options as string[])];
+                      const wasCorrect = newOpts[oi] === editState.correct_answer;
+                      newOpts[oi] = e.target.value;
+                      setEditState(s => ({ ...s, options: newOpts, correct_answer: wasCorrect ? e.target.value : s.correct_answer }));
+                    }} />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {editState.type === 'true_false' && (
+            <div>
+              <Label className="text-[11px]">Correct answer</Label>
+              <Select value={editState.correct_answer || 'True'} onValueChange={v => setEditState(s => ({ ...s, correct_answer: v }))}>
+                <SelectTrigger className="mt-1 h-7 text-[12px] w-32"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="True">True</SelectItem>
+                  <SelectItem value="False">False</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {['short_answer', 'translation'].includes(editState.type) && (
+            <div>
+              <Label className="text-[11px]">Model answer (for AI marking)</Label>
+              <Textarea value={editState.model_answer || ''} onChange={e => setEditState(s => ({ ...s, model_answer: e.target.value }))} className="mt-1 text-[12px]" rows={2} />
+            </div>
+          )}
+
+          {editState.type === 'fill_blank' && (
+            <div>
+              <Label className="text-[11px]">Blank sentence (use ___ for blank)</Label>
+              <Input value={editState.blank_sentence || ''} onChange={e => setEditState(s => ({ ...s, blank_sentence: e.target.value }))} className="mt-1 text-[12px] h-7" />
+              <Label className="text-[11px] mt-2 block">Correct answer</Label>
+              <Input value={editState.correct_answer || ''} onChange={e => setEditState(s => ({ ...s, correct_answer: e.target.value }))} className="mt-1 text-[12px] h-7" />
+            </div>
+          )}
+
+          {editState.type === 'scenario' && (
+            <>
+              <div>
+                <Label className="text-[11px]">Scenario context</Label>
+                <Textarea value={editState.scenario_context || ''} onChange={e => setEditState(s => ({ ...s, scenario_context: e.target.value }))} className="mt-1 text-[12px]" rows={2} />
+              </div>
+            </>
+          )}
+
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <Label className="text-[11px]">Points</Label>
+              <Input type="number" value={editState.points} onChange={e => setEditState(s => ({ ...s, points: parseInt(e.target.value) || 1 }))} className="mt-1 text-[12px] h-7" />
+            </div>
+            <div>
+              <Label className="text-[11px]">Difficulty</Label>
+              <Select value={editState.difficulty} onValueChange={v => setEditState(s => ({ ...s, difficulty: v }))}>
+                <SelectTrigger className="mt-1 h-7 text-[12px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="easy">Easy</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="hard">Hard</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-[11px]">Bloom's level</Label>
+              <Select value={editState.blooms_level} onValueChange={v => setEditState(s => ({ ...s, blooms_level: v }))}>
+                <SelectTrigger className="mt-1 h-7 text-[12px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="remember">Remember</SelectItem>
+                  <SelectItem value="understand">Understand</SelectItem>
+                  <SelectItem value="apply">Apply</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center justify-end gap-2 px-4 py-2 border-t bg-[#fafbfc]" style={{ borderColor: '#e8e9eb' }}>
+          <Button variant="outline" size="sm" className="text-[11px] h-7" onClick={onCancelEdit}>Cancel</Button>
+          <Button size="sm" className="text-[11px] h-7" style={{ backgroundColor: '#0f2044' }}
+            onClick={() => { onSave(editState); onCancelEdit(); }}>
+            <Check className="w-3 h-3 mr-1" /> Save changes
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white border rounded-[10px] overflow-hidden group" style={{ borderColor: '#e8e9eb', borderWidth: '0.5px' }}>
@@ -859,8 +1015,11 @@ const QuestionCard: React.FC<{
       {!isStudent && (
         <div className="flex items-center justify-between px-[13px] py-[8px] border-t bg-[#fafbfc]" style={{ borderColor: '#f0f1f3' }}>
           <div className="flex items-center gap-1">
-            <button className="text-[10px] px-2 py-[3px] rounded border flex items-center gap-1 hover:bg-[#f0f4ff] transition-colors" style={{ borderColor: '#e8e9eb', color: '#1a56b0' }}>
-              <Sparkles className="w-3 h-3" />AI improve
+            <button onClick={handleAiImprove} disabled={aiImproving}
+              className="text-[10px] px-2 py-[3px] rounded border flex items-center gap-1 hover:bg-[#f0f4ff] transition-colors disabled:opacity-50"
+              style={{ borderColor: '#e8e9eb', color: '#1a56b0' }}>
+              {aiImproving ? <span className="w-3 h-3 border border-[#1a56b0] border-t-transparent rounded-full animate-spin" /> : <Sparkles className="w-3 h-3" />}
+              {aiImproving ? 'Improving…' : 'AI improve'}
             </button>
             <button onClick={onEdit} className="text-[10px] px-2 py-[3px] rounded border flex items-center gap-1 hover:bg-[#f9f9fb] transition-colors" style={{ borderColor: '#e8e9eb', color: '#4a5264' }}>
               <Edit2 className="w-3 h-3" />Edit
