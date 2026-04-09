@@ -357,7 +357,7 @@ function CreateClassDialog({ open, onOpenChange, courseId }: { open: boolean; on
 }
 
 // ═══ CLASS DETAIL VIEW ═══
-function ClassDetail({ cls, courseId, onBack }: { cls: any; courseId: string; onBack: () => void }) {
+function ClassDetail({ cls, courseId, onBack, onDelete }: { cls: any; courseId: string; onBack: () => void; onDelete: () => void }) {
   const qc = useQueryClient();
   const [staffOpen, setStaffOpen] = useState(false);
   const [studentOpen, setStudentOpen] = useState(false);
