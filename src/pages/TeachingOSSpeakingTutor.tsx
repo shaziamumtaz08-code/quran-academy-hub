@@ -65,7 +65,6 @@ const TeachingOSSpeakingTutor: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { activeRole } = useAuth();
-  const { langClass } = useLanguage();
   const railItems = buildRailNav(activeRole);
   const sessionId = searchParams.get('session_id');
 
