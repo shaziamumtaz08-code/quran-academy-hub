@@ -748,33 +748,164 @@ function EmptyState({ icon, title, sub, onGenerate, generating }: { icon: React.
   );
 }
 
-function SlideContent({ slide }: { slide: SlideData }) {
-  const ps = getPhaseStyle(slide.phase);
+// ─── Professional Slide Themes ────────────────────────
+const SLIDE_THEMES: Record<string, {
+  bg: string; accent: string; accentLight: string; titleColor: string;
+  bodyColor: string; bulletColor: string; badgeBg: string; badgeText: string;
+  gradientFrom: string; gradientTo: string;
+}> = {
+  Opening: {
+    bg: '#0f2044', accent: '#4a90d9', accentLight: '#1a3a6c', titleColor: '#ffffff',
+    bodyColor: '#c8d6e5', bulletColor: '#4a90d9', badgeBg: 'rgba(74,144,217,0.2)', badgeText: '#7ab8ff',
+    gradientFrom: '#0f2044', gradientTo: '#1a3a6c',
+  },
+  Input: {
+    bg: '#ffffff', accent: '#1a7340', accentLight: '#e6f4ea', titleColor: '#0f2044',
+    bodyColor: '#4a5264', bulletColor: '#1a7340', badgeBg: '#e6f4ea', badgeText: '#1a7340',
+    gradientFrom: '#ffffff', gradientTo: '#f0faf4',
+  },
+  Practice: {
+    bg: '#fdf8f0', accent: '#b85c1a', accentLight: '#fff3e6', titleColor: '#0f2044',
+    bodyColor: '#4a5264', bulletColor: '#b85c1a', badgeBg: '#fff3e6', badgeText: '#b85c1a',
+    gradientFrom: '#fdf8f0', gradientTo: '#fff8f0',
+  },
+  Production: {
+    bg: '#f5f0ff', accent: '#534AB7', accentLight: '#ede8ff', titleColor: '#0f2044',
+    bodyColor: '#4a5264', bulletColor: '#534AB7', badgeBg: '#ede8ff', badgeText: '#534AB7',
+    gradientFrom: '#f5f0ff', gradientTo: '#ede8ff',
+  },
+  'Wrap-up': {
+    bg: '#1a2d5a', accent: '#f9c846', accentLight: '#243a6e', titleColor: '#ffffff',
+    bodyColor: '#b0c4de', bulletColor: '#f9c846', badgeBg: 'rgba(249,200,70,0.2)', badgeText: '#f9c846',
+    gradientFrom: '#1a2d5a', gradientTo: '#243a6e',
+  },
+  Quiz: {
+    bg: '#fff5f5', accent: '#b42a2a', accentLight: '#ffe0e0', titleColor: '#0f2044',
+    bodyColor: '#4a5264', bulletColor: '#b42a2a', badgeBg: '#ffe0e0', badgeText: '#b42a2a',
+    gradientFrom: '#fff5f5', gradientTo: '#ffe8e8',
+  },
+};
+
+const DEFAULT_THEME = SLIDE_THEMES.Input;
+
+function SlideContent({ slide, courseName, slideIndex, totalSlides }: { slide: SlideData; courseName?: string; slideIndex?: number; totalSlides?: number }) {
+  const theme = SLIDE_THEMES[slide.phase] || DEFAULT_THEME;
+  const isDark = ['Opening', 'Wrap-up'].includes(slide.phase);
+  const isArabicLayout = slide.layoutType === 'arabic-vocab' || slide.layoutType === 'two-column-vocab';
+
   return (
-    <div className="flex flex-col gap-3">
-      <span className={`text-[9px] uppercase tracking-wider font-medium ${ps.text}`}>{slide.phase} · Session</span>
-      <div className="text-[20px] font-medium text-[#0f2044] leading-tight">{slide.title}</div>
-      {slide.arabicText && (
-        <div className="text-[28px] text-[#0f2044] text-center my-2" dir="rtl">{slide.arabicText}</div>
-      )}
-      {slide.transliteration && (
-        <div className="text-[13px] text-[#7a7f8a] italic text-center">{slide.transliteration}</div>
-      )}
-      {slide.bullets && slide.bullets.length > 0 && (
-        <ul className="space-y-1.5 mt-2">
-          {slide.bullets.map((b, i) => (
-            <li key={i} className="flex items-start gap-2 text-[13px] text-[#4a5264]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#1a56b0] mt-1.5 shrink-0" />
-              {b}
-            </li>
-          ))}
-        </ul>
-      )}
-      {slide.activityInstruction && (
-        <div className="mt-2 p-2.5 bg-[#f9f9fb] rounded-lg border-l-[3px] border-[#d0d4dc] text-[11px] text-[#7a7f8a]">
-          {slide.activityInstruction}
-        </div>
-      )}
+    <div
+      className="relative w-full h-full flex flex-col overflow-hidden select-none"
+      style={{
+        background: `linear-gradient(135deg, ${theme.gradientFrom}, ${theme.gradientTo})`,
+        fontFamily: "'Inter', sans-serif",
+      }}
+    >
+      {/* Decorative corner accent */}
+      <div className="absolute top-0 right-0 w-[200px] h-[200px] opacity-10" style={{
+        background: `radial-gradient(circle at top right, ${theme.accent}, transparent 70%)`,
+      }} />
+
+      {/* Top bar */}
+      <div className="flex items-center justify-between px-6 pt-4 pb-2 z-10">
+        <span
+          className="text-[9px] uppercase tracking-[0.15em] font-semibold px-2.5 py-1 rounded-full"
+          style={{ background: theme.badgeBg, color: theme.badgeText }}
+        >
+          {slide.phase}
+        </span>
+        {slideIndex != null && totalSlides && (
+          <span className="text-[9px]" style={{ color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.25)' }}>
+            {slideIndex + 1} / {totalSlides}
+          </span>
+        )}
+      </div>
+
+      {/* Content area */}
+      <div className="flex-1 flex flex-col px-6 pb-5 z-10">
+        {/* Title */}
+        <h2
+          className="text-[22px] font-bold leading-tight mb-3 tracking-tight"
+          style={{ color: theme.titleColor }}
+        >
+          {slide.title}
+        </h2>
+
+        {/* Accent line */}
+        <div className="w-12 h-[3px] rounded-full mb-4" style={{ background: theme.accent }} />
+
+        {/* Arabic text block */}
+        {slide.arabicText && (
+          <div className={`${isArabicLayout ? 'flex-1 flex items-center justify-center' : 'mb-3'}`}>
+            <div
+              className="text-center py-3 px-4 rounded-xl"
+              style={{ background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.03)' }}
+            >
+              <div
+                className="text-[32px] leading-relaxed"
+                dir="rtl"
+                style={{ color: theme.titleColor, fontFamily: "'Noto Naskh Arabic', 'Amiri', serif" }}
+              >
+                {slide.arabicText}
+              </div>
+              {slide.transliteration && (
+                <div
+                  className="text-[12px] italic mt-1.5 tracking-wide"
+                  style={{ color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)' }}
+                >
+                  {slide.transliteration}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Bullets */}
+        {slide.bullets && slide.bullets.length > 0 && (
+          <ul className="space-y-2 flex-1">
+            {slide.bullets.map((b, i) => (
+              <li key={i} className="flex items-start gap-3 text-[13px] leading-relaxed" style={{ color: theme.bodyColor }}>
+                <span
+                  className="w-2 h-2 rounded-full mt-[5px] shrink-0"
+                  style={{ background: theme.bulletColor }}
+                />
+                <span>{b}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {/* Activity instruction callout */}
+        {slide.activityInstruction && (
+          <div
+            className="mt-auto pt-3 px-3.5 py-2.5 rounded-lg border-l-[3px] text-[11px] leading-relaxed"
+            style={{
+              borderColor: theme.accent,
+              background: isDark ? 'rgba(255,255,255,0.06)' : theme.accentLight,
+              color: isDark ? 'rgba(255,255,255,0.7)' : theme.bodyColor,
+            }}
+          >
+            <span className="font-semibold" style={{ color: theme.accent }}>Activity: </span>
+            {slide.activityInstruction}
+          </div>
+        )}
+      </div>
+
+      {/* Bottom bar */}
+      <div
+        className="flex items-center justify-between px-6 py-2 text-[9px] z-10"
+        style={{
+          borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'}`,
+          color: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)',
+        }}
+      >
+        <span>{courseName || ''}</span>
+        {slide.teacherNote && (
+          <span className="italic max-w-[60%] truncate" style={{ color: isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.3)' }}>
+            📝 {slide.teacherNote}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
