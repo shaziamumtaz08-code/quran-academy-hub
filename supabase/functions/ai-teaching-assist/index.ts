@@ -7,7 +7,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { assistType, activityTitle, activityDesc, subject, level, courseName, userMessage, language } = await req.json();
+    const { assistType, activityTitle, activityDesc, subject, level, courseName, userMessage, language, context } = await req.json();
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) {
@@ -39,6 +39,13 @@ Deno.serve(async (req) => {
         userPrompt = `Give 3 quick verbal comprehension check questions for '${activityTitle}'. Questions should be answerable in one sentence. Label them Easy / Medium / Hard.`;
         maxTokens = 200;
         break;
+
+      case "improve_question": {
+        systemPrompt = `${langInstruction}You are an expert assessment designer. Improve the given exam question to be more pedagogically sound, clearer, and better aligned with learning objectives. Return ONLY a raw JSON object (no markdown, no backticks). Keep the same type and structure but improve the wording, options quality, and model answers. All JSON keys must remain in English.`;
+        userPrompt = `Improve this exam question:\n${context}\n\nReturn a JSON object with fields: question (improved text), options (array if MCQ, null otherwise), correctAnswer, modelAnswer, scenarioContext, blankSentence. Only include fields relevant to this question type.`;
+        maxTokens = 800;
+        break;
+      }
 
       case "assistant":
       default:
