@@ -1,4 +1,5 @@
 import { corsHeaders } from "../_shared/cors.ts";
+import { getLanguageInstruction } from "../_shared/languageInstruction.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -6,7 +7,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { courseName, subject, level, duration, sessionsPerWeek, targetAudience, learningGoals, sourceText } = await req.json();
+    const { courseName, subject, level, duration, sessionsPerWeek, targetAudience, learningGoals, sourceText, language } = await req.json();
 
     if (!courseName) {
       return new Response(JSON.stringify({ error: "courseName is required" }), {
@@ -24,8 +25,9 @@ Deno.serve(async (req) => {
     }
 
     const durationWeeks = parseInt(duration) || 8;
+    const langInstruction = getLanguageInstruction(language);
 
-    const systemPrompt = `You are an expert Islamic education curriculum designer. Create structured, pedagogically sound syllabi for Arabic, Quran, Tajweed, and Islamic Studies courses.
+    const systemPrompt = `${langInstruction}You are an expert Islamic education curriculum designer. Create structured, pedagogically sound syllabi for Arabic, Quran, Tajweed, and Islamic Studies courses.
 
 Generate a weekly syllabus as a JSON array. Return ONLY the raw JSON array with no markdown, no backticks, no preamble. Each element:
 {

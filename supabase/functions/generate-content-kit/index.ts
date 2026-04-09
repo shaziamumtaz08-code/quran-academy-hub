@@ -1,4 +1,5 @@
 import { corsHeaders } from "../_shared/cors.ts";
+import { getLanguageInstruction } from "../_shared/languageInstruction.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -6,7 +7,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { contentType, sessionPlan, courseName, subject, level, questionCount, questionTypes, difficulty, exerciseTypes } = await req.json();
+    const { contentType, sessionPlan, courseName, subject, level, questionCount, questionTypes, difficulty, exerciseTypes, language } = await req.json();
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) {
@@ -15,6 +16,7 @@ Deno.serve(async (req) => {
       });
     }
 
+    const langInstruction = getLanguageInstruction(language);
     let systemPrompt = "";
     let userPrompt = "";
     let maxTokens = 4000;
@@ -25,7 +27,7 @@ Deno.serve(async (req) => {
 
     switch (contentType) {
       case "slides": {
-        systemPrompt = "You are an educational slide designer for an Islamic academy. Create clean, minimal slide content. Return ONLY a raw JSON array, no markdown, no backticks.";
+        systemPrompt = `${langInstruction}You are an educational slide designer for an Islamic academy. Create clean, minimal slide content. Return ONLY a raw JSON array, no markdown, no backticks.`;
         userPrompt = `Generate ${activities.length || 6} presentation slides for a ${level || 'Intermediate'} ${subject || 'Arabic'} session titled '${sessionTitle}'.
 Activities: ${JSON.stringify(activities)}
 
@@ -49,7 +51,7 @@ Return ONLY the JSON array.`;
         const qCount = questionCount || 10;
         const qTypes = questionTypes?.join(", ") || "MCQ, Short answer, True/False";
         const diff = difficulty || "Mixed";
-        systemPrompt = "You are an Islamic education assessment designer. Create pedagogically sound quiz questions. Return ONLY a raw JSON array, no markdown, no backticks.";
+        systemPrompt = `${langInstruction}You are an Islamic education assessment designer. Create pedagogically sound quiz questions. Return ONLY a raw JSON array, no markdown, no backticks.`;
         userPrompt = `Create ${qCount} quiz questions for a ${level || 'Intermediate'} ${subject || 'Arabic'} session on '${sessionTitle}'.
 Session objectives: ${sessionObjective}
 Activities: ${JSON.stringify(activities.map((a: any) => a.title + ': ' + a.description))}
@@ -71,7 +73,7 @@ Return ONLY the JSON array.`;
       }
 
       case "flashcards": {
-        systemPrompt = "Extract vocabulary and key phrases from this lesson for Arabic language flashcards. Include transliteration. Return ONLY a raw JSON array, no markdown, no backticks.";
+        systemPrompt = `${langInstruction}Extract vocabulary and key phrases from this lesson for Arabic language flashcards. Include transliteration. Return ONLY a raw JSON array, no markdown, no backticks.`;
         userPrompt = `Generate flashcards for vocabulary in this ${level || 'Intermediate'} Arabic session on '${sessionTitle}'.
 Session activities: ${JSON.stringify(activities.map((a: any) => a.title + ': ' + a.description))}
 
@@ -91,7 +93,7 @@ Include 10-15 cards covering all key vocabulary. Return ONLY the JSON array.`;
 
       case "worksheet": {
         const exTypes = exerciseTypes?.join(", ") || "fill_blank, translate_to_arabic, match, short_answer";
-        systemPrompt = "You are a worksheet designer for Islamic education. Create printable exercises. Return ONLY raw JSON, no markdown, no backticks.";
+        systemPrompt = `${langInstruction}You are a worksheet designer for Islamic education. Create printable exercises. Return ONLY raw JSON, no markdown, no backticks.`;
         userPrompt = `Create a printable worksheet for ${level || 'Intermediate'} ${subject || 'Arabic'} students on '${sessionTitle}'.
 Objectives: ${sessionObjective}
 Activities: ${JSON.stringify(activities.map((a: any) => a.title + ': ' + a.description))}

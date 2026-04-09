@@ -1,4 +1,5 @@
 import { corsHeaders } from "../_shared/cors.ts";
+import { getLanguageInstruction } from "../_shared/languageInstruction.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -6,7 +7,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { assistType, activityTitle, activityDesc, subject, level, courseName, userMessage } = await req.json();
+    const { assistType, activityTitle, activityDesc, subject, level, courseName, userMessage, language } = await req.json();
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) {
@@ -15,32 +16,33 @@ Deno.serve(async (req) => {
       });
     }
 
+    const langInstruction = getLanguageInstruction(language);
     let systemPrompt = "";
     let userPrompt = "";
     let maxTokens = 300;
 
     switch (assistType) {
       case "drill":
-        systemPrompt = "You are an expert classroom activity designer for Islamic education.";
+        systemPrompt = `${langInstruction}You are an expert classroom activity designer for Islamic education.`;
         userPrompt = `Suggest one 3-minute classroom drill for a ${level || 'Intermediate'} ${subject || 'Arabic'} class on '${activityTitle}'. The drill should require zero materials and work in a live online class. Format: [Drill name]: [2-sentence teacher instruction].`;
         maxTokens = 200;
         break;
 
       case "rephrase":
-        systemPrompt = "You are a teaching assistant helping explain concepts in simpler ways.";
+        systemPrompt = `${langInstruction}You are a teaching assistant helping explain concepts in simpler ways.`;
         userPrompt = `A teacher just explained: '${activityDesc}'. Some students didn't understand. Give one alternative explanation using a different analogy or approach. Keep it under 80 words.`;
         maxTokens = 200;
         break;
 
       case "comprehension":
-        systemPrompt = "You are an assessment designer for Islamic education classes.";
+        systemPrompt = `${langInstruction}You are an assessment designer for Islamic education classes.`;
         userPrompt = `Give 3 quick verbal comprehension check questions for '${activityTitle}'. Questions should be answerable in one sentence. Label them Easy / Medium / Hard.`;
         maxTokens = 200;
         break;
 
       case "assistant":
       default:
-        systemPrompt = `You are an assistant for a teacher currently running a live ${subject || 'Islamic Studies'} class at ${level || 'Intermediate'} level. Current activity: ${activityTitle}. Description: ${activityDesc || 'N/A'}. Course: ${courseName || 'N/A'}. Provide brief, immediately actionable teaching suggestions. Maximum 150 words.`;
+        systemPrompt = `${langInstruction}You are an assistant for a teacher currently running a live ${subject || 'Islamic Studies'} class at ${level || 'Intermediate'} level. Current activity: ${activityTitle}. Description: ${activityDesc || 'N/A'}. Course: ${courseName || 'N/A'}. Provide brief, immediately actionable teaching suggestions. Maximum 150 words.`;
         userPrompt = userMessage || "Give me a quick teaching tip for this activity.";
         maxTokens = 300;
         break;

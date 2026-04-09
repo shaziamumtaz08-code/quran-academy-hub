@@ -1,4 +1,5 @@
 import { corsHeaders } from "../_shared/cors.ts";
+import { getLanguageInstruction } from "../_shared/languageInstruction.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -9,7 +10,8 @@ Deno.serve(async (req) => {
     const {
       courseName, subject, level, weekNumber, weekTopic,
       weekObjectives, sessionNumber, sessionDay,
-      previousSessionSummary, sessionsPerWeek, sessionDurationMinutes
+      previousSessionSummary, sessionsPerWeek, sessionDurationMinutes,
+      language
     } = await req.json();
 
     if (!courseName || !weekTopic) {
@@ -28,8 +30,9 @@ Deno.serve(async (req) => {
     }
 
     const duration = sessionDurationMinutes || 45;
+    const langInstruction = getLanguageInstruction(language);
 
-    const systemPrompt = `You are an expert Islamic education lesson planner. Create detailed, pedagogically structured session plans following the I-Do/We-Do/You-Do progression. Return ONLY raw JSON, no markdown, no backticks, no preamble.`;
+    const systemPrompt = `${langInstruction}You are an expert Islamic education lesson planner. Create detailed, pedagogically structured session plans following the I-Do/We-Do/You-Do progression. Return ONLY raw JSON, no markdown, no backticks, no preamble.`;
 
     const userPrompt = `Plan session ${sessionNumber || 1} of week ${weekNumber || 1} for a ${level || 'Intermediate'} ${subject || 'Islamic Studies'} course.
 Week topic: ${weekTopic}
