@@ -1544,6 +1544,9 @@ function FlashcardItem({ card, template }: { card: Flashcard; template?: VisualT
   const [flipped, setFlipped] = useState(false);
   const posColors = { noun: '#1a7340', verb: '#b85c1a', phrase: '#534AB7', expression: '#b42a2a' };
   const posColor = posColors[card.partOfSpeech as keyof typeof posColors] || '#4a90d9';
+  const frontBg = template ? `linear-gradient(135deg, ${template.colors.primary}, ${template.colors.accent}44)` : 'linear-gradient(135deg, #0f2044, #1a3a6c)';
+  const frontBorder = template ? `1px solid ${template.colors.accent}55` : '1px solid rgba(74,144,217,0.3)';
+  const accentForFront = template?.colors?.accent || '#4a90d9';
 
   return (
     <div
@@ -1551,10 +1554,8 @@ function FlashcardItem({ card, template }: { card: Flashcard; template?: VisualT
       className="relative rounded-xl overflow-hidden cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-lg group"
       style={{
         minHeight: 160,
-        background: !flipped
-          ? 'linear-gradient(135deg, #0f2044, #1a3a6c)'
-          : 'linear-gradient(135deg, #ffffff, #f0faf4)',
-        border: !flipped ? '1px solid rgba(74,144,217,0.3)' : '1px solid #d0e8d9',
+        background: !flipped ? frontBg : 'linear-gradient(135deg, #ffffff, #f0faf4)',
+        border: !flipped ? frontBorder : '1px solid #d0e8d9',
       }}
     >
       {/* Decorative circle */}
