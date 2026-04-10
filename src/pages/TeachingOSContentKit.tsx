@@ -1372,8 +1372,14 @@ const SLIDE_THEMES: Record<string, {
 
 const DEFAULT_THEME = SLIDE_THEMES.Input;
 
-function SlideContent({ slide, courseName, slideIndex, totalSlides }: { slide: SlideData; courseName?: string; slideIndex?: number; totalSlides?: number }) {
-  const theme = SLIDE_THEMES[slide.phase] || DEFAULT_THEME;
+function SlideContent({ slide, courseName, slideIndex, totalSlides, template }: { slide: SlideData; courseName?: string; slideIndex?: number; totalSlides?: number; template?: VisualTemplate }) {
+  const tplOverride = template?.slideOverrides?.[slide.phase];
+  const theme = tplOverride ? {
+    bg: tplOverride.bg, accent: tplOverride.accent, accentLight: tplOverride.bg,
+    titleColor: tplOverride.titleColor, bodyColor: tplOverride.bodyColor,
+    bulletColor: tplOverride.accent, badgeBg: `${tplOverride.accent}22`, badgeText: tplOverride.accent,
+    gradientFrom: tplOverride.gradientFrom, gradientTo: tplOverride.gradientTo,
+  } : (SLIDE_THEMES[slide.phase] || DEFAULT_THEME);
   const isDark = ['Opening', 'Wrap-up'].includes(slide.phase);
   const isArabicLayout = slide.layoutType === 'arabic-vocab' || slide.layoutType === 'two-column-vocab';
 
