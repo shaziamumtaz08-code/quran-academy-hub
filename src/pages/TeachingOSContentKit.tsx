@@ -1571,7 +1571,7 @@ function FlashcardItem({ card, template }: { card: Flashcard; template?: VisualT
             style={{ fontFamily: "'Noto Naskh Arabic', 'Amiri', serif" }}>
             {card.arabic}
           </div>
-          <span className="text-[9px] uppercase tracking-[0.15em] text-[#4a90d9] opacity-70 mt-1">
+          <span className="text-[9px] uppercase tracking-[0.15em] opacity-70 mt-1" style={{ color: accentForFront }}>
             Tap to reveal
           </span>
         </div>
