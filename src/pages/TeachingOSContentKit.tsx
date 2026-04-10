@@ -1023,9 +1023,174 @@ const TeachingOSContentKit: React.FC = () => {
               )
             )}
 
-            {/* LIBRARY placeholders */}
-            {["materials", "templates", "upload"].includes(activeTool) && (
-              <EmptyState icon={<FolderOpen className="w-9 h-9 stroke-[#d0d4dc]" />} title={`${activeTool.charAt(0).toUpperCase() + activeTool.slice(1)}`} sub="Coming soon" />
+            {/* LIBRARY: All Materials */}
+            {activeTool === "materials" && (
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-[14px] font-bold text-[#0f2044]">All Materials</h3>
+                    <p className="text-[11px] text-[#7a7f8a]">Generated content and uploaded files for this session</p>
+                  </div>
+                  <Button size="sm" variant="outline" className="text-[11px] h-7" onClick={loadLibraryAssets} disabled={libraryLoading}>
+                    {libraryLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : "Refresh"}
+                  </Button>
+                </div>
+
+                {/* Generated content summary */}
+                <div className="mb-4">
+                  <p className="text-[10px] font-semibold text-[#aab0bc] uppercase tracking-wider mb-2">Generated Content</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { label: "Slides", count: slides.length, icon: "📊", tool: "slides" as ActiveTool },
+                      { label: "Quiz Questions", count: quizQuestions.length, icon: "❓", tool: "quiz" as ActiveTool },
+                      { label: "Flashcards", count: flashcards.length, icon: "🃏", tool: "flashcards" as ActiveTool },
+                      { label: "Worksheet", count: worksheetExercises.length > 0 ? 1 : 0, icon: "📝", tool: "worksheet" as ActiveTool },
+                      { label: "Infographic", count: infographic ? 1 : 0, icon: "📊", tool: "infographic" as ActiveTool },
+                      { label: "Mind Map", count: mindmap ? 1 : 0, icon: "🧠", tool: "mindmap" as ActiveTool },
+                    ].map(item => (
+                      <button
+                        key={item.label}
+                        onClick={() => setActiveTool(item.tool)}
+                        className="flex items-center gap-2 p-2.5 rounded-lg border border-[#e8e9eb] hover:bg-[#f4f5f7] text-left transition-colors"
+                      >
+                        <span className="text-[16px]">{item.icon}</span>
+                        <div>
+                          <div className="text-[11px] font-medium text-[#0f2044]">{item.label}</div>
+                          <div className="text-[10px] text-[#aab0bc]">{item.count} {item.count === 1 ? 'item' : 'items'}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Uploaded files */}
+                <div>
+                  <p className="text-[10px] font-semibold text-[#aab0bc] uppercase tracking-wider mb-2">Uploaded Files</p>
+                  {libraryLoading ? (
+                    <div className="flex items-center justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-[#aab0bc]" /></div>
+                  ) : libraryAssets.length === 0 ? (
+                    <div className="text-center py-6 border border-dashed border-[#d0d4dc] rounded-lg">
+                      <Upload className="w-6 h-6 text-[#d0d4dc] mx-auto mb-2" />
+                      <p className="text-[11px] text-[#aab0bc]">No files uploaded yet</p>
+                      <Button size="sm" variant="outline" className="mt-2 text-[11px] h-7" onClick={() => setActiveTool("upload")}>
+                        Upload a file
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {libraryAssets.map(asset => (
+                        <div key={asset.id} className="flex items-center gap-2 p-2 rounded-lg border border-[#e8e9eb] hover:bg-[#f9f9fb] group">
+                          <span className="text-[14px]">
+                            {asset.asset_type === 'image' ? '🖼️' : asset.asset_type === 'document' ? '📄' : asset.asset_type === 'video' ? '🎥' : asset.asset_type === 'presentation' ? '📊' : '📎'}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[11px] font-medium text-[#0f2044] truncate">{asset.title}</div>
+                            <div className="text-[9px] text-[#aab0bc]">{asset.asset_type} · {new Date(asset.created_at).toLocaleDateString()}</div>
+                          </div>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {asset.content_url && (
+                              <a href={asset.content_url} target="_blank" rel="noopener noreferrer" className="p-1 rounded hover:bg-[#e8e9eb]">
+                                <Download className="w-3 h-3 text-[#7a7f8a]" />
+                              </a>
+                            )}
+                            <button onClick={() => deleteLibraryAsset(asset.id)} className="p-1 rounded hover:bg-red-50">
+                              <X className="w-3 h-3 text-red-400" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* LIBRARY: Templates */}
+            {activeTool === "templates" && (
+              <div className="p-4">
+                <h3 className="text-[14px] font-bold text-[#0f2044] mb-1">Visual Templates</h3>
+                <p className="text-[11px] text-[#7a7f8a] mb-4">Choose a template to style all generated content</p>
+                <div className="space-y-2">
+                  {TEMPLATE_KEYS.map(key => {
+                    const tpl = VISUAL_TEMPLATES[key];
+                    const isActive = activeTemplate === key;
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => handleTemplateChange(key)}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                          isActive ? 'border-[#1a56b0] bg-[#eef2fa] ring-1 ring-[#1a56b0]/30' : 'border-[#e8e9eb] hover:border-[#c0c4cc]'
+                        }`}
+                      >
+                        {/* Color preview */}
+                        <div className="flex gap-0.5 shrink-0">
+                          <div className="w-4 h-8 rounded-l" style={{ background: tpl.colors.primary }} />
+                          <div className="w-4 h-8" style={{ background: tpl.colors.accent }} />
+                          <div className="w-4 h-8 rounded-r" style={{ background: tpl.colors.bg, border: '1px solid #e8e9eb' }} />
+                        </div>
+                        <div className="text-left flex-1">
+                          <div className="text-[12px] font-semibold text-[#0f2044] flex items-center gap-1.5">
+                            {tpl.label}
+                            {isActive && <Check className="w-3.5 h-3.5 text-[#1a56b0]" />}
+                          </div>
+                          <div className="text-[10px] text-[#7a7f8a]">{tpl.desc}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* LIBRARY: Upload File */}
+            {activeTool === "upload" && (
+              <div className="p-4">
+                <h3 className="text-[14px] font-bold text-[#0f2044] mb-1">Upload File</h3>
+                <p className="text-[11px] text-[#7a7f8a] mb-4">Upload supplementary materials for this session</p>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                  accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.svg,.mp4,.webm,.mov,.txt,.md"
+                />
+
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-[#c0c4cc] rounded-xl p-8 text-center cursor-pointer hover:border-[#1a56b0] hover:bg-[#f8faff] transition-colors"
+                >
+                  {uploadingFile ? (
+                    <Loader2 className="w-8 h-8 animate-spin text-[#1a56b0] mx-auto mb-2" />
+                  ) : (
+                    <Upload className="w-8 h-8 text-[#c0c4cc] mx-auto mb-2" />
+                  )}
+                  <p className="text-[13px] font-medium text-[#0f2044]">
+                    {uploadingFile ? 'Uploading...' : 'Click to upload'}
+                  </p>
+                  <p className="text-[10px] text-[#aab0bc] mt-1">PDF, PPTX, images, videos · Max 20MB</p>
+                </div>
+
+                {/* Recent uploads */}
+                {libraryAssets.length > 0 && (
+                  <div className="mt-4">
+                    <p className="text-[10px] font-semibold text-[#aab0bc] uppercase tracking-wider mb-2">Recent Uploads</p>
+                    <div className="space-y-1.5">
+                      {libraryAssets.slice(0, 5).map(asset => (
+                        <div key={asset.id} className="flex items-center gap-2 p-2 rounded-lg border border-[#e8e9eb]">
+                          <span className="text-[14px]">
+                            {asset.asset_type === 'image' ? '🖼️' : asset.asset_type === 'document' ? '📄' : '📎'}
+                          </span>
+                          <span className="text-[11px] text-[#0f2044] truncate flex-1">{asset.title}</span>
+                          <button onClick={() => deleteLibraryAsset(asset.id)} className="p-1 rounded hover:bg-red-50">
+                            <X className="w-3 h-3 text-red-400" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
