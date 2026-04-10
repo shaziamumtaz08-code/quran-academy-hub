@@ -1437,6 +1437,44 @@ export type Database = {
           },
         ]
       }
+      course_eligibility_rules: {
+        Row: {
+          course_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          rule_type: Database["public"]["Enums"]["eligibility_rule_type"]
+          rule_value: Json
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          rule_type: Database["public"]["Enums"]["eligibility_rule_type"]
+          rule_value?: Json
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          rule_type?: Database["public"]["Enums"]["eligibility_rule_type"]
+          rule_value?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_eligibility_rules_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_enrollments: {
         Row: {
           course_id: string
@@ -2368,6 +2406,7 @@ export type Database = {
           tags: string[] | null
           teacher_id: string
           updated_at: string
+          webhook_secret: string | null
           website_enabled: boolean | null
           whatsapp_channel_link: string | null
         }
@@ -2398,6 +2437,7 @@ export type Database = {
           tags?: string[] | null
           teacher_id: string
           updated_at?: string
+          webhook_secret?: string | null
           website_enabled?: boolean | null
           whatsapp_channel_link?: string | null
         }
@@ -2428,6 +2468,7 @@ export type Database = {
           tags?: string[] | null
           teacher_id?: string
           updated_at?: string
+          webhook_secret?: string | null
           website_enabled?: boolean | null
           whatsapp_channel_link?: string | null
         }
@@ -5272,6 +5313,8 @@ export type Database = {
           course_id: string
           created_at: string
           data: Json
+          eligibility_notes: string | null
+          eligibility_status: string | null
           form_id: string
           id: string
           notes: string | null
@@ -5285,6 +5328,8 @@ export type Database = {
           course_id: string
           created_at?: string
           data?: Json
+          eligibility_notes?: string | null
+          eligibility_status?: string | null
           form_id: string
           id?: string
           notes?: string | null
@@ -5298,6 +5343,8 @@ export type Database = {
           course_id?: string
           created_at?: string
           data?: Json
+          eligibility_notes?: string | null
+          eligibility_status?: string | null
           form_id?: string
           id?: string
           notes?: string | null
@@ -8475,6 +8522,10 @@ export type Database = {
       branch_type: "online" | "onsite"
       discount_type: "percentage" | "fixed_amount"
       division_model: "one_to_one" | "group"
+      eligibility_rule_type:
+        | "prerequisite_course"
+        | "min_attendance"
+        | "must_pass_exam"
       exam_tenure: "weekly" | "monthly" | "quarterly" | "yearly"
       grading_style: "numeric" | "rubric"
       invoice_status:
@@ -8670,6 +8721,11 @@ export const Constants = {
       branch_type: ["online", "onsite"],
       discount_type: ["percentage", "fixed_amount"],
       division_model: ["one_to_one", "group"],
+      eligibility_rule_type: [
+        "prerequisite_course",
+        "min_attendance",
+        "must_pass_exam",
+      ],
       exam_tenure: ["weekly", "monthly", "quarterly", "yearly"],
       grading_style: ["numeric", "rubric"],
       invoice_status: [
