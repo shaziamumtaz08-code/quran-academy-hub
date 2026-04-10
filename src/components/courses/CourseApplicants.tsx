@@ -16,9 +16,10 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import {
   Search, Eye, Clock, CheckCircle2, XCircle, UserPlus, Loader2,
-  AlertTriangle, RefreshCcw, Users
+  AlertTriangle, RefreshCcw, Users, FileSpreadsheet
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { CourseApplicantImport } from './CourseApplicantImport';
 
 interface Submission {
   id: string;
@@ -61,6 +62,7 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
   const [enrolling, setEnrolling] = useState(false);
   const [errors, setErrors] = useState<EnrollError[]>([]);
   const [addOpen, setAddOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [manualName, setManualName] = useState('');
   const [manualEmail, setManualEmail] = useState('');
   const [activeTab, setActiveTab] = useState('applicants');
@@ -309,9 +311,14 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
               </TabsTrigger>
             )}
           </TabsList>
-          <Button size="sm" className="gap-1.5" onClick={() => setAddOpen(true)}>
-            <UserPlus className="h-4 w-4" /> Add Student
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setImportOpen(true)}>
+              <FileSpreadsheet className="h-4 w-4" /> Import CSV
+            </Button>
+            <Button size="sm" className="gap-1.5" onClick={() => setAddOpen(true)}>
+              <UserPlus className="h-4 w-4" /> Add Student
+            </Button>
+          </div>
         </div>
 
         <TabsContent value="applicants" className="mt-4 space-y-4">
@@ -527,6 +534,14 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* CSV Import Dialog */}
+      <CourseApplicantImport
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        courseId={courseId}
+        onComplete={() => queryClient.invalidateQueries({ queryKey: ['registration-submissions', courseId] })}
+      />
     </div>
   );
 }

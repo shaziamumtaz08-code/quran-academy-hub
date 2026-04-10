@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { RegistrationFormEditor } from '@/components/courses/RegistrationFormEditor';
 import { CourseApplicants } from '@/components/courses/CourseApplicants';
+import { CourseEligibilitySettings } from '@/components/courses/CourseEligibilitySettings';
 import { CourseMarketingTab } from '@/components/courses/CourseMarketingTab';
 import { CourseClassesTab } from '@/components/courses/CourseClassesTab';
 import { CourseFinanceTab } from '@/components/courses/CourseFinanceTab';
@@ -909,6 +910,11 @@ export default function CourseBuilder() {
                 </Button>
               </CardContent>
             </Card>
+
+            {/* Eligibility Rules */}
+            <div className="mt-6">
+              <CourseEligibilitySettings courseId={courseId!} />
+            </div>
           </TabsContent>
 
           {/* ═══ WEBSITE TAB ═══ */}
