@@ -981,6 +981,45 @@ const TeachingOSContentKit: React.FC = () => {
       });
     }
 
+    // Infographic section
+    if (infographic) {
+      html += `<h2>📊 Infographic: ${infographic.title}</h2>`;
+      html += `<div style="text-align:center;font-size:12px;color:#7a7f8a;margin-bottom:10px;">${infographic.subtitle}</div>`;
+      html += `<div style="background:#f0f4ff;border:1px solid #b5d0f8;border-radius:8px;padding:12px;text-align:center;margin-bottom:12px;font-size:14px;font-weight:600;color:#1a56b0;">${infographic.centerFact}</div>`;
+      html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">`;
+      infographic.sections.forEach(sec => {
+        html += `<div style="border:1px solid #e8e9eb;border-radius:8px;padding:10px;page-break-inside:avoid;">`;
+        html += `<div style="font-size:13px;font-weight:600;margin-bottom:4px;">${sec.icon} ${sec.heading}</div>`;
+        html += `<ul style="padding-left:16px;margin:0;">${sec.points.map(p => `<li style="font-size:11px;margin-bottom:2px;">${p}</li>`).join("")}</ul>`;
+        if (sec.highlight) html += `<div style="font-size:11px;color:#b85c1a;margin-top:6px;font-weight:500;" dir="auto">★ ${sec.highlight}</div>`;
+        html += `</div>`;
+      });
+      html += `</div>`;
+      html += `<div style="text-align:center;font-size:11px;color:#7a7f8a;font-style:italic;margin-top:10px;">${infographic.footer}</div>`;
+    }
+
+    // Mind Map section
+    if (mindmap) {
+      html += `<h2>🧠 Mind Map: ${mindmap.centralTopic}</h2>`;
+      html += `<div style="text-align:center;margin-bottom:14px;"><span style="background:#0f2044;color:white;padding:8px 20px;border-radius:20px;font-size:14px;font-weight:700;">${mindmap.centralTopic}</span></div>`;
+      html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">`;
+      mindmap.branches.forEach(branch => {
+        html += `<div style="border:2px solid ${branch.color};border-radius:8px;padding:10px;page-break-inside:avoid;">`;
+        html += `<div style="font-size:13px;font-weight:700;color:#0f2044;margin-bottom:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${branch.color};margin-right:6px;"></span>${branch.label}</div>`;
+        branch.children.forEach(child => {
+          html += `<div style="margin-left:14px;margin-bottom:4px;">`;
+          html += `<div style="font-size:12px;font-weight:500;color:#0f2044;">${child.label}</div>`;
+          if (child.detail) html += `<div style="font-size:10px;color:#7a7f8a;font-style:italic;" dir="auto">${child.detail}</div>`;
+          child.children?.forEach(leaf => {
+            html += `<div style="margin-left:12px;font-size:11px;color:#4a5264;">• ${leaf.label}${leaf.detail ? ` <span style="font-size:9px;color:#aab0bc;font-style:italic;">${leaf.detail}</span>` : ''}</div>`;
+          });
+          html += `</div>`;
+        });
+        html += `</div>`;
+      });
+      html += `</div>`;
+    }
+
     html += `</body></html>`;
     printWindow.document.write(html);
     printWindow.document.close();
