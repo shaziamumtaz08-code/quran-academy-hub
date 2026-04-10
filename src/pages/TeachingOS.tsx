@@ -601,34 +601,62 @@ export default function TeachingOS() {
                 <p className="text-[10px] text-[#78350f] mb-2">Resume from existing work instead of creating a duplicate:</p>
                 <div className="space-y-1.5">
                   {existingSyllabi.map((s: any) => (
-                    <button
-                      key={s.id}
-                      onClick={() => navigate(`/teaching-os?syllabus_id=${s.id}`)}
-                      className={`w-full text-left bg-white border rounded-[7px] px-3 py-2 hover:bg-[#fefce8] transition-colors ${syllabusId === s.id ? 'border-[#1a56b0] bg-[#eef2fa]' : 'border-[#e5e7eb]'}`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-medium text-[#0f2044] truncate">{s.course_name}</span>
-                        {syllabusId === s.id && <span className="text-[9px] bg-[#1a56b0] text-white px-1.5 py-0.5 rounded-full">Current</span>}
-                      </div>
-                      <div className="flex items-center gap-2 mt-1 text-[10px] text-[#7a7f8a]">
-                        <span>{s.subject} · {s.level}</span>
-                        <span>·</span>
-                        <span>{s.duration_weeks || '?'}w × {s.sessions_week || '?'}/wk</span>
-                        <span>·</span>
-                        <span className={s.session_count > 0 ? 'text-[#1a7340] font-medium' : ''}>
-                          {s.session_count} session{s.session_count !== 1 ? 's' : ''}
-                        </span>
-                        {s.kit_count > 0 && (
-                          <>
-                            <span>·</span>
-                            <span className="text-[#1a56b0] font-medium">{s.kit_count} kit{s.kit_count !== 1 ? 's' : ''}</span>
-                          </>
-                        )}
-                      </div>
-                      <div className="text-[9px] text-[#aab0bc] mt-0.5">
-                        Created {new Date(s.created_at).toLocaleDateString()}
-                      </div>
-                    </button>
+                    <div key={s.id} className={`relative w-full text-left bg-white border rounded-[7px] px-3 py-2 hover:bg-[#fefce8] transition-colors ${syllabusId === s.id ? 'border-[#1a56b0] bg-[#eef2fa]' : 'border-[#e5e7eb]'}`}>
+                      <button
+                        onClick={() => navigate(`/teaching-os?syllabus_id=${s.id}`)}
+                        className="w-full text-left"
+                      >
+                        <div className="flex items-center justify-between pr-6">
+                          <span className="text-[11px] font-medium text-[#0f2044] truncate">{s.course_name}</span>
+                          {syllabusId === s.id && <span className="text-[9px] bg-[#1a56b0] text-white px-1.5 py-0.5 rounded-full">Current</span>}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1 text-[10px] text-[#7a7f8a]">
+                          <span>{s.subject} · {s.level}</span>
+                          <span>·</span>
+                          <span>{s.duration_weeks || '?'}w × {s.sessions_week || '?'}/wk</span>
+                          <span>·</span>
+                          <span className={s.session_count > 0 ? 'text-[#1a7340] font-medium' : ''}>
+                            {s.session_count} session{s.session_count !== 1 ? 's' : ''}
+                          </span>
+                          {s.kit_count > 0 && (
+                            <>
+                              <span>·</span>
+                              <span className="text-[#1a56b0] font-medium">{s.kit_count} kit{s.kit_count !== 1 ? 's' : ''}</span>
+                            </>
+                          )}
+                        </div>
+                        <div className="text-[9px] text-[#aab0bc] mt-0.5">
+                          Created {new Date(s.created_at).toLocaleDateString()}
+                        </div>
+                      </button>
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (!confirm(`Delete this syllabus "${s.course_name}" and all its session plans & content kits? This cannot be undone.`)) return;
+                          try {
+                            const { data: sessions } = await supabase.from('session_plans').select('id').eq('syllabus_id', s.id);
+                            if (sessions && sessions.length > 0) {
+                              const ids = sessions.map((sp: any) => sp.id);
+                              await supabase.from('content_kits').delete().in('session_plan_id', ids);
+                              await supabase.from('ai_assists').delete().in('session_plan_id', ids);
+                            }
+                            await supabase.from('session_plans').delete().eq('syllabus_id', s.id);
+                            await (supabase.from('syllabi') as any).delete().eq('id', s.id);
+                            queryClient.invalidateQueries({ queryKey: ['teaching-os-existing-syllabi', selectedCourseId] });
+                            if (syllabusId === s.id) {
+                              navigate('/teaching-os', { replace: true });
+                            }
+                            toast.success('Syllabus deleted');
+                          } catch (err) {
+                            toast.error('Failed to delete');
+                          }
+                        }}
+                        className="absolute top-2 right-2 p-1 rounded hover:bg-red-100 text-[#aab0bc] hover:text-red-600 transition-colors"
+                        title="Delete syllabus"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   ))}
                 </div>
                 <div className="mt-2 pt-2 border-t border-[#fcd34d]/50">
