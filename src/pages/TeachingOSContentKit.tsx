@@ -914,7 +914,7 @@ const TeachingOSContentKit: React.FC = () => {
                 <div className="max-w-[800px] mx-auto">
                   {/* Central topic */}
                   <div className="flex justify-center mb-6">
-                    <div className="bg-[#0f2044] text-white rounded-full px-6 py-3 text-[15px] font-bold shadow-lg">
+                    <div className="text-white rounded-full px-6 py-3 text-[15px] font-bold shadow-lg" style={{ background: template.colors.primary }}>
                       {mindmap.centralTopic}
                     </div>
                   </div>
