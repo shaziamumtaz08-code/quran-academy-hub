@@ -1508,7 +1508,7 @@ function QuizCard({ q, index, total, showAnswer, template }: { q: QuizQuestion; 
   const diffColor = q.difficulty === "easy" ? "text-green-700 bg-green-50" : q.difficulty === "hard" ? "text-red-700 bg-red-50" : "text-amber-700 bg-amber-50";
   return (
     <div className="bg-white border border-[#e8e9eb] rounded-[10px] p-3.5">
-      <div className="text-[10px] uppercase font-medium text-[#1a56b0] mb-1.5">Question {index + 1} of {total} · {q.type.replace("_", " ")}</div>
+      <div className="text-[10px] uppercase font-medium mb-1.5" style={{ color: accentColor }}>Question {index + 1} of {total} · {q.type.replace("_", " ")}</div>
       <div className="text-[13px] font-medium text-[#0f2044] mb-2 leading-snug">{q.question}</div>
       {q.type === "mcq" && q.options && (
         <div className="space-y-1.5 mb-2">
