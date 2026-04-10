@@ -798,10 +798,10 @@ const TeachingOSContentKit: React.FC = () => {
           <div className="w-[240px] bg-white border-l border-[#e8e9eb] flex flex-col shrink-0">
             <div className="p-3 border-b border-[#e8e9eb]">
               <div className="text-[12px] font-medium text-[#0f2044]">
-                {activeTool === "slides" ? "Slide deck" : activeTool === "quiz" ? "Questions" : activeTool === "flashcards" ? "Cards" : "Exercises"}
+                {activeTool === "slides" ? "Slide deck" : activeTool === "quiz" ? "Questions" : activeTool === "flashcards" ? "Cards" : activeTool === "infographic" ? "Infographic" : activeTool === "mindmap" ? "Mind Map" : "Exercises"}
               </div>
               <div className="text-[11px] text-[#7a7f8a]">
-                {activeTool === "slides" ? `${slides.length} slides generated` : activeTool === "quiz" ? `${quizQuestions.length} questions` : activeTool === "flashcards" ? `${flashcards.length} cards` : `${worksheetExercises.length} exercises`}
+                {activeTool === "slides" ? `${slides.length} slides generated` : activeTool === "quiz" ? `${quizQuestions.length} questions` : activeTool === "flashcards" ? `${flashcards.length} cards` : activeTool === "infographic" ? (infographic ? `${infographic.sections.length} sections` : "Not generated") : activeTool === "mindmap" ? (mindmap ? `${mindmap.branches.length} branches` : "Not generated") : `${worksheetExercises.length} exercises`}
               </div>
             </div>
             <div className="flex-1 overflow-y-auto">
@@ -835,6 +835,19 @@ const TeachingOSContentKit: React.FC = () => {
                 <button key={i} className="w-full flex items-center gap-2 px-3 py-2 text-left border-b border-[#f0f1f3] hover:bg-[#f9f9fb]">
                   <span className="text-[10px] font-medium text-[#aab0bc]">{i + 1}</span>
                   <span className="text-[11px] text-[#0f2044] truncate flex-1">{ex.title}</span>
+                </button>
+              ))}
+              {activeTool === "infographic" && infographic?.sections.map((sec, i) => (
+                <button key={i} className="w-full flex items-center gap-2 px-3 py-2 text-left border-b border-[#f0f1f3] hover:bg-[#f9f9fb]">
+                  <span className="text-[14px]">{sec.icon}</span>
+                  <span className="text-[11px] text-[#0f2044] truncate flex-1">{sec.heading}</span>
+                </button>
+              ))}
+              {activeTool === "mindmap" && mindmap?.branches.map((b, i) => (
+                <button key={i} className="w-full flex items-center gap-2 px-3 py-2 text-left border-b border-[#f0f1f3] hover:bg-[#f9f9fb]">
+                  <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: b.color }} />
+                  <span className="text-[11px] text-[#0f2044] truncate flex-1">{b.label}</span>
+                  <span className="text-[9px] text-[#aab0bc]">{b.children.length}</span>
                 </button>
               ))}
             </div>
