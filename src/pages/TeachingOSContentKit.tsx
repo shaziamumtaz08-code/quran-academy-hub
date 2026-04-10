@@ -186,6 +186,8 @@ const TeachingOSContentKit: React.FC = () => {
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [worksheetExercises, setWorksheetExercises] = useState<WorksheetExercise[]>([]);
   const [worksheetTitle, setWorksheetTitle] = useState("");
+  const [infographic, setInfographic] = useState<InfographicData | null>(null);
+  const [mindmap, setMindmap] = useState<MindMapData | null>(null);
 
   // Generation state
   const [generating, setGenerating] = useState<Record<string, boolean>>({});
