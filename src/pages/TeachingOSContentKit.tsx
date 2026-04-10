@@ -11,7 +11,7 @@ import {
   Star, ChevronRight, Download, Share2, Presentation, HelpCircle,
   BookOpen, Layers, FileText, Upload, FolderOpen, LayoutTemplate,
   Loader2, Square, Check, Sparkles, Printer, Shuffle, ArrowLeft,
-  ArrowRight, X
+  ArrowRight, X, BarChart3, GitBranch
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
@@ -86,7 +86,39 @@ interface WorksheetExercise {
   items: { question: string; answer: string; blankedSentence?: string | null }[];
 }
 
-type ActiveTool = "slides" | "quiz" | "flashcards" | "worksheet" | "materials" | "templates" | "upload";
+interface InfographicSection {
+  heading: string;
+  icon: string;
+  points: string[];
+  highlight?: string | null;
+}
+
+interface InfographicData {
+  title: string;
+  subtitle: string;
+  sections: InfographicSection[];
+  centerFact: string;
+  footer: string;
+}
+
+interface MindMapNode {
+  label: string;
+  detail?: string | null;
+  children?: MindMapNode[];
+}
+
+interface MindMapBranch {
+  label: string;
+  color: string;
+  children: MindMapNode[];
+}
+
+interface MindMapData {
+  centralTopic: string;
+  branches: MindMapBranch[];
+}
+
+type ActiveTool = "slides" | "quiz" | "flashcards" | "worksheet" | "infographic" | "mindmap" | "materials" | "templates" | "upload";
 
 // ─── Helpers ──────────────────────────────────────────
 const phaseColors: Record<string, { bg: string; text: string }> = {
@@ -154,6 +186,8 @@ const TeachingOSContentKit: React.FC = () => {
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [worksheetExercises, setWorksheetExercises] = useState<WorksheetExercise[]>([]);
   const [worksheetTitle, setWorksheetTitle] = useState("");
+  const [infographic, setInfographic] = useState<InfographicData | null>(null);
+  const [mindmap, setMindmap] = useState<MindMapData | null>(null);
 
   // Generation state
   const [generating, setGenerating] = useState<Record<string, boolean>>({});
@@ -349,6 +383,10 @@ const TeachingOSContentKit: React.FC = () => {
         });
         setWorksheetTitle(parsed.title || "");
         setWorksheetExercises(parsed.exercises);
+      } else if (type === "infographic" && parsed.sections) {
+        setInfographic(parsed as InfographicData);
+      } else if (type === "mindmap" && parsed.branches) {
+        setMindmap(parsed as MindMapData);
       }
 
       await supabase.from("content_kits").update({ status: "ready", generated_at: new Date().toISOString() }).eq("id", currentKitId);
@@ -364,7 +402,7 @@ const TeachingOSContentKit: React.FC = () => {
   }, [sessionPlan, courseName, subject, level, kitId, generating, customPrompts]);
 
   const generateFullKit = useCallback(async () => {
-    const types: ActiveTool[] = ["slides", "quiz", "flashcards", "worksheet"];
+    const types: ActiveTool[] = ["slides", "quiz", "flashcards", "worksheet", "infographic", "mindmap"];
     await Promise.allSettled(types.map(t => generateContent(t)));
     toast.success("Full kit generation complete!");
   }, [generateContent]);
@@ -375,6 +413,8 @@ const TeachingOSContentKit: React.FC = () => {
     { key: "quiz", label: "Quiz", icon: <HelpCircle className="w-4 h-4" />, count: quizQuestions.length, section: "GENERATE" },
     { key: "flashcards", label: "Flashcards", icon: <Layers className="w-4 h-4" />, count: flashcards.length, section: "GENERATE" },
     { key: "worksheet", label: "Worksheet", icon: <FileText className="w-4 h-4" />, count: worksheetExercises.length > 0 ? 1 : 0, section: "GENERATE" },
+    { key: "infographic", label: "Infographic", icon: <BarChart3 className="w-4 h-4" />, count: infographic ? 1 : 0, section: "GENERATE" },
+    { key: "mindmap", label: "Mind Map", icon: <GitBranch className="w-4 h-4" />, count: mindmap ? 1 : 0, section: "GENERATE" },
     { key: "materials", label: "All materials", icon: <FolderOpen className="w-4 h-4" />, section: "LIBRARY" },
     { key: "templates", label: "Templates", icon: <LayoutTemplate className="w-4 h-4" />, section: "LIBRARY" },
     { key: "upload", label: "Upload file", icon: <Upload className="w-4 h-4" />, section: "LIBRARY" },
@@ -385,6 +425,8 @@ const TeachingOSContentKit: React.FC = () => {
     quiz: { title: "AI quiz generator", desc: `${quizQuestions.length} questions · MCQ + short answer from session objectives` },
     flashcards: { title: "AI flashcard generator", desc: `Arabic terms from this session with transliteration` },
     worksheet: { title: "AI worksheet generator", desc: `Printable exercises aligned to session objectives` },
+    infographic: { title: "AI infographic generator", desc: `Visual summary of key concepts from this session` },
+    mindmap: { title: "AI mind map generator", desc: `Hierarchical concept map of session topics` },
   };
 
   if (loading) {
@@ -489,7 +531,7 @@ const TeachingOSContentKit: React.FC = () => {
           {/* Center */}
           <div className="flex-1 overflow-y-auto p-3.5">
             {/* Generator bar */}
-            {["slides", "quiz", "flashcards", "worksheet"].includes(activeTool) && (
+            {["slides", "quiz", "flashcards", "worksheet", "infographic", "mindmap"].includes(activeTool) && (
               <div className="bg-[#f0f4ff] border border-[#b5d0f8] rounded-[9px] p-3 mb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-[30px] h-[30px] rounded-lg bg-[#1a56b0] flex items-center justify-center shrink-0">
@@ -655,6 +697,97 @@ const TeachingOSContentKit: React.FC = () => {
               )
             )}
 
+            {/* INFOGRAPHIC VIEW */}
+            {activeTool === "infographic" && (
+              !infographic ? (
+                <EmptyState icon={<BarChart3 className="w-9 h-9 stroke-[#d0d4dc]" />} title="No infographic yet" sub="Generate a visual summary of session concepts" onGenerate={() => generateContent("infographic")} generating={generating.infographic} />
+              ) : (
+                <div className="max-w-[700px] mx-auto">
+                  <div className="bg-gradient-to-br from-[#0f2044] to-[#1a3a6c] rounded-[12px] p-6 text-white shadow-lg">
+                    <div className="text-center mb-5">
+                      <div className="text-[20px] font-bold">{infographic.title}</div>
+                      <div className="text-[12px] text-blue-200 mt-1">{infographic.subtitle}</div>
+                    </div>
+                    {/* Center fact */}
+                    <div className="bg-white/10 backdrop-blur rounded-[10px] p-4 text-center mb-5 border border-white/20">
+                      <div className="text-[15px] font-semibold text-amber-300">{infographic.centerFact}</div>
+                    </div>
+                    {/* Sections grid */}
+                    <div className="grid grid-cols-2 gap-3">
+                      {infographic.sections.map((sec, i) => (
+                        <div key={i} className="bg-white/10 backdrop-blur rounded-[8px] p-3 border border-white/10">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-[18px]">{sec.icon}</span>
+                            <span className="text-[12px] font-semibold text-white">{sec.heading}</span>
+                          </div>
+                          <ul className="space-y-1">
+                            {sec.points.map((p, j) => (
+                              <li key={j} className="text-[11px] text-blue-100 flex gap-1.5">
+                                <span className="text-blue-300 mt-0.5">•</span>
+                                <span>{p}</span>
+                              </li>
+                            ))}
+                          </ul>
+                          {sec.highlight && (
+                            <div className="mt-2 text-[11px] font-medium text-amber-300 bg-white/5 rounded px-2 py-1" dir="auto">
+                              ★ {sec.highlight}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {/* Footer */}
+                    <div className="text-center mt-5 text-[11px] text-blue-200 italic">{infographic.footer}</div>
+                  </div>
+                </div>
+              )
+            )}
+
+            {/* MIND MAP VIEW */}
+            {activeTool === "mindmap" && (
+              !mindmap ? (
+                <EmptyState icon={<GitBranch className="w-9 h-9 stroke-[#d0d4dc]" />} title="No mind map yet" sub="Generate a concept map from session topics" onGenerate={() => generateContent("mindmap")} generating={generating.mindmap} />
+              ) : (
+                <div className="max-w-[800px] mx-auto">
+                  {/* Central topic */}
+                  <div className="flex justify-center mb-6">
+                    <div className="bg-[#0f2044] text-white rounded-full px-6 py-3 text-[15px] font-bold shadow-lg">
+                      {mindmap.centralTopic}
+                    </div>
+                  </div>
+                  {/* Branches */}
+                  <div className="grid grid-cols-2 gap-4">
+                    {mindmap.branches.map((branch, i) => (
+                      <div key={i} className="border-2 rounded-[10px] p-3" style={{ borderColor: branch.color }}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: branch.color }} />
+                          <span className="text-[13px] font-bold text-[#0f2044]">{branch.label}</span>
+                        </div>
+                        <div className="ml-4 space-y-2">
+                          {branch.children.map((child, j) => (
+                            <div key={j}>
+                              <div className="flex items-center gap-1.5">
+                                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: branch.color, opacity: 0.6 }} />
+                                <span className="text-[12px] font-medium text-[#0f2044]">{child.label}</span>
+                              </div>
+                              {child.detail && <div className="ml-4 text-[10px] text-[#7a7f8a] italic" dir="auto">{child.detail}</div>}
+                              {child.children?.map((leaf, k) => (
+                                <div key={k} className="ml-4 flex items-center gap-1.5 mt-0.5">
+                                  <div className="w-1 h-1 rounded-full bg-[#d0d4dc]" />
+                                  <span className="text-[11px] text-[#4a5264]">{leaf.label}</span>
+                                  {leaf.detail && <span className="text-[9px] text-[#aab0bc] italic ml-1" dir="auto">{leaf.detail}</span>}
+                                </div>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            )}
+
             {/* LIBRARY placeholders */}
             {["materials", "templates", "upload"].includes(activeTool) && (
               <EmptyState icon={<FolderOpen className="w-9 h-9 stroke-[#d0d4dc]" />} title={`${activeTool.charAt(0).toUpperCase() + activeTool.slice(1)}`} sub="Coming soon" />
@@ -665,10 +798,10 @@ const TeachingOSContentKit: React.FC = () => {
           <div className="w-[240px] bg-white border-l border-[#e8e9eb] flex flex-col shrink-0">
             <div className="p-3 border-b border-[#e8e9eb]">
               <div className="text-[12px] font-medium text-[#0f2044]">
-                {activeTool === "slides" ? "Slide deck" : activeTool === "quiz" ? "Questions" : activeTool === "flashcards" ? "Cards" : "Exercises"}
+                {activeTool === "slides" ? "Slide deck" : activeTool === "quiz" ? "Questions" : activeTool === "flashcards" ? "Cards" : activeTool === "infographic" ? "Infographic" : activeTool === "mindmap" ? "Mind Map" : "Exercises"}
               </div>
               <div className="text-[11px] text-[#7a7f8a]">
-                {activeTool === "slides" ? `${slides.length} slides generated` : activeTool === "quiz" ? `${quizQuestions.length} questions` : activeTool === "flashcards" ? `${flashcards.length} cards` : `${worksheetExercises.length} exercises`}
+                {activeTool === "slides" ? `${slides.length} slides generated` : activeTool === "quiz" ? `${quizQuestions.length} questions` : activeTool === "flashcards" ? `${flashcards.length} cards` : activeTool === "infographic" ? (infographic ? `${infographic.sections.length} sections` : "Not generated") : activeTool === "mindmap" ? (mindmap ? `${mindmap.branches.length} branches` : "Not generated") : `${worksheetExercises.length} exercises`}
               </div>
             </div>
             <div className="flex-1 overflow-y-auto">
@@ -702,6 +835,19 @@ const TeachingOSContentKit: React.FC = () => {
                 <button key={i} className="w-full flex items-center gap-2 px-3 py-2 text-left border-b border-[#f0f1f3] hover:bg-[#f9f9fb]">
                   <span className="text-[10px] font-medium text-[#aab0bc]">{i + 1}</span>
                   <span className="text-[11px] text-[#0f2044] truncate flex-1">{ex.title}</span>
+                </button>
+              ))}
+              {activeTool === "infographic" && infographic?.sections.map((sec, i) => (
+                <button key={i} className="w-full flex items-center gap-2 px-3 py-2 text-left border-b border-[#f0f1f3] hover:bg-[#f9f9fb]">
+                  <span className="text-[14px]">{sec.icon}</span>
+                  <span className="text-[11px] text-[#0f2044] truncate flex-1">{sec.heading}</span>
+                </button>
+              ))}
+              {activeTool === "mindmap" && mindmap?.branches.map((b, i) => (
+                <button key={i} className="w-full flex items-center gap-2 px-3 py-2 text-left border-b border-[#f0f1f3] hover:bg-[#f9f9fb]">
+                  <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: b.color }} />
+                  <span className="text-[11px] text-[#0f2044] truncate flex-1">{b.label}</span>
+                  <span className="text-[9px] text-[#aab0bc]">{b.children.length}</span>
                 </button>
               ))}
             </div>
@@ -833,6 +979,45 @@ const TeachingOSContentKit: React.FC = () => {
         html += `<div class="items">${ex.items.map((item, j) => `<div>${j + 1}. ${item.blankedSentence || item.question}</div>`).join("")}</div>`;
         html += `</div>`;
       });
+    }
+
+    // Infographic section
+    if (infographic) {
+      html += `<h2>📊 Infographic: ${infographic.title}</h2>`;
+      html += `<div style="text-align:center;font-size:12px;color:#7a7f8a;margin-bottom:10px;">${infographic.subtitle}</div>`;
+      html += `<div style="background:#f0f4ff;border:1px solid #b5d0f8;border-radius:8px;padding:12px;text-align:center;margin-bottom:12px;font-size:14px;font-weight:600;color:#1a56b0;">${infographic.centerFact}</div>`;
+      html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">`;
+      infographic.sections.forEach(sec => {
+        html += `<div style="border:1px solid #e8e9eb;border-radius:8px;padding:10px;page-break-inside:avoid;">`;
+        html += `<div style="font-size:13px;font-weight:600;margin-bottom:4px;">${sec.icon} ${sec.heading}</div>`;
+        html += `<ul style="padding-left:16px;margin:0;">${sec.points.map(p => `<li style="font-size:11px;margin-bottom:2px;">${p}</li>`).join("")}</ul>`;
+        if (sec.highlight) html += `<div style="font-size:11px;color:#b85c1a;margin-top:6px;font-weight:500;" dir="auto">★ ${sec.highlight}</div>`;
+        html += `</div>`;
+      });
+      html += `</div>`;
+      html += `<div style="text-align:center;font-size:11px;color:#7a7f8a;font-style:italic;margin-top:10px;">${infographic.footer}</div>`;
+    }
+
+    // Mind Map section
+    if (mindmap) {
+      html += `<h2>🧠 Mind Map: ${mindmap.centralTopic}</h2>`;
+      html += `<div style="text-align:center;margin-bottom:14px;"><span style="background:#0f2044;color:white;padding:8px 20px;border-radius:20px;font-size:14px;font-weight:700;">${mindmap.centralTopic}</span></div>`;
+      html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">`;
+      mindmap.branches.forEach(branch => {
+        html += `<div style="border:2px solid ${branch.color};border-radius:8px;padding:10px;page-break-inside:avoid;">`;
+        html += `<div style="font-size:13px;font-weight:700;color:#0f2044;margin-bottom:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${branch.color};margin-right:6px;"></span>${branch.label}</div>`;
+        branch.children.forEach(child => {
+          html += `<div style="margin-left:14px;margin-bottom:4px;">`;
+          html += `<div style="font-size:12px;font-weight:500;color:#0f2044;">${child.label}</div>`;
+          if (child.detail) html += `<div style="font-size:10px;color:#7a7f8a;font-style:italic;" dir="auto">${child.detail}</div>`;
+          child.children?.forEach(leaf => {
+            html += `<div style="margin-left:12px;font-size:11px;color:#4a5264;">• ${leaf.label}${leaf.detail ? ` <span style="font-size:9px;color:#aab0bc;font-style:italic;">${leaf.detail}</span>` : ''}</div>`;
+          });
+          html += `</div>`;
+        });
+        html += `</div>`;
+      });
+      html += `</div>`;
     }
 
     html += `</body></html>`;
