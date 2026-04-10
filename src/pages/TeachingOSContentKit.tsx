@@ -789,7 +789,7 @@ const TeachingOSContentKit: React.FC = () => {
               ) : (
                 <div className="space-y-2">
                   {quizQuestions.map((q, i) => (
-                    <QuizCard key={i} q={q} index={i} total={quizQuestions.length} showAnswer={showAnswers} />
+                    <QuizCard key={i} q={q} index={i} total={quizQuestions.length} showAnswer={showAnswers} template={template} />
                   ))}
                 </div>
               )
@@ -815,7 +815,7 @@ const TeachingOSContentKit: React.FC = () => {
                     </Button>
                   </div>
                   <div className="grid grid-cols-2 gap-2.5">
-                    {flashcards.map((f, i) => <FlashcardItem key={i} card={f} />)}
+                    {flashcards.map((f, i) => <FlashcardItem key={i} card={f} template={template} />)}
                   </div>
                 </div>
               )
