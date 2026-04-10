@@ -380,7 +380,7 @@ const TeachingOSAssessment: React.FC = () => {
     toast.success('Settings saved');
   };
 
-  // Publish exam
+  // Publish / Unpublish exam
   const publishExam = async () => {
     if (!exam) return;
     if (questions.length === 0) {
@@ -393,6 +393,24 @@ const TeachingOSAssessment: React.FC = () => {
     } as any).eq('id', exam.id);
     setExam(prev => prev ? { ...prev, status: 'published' } : null);
     toast.success('Exam published to students');
+  };
+
+  const unpublishExam = async () => {
+    if (!exam) return;
+    await supabase.from('teaching_exams' as any).update({
+      status: 'draft',
+      published_at: null,
+    } as any).eq('id', exam.id);
+    setExam(prev => prev ? { ...prev, status: 'draft' } : null);
+    toast.success('Exam unpublished — back to draft');
+  };
+
+  const togglePublish = () => {
+    if (exam?.status === 'published') {
+      unpublishExam();
+    } else {
+      publishExam();
+    }
   };
 
   // Generate mock results for demo
