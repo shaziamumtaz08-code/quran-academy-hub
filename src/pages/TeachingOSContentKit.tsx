@@ -383,6 +383,10 @@ const TeachingOSContentKit: React.FC = () => {
         });
         setWorksheetTitle(parsed.title || "");
         setWorksheetExercises(parsed.exercises);
+      } else if (type === "infographic" && parsed.sections) {
+        setInfographic(parsed as InfographicData);
+      } else if (type === "mindmap" && parsed.branches) {
+        setMindmap(parsed as MindMapData);
       }
 
       await supabase.from("content_kits").update({ status: "ready", generated_at: new Date().toISOString() }).eq("id", currentKitId);
