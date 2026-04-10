@@ -11,7 +11,7 @@ import {
   Star, ChevronRight, Download, Share2, Presentation, HelpCircle,
   BookOpen, Layers, FileText, Upload, FolderOpen, LayoutTemplate,
   Loader2, Square, Check, Sparkles, Printer, Shuffle, ArrowLeft,
-  ArrowRight, X, BarChart3, GitBranch
+  ArrowRight, X, BarChart3, GitBranch, Palette
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
