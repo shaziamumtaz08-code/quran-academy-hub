@@ -697,6 +697,97 @@ const TeachingOSContentKit: React.FC = () => {
               )
             )}
 
+            {/* INFOGRAPHIC VIEW */}
+            {activeTool === "infographic" && (
+              !infographic ? (
+                <EmptyState icon={<BarChart3 className="w-9 h-9 stroke-[#d0d4dc]" />} title="No infographic yet" sub="Generate a visual summary of session concepts" onGenerate={() => generateContent("infographic")} generating={generating.infographic} />
+              ) : (
+                <div className="max-w-[700px] mx-auto">
+                  <div className="bg-gradient-to-br from-[#0f2044] to-[#1a3a6c] rounded-[12px] p-6 text-white shadow-lg">
+                    <div className="text-center mb-5">
+                      <div className="text-[20px] font-bold">{infographic.title}</div>
+                      <div className="text-[12px] text-blue-200 mt-1">{infographic.subtitle}</div>
+                    </div>
+                    {/* Center fact */}
+                    <div className="bg-white/10 backdrop-blur rounded-[10px] p-4 text-center mb-5 border border-white/20">
+                      <div className="text-[15px] font-semibold text-amber-300">{infographic.centerFact}</div>
+                    </div>
+                    {/* Sections grid */}
+                    <div className="grid grid-cols-2 gap-3">
+                      {infographic.sections.map((sec, i) => (
+                        <div key={i} className="bg-white/10 backdrop-blur rounded-[8px] p-3 border border-white/10">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-[18px]">{sec.icon}</span>
+                            <span className="text-[12px] font-semibold text-white">{sec.heading}</span>
+                          </div>
+                          <ul className="space-y-1">
+                            {sec.points.map((p, j) => (
+                              <li key={j} className="text-[11px] text-blue-100 flex gap-1.5">
+                                <span className="text-blue-300 mt-0.5">•</span>
+                                <span>{p}</span>
+                              </li>
+                            ))}
+                          </ul>
+                          {sec.highlight && (
+                            <div className="mt-2 text-[11px] font-medium text-amber-300 bg-white/5 rounded px-2 py-1" dir="auto">
+                              ★ {sec.highlight}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {/* Footer */}
+                    <div className="text-center mt-5 text-[11px] text-blue-200 italic">{infographic.footer}</div>
+                  </div>
+                </div>
+              )
+            )}
+
+            {/* MIND MAP VIEW */}
+            {activeTool === "mindmap" && (
+              !mindmap ? (
+                <EmptyState icon={<GitBranch className="w-9 h-9 stroke-[#d0d4dc]" />} title="No mind map yet" sub="Generate a concept map from session topics" onGenerate={() => generateContent("mindmap")} generating={generating.mindmap} />
+              ) : (
+                <div className="max-w-[800px] mx-auto">
+                  {/* Central topic */}
+                  <div className="flex justify-center mb-6">
+                    <div className="bg-[#0f2044] text-white rounded-full px-6 py-3 text-[15px] font-bold shadow-lg">
+                      {mindmap.centralTopic}
+                    </div>
+                  </div>
+                  {/* Branches */}
+                  <div className="grid grid-cols-2 gap-4">
+                    {mindmap.branches.map((branch, i) => (
+                      <div key={i} className="border-2 rounded-[10px] p-3" style={{ borderColor: branch.color }}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: branch.color }} />
+                          <span className="text-[13px] font-bold text-[#0f2044]">{branch.label}</span>
+                        </div>
+                        <div className="ml-4 space-y-2">
+                          {branch.children.map((child, j) => (
+                            <div key={j}>
+                              <div className="flex items-center gap-1.5">
+                                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: branch.color, opacity: 0.6 }} />
+                                <span className="text-[12px] font-medium text-[#0f2044]">{child.label}</span>
+                              </div>
+                              {child.detail && <div className="ml-4 text-[10px] text-[#7a7f8a] italic" dir="auto">{child.detail}</div>}
+                              {child.children?.map((leaf, k) => (
+                                <div key={k} className="ml-4 flex items-center gap-1.5 mt-0.5">
+                                  <div className="w-1 h-1 rounded-full bg-[#d0d4dc]" />
+                                  <span className="text-[11px] text-[#4a5264]">{leaf.label}</span>
+                                  {leaf.detail && <span className="text-[9px] text-[#aab0bc] italic ml-1" dir="auto">{leaf.detail}</span>}
+                                </div>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            )}
+
             {/* LIBRARY placeholders */}
             {["materials", "templates", "upload"].includes(activeTool) && (
               <EmptyState icon={<FolderOpen className="w-9 h-9 stroke-[#d0d4dc]" />} title={`${activeTool.charAt(0).toUpperCase() + activeTool.slice(1)}`} sub="Coming soon" />
