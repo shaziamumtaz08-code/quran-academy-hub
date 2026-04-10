@@ -137,6 +137,69 @@ Return JSON:
         break;
       }
 
+      case "infographic": {
+        systemPrompt = `${langInstruction}You are an expert educational infographic designer for Islamic academies. Create structured infographic content with clear sections, key stats/facts, visual flow, and concise labels. Return ONLY raw JSON. NEVER wrap in markdown code blocks. Do NOT include [ARABIC] tags — just write Arabic text directly in Arabic script with diacritics.`;
+        userPrompt = `Create a detailed infographic layout for a ${level || 'Intermediate'} ${subject || 'Arabic'} session titled '${sessionTitle}'.
+Session objective: ${sessionObjective}
+Activities: ${JSON.stringify(activities.map((a: any) => a.title + ': ' + a.description))}
+
+The infographic should visually summarize the key concepts from this lesson.
+
+Return JSON:
+{
+  "title": string (catchy infographic title, max 10 words),
+  "subtitle": string (one-liner summary),
+  "sections": [
+    {
+      "heading": string (section label, 2-4 words),
+      "icon": string (emoji representing this section),
+      "points": string[] (2-4 concise bullet points, each max 12 words),
+      "highlight": string | null (a key stat, fact, or Arabic term to emphasize)
+    }
+  ],
+  "centerFact": string (one big takeaway fact or stat for the center/hero area),
+  "footer": string (a motivational or summary line for the bottom)
+}
+Include 4-6 sections. Make it visually rich with real content from the session.${customSpec}`;
+        maxTokens = 3000;
+        break;
+      }
+
+      case "mindmap": {
+        systemPrompt = `${langInstruction}You are an expert mind map designer for Islamic education. Create hierarchical mind map structures that help students visualize relationships between concepts. Return ONLY raw JSON. NEVER wrap in markdown code blocks. Do NOT include [ARABIC] tags — just write Arabic text directly in Arabic script.`;
+        userPrompt = `Create a comprehensive mind map for a ${level || 'Intermediate'} ${subject || 'Arabic'} session titled '${sessionTitle}'.
+Session objective: ${sessionObjective}
+Activities: ${JSON.stringify(activities.map((a: any) => a.title + ': ' + a.description))}
+
+The mind map should break down the session topic into a hierarchical structure.
+
+Return JSON:
+{
+  "centralTopic": string (main topic in the center, 2-5 words),
+  "branches": [
+    {
+      "label": string (branch label, 2-4 words),
+      "color": string (hex color for this branch, e.g. "#4a90d9"),
+      "children": [
+        {
+          "label": string (sub-topic, 2-6 words),
+          "detail": string | null (optional extra detail or Arabic term),
+          "children": [
+            {
+              "label": string (leaf node, 2-6 words),
+              "detail": string | null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+Include 4-6 main branches, each with 2-4 children. Some children should have their own sub-children for depth.${customSpec}`;
+        maxTokens = 3000;
+        break;
+      }
+
       default:
         return new Response(JSON.stringify({ error: "Invalid contentType" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
