@@ -53,7 +53,7 @@ For each activity, return one slide:
   "teacherNote": string | null (practical tip for the teacher, max 80 chars),
   "activityInstruction": string | null (specific student activity instruction for practice/production slides)
 }
-Return ONLY the JSON array.${customSpec}`;
+Return ONLY the JSON array.${customSpec}${styleSpec}`;
         break;
       }
 
@@ -78,7 +78,7 @@ Each question:
   "difficulty": "easy" | "medium" | "hard",
   "bloomsLevel": "remember" | "understand" | "apply"
 }
-Return ONLY the JSON array.${customSpec}`;
+Return ONLY the JSON array.${customSpec}${styleSpec}`;
         break;
       }
 
@@ -103,7 +103,7 @@ Each flashcard:
   "exampleSentence": string (Arabic example sentence with diacritics showing the word in context),
   "exampleTranslation": string (English translation of the example)
 }
-Include 12-15 cards covering all key vocabulary from the session. Return ONLY the JSON array.${customSpec}`;
+Include 12-15 cards covering all key vocabulary from the session. Return ONLY the JSON array.${customSpec}${styleSpec}`;
         maxTokens = 4000;
         break;
       }
@@ -133,7 +133,7 @@ Return JSON:
       ]
     }
   ]
-}${customSpec}`;
+}${customSpec}${styleSpec}`;
         maxTokens = 3000;
         break;
       }
@@ -161,7 +161,7 @@ Return JSON:
   "centerFact": string (one big takeaway fact or stat for the center/hero area),
   "footer": string (a motivational or summary line for the bottom)
 }
-Include 4-6 sections. Make it visually rich with real content from the session.${customSpec}`;
+Include 4-6 sections. Make it visually rich with real content from the session.${customSpec}${styleSpec}`;
         maxTokens = 3000;
         break;
       }
@@ -196,7 +196,7 @@ Return JSON:
     }
   ]
 }
-Include 4-6 main branches, each with 2-4 children. Some children should have their own sub-children for depth.${customSpec}`;
+Include 4-6 main branches, each with 2-4 children. Some children should have their own sub-children for depth.${customSpec}${styleSpec}`;
         maxTokens = 3000;
         break;
       }
