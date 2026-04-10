@@ -120,6 +120,100 @@ interface MindMapData {
 
 type ActiveTool = "slides" | "quiz" | "flashcards" | "worksheet" | "infographic" | "mindmap" | "materials" | "templates" | "upload";
 
+// ─── Visual Templates ─────────────────────────────────
+type VisualTemplateKey = "classic" | "minimal" | "heritage" | "vibrant" | "dark";
+
+interface VisualTemplate {
+  key: VisualTemplateKey;
+  label: string;
+  desc: string;
+  colors: { primary: string; accent: string; bg: string; cardBg: string; text: string; muted: string };
+  slideOverrides: Record<string, { bg: string; accent: string; titleColor: string; bodyColor: string; gradientFrom: string; gradientTo: string }>;
+  pptxColors: { bg: string; accent: string; titleColor: string; bodyColor: string };
+  fontClass: string;
+  chipColors: string;
+}
+
+const VISUAL_TEMPLATES: Record<VisualTemplateKey, VisualTemplate> = {
+  classic: {
+    key: "classic", label: "Academy Classic", desc: "Navy + gold, premium serif",
+    colors: { primary: "#0f2044", accent: "#c8a438", bg: "#f8f6f0", cardBg: "#ffffff", text: "#0f2044", muted: "#7a7f8a" },
+    slideOverrides: {
+      Opening: { bg: "#0f2044", accent: "#c8a438", titleColor: "#ffffff", bodyColor: "#c8d6e5", gradientFrom: "#0f2044", gradientTo: "#1a2d5a" },
+      Input: { bg: "#fffdf5", accent: "#c8a438", titleColor: "#0f2044", bodyColor: "#4a5264", gradientFrom: "#fffdf5", gradientTo: "#fff9e6" },
+      Practice: { bg: "#fdf8f0", accent: "#b85c1a", titleColor: "#0f2044", bodyColor: "#4a5264", gradientFrom: "#fdf8f0", gradientTo: "#fff3e6" },
+      Production: { bg: "#f5f0ff", accent: "#534AB7", titleColor: "#0f2044", bodyColor: "#4a5264", gradientFrom: "#f5f0ff", gradientTo: "#ede8ff" },
+      "Wrap-up": { bg: "#1a2d5a", accent: "#c8a438", titleColor: "#ffffff", bodyColor: "#b0c4de", gradientFrom: "#1a2d5a", gradientTo: "#243a6e" },
+      Quiz: { bg: "#fff5f5", accent: "#b42a2a", titleColor: "#0f2044", bodyColor: "#4a5264", gradientFrom: "#fff5f5", gradientTo: "#ffe8e8" },
+    },
+    pptxColors: { bg: "0f2044", accent: "C8A438", titleColor: "FFFFFF", bodyColor: "C8D6E5" },
+    fontClass: "font-serif",
+    chipColors: "bg-[#0f2044] text-[#c8a438]",
+  },
+  minimal: {
+    key: "minimal", label: "Modern Minimal", desc: "Clean white, thin borders",
+    colors: { primary: "#0f172a", accent: "#3b82f6", bg: "#ffffff", cardBg: "#f8fafc", text: "#0f172a", muted: "#94a3b8" },
+    slideOverrides: {
+      Opening: { bg: "#0f172a", accent: "#3b82f6", titleColor: "#ffffff", bodyColor: "#cbd5e1", gradientFrom: "#0f172a", gradientTo: "#1e293b" },
+      Input: { bg: "#ffffff", accent: "#3b82f6", titleColor: "#0f172a", bodyColor: "#475569", gradientFrom: "#ffffff", gradientTo: "#f8fafc" },
+      Practice: { bg: "#ffffff", accent: "#f59e0b", titleColor: "#0f172a", bodyColor: "#475569", gradientFrom: "#ffffff", gradientTo: "#fffbeb" },
+      Production: { bg: "#ffffff", accent: "#8b5cf6", titleColor: "#0f172a", bodyColor: "#475569", gradientFrom: "#ffffff", gradientTo: "#f5f3ff" },
+      "Wrap-up": { bg: "#1e293b", accent: "#3b82f6", titleColor: "#ffffff", bodyColor: "#cbd5e1", gradientFrom: "#1e293b", gradientTo: "#0f172a" },
+      Quiz: { bg: "#ffffff", accent: "#ef4444", titleColor: "#0f172a", bodyColor: "#475569", gradientFrom: "#ffffff", gradientTo: "#fef2f2" },
+    },
+    pptxColors: { bg: "FFFFFF", accent: "3B82F6", titleColor: "0F172A", bodyColor: "475569" },
+    fontClass: "font-sans",
+    chipColors: "bg-[#f1f5f9] text-[#0f172a] border border-[#e2e8f0]",
+  },
+  heritage: {
+    key: "heritage", label: "Islamic Heritage", desc: "Warm parchment, ornamental",
+    colors: { primary: "#5c3d2e", accent: "#8b6914", bg: "#faf5eb", cardBg: "#fff9f0", text: "#3d2b1f", muted: "#8b7355" },
+    slideOverrides: {
+      Opening: { bg: "#3d2b1f", accent: "#d4a944", titleColor: "#faf5eb", bodyColor: "#d4c4a8", gradientFrom: "#3d2b1f", gradientTo: "#5c3d2e" },
+      Input: { bg: "#faf5eb", accent: "#8b6914", titleColor: "#3d2b1f", bodyColor: "#5c4a3a", gradientFrom: "#faf5eb", gradientTo: "#f5ecd8" },
+      Practice: { bg: "#faf5eb", accent: "#a0522d", titleColor: "#3d2b1f", bodyColor: "#5c4a3a", gradientFrom: "#faf5eb", gradientTo: "#f0e4d0" },
+      Production: { bg: "#f5ecd8", accent: "#6b4c8a", titleColor: "#3d2b1f", bodyColor: "#5c4a3a", gradientFrom: "#f5ecd8", gradientTo: "#ede0c8" },
+      "Wrap-up": { bg: "#5c3d2e", accent: "#d4a944", titleColor: "#faf5eb", bodyColor: "#d4c4a8", gradientFrom: "#5c3d2e", gradientTo: "#3d2b1f" },
+      Quiz: { bg: "#faf5eb", accent: "#8b2500", titleColor: "#3d2b1f", bodyColor: "#5c4a3a", gradientFrom: "#faf5eb", gradientTo: "#f5e6dc" },
+    },
+    pptxColors: { bg: "FAF5EB", accent: "8B6914", titleColor: "3D2B1F", bodyColor: "5C4A3A" },
+    fontClass: "font-serif",
+    chipColors: "bg-[#f5ecd8] text-[#5c3d2e] border border-[#d4c4a8]",
+  },
+  vibrant: {
+    key: "vibrant", label: "Vibrant Learning", desc: "Colorful gradients, playful",
+    colors: { primary: "#6d28d9", accent: "#f59e0b", bg: "#faf5ff", cardBg: "#ffffff", text: "#1e1b4b", muted: "#7c6fa0" },
+    slideOverrides: {
+      Opening: { bg: "#4c1d95", accent: "#f59e0b", titleColor: "#ffffff", bodyColor: "#ddd6fe", gradientFrom: "#4c1d95", gradientTo: "#6d28d9" },
+      Input: { bg: "#faf5ff", accent: "#059669", titleColor: "#1e1b4b", bodyColor: "#4c3a72", gradientFrom: "#faf5ff", gradientTo: "#ecfdf5" },
+      Practice: { bg: "#fff7ed", accent: "#ea580c", titleColor: "#1e1b4b", bodyColor: "#4c3a72", gradientFrom: "#fff7ed", gradientTo: "#ffedd5" },
+      Production: { bg: "#eff6ff", accent: "#2563eb", titleColor: "#1e1b4b", bodyColor: "#4c3a72", gradientFrom: "#eff6ff", gradientTo: "#dbeafe" },
+      "Wrap-up": { bg: "#6d28d9", accent: "#fbbf24", titleColor: "#ffffff", bodyColor: "#ddd6fe", gradientFrom: "#6d28d9", gradientTo: "#4c1d95" },
+      Quiz: { bg: "#fef2f2", accent: "#dc2626", titleColor: "#1e1b4b", bodyColor: "#4c3a72", gradientFrom: "#fef2f2", gradientTo: "#fee2e2" },
+    },
+    pptxColors: { bg: "4C1D95", accent: "F59E0B", titleColor: "FFFFFF", bodyColor: "DDD6FE" },
+    fontClass: "font-sans",
+    chipColors: "bg-gradient-to-r from-[#7c3aed] to-[#a855f7] text-white",
+  },
+  dark: {
+    key: "dark", label: "Dark Scholar", desc: "Dark backgrounds, cyan accents",
+    colors: { primary: "#0f172a", accent: "#06b6d4", bg: "#0f172a", cardBg: "#1e293b", text: "#e2e8f0", muted: "#64748b" },
+    slideOverrides: {
+      Opening: { bg: "#020617", accent: "#06b6d4", titleColor: "#f0f9ff", bodyColor: "#94a3b8", gradientFrom: "#020617", gradientTo: "#0f172a" },
+      Input: { bg: "#0f172a", accent: "#06b6d4", titleColor: "#f0f9ff", bodyColor: "#94a3b8", gradientFrom: "#0f172a", gradientTo: "#1e293b" },
+      Practice: { bg: "#1e293b", accent: "#f59e0b", titleColor: "#f0f9ff", bodyColor: "#94a3b8", gradientFrom: "#1e293b", gradientTo: "#0f172a" },
+      Production: { bg: "#1e293b", accent: "#a78bfa", titleColor: "#f0f9ff", bodyColor: "#94a3b8", gradientFrom: "#1e293b", gradientTo: "#0f172a" },
+      "Wrap-up": { bg: "#020617", accent: "#06b6d4", titleColor: "#f0f9ff", bodyColor: "#94a3b8", gradientFrom: "#020617", gradientTo: "#0f172a" },
+      Quiz: { bg: "#1e293b", accent: "#f43f5e", titleColor: "#f0f9ff", bodyColor: "#94a3b8", gradientFrom: "#1e293b", gradientTo: "#0f172a" },
+    },
+    pptxColors: { bg: "0F172A", accent: "06B6D4", titleColor: "F0F9FF", bodyColor: "94A3B8" },
+    fontClass: "font-sans",
+    chipColors: "bg-[#1e293b] text-[#06b6d4] border border-[#334155]",
+  },
+};
+
+const TEMPLATE_KEYS: VisualTemplateKey[] = ["classic", "minimal", "heritage", "vibrant", "dark"];
+
 // ─── Helpers ──────────────────────────────────────────
 const phaseColors: Record<string, { bg: string; text: string }> = {
   Opening: { bg: "bg-blue-50", text: "text-blue-700" },
