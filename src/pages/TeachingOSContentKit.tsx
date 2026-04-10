@@ -866,7 +866,7 @@ const TeachingOSContentKit: React.FC = () => {
                 <EmptyState icon={<BarChart3 className="w-9 h-9 stroke-[#d0d4dc]" />} title="No infographic yet" sub="Generate a visual summary of session concepts" onGenerate={() => generateContent("infographic")} generating={generating.infographic} />
               ) : (
                 <div className="max-w-[700px] mx-auto">
-                  <div className="bg-gradient-to-br from-[#0f2044] to-[#1a3a6c] rounded-[12px] p-6 text-white shadow-lg">
+                  <div className="rounded-[12px] p-6 text-white shadow-lg" style={{ background: `linear-gradient(135deg, ${template.colors.primary}, ${template.colors.accent}88)` }}>
                     <div className="text-center mb-5">
                       <div className="text-[20px] font-bold">{infographic.title}</div>
                       <div className="text-[12px] text-blue-200 mt-1">{infographic.subtitle}</div>
