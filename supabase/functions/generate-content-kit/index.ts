@@ -7,7 +7,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { contentType, sessionPlan, courseName, subject, level, questionCount, questionTypes, difficulty, exerciseTypes, language, customPrompt } = await req.json();
+    const { contentType, sessionPlan, courseName, subject, level, questionCount, questionTypes, difficulty, exerciseTypes, language, customPrompt, stylePrompt } = await req.json();
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) {
@@ -23,6 +23,7 @@ Deno.serve(async (req) => {
 
     const activities = sessionPlan?.activities || [];
     const customSpec = customPrompt ? `\n\nAdditional instructor specifications: ${customPrompt}` : "";
+    const styleSpec = stylePrompt ? `\n\nStyle & tone guidance from the teacher: ${stylePrompt}. Adapt your language tone, formality level, and content style accordingly.` : "";
     const sessionTitle = sessionPlan?.session_title || "Untitled Session";
     const sessionObjective = sessionPlan?.session_objective || "";
 
