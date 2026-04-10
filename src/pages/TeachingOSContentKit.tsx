@@ -379,6 +379,71 @@ const TeachingOSContentKit: React.FC = () => {
     })();
   }, [sessionId]);
 
+  // Load library assets
+  useEffect(() => {
+    if (!sessionId) return;
+    loadLibraryAssets();
+  }, [sessionId]);
+
+  const loadLibraryAssets = async () => {
+    setLibraryLoading(true);
+    const { data } = await supabase
+      .from('course_library_assets')
+      .select('*')
+      .or(`course_id.is.null,course_id.eq.${sessionPlan?.syllabus_id || '00000000-0000-0000-0000-000000000000'}`)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    setLibraryAssets(data || []);
+    setLibraryLoading(false);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error('File too large — max 20MB');
+      return;
+    }
+    setUploadingFile(true);
+    try {
+      const ext = file.name.split('.').pop() || 'bin';
+      const path = `content-kit/${sessionId || 'general'}/${Date.now()}-${file.name}`;
+      const { error: uploadErr } = await supabase.storage.from('course-materials').upload(path, file);
+      if (uploadErr) throw uploadErr;
+
+      const { data: { publicUrl } } = supabase.storage.from('course-materials').getPublicUrl(path);
+
+      const assetType = ['jpg','jpeg','png','gif','webp','svg'].includes(ext.toLowerCase()) ? 'image'
+        : ['pdf'].includes(ext.toLowerCase()) ? 'document'
+        : ['mp4','webm','mov'].includes(ext.toLowerCase()) ? 'video'
+        : ['pptx','ppt'].includes(ext.toLowerCase()) ? 'presentation'
+        : 'file';
+
+      await supabase.from('course_library_assets').insert({
+        title: file.name,
+        asset_type: assetType,
+        content_url: publicUrl,
+        status: 'published',
+        visibility: 'internal',
+        tags: ['content-kit', sessionPlan?.session_title || ''].filter(Boolean),
+      });
+
+      toast.success('File uploaded successfully');
+      loadLibraryAssets();
+    } catch (err: any) {
+      toast.error(err.message || 'Upload failed');
+    } finally {
+      setUploadingFile(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const deleteLibraryAsset = async (assetId: string) => {
+    await supabase.from('course_library_assets').delete().eq('id', assetId);
+    setLibraryAssets(prev => prev.filter(a => a.id !== assetId));
+    toast.success('Asset removed');
+  };
+
   const loadExistingContent = async (kid: string) => {
     const [slidesRes, quizRes, flashRes, worksheetRes] = await Promise.all([
       supabase.from("slides").select("*").eq("kit_id", kid).order("slide_index"),
