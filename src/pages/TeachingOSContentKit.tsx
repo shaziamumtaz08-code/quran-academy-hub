@@ -1436,9 +1436,16 @@ function SlideContent({ slide, courseName, slideIndex, totalSlides, template }: 
               style={{ background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.03)' }}
             >
               <div
-                className="text-[32px] leading-relaxed"
+                className="leading-relaxed"
                 dir="rtl"
-                style={{ color: theme.titleColor, fontFamily: "'Noto Naskh Arabic', 'Amiri', serif" }}
+                style={{
+                  color: theme.titleColor,
+                  fontFamily: detectScriptClass(slide.arabicText) === 'urdu-text'
+                    ? "'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif"
+                    : "'Noto Naskh Arabic', 'Amiri', serif",
+                  fontSize: detectScriptClass(slide.arabicText) === 'urdu-text' ? '28px' : '36px',
+                  lineHeight: detectScriptClass(slide.arabicText) === 'urdu-text' ? '2.4' : '1.8',
+                }}
               >
                 {slide.arabicText}
               </div>
