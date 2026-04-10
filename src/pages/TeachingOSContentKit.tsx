@@ -292,6 +292,19 @@ const TeachingOSContentKit: React.FC = () => {
   const [customPrompts, setCustomPrompts] = useState<Record<string, string>>({});
   const [showPromptBox, setShowPromptBox] = useState<Record<string, boolean>>({});
 
+  // Visual template
+  const [activeTemplate, setActiveTemplate] = useState<VisualTemplateKey>(() => {
+    return (localStorage.getItem('tos-visual-template') as VisualTemplateKey) || 'classic';
+  });
+  const [stylePrompt, setStylePrompt] = useState("");
+  const [showStylePrompt, setShowStylePrompt] = useState(false);
+  const template = VISUAL_TEMPLATES[activeTemplate];
+
+  const handleTemplateChange = (key: VisualTemplateKey) => {
+    setActiveTemplate(key);
+    localStorage.setItem('tos-visual-template', key);
+  };
+
   // UI state
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [showShareModal, setShowShareModal] = useState(false);
