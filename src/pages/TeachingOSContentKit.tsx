@@ -1576,7 +1576,7 @@ function FlashcardItem({ card, template }: { card: Flashcard; template?: VisualT
       {!flipped ? (
         <div className="p-5 flex flex-col items-center justify-center h-full gap-2">
           <div className="text-[28px] text-white text-center leading-snug" dir="rtl"
-            style={{ fontFamily: "'Noto Naskh Arabic', 'Amiri', serif" }}>
+            style={{ fontFamily: detectScriptClass(card.arabic) === 'urdu-text' ? "'Noto Nastaliq Urdu', serif" : "'Noto Naskh Arabic', 'Amiri', serif", lineHeight: detectScriptClass(card.arabic) === 'urdu-text' ? '2.4' : '1.6' }}>
             {card.arabic}
           </div>
           <span className="text-[9px] uppercase tracking-[0.15em] opacity-70 mt-1" style={{ color: accentForFront }}>
@@ -1594,7 +1594,7 @@ function FlashcardItem({ card, template }: { card: Flashcard; template?: VisualT
           {card.exampleSentence && (
             <div className="mt-2 px-3 py-2 rounded-lg w-full text-center" style={{ background: 'rgba(0,0,0,0.03)' }}>
               <div className="text-[13px] text-[#0f2044]" dir="rtl"
-                style={{ fontFamily: "'Noto Naskh Arabic', 'Amiri', serif" }}>
+                style={{ fontFamily: detectScriptClass(card.arabic) === 'urdu-text' ? "'Noto Nastaliq Urdu', serif" : "'Noto Naskh Arabic', 'Amiri', serif", lineHeight: detectScriptClass(card.arabic) === 'urdu-text' ? '2.4' : '1.6' }}>
                 {card.exampleSentence}
               </div>
               {card.exampleTranslation && (
@@ -1667,7 +1667,7 @@ function StudyMode({ cards, index, flipped, onFlip, onNext, onPrev, onShuffle, o
         {!flipped ? (
           <div className="text-center z-10 px-8">
             <div className="text-[44px] text-white leading-snug" dir="rtl"
-              style={{ fontFamily: "'Noto Naskh Arabic', 'Amiri', serif" }}>
+              style={{ fontFamily: detectScriptClass(card.arabic) === 'urdu-text' ? "'Noto Nastaliq Urdu', serif" : "'Noto Naskh Arabic', 'Amiri', serif", lineHeight: detectScriptClass(card.arabic) === 'urdu-text' ? '2.4' : '1.6' }}>
               {card.arabic}
             </div>
             <div className="mt-4 text-[10px] uppercase tracking-[0.2em] text-[#4a90d9] opacity-60">
@@ -1685,7 +1685,7 @@ function StudyMode({ cards, index, flipped, onFlip, onNext, onPrev, onShuffle, o
             {card.exampleSentence && (
               <div className="mt-4 px-4 py-2.5 rounded-xl" style={{ background: 'rgba(0,0,0,0.03)' }}>
                 <div className="text-[16px] text-[#0f2044]" dir="rtl"
-                  style={{ fontFamily: "'Noto Naskh Arabic', 'Amiri', serif" }}>
+                  style={{ fontFamily: detectScriptClass(card.arabic) === 'urdu-text' ? "'Noto Nastaliq Urdu', serif" : "'Noto Naskh Arabic', 'Amiri', serif", lineHeight: detectScriptClass(card.arabic) === 'urdu-text' ? '2.4' : '1.6' }}>
                   {card.exampleSentence}
                 </div>
                 {card.exampleTranslation && (
