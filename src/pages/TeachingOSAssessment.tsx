@@ -380,7 +380,7 @@ const TeachingOSAssessment: React.FC = () => {
     toast.success('Settings saved');
   };
 
-  // Publish exam
+  // Publish / Unpublish exam
   const publishExam = async () => {
     if (!exam) return;
     if (questions.length === 0) {
@@ -393,6 +393,24 @@ const TeachingOSAssessment: React.FC = () => {
     } as any).eq('id', exam.id);
     setExam(prev => prev ? { ...prev, status: 'published' } : null);
     toast.success('Exam published to students');
+  };
+
+  const unpublishExam = async () => {
+    if (!exam) return;
+    await supabase.from('teaching_exams' as any).update({
+      status: 'draft',
+      published_at: null,
+    } as any).eq('id', exam.id);
+    setExam(prev => prev ? { ...prev, status: 'draft' } : null);
+    toast.success('Exam unpublished — back to draft');
+  };
+
+  const togglePublish = () => {
+    if (exam?.status === 'published') {
+      unpublishExam();
+    } else {
+      publishExam();
+    }
   };
 
   // Generate mock results for demo
@@ -530,13 +548,12 @@ const TeachingOSAssessment: React.FC = () => {
         {/* Footer */}
         <div className="p-[10px] border-t border-[#e8e9eb]">
           <Button
-            onClick={publishExam}
+            onClick={togglePublish}
             className="w-full text-[12px] h-8"
-            style={{ backgroundColor: '#0f2044', color: '#fff' }}
-            disabled={exam?.status === 'published'}
+            style={{ backgroundColor: exam?.status === 'published' ? '#1a7340' : '#0f2044', color: '#fff' }}
           >
-            <Send className="w-3.5 h-3.5 mr-1.5" />
-            {exam?.status === 'published' ? 'Published' : 'Publish to students'}
+            {exam?.status === 'published' ? <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" /> : <Send className="w-3.5 h-3.5 mr-1.5" />}
+            {exam?.status === 'published' ? 'Published ✓ (tap to unpublish)' : 'Publish to students'}
           </Button>
         </div>
       </div>
@@ -558,8 +575,8 @@ const TeachingOSAssessment: React.FC = () => {
                 <Button variant="outline" size="sm" className="text-[11px] h-7">
                   <Download className="w-3 h-3 mr-1" />Export PDF
                 </Button>
-                <Button size="sm" className="text-[11px] h-7" style={{ backgroundColor: '#1a7340', color: '#fff' }} onClick={publishExam} disabled={exam?.status === 'published'}>
-                  <Send className="w-3 h-3 mr-1" />Publish exam
+                <Button size="sm" className="text-[11px] h-7" style={{ backgroundColor: exam?.status === 'published' ? '#b85c1a' : '#1a7340', color: '#fff' }} onClick={togglePublish}>
+                  <Send className="w-3 h-3 mr-1" />{exam?.status === 'published' ? 'Unpublish' : 'Publish exam'}
                 </Button>
               </>
             )}
