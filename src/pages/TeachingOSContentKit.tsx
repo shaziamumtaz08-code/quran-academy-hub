@@ -86,7 +86,39 @@ interface WorksheetExercise {
   items: { question: string; answer: string; blankedSentence?: string | null }[];
 }
 
-type ActiveTool = "slides" | "quiz" | "flashcards" | "worksheet" | "materials" | "templates" | "upload";
+interface InfographicSection {
+  heading: string;
+  icon: string;
+  points: string[];
+  highlight?: string | null;
+}
+
+interface InfographicData {
+  title: string;
+  subtitle: string;
+  sections: InfographicSection[];
+  centerFact: string;
+  footer: string;
+}
+
+interface MindMapNode {
+  label: string;
+  detail?: string | null;
+  children?: MindMapNode[];
+}
+
+interface MindMapBranch {
+  label: string;
+  color: string;
+  children: MindMapNode[];
+}
+
+interface MindMapData {
+  centralTopic: string;
+  branches: MindMapBranch[];
+}
+
+type ActiveTool = "slides" | "quiz" | "flashcards" | "worksheet" | "infographic" | "mindmap" | "materials" | "templates" | "upload";
 
 // ─── Helpers ──────────────────────────────────────────
 const phaseColors: Record<string, { bg: string; text: string }> = {
