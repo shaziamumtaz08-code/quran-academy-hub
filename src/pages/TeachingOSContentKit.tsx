@@ -1500,7 +1500,8 @@ function SlideContent({ slide, courseName, slideIndex, totalSlides, template }: 
   );
 }
 
-function QuizCard({ q, index, total, showAnswer }: { q: QuizQuestion; index: number; total: number; showAnswer: boolean }) {
+function QuizCard({ q, index, total, showAnswer, template }: { q: QuizQuestion; index: number; total: number; showAnswer: boolean; template?: VisualTemplate }) {
+  const accentColor = template?.colors?.accent || '#1a56b0';
   const diffColor = q.difficulty === "easy" ? "text-green-700 bg-green-50" : q.difficulty === "hard" ? "text-red-700 bg-red-50" : "text-amber-700 bg-amber-50";
   return (
     <div className="bg-white border border-[#e8e9eb] rounded-[10px] p-3.5">
@@ -1539,7 +1540,7 @@ function QuizCard({ q, index, total, showAnswer }: { q: QuizQuestion; index: num
   );
 }
 
-function FlashcardItem({ card }: { card: Flashcard }) {
+function FlashcardItem({ card, template }: { card: Flashcard; template?: VisualTemplate }) {
   const [flipped, setFlipped] = useState(false);
   const posColors = { noun: '#1a7340', verb: '#b85c1a', phrase: '#534AB7', expression: '#b42a2a' };
   const posColor = posColors[card.partOfSpeech as keyof typeof posColors] || '#4a90d9';
