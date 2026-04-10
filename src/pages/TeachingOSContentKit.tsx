@@ -640,6 +640,59 @@ const TeachingOSContentKit: React.FC = () => {
         <div className="flex-1 flex overflow-hidden">
           {/* Center */}
           <div className="flex-1 overflow-y-auto p-3.5">
+            {/* Template selector strip */}
+            {["slides", "quiz", "flashcards", "worksheet", "infographic", "mindmap"].includes(activeTool) && (
+              <div className="mb-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Palette className="w-3.5 h-3.5 text-[#7a7f8a]" />
+                  <span className="text-[11px] font-medium text-[#4a5264]">Visual Template</span>
+                  <button
+                    onClick={() => setShowStylePrompt(!showStylePrompt)}
+                    className="ml-auto text-[10px] text-[#1a56b0] hover:underline"
+                  >
+                    {showStylePrompt ? "Hide style prompt" : "✨ Style prompt"}
+                  </button>
+                </div>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {TEMPLATE_KEYS.map(key => {
+                    const t = VISUAL_TEMPLATES[key];
+                    const isActive = activeTemplate === key;
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => handleTemplateChange(key)}
+                        className={`shrink-0 rounded-lg px-3 py-2 border-2 transition-all text-left ${
+                          isActive ? "border-[#1a56b0] shadow-md scale-[1.02]" : "border-transparent hover:border-[#d0d4dc]"
+                        }`}
+                        style={{ 
+                          background: `linear-gradient(135deg, ${t.colors.bg}, ${t.colors.cardBg})`,
+                          minWidth: 130 
+                        }}
+                      >
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <div className="w-3 h-3 rounded-full" style={{ background: t.colors.accent }} />
+                          <div className="w-3 h-3 rounded-full" style={{ background: t.colors.primary }} />
+                        </div>
+                        <div className="text-[11px] font-semibold" style={{ color: t.colors.text }}>{t.label}</div>
+                        <div className="text-[9px]" style={{ color: t.colors.muted }}>{t.desc}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+                {showStylePrompt && (
+                  <div className="mt-2">
+                    <Textarea
+                      placeholder='Describe your desired style... e.g. "Green and gold Islamic theme" or "Kid-friendly with lots of color"'
+                      value={stylePrompt}
+                      onChange={e => setStylePrompt(e.target.value)}
+                      className="text-[12px] min-h-[50px] bg-white border-[#d0d4dc] resize-none"
+                      rows={2}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Generator bar */}
             {["slides", "quiz", "flashcards", "worksheet", "infographic", "mindmap"].includes(activeTool) && (
               <div className="bg-[#f0f4ff] border border-[#b5d0f8] rounded-[9px] p-3 mb-3">
