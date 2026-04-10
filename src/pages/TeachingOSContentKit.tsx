@@ -314,6 +314,12 @@ const TeachingOSContentKit: React.FC = () => {
   const [studyCardIndex, setStudyCardIndex] = useState(0);
   const [studyFlipped, setStudyFlipped] = useState(false);
 
+  // Library state
+  const [libraryAssets, setLibraryAssets] = useState<any[]>([]);
+  const [libraryLoading, setLibraryLoading] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const abortRef = useRef<AbortController | null>(null);
 
   // Load session plan
