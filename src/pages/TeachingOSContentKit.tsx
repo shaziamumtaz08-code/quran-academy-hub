@@ -402,7 +402,7 @@ const TeachingOSContentKit: React.FC = () => {
   }, [sessionPlan, courseName, subject, level, kitId, generating, customPrompts]);
 
   const generateFullKit = useCallback(async () => {
-    const types: ActiveTool[] = ["slides", "quiz", "flashcards", "worksheet"];
+    const types: ActiveTool[] = ["slides", "quiz", "flashcards", "worksheet", "infographic", "mindmap"];
     await Promise.allSettled(types.map(t => generateContent(t)));
     toast.success("Full kit generation complete!");
   }, [generateContent]);
@@ -413,6 +413,8 @@ const TeachingOSContentKit: React.FC = () => {
     { key: "quiz", label: "Quiz", icon: <HelpCircle className="w-4 h-4" />, count: quizQuestions.length, section: "GENERATE" },
     { key: "flashcards", label: "Flashcards", icon: <Layers className="w-4 h-4" />, count: flashcards.length, section: "GENERATE" },
     { key: "worksheet", label: "Worksheet", icon: <FileText className="w-4 h-4" />, count: worksheetExercises.length > 0 ? 1 : 0, section: "GENERATE" },
+    { key: "infographic", label: "Infographic", icon: <BarChart3 className="w-4 h-4" />, count: infographic ? 1 : 0, section: "GENERATE" },
+    { key: "mindmap", label: "Mind Map", icon: <GitBranch className="w-4 h-4" />, count: mindmap ? 1 : 0, section: "GENERATE" },
     { key: "materials", label: "All materials", icon: <FolderOpen className="w-4 h-4" />, section: "LIBRARY" },
     { key: "templates", label: "Templates", icon: <LayoutTemplate className="w-4 h-4" />, section: "LIBRARY" },
     { key: "upload", label: "Upload file", icon: <Upload className="w-4 h-4" />, section: "LIBRARY" },
@@ -423,6 +425,8 @@ const TeachingOSContentKit: React.FC = () => {
     quiz: { title: "AI quiz generator", desc: `${quizQuestions.length} questions · MCQ + short answer from session objectives` },
     flashcards: { title: "AI flashcard generator", desc: `Arabic terms from this session with transliteration` },
     worksheet: { title: "AI worksheet generator", desc: `Printable exercises aligned to session objectives` },
+    infographic: { title: "AI infographic generator", desc: `Visual summary of key concepts from this session` },
+    mindmap: { title: "AI mind map generator", desc: `Hierarchical concept map of session topics` },
   };
 
   if (loading) {
