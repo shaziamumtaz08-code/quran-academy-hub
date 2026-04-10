@@ -11,7 +11,7 @@ import {
   Star, ChevronRight, Download, Share2, Presentation, HelpCircle,
   BookOpen, Layers, FileText, Upload, FolderOpen, LayoutTemplate,
   Loader2, Square, Check, Sparkles, Printer, Shuffle, ArrowLeft,
-  ArrowRight, X, BarChart3, GitBranch
+  ArrowRight, X, BarChart3, GitBranch, Palette
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
@@ -22,6 +22,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { PhaseStepperCompact, PhaseBreadcrumb } from '@/components/teaching/PhaseNavBar';
+import { detectScriptClass } from '@/lib/scriptFont';
 
 // ─── Types ────────────────────────────────────────────
 interface Activity {
@@ -120,6 +121,100 @@ interface MindMapData {
 
 type ActiveTool = "slides" | "quiz" | "flashcards" | "worksheet" | "infographic" | "mindmap" | "materials" | "templates" | "upload";
 
+// ─── Visual Templates ─────────────────────────────────
+type VisualTemplateKey = "classic" | "minimal" | "heritage" | "vibrant" | "dark";
+
+interface VisualTemplate {
+  key: VisualTemplateKey;
+  label: string;
+  desc: string;
+  colors: { primary: string; accent: string; bg: string; cardBg: string; text: string; muted: string };
+  slideOverrides: Record<string, { bg: string; accent: string; titleColor: string; bodyColor: string; gradientFrom: string; gradientTo: string }>;
+  pptxColors: { bg: string; accent: string; titleColor: string; bodyColor: string };
+  fontClass: string;
+  chipColors: string;
+}
+
+const VISUAL_TEMPLATES: Record<VisualTemplateKey, VisualTemplate> = {
+  classic: {
+    key: "classic", label: "Academy Classic", desc: "Navy + gold, premium serif",
+    colors: { primary: "#0f2044", accent: "#c8a438", bg: "#f8f6f0", cardBg: "#ffffff", text: "#0f2044", muted: "#7a7f8a" },
+    slideOverrides: {
+      Opening: { bg: "#0f2044", accent: "#c8a438", titleColor: "#ffffff", bodyColor: "#c8d6e5", gradientFrom: "#0f2044", gradientTo: "#1a2d5a" },
+      Input: { bg: "#fffdf5", accent: "#c8a438", titleColor: "#0f2044", bodyColor: "#4a5264", gradientFrom: "#fffdf5", gradientTo: "#fff9e6" },
+      Practice: { bg: "#fdf8f0", accent: "#b85c1a", titleColor: "#0f2044", bodyColor: "#4a5264", gradientFrom: "#fdf8f0", gradientTo: "#fff3e6" },
+      Production: { bg: "#f5f0ff", accent: "#534AB7", titleColor: "#0f2044", bodyColor: "#4a5264", gradientFrom: "#f5f0ff", gradientTo: "#ede8ff" },
+      "Wrap-up": { bg: "#1a2d5a", accent: "#c8a438", titleColor: "#ffffff", bodyColor: "#b0c4de", gradientFrom: "#1a2d5a", gradientTo: "#243a6e" },
+      Quiz: { bg: "#fff5f5", accent: "#b42a2a", titleColor: "#0f2044", bodyColor: "#4a5264", gradientFrom: "#fff5f5", gradientTo: "#ffe8e8" },
+    },
+    pptxColors: { bg: "0f2044", accent: "C8A438", titleColor: "FFFFFF", bodyColor: "C8D6E5" },
+    fontClass: "font-serif",
+    chipColors: "bg-[#0f2044] text-[#c8a438]",
+  },
+  minimal: {
+    key: "minimal", label: "Modern Minimal", desc: "Clean white, thin borders",
+    colors: { primary: "#0f172a", accent: "#3b82f6", bg: "#ffffff", cardBg: "#f8fafc", text: "#0f172a", muted: "#94a3b8" },
+    slideOverrides: {
+      Opening: { bg: "#0f172a", accent: "#3b82f6", titleColor: "#ffffff", bodyColor: "#cbd5e1", gradientFrom: "#0f172a", gradientTo: "#1e293b" },
+      Input: { bg: "#ffffff", accent: "#3b82f6", titleColor: "#0f172a", bodyColor: "#475569", gradientFrom: "#ffffff", gradientTo: "#f8fafc" },
+      Practice: { bg: "#ffffff", accent: "#f59e0b", titleColor: "#0f172a", bodyColor: "#475569", gradientFrom: "#ffffff", gradientTo: "#fffbeb" },
+      Production: { bg: "#ffffff", accent: "#8b5cf6", titleColor: "#0f172a", bodyColor: "#475569", gradientFrom: "#ffffff", gradientTo: "#f5f3ff" },
+      "Wrap-up": { bg: "#1e293b", accent: "#3b82f6", titleColor: "#ffffff", bodyColor: "#cbd5e1", gradientFrom: "#1e293b", gradientTo: "#0f172a" },
+      Quiz: { bg: "#ffffff", accent: "#ef4444", titleColor: "#0f172a", bodyColor: "#475569", gradientFrom: "#ffffff", gradientTo: "#fef2f2" },
+    },
+    pptxColors: { bg: "FFFFFF", accent: "3B82F6", titleColor: "0F172A", bodyColor: "475569" },
+    fontClass: "font-sans",
+    chipColors: "bg-[#f1f5f9] text-[#0f172a] border border-[#e2e8f0]",
+  },
+  heritage: {
+    key: "heritage", label: "Islamic Heritage", desc: "Warm parchment, ornamental",
+    colors: { primary: "#5c3d2e", accent: "#8b6914", bg: "#faf5eb", cardBg: "#fff9f0", text: "#3d2b1f", muted: "#8b7355" },
+    slideOverrides: {
+      Opening: { bg: "#3d2b1f", accent: "#d4a944", titleColor: "#faf5eb", bodyColor: "#d4c4a8", gradientFrom: "#3d2b1f", gradientTo: "#5c3d2e" },
+      Input: { bg: "#faf5eb", accent: "#8b6914", titleColor: "#3d2b1f", bodyColor: "#5c4a3a", gradientFrom: "#faf5eb", gradientTo: "#f5ecd8" },
+      Practice: { bg: "#faf5eb", accent: "#a0522d", titleColor: "#3d2b1f", bodyColor: "#5c4a3a", gradientFrom: "#faf5eb", gradientTo: "#f0e4d0" },
+      Production: { bg: "#f5ecd8", accent: "#6b4c8a", titleColor: "#3d2b1f", bodyColor: "#5c4a3a", gradientFrom: "#f5ecd8", gradientTo: "#ede0c8" },
+      "Wrap-up": { bg: "#5c3d2e", accent: "#d4a944", titleColor: "#faf5eb", bodyColor: "#d4c4a8", gradientFrom: "#5c3d2e", gradientTo: "#3d2b1f" },
+      Quiz: { bg: "#faf5eb", accent: "#8b2500", titleColor: "#3d2b1f", bodyColor: "#5c4a3a", gradientFrom: "#faf5eb", gradientTo: "#f5e6dc" },
+    },
+    pptxColors: { bg: "FAF5EB", accent: "8B6914", titleColor: "3D2B1F", bodyColor: "5C4A3A" },
+    fontClass: "font-serif",
+    chipColors: "bg-[#f5ecd8] text-[#5c3d2e] border border-[#d4c4a8]",
+  },
+  vibrant: {
+    key: "vibrant", label: "Vibrant Learning", desc: "Colorful gradients, playful",
+    colors: { primary: "#6d28d9", accent: "#f59e0b", bg: "#faf5ff", cardBg: "#ffffff", text: "#1e1b4b", muted: "#7c6fa0" },
+    slideOverrides: {
+      Opening: { bg: "#4c1d95", accent: "#f59e0b", titleColor: "#ffffff", bodyColor: "#ddd6fe", gradientFrom: "#4c1d95", gradientTo: "#6d28d9" },
+      Input: { bg: "#faf5ff", accent: "#059669", titleColor: "#1e1b4b", bodyColor: "#4c3a72", gradientFrom: "#faf5ff", gradientTo: "#ecfdf5" },
+      Practice: { bg: "#fff7ed", accent: "#ea580c", titleColor: "#1e1b4b", bodyColor: "#4c3a72", gradientFrom: "#fff7ed", gradientTo: "#ffedd5" },
+      Production: { bg: "#eff6ff", accent: "#2563eb", titleColor: "#1e1b4b", bodyColor: "#4c3a72", gradientFrom: "#eff6ff", gradientTo: "#dbeafe" },
+      "Wrap-up": { bg: "#6d28d9", accent: "#fbbf24", titleColor: "#ffffff", bodyColor: "#ddd6fe", gradientFrom: "#6d28d9", gradientTo: "#4c1d95" },
+      Quiz: { bg: "#fef2f2", accent: "#dc2626", titleColor: "#1e1b4b", bodyColor: "#4c3a72", gradientFrom: "#fef2f2", gradientTo: "#fee2e2" },
+    },
+    pptxColors: { bg: "4C1D95", accent: "F59E0B", titleColor: "FFFFFF", bodyColor: "DDD6FE" },
+    fontClass: "font-sans",
+    chipColors: "bg-gradient-to-r from-[#7c3aed] to-[#a855f7] text-white",
+  },
+  dark: {
+    key: "dark", label: "Dark Scholar", desc: "Dark backgrounds, cyan accents",
+    colors: { primary: "#0f172a", accent: "#06b6d4", bg: "#0f172a", cardBg: "#1e293b", text: "#e2e8f0", muted: "#64748b" },
+    slideOverrides: {
+      Opening: { bg: "#020617", accent: "#06b6d4", titleColor: "#f0f9ff", bodyColor: "#94a3b8", gradientFrom: "#020617", gradientTo: "#0f172a" },
+      Input: { bg: "#0f172a", accent: "#06b6d4", titleColor: "#f0f9ff", bodyColor: "#94a3b8", gradientFrom: "#0f172a", gradientTo: "#1e293b" },
+      Practice: { bg: "#1e293b", accent: "#f59e0b", titleColor: "#f0f9ff", bodyColor: "#94a3b8", gradientFrom: "#1e293b", gradientTo: "#0f172a" },
+      Production: { bg: "#1e293b", accent: "#a78bfa", titleColor: "#f0f9ff", bodyColor: "#94a3b8", gradientFrom: "#1e293b", gradientTo: "#0f172a" },
+      "Wrap-up": { bg: "#020617", accent: "#06b6d4", titleColor: "#f0f9ff", bodyColor: "#94a3b8", gradientFrom: "#020617", gradientTo: "#0f172a" },
+      Quiz: { bg: "#1e293b", accent: "#f43f5e", titleColor: "#f0f9ff", bodyColor: "#94a3b8", gradientFrom: "#1e293b", gradientTo: "#0f172a" },
+    },
+    pptxColors: { bg: "0F172A", accent: "06B6D4", titleColor: "F0F9FF", bodyColor: "94A3B8" },
+    fontClass: "font-sans",
+    chipColors: "bg-[#1e293b] text-[#06b6d4] border border-[#334155]",
+  },
+};
+
+const TEMPLATE_KEYS: VisualTemplateKey[] = ["classic", "minimal", "heritage", "vibrant", "dark"];
+
 // ─── Helpers ──────────────────────────────────────────
 const phaseColors: Record<string, { bg: string; text: string }> = {
   Opening: { bg: "bg-blue-50", text: "text-blue-700" },
@@ -197,6 +292,19 @@ const TeachingOSContentKit: React.FC = () => {
   // Custom prompt per tool
   const [customPrompts, setCustomPrompts] = useState<Record<string, string>>({});
   const [showPromptBox, setShowPromptBox] = useState<Record<string, boolean>>({});
+
+  // Visual template
+  const [activeTemplate, setActiveTemplate] = useState<VisualTemplateKey>(() => {
+    return (localStorage.getItem('tos-visual-template') as VisualTemplateKey) || 'classic';
+  });
+  const [stylePrompt, setStylePrompt] = useState("");
+  const [showStylePrompt, setShowStylePrompt] = useState(false);
+  const template = VISUAL_TEMPLATES[activeTemplate];
+
+  const handleTemplateChange = (key: VisualTemplateKey) => {
+    setActiveTemplate(key);
+    localStorage.setItem('tos-visual-template', key);
+  };
 
   // UI state
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
@@ -324,6 +432,9 @@ const TeachingOSContentKit: React.FC = () => {
       if (customPrompts[type]?.trim()) {
         extraParams.customPrompt = customPrompts[type].trim();
       }
+      if (stylePrompt?.trim()) {
+        extraParams.stylePrompt = stylePrompt.trim();
+      }
       const parsed = await fetchAIContent(
         type, sessionPlan, courseName, subject, level,
         extraParams,
@@ -399,7 +510,7 @@ const TeachingOSContentKit: React.FC = () => {
       setGenerating(prev => ({ ...prev, [type]: false }));
       setGenProgress(prev => { const n = { ...prev }; delete n[type]; return n; });
     }
-  }, [sessionPlan, courseName, subject, level, kitId, generating, customPrompts]);
+  }, [sessionPlan, courseName, subject, level, kitId, generating, customPrompts, stylePrompt]);
 
   const generateFullKit = useCallback(async () => {
     const types: ActiveTool[] = ["slides", "quiz", "flashcards", "worksheet", "infographic", "mindmap"];
@@ -530,6 +641,59 @@ const TeachingOSContentKit: React.FC = () => {
         <div className="flex-1 flex overflow-hidden">
           {/* Center */}
           <div className="flex-1 overflow-y-auto p-3.5">
+            {/* Template selector strip */}
+            {["slides", "quiz", "flashcards", "worksheet", "infographic", "mindmap"].includes(activeTool) && (
+              <div className="mb-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Palette className="w-3.5 h-3.5 text-[#7a7f8a]" />
+                  <span className="text-[11px] font-medium text-[#4a5264]">Visual Template</span>
+                  <button
+                    onClick={() => setShowStylePrompt(!showStylePrompt)}
+                    className="ml-auto text-[10px] text-[#1a56b0] hover:underline"
+                  >
+                    {showStylePrompt ? "Hide style prompt" : "✨ Style prompt"}
+                  </button>
+                </div>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {TEMPLATE_KEYS.map(key => {
+                    const t = VISUAL_TEMPLATES[key];
+                    const isActive = activeTemplate === key;
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => handleTemplateChange(key)}
+                        className={`shrink-0 rounded-lg px-3 py-2 border-2 transition-all text-left ${
+                          isActive ? "border-[#1a56b0] shadow-md scale-[1.02]" : "border-transparent hover:border-[#d0d4dc]"
+                        }`}
+                        style={{ 
+                          background: `linear-gradient(135deg, ${t.colors.bg}, ${t.colors.cardBg})`,
+                          minWidth: 130 
+                        }}
+                      >
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <div className="w-3 h-3 rounded-full" style={{ background: t.colors.accent }} />
+                          <div className="w-3 h-3 rounded-full" style={{ background: t.colors.primary }} />
+                        </div>
+                        <div className="text-[11px] font-semibold" style={{ color: t.colors.text }}>{t.label}</div>
+                        <div className="text-[9px]" style={{ color: t.colors.muted }}>{t.desc}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+                {showStylePrompt && (
+                  <div className="mt-2">
+                    <Textarea
+                      placeholder='Describe your desired style... e.g. "Green and gold Islamic theme" or "Kid-friendly with lots of color"'
+                      value={stylePrompt}
+                      onChange={e => setStylePrompt(e.target.value)}
+                      className="text-[12px] min-h-[50px] bg-white border-[#d0d4dc] resize-none"
+                      rows={2}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Generator bar */}
             {["slides", "quiz", "flashcards", "worksheet", "infographic", "mindmap"].includes(activeTool) && (
               <div className="bg-[#f0f4ff] border border-[#b5d0f8] rounded-[9px] p-3 mb-3">
@@ -591,12 +755,12 @@ const TeachingOSContentKit: React.FC = () => {
                   {/* Slide canvas */}
                   <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-[10px] overflow-hidden mb-3 shadow-lg">
                     <div className="aspect-video relative" style={{ minHeight: 320 }}>
-                      {currentSlide && <SlideContent slide={currentSlide} courseName={courseName} slideIndex={activeSlideIndex} totalSlides={slides.length} />}
+                      {currentSlide && <SlideContent slide={currentSlide} courseName={courseName} slideIndex={activeSlideIndex} totalSlides={slides.length} template={template} />}
                     </div>
                     <div className="px-3 py-2 bg-[#111827] border-t border-[#2a2a3e] flex items-center justify-between">
                       <span className="text-[10px] text-[#6b7280]">Slide {activeSlideIndex + 1} of {slides.length} · {currentSlide?.phase}</span>
                       <div className="flex gap-1.5">
-                        <Button variant="outline" size="sm" className="text-[10px] h-6 px-2 border-[#374151] text-[#9ca3af] hover:text-white hover:bg-[#1f2937]" onClick={() => downloadPptx(slides, courseName, subject, level, sessionPlan)}>
+                        <Button variant="outline" size="sm" className="text-[10px] h-6 px-2 border-[#374151] text-[#9ca3af] hover:text-white hover:bg-[#1f2937]" onClick={() => downloadPptx(slides, courseName, subject, level, sessionPlan, template)}>
                           <Download className="w-3 h-3 mr-1" /> PPTX
                         </Button>
                         <Button variant="outline" size="sm" className="text-[10px] h-6 px-2 border-[#374151] text-[#9ca3af] hover:text-white hover:bg-[#1f2937]" onClick={() => generateContent("slides")} disabled={generating.slides}>
@@ -626,7 +790,7 @@ const TeachingOSContentKit: React.FC = () => {
               ) : (
                 <div className="space-y-2">
                   {quizQuestions.map((q, i) => (
-                    <QuizCard key={i} q={q} index={i} total={quizQuestions.length} showAnswer={showAnswers} />
+                    <QuizCard key={i} q={q} index={i} total={quizQuestions.length} showAnswer={showAnswers} template={template} />
                   ))}
                 </div>
               )
@@ -652,7 +816,7 @@ const TeachingOSContentKit: React.FC = () => {
                     </Button>
                   </div>
                   <div className="grid grid-cols-2 gap-2.5">
-                    {flashcards.map((f, i) => <FlashcardItem key={i} card={f} />)}
+                    {flashcards.map((f, i) => <FlashcardItem key={i} card={f} template={template} />)}
                   </div>
                 </div>
               )
@@ -703,7 +867,7 @@ const TeachingOSContentKit: React.FC = () => {
                 <EmptyState icon={<BarChart3 className="w-9 h-9 stroke-[#d0d4dc]" />} title="No infographic yet" sub="Generate a visual summary of session concepts" onGenerate={() => generateContent("infographic")} generating={generating.infographic} />
               ) : (
                 <div className="max-w-[700px] mx-auto">
-                  <div className="bg-gradient-to-br from-[#0f2044] to-[#1a3a6c] rounded-[12px] p-6 text-white shadow-lg">
+                  <div className="rounded-[12px] p-6 text-white shadow-lg" style={{ background: `linear-gradient(135deg, ${template.colors.primary}, ${template.colors.accent}88)` }}>
                     <div className="text-center mb-5">
                       <div className="text-[20px] font-bold">{infographic.title}</div>
                       <div className="text-[12px] text-blue-200 mt-1">{infographic.subtitle}</div>
@@ -751,7 +915,7 @@ const TeachingOSContentKit: React.FC = () => {
                 <div className="max-w-[800px] mx-auto">
                   {/* Central topic */}
                   <div className="flex justify-center mb-6">
-                    <div className="bg-[#0f2044] text-white rounded-full px-6 py-3 text-[15px] font-bold shadow-lg">
+                    <div className="text-white rounded-full px-6 py-3 text-[15px] font-bold shadow-lg" style={{ background: template.colors.primary }}>
                       {mindmap.centralTopic}
                     </div>
                   </div>
@@ -1047,7 +1211,7 @@ const PPTX_THEMES: Record<string, { bg: string; accent: string; titleColor: stri
   Quiz:       { bg: 'fff5f5', accent: 'b42a2a', titleColor: '0f2044', bodyColor: '4a5264' },
 };
 
-async function downloadPptx(slides: SlideData[], courseName: string, subject: string, level: string, sessionPlan: any) {
+async function downloadPptx(slides: SlideData[], courseName: string, subject: string, level: string, sessionPlan: any, template?: VisualTemplate) {
   if (!slides.length) return;
   const pptx = new PptxGenJS();
   pptx.layout = "LAYOUT_WIDE";
@@ -1055,7 +1219,10 @@ async function downloadPptx(slides: SlideData[], courseName: string, subject: st
   pptx.title = sessionPlan?.session_title || "Session Slides";
 
   slides.forEach((s, i) => {
-    const t = PPTX_THEMES[s.phase] || PPTX_THEMES.Input;
+    const tplOverride = template?.slideOverrides?.[s.phase];
+    const t = tplOverride
+      ? { bg: tplOverride.bg.replace('#', ''), accent: tplOverride.accent.replace('#', ''), titleColor: tplOverride.titleColor.replace('#', ''), bodyColor: tplOverride.bodyColor.replace('#', '') }
+      : (PPTX_THEMES[s.phase] || PPTX_THEMES.Input);
     const isDark = ['Opening', 'Wrap-up'].includes(s.phase);
     const slide = pptx.addSlide();
     slide.background = { color: t.bg };
@@ -1209,8 +1376,14 @@ const SLIDE_THEMES: Record<string, {
 
 const DEFAULT_THEME = SLIDE_THEMES.Input;
 
-function SlideContent({ slide, courseName, slideIndex, totalSlides }: { slide: SlideData; courseName?: string; slideIndex?: number; totalSlides?: number }) {
-  const theme = SLIDE_THEMES[slide.phase] || DEFAULT_THEME;
+function SlideContent({ slide, courseName, slideIndex, totalSlides, template }: { slide: SlideData; courseName?: string; slideIndex?: number; totalSlides?: number; template?: VisualTemplate }) {
+  const tplOverride = template?.slideOverrides?.[slide.phase];
+  const theme = tplOverride ? {
+    bg: tplOverride.bg, accent: tplOverride.accent, accentLight: tplOverride.bg,
+    titleColor: tplOverride.titleColor, bodyColor: tplOverride.bodyColor,
+    bulletColor: tplOverride.accent, badgeBg: `${tplOverride.accent}22`, badgeText: tplOverride.accent,
+    gradientFrom: tplOverride.gradientFrom, gradientTo: tplOverride.gradientTo,
+  } : (SLIDE_THEMES[slide.phase] || DEFAULT_THEME);
   const isDark = ['Opening', 'Wrap-up'].includes(slide.phase);
   const isArabicLayout = slide.layoutType === 'arabic-vocab' || slide.layoutType === 'two-column-vocab';
 
@@ -1263,9 +1436,16 @@ function SlideContent({ slide, courseName, slideIndex, totalSlides }: { slide: S
               style={{ background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.03)' }}
             >
               <div
-                className="text-[32px] leading-relaxed"
+                className="leading-relaxed"
                 dir="rtl"
-                style={{ color: theme.titleColor, fontFamily: "'Noto Naskh Arabic', 'Amiri', serif" }}
+                style={{
+                  color: theme.titleColor,
+                  fontFamily: detectScriptClass(slide.arabicText) === 'urdu-text'
+                    ? "'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif"
+                    : "'Noto Naskh Arabic', 'Amiri', serif",
+                  fontSize: detectScriptClass(slide.arabicText) === 'urdu-text' ? '28px' : '36px',
+                  lineHeight: detectScriptClass(slide.arabicText) === 'urdu-text' ? '2.4' : '1.8',
+                }}
               >
                 {slide.arabicText}
               </div>
@@ -1331,11 +1511,12 @@ function SlideContent({ slide, courseName, slideIndex, totalSlides }: { slide: S
   );
 }
 
-function QuizCard({ q, index, total, showAnswer }: { q: QuizQuestion; index: number; total: number; showAnswer: boolean }) {
+function QuizCard({ q, index, total, showAnswer, template }: { q: QuizQuestion; index: number; total: number; showAnswer: boolean; template?: VisualTemplate }) {
+  const accentColor = template?.colors?.accent || '#1a56b0';
   const diffColor = q.difficulty === "easy" ? "text-green-700 bg-green-50" : q.difficulty === "hard" ? "text-red-700 bg-red-50" : "text-amber-700 bg-amber-50";
   return (
     <div className="bg-white border border-[#e8e9eb] rounded-[10px] p-3.5">
-      <div className="text-[10px] uppercase font-medium text-[#1a56b0] mb-1.5">Question {index + 1} of {total} · {q.type.replace("_", " ")}</div>
+      <div className="text-[10px] uppercase font-medium mb-1.5" style={{ color: accentColor }}>Question {index + 1} of {total} · {q.type.replace("_", " ")}</div>
       <div className="text-[13px] font-medium text-[#0f2044] mb-2 leading-snug">{q.question}</div>
       {q.type === "mcq" && q.options && (
         <div className="space-y-1.5 mb-2">
@@ -1370,10 +1551,13 @@ function QuizCard({ q, index, total, showAnswer }: { q: QuizQuestion; index: num
   );
 }
 
-function FlashcardItem({ card }: { card: Flashcard }) {
+function FlashcardItem({ card, template }: { card: Flashcard; template?: VisualTemplate }) {
   const [flipped, setFlipped] = useState(false);
   const posColors = { noun: '#1a7340', verb: '#b85c1a', phrase: '#534AB7', expression: '#b42a2a' };
   const posColor = posColors[card.partOfSpeech as keyof typeof posColors] || '#4a90d9';
+  const frontBg = template ? `linear-gradient(135deg, ${template.colors.primary}, ${template.colors.accent}44)` : 'linear-gradient(135deg, #0f2044, #1a3a6c)';
+  const frontBorder = template ? `1px solid ${template.colors.accent}55` : '1px solid rgba(74,144,217,0.3)';
+  const accentForFront = template?.colors?.accent || '#4a90d9';
 
   return (
     <div
@@ -1381,10 +1565,8 @@ function FlashcardItem({ card }: { card: Flashcard }) {
       className="relative rounded-xl overflow-hidden cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-lg group"
       style={{
         minHeight: 160,
-        background: !flipped
-          ? 'linear-gradient(135deg, #0f2044, #1a3a6c)'
-          : 'linear-gradient(135deg, #ffffff, #f0faf4)',
-        border: !flipped ? '1px solid rgba(74,144,217,0.3)' : '1px solid #d0e8d9',
+        background: !flipped ? frontBg : 'linear-gradient(135deg, #ffffff, #f0faf4)',
+        border: !flipped ? frontBorder : '1px solid #d0e8d9',
       }}
     >
       {/* Decorative circle */}
@@ -1394,10 +1576,10 @@ function FlashcardItem({ card }: { card: Flashcard }) {
       {!flipped ? (
         <div className="p-5 flex flex-col items-center justify-center h-full gap-2">
           <div className="text-[28px] text-white text-center leading-snug" dir="rtl"
-            style={{ fontFamily: "'Noto Naskh Arabic', 'Amiri', serif" }}>
+            style={{ fontFamily: detectScriptClass(card.arabic) === 'urdu-text' ? "'Noto Nastaliq Urdu', serif" : "'Noto Naskh Arabic', 'Amiri', serif", lineHeight: detectScriptClass(card.arabic) === 'urdu-text' ? '2.4' : '1.6' }}>
             {card.arabic}
           </div>
-          <span className="text-[9px] uppercase tracking-[0.15em] text-[#4a90d9] opacity-70 mt-1">
+          <span className="text-[9px] uppercase tracking-[0.15em] opacity-70 mt-1" style={{ color: accentForFront }}>
             Tap to reveal
           </span>
         </div>
@@ -1412,7 +1594,7 @@ function FlashcardItem({ card }: { card: Flashcard }) {
           {card.exampleSentence && (
             <div className="mt-2 px-3 py-2 rounded-lg w-full text-center" style={{ background: 'rgba(0,0,0,0.03)' }}>
               <div className="text-[13px] text-[#0f2044]" dir="rtl"
-                style={{ fontFamily: "'Noto Naskh Arabic', 'Amiri', serif" }}>
+                style={{ fontFamily: detectScriptClass(card.arabic) === 'urdu-text' ? "'Noto Nastaliq Urdu', serif" : "'Noto Naskh Arabic', 'Amiri', serif", lineHeight: detectScriptClass(card.arabic) === 'urdu-text' ? '2.4' : '1.6' }}>
                 {card.exampleSentence}
               </div>
               {card.exampleTranslation && (
@@ -1485,7 +1667,7 @@ function StudyMode({ cards, index, flipped, onFlip, onNext, onPrev, onShuffle, o
         {!flipped ? (
           <div className="text-center z-10 px-8">
             <div className="text-[44px] text-white leading-snug" dir="rtl"
-              style={{ fontFamily: "'Noto Naskh Arabic', 'Amiri', serif" }}>
+              style={{ fontFamily: detectScriptClass(card.arabic) === 'urdu-text' ? "'Noto Nastaliq Urdu', serif" : "'Noto Naskh Arabic', 'Amiri', serif", lineHeight: detectScriptClass(card.arabic) === 'urdu-text' ? '2.4' : '1.6' }}>
               {card.arabic}
             </div>
             <div className="mt-4 text-[10px] uppercase tracking-[0.2em] text-[#4a90d9] opacity-60">
@@ -1503,7 +1685,7 @@ function StudyMode({ cards, index, flipped, onFlip, onNext, onPrev, onShuffle, o
             {card.exampleSentence && (
               <div className="mt-4 px-4 py-2.5 rounded-xl" style={{ background: 'rgba(0,0,0,0.03)' }}>
                 <div className="text-[16px] text-[#0f2044]" dir="rtl"
-                  style={{ fontFamily: "'Noto Naskh Arabic', 'Amiri', serif" }}>
+                  style={{ fontFamily: detectScriptClass(card.arabic) === 'urdu-text' ? "'Noto Nastaliq Urdu', serif" : "'Noto Naskh Arabic', 'Amiri', serif", lineHeight: detectScriptClass(card.arabic) === 'urdu-text' ? '2.4' : '1.6' }}>
                   {card.exampleSentence}
                 </div>
                 {card.exampleTranslation && (

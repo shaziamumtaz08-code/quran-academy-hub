@@ -7,7 +7,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { contentType, sessionPlan, courseName, subject, level, questionCount, questionTypes, difficulty, exerciseTypes, language, customPrompt } = await req.json();
+    const { contentType, sessionPlan, courseName, subject, level, questionCount, questionTypes, difficulty, exerciseTypes, language, customPrompt, stylePrompt } = await req.json();
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) {
@@ -23,6 +23,7 @@ Deno.serve(async (req) => {
 
     const activities = sessionPlan?.activities || [];
     const customSpec = customPrompt ? `\n\nAdditional instructor specifications: ${customPrompt}` : "";
+    const styleSpec = stylePrompt ? `\n\nStyle & tone guidance from the teacher: ${stylePrompt}. Adapt your language tone, formality level, and content style accordingly.` : "";
     const sessionTitle = sessionPlan?.session_title || "Untitled Session";
     const sessionObjective = sessionPlan?.session_objective || "";
 
@@ -52,7 +53,7 @@ For each activity, return one slide:
   "teacherNote": string | null (practical tip for the teacher, max 80 chars),
   "activityInstruction": string | null (specific student activity instruction for practice/production slides)
 }
-Return ONLY the JSON array.${customSpec}`;
+Return ONLY the JSON array.${customSpec}${styleSpec}`;
         break;
       }
 
@@ -77,7 +78,7 @@ Each question:
   "difficulty": "easy" | "medium" | "hard",
   "bloomsLevel": "remember" | "understand" | "apply"
 }
-Return ONLY the JSON array.${customSpec}`;
+Return ONLY the JSON array.${customSpec}${styleSpec}`;
         break;
       }
 
@@ -102,7 +103,7 @@ Each flashcard:
   "exampleSentence": string (Arabic example sentence with diacritics showing the word in context),
   "exampleTranslation": string (English translation of the example)
 }
-Include 12-15 cards covering all key vocabulary from the session. Return ONLY the JSON array.${customSpec}`;
+Include 12-15 cards covering all key vocabulary from the session. Return ONLY the JSON array.${customSpec}${styleSpec}`;
         maxTokens = 4000;
         break;
       }
@@ -132,7 +133,7 @@ Return JSON:
       ]
     }
   ]
-}${customSpec}`;
+}${customSpec}${styleSpec}`;
         maxTokens = 3000;
         break;
       }
@@ -160,7 +161,7 @@ Return JSON:
   "centerFact": string (one big takeaway fact or stat for the center/hero area),
   "footer": string (a motivational or summary line for the bottom)
 }
-Include 4-6 sections. Make it visually rich with real content from the session.${customSpec}`;
+Include 4-6 sections. Make it visually rich with real content from the session.${customSpec}${styleSpec}`;
         maxTokens = 3000;
         break;
       }
@@ -195,7 +196,7 @@ Return JSON:
     }
   ]
 }
-Include 4-6 main branches, each with 2-4 children. Some children should have their own sub-children for depth.${customSpec}`;
+Include 4-6 main branches, each with 2-4 children. Some children should have their own sub-children for depth.${customSpec}${styleSpec}`;
         maxTokens = 3000;
         break;
       }
