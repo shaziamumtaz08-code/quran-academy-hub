@@ -22,6 +22,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { PhaseStepperCompact, PhaseBreadcrumb } from '@/components/teaching/PhaseNavBar';
+import { detectScriptClass } from '@/lib/scriptFont';
 
 // ─── Types ────────────────────────────────────────────
 interface Activity {
