@@ -431,6 +431,9 @@ const TeachingOSContentKit: React.FC = () => {
       if (customPrompts[type]?.trim()) {
         extraParams.customPrompt = customPrompts[type].trim();
       }
+      if (stylePrompt?.trim()) {
+        extraParams.stylePrompt = stylePrompt.trim();
+      }
       const parsed = await fetchAIContent(
         type, sessionPlan, courseName, subject, level,
         extraParams,
