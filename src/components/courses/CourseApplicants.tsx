@@ -534,6 +534,14 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* CSV Import Dialog */}
+      <CourseApplicantImport
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        courseId={courseId}
+        onComplete={() => queryClient.invalidateQueries({ queryKey: ['registration-submissions', courseId] })}
+      />
     </div>
   );
 }
