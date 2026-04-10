@@ -1,70 +1,63 @@
 
 
-# Course Delete, Class Delete & Duplicate Feature
+# Content Kit Visual Quality Upgrade
 
-## What We're Building
+## Problem
+The Content Kit outputs (slides, flashcards, quizzes, etc.) have basic styling with plain Urdu/Arabic fonts, lacking the polished, branded look of tools like Gamma. The current approach relies on hardcoded phase-based color themes with no user control over visual style.
 
-Three new capabilities in the Course management area:
+## Solution: Template System + Style Prompt Panel
 
-1. **Delete entire course** — with cascading cleanup of all related data (classes, enrollments, modules, lessons, etc.)
-2. **Delete a single class** — remove one class from a course without affecting the rest
-3. **Duplicate a course** — with a checklist dialog asking which internal resources to copy
+### 1. Built-in Visual Templates (like Gamma)
+Add 5-6 curated branded templates that control the entire visual language across all content types:
 
----
+| Template | Style |
+|----------|-------|
+| **Academy Classic** | Deep navy + gold, Islamic geometric patterns, premium serif headers |
+| **Modern Minimal** | Clean white, thin borders, subtle accent colors, sans-serif |
+| **Islamic Heritage** | Warm cream/parchment, ornamental borders, Amiri calligraphy, arabesque corners |
+| **Vibrant Learning** | Colorful gradient cards, rounded shapes, playful but professional |
+| **Dark Scholar** | Dark backgrounds, neon cyan accents, tech-forward feel |
 
-## Implementation
+Each template defines: background gradients, accent colors, card styles, font pairings, decorative elements, and Arabic/Urdu font treatment.
 
-### 1. Delete Course (Courses.tsx)
+### 2. Style Prompt Panel
+Add a dedicated "Style & Design" section in the generator bar (alongside existing "Add specs") where teachers can type natural-language styling instructions like:
+- "Use green and gold Islamic theme"
+- "Make it colorful and kid-friendly"
+- "Professional corporate style with minimal decoration"
 
-Add a "Delete" action to each course card (three-dot menu or long-press). Opens a confirmation dialog warning about permanent deletion. On confirm:
+This prompt gets injected into the AI generation for text/layout decisions AND controls CSS variables for the rendered output.
 
-- Delete in order to respect FK constraints:
-  1. `course_lessons` (by course_id)
-  2. `course_modules` (by course_id)
-  3. `course_enrollments` (by course_id)
-  4. `course_classes` (by course_id) — also nullify `zoom_license_id` refs
-  5. `session_plans` (via syllabi linked to course_id)
-  6. `syllabi` (by course_id)
-  7. `course_assignments`, `course_resources`, `course_notifications` (by course_id)
-  8. Finally delete the `courses` row itself
+### 3. Improved Font Rendering
+- Use `Noto Nastaliq Urdu` with proper line-height (2.4) and larger sizes for Urdu content
+- Use `Noto Naskh Arabic` with line-height (2.0) for Arabic content  
+- Auto-detect script and apply appropriate font family
+- Increase Arabic/Urdu font sizes across slides (32px+), flashcards (28px+), and quiz questions
 
-The dialog shows: "This will permanently delete **[Course Name]** and all its classes, enrollments, modules, and resources. This cannot be undone."
+### Technical Changes
 
-### 2. Delete Single Class (CourseClassesTab.tsx)
+**Files to modify:**
 
-Add a delete button per class row. Confirmation dialog: "Delete class **[Class Name]**? Students enrolled in this class will be removed."
+1. **`src/pages/TeachingOSContentKit.tsx`**
+   - Add `VISUAL_TEMPLATES` constant with 5-6 template definitions (colors, fonts, decorations)
+   - Add template selector UI (horizontal card strip) above the generator bar
+   - Add "Style prompt" textarea alongside existing "Add specs"
+   - Refactor `SlideContent`, `FlashcardItem`, `QuizCard`, `StudyMode` to accept a template object
+   - Apply Nastaliq font for Urdu, Naskh for Arabic with proper sizing
+   - Update `downloadPptx` and `exportAsPDF` to use selected template colors/fonts
 
-- Nullify `zoom_license_id` references
-- Delete `course_class_students` for that class
-- Delete the `course_classes` row
+2. **`supabase/functions/generate-content-kit/index.ts`**
+   - Accept `stylePrompt` parameter
+   - Inject style context into AI prompts so generated text aligns with chosen aesthetic (e.g., formal vs. playful tone)
 
-### 3. Duplicate Course (Courses.tsx)
+3. **`src/index.css`** (minor)
+   - Ensure Google Font imports for Noto Nastaliq Urdu and Noto Naskh Arabic are loading (already present)
 
-Add a "Duplicate" action next to Delete on each course card. Opens a **Duplicate Course Dialog** with:
-
-- **New course name** field (pre-filled: "Copy of [Original Name]")
-- **Checklist of what to duplicate**:
-  - [ ] Modules & Lessons (content structure)
-  - [ ] Classes (schedule/time slots — without enrolled students)
-  - [ ] Assignments
-  - [ ] Resources
-  - [ ] Registration Form config
-  - [ ] Fee Plans
-  - [ ] Marketing/Website settings
-
-On confirm:
-1. Insert new `courses` row with same metadata, status = 'draft'
-2. For each checked item, copy the related rows with new course_id
-3. Navigate to the new course builder page
-
----
-
-## Files Changed
-
-| File | Change |
-|------|--------|
-| `src/pages/Courses.tsx` | Add three-dot menu on cards with Delete and Duplicate actions. Add DeleteCourseDialog and DuplicateCourseDialog components inline. |
-| `src/components/courses/CourseClassesTab.tsx` | Add delete button per class with confirmation dialog. |
-
-No database changes needed — all operations use existing tables with standard delete/insert queries.
+### UI Flow
+1. Teacher selects a course/session and lands on Content Kit
+2. A horizontal template strip shows 5-6 visual previews (small colored cards)
+3. Clicking a template updates the entire kit's visual rendering instantly
+4. "Style prompt" field allows free-text override for AI-generated content tone
+5. Template choice persists in localStorage per session
+6. All exports (PPTX, PDF) honor the selected template
 
