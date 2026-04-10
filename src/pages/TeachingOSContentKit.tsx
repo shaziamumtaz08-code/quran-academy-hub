@@ -531,7 +531,7 @@ const TeachingOSContentKit: React.FC = () => {
           {/* Center */}
           <div className="flex-1 overflow-y-auto p-3.5">
             {/* Generator bar */}
-            {["slides", "quiz", "flashcards", "worksheet"].includes(activeTool) && (
+            {["slides", "quiz", "flashcards", "worksheet", "infographic", "mindmap"].includes(activeTool) && (
               <div className="bg-[#f0f4ff] border border-[#b5d0f8] rounded-[9px] p-3 mb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-[30px] h-[30px] rounded-lg bg-[#1a56b0] flex items-center justify-center shrink-0">
