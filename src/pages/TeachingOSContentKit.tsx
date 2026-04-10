@@ -759,7 +759,7 @@ const TeachingOSContentKit: React.FC = () => {
                     <div className="px-3 py-2 bg-[#111827] border-t border-[#2a2a3e] flex items-center justify-between">
                       <span className="text-[10px] text-[#6b7280]">Slide {activeSlideIndex + 1} of {slides.length} · {currentSlide?.phase}</span>
                       <div className="flex gap-1.5">
-                        <Button variant="outline" size="sm" className="text-[10px] h-6 px-2 border-[#374151] text-[#9ca3af] hover:text-white hover:bg-[#1f2937]" onClick={() => downloadPptx(slides, courseName, subject, level, sessionPlan)}>
+                        <Button variant="outline" size="sm" className="text-[10px] h-6 px-2 border-[#374151] text-[#9ca3af] hover:text-white hover:bg-[#1f2937]" onClick={() => downloadPptx(slides, courseName, subject, level, sessionPlan, template)}>
                           <Download className="w-3 h-3 mr-1" /> PPTX
                         </Button>
                         <Button variant="outline" size="sm" className="text-[10px] h-6 px-2 border-[#374151] text-[#9ca3af] hover:text-white hover:bg-[#1f2937]" onClick={() => generateContent("slides")} disabled={generating.slides}>
@@ -1210,7 +1210,7 @@ const PPTX_THEMES: Record<string, { bg: string; accent: string; titleColor: stri
   Quiz:       { bg: 'fff5f5', accent: 'b42a2a', titleColor: '0f2044', bodyColor: '4a5264' },
 };
 
-async function downloadPptx(slides: SlideData[], courseName: string, subject: string, level: string, sessionPlan: any) {
+async function downloadPptx(slides: SlideData[], courseName: string, subject: string, level: string, sessionPlan: any, template?: VisualTemplate) {
   if (!slides.length) return;
   const pptx = new PptxGenJS();
   pptx.layout = "LAYOUT_WIDE";
@@ -1218,7 +1218,10 @@ async function downloadPptx(slides: SlideData[], courseName: string, subject: st
   pptx.title = sessionPlan?.session_title || "Session Slides";
 
   slides.forEach((s, i) => {
-    const t = PPTX_THEMES[s.phase] || PPTX_THEMES.Input;
+    const tplOverride = template?.slideOverrides?.[s.phase];
+    const t = tplOverride
+      ? { bg: tplOverride.bg.replace('#', ''), accent: tplOverride.accent.replace('#', ''), titleColor: tplOverride.titleColor.replace('#', ''), bodyColor: tplOverride.bodyColor.replace('#', '') }
+      : (PPTX_THEMES[s.phase] || PPTX_THEMES.Input);
     const isDark = ['Opening', 'Wrap-up'].includes(s.phase);
     const slide = pptx.addSlide();
     slide.background = { color: t.bg };
