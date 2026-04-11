@@ -759,7 +759,7 @@ const ParentDashboard = () => {
       {/* Mobile bottom nav */}
       <div className="md:hidden flex items-center justify-around bg-white shrink-0" style={{ height: 52, borderTop: '0.5px solid #e8e9eb' }}>
         {mobileNav.map(n => (
-          <button key={n.key} onClick={() => setSection(n.key)} className="flex flex-col items-center gap-0.5 py-1"
+          <button key={n.key} onClick={() => n.key === 'messages' ? navigate('/communication') : setSection(n.key)} className="flex flex-col items-center gap-0.5 py-1"
             style={{ color: section === n.key ? '#1a56b0' : '#aab0bc' }}>
             <n.icon className="w-5 h-5" />
             <span style={{ fontSize: 10, fontWeight: 500 }}>{n.label}</span>
