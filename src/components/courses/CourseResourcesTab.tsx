@@ -61,6 +61,72 @@ export function CourseResourcesTab({ courseId, courseName }: CourseResourcesTabP
 }
 
 // ═══════════════════════════════════════════════════
+// 0. TEACHING OS KITS — Content generated via Teaching OS
+// ═══════════════════════════════════════════════════
+function TeachingOSKitsSection({ courseId }: { courseId: string }) {
+  const navigate = useNavigate();
+
+  const { data: teachingKits = [] } = useQuery({
+    queryKey: ['teaching-kits-for-course', courseId],
+    queryFn: async () => {
+      const { data: syl } = await supabase.from('syllabi')
+        .select('id').eq('course_id', courseId).limit(1);
+      if (!syl?.length) return [];
+
+      const { data: sessions } = await supabase.from('session_plans')
+        .select('id, week_number, session_number, session_title')
+        .eq('syllabus_id', syl[0].id)
+        .order('week_number');
+      if (!sessions?.length) return [];
+
+      const sessionIds = sessions.map(s => s.id);
+      const { data: kits } = await supabase.from('content_kits')
+        .select('id, session_plan_id, status')
+        .in('session_plan_id', sessionIds);
+
+      return sessions.map(s => ({
+        ...s,
+        kit: kits?.find(k => k.session_plan_id === s.id) || null,
+      }));
+    },
+    enabled: !!courseId,
+  });
+
+  if (teachingKits.length === 0) return null;
+
+  const generatedCount = teachingKits.filter(k => k.kit).length;
+
+  return (
+    <Card className="mb-6">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles className="h-4 w-4 text-amber-500" />
+          <h3 className="font-semibold text-sm">Teaching OS Content</h3>
+          <Badge variant="secondary" className="text-xs">{generatedCount} kits generated</Badge>
+        </div>
+        <div className="space-y-1">
+          {teachingKits.map(session => (
+            <div key={session.id} className="flex items-center justify-between py-2 border-b border-border/30 last:border-0">
+              <div>
+                <p className="text-sm font-medium">W{session.week_number}S{session.session_number}: {session.session_title}</p>
+              </div>
+              {session.kit ? (
+                <Button variant="ghost" size="sm" className="text-xs"
+                  onClick={() => navigate(`/teaching-os/content-kit?session_id=${session.id}`)}>
+                  View Kit →
+                </Button>
+              ) : (
+                <span className="text-xs text-muted-foreground">Not generated</span>
+              )}
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ═══════════════════════════════════════════════════
 // 1. MATERIALS — File manager with visibility
 // ═══════════════════════════════════════════════════
 function MaterialsSection({ courseId }: { courseId: string }) {
