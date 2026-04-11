@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
+import { toast as legacyToast } from '@/hooks/use-toast';
 import { Plus, Trash2, ShieldCheck, BookOpen, BarChart, GraduationCap, Loader2, Copy, RefreshCw } from 'lucide-react';
 
 interface Props {
@@ -42,12 +43,23 @@ export function CourseEligibilitySettings({ courseId }: Props) {
     },
   });
 
-  // Webhook secret
+  // Course settings (auto-enroll + webhook)
   const { data: courseData } = useQuery({
-    queryKey: ['course-webhook', courseId],
+    queryKey: ['course-settings', courseId],
     queryFn: async () => {
-      const { data } = await supabase.from('courses').select('webhook_secret').eq('id', courseId).single();
+      const { data } = await supabase.from('courses').select('webhook_secret, auto_enroll_enabled').eq('id', courseId).single();
       return data;
+    },
+  });
+
+  const toggleAutoEnroll = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      const { error } = await supabase.from('courses').update({ auto_enroll_enabled: enabled }).eq('id', courseId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['course-settings', courseId] });
+      toast.success('Auto-decide setting updated');
     },
   });
 
@@ -69,9 +81,9 @@ export function CourseEligibilitySettings({ courseId }: Props) {
       queryClient.invalidateQueries({ queryKey: ['eligibility-rules', courseId] });
       setAddType('');
       setPrereqCourseId('');
-      toast({ title: 'Rule added' });
+      legacyToast({ title: 'Rule added' });
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => legacyToast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
   const toggleRule = useMutation({
@@ -91,7 +103,7 @@ export function CourseEligibilitySettings({ courseId }: Props) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['eligibility-rules', courseId] });
-      toast({ title: 'Rule removed' });
+      legacyToast({ title: 'Rule removed' });
     },
   });
 
