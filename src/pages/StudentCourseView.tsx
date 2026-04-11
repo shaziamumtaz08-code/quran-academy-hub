@@ -144,7 +144,7 @@ export default function StudentCourseView() {
     queryKey: ['student-exam-results', courseId, user?.id],
     queryFn: async () => {
       const { data } = await supabase.from('teaching_exam_submissions')
-        .select('id, exam_id, score, status, submitted_at')
+        .select('id, exam_id, total_score, total_possible, percentage, passed, status, submitted_at')
         .eq('student_id', user!.id);
       return data || [];
     },
@@ -156,9 +156,9 @@ export default function StudentCourseView() {
     queryKey: ['student-announcements', courseId],
     queryFn: async () => {
       const { data } = await supabase.from('course_notifications')
-        .select('id, title, body, sent_at')
+        .select('id, title, body, created_at')
         .eq('course_id', courseId!)
-        .order('sent_at', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(10);
       return data || [];
     },
