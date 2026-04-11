@@ -438,6 +438,9 @@ function ApplyPlanDialog({ open, onOpenChange, courseId, planId, plans, enrolled
 }) {
   const qc = useQueryClient();
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [feeType, setFeeType] = useState<'standard' | 'full_scholarship' | 'partial' | 'waiver'>('standard');
+  const [discountPct, setDiscountPct] = useState(0);
+  const [applyNotes, setApplyNotes] = useState('');
   const plan = plans.find((p: any) => p.id === planId);
 
   const available = enrolledStudents.filter((e: any) => !existingFeeStudentIds.includes(e.student_id));
@@ -446,15 +449,26 @@ function ApplyPlanDialog({ open, onOpenChange, courseId, planId, plans, enrolled
     mutationFn: async () => {
       if (!plan) return;
       const taxMultiplier = 1 + (Number(plan.tax_percent) || 0) / 100;
-      const totalWithTax = Number(plan.total_amount) * taxMultiplier;
+      const baseTotalWithTax = Number(plan.total_amount) * taxMultiplier;
+
+      const isScholarship = feeType === 'full_scholarship' || feeType === 'waiver';
+      const totalDue = feeType === 'full_scholarship' || feeType === 'waiver'
+        ? 0
+        : feeType === 'partial'
+        ? baseTotalWithTax * (1 - discountPct / 100)
+        : baseTotalWithTax;
 
       const rows = Array.from(selected).map(studentId => ({
         course_id: courseId,
         student_id: studentId,
         plan_id: planId,
-        total_due: totalWithTax,
+        total_due: totalDue,
         total_paid: 0,
-        status: 'pending',
+        status: isScholarship ? 'waived' : 'pending',
+        is_scholarship: isScholarship || feeType === 'partial',
+        discount_type: feeType === 'partial' ? 'percentage' : feeType !== 'standard' ? 'full' : 'none',
+        discount_value: feeType === 'partial' ? discountPct : feeType !== 'standard' ? 100 : 0,
+        notes: applyNotes || null,
       }));
       const { error } = await supabase.from('course_student_fees').insert(rows);
       if (error) throw error;
@@ -474,12 +488,54 @@ function ApplyPlanDialog({ open, onOpenChange, courseId, planId, plans, enrolled
 
   return (
     <Dialog open={open} onOpenChange={() => onOpenChange()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Apply "{plan?.plan_name}" to Students</DialogTitle>
-          <DialogDescription>Select students to assign this fee plan</DialogDescription>
+          <DialogDescription>Select students and fee type</DialogDescription>
         </DialogHeader>
-        <div className="space-y-2">
+        <div className="space-y-3">
+          {/* Fee type selector */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Fee Type</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { value: 'standard', label: 'Standard fee' },
+                { value: 'full_scholarship', label: 'Full scholarship' },
+                { value: 'partial', label: 'Partial scholarship' },
+                { value: 'waiver', label: 'Fee waiver' },
+              ].map(opt => (
+                <button key={opt.value}
+                  onClick={() => setFeeType(opt.value as any)}
+                  className={cn("px-3 py-2 rounded-md border text-xs text-left transition-colors",
+                    feeType === opt.value ? "border-primary bg-primary/5 text-primary font-medium" : "border-border text-muted-foreground hover:border-primary/30"
+                  )}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {feeType === 'partial' && (
+            <div className="space-y-1.5">
+              <Label className="text-xs">Discount %</Label>
+              <Input type="number" min={0} max={100} value={discountPct}
+                onChange={e => setDiscountPct(parseInt(e.target.value) || 0)}
+                placeholder="e.g. 50" />
+              {plan && (
+                <p className="text-xs text-muted-foreground">
+                  Student will pay: {plan.currency} {(Number(plan.total_amount) * (1 - discountPct / 100)).toLocaleString()}
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <Label className="text-xs">Notes (optional)</Label>
+            <Input value={applyNotes} onChange={e => setApplyNotes(e.target.value)} placeholder="Scholarship reason..." />
+          </div>
+
+          <Separator />
+
           {available.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">All enrolled students already have a fee plan assigned</p>
           ) : (

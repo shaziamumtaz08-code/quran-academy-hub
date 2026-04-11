@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Bell, LogOut, Menu, User, ChevronDown } from 'lucide-react';
+import { LogOut, Menu, User, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { RoleSwitcher } from '@/components/layout/RoleSwitcher';
+import { NotificationBell } from '@/components/layout/NotificationBell';
 
 interface MobileTopBarProps {
   title?: string;
