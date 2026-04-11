@@ -694,6 +694,83 @@ export default function CourseBuilder() {
               </div>
             </Card>
 
+            {teachingSyllabus && syllabusRows.length > 0 ? (
+              /* ─── SYNCED SYLLABUS VIEW ─── */
+              <div className="space-y-4">
+                <Card className="p-4">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-amber-500" />
+                        <h3 className="font-medium">Teaching OS Syllabus</h3>
+                        <Badge variant="secondary">{teachingSyllabus.status}</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {teachingSyllabus.duration_weeks} weeks · {teachingSyllabus.sessions_week} sessions/week · {teachingSyllabus.language}
+                        {teachingSyllabus.subject && ` · ${teachingSyllabus.subject}`}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-right text-xs text-muted-foreground">
+                        <p>{sessionPlanCount} sessions planned</p>
+                        <p>{contentKitCount} content kits</p>
+                      </div>
+                      <Button variant="outline" size="sm"
+                        onClick={() => navigate(`/teaching-os?syllabus_id=${teachingSyllabus.id}`)}>
+                        Edit in Teaching OS
+                      </Button>
+                      <Button variant="default" size="sm"
+                        onClick={() => navigate(`/teaching-os/planner?syllabus_id=${teachingSyllabus.id}&course_id=${courseId}`)}>
+                        Open Planner →
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+
+                <div className="space-y-2">
+                  {syllabusRows.map((row, idx) => (
+                    <Card key={idx} className="p-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-3">
+                          <div className="flex items-center justify-center h-7 w-7 rounded-full bg-primary/10 text-primary text-xs font-medium shrink-0">
+                            W{row.week}
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">{row.topic}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{row.objectives}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          {row.contentTypes?.map(ct => (
+                            <Badge key={ct} variant="outline" className="text-[10px] px-1.5 py-0">
+                              {ct}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              /* ─── MANUAL MODULE BUILDER ─── */
+              <div>
+                <Card className="p-4 mb-4 border-dashed">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Sparkles className="h-5 w-5 text-amber-500" />
+                      <div>
+                        <p className="font-medium text-sm">Generate syllabus with AI</p>
+                        <p className="text-xs text-muted-foreground">Use Teaching OS to auto-generate a structured syllabus from your course details</p>
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm"
+                      onClick={() => navigate(`/teaching-os?course_id=${courseId}`)}>
+                      Open Teaching OS
+                    </Button>
+                  </div>
+                </Card>
+
             {/* Mobile syllabus toggle */}
             <Button
               variant="outline"
