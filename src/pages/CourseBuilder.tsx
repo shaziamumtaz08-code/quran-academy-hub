@@ -139,6 +139,7 @@ export default function CourseBuilder() {
   const [settingsMaxStudents, setSettingsMaxStudents] = useState('30');
   const [settingsStartDate, setSettingsStartDate] = useState('');
   const [settingsEndDate, setSettingsEndDate] = useState('');
+  const [autoEnrollEnabled, setAutoEnrollEnabled] = useState(false);
 
   // Roster CSV
   const [csvData, setCsvData] = useState('');
@@ -219,6 +220,7 @@ export default function CourseBuilder() {
       setSettingsMaxStudents(String(course.max_students));
       setSettingsStartDate(course.start_date);
       setSettingsEndDate(course.end_date || '');
+      setAutoEnrollEnabled((course as any).auto_enroll_enabled || false);
       // Website fields
       setWebDescription(course.description || '');
       setWebLevel(course.level || 'All Levels');
@@ -389,6 +391,7 @@ export default function CourseBuilder() {
         max_students: parseInt(settingsMaxStudents) || 30,
         start_date: settingsStartDate,
         end_date: settingsEndDate || null,
+        auto_enroll_enabled: autoEnrollEnabled,
       }).eq('id', courseId!);
       if (error) throw error;
     },
@@ -904,6 +907,15 @@ export default function CourseBuilder() {
                   <Label>Subject</Label>
                   <Input value={(course as any).subject?.name || '—'} disabled />
                 </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium">Auto-Enrollment</Label>
+                    <p className="text-xs text-muted-foreground">Automatically enroll eligible applicants when they apply</p>
+                  </div>
+                  <Switch checked={autoEnrollEnabled} onCheckedChange={setAutoEnrollEnabled} />
+                </div>
+
                 <Button onClick={() => saveSettings.mutate()} disabled={saveSettings.isPending}>
                   {saveSettings.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                   Save Settings
