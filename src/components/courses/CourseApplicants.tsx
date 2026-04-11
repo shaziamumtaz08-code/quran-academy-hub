@@ -189,18 +189,27 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
       .limit(1);
 
     if (!existingEnrollment || existingEnrollment.length === 0) {
-      const { error: enrollErr } = await supabase.from('course_enrollments').insert({
+      const { data: newEnrollment, error: enrollErr } = await supabase.from('course_enrollments').insert({
         course_id: courseId,
         student_id: profileId,
         status: 'active',
-      });
+      }).select('id').single();
       if (enrollErr) {
         return { success: false, isNew, error: enrollErr.message };
       }
-    }
 
-    // Update submission status if applicable
-    if (submissionId) {
+      // Update submission with enrollment audit trail
+      if (submissionId && newEnrollment) {
+        await supabase.from('registration_submissions')
+          .update({
+            status: 'enrolled',
+            reviewed_at: new Date().toISOString(),
+            processed_at: new Date().toISOString(),
+            enrollment_id: newEnrollment.id,
+          } as any)
+          .eq('id', submissionId);
+      }
+    } else if (submissionId) {
       await supabase.from('registration_submissions')
         .update({ status: 'enrolled', reviewed_at: new Date().toISOString() })
         .eq('id', submissionId);
