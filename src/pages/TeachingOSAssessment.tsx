@@ -520,6 +520,14 @@ const TeachingOSAssessment: React.FC = () => {
       <div className="w-[210px] bg-white border-r border-[#e8e9eb] flex flex-col flex-shrink-0">
         {/* Header */}
         <div className="px-4 pt-[14px] pb-[10px] border-b border-[#e8e9eb]">
+          {searchParams.get('course_id') && (
+            <button
+              onClick={() => navigate(`/courses/${searchParams.get('course_id')}`)}
+              className="text-[11px] text-[#1a56b0] hover:underline mb-2 block"
+            >
+              ← Back to Course
+            </button>
+          )}
           <div className="text-[13px] font-medium" style={{ color: '#0f2044' }}>Assessment engine</div>
           <div className="text-[11px] mt-[2px]" style={{ color: '#7a7f8a' }}>
             {courseName || 'Course'} · Session {sessionPlan?.session_number || '—'}

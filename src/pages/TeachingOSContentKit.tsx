@@ -631,6 +631,14 @@ const TeachingOSContentKit: React.FC = () => {
       {/* Tool Sidebar */}
       <div className="w-[200px] bg-white border-r border-[#e8e9eb] flex flex-col shrink-0">
         <div className="p-3.5 border-b border-[#e8e9eb]">
+          {searchParams.get('course_id') && (
+            <button
+              onClick={() => navigate(`/courses/${searchParams.get('course_id')}`)}
+              className="text-[11px] text-[#1a56b0] hover:underline mb-2 block"
+            >
+              ← Back to Course
+            </button>
+          )}
           <div className="text-[13px] font-medium text-[#0f2044]">Content kit</div>
           <div className="text-[11px] text-[#7a7f8a]">Session {sessionPlan?.session_number} · Week {sessionPlan?.week_number}</div>
           {/* Phase stepper */}
