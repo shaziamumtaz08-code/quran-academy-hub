@@ -67,6 +67,11 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
   const [manualName, setManualName] = useState('');
   const [manualEmail, setManualEmail] = useState('');
   const [activeTab, setActiveTab] = useState('applicants');
+  const [relationshipApplicant, setRelationshipApplicant] = useState<{
+    email: string;
+    phone?: string;
+    data?: Record<string, any>;
+  } | null>(null);
 
   const { data: submissions = [], isLoading } = useQuery({
     queryKey: ['registration-submissions', courseId],
