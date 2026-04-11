@@ -12,7 +12,7 @@ import {
   Check, Circle, ChevronRight, Sparkles, ArrowRight, Clock, BookOpen,
   Users, CheckCircle2, Loader2, Play, Pause, RotateCcw, X, Send,
   Mic, ListChecks, PenTool, MessageSquare, Hand, Lightbulb, Zap,
-  Square, Eye
+  Square, Eye, Save, Download
 } from 'lucide-react';
 import { PhaseStepperCompact, NextPhaseButton, PhaseBreadcrumb } from '@/components/teaching/PhaseNavBar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -135,6 +135,8 @@ export default function TeachingOSDayBoard() {
   const [notifyMsg, setNotifyMsg] = useState('');
   const [studentStatuses, setStudentStatuses] = useState<Record<string, string>>({});
   const [liveStartTime, setLiveStartTime] = useState<Date | null>(null);
+  const [boardSaving, setBoardSaving] = useState(false);
+  const [editingActivity, setEditingActivity] = useState<number | null>(null);
 
   const timerRef = useRef<ReturnType<typeof setInterval>>();
 
