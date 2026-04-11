@@ -239,9 +239,9 @@ export default function PublicApplyForm() {
         ) : field.field_type === 'file' ? (
           <div className="space-y-1">
             {formData[field.field_key] ? (
-              <div className="flex items-center gap-2 p-2 bg-emerald-50 rounded-md border border-emerald-200">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                <span className="text-xs text-emerald-700 truncate">File uploaded</span>
+              <div className="flex items-center gap-2 p-2 bg-accent/10 rounded-md border border-accent/30">
+                <CheckCircle2 className="h-4 w-4 text-accent shrink-0" />
+                <span className="text-xs text-accent truncate">File uploaded</span>
                 <Button variant="ghost" size="sm" className="h-6 text-xs ml-auto"
                   onClick={() => updateField(field.field_key, null)}>Change</Button>
               </div>
