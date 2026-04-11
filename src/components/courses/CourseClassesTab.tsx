@@ -524,6 +524,9 @@ function ClassDetail({ cls, courseId, onBack, onDelete }: { cls: any; courseId: 
                         <Badge className="text-[10px] bg-primary/10 text-primary border-0 gap-0.5">
                           <GraduationCap className="h-2.5 w-2.5" /> Teacher
                         </Badge>
+                        {s.subject_area && s.subject_area !== 'all' && (
+                          <Badge variant="outline" className="text-[10px]">{s.subject_area}</Badge>
+                        )}
                         {(s.subjects || []).map((sub: string) => <Badge key={sub} variant="secondary" className="text-[10px]">{sub}</Badge>)}
                         <Badge variant="outline" className={cn("text-[10px]", s.payout_type === 'volunteer' && "text-emerald-600 border-emerald-200")}>
                           {s.payout_type === 'per_session' ? '💰 Per Session' : s.payout_type === 'monthly' ? '📅 Monthly' : s.payout_type === 'per_student' ? '👥 Per Student' : '🤝 Volunteer'}

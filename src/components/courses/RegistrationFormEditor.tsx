@@ -275,6 +275,9 @@ export function RegistrationFormEditor({ courseId, courseSlug, courseName }: Reg
                 <p className="text-xs text-muted-foreground">{fields.length} fields</p>
               </div>
               <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => setImportDialogOpen(true)}>
+                  <Download className="h-3.5 w-3.5" /> Import
+                </Button>
                 <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={handleDuplicateForm}>
                   <Copy className="h-3.5 w-3.5" /> Duplicate
                 </Button>
