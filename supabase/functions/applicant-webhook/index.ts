@@ -103,15 +103,32 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Create submission
+    // Determine status based on auto_enroll_enabled
+    const autoMode = course.auto_enroll_enabled === true;
     const sourceTag = source || "webhook";
+
+    let submissionStatus: string;
+    let eligibilityStatus: string;
+
+    if (autoMode && eligible) {
+      submissionStatus = "new"; // will be updated to "enrolled" if auto-enroll succeeds
+      eligibilityStatus = "eligible";
+    } else if (autoMode && !eligible) {
+      submissionStatus = "rejected";
+      eligibilityStatus = "not_eligible";
+    } else {
+      // Manual mode — all go to "new" for review
+      submissionStatus = "new";
+      eligibilityStatus = eligible ? "eligible" : "not_eligible";
+    }
+
     const { data: submission, error: subErr } = await supabaseAdmin.from("registration_submissions").insert({
       form_id: course_id,
       course_id,
       data: { full_name, email: emailLower, phone: phoneTrimmed, gender, city },
-      status: eligible ? "new" : "rejected",
+      status: submissionStatus,
       source_tag: sourceTag,
-      eligibility_status: eligible ? "eligible" : "not_eligible",
+      eligibility_status: eligibilityStatus,
       eligibility_notes: eligibilityNotes.length > 0 ? eligibilityNotes.join("; ") : null,
     }).select("id").single();
 
@@ -119,10 +136,9 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: subErr.message }), { status: 500, headers: corsHeaders });
     }
 
-    // Auto-enroll if eligible and course has auto_enroll_enabled
+    // Auto-enroll if auto mode + eligible + existing profile
     let autoEnrolled = false;
-    if (eligible && course.auto_enroll_enabled && existingProfile) {
-      // Check not already enrolled
+    if (autoMode && eligible && existingProfile) {
       const { data: existing } = await supabaseAdmin
         .from("course_enrollments")
         .select("id")
@@ -149,7 +165,8 @@ Deno.serve(async (req) => {
     }
 
     return new Response(JSON.stringify({
-      status: autoEnrolled ? "enrolled" : (eligible ? "accepted" : "rejected"),
+      status: autoEnrolled ? "enrolled" : (autoMode && !eligible ? "rejected" : "pending_review"),
+      auto_mode: autoMode,
       matched_existing: !!existingProfile,
       auto_enrolled: autoEnrolled,
       eligibility_notes: eligibilityNotes,
