@@ -23,7 +23,7 @@ import {
   ChevronLeft, Save, Plus, Trash2, GripVertical, FileText, Video, File,
   Sparkles, Loader2, Upload, ChevronDown, ChevronRight, Users, Settings,
   BookOpen, X, ExternalLink, ClipboardList, UserPlus, GraduationCap, DollarSign, FolderOpen,
-  Bell, FileText as FileTextIcon, CheckCircle2, Circle
+  Bell, FileText as FileTextIcon, CheckCircle2, Circle, Globe, FileEdit, UserCheck, Layers
 } from 'lucide-react';
 import { RegistrationFormEditor } from '@/components/courses/RegistrationFormEditor';
 import { CourseApplicants } from '@/components/courses/CourseApplicants';
