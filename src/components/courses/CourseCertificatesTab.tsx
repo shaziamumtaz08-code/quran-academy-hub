@@ -8,13 +8,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, Award, FileText, Users, Trash2, Send } from 'lucide-react';
+import { Plus, Award, FileText, Users, Trash2, Send, Sparkles, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { triggerNotification } from '@/lib/notifications';
 
 interface CourseCertificatesTabProps {
   courseId: string;
@@ -31,10 +33,17 @@ export function CourseCertificatesTab({ courseId }: CourseCertificatesTabProps) 
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
   const [issueGrade, setIssueGrade] = useState('');
   const [issueCustomText, setIssueCustomText] = useState('');
+  const [autoAwarding, setAutoAwarding] = useState(false);
 
   // Template form state
   const [tplName, setTplName] = useState('');
   const [tplHtml, setTplHtml] = useState(DEFAULT_TEMPLATE);
+  const [criteria, setCriteria] = useState({
+    requireCompletion: false,
+    requireAttendance: false,
+    minAttendance: '75',
+    requireExamPass: false,
+  });
 
   // Queries
   const { data: templates = [] } = useQuery({
@@ -73,14 +82,33 @@ export function CourseCertificatesTab({ courseId }: CourseCertificatesTabProps) 
     },
   });
 
+  const { data: courseName } = useQuery({
+    queryKey: ['course-name-cert', courseId],
+    queryFn: async () => {
+      const { data } = await supabase.from('courses').select('name').eq('id', courseId).single();
+      return data?.name || '';
+    },
+  });
+
   const createTemplate = useMutation({
     mutationFn: async () => {
+      const hasCriteria = criteria.requireCompletion || criteria.requireAttendance || criteria.requireExamPass;
+      const fields = hasCriteria ? {
+        auto_award_criteria: {
+          require_completion: criteria.requireCompletion,
+          require_attendance: criteria.requireAttendance,
+          min_attendance_pct: parseInt(criteria.minAttendance) || 75,
+          require_exam_pass: criteria.requireExamPass,
+        }
+      } : null;
+
       const { error } = await supabase.from('course_certificates').insert({
         course_id: courseId,
         template_name: tplName,
         template_html: tplHtml,
         created_by: user?.id,
         is_default: templates.length === 0,
+        fields,
       });
       if (error) throw error;
     },
@@ -89,6 +117,7 @@ export function CourseCertificatesTab({ courseId }: CourseCertificatesTabProps) 
       setCreateOpen(false);
       setTplName('');
       setTplHtml(DEFAULT_TEMPLATE);
+      setCriteria({ requireCompletion: false, requireAttendance: false, minAttendance: '75', requireExamPass: false });
       toast({ title: 'Certificate template created' });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
@@ -118,6 +147,11 @@ export function CourseCertificatesTab({ courseId }: CourseCertificatesTabProps) 
       }));
       const { error } = await supabase.from('course_certificate_awards').insert(entries);
       if (error) throw error;
+
+      // Trigger notifications
+      for (const studentId of selectedStudents) {
+        await triggerNotification('certificate_awarded', studentId, { course_name: courseName || '' });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['course-certificate-awards', courseId] });
@@ -129,6 +163,79 @@ export function CourseCertificatesTab({ courseId }: CourseCertificatesTabProps) 
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
+
+  const handleAutoAward = async () => {
+    setAutoAwarding(true);
+    try {
+      const template = templates.find(t => t.is_default) || templates[0];
+      if (!template) { toast({ title: 'Create a certificate template first', variant: 'destructive' }); return; }
+
+      const autoAwardCriteria = (template.fields as any)?.auto_award_criteria;
+      if (!autoAwardCriteria) { toast({ title: 'No auto-award criteria set on the default template', variant: 'destructive' }); return; }
+
+      // Get enrolled students (completed if required)
+      const statusFilter = autoAwardCriteria.require_completion ? 'completed' : 'active';
+      const { data: enrolled } = await supabase.from('course_enrollments')
+        .select('student_id')
+        .eq('course_id', courseId)
+        .eq('status', statusFilter);
+
+      if (!enrolled?.length) { toast({ title: 'No eligible students found' }); return; }
+
+      // Already awarded
+      const { data: alreadyAwarded } = await supabase.from('course_certificate_awards')
+        .select('student_id')
+        .eq('course_id', courseId)
+        .eq('certificate_id', template.id);
+      const awardedSet = new Set((alreadyAwarded || []).map(a => a.student_id));
+
+      let awarded = 0;
+      for (const e of enrolled) {
+        if (awardedSet.has(e.student_id)) continue;
+        let eligible = true;
+
+        if (autoAwardCriteria.require_attendance) {
+          const { data: att } = await supabase.from('attendance')
+            .select('status')
+            .eq('student_id', e.student_id)
+            .eq('course_id', courseId);
+          if (att?.length) {
+            const pct = Math.round(att.filter(a => a.status === 'present').length / att.length * 100);
+            if (pct < (autoAwardCriteria.min_attendance_pct || 75)) eligible = false;
+          } else {
+            eligible = false;
+          }
+        }
+
+        if (autoAwardCriteria.require_exam_pass && eligible) {
+          const { data: submissions } = await supabase.from('teaching_exam_submissions')
+            .select('total_score, passed, exam:teaching_exams!inner(course_id)')
+            .eq('student_id', e.student_id);
+          const relevant = (submissions || []).filter((s: any) => s.exam?.course_id === courseId);
+          const passed = relevant.some((s: any) => s.passed);
+          if (!passed) eligible = false;
+        }
+
+        if (eligible) {
+          const certNumber = `CERT-${courseId.slice(0, 4).toUpperCase()}-${Date.now().toString(36).toUpperCase()}-${awarded}`;
+          await supabase.from('course_certificate_awards').insert({
+            certificate_id: template.id,
+            course_id: courseId,
+            student_id: e.student_id,
+            issued_by: user?.id,
+            certificate_number: certNumber,
+          });
+          await triggerNotification('certificate_awarded', e.student_id, { course_name: courseName || '' });
+          awarded++;
+        }
+      }
+
+      toast({ title: `${awarded} certificate${awarded !== 1 ? 's' : ''} awarded` });
+      queryClient.invalidateQueries({ queryKey: ['course-certificate-awards', courseId] });
+    } finally {
+      setAutoAwarding(false);
+    }
+  };
 
   const openIssueDialog = (templateId: string) => {
     setIssuingTemplateId(templateId);
@@ -182,48 +289,56 @@ export function CourseCertificatesTab({ courseId }: CourseCertificatesTabProps) 
             </Card>
           ) : (
             <div className="grid gap-3">
-              {templates.map(tpl => (
-                <Card key={tpl.id} className="border-border">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <Award className="h-4 w-4 text-amber-500" />
-                          <h4 className="text-sm font-medium">{tpl.template_name}</h4>
-                          {tpl.is_default && <Badge variant="secondary" className="text-xs">Default</Badge>}
+              {templates.map(tpl => {
+                const hasCriteria = !!(tpl.fields as any)?.auto_award_criteria;
+                return (
+                  <Card key={tpl.id} className="border-border">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <Award className="h-4 w-4 text-amber-500" />
+                            <h4 className="text-sm font-medium">{tpl.template_name}</h4>
+                            {tpl.is_default && <Badge variant="secondary" className="text-xs">Default</Badge>}
+                            {hasCriteria && <Badge variant="outline" className="text-xs gap-1"><Sparkles className="h-3 w-3" /> Auto-award</Badge>}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Created {format(new Date(tpl.created_at), 'MMM d, yyyy')}
+                          </p>
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          Created {format(new Date(tpl.created_at), 'MMM d, yyyy')}
-                        </p>
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="outline" className="gap-1 text-xs h-7" onClick={() => openIssueDialog(tpl.id)}>
+                            <Send className="h-3 w-3" /> Issue
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive" onClick={() => deleteTemplate.mutate(tpl.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex gap-1">
-                        <Button size="sm" variant="outline" className="gap-1 text-xs h-7" onClick={() => openIssueDialog(tpl.id)}>
-                          <Send className="h-3 w-3" /> Issue
-                        </Button>
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive" onClick={() => deleteTemplate.mutate(tpl.id)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                      <div className="mt-3 p-3 bg-muted/30 rounded-lg border border-border">
+                        <p className="text-xs text-muted-foreground mb-1">Template Preview</p>
+                        <div className="text-xs" dangerouslySetInnerHTML={{ __html: tpl.template_html?.slice(0, 300) + '...' || '' }} />
                       </div>
-                    </div>
-                    {/* Preview */}
-                    <div className="mt-3 p-3 bg-muted/30 rounded-lg border border-border">
-                      <p className="text-xs text-muted-foreground mb-1">Template Preview</p>
-                      <div className="text-xs" dangerouslySetInnerHTML={{ __html: tpl.template_html?.slice(0, 300) + '...' || '' }} />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </TabsContent>
 
         {/* Issued */}
-        <TabsContent value="issued" className="mt-4">
+        <TabsContent value="issued" className="mt-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium">Issued Certificates</h3>
+            <Button variant="outline" size="sm" onClick={handleAutoAward} disabled={autoAwarding} className="gap-1.5 text-xs">
+              {autoAwarding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+              Check & award eligible
+            </Button>
+          </div>
+
           <Card className="border-border">
-            <CardHeader className="py-3 px-4">
-              <CardTitle className="text-sm">Issued Certificates</CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-3">
+            <CardContent className="px-4 pb-3 pt-3">
               {awards.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-6">No certificates issued yet</p>
               ) : (
@@ -261,7 +376,7 @@ export function CourseCertificatesTab({ courseId }: CourseCertificatesTabProps) 
 
       {/* Create Template Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create Certificate Template</DialogTitle>
             <DialogDescription>Design a certificate template with HTML. Use placeholders: {'{{student_name}}'}, {'{{course_name}}'}, {'{{grade}}'}, {'{{date}}'}, {'{{certificate_number}}'}.</DialogDescription>
@@ -278,6 +393,34 @@ export function CourseCertificatesTab({ courseId }: CourseCertificatesTabProps) 
                 onChange={e => setTplHtml(e.target.value)} 
                 className="min-h-[200px] font-mono text-xs"
               />
+            </div>
+
+            <Separator className="my-4" />
+            <h4 className="font-medium text-sm">Auto-award criteria (optional)</h4>
+            <p className="text-xs text-muted-foreground">
+              When all conditions are met, the certificate can be automatically awarded.
+            </p>
+
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <Checkbox checked={criteria.requireCompletion}
+                  onCheckedChange={v => setCriteria(prev => ({...prev, requireCompletion: !!v}))} />
+                <Label className="text-sm">Course enrollment status = completed</Label>
+              </div>
+              <div className="flex items-center gap-3">
+                <Checkbox checked={criteria.requireAttendance}
+                  onCheckedChange={v => setCriteria(prev => ({...prev, requireAttendance: !!v}))} />
+                <Label className="text-sm">Minimum attendance %</Label>
+                {criteria.requireAttendance && (
+                  <Input type="number" className="w-20 h-8" min="0" max="100"
+                    value={criteria.minAttendance} onChange={e => setCriteria(prev => ({...prev, minAttendance: e.target.value}))} />
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <Checkbox checked={criteria.requireExamPass}
+                  onCheckedChange={v => setCriteria(prev => ({...prev, requireExamPass: !!v}))} />
+                <Label className="text-sm">Must pass at least one exam</Label>
+              </div>
             </div>
           </div>
           <DialogFooter>
