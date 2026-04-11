@@ -1062,6 +1062,8 @@ export default function CourseBuilder() {
                 )}
               </div>
             </div>
+              </div>
+            )}
           </TabsContent>
 
           {/* ═══ SETTINGS TAB ═══ */}
