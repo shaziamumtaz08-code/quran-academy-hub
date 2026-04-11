@@ -478,6 +478,15 @@ export function RegistrationFormEditor({ courseId, courseSlug, courseName }: Reg
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Import from another course */}
+      <ImportFormDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        courseId={courseId}
+        formId={form?.id || ''}
+        onSuccess={invalidate}
+      />
     </div>
   );
 }
