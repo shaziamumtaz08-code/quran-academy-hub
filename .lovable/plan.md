@@ -1,108 +1,80 @@
 
 
-# LMS Advanced Data System — Implementation Plan
+# Plan: AI Content Quality + Visual Rendering Overhaul
 
-## What Already Exists
-- **Bulk Import Wizard** for users/assignments/schedules with CSV validation via edge functions
-- **Course Applicants** system with registration forms, submissions, and enrollment flow
-- **Identity resolution** via email matching in CourseApplicants (create or link existing profile)
-- **Course Enrollments** table with student_id, course_id, status
-- **Registration Submissions** table for form-based applications
+## Overview
+Upgrade the Teaching OS content kit in two areas: (1) richer AI prompts in the edge function for higher-quality slides, flashcards, and worksheets, and (2) layout-aware rendering in the frontend with new slide layout types, enhanced flashcard display, and improved infographic visuals.
 
-## What Needs to Be Built
+## Part 1: Edge Function — Better Prompts
 
-### Phase 1: CSV/XLS Student Import with Smart Field Mapping
+**File: `supabase/functions/generate-content-kit/index.ts`**
 
-**New edge function: `course-applicant-import`**
-- Accepts CSV rows with field mapping
-- Maps columns to system fields (full_name, email, phone, gender, dob, city, source, course_id)
-- Auto-suggest mapping based on header similarity (e.g., "Name" → full_name, "Mobile" → phone)
-- Deduplicates by email (primary) then phone (fallback)
-- Creates registration_submission records per row
-- Returns validation results with diff for existing users
+- **Model**: Keep `google/gemini-3-flash-preview` (it's a supported gateway model). Compensate with better prompts and increased `maxTokens`.
+- **Slides prompt** (lines 31-57): Replace with the detailed prompt from the spec — adds `vocabularyItems`, `grammarTable`, `activityInstruction` fields, new layout types (`dialogue-practice`, `grammar-table`, `visual-prompt`), stricter quality standards, and `maxTokens: 6000`.
+- **Flashcards prompt** (lines 85-108): Add `rootLetters`, `category`, `usageNote` fields, request 15-20 cards, stricter diacritics requirements, `maxTokens: 5000`.
+- **Worksheet prompt** (lines 111-138): Expand exercise types to 8 varieties (sentence construction, reading comprehension, dialogue completion, error correction), request 4-6 items per exercise, `maxTokens: 5000`.
+- **Quiz/infographic/mindmap**: No changes (already adequate).
 
-**New component: `CourseApplicantImport.tsx`**
-- Upload CSV/XLS file (uses SheetJS for XLS parsing)
-- Preview first 5 rows in a table
-- Column mapping UI: dropdown per detected column → system field
-- Save/load mapping templates (localStorage)
-- Validation summary (new, matched, errors)
-- Execute import button
+After editing, deploy the edge function.
 
-**Integration point**: Add "Import CSV" button in CourseApplicants tab
+## Part 2: Frontend Types Update
 
-### Phase 2: External Form API (Google Forms / Zapier)
+**File: `src/pages/TeachingOSContentKit.tsx`**
 
-**New edge function: `applicant-webhook`**
-- POST endpoint accepting JSON payload with applicant fields
-- Same dedup logic: email → phone → create new
-- Creates registration_submission with `source_tag = 'google_form'` or `'webhook'`
-- Optional: runs eligibility check if course_id provided
-- Returns applicant status (enrolled/pending/rejected)
-- Secured via a webhook secret token (configurable per course)
+- Extend `SlideData` interface (~line 49) to add optional fields: `grammarTable`, `vocabularyItems`.
+- Extend `Flashcard` interface (~line 73) to add optional fields: `rootLetters`, `category`, `usageNote`.
+- Update the slide DB-to-state mapping (~line 456) to include new fields from the `bullets` JSON (where the DB stores extra data).
 
-**Database migration**: Add `webhook_secret` column to `courses` table for per-course webhook auth
+## Part 3: Slide Layout-Aware Rendering
 
-### Phase 3: Course Eligibility Engine
+**File: `src/pages/TeachingOSContentKit.tsx`** — `SlideContent` function (~line 1623)
 
-**Database migration**: New `course_eligibility_rules` table
-- `id`, `course_id` (FK), `rule_type` (enum: prerequisite_course, min_attendance, must_pass_exam), `rule_value` (JSONB — stores course_id, threshold %, etc.), `is_active`, `created_at`
+Replace the single-layout rendering with a switch on `slide.layoutType`:
 
-**New component: `CourseEligibilitySettings.tsx`**
-- UI within Course Builder → Settings tab
-- Add rules: prerequisite course (dropdown), min attendance %, must pass exam (toggle)
-- Admin manual override toggle
+- **`arabic-vocab` / `two-column-vocab`**: 2-column vocabulary grid showing arabic, transliteration, english, and example for each item using `slide.vocabularyItems`.
+- **`dialogue-practice`**: Alternating speech-bubble style lines from `slide.bullets` with activity instruction callout.
+- **`grammar-table`**: Renders `slide.grammarTable` as a styled HTML table.
+- **`title-bullets` (default)**: Current layout, kept as-is but with minor polish.
 
-**Eligibility check function** (shared utility):
-- Called during enrollment (both CSV import and webhook)
-- Checks each rule against the student's history
-- Returns eligible/not-eligible with reasons
-- If not eligible → submission stays as `rejected` with reason in `notes`
+All layouts keep the existing phase-based theming (SLIDE_THEMES + template overrides).
 
-### Phase 4: Enhanced Identity Engine
+## Part 4: Flashcard Visual Enhancement
 
-**Upgrade `CourseApplicants.tsx` enrollment flow**:
-- Add phone-based fallback matching (currently email-only)
-- Show "User already exists" dialog with profile preview and options (view profile, enroll in another course)
-- Display course history for matched users
+**File: `src/pages/TeachingOSContentKit.tsx`** — `FlashcardItem` function (~line 1798)
 
-**Upgrade bulk-validate-import edge function**:
-- Add phone dedup as secondary matcher
-- Return matched profile data for review
+- Add `rootLetters` display (small badge below Arabic text on front).
+- Add `category` badge on the card.
+- Add `usageNote` on the back side below the example sentence.
+- Keep existing flip animation and script detection logic.
 
-### Phase 5: Unified Data Flow
+## Part 5: Infographic Visual Polish
 
-Wire everything together:
-- CSV Import → applicant-webhook → CourseApplicants pipeline
-- All paths run through: Dedup → Eligibility Check → Enroll or Reject
-- Add eligibility status column to applicants table view
-- Add "Override & Enroll" button for admins on rejected applicants
+**File: `src/pages/TeachingOSContentKit.tsx`** — infographic rendering (~line 948)
 
-## Technical Details
+- Upgrade the header area with larger typography and template-aware accent colors.
+- Add a subtle decorative border/pattern to the center fact.
+- Keep the existing grid layout but improve card styling with hover effects.
 
-### Database Changes (3 migrations)
-1. `course_eligibility_rules` table with RLS policies
-2. `webhook_secret` column on `courses` table
-3. `eligibility_status` and `eligibility_notes` columns on `registration_submissions`
+## Part 6: Font Loading
 
-### New Files
-- `src/components/courses/CourseApplicantImport.tsx` — CSV upload + mapping UI
-- `src/components/courses/CourseEligibilitySettings.tsx` — rule builder UI
-- `supabase/functions/applicant-webhook/index.ts` — external API endpoint
-- `supabase/functions/course-applicant-import/index.ts` — CSV import with mapping + dedup + eligibility
+**File: `index.html`**
 
-### Modified Files
-- `src/components/courses/CourseApplicants.tsx` — add import button, phone dedup, eligibility display
-- `src/pages/CourseBuilder.tsx` — add eligibility settings to Settings tab
-- `supabase/config.toml` — add new function configs
+- The Arabic fonts (Noto Naskh Arabic, Amiri, Noto Nastaliq Urdu) are already loaded.
+- Add Poppins and Lora to the existing Google Fonts link for template heading variety.
 
-### Dependencies
-- `xlsx` (SheetJS) npm package for XLS/XLSX file parsing on the frontend
+## Files Changed
 
-## Implementation Order
-1. Database migrations (eligibility rules, webhook secret, submission columns)
-2. Eligibility settings UI + backend check logic
-3. CSV/XLS import with field mapping
-4. Applicant webhook endpoint
-5. Enhanced dedup (phone fallback) + unified flow wiring
+| File | Change |
+|---|---|
+| `supabase/functions/generate-content-kit/index.ts` | Upgraded prompts for slides, flashcards, worksheets; increased maxTokens |
+| `src/pages/TeachingOSContentKit.tsx` | Extended types; layout-aware slide rendering; flashcard & infographic visual upgrades |
+| `index.html` | Add Poppins + Lora fonts |
+
+## What Won't Change
+- Edge function API endpoint, auth, CORS, JSON parsing logic
+- DB table structures (content_kits, slides, flashcards, worksheets)
+- Data flow: generate → parse → save → render
+- Custom prompt / style prompt functionality
+- Template selector, PPTX download, study mode
+- Existing visual templates (kept, not replaced — they already have rich phase-specific overrides)
 
