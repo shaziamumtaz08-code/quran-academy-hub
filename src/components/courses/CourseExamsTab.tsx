@@ -21,6 +21,24 @@ interface CourseExamsTabProps {
   courseId: string;
 }
 
+function TeachingOSQuizNote({ courseId }: { courseId: string }) {
+  const navigate = useNavigate();
+  return (
+    <div className="rounded-md bg-muted/50 px-4 py-3 mb-1 flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <Sparkles className="h-4 w-4 text-amber-500" />
+        <p className="text-sm text-muted-foreground">
+          For AI-generated quizzes linked to your syllabus, use Teaching OS
+        </p>
+      </div>
+      <Button variant="outline" size="sm"
+        onClick={() => navigate(`/teaching-os/assessment?course_id=${courseId}`)}>
+        Open Teaching OS
+      </Button>
+    </div>
+  );
+}
+
 export function CourseExamsTab({ courseId }: CourseExamsTabProps) {
   const { toast } = useToast();
   const { user } = useAuth();
