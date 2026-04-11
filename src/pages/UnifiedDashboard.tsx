@@ -336,7 +336,10 @@ export default function UnifiedDashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {[...uniqueTeaching.values()].map(course => (
                     <Card key={course.id} className="p-4 hover:border-primary/30 transition-colors cursor-pointer"
-                      onClick={() => navigate(`/courses/${course.id}`)}>
+                      onClick={() => {
+                        const isAdmin = userRoles.some(r => ['admin', 'super_admin'].includes(r.role));
+                        navigate(isAdmin ? `/courses/${course.id}` : `/my-courses/${course.id}`);
+                      }}>
                       <div className="flex justify-between items-start">
                         <div>
                           <p className="font-medium text-sm">{course.name}</p>
