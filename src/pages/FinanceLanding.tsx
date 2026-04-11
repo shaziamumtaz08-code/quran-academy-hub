@@ -18,6 +18,7 @@ const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2x
 
 export default function FinanceLanding() {
   const { activeDivision } = useDivision();
+  const isOneToOne = activeDivision?.model_type === 'one_to_one';
   const currentMonth = format(new Date(), 'yyyy-MM');
 
   const { data: counts, isLoading } = useQuery({
@@ -49,11 +50,17 @@ export default function FinanceLanding() {
 
   const cards: LandingCard[] = [
     { id: 'fees', title: 'Student Fees', subtitle: 'Pending this month', count: fmt(counts?.pending), countLoading: isLoading, icon: <CreditCard className="h-5 w-5" />, color: 'bg-primary' },
-    { id: 'salaries', title: 'Salaries', subtitle: 'Due this month', count: fmt(counts?.salaryDue), countLoading: isLoading, icon: <Wallet className="h-5 w-5" />, color: 'bg-emerald-500' },
+    ...(isOneToOne ? [
+      { id: 'salaries', title: 'Salaries', subtitle: 'Due this month', count: fmt(counts?.salaryDue), countLoading: isLoading, icon: <Wallet className="h-5 w-5" />, color: 'bg-emerald-500' },
+    ] : []),
     { id: 'expenses', title: 'Expenses', subtitle: 'Month total', count: fmt(counts?.expTotal), countLoading: isLoading, icon: <Receipt className="h-5 w-5" />, color: 'bg-amber-500' },
-    { id: 'advances', title: 'Cash Advances', subtitle: 'Outstanding', count: fmt(counts?.advOutstanding), countLoading: isLoading, icon: <Banknote className="h-5 w-5" />, color: 'bg-rose-500' },
+    ...(isOneToOne ? [
+      { id: 'advances', title: 'Cash Advances', subtitle: 'Outstanding', count: fmt(counts?.advOutstanding), countLoading: isLoading, icon: <Banknote className="h-5 w-5" />, color: 'bg-rose-500' },
+    ] : []),
     { id: 'setup', title: 'Finance Setup', subtitle: 'Plans & config', count: '⚙️', countLoading: false, icon: <Settings className="h-5 w-5" />, color: 'bg-muted' },
-    { id: 'payouts', title: 'Teacher Payouts', subtitle: 'Course staff pay', count: '🎓', countLoading: false, icon: <GraduationCap className="h-5 w-5" />, color: 'bg-violet-500' },
+    ...(isOneToOne ? [
+      { id: 'payouts', title: 'Teacher Payouts', subtitle: 'Course staff pay', count: '🎓', countLoading: false, icon: <GraduationCap className="h-5 w-5" />, color: 'bg-violet-500' },
+    ] : []),
   ];
 
   const contentMap = useMemo(() => ({
@@ -68,7 +75,7 @@ export default function FinanceLanding() {
   return (
     <LandingPageShell
       title="Finance"
-      subtitle="Fees, salaries, expenses, and financial configuration"
+      subtitle={isOneToOne ? "Fees, salaries, expenses, and financial configuration" : "Course fees, expenses, and financial configuration"}
       cards={cards}
       contentMap={contentMap}
       defaultCard="fees"
