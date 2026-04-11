@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
   Search, Eye, Clock, CheckCircle2, XCircle, UserPlus, Loader2,
-  AlertTriangle, RefreshCcw, Users, FileSpreadsheet
+  AlertTriangle, RefreshCcw, Users, FileSpreadsheet, X
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CourseApplicantImport } from './CourseApplicantImport';
@@ -62,6 +62,8 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [enrolling, setEnrolling] = useState(false);
+  const [batchLoading, setBatchLoading] = useState(false);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [errors, setErrors] = useState<EnrollError[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -106,6 +108,8 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
     return matchStatus && matchSearch;
   });
 
+  const selectableFiltered = filtered.filter(s => s.status === 'new' || s.status === 'reviewed');
+
   const statusCounts = {
     all: submissions.length,
     new: submissions.filter(s => s.status === 'new').length,
@@ -123,12 +127,24 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
   };
 
   const toggleAll = () => {
-    if (selectedIds.size === filtered.length) {
+    if (selectableFiltered.length > 0 && selectableFiltered.every(s => selectedIds.has(s.id))) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(filtered.map(s => s.id)));
+      setSelectedIds(new Set(selectableFiltered.map(s => s.id)));
     }
   };
+
+  const headerChecked = selectableFiltered.length > 0 && selectableFiltered.every(s => selectedIds.has(s.id));
+  const headerIndeterminate = !headerChecked && selectableFiltered.some(s => selectedIds.has(s.id));
+  const headerCheckboxRef = useRef<HTMLButtonElement>(null);
+
+  // Set indeterminate state via ref
+  React.useEffect(() => {
+    if (headerCheckboxRef.current) {
+      const input = headerCheckboxRef.current.querySelector('input');
+      if (input) input.indeterminate = headerIndeterminate;
+    }
+  }, [headerIndeterminate]);
 
   // ─── Core enrollment logic ───
   async function enrollSingle(name: string, email: string, submissionId?: string): Promise<{
@@ -138,12 +154,10 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
   }> {
     const emailLower = email.toLowerCase().trim();
 
-    // Validate email
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailLower)) {
       return { success: false, isNew: false, error: 'Invalid email format' };
     }
 
-    // Check if profile exists
     const { data: existingProfiles } = await supabase
       .from('profiles')
       .select('id, full_name, email')
@@ -155,7 +169,6 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
 
     if (existingProfiles && existingProfiles.length > 0) {
       const existing = existingProfiles[0];
-      // Name mismatch check
       if (existing.full_name && name && existing.full_name.toLowerCase() !== name.toLowerCase()) {
         return {
           success: false,
@@ -165,7 +178,6 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
       }
       profileId = existing.id;
     } else {
-      // Create new user via edge function
       const tempPassword = generateTempPassword();
       const { data: createResult, error: createError } = await supabase.functions.invoke('admin-create-user', {
         body: {
@@ -187,7 +199,6 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
       isNew = true;
     }
 
-    // Check if already enrolled
     const { data: existingEnrollment } = await supabase
       .from('course_enrollments')
       .select('id')
@@ -205,7 +216,6 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
         return { success: false, isNew, error: enrollErr.message };
       }
 
-      // Update submission with enrollment audit trail
       if (submissionId && newEnrollment) {
         await supabase.from('registration_submissions')
           .update({
@@ -223,6 +233,139 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
     }
 
     return { success: true, isNew };
+  }
+
+  // ─── Batch Enroll with Eligibility ───
+  async function handleBulkEnroll() {
+    setBatchLoading(true);
+    const ids = Array.from(selectedIds);
+    let enrolled = 0, skipped = 0, rejected = 0;
+
+    for (const subId of ids) {
+      const { data: sub } = await supabase
+        .from('registration_submissions')
+        .select('id, data, course_id')
+        .eq('id', subId)
+        .maybeSingle();
+      if (!sub) continue;
+
+      const email = ((sub.data as any)?.email || '').toLowerCase().trim();
+      const phone = ((sub.data as any)?.phone || (sub.data as any)?.whatsapp_number || '').trim();
+
+      let profileId: string | null = null;
+      if (email) {
+        const { data } = await supabase.from('profiles')
+          .select('id').eq('email', email).limit(1);
+        if (data?.length) profileId = data[0].id;
+      }
+      if (!profileId && phone) {
+        const { data } = await supabase.from('profiles')
+          .select('id').eq('whatsapp_number', phone).limit(1);
+        if (data?.length) profileId = data[0].id;
+      }
+
+      if (!profileId) { skipped++; continue; }
+
+      const { data: existing } = await supabase.from('course_enrollments')
+        .select('id').eq('student_id', profileId).eq('course_id', courseId).limit(1);
+      if (existing?.length) { skipped++; continue; }
+
+      // Check eligibility rules
+      const { data: rules } = await supabase.from('course_eligibility_rules')
+        .select('*').eq('course_id', courseId).eq('is_active', true);
+
+      let eligible = true;
+      if (rules?.length) {
+        for (const rule of rules) {
+          if (rule.rule_type === 'prerequisite_course') {
+            const prereqId = (rule.rule_value as any)?.course_id;
+            if (prereqId) {
+              const { data: comp } = await supabase.from('course_enrollments')
+                .select('id').eq('student_id', profileId).eq('course_id', prereqId)
+                .eq('status', 'completed').limit(1);
+              if (!comp?.length) { eligible = false; break; }
+            }
+          }
+          if (rule.rule_type === 'min_attendance') {
+            const threshold = (rule.rule_value as any)?.threshold || 0;
+            const { data: att } = await supabase.from('attendance')
+              .select('status').eq('student_id', profileId).eq('course_id', courseId);
+            if (att?.length) {
+              const rate = (att.filter(a => a.status === 'present').length / att.length) * 100;
+              if (rate < threshold) { eligible = false; break; }
+            }
+          }
+          if (rule.rule_type === 'must_pass_exam') {
+            const { data: exams } = await supabase.from('teaching_exam_submissions')
+              .select('score, exam:teaching_exams!inner(course_id, total_marks)')
+              .eq('student_id', profileId);
+            const relevant = exams?.filter((e: any) => e.exam?.course_id === courseId);
+            if (!relevant?.length || !relevant.some((e: any) => e.score >= (e.exam?.total_marks || 100) * 0.5)) {
+              eligible = false; break;
+            }
+          }
+        }
+      }
+
+      if (!eligible) {
+        await supabase.from('registration_submissions')
+          .update({ status: 'rejected', eligibility_status: 'not_eligible' } as any)
+          .eq('id', subId);
+        rejected++;
+        continue;
+      }
+
+      // Create enrollment
+      await supabase.from('course_enrollments').insert({
+        student_id: profileId,
+        course_id: courseId,
+        status: 'active',
+      });
+
+      await supabase.from('registration_submissions')
+        .update({
+          status: 'enrolled',
+          eligibility_status: 'eligible',
+          processed_at: new Date().toISOString(),
+          enrollment_id: profileId,
+        } as any)
+        .eq('id', subId);
+
+      enrolled++;
+    }
+
+    toast.success(`Bulk enrollment complete: ${enrolled} enrolled, ${skipped} skipped, ${rejected} rejected`);
+    setSelectedIds(new Set());
+    queryClient.invalidateQueries({ queryKey: ['registration-submissions', courseId] });
+    queryClient.invalidateQueries({ queryKey: ['course-enrolled', courseId] });
+    setBatchLoading(false);
+  }
+
+  // ─── Batch Mark Reviewed ───
+  async function handleBulkReview() {
+    setBatchLoading(true);
+    const ids = Array.from(selectedIds);
+    await supabase.from('registration_submissions')
+      .update({ status: 'reviewed' })
+      .in('id', ids);
+    toast.success(`${ids.length} applicants marked as reviewed`);
+    setSelectedIds(new Set());
+    queryClient.invalidateQueries({ queryKey: ['registration-submissions', courseId] });
+    setBatchLoading(false);
+  }
+
+  // ─── Batch Reject ───
+  async function handleBulkReject() {
+    setBatchLoading(true);
+    const ids = Array.from(selectedIds);
+    await supabase.from('registration_submissions')
+      .update({ status: 'rejected' })
+      .in('id', ids);
+    toast.success(`${ids.length} applicants rejected`);
+    setSelectedIds(new Set());
+    setRejectDialogOpen(false);
+    queryClient.invalidateQueries({ queryKey: ['registration-submissions', courseId] });
+    setBatchLoading(false);
   }
 
   async function handleEnrollSelected() {
@@ -254,10 +397,7 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
     queryClient.invalidateQueries({ queryKey: ['registration-submissions', courseId] });
     queryClient.invalidateQueries({ queryKey: ['course-enrolled', courseId] });
 
-    toast({
-      title: `${enrolled} enrolled`,
-      description: `${newUsers} new users created, ${matched} matched to existing${newErrors.length > 0 ? `, ${newErrors.length} errors` : ''}`,
-    });
+    toast.success(`${enrolled} enrolled — ${newUsers} new, ${matched} matched${newErrors.length > 0 ? `, ${newErrors.length} errors` : ''}`);
 
     if (newErrors.length > 0) setActiveTab('errors');
     setEnrolling(false);
@@ -269,23 +409,20 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
     const email = sub.data?.email || '';
 
     if (!email) {
-      toast({ title: 'No email', description: 'This applicant has no email address', variant: 'destructive' });
+      toast.error('This applicant has no email address');
       setEnrolling(false);
       return;
     }
 
     const result = await enrollSingle(name, email, sub.id);
     if (result.success) {
-      toast({
-        title: 'Enrolled successfully',
-        description: result.isNew ? 'New user created and enrolled' : 'Existing user matched and enrolled',
-      });
+      toast.success(result.isNew ? 'New user created and enrolled' : 'Existing user matched and enrolled');
       setSelectedSubmission(null);
       queryClient.invalidateQueries({ queryKey: ['registration-submissions', courseId] });
       queryClient.invalidateQueries({ queryKey: ['course-enrolled', courseId] });
     } else {
       setErrors(prev => [...prev, { submission: sub, name, email, reason: result.error || 'Unknown error' }]);
-      toast({ title: 'Enrollment failed', description: result.error, variant: 'destructive' });
+      toast.error(result.error || 'Enrollment failed');
     }
     setEnrolling(false);
   }
@@ -295,16 +432,13 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
     setEnrolling(true);
     const result = await enrollSingle(manualName.trim(), manualEmail.trim());
     if (result.success) {
-      toast({
-        title: 'Student enrolled',
-        description: result.isNew ? 'New user created and enrolled' : 'Existing user matched and enrolled',
-      });
+      toast.success(result.isNew ? 'New user created and enrolled' : 'Existing user matched and enrolled');
       setAddOpen(false);
       setManualName('');
       setManualEmail('');
       queryClient.invalidateQueries({ queryKey: ['course-enrolled', courseId] });
     } else {
-      toast({ title: 'Failed', description: result.error, variant: 'destructive' });
+      toast.error(result.error || 'Failed to enroll');
     }
     setEnrolling(false);
   }
@@ -337,7 +471,7 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
           </div>
         </div>
 
-        <TabsContent value="applicants" className="mt-4 space-y-4">
+        <TabsContent value="applicants" className="mt-4 space-y-4 relative">
           {/* Stats */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
             {(['all', 'new', 'reviewed', 'enrolled', 'rejected'] as const).map(status => (
@@ -356,12 +490,6 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Search by name or email…" value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
             </div>
-            {selectedIds.size > 0 && (
-              <Button size="sm" className="gap-1.5" onClick={handleEnrollSelected} disabled={enrolling}>
-                {enrolling ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                Enroll Selected ({selectedIds.size})
-              </Button>
-            )}
           </div>
 
           {/* Table */}
@@ -379,8 +507,11 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-10">
-                        <Checkbox checked={selectedIds.size === filtered.length && filtered.length > 0}
-                          onCheckedChange={toggleAll} />
+                        <Checkbox
+                          ref={headerCheckboxRef}
+                          checked={headerChecked}
+                          onCheckedChange={toggleAll}
+                        />
                       </TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Email</TableHead>
@@ -394,12 +525,19 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
                     {filtered.map(sub => {
                       const cfg = STATUS_CONFIG[sub.status] || STATUS_CONFIG.new;
                       const Icon = cfg.icon;
+                      const isSelectable = sub.status === 'new' || sub.status === 'reviewed';
+                      const isSelected = selectedIds.has(sub.id);
                       return (
-                        <TableRow key={sub.id} className="cursor-pointer hover:bg-muted/50"
+                        <TableRow key={sub.id}
+                          className={cn("cursor-pointer hover:bg-muted/50", isSelected && "bg-primary/5")}
                           onClick={() => setSelectedSubmission(sub)}>
                           <TableCell onClick={e => e.stopPropagation()}>
-                            <Checkbox checked={selectedIds.has(sub.id)}
-                              onCheckedChange={() => toggleSelect(sub.id)} />
+                            {isSelectable ? (
+                              <Checkbox checked={isSelected}
+                                onCheckedChange={() => toggleSelect(sub.id)} />
+                            ) : (
+                              <div className="w-4 h-4" />
+                            )}
                           </TableCell>
                           <TableCell className="font-medium">
                             <button
@@ -437,6 +575,31 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
               </div>
             </Card>
           )}
+
+          {/* Floating Action Bar */}
+          {selectedIds.size > 0 && (
+            <div className="sticky bottom-0 z-50 bg-background/95 backdrop-blur border-t shadow-lg py-3 px-6 flex items-center justify-between rounded-b-lg -mx-1">
+              <span className="text-sm font-medium">{selectedIds.size} selected</span>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())} disabled={batchLoading}>
+                  <X className="h-4 w-4 mr-1" /> Clear
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleBulkReview} disabled={batchLoading}>
+                  {batchLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Eye className="h-4 w-4 mr-1" />}
+                  Mark Reviewed
+                </Button>
+                <Button size="sm" variant="outline" className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                  onClick={() => setRejectDialogOpen(true)} disabled={batchLoading}>
+                  <XCircle className="h-4 w-4 mr-1" /> Reject
+                </Button>
+                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  onClick={handleBulkEnroll} disabled={batchLoading}>
+                  {batchLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}
+                  Enroll Selected
+                </Button>
+              </div>
+            </div>
+          )}
         </TabsContent>
 
         {/* Errors Tab */}
@@ -460,9 +623,9 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
                   if (result.success) {
                     setErrors(prev => prev.filter((_, i) => i !== idx));
                     queryClient.invalidateQueries({ queryKey: ['registration-submissions', courseId] });
-                    toast({ title: 'Retry successful' });
+                    toast.success('Retry successful');
                   } else {
-                    toast({ title: 'Retry failed', description: result.error, variant: 'destructive' });
+                    toast.error(result.error || 'Retry failed');
                   }
                 }}>
                   <RefreshCcw className="h-3.5 w-3.5" /> Retry
@@ -484,7 +647,6 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
           </SheetHeader>
           {selectedSubmission && (
             <div className="space-y-4 mt-4">
-              {/* Status */}
               <div className="flex items-center gap-2">
                 {(() => {
                   const cfg = STATUS_CONFIG[selectedSubmission.status] || STATUS_CONFIG.new;
@@ -498,7 +660,6 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
                 <Badge variant="outline" className="text-xs">{selectedSubmission.source_tag || 'Website'}</Badge>
               </div>
 
-              {/* Form responses */}
               <div className="space-y-1 border rounded-lg p-3">
                 {Object.entries(selectedSubmission.data).map(([key, value]) => (
                   <div key={key} className="flex items-start gap-3 py-2 border-b border-border/40 last:border-0">
@@ -512,7 +673,6 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
                 ))}
               </div>
 
-              {/* Actions */}
               <div className="flex gap-2 pt-2">
                 <Select value={selectedSubmission.status}
                   onValueChange={(v) => {
@@ -572,6 +732,26 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
         courseId={courseId}
         onComplete={() => queryClient.invalidateQueries({ queryKey: ['registration-submissions', courseId] })}
       />
+
+      {/* Reject Confirmation Dialog */}
+      <AlertDialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reject {selectedIds.size} applicant{selectedIds.size > 1 ? 's' : ''}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will mark them as rejected. You can change their status later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={batchLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkReject} disabled={batchLoading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {batchLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              Reject
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* User Relationship Panel */}
       <UserRelationshipPanel
