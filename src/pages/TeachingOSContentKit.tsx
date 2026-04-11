@@ -481,6 +481,7 @@ const TeachingOSContentKit: React.FC = () => {
         id: f.id, arabic: f.arabic, english: f.english,
         transliteration: f.transliteration || "", partOfSpeech: f.part_of_speech || "",
         exampleSentence: f.example_sentence, exampleTranslation: f.example_translation,
+        rootLetters: f.root_letters || null, category: f.category || null, usageNote: f.usage_note || null,
       })));
     }
     if (worksheetRes.data?.length) {
