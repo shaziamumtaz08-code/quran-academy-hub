@@ -303,6 +303,7 @@ function AppRoutes() {
 
       {/* General Protected Routes — old direct URLs still work */}
       <Route path="/dashboard" element={<ProtectedRoute><DashboardWrapper /></ProtectedRoute>} />
+      <Route path="/my-dashboard" element={<ProtectedRoute><DashboardLayout><UnifiedDashboard /></DashboardLayout></ProtectedRoute>} />
       <Route path="/user-management" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
       <Route path="/assignments" element={<ProtectedRoute><Assignments /></ProtectedRoute>} />
       <Route path="/subjects" element={<ProtectedRoute><Subjects /></ProtectedRoute>} />
