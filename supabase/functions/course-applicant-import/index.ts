@@ -33,14 +33,27 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "rows (array) and courseId required" }), { status: 400, headers: corsHeaders });
     }
 
+    // Fetch course auto-decide setting
+    const { data: courseConfig } = await supabaseAdmin.from("courses")
+      .select("auto_enroll_enabled")
+      .eq("id", courseId)
+      .single();
+    const autoMode = courseConfig?.auto_enroll_enabled === true;
+
+    // Fetch eligibility rules once
+    const { data: rules } = await supabaseAdmin
+      .from("course_eligibility_rules")
+      .select("*")
+      .eq("course_id", courseId)
+      .eq("is_active", true);
+
     const results: any[] = [];
-    let created = 0, matched = 0, errors = 0;
+    let created = 0, matched = 0, errors = 0, autoEnrolled = 0, autoRejected = 0;
 
     for (let i = 0; i < rows.length; i++) {
       const raw = rows[i];
       const mapped: Record<string, any> = {};
       
-      // Apply field mapping
       if (fieldMapping) {
         for (const [csvCol, sysField] of Object.entries(fieldMapping)) {
           if (sysField && raw[csvCol] !== undefined) {
@@ -61,7 +74,7 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Dedup: email first, then phone
+      // Dedup
       let existingProfile: any = null;
       if (email) {
         const { data } = await supabaseAdmin.from("profiles").select("id, full_name, email, phone").eq("email", email).limit(1);
@@ -72,17 +85,68 @@ Deno.serve(async (req) => {
         if (data?.length) existingProfile = data[0];
       }
 
-      // Create registration_submission
+      // Run eligibility checks if profile exists and rules exist
+      let eligible = true;
+      const eligibilityNotes: string[] = [];
+
+      if (existingProfile && rules && rules.length > 0) {
+        for (const rule of rules) {
+          if (rule.rule_type === "prerequisite_course") {
+            const prereqId = (rule.rule_value as any)?.course_id;
+            if (prereqId) {
+              const { data: comp } = await supabaseAdmin.from("course_enrollments")
+                .select("id").eq("student_id", existingProfile.id).eq("course_id", prereqId)
+                .eq("status", "completed").limit(1);
+              if (!comp?.length) {
+                eligible = false;
+                eligibilityNotes.push("Prerequisite course not completed");
+              }
+            }
+          }
+          if (rule.rule_type === "min_attendance") {
+            const threshold = (rule.rule_value as any)?.threshold || 0;
+            const { data: att } = await supabaseAdmin.from("attendance")
+              .select("status").eq("student_id", existingProfile.id).eq("course_id", courseId);
+            if (att && att.length > 0) {
+              const rate = (att.filter(a => a.status === "present").length / att.length) * 100;
+              if (rate < threshold) {
+                eligible = false;
+                eligibilityNotes.push(`Attendance ${rate.toFixed(0)}% below required ${threshold}%`);
+              }
+            }
+          }
+          if (rule.rule_type === "must_pass_exam") {
+            const { data: exams } = await supabaseAdmin.from("teaching_exam_submissions")
+              .select("score, exam:teaching_exams!inner(course_id)")
+              .eq("student_id", existingProfile.id);
+            const relevant = exams?.filter((e: any) => e.exam?.course_id === courseId);
+            if (!relevant?.length || !relevant.some((e: any) => e.score >= 50)) {
+              eligible = false;
+              eligibilityNotes.push("Required exam not passed");
+            }
+          }
+        }
+      }
+
+      // Determine submission status
+      let submissionStatus = "new";
+      let eligibilityStatus = eligible ? "eligible" : "not_eligible";
+
+      if (autoMode && !eligible) {
+        submissionStatus = "rejected";
+      }
+
       const submissionData: Record<string, any> = { ...mapped };
-      
-      const { error: subErr } = await supabaseAdmin.from("registration_submissions").insert({
+
+      const { data: submission, error: subErr } = await supabaseAdmin.from("registration_submissions").insert({
         form_id: formId || courseId,
         course_id: courseId,
         data: submissionData,
-        status: "new",
+        status: submissionStatus,
         source_tag: "csv_import",
-        eligibility_status: "pending",
-      });
+        eligibility_status: eligibilityStatus,
+        eligibility_notes: eligibilityNotes.length > 0 ? eligibilityNotes.join("; ") : null,
+      }).select("id").single();
 
       if (subErr) {
         results.push({ rowNum: i + 1, status: "error", error: subErr.message });
@@ -90,10 +154,36 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      if (existingProfile) {
+      // Auto-enroll if auto mode + eligible + profile exists
+      if (autoMode && eligible && existingProfile) {
+        const { data: existing } = await supabaseAdmin.from("course_enrollments")
+          .select("id").eq("course_id", courseId).eq("student_id", existingProfile.id).limit(1);
+
+        if (!existing?.length) {
+          const { data: enrollment } = await supabaseAdmin.from("course_enrollments").insert({
+            course_id: courseId,
+            student_id: existingProfile.id,
+            status: "active",
+          }).select("id").single();
+
+          if (enrollment && submission) {
+            await supabaseAdmin.from("registration_submissions").update({
+              status: "enrolled",
+              processed_at: new Date().toISOString(),
+              enrollment_id: enrollment.id,
+            }).eq("id", submission.id);
+            autoEnrolled++;
+          }
+        }
+      }
+
+      if (autoMode && !eligible) {
+        autoRejected++;
+        results.push({ rowNum: i + 1, status: "rejected", reason: eligibilityNotes.join("; ") });
+      } else if (existingProfile) {
         results.push({
           rowNum: i + 1,
-          status: "matched",
+          status: autoMode && eligible ? "auto_enrolled" : "matched",
           profileId: existingProfile.id,
           existingName: existingProfile.full_name,
           existingEmail: existingProfile.email,
@@ -106,7 +196,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(JSON.stringify({
-      summary: { total: rows.length, new: created, matched, errors },
+      summary: { total: rows.length, new: created, matched, errors, auto_enrolled: autoEnrolled, auto_rejected: autoRejected },
       results,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 

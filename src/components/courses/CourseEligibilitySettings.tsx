@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
+import { toast as legacyToast } from '@/hooks/use-toast';
 import { Plus, Trash2, ShieldCheck, BookOpen, BarChart, GraduationCap, Loader2, Copy, RefreshCw } from 'lucide-react';
 
 interface Props {
@@ -42,12 +43,23 @@ export function CourseEligibilitySettings({ courseId }: Props) {
     },
   });
 
-  // Webhook secret
+  // Course settings (auto-enroll + webhook)
   const { data: courseData } = useQuery({
-    queryKey: ['course-webhook', courseId],
+    queryKey: ['course-settings', courseId],
     queryFn: async () => {
-      const { data } = await supabase.from('courses').select('webhook_secret').eq('id', courseId).single();
+      const { data } = await supabase.from('courses').select('webhook_secret, auto_enroll_enabled').eq('id', courseId).single();
       return data;
+    },
+  });
+
+  const toggleAutoEnroll = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      const { error } = await supabase.from('courses').update({ auto_enroll_enabled: enabled }).eq('id', courseId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['course-settings', courseId] });
+      toast.success('Auto-decide setting updated');
     },
   });
 
@@ -69,9 +81,9 @@ export function CourseEligibilitySettings({ courseId }: Props) {
       queryClient.invalidateQueries({ queryKey: ['eligibility-rules', courseId] });
       setAddType('');
       setPrereqCourseId('');
-      toast({ title: 'Rule added' });
+      legacyToast({ title: 'Rule added' });
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => legacyToast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
   const toggleRule = useMutation({
@@ -91,7 +103,7 @@ export function CourseEligibilitySettings({ courseId }: Props) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['eligibility-rules', courseId] });
-      toast({ title: 'Rule removed' });
+      legacyToast({ title: 'Rule removed' });
     },
   });
 
@@ -103,8 +115,8 @@ export function CourseEligibilitySettings({ courseId }: Props) {
       return secret;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['course-webhook', courseId] });
-      toast({ title: 'Webhook secret generated' });
+      queryClient.invalidateQueries({ queryKey: ['course-settings', courseId] });
+      toast.success('Webhook secret generated');
     },
   });
 
@@ -119,6 +131,35 @@ export function CourseEligibilitySettings({ courseId }: Props) {
 
   return (
     <div className="space-y-4">
+      {/* Auto-decide toggle */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Auto-decide applicants</p>
+              <p className="text-xs text-muted-foreground">
+                When enabled, applicants are automatically accepted or rejected based on eligibility rules at submission time. When disabled, all applicants go to manual review.
+              </p>
+            </div>
+            <Switch
+              checked={courseData?.auto_enroll_enabled || false}
+              onCheckedChange={(v) => toggleAutoEnroll.mutate(v)}
+            />
+          </div>
+          {courseData?.auto_enroll_enabled ? (
+            <div className="mt-3 rounded-md bg-emerald-50 border border-emerald-200 px-3 py-2">
+              <p className="text-xs text-emerald-700">
+                Applicants will be auto-enrolled if they pass all rules, or auto-rejected with reason.
+              </p>
+            </div>
+          ) : (
+            <p className="mt-3 text-xs text-muted-foreground">
+              All applicants go to "New" status for manual review.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
@@ -214,7 +255,7 @@ export function CourseEligibilitySettings({ courseId }: Props) {
             <Label className="text-xs">Webhook URL</Label>
             <div className="flex gap-2">
               <code className="flex-1 bg-muted px-3 py-2 rounded text-xs font-mono truncate">{webhookUrl}</code>
-              <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(webhookUrl); toast({ title: 'Copied!' }); }}>
+              <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(webhookUrl); toast.success('Copied!'); }}>
                 <Copy className="h-3.5 w-3.5" />
               </Button>
             </div>
