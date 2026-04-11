@@ -29,31 +29,58 @@ Deno.serve(async (req) => {
 
     switch (contentType) {
       case "slides": {
-        systemPrompt = `${langInstruction}You are a PROFESSIONAL educational slide designer creating premium presentation content for an Islamic academy. Your slides should be rich, detailed, and pedagogically excellent — NOT basic bullet points. Include real teaching content: vocabulary with diacritics, example sentences, guided practice prompts, discussion questions. Every slide must feel like it was crafted by an expert curriculum designer. Return ONLY a raw JSON array. NEVER wrap in markdown code blocks. NEVER use backticks. Do NOT include [ARABIC] tags — just write Arabic text directly in Arabic script.`;
-        userPrompt = `Generate ${activities.length || 6} DETAILED presentation slides for a ${level || 'Intermediate'} ${subject || 'Arabic'} session titled '${sessionTitle}'.
-Session objective: ${sessionObjective}
-Activities: ${JSON.stringify(activities)}
+        systemPrompt = `${langInstruction}You are a world-class educational content designer with 15 years of experience creating premium teaching materials for language academies. Your slides are used by thousands of teachers globally.
 
-IMPORTANT GUIDELINES:
-- Opening slides: include an engaging hook question or warm-up prompt
-- Vocabulary slides: include Arabic words WITH full diacritics (tashkeel), transliteration, AND example usage in a sentence
-- Teaching slides: include clear explanations, examples, and key takeaways — NOT generic placeholders
-- Practice slides: include specific student activities with clear instructions
-- Wrap-up slides: include review questions and homework/next-steps
+QUALITY STANDARDS:
+- Every slide must contain REAL teaching content — never placeholders or generic filler
+- Arabic text MUST have complete tashkeel/diacritics on every letter
+- Vocabulary items must include root letters, morphological pattern, and contextual usage
+- Example sentences must be natural, practical, and at the appropriate difficulty level
+- Grammar explanations must use clear analogies and progressive disclosure
+- Practice prompts must be specific and actionable — "Practice with your partner" is NOT acceptable, instead: "Student A points to 3 objects and asks 'مَا هَذَا؟' — Student B answers with the correct Arabic name"
+- Teacher notes must be specific pedagogical guidance, not generic advice
 
-For each activity, return one slide:
+CONTENT DEPTH:
+- Opening: hook question that connects to students' real life + brief review of last session's key point
+- Input: structured explanation with minimum 2 examples per concept, building from simple to complex
+- Practice: specific pair/group activity with exact dialogue scripts students should practice
+- Production: creative task where students apply the concept independently
+- Wrap-up: 3 specific review questions testing the lesson's objectives + preview of next session
+
+Return ONLY a raw JSON array. No markdown, no backticks, no [ARABIC] tags.`;
+
+        userPrompt = `Generate ${Math.max(activities.length, 6)} PREMIUM presentation slides for:
+Course: ${courseName || 'Arabic Language Course'}
+Level: ${level || 'Beginner'}
+Subject: ${subject || 'Arabic Language'}
+Session: ${sessionTitle}
+Objective: ${sessionObjective}
+
+Session activities with full details:
+${activities.map((a: any, i: number) => `Activity ${i+1} [${a.phase}]: ${a.title}
+Duration: ${a.durationMinutes} min
+Description: ${a.description}
+Type: ${a.activityType || 'teacher-led'}
+Materials: ${a.materials || 'none specified'}`).join('\n\n')}
+
+For EACH activity generate a slide with:
 {
   "activityIndex": number,
-  "phase": string (one of: "Opening", "Input", "Practice", "Production", "Wrap-up", "Quiz"),
-  "layoutType": "title-bullets" | "arabic-vocab" | "two-column-vocab" | "activity-card",
-  "title": string (max 8 words, descriptive and engaging),
-  "arabicText": string | null (include Arabic with diacritics where relevant),
-  "transliteration": string | null (romanised pronunciation),
-  "bullets": string[] (3-5 items, each 8-15 words with REAL content, not placeholders),
-  "teacherNote": string | null (practical tip for the teacher, max 80 chars),
-  "activityInstruction": string | null (specific student activity instruction for practice/production slides)
+  "phase": "Opening" | "Input" | "Practice" | "Production" | "Wrap-up" | "Quiz",
+  "layoutType": "title-bullets" | "arabic-vocab" | "two-column-vocab" | "activity-card" | "dialogue-practice" | "grammar-table" | "visual-prompt",
+  "title": string (compelling, max 8 words — NOT generic like "Let's Learn" — specific like "Near & Far: هَذَا vs ذَلِكَ"),
+  "arabicText": string | null (Arabic with FULL diacritics — فَتْحَة ضَمَّة كَسْرَة سُكُون شَدَّة تَنْوِين on EVERY letter),
+  "transliteration": string | null (accurate romanized pronunciation),
+  "bullets": string[] (4-6 items, each 10-20 words with SUBSTANTIVE content — real vocabulary, real examples, real instructions),
+  "teacherNote": string (specific classroom management tip for THIS activity, max 100 chars),
+  "activityInstruction": string | null (for practice/production: exact step-by-step activity instructions with example dialogue),
+  "grammarTable": { "headers": string[], "rows": string[][] } | null (for grammar explanation slides),
+  "vocabularyItems": [{ "arabic": string, "transliteration": string, "english": string, "example": string }] | null (for vocab-heavy slides)
 }
+
+CRITICAL: Do NOT produce generic content. Every bullet must contain real teaching material specific to ${subject} at ${level} level.
 Return ONLY the JSON array.${customSpec}${styleSpec}`;
+        maxTokens = 6000;
         break;
       }
 
@@ -84,57 +111,77 @@ Return ONLY the JSON array.${customSpec}${styleSpec}`;
 
       case "flashcards": {
         systemPrompt = `${langInstruction}You are a PROFESSIONAL Arabic language vocabulary specialist. Create rich, detailed flashcards with full diacritics (tashkeel/harakat) on all Arabic text. Every card must include a practical example sentence showing the word in context. Return ONLY a raw JSON array. NEVER wrap in markdown code blocks. NEVER use backticks. Do NOT include [ARABIC] tags — just write Arabic text directly in Arabic script with diacritics.`;
-        userPrompt = `Generate professional flashcards for vocabulary in this ${level || 'Intermediate'} Arabic session on '${sessionTitle}'.
-Session objective: ${sessionObjective}
-Session activities: ${JSON.stringify(activities.map((a: any) => a.title + ': ' + a.description))}
+        userPrompt = `Generate 15-20 professional flashcards for vocabulary in this ${level || 'Intermediate'} ${subject || 'Arabic'} session on '${sessionTitle}'.
 
-IMPORTANT: 
-- Write ALL Arabic text with FULL diacritics/tashkeel (فَتْحَة، ضَمَّة، كَسْرَة، سُكُون، شَدَّة، تَنْوِين)
-- Include a REAL example sentence for EVERY card (not null)
-- Group related vocabulary together
-- Include root letters for verbs where helpful
+Session objective: ${sessionObjective}
+Activities: ${JSON.stringify(activities.map((a: any) => ({ title: a.title, description: a.description })))}
+
+QUALITY REQUIREMENTS:
+- EVERY Arabic word must have COMPLETE diacritics (not just the first letter — EVERY letter)
+- Include morphological information: root letters (جذر), verb pattern (وزن) where applicable
+- Example sentences must be natural conversational Arabic, not textbook stilted
+- Group vocabulary by semantic category (greetings, objects, actions, etc.)
+- Include common collocations or phrases where the word frequently appears
+- For verbs: include present and past tense forms
 
 Each flashcard:
 {
-  "arabic": string (Arabic word/phrase WITH full diacritics),
-  "english": string (clear English meaning with context),
-  "transliteration": string (accurate romanised pronunciation),
-  "partOfSpeech": "noun"|"verb"|"phrase"|"expression"|"adjective"|"preposition",
-  "exampleSentence": string (Arabic example sentence with diacritics showing the word in context),
-  "exampleTranslation": string (English translation of the example)
+  "arabic": string (with FULL diacritics on every letter),
+  "english": string (clear meaning with usage context in parentheses),
+  "transliteration": string (accurate IPA-like romanization),
+  "partOfSpeech": "noun" | "verb" | "phrase" | "expression" | "adjective" | "preposition" | "particle",
+  "exampleSentence": string (natural Arabic sentence with full diacritics, 5-10 words),
+  "exampleTranslation": string (natural English translation),
+  "rootLetters": string | null (e.g., "ك-ت-ب" for كِتَاب),
+  "category": string (semantic group: "greetings", "classroom", "food", "family", etc.),
+  "usageNote": string | null (brief note on when/how to use this word naturally)
 }
-Include 12-15 cards covering all key vocabulary from the session. Return ONLY the JSON array.${customSpec}${styleSpec}`;
-        maxTokens = 4000;
+
+Return ONLY the JSON array.${customSpec}${styleSpec}`;
+        maxTokens = 5000;
         break;
       }
 
       case "worksheet": {
-        const exTypes = exerciseTypes?.join(", ") || "fill_blank, translate_to_arabic, match, short_answer";
-        systemPrompt = `${langInstruction}You are a worksheet designer for Islamic education. Create printable exercises. Return ONLY raw JSON. NEVER wrap in markdown code blocks. NEVER use backticks. Do NOT include [ARABIC] tags — just write Arabic text directly.`;
-        userPrompt = `Create a printable worksheet for ${level || 'Intermediate'} ${subject || 'Arabic'} students on '${sessionTitle}'.
+        const exTypes = exerciseTypes?.join(", ") || "fill_blank, translate_to_arabic, match, short_answer, sentence_construction, dialogue_completion";
+        systemPrompt = `${langInstruction}You are a worksheet designer for Islamic education. Create printable exercises with rich content. Return ONLY raw JSON. NEVER wrap in markdown code blocks. NEVER use backticks. Do NOT include [ARABIC] tags — just write Arabic text directly.`;
+        userPrompt = `Create a comprehensive, printable worksheet for ${level || 'Intermediate'} ${subject || 'Arabic'} students on '${sessionTitle}'.
 Objectives: ${sessionObjective}
 Activities: ${JSON.stringify(activities.map((a: any) => a.title + ': ' + a.description))}
-Include exercises: ${exTypes}
+
+EXERCISE TYPES — include at least 4 of these: ${exTypes}
+Additional types to consider:
+1. Fill in the blanks (with Arabic diacritics in the sentence)
+2. Translation (both directions: Arabic→English AND English→Arabic)
+3. Matching (Arabic words to English meanings)
+4. Sentence construction (given words, build a correct sentence)
+5. Reading comprehension (short Arabic paragraph + questions)
+6. Dialogue completion (fill missing lines in a conversation)
+7. Error correction (find and fix mistakes in Arabic sentences)
+8. Short answer
+
+Each exercise should have 4-6 items minimum.
 
 Return JSON:
 {
   "title": string,
   "exercises": [
     {
-      "type": "fill_blank"|"translate_to_arabic"|"match"|"short_answer",
+      "type": string,
       "title": string,
-      "instructions": string,
+      "instructions": string (clear instructions),
       "items": [
         {
           "question": string,
           "answer": string,
-          "blankedSentence": string | null
+          "blankedSentence": string | null,
+          "options": string[] | null (for matching exercises)
         }
       ]
     }
   ]
 }${customSpec}${styleSpec}`;
-        maxTokens = 3000;
+        maxTokens = 5000;
         break;
       }
 
