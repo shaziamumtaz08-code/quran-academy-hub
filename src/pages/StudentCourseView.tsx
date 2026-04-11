@@ -9,11 +9,34 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 import { format, formatDistanceToNow } from 'date-fns';
 import {
   ArrowLeft, BookOpen, Calendar, FileText, ClipboardList,
   GraduationCap, MessageSquare, Video, Clock, ExternalLink
 } from 'lucide-react';
+
+// ─── Helpers ───
+function isClassToday(scheduleDays: string[]): boolean {
+  const dayNames = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+  const todayName = dayNames[new Date().getDay()];
+  return scheduleDays?.some(d => d.toLowerCase().startsWith(todayName)) ?? false;
+}
+
+function getClassStatus(scheduleDays: string[], startTime: string, durationMinutes: number): 'upcoming' | 'live' | 'ended' | 'not_today' {
+  if (!isClassToday(scheduleDays)) return 'not_today';
+  const now = new Date();
+  const [hours, minutes] = (startTime || '00:00').split(':').map(Number);
+  const classStart = new Date();
+  classStart.setHours(hours, minutes, 0, 0);
+  const classEnd = new Date(classStart.getTime() + durationMinutes * 60000);
+  const joinWindow = new Date(classStart.getTime() - 15 * 60000);
+
+  if (now >= joinWindow && now < classStart) return 'upcoming';
+  if (now >= classStart && now <= classEnd) return 'live';
+  if (now > classEnd) return 'ended';
+  return 'not_today';
+}
 
 export default function StudentCourseView() {
   const { courseId } = useParams<{ courseId: string }>();
@@ -174,6 +197,11 @@ export default function StudentCourseView() {
       ? (typeof syllabus.rows === 'string' ? JSON.parse(syllabus.rows) : syllabus.rows as any)
       : [];
 
+  // ─── Class status ───
+  const classStatus = myClass
+    ? getClassStatus(myClass.schedule_days as string[], myClass.schedule_time as string, myClass.session_duration as number)
+    : 'not_today';
+
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-4xl mx-auto">
       {/* Back + Header */}
@@ -193,26 +221,44 @@ export default function StudentCourseView() {
         )}
       </div>
 
-      {/* Next Class Card */}
+      {/* Next Class Card — Smart Join */}
       {myClass && (
-        <Card className="border-primary/20 bg-primary/5">
+        <Card className={cn(
+          'border',
+          classStatus === 'live' && 'border-emerald-500 bg-emerald-50/50',
+          classStatus === 'upcoming' && 'border-blue-300 bg-blue-50/50',
+          classStatus === 'not_today' && 'border-border',
+          classStatus === 'ended' && 'border-border',
+        )}>
           <CardContent className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Video className="h-5 w-5 text-primary" />
+              <div className={cn(
+                'h-10 w-10 rounded-full flex items-center justify-center',
+                classStatus === 'live' ? 'bg-emerald-100' : 'bg-primary/10',
+              )}>
+                <Video className={cn('h-5 w-5', classStatus === 'live' ? 'text-emerald-600' : 'text-primary')} />
               </div>
               <div>
-                <p className="font-medium text-sm">{myClass.name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium text-sm">{myClass.name}</p>
+                  {classStatus === 'live' && <Badge className="bg-emerald-500 text-white animate-pulse text-[10px]">LIVE</Badge>}
+                  {classStatus === 'upcoming' && <Badge variant="secondary" className="text-[10px]">Starting soon</Badge>}
+                </div>
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Clock className="h-3 w-3" />
                   {(myClass.schedule_days as string[])?.join(', ')} · {myClass.schedule_time} · {myClass.session_duration} min
                 </p>
               </div>
             </div>
-            {myClass.meeting_link && (
-              <Button size="sm" className="w-full sm:w-auto" onClick={() => window.open(myClass.meeting_link, '_blank')}>
-                <ExternalLink className="h-3.5 w-3.5 mr-1" /> Join Class
+            {myClass.meeting_link && (classStatus === 'live' || classStatus === 'upcoming') ? (
+              <Button size="sm" className={cn('w-full sm:w-auto', classStatus === 'live' && 'bg-emerald-600 hover:bg-emerald-700')}
+                onClick={() => window.open(myClass.meeting_link as string, '_blank')}>
+                <Video className="h-4 w-4 mr-1" /> Join Class
               </Button>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                {classStatus === 'ended' ? 'Class ended for today' : `Next: ${(myClass.schedule_days as string[])?.[0] || '—'}`}
+              </p>
             )}
           </CardContent>
         </Card>
