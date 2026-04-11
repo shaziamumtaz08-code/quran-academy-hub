@@ -16,6 +16,7 @@ import {
   Receipt, User, Search, LayoutDashboard
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import AvailableCoursesSection from '@/components/dashboard/AvailableCoursesSection';
 
 export default function UnifiedDashboard() {
   const { user, profile } = useAuth();
@@ -383,6 +384,9 @@ export default function UnifiedDashboard() {
           </div>
         )}
       </div>
+
+      {/* Available Courses */}
+      <AvailableCoursesSection activeDivision={activeDivision} />
 
       <Separator />
 
