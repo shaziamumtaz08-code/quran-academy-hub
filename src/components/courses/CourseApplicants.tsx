@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CourseApplicantImport } from './CourseApplicantImport';
+import { UserRelationshipPanel } from './UserRelationshipPanel';
 
 interface Submission {
   id: string;
