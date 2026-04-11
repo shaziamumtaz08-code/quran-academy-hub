@@ -163,8 +163,8 @@ export default function PublicApplyForm() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-accent/5 p-4">
         <div className="max-w-lg w-full text-center py-16">
-          <div className="h-16 w-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
-            <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+          <div className="h-16 w-16 rounded-full bg-accent/15 flex items-center justify-center mx-auto mb-4">
+            <CheckCircle2 className="h-8 w-8 text-accent" />
           </div>
           <h2 className="text-xl font-semibold mb-2">Application Submitted!</h2>
           <p className="text-muted-foreground mb-6">
