@@ -41,7 +41,7 @@ export function LandingPageShell({ title, subtitle, cards, contentMap, defaultCa
           return (
             <button
               key={card.id}
-              onClick={() => setActiveCard(card.id)}
+              onClick={() => card.onClick ? card.onClick() : setActiveCard(card.id)}
               className={cn(
                 "relative text-left rounded-2xl border-2 p-4 transition-all duration-200 group",
                 isActive
