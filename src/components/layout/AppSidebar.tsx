@@ -23,6 +23,7 @@ function getHomeSidebar(isOneToOne?: boolean): { title: string; subtitle: string
     subtitle: 'Dashboard',
     items: [
       { label: 'Dashboard', href: '/dashboard' },
+      { label: 'My Dashboard', href: '/my-dashboard' },
       { label: 'Divisions', group: 'DIVISIONS' },
       ...(!isOneToOne ? [{ label: 'Group Academy', href: '/teaching?section=courses' }] : []),
       { label: '1-to-1', href: '/teaching?section=assignments' },

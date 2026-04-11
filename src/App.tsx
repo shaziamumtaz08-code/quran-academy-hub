@@ -66,6 +66,7 @@ import TeachingOSVideo from "./pages/TeachingOSVideo";
 import TeachingOSSpeakingTutor from "./pages/TeachingOSSpeakingTutor";
 import TeachingOSAnalytics from "./pages/TeachingOSAnalytics";
 import ParentDashboard from "./pages/ParentDashboard";
+import UnifiedDashboard from "./pages/UnifiedDashboard";
 
 // Landing pages
 import TeachingLanding from "./pages/TeachingLanding";
@@ -302,6 +303,7 @@ function AppRoutes() {
 
       {/* General Protected Routes — old direct URLs still work */}
       <Route path="/dashboard" element={<ProtectedRoute><DashboardWrapper /></ProtectedRoute>} />
+      <Route path="/my-dashboard" element={<ProtectedRoute><DashboardLayout><UnifiedDashboard /></DashboardLayout></ProtectedRoute>} />
       <Route path="/user-management" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
       <Route path="/assignments" element={<ProtectedRoute><Assignments /></ProtectedRoute>} />
       <Route path="/subjects" element={<ProtectedRoute><Subjects /></ProtectedRoute>} />
