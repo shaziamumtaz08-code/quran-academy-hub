@@ -155,6 +155,8 @@ export default function TeachingOSPlanner() {
   const [planAllProgress, setPlanAllProgress] = useState<{ current: number; total: number } | null>(null);
   const [editingActivity, setEditingActivity] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState('');
+  const [bulkGenerating, setBulkGenerating] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState('');
   const abortRef = useRef<AbortController | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>();
 
@@ -383,8 +385,6 @@ export default function TeachingOSPlanner() {
   const sessPerWeek = syllabus.sessions_week;
 
   // Bulk board generation (B3)
-  const [bulkGenerating, setBulkGenerating] = useState(false);
-  const [bulkProgress, setBulkProgress] = useState('');
 
   const generateBoardForSession = async (sessionPlanId: string) => {
     const sp = sessionPlans.find(p => p.id === sessionPlanId);
