@@ -23,7 +23,7 @@ import {
   ChevronLeft, Save, Plus, Trash2, GripVertical, FileText, Video, File,
   Sparkles, Loader2, Upload, ChevronDown, ChevronRight, Users, Settings,
   BookOpen, X, ExternalLink, ClipboardList, UserPlus, GraduationCap, DollarSign, FolderOpen,
-  Bell, FileText as FileTextIcon, CheckCircle2, Circle
+  Bell, FileText as FileTextIcon, CheckCircle2, Circle, Globe, FileEdit, UserCheck, Layers
 } from 'lucide-react';
 import { RegistrationFormEditor } from '@/components/courses/RegistrationFormEditor';
 import { CourseApplicants } from '@/components/courses/CourseApplicants';
@@ -683,31 +683,63 @@ export default function CourseBuilder() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
           {/* ═══ BUILDER TAB ═══ */}
           <TabsContent value="builder" className="mt-4 flex-1">
-            {/* Course setup progress */}
-            <Card className="mb-6 p-4">
-              <h3 className="text-sm font-medium mb-3">Course setup progress</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {[
-                  { label: 'Settings', done: !!course?.name },
-                  { label: 'Website', done: !!(course as any)?.website_enabled },
-                  { label: 'Reg Form', done: formFieldsCount > 0 },
-                  { label: 'Classes', done: classCount > 0 },
-                  { label: 'Enrolled', done: enrolledCount > 0 },
-                  { label: 'Roster', done: assignedCount > 0 },
-                ].map(item => (
-                  <div key={item.label} className="flex items-center gap-2 text-sm">
-                    {item.done ? (
-                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                    ) : (
-                      <Circle className="h-4 w-4 text-muted-foreground" />
-                    )}
-                    <span className={item.done ? 'text-foreground' : 'text-muted-foreground'}>
-                      {item.label}
-                    </span>
+            {/* Course setup progress — Interactive pills */}
+            {(() => {
+              const COLOR_CLASSES: Record<string, { done: string; icon: string }> = {
+                blue: {
+                  done: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100',
+                  icon: 'text-blue-500',
+                },
+                amber: {
+                  done: 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100',
+                  icon: 'text-amber-500',
+                },
+                emerald: {
+                  done: 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100',
+                  icon: 'text-emerald-500',
+                },
+              };
+
+              const progressItems = [
+                { label: 'Settings', done: !!course?.name, tab: 'settings', icon: Settings, color: 'blue' as const },
+                { label: 'Website', done: !!(course as any)?.website_enabled, tab: 'website', icon: Globe, color: 'blue' as const },
+                { label: 'Reg Form', done: formFieldsCount > 0, tab: 'reg-form', icon: FileEdit, color: 'amber' as const },
+                { label: 'Classes', done: classCount > 0, tab: 'classes', icon: Layers, color: 'emerald' as const },
+                { label: 'Enrolled', done: enrolledCount > 0, tab: 'applicants', icon: Users, color: 'emerald' as const },
+                { label: 'Roster', done: assignedCount > 0, tab: 'roster', icon: UserCheck, color: 'emerald' as const },
+              ];
+
+              return (
+                <div className="mb-6">
+                  <h3 className="text-sm font-medium mb-3 text-muted-foreground">Course setup progress</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {progressItems.map(item => {
+                      const Icon = item.icon;
+                      const colors = COLOR_CLASSES[item.color];
+                      return (
+                        <button
+                          key={item.label}
+                          onClick={() => setActiveTab(item.tab)}
+                          className={cn(
+                            "flex items-center gap-2 px-3 py-2 rounded-full text-xs font-medium transition-all cursor-pointer border",
+                            item.done
+                              ? colors.done
+                              : "bg-muted/30 text-muted-foreground border-dashed border-muted-foreground/30 hover:bg-muted/50 hover:border-muted-foreground/50"
+                          )}
+                        >
+                          {item.done ? (
+                            <CheckCircle2 className={cn("h-3.5 w-3.5", colors.icon)} />
+                          ) : (
+                            <Icon className="h-3.5 w-3.5" />
+                          )}
+                          {item.label}
+                        </button>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
-            </Card>
+                </div>
+              );
+            })()}
 
             {teachingSyllabus && syllabusRows.length > 0 ? (
               /* ─── SYNCED SYLLABUS VIEW ─── */
