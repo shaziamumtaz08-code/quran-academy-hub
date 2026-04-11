@@ -91,17 +91,17 @@ export default function UnifiedDashboard() {
     queryKey: ['dash-pending-fees', user?.id, activeDivision],
     queryFn: async () => {
       let query = supabase.from('course_student_fees')
-        .select('amount, status, course_fee_plans:course_fee_plans!inner(courses:courses!inner(division_id))')
+        .select('total_due, total_paid, status, courses:courses!inner(division_id)')
         .eq('student_id', user!.id)
         .in('status', ['pending', 'overdue']);
       if (activeDivision !== 'all') {
-        query = query.eq('course_fee_plans.courses.division_id', activeDivision);
+        query = query.eq('courses.division_id', activeDivision);
       }
       const { data } = await query;
       if (!data?.length) return { count: 0, total: 0 };
       return {
         count: data.length,
-        total: data.reduce((sum, f) => sum + (f.amount || 0), 0),
+        total: data.reduce((sum, f) => sum + ((f.total_due || 0) - (f.total_paid || 0)), 0),
       };
     },
     enabled: !!user?.id,
