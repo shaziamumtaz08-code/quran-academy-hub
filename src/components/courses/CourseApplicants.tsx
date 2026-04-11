@@ -571,6 +571,16 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
         courseId={courseId}
         onComplete={() => queryClient.invalidateQueries({ queryKey: ['registration-submissions', courseId] })}
       />
+
+      {/* User Relationship Panel */}
+      <UserRelationshipPanel
+        open={!!relationshipApplicant}
+        onOpenChange={() => setRelationshipApplicant(null)}
+        email={relationshipApplicant?.email || ''}
+        phone={relationshipApplicant?.phone}
+        submissionData={relationshipApplicant?.data}
+        courseId={courseId}
+      />
     </div>
   );
 }
