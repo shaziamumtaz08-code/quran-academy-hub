@@ -1891,6 +1891,16 @@ function FlashcardItem({ card, template }: { card: Flashcard; template?: VisualT
             style={{ fontFamily: detectScriptClass(card.arabic) === 'urdu-text' ? "'Noto Nastaliq Urdu', serif" : "'Noto Naskh Arabic', 'Amiri', serif", lineHeight: detectScriptClass(card.arabic) === 'urdu-text' ? '2.4' : '1.6' }}>
             {card.arabic}
           </div>
+          {card.rootLetters && (
+            <div className="text-[10px] text-white/50" dir="rtl" style={{ fontFamily: "'Noto Naskh Arabic', serif" }}>
+              جذر: {card.rootLetters}
+            </div>
+          )}
+          {card.category && (
+            <span className="text-[8px] uppercase tracking-[0.12em] px-2 py-0.5 rounded-full mt-0.5" style={{ background: 'rgba(255,255,255,0.15)', color: accentForFront }}>
+              {card.category}
+            </span>
+          )}
           <span className="text-[9px] uppercase tracking-[0.15em] opacity-70 mt-1" style={{ color: accentForFront }}>
             Tap to reveal
           </span>
@@ -1912,6 +1922,11 @@ function FlashcardItem({ card, template }: { card: Flashcard; template?: VisualT
               {card.exampleTranslation && (
                 <div className="text-[10px] text-[#9ca3af] mt-1">{card.exampleTranslation}</div>
               )}
+            </div>
+          )}
+          {card.usageNote && (
+            <div className="mt-1.5 text-[9px] text-[#6b7280] italic text-center px-2">
+              💡 {card.usageNote}
             </div>
           )}
         </div>
