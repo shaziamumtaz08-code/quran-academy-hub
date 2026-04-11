@@ -37,6 +37,7 @@ import { CourseAssignmentsTab } from '@/components/courses/CourseAssignmentsTab'
 import { CourseAttendanceTab } from '@/components/courses/CourseAttendanceTab';
 import { CourseExamsTab } from '@/components/courses/CourseExamsTab';
 import { CourseCertificatesTab } from '@/components/courses/CourseCertificatesTab';
+import { CourseRoster } from '@/components/courses/CourseRoster';
 
 // ─── Types ──────────────────────────────────────────────
 interface Module {
@@ -1028,63 +1029,8 @@ export default function CourseBuilder() {
           </TabsContent>
 
           {/* ═══ ROSTER TAB ═══ */}
-          <TabsContent value="roster" className="mt-4 space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Enrolled Students ({enrollments.filter(e => e.status === 'active').length})</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {enrollments.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-6">No students enrolled yet</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Enrolled</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {enrollments.map((en: any) => (
-                        <TableRow key={en.id}>
-                          <TableCell className="font-medium">{en.student?.full_name || '—'}</TableCell>
-                          <TableCell className="text-muted-foreground">{en.student?.email || '—'}</TableCell>
-                          <TableCell>
-                            <Badge variant={en.status === 'active' ? 'default' : 'secondary'}>{en.status}</Badge>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground text-sm">{new Date(en.enrolled_at || en.created_at).toLocaleDateString()}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>CSV Bulk Enrollment</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Paste CSV data with columns: <code className="bg-muted px-1 py-0.5 rounded text-xs">First Name, Last Name, Email</code>
-                </p>
-                <Textarea
-                  value={csvData}
-                  onChange={e => setCsvData(e.target.value)}
-                  placeholder={`First Name,Last Name,Email\nAhmad,Ali,ahmad@example.com\nSarah,Khan,sarah@example.com`}
-                  className="font-mono text-sm min-h-[140px]"
-                />
-                <Button onClick={importCSV} disabled={csvImporting || !csvData.trim()}>
-                  {csvImporting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                  Import & Enroll
-                </Button>
-              </CardContent>
-            </Card>
+          <TabsContent value="roster" className="mt-4">
+            <CourseRoster courseId={courseId!} />
           </TabsContent>
 
           {/* ═══ REGISTRATION FORM TAB ═══ */}
