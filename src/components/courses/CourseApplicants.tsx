@@ -400,7 +400,21 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
                             <Checkbox checked={selectedIds.has(sub.id)}
                               onCheckedChange={() => toggleSelect(sub.id)} />
                           </TableCell>
-                          <TableCell className="font-medium">{sub.data?.full_name || '—'}</TableCell>
+                          <TableCell className="font-medium">
+                            <button
+                              className="text-left hover:underline text-primary/80 hover:text-primary"
+                              onClick={e => {
+                                e.stopPropagation();
+                                setRelationshipApplicant({
+                                  email: sub.data?.email || '',
+                                  phone: sub.data?.phone || sub.data?.whatsapp_number || '',
+                                  data: sub.data,
+                                });
+                              }}
+                            >
+                              {sub.data?.full_name || '—'}
+                            </button>
+                          </TableCell>
                           <TableCell className="text-sm">{sub.data?.email || '—'}</TableCell>
                           <TableCell className="text-sm">{sub.data?.phone || '—'}</TableCell>
                           <TableCell>
