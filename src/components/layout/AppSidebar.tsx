@@ -50,7 +50,7 @@ function getTeachingSidebar(courseCount: number, isOneToOne?: boolean): { title:
   };
 }
 
-function getPeopleSidebar(): { title: string; subtitle: string; items: SidebarNavItem[]; showSearch?: boolean } {
+function getPeopleSidebar(isOneToOne?: boolean): { title: string; subtitle: string; items: SidebarNavItem[]; showSearch?: boolean } {
   return {
     title: 'People',
     subtitle: '',
@@ -58,7 +58,7 @@ function getPeopleSidebar(): { title: string; subtitle: string; items: SidebarNa
       { label: 'Students', href: '/students' },
       { label: 'Teachers', href: '/teachers' },
       { label: 'Staff', href: '/user-management' },
-      { label: 'Applicants', href: '/leads', badge: 0, badgeType: 'alert' },
+      ...(isOneToOne ? [{ label: 'Applicants', href: '/leads', badge: 0, badgeType: 'alert' as const }] : []),
     ],
     showSearch: true,
   };
@@ -125,7 +125,7 @@ function getSidebarForRoute(pathname: string, isOneToOne?: boolean, role?: strin
     return getTeachingSidebar(0, isOneToOne);
   }
   if (pathname.startsWith('/people') || pathname.startsWith('/students') || pathname.startsWith('/teachers') || pathname.startsWith('/user-management') || pathname.startsWith('/leads')) {
-    return getPeopleSidebar();
+    return getPeopleSidebar(isOneToOne);
   }
   if (pathname.startsWith('/finance') || pathname.startsWith('/payments') || pathname.startsWith('/salary') || pathname.startsWith('/expenses') || pathname.startsWith('/cash-advances') || pathname.startsWith('/staff-salaries')) {
     return getFinanceSidebar();
