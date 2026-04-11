@@ -633,8 +633,15 @@ const ParentDashboard = () => {
       {/* Top bar */}
       <div className="h-12 flex items-center justify-between px-4 bg-white shrink-0" style={{ borderBottom: '0.5px solid #e8e9eb' }}>
         <div className="flex items-center gap-1.5" style={{ fontSize: 12, color: '#7a7f8a' }}>
-          <span>{t.portal}</span><span>›</span><span style={{ color: '#0f2044' }}>{activeChild.name}</span>
-          <span>›</span><span style={{ color: '#0f2044' }}>{t[section === 'ai-report' ? 'aiReport' : section]}</span>
+          <button onClick={() => setSection('overview')} className="hover:underline cursor-pointer">{t.portal}</button>
+          <span>›</span>
+          <button onClick={() => setSection('overview')} className="hover:underline cursor-pointer" style={{ color: '#0f2044' }}>{activeChild.name}</button>
+          {section !== 'overview' && (
+            <>
+              <span>›</span>
+              <span style={{ color: '#0f2044' }}>{t[section === 'ai-report' ? 'aiReport' : section]}</span>
+            </>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" className="relative" onClick={() => setShowNotif(!showNotif)}>
