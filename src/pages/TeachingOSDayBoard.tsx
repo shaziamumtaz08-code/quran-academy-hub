@@ -350,7 +350,17 @@ export default function TeachingOSDayBoard() {
 
         {/* Top bar */}
         <div className="h-[50px] bg-white border-b border-[#e8e9eb] px-4 flex items-center justify-between shrink-0">
-          <PhaseBreadcrumb courseName={courseName} sectionLabel={`Session ${plan.session_number} · Day Board`} />
+          <div className="flex items-center gap-2">
+            {searchParams.get('course_id') && (
+              <button
+                onClick={() => navigate(`/courses/${searchParams.get('course_id')}`)}
+                className="text-[11px] text-[#1a56b0] hover:underline mr-2"
+              >
+                ← Back to Course
+              </button>
+            )}
+            <PhaseBreadcrumb courseName={courseName} sectionLabel={`Session ${plan.session_number} · Day Board`} />
+          </div>
           <div className="flex items-center gap-2">
             <button className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-[#4a5264] bg-white border border-[#d0d4dc] rounded-md hover:bg-[#f9f9fb]">
               <Eye className="w-3.5 h-3.5" /> Student view

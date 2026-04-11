@@ -513,6 +513,14 @@ export default function TeachingOS() {
         {/* ─── LEFT PANEL ─── */}
         <div className="w-[320px] min-w-[320px] bg-white border-r border-[#e8e9eb] flex flex-col overflow-hidden">
           <div className="px-[18px] pt-4 pb-[14px] border-b border-[#e8e9eb]">
+            {selectedCourseId && (
+              <button
+                onClick={() => navigate(`/courses/${selectedCourseId}`)}
+                className="text-[11px] text-[#1a56b0] hover:underline mb-2 block"
+              >
+                ← Back to Course Builder
+              </button>
+            )}
             <h2 className="text-[15px] font-medium text-[#0f2044]">Input engine</h2>
             <p className="text-[11px] text-[#7a7f8a] mb-2">Define your course — AI builds the syllabus</p>
             <LanguageSelector showLabel />
