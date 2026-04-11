@@ -8,9 +8,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import {
-  BookOpen, CheckCircle2, Loader2, Upload, AlertCircle, Shield
+  BookOpen, CheckCircle2, Loader2, Upload, AlertCircle, Shield,
+  Star, Users, Clock, GraduationCap, ArrowRight, Sparkles
 } from 'lucide-react';
 
 interface FormField {
@@ -42,6 +45,7 @@ export default function PublicApplyForm() {
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [uploadingFile, setUploadingFile] = useState<string | null>(null);
+  const [currentSection, setCurrentSection] = useState(0);
 
   const { data: formInfo, isLoading } = useQuery({
     queryKey: ['public-apply-form', slug],
@@ -70,6 +74,28 @@ export default function PublicApplyForm() {
       return { form, course, fields: (fields || []) as FormField[] };
     },
   });
+
+  // Group fields by heading sections
+  const sections = React.useMemo(() => {
+    if (!formInfo?.fields) return [];
+    const result: { heading: string | null; fields: FormField[] }[] = [];
+    let current: { heading: string | null; fields: FormField[] } = { heading: null, fields: [] };
+
+    for (const field of formInfo.fields) {
+      if (field.field_type === 'heading') {
+        if (current.fields.length > 0 || current.heading) {
+          result.push(current);
+        }
+        current = { heading: field.label, fields: [] };
+      } else {
+        current.fields.push(field);
+      }
+    }
+    if (current.fields.length > 0 || current.heading) {
+      result.push(current);
+    }
+    return result;
+  }, [formInfo?.fields]);
 
   const handleFileUpload = (fieldKey: string) => async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -139,19 +165,26 @@ export default function PublicApplyForm() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-accent/5">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="text-center">
+          <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-3 animate-pulse">
+            <BookOpen className="h-6 w-6 text-primary" />
+          </div>
+          <Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" />
+        </div>
       </div>
     );
   }
 
   if (!formInfo) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-accent/5">
-        <Card className="max-w-md w-full mx-4">
-          <CardContent className="py-12 text-center">
-            <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground/40 mb-4" />
-            <h2 className="text-lg font-semibold mb-2">Form Not Found</h2>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+        <Card className="max-w-md w-full mx-4 shadow-xl border-0">
+          <CardContent className="py-16 text-center">
+            <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="h-8 w-8 text-muted-foreground/50" />
+            </div>
+            <h2 className="text-xl font-bold mb-2">Form Not Found</h2>
             <p className="text-sm text-muted-foreground">This registration form is no longer available or does not exist.</p>
           </CardContent>
         </Card>
@@ -161,34 +194,34 @@ export default function PublicApplyForm() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-accent/5 p-4">
-        <div className="max-w-lg w-full text-center py-16">
-          <div className="h-16 w-16 rounded-full bg-accent/15 flex items-center justify-center mx-auto mb-4">
-            <CheckCircle2 className="h-8 w-8 text-accent" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-4">
+        <div className="max-w-lg w-full text-center">
+          <div className="relative mb-6">
+            <div className="h-20 w-20 rounded-3xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center mx-auto shadow-lg shadow-emerald-200">
+              <CheckCircle2 className="h-10 w-10 text-white" />
+            </div>
+            <Sparkles className="h-5 w-5 text-amber-400 absolute top-0 right-1/3 animate-pulse" />
           </div>
-          <h2 className="text-xl font-semibold mb-2">Application Submitted!</h2>
-          <p className="text-muted-foreground mb-6">
-            Thank you for applying to <strong>{formInfo.course?.name}</strong>. We'll review your application and get back to you soon.
+          <h2 className="text-2xl font-bold mb-2">Application Submitted!</h2>
+          <p className="text-muted-foreground mb-8 max-w-sm mx-auto">
+            Thank you for applying to <strong className="text-foreground">{formInfo.course?.name}</strong>. We'll review your application and get back to you soon, In shaa Allah.
           </p>
-          <Button variant="outline" onClick={() => navigate('/')}>Back to home</Button>
+          <div className="flex gap-3 justify-center">
+            <Button variant="outline" onClick={() => navigate('/')}>Back to home</Button>
+          </div>
         </div>
       </div>
     );
   }
 
   const renderField = (field: FormField) => {
-    if (field.field_type === 'heading') {
-      return (
-        <div key={field.id} className="pt-6 pb-2 border-b border-border/60">
-          <p className="font-semibold text-sm text-foreground">{field.label}</p>
-        </div>
-      );
-    }
+    const hasError = !!errors[field.field_key];
 
     return (
-      <div key={field.id} className="space-y-1.5">
-        <Label className="text-sm font-medium">
-          {field.label} {field.is_required && <span className="text-destructive">*</span>}
+      <div key={field.id} className="space-y-2">
+        <Label className="text-sm font-medium flex items-center gap-1.5">
+          {field.label}
+          {field.is_required && <span className="text-destructive text-xs">*</span>}
         </Label>
 
         {field.field_type === 'textarea' ? (
@@ -196,12 +229,15 @@ export default function PublicApplyForm() {
             placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
             value={formData[field.field_key] || ''}
             onChange={e => updateField(field.field_key, e.target.value)}
-            className={errors[field.field_key] ? 'border-destructive' : ''}
+            className={cn('resize-none transition-all focus:ring-2 focus:ring-primary/20', hasError && 'border-destructive ring-destructive/20')}
             rows={4}
           />
         ) : field.field_type === 'dropdown' ? (
           <select
-            className={`w-full h-10 rounded-md border px-3 text-sm bg-background ${errors[field.field_key] ? 'border-destructive' : 'border-input'}`}
+            className={cn(
+              'w-full h-11 rounded-lg border px-3 text-sm bg-background transition-all focus:outline-none focus:ring-2 focus:ring-primary/20',
+              hasError ? 'border-destructive' : 'border-input'
+            )}
             value={formData[field.field_key] || ''}
             onChange={e => updateField(field.field_key, e.target.value)}>
             <option value="">Select {field.label}...</option>
@@ -210,61 +246,92 @@ export default function PublicApplyForm() {
             ))}
           </select>
         ) : field.field_type === 'multi_select' ? (
-          <div className="space-y-2 pl-1">
+          <div className="grid grid-cols-2 gap-2">
             {(Array.isArray(field.options) ? field.options : []).map((opt: string) => {
               const current: string[] = formData[field.field_key] || [];
+              const isSelected = current.includes(opt);
               return (
-                <label key={opt} className="flex items-center gap-2.5 text-sm cursor-pointer min-h-[28px]">
-                  <Checkbox
-                    checked={current.includes(opt)}
-                    onCheckedChange={(checked) => {
-                      const updated = checked ? [...current, opt] : current.filter((v: string) => v !== opt);
-                      updateField(field.field_key, updated);
-                    }}
-                  />
+                <button
+                  type="button"
+                  key={opt}
+                  onClick={() => {
+                    const updated = isSelected ? current.filter((v: string) => v !== opt) : [...current, opt];
+                    updateField(field.field_key, updated);
+                  }}
+                  className={cn(
+                    'flex items-center gap-2 px-3 py-2.5 rounded-lg border text-sm text-left transition-all',
+                    isSelected
+                      ? 'border-primary bg-primary/5 text-primary font-medium'
+                      : 'border-input hover:border-primary/30 hover:bg-muted/50'
+                  )}
+                >
+                  <div className={cn(
+                    'h-4 w-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors',
+                    isSelected ? 'border-primary bg-primary' : 'border-muted-foreground/30'
+                  )}>
+                    {isSelected && <CheckCircle2 className="h-3 w-3 text-white" />}
+                  </div>
                   {opt}
-                </label>
+                </button>
               );
             })}
-            {errors[field.field_key] && <p className="text-xs text-destructive">{errors[field.field_key]}</p>}
+            {hasError && <p className="text-xs text-destructive col-span-2">{errors[field.field_key]}</p>}
           </div>
         ) : field.field_type === 'checkbox' ? (
-          <div className="flex items-center gap-2.5 min-h-[28px]">
-            <Checkbox
-              checked={!!formData[field.field_key]}
-              onCheckedChange={checked => updateField(field.field_key, checked)}
-            />
-            <span className="text-sm text-muted-foreground">{field.label}</span>
-          </div>
+          <button
+            type="button"
+            onClick={() => updateField(field.field_key, !formData[field.field_key])}
+            className={cn(
+              'flex items-center gap-3 w-full px-4 py-3 rounded-lg border text-left transition-all',
+              formData[field.field_key]
+                ? 'border-primary bg-primary/5'
+                : 'border-input hover:border-primary/30'
+            )}
+          >
+            <Checkbox checked={!!formData[field.field_key]} />
+            <span className="text-sm">{field.label}</span>
+          </button>
         ) : field.field_type === 'file' ? (
-          <div className="space-y-1">
+          <div>
             {formData[field.field_key] ? (
-              <div className="flex items-center gap-2 p-2 bg-accent/10 rounded-md border border-accent/30">
-                <CheckCircle2 className="h-4 w-4 text-accent shrink-0" />
-                <span className="text-xs text-accent truncate">File uploaded</span>
-                <Button variant="ghost" size="sm" className="h-6 text-xs ml-auto"
+              <div className="flex items-center gap-3 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                <div className="h-8 w-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-emerald-800">File uploaded</p>
+                  <p className="text-xs text-emerald-600">Ready for submission</p>
+                </div>
+                <Button variant="ghost" size="sm" className="text-xs h-7"
                   onClick={() => updateField(field.field_key, null)}>Change</Button>
               </div>
             ) : (
-              <div className="relative">
+              <label className={cn(
+                'flex flex-col items-center justify-center gap-2 p-6 rounded-lg border-2 border-dashed cursor-pointer transition-all hover:border-primary/40 hover:bg-primary/5',
+                hasError ? 'border-destructive' : 'border-muted-foreground/20'
+              )}>
+                <Upload className="h-6 w-6 text-muted-foreground/50" />
+                <span className="text-sm text-muted-foreground">Click to upload file</span>
+                <span className="text-xs text-muted-foreground/60">PDF, JPG, PNG, DOC · Max 10MB</span>
                 <input
                   type="file"
                   accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                  className="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                  className="hidden"
                   onChange={handleFileUpload(field.field_key)}
                   disabled={uploadingFile === field.field_key}
                 />
                 {uploadingFile === field.field_key && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-md">
-                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                  </div>
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
                 )}
-              </div>
+              </label>
             )}
           </div>
         ) : field.field_type === 'country' ? (
           <select
-            className={`w-full h-10 rounded-md border px-3 text-sm bg-background ${errors[field.field_key] ? 'border-destructive' : 'border-input'}`}
+            className={cn(
+              'w-full h-11 rounded-lg border px-3 text-sm bg-background transition-all focus:outline-none focus:ring-2 focus:ring-primary/20',
+              hasError ? 'border-destructive' : 'border-input'
+            )}
             value={formData[field.field_key] || ''}
             onChange={e => updateField(field.field_key, e.target.value)}>
             <option value="">Select country...</option>
@@ -276,7 +343,7 @@ export default function PublicApplyForm() {
             placeholder={field.placeholder || '0'}
             value={formData[field.field_key] || ''}
             onChange={e => updateField(field.field_key, e.target.value)}
-            className={errors[field.field_key] ? 'border-destructive' : ''}
+            className={cn('h-11 rounded-lg', hasError && 'border-destructive')}
           />
         ) : (
           <Input
@@ -284,78 +351,136 @@ export default function PublicApplyForm() {
             placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
             value={formData[field.field_key] || ''}
             onChange={e => updateField(field.field_key, e.target.value)}
-            className={errors[field.field_key] ? 'border-destructive' : ''}
+            className={cn('h-11 rounded-lg', hasError && 'border-destructive')}
           />
         )}
 
-        {field.field_type !== 'multi_select' && errors[field.field_key] && (
-          <p className="text-xs text-destructive">{errors[field.field_key]}</p>
+        {field.field_type !== 'multi_select' && hasError && (
+          <p className="text-xs text-destructive flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" />
+            {errors[field.field_key]}
+          </p>
         )}
       </div>
     );
   };
 
+  const filledCount = formInfo.fields.filter(f => f.field_type !== 'heading' && formData[f.field_key]).length;
+  const totalRequired = formInfo.fields.filter(f => f.field_type !== 'heading' && f.is_required).length;
+  const filledRequired = formInfo.fields.filter(f => f.field_type !== 'heading' && f.is_required && formData[f.field_key]).length;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
-      {/* Hero Banner */}
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
+      {/* Hero Banner — full bleed */}
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-primary to-primary/80" />
-        {formInfo.course?.hero_image_url && (
-          <img src={formInfo.course.hero_image_url} alt="" className="absolute inset-0 w-full h-full object-cover opacity-20" />
-        )}
-        <div className="relative z-10 max-w-2xl mx-auto px-4 py-12 text-center text-white">
-          <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-white/20 flex items-center justify-center">
-            <BookOpen className="h-6 w-6" />
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-serif font-bold">{formInfo.course?.name}</h1>
-          {formInfo.course?.description && (
-            <p className="mt-2 text-white/80 text-sm sm:text-base max-w-lg mx-auto">{formInfo.course.description}</p>
-          )}
-          {formInfo.course?.level && (
-            <span className="inline-block mt-3 px-3 py-1 rounded-full bg-white/20 text-xs font-medium">
-              {formInfo.course.level}
-            </span>
-          )}
+        {/* Decorative pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <svg width="100%" height="100%"><defs><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="0.5"/></pattern></defs><rect width="100%" height="100%" fill="url(#grid)"/></svg>
         </div>
-        <svg className="absolute bottom-0 left-0 w-full" viewBox="0 0 1440 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M0 60V30C360 0 720 60 1080 30C1260 15 1380 22 1440 30V60H0Z" className="fill-background" />
+        {formInfo.course?.hero_image_url && (
+          <img src={formInfo.course.hero_image_url} alt="" className="absolute inset-0 w-full h-full object-cover opacity-15" />
+        )}
+        <div className="relative z-10 max-w-2xl mx-auto px-4 pt-12 pb-20 sm:pt-16 sm:pb-24 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 text-white/80 text-xs mb-6">
+            <GraduationCap className="h-3.5 w-3.5" />
+            <span>Registration Open</span>
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
+            {formInfo.course?.name}
+          </h1>
+          {formInfo.course?.description && (
+            <p className="mt-3 text-white/60 text-sm sm:text-base max-w-lg mx-auto leading-relaxed">
+              {formInfo.course.description}
+            </p>
+          )}
+          <div className="flex items-center justify-center gap-3 mt-5">
+            {formInfo.course?.level && (
+              <Badge className="bg-white/15 text-white border-0 text-xs px-3 py-1">
+                {formInfo.course.level}
+              </Badge>
+            )}
+            <Badge className="bg-white/15 text-white border-0 text-xs px-3 py-1">
+              <Clock className="h-3 w-3 mr-1" />
+              {formInfo.fields.length} fields
+            </Badge>
+          </div>
+        </div>
+
+        {/* Wave separator */}
+        <svg className="absolute bottom-0 left-0 w-full" viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+          <path d="M0 80V40C240 10 480 60 720 35C960 10 1200 50 1440 30V80H0Z" className="fill-background" />
         </svg>
       </div>
 
-      {/* Form */}
-      <div className="max-w-lg mx-auto px-4 py-8 -mt-4 relative z-10">
-        <Card className="shadow-lg border-border/50">
-          <CardContent className="p-6 sm:p-8">
-            <div className="text-center mb-6">
-              <h2 className="text-lg font-semibold">Apply for this course</h2>
-              <p className="text-xs text-muted-foreground mt-1">Fill in your details below. Fields marked <span className="text-destructive">*</span> are required.</p>
+      {/* Form Container */}
+      <div className="bg-background min-h-[50vh]">
+        <div className="max-w-xl mx-auto px-4 -mt-6 pb-12 relative z-10">
+          {/* Progress indicator */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+              <span>{filledRequired} of {totalRequired} required fields completed</span>
+              <span className="font-medium">{totalRequired > 0 ? Math.round(filledRequired / totalRequired * 100) : 0}%</span>
             </div>
-
-            <div className="space-y-5">
-              {formInfo.fields.map(field => renderField(field))}
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full transition-all duration-500"
+                style={{ width: `${totalRequired > 0 ? (filledRequired / totalRequired * 100) : 0}%` }}
+              />
             </div>
+          </div>
 
-            {Object.keys(errors).length > 0 && (
-              <div className="mt-4 p-3 bg-destructive/10 rounded-lg text-destructive text-xs flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                Please fill in all required fields before submitting.
+          {/* Sections */}
+          <div className="space-y-6">
+            {sections.map((section, idx) => (
+              <Card key={idx} className="shadow-sm border-border/60 overflow-hidden">
+                {section.heading && (
+                  <div className="px-6 py-3 bg-muted/30 border-b border-border/50">
+                    <div className="flex items-center gap-2">
+                      <div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                        {idx + 1}
+                      </div>
+                      <h3 className="font-semibold text-sm">{section.heading}</h3>
+                    </div>
+                  </div>
+                )}
+                <CardContent className={cn('space-y-5', section.heading ? 'p-6' : 'p-6')}>
+                  {section.fields.map(field => renderField(field))}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Error banner */}
+          {Object.keys(errors).length > 0 && (
+            <div className="mt-4 p-4 bg-destructive/10 rounded-xl border border-destructive/20 text-destructive text-sm flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium">Please fix the errors above</p>
+                <p className="text-xs mt-0.5 opacity-80">{Object.keys(errors).length} field(s) need your attention</p>
               </div>
+            </div>
+          )}
+
+          {/* Submit */}
+          <Button
+            className="w-full h-12 text-base font-semibold mt-6 rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all"
+            onClick={() => submitForm.mutate()}
+            disabled={submitForm.isPending || !!uploadingFile}>
+            {submitForm.isPending ? (
+              <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Submitting…</>
+            ) : (
+              <>Submit Application <ArrowRight className="h-4 w-4 ml-2" /></>
             )}
+          </Button>
 
-            <Button
-              className="w-full h-11 text-base font-medium mt-6"
-              onClick={() => submitForm.mutate()}
-              disabled={submitForm.isPending || !!uploadingFile}>
-              {submitForm.isPending ? (
-                <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Submitting…</>
-              ) : 'Submit Application'}
-            </Button>
-
-            <p className="text-[10px] text-center text-muted-foreground mt-4 flex items-center justify-center gap-1">
-              <Shield className="h-3 w-3" /> Your information is secure and will only be used for enrollment purposes.
+          {/* Trust footer */}
+          <div className="mt-6 text-center space-y-2">
+            <p className="text-[11px] text-muted-foreground flex items-center justify-center gap-1.5">
+              <Shield className="h-3.5 w-3.5" />
+              Your information is secure and will only be used for enrollment purposes.
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
