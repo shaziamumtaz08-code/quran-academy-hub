@@ -382,12 +382,102 @@ export default function TeachingOSPlanner() {
 
   const sessPerWeek = syllabus.sessions_week;
 
+  // Bulk board generation (B3)
+  const [bulkGenerating, setBulkGenerating] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState('');
+
+  const generateBoardForSession = async (sessionPlanId: string) => {
+    const sp = sessionPlans.find(p => p.id === sessionPlanId);
+    if (!sp || !syllabus) return;
+    const weekRow = weekRows.find(r => r.week === sp.week_number);
+    
+    const url = `${(import.meta as any).env.VITE_SUPABASE_URL}/functions/v1/generate-session-plan`;
+    const fullText = await streamResponse(url, {
+      courseName: syllabus.course_name,
+      subject: syllabus.subject,
+      level: syllabus.level,
+      weekNumber: sp.week_number,
+      weekTopic: weekRow?.topic || '',
+      weekObjectives: weekRow?.objectives || '',
+      sessionNumber: sp.session_number,
+      sessionDay: sp.session_day || DAYS[(sp.session_number - 1) % 7],
+      previousSessionSummary: '',
+      sessionsPerWeek: syllabus.sessions_week,
+      sessionDurationMinutes: 45,
+      language: 'en',
+    }, () => {});
+
+    const parsed = parseJsonFromStream(fullText);
+    if (!parsed) throw new Error('Failed to parse AI response');
+
+    await supabase.from('session_plans').update({
+      session_title: parsed.sessionTitle || sp.session_title,
+      session_objective: parsed.sessionObjective || sp.session_objective,
+      activities: parsed.activities || [],
+      teacher_notes: parsed.teacherNotes || '',
+      homework_suggestion: parsed.homeworkSuggestion || '',
+      total_minutes: parsed.totalMinutes || 45,
+      status: 'generated',
+    }).eq('id', sessionPlanId);
+  };
+
+  const handleBulkGenerate = async () => {
+    const ungenerated = sessionPlans.filter(sp =>
+      !sp.activities || (Array.isArray(sp.activities) && sp.activities.length === 0) || sp.status === 'draft'
+    );
+
+    if (!ungenerated.length) {
+      toast.info('All boards are already generated');
+      return;
+    }
+
+    setBulkGenerating(true);
+    let completed = 0;
+
+    for (const sp of ungenerated) {
+      setBulkProgress(`${completed + 1}/${ungenerated.length}`);
+      try {
+        await generateBoardForSession(sp.id!);
+        completed++;
+      } catch (err) {
+        console.error(`Failed to generate board for session ${sp.session_number}:`, err);
+      }
+    }
+
+    toast.success(`Generated ${completed} of ${ungenerated.length} boards`);
+    setBulkGenerating(false);
+    setBulkProgress('');
+    // Reload session plans
+    const { data } = await supabase
+      .from('session_plans')
+      .select('*')
+      .eq('syllabus_id', syllabusId!)
+      .order('week_number')
+      .order('session_number');
+    if (data) {
+      setSessionPlans(data.map(d => ({
+        ...d,
+        activities: (typeof d.activities === 'string' ? JSON.parse(d.activities) : d.activities) as Activity[],
+      })));
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="flex flex-col h-[calc(100vh-56px)] overflow-hidden">
         {/* ─── TOP BAR (Zone C) ─── */}
         <div className="h-[48px] bg-white border-b border-[#e8e9eb] px-4 flex items-center justify-between shrink-0">
-          <PhaseBreadcrumb courseName={syllabus.course_name} sectionLabel="Planner" />
+          <div className="flex items-center gap-2">
+            {courseId && (
+              <button
+                onClick={() => navigate(`/courses/${courseId}`)}
+                className="text-[11px] text-[#1a56b0] hover:underline mr-2"
+              >
+                ← Back to Course
+              </button>
+            )}
+            <PhaseBreadcrumb courseName={syllabus.course_name} sectionLabel="Planner" />
+          </div>
           <PhaseStepperTopBar currentPhase={2} syllabusId={syllabusId} sessionId={nextSessionId} courseId={courseId} />
 
           {/* Right buttons */}
@@ -397,6 +487,17 @@ export default function TeachingOSPlanner() {
               className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-[#4a5264] bg-white border border-[#d0d4dc] rounded-md hover:bg-[#f9f9fb]"
             >
               <CalendarIcon className="w-3.5 h-3.5" /> Calendar
+            </button>
+            <button
+              onClick={handleBulkGenerate}
+              disabled={bulkGenerating}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-[#4a5264] bg-white border border-[#d0d4dc] rounded-md hover:bg-[#f9f9fb] disabled:opacity-50"
+            >
+              {bulkGenerating ? (
+                <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating {bulkProgress}</>
+              ) : (
+                <><Sparkles className="w-3.5 h-3.5" /> Generate all boards</>
+              )}
             </button>
             <button
               onClick={() => setPlanAllConfirm(true)}

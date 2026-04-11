@@ -248,6 +248,47 @@ export default function CourseBuilder() {
     },
   });
 
+  // Teaching OS syllabus sync (B1)
+  const { data: teachingSyllabus } = useQuery({
+    queryKey: ['teaching-syllabus', courseId],
+    enabled: !!courseId,
+    queryFn: async () => {
+      const { data } = await supabase.from('syllabi')
+        .select('id, course_name, rows, duration_weeks, sessions_week, language, level, subject, status, created_at, updated_at')
+        .eq('course_id', courseId!)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      return data?.[0] || null;
+    },
+  });
+
+  const syllabusRows: Array<{week: number; topic: string; objectives: string; contentTypes: string[]}> =
+    teachingSyllabus?.rows
+      ? (typeof teachingSyllabus.rows === 'string' ? JSON.parse(teachingSyllabus.rows as string) : teachingSyllabus.rows) as any[]
+      : [];
+
+  const { data: sessionPlanCount = 0 } = useQuery({
+    queryKey: ['session-plan-count', teachingSyllabus?.id],
+    queryFn: async () => {
+      const { count } = await supabase.from('session_plans')
+        .select('id', { count: 'exact', head: true })
+        .eq('syllabus_id', teachingSyllabus!.id);
+      return count || 0;
+    },
+    enabled: !!teachingSyllabus?.id,
+  });
+
+  const { data: contentKitCount = 0 } = useQuery({
+    queryKey: ['content-kit-count', teachingSyllabus?.id],
+    queryFn: async () => {
+      const { count } = await supabase.from('content_kits')
+        .select('id', { count: 'exact', head: true })
+        .eq('session_plan_id', teachingSyllabus!.id);
+      return count || 0;
+    },
+    enabled: !!teachingSyllabus?.id,
+  });
+
   // Teachers list for settings
   const { data: teachers = [] } = useQuery({
     queryKey: ['teachers-list'],
