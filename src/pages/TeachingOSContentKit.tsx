@@ -57,6 +57,8 @@ interface SlideData {
   bullets: string[];
   teacherNote?: string | null;
   activityInstruction?: string | null;
+  grammarTable?: { headers: string[]; rows: string[][] } | null;
+  vocabularyItems?: { arabic: string; transliteration: string; english: string; example: string }[] | null;
 }
 
 interface QuizQuestion {
@@ -78,6 +80,9 @@ interface Flashcard {
   partOfSpeech: string;
   exampleSentence?: string | null;
   exampleTranslation?: string | null;
+  rootLetters?: string | null;
+  category?: string | null;
+  usageNote?: string | null;
 }
 
 interface WorksheetExercise {
@@ -459,6 +464,8 @@ const TeachingOSContentKit: React.FC = () => {
         arabicText: s.arabic_text, transliteration: s.transliteration,
         bullets: (s.bullets as any) || [], teacherNote: s.teacher_note,
         activityInstruction: s.activity_instruction,
+        grammarTable: (s.bullets as any)?.grammarTable || null,
+        vocabularyItems: (s.bullets as any)?.vocabularyItems || null,
       })));
     }
     if (quizRes.data?.length) {
@@ -474,6 +481,7 @@ const TeachingOSContentKit: React.FC = () => {
         id: f.id, arabic: f.arabic, english: f.english,
         transliteration: f.transliteration || "", partOfSpeech: f.part_of_speech || "",
         exampleSentence: f.example_sentence, exampleTranslation: f.example_translation,
+        rootLetters: f.root_letters || null, category: f.category || null, usageNote: f.usage_note || null,
       })));
     }
     if (worksheetRes.data?.length) {
@@ -1629,128 +1637,188 @@ function SlideContent({ slide, courseName, slideIndex, totalSlides, template }: 
     gradientFrom: tplOverride.gradientFrom, gradientTo: tplOverride.gradientTo,
   } : (SLIDE_THEMES[slide.phase] || DEFAULT_THEME);
   const isDark = ['Opening', 'Wrap-up'].includes(slide.phase);
-  const isArabicLayout = slide.layoutType === 'arabic-vocab' || slide.layoutType === 'two-column-vocab';
 
-  return (
-    <div
-      className="relative w-full h-full flex flex-col overflow-hidden select-none"
-      style={{
-        background: `linear-gradient(135deg, ${theme.gradientFrom}, ${theme.gradientTo})`,
-        fontFamily: "'Inter', sans-serif",
-      }}
-    >
-      {/* Decorative corner accent */}
-      <div className="absolute top-0 right-0 w-[200px] h-[200px] opacity-10" style={{
-        background: `radial-gradient(circle at top right, ${theme.accent}, transparent 70%)`,
-      }} />
-
-      {/* Top bar */}
-      <div className="flex items-center justify-between px-6 pt-4 pb-2 z-10">
-        <span
-          className="text-[9px] uppercase tracking-[0.15em] font-semibold px-2.5 py-1 rounded-full"
-          style={{ background: theme.badgeBg, color: theme.badgeText }}
-        >
-          {slide.phase}
+  const topBar = (
+    <div className="flex items-center justify-between px-6 pt-4 pb-2 z-10">
+      <span className="text-[9px] uppercase tracking-[0.15em] font-semibold px-2.5 py-1 rounded-full" style={{ background: theme.badgeBg, color: theme.badgeText }}>
+        {slide.phase}
+      </span>
+      {slideIndex != null && totalSlides && (
+        <span className="text-[9px]" style={{ color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.25)' }}>
+          {slideIndex + 1} / {totalSlides}
         </span>
-        {slideIndex != null && totalSlides && (
-          <span className="text-[9px]" style={{ color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.25)' }}>
-            {slideIndex + 1} / {totalSlides}
-          </span>
-        )}
-      </div>
+      )}
+    </div>
+  );
 
-      {/* Content area */}
-      <div className="flex-1 flex flex-col px-6 pb-5 z-10">
-        {/* Title */}
-        <h2
-          className="text-[22px] font-bold leading-tight mb-3 tracking-tight"
-          style={{ color: theme.titleColor }}
-        >
-          {slide.title}
-        </h2>
+  const bottomBar = (
+    <div className="flex items-center justify-between px-6 py-2 text-[9px] z-10" style={{ borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'}`, color: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)' }}>
+      <span>{courseName || ''}</span>
+      {slide.teacherNote && (
+        <span className="italic max-w-[60%] truncate" style={{ color: isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.3)' }}>
+          📝 {slide.teacherNote}
+        </span>
+      )}
+    </div>
+  );
 
-        {/* Accent line */}
-        <div className="w-12 h-[3px] rounded-full mb-4" style={{ background: theme.accent }} />
+  const titleSection = (
+    <>
+      <h2 className="text-[22px] font-bold leading-tight mb-3 tracking-tight" style={{ color: theme.titleColor }}>{slide.title}</h2>
+      <div className="w-12 h-[3px] rounded-full mb-4" style={{ background: theme.accent }} />
+    </>
+  );
 
-        {/* Arabic text block */}
-        {slide.arabicText && (
-          <div className={`${isArabicLayout ? 'flex-1 flex items-center justify-center' : 'mb-3'}`}>
-            <div
-              className="text-center py-3 px-4 rounded-xl"
-              style={{ background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.03)' }}
-            >
-              <div
-                className="leading-relaxed"
-                dir="rtl"
-                style={{
-                  color: theme.titleColor,
-                  fontFamily: detectScriptClass(slide.arabicText) === 'urdu-text'
-                    ? "'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif"
-                    : "'Noto Naskh Arabic', 'Amiri', serif",
-                  fontSize: detectScriptClass(slide.arabicText) === 'urdu-text' ? '28px' : '36px',
-                  lineHeight: detectScriptClass(slide.arabicText) === 'urdu-text' ? '2.4' : '1.8',
-                }}
-              >
-                {slide.arabicText}
+  const decorativeCorner = (
+    <div className="absolute top-0 right-0 w-[200px] h-[200px] opacity-10" style={{ background: `radial-gradient(circle at top right, ${theme.accent}, transparent 70%)` }} />
+  );
+
+  // ─── Layout: Vocabulary Grid ───
+  if ((slide.layoutType === 'arabic-vocab' || slide.layoutType === 'two-column-vocab') && slide.vocabularyItems?.length) {
+    return (
+      <div className="relative w-full h-full flex flex-col overflow-hidden select-none" style={{ background: `linear-gradient(135deg, ${theme.gradientFrom}, ${theme.gradientTo})`, fontFamily: "'Inter', sans-serif" }}>
+        {decorativeCorner}
+        {topBar}
+        <div className="flex-1 flex flex-col px-6 pb-5 z-10">
+          {titleSection}
+          <div className="grid grid-cols-2 gap-2.5 flex-1">
+            {slide.vocabularyItems.map((v, i) => (
+              <div key={i} className="rounded-lg px-3 py-2.5" style={{ background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.03)', border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'}` }}>
+                <div className="text-[20px] text-center leading-relaxed" dir="rtl" style={{ color: theme.titleColor, fontFamily: "'Noto Naskh Arabic', 'Amiri', serif" }}>{v.arabic}</div>
+                <div className="text-[10px] text-center italic mt-0.5" style={{ color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)' }}>{v.transliteration}</div>
+                <div className="text-[11px] text-center font-medium mt-1" style={{ color: theme.accent }}>{v.english}</div>
+                {v.example && <div className="text-[9px] text-center mt-1 italic" style={{ color: theme.bodyColor }}>{v.example}</div>}
               </div>
-              {slide.transliteration && (
-                <div
-                  className="text-[12px] italic mt-1.5 tracking-wide"
-                  style={{ color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)' }}
-                >
-                  {slide.transliteration}
+            ))}
+          </div>
+        </div>
+        {bottomBar}
+      </div>
+    );
+  }
+
+  // ─── Layout: Dialogue Practice ───
+  if (slide.layoutType === 'dialogue-practice') {
+    return (
+      <div className="relative w-full h-full flex flex-col overflow-hidden select-none" style={{ background: `linear-gradient(135deg, ${theme.gradientFrom}, ${theme.gradientTo})`, fontFamily: "'Inter', sans-serif" }}>
+        {decorativeCorner}
+        {topBar}
+        <div className="flex-1 flex flex-col px-6 pb-5 z-10">
+          {titleSection}
+          <div className="space-y-2 flex-1">
+            {slide.bullets?.map((line, i) => (
+              <div key={i} className={`flex ${i % 2 === 0 ? 'justify-start' : 'justify-end'}`}>
+                <div className="max-w-[75%] px-3.5 py-2 rounded-xl text-[12px] leading-relaxed" style={{
+                  background: i % 2 === 0 ? (isDark ? 'rgba(255,255,255,0.12)' : `${theme.accent}15`) : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'),
+                  color: theme.bodyColor,
+                  borderBottomLeftRadius: i % 2 === 0 ? '4px' : undefined,
+                  borderBottomRightRadius: i % 2 !== 0 ? '4px' : undefined,
+                }}>
+                  <span className="font-semibold text-[10px] uppercase tracking-wider block mb-0.5" style={{ color: theme.accent }}>
+                    {i % 2 === 0 ? 'Student A' : 'Student B'}
+                  </span>
+                  {line}
                 </div>
+              </div>
+            ))}
+          </div>
+          {slide.activityInstruction && (
+            <div className="mt-auto pt-3 px-3.5 py-2.5 rounded-lg border-l-[3px] text-[11px] leading-relaxed" style={{ borderColor: theme.accent, background: isDark ? 'rgba(255,255,255,0.06)' : theme.accentLight, color: isDark ? 'rgba(255,255,255,0.7)' : theme.bodyColor }}>
+              <span className="font-semibold" style={{ color: theme.accent }}>Activity: </span>{slide.activityInstruction}
+            </div>
+          )}
+        </div>
+        {bottomBar}
+      </div>
+    );
+  }
+
+  // ─── Layout: Grammar Table ───
+  if (slide.layoutType === 'grammar-table' && slide.grammarTable) {
+    return (
+      <div className="relative w-full h-full flex flex-col overflow-hidden select-none" style={{ background: `linear-gradient(135deg, ${theme.gradientFrom}, ${theme.gradientTo})`, fontFamily: "'Inter', sans-serif" }}>
+        {decorativeCorner}
+        {topBar}
+        <div className="flex-1 flex flex-col px-6 pb-5 z-10">
+          {titleSection}
+          {slide.arabicText && (
+            <div className="text-center mb-3 text-[14px]" style={{ color: theme.bodyColor }}>{slide.arabicText}</div>
+          )}
+          <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)'}` }}>
+            <table className="w-full text-[12px]">
+              <thead>
+                <tr style={{ background: isDark ? 'rgba(255,255,255,0.1)' : `${theme.accent}15` }}>
+                  {slide.grammarTable.headers.map((h, i) => (
+                    <th key={i} className="px-3 py-2 text-left font-semibold" style={{ color: theme.accent }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {slide.grammarTable.rows.map((row, ri) => (
+                  <tr key={ri} style={{ borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'}` }}>
+                    {row.map((cell, ci) => (
+                      <td key={ci} className="px-3 py-2" dir="auto" style={{ color: theme.bodyColor, fontFamily: detectScriptClass(cell) !== 'latin-text' ? "'Noto Naskh Arabic', serif" : undefined }}>{cell}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {slide.bullets && slide.bullets.length > 0 && (
+            <ul className="space-y-1.5 mt-3">
+              {slide.bullets.map((b, i) => (
+                <li key={i} className="flex items-start gap-2 text-[11px]" style={{ color: theme.bodyColor }}>
+                  <span className="w-1.5 h-1.5 rounded-full mt-[5px] shrink-0" style={{ background: theme.bulletColor }} />
+                  <span>{b}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        {bottomBar}
+      </div>
+    );
+  }
+
+  // ─── Default Layout: Title + Bullets ───
+  return (
+    <div className="relative w-full h-full flex flex-col overflow-hidden select-none" style={{ background: `linear-gradient(135deg, ${theme.gradientFrom}, ${theme.gradientTo})`, fontFamily: "'Inter', sans-serif" }}>
+      {decorativeCorner}
+      {topBar}
+      <div className="flex-1 flex flex-col px-6 pb-5 z-10">
+        {titleSection}
+        {slide.arabicText && (
+          <div className="mb-3">
+            <div className="text-center py-3 px-4 rounded-xl" style={{ background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.03)' }}>
+              <div className="leading-relaxed" dir="rtl" style={{
+                color: theme.titleColor,
+                fontFamily: detectScriptClass(slide.arabicText) === 'urdu-text' ? "'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif" : "'Noto Naskh Arabic', 'Amiri', serif",
+                fontSize: detectScriptClass(slide.arabicText) === 'urdu-text' ? '28px' : '36px',
+                lineHeight: detectScriptClass(slide.arabicText) === 'urdu-text' ? '2.4' : '1.8',
+              }}>{slide.arabicText}</div>
+              {slide.transliteration && (
+                <div className="text-[12px] italic mt-1.5 tracking-wide" style={{ color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)' }}>{slide.transliteration}</div>
               )}
             </div>
           </div>
         )}
-
-        {/* Bullets */}
         {slide.bullets && slide.bullets.length > 0 && (
           <ul className="space-y-2 flex-1">
             {slide.bullets.map((b, i) => (
               <li key={i} className="flex items-start gap-3 text-[13px] leading-relaxed" style={{ color: theme.bodyColor }}>
-                <span
-                  className="w-2 h-2 rounded-full mt-[5px] shrink-0"
-                  style={{ background: theme.bulletColor }}
-                />
+                <span className="w-2 h-2 rounded-full mt-[5px] shrink-0" style={{ background: theme.bulletColor }} />
                 <span>{b}</span>
               </li>
             ))}
           </ul>
         )}
-
-        {/* Activity instruction callout */}
         {slide.activityInstruction && (
-          <div
-            className="mt-auto pt-3 px-3.5 py-2.5 rounded-lg border-l-[3px] text-[11px] leading-relaxed"
-            style={{
-              borderColor: theme.accent,
-              background: isDark ? 'rgba(255,255,255,0.06)' : theme.accentLight,
-              color: isDark ? 'rgba(255,255,255,0.7)' : theme.bodyColor,
-            }}
-          >
-            <span className="font-semibold" style={{ color: theme.accent }}>Activity: </span>
-            {slide.activityInstruction}
+          <div className="mt-auto pt-3 px-3.5 py-2.5 rounded-lg border-l-[3px] text-[11px] leading-relaxed" style={{ borderColor: theme.accent, background: isDark ? 'rgba(255,255,255,0.06)' : theme.accentLight, color: isDark ? 'rgba(255,255,255,0.7)' : theme.bodyColor }}>
+            <span className="font-semibold" style={{ color: theme.accent }}>Activity: </span>{slide.activityInstruction}
           </div>
         )}
       </div>
-
-      {/* Bottom bar */}
-      <div
-        className="flex items-center justify-between px-6 py-2 text-[9px] z-10"
-        style={{
-          borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'}`,
-          color: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)',
-        }}
-      >
-        <span>{courseName || ''}</span>
-        {slide.teacherNote && (
-          <span className="italic max-w-[60%] truncate" style={{ color: isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.3)' }}>
-            📝 {slide.teacherNote}
-          </span>
-        )}
-      </div>
+      {bottomBar}
     </div>
   );
 }
@@ -1823,6 +1891,16 @@ function FlashcardItem({ card, template }: { card: Flashcard; template?: VisualT
             style={{ fontFamily: detectScriptClass(card.arabic) === 'urdu-text' ? "'Noto Nastaliq Urdu', serif" : "'Noto Naskh Arabic', 'Amiri', serif", lineHeight: detectScriptClass(card.arabic) === 'urdu-text' ? '2.4' : '1.6' }}>
             {card.arabic}
           </div>
+          {card.rootLetters && (
+            <div className="text-[10px] text-white/50" dir="rtl" style={{ fontFamily: "'Noto Naskh Arabic', serif" }}>
+              جذر: {card.rootLetters}
+            </div>
+          )}
+          {card.category && (
+            <span className="text-[8px] uppercase tracking-[0.12em] px-2 py-0.5 rounded-full mt-0.5" style={{ background: 'rgba(255,255,255,0.15)', color: accentForFront }}>
+              {card.category}
+            </span>
+          )}
           <span className="text-[9px] uppercase tracking-[0.15em] opacity-70 mt-1" style={{ color: accentForFront }}>
             Tap to reveal
           </span>
@@ -1844,6 +1922,11 @@ function FlashcardItem({ card, template }: { card: Flashcard; template?: VisualT
               {card.exampleTranslation && (
                 <div className="text-[10px] text-[#9ca3af] mt-1">{card.exampleTranslation}</div>
               )}
+            </div>
+          )}
+          {card.usageNote && (
+            <div className="mt-1.5 text-[9px] text-[#6b7280] italic text-center px-2">
+              💡 {card.usageNote}
             </div>
           )}
         </div>
