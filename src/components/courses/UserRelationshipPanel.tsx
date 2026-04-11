@@ -250,8 +250,7 @@ export function UserRelationshipPanel({
             {/* Header */}
             <div className="p-6 pb-0 space-y-3">
               <div className="flex items-center gap-3">
-                <Avatar className="h-12 w-12">
-                  <AvatarImage src={profile.avatar_url || undefined} />
+              <Avatar className="h-12 w-12">
                   <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                     {initials}
                   </AvatarFallback>
@@ -259,7 +258,7 @@ export function UserRelationshipPanel({
                 <div>
                   <p className="font-semibold text-base">{profile.full_name}</p>
                   <p className="text-sm text-muted-foreground">
-                    {profile.email} {profile.phone ? `· ${profile.phone}` : ''}
+                    {profile.email} {profile.whatsapp_number ? `· ${profile.whatsapp_number}` : ''}
                   </p>
                 </div>
               </div>
