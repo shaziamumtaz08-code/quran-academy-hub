@@ -55,7 +55,7 @@ const LEVELS = ['Beginner', 'Intermediate', 'Advanced', 'All Levels'];
 const TAG_OPTIONS = ['Quran', 'Arabic', 'Tajweed', 'Hifz', 'Islamic Studies', 'Qaida', 'Spoken Arabic', 'Grammar', 'Online', 'Weekend', 'Intensive', 'Kids', 'Adults', 'Sisters Only'];
 
 // ─── Main Component ────────────────────────────────────
-export default function Courses({ embedded = false }: { embedded?: boolean } = {}) {
+export default function Courses() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { activeDivision, activeBranch } = useDivision();
@@ -438,8 +438,8 @@ export default function Courses({ embedded = false }: { embedded?: boolean } = {
   }), [courses]);
 
   // ─── Render ───────────────────────────────────────────
-  const content = (
-    <div className="space-y-6 animate-fade-in">
+  return (
+    <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
         {/* Premium Header */}
         <div className="page-header-premium rounded-xl p-6 relative overflow-hidden">
@@ -806,14 +806,6 @@ export default function Courses({ embedded = false }: { embedded?: boolean } = {
           </DialogContent>
         </Dialog>
       </div>
-    </div>
-  );
-
-  if (embedded) return content;
-
-  return (
-    <DashboardLayout>
-      {content}
     </DashboardLayout>
   );
 }
