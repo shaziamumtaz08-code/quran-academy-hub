@@ -12,7 +12,7 @@ import {
   Check, Circle, ChevronRight, Sparkles, ArrowRight, Clock, BookOpen,
   Users, CheckCircle2, Loader2, Play, Pause, RotateCcw, X, Send,
   Mic, ListChecks, PenTool, MessageSquare, Hand, Lightbulb, Zap,
-  Square, Eye
+  Square, Eye, Save, Download
 } from 'lucide-react';
 import { PhaseStepperCompact, NextPhaseButton, PhaseBreadcrumb } from '@/components/teaching/PhaseNavBar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -135,6 +135,8 @@ export default function TeachingOSDayBoard() {
   const [notifyMsg, setNotifyMsg] = useState('');
   const [studentStatuses, setStudentStatuses] = useState<Record<string, string>>({});
   const [liveStartTime, setLiveStartTime] = useState<Date | null>(null);
+  const [boardSaving, setBoardSaving] = useState(false);
+  const [editingActivity, setEditingActivity] = useState<number | null>(null);
 
   const timerRef = useRef<ReturnType<typeof setInterval>>();
 
@@ -266,6 +268,55 @@ export default function TeachingOSDayBoard() {
     toast.success('Session ended and saved');
   };
 
+  const handleSaveBoard = async () => {
+    if (!plan) return;
+    setBoardSaving(true);
+    const { error } = await supabase.from('session_plans')
+      .update({ activities: plan.activities as any, updated_at: new Date().toISOString() } as any)
+      .eq('id', plan.id);
+    if (error) toast.error(error.message);
+    else toast.success('Board saved');
+    setBoardSaving(false);
+  };
+
+  const handleExportPDF = () => {
+    if (!plan) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <html><head><title>${plan.session_title || 'Day Board'}</title>
+      <style>
+        body { font-family: sans-serif; padding: 40px; }
+        .activity { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+        .phase { font-weight: bold; color: #1e3a5f; text-transform: uppercase; font-size: 12px; }
+        .title { font-size: 16px; margin: 8px 0; }
+        .duration { color: #666; font-size: 12px; }
+        .description { margin-top: 8px; font-size: 14px; line-height: 1.6; }
+      </style></head><body>
+      <h1>${plan.session_title}</h1>
+      <p>Week ${plan.week_number} · Session ${plan.session_number} · ${plan.total_minutes} min</p>
+      <hr/>
+      ${plan.activities.map(a => `
+        <div class="activity">
+          <div class="phase">${a.phase}</div>
+          <div class="title">${a.title}</div>
+          <div class="duration">${a.durationMinutes} minutes</div>
+          <div class="description">${a.description || ''}</div>
+        </div>
+      `).join('')}
+      </body></html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
+  const updateActivity = (idx: number, field: keyof Activity, value: any) => {
+    if (!plan) return;
+    const newActs = [...plan.activities];
+    newActs[idx] = { ...newActs[idx], [field]: value };
+    setPlan({ ...plan, activities: newActs });
+  };
+
   const callAI = async (type: string, userMsg?: string) => {
     if (!currentActivity || !plan) return;
     setAiLoading(true);
@@ -362,6 +413,14 @@ export default function TeachingOSDayBoard() {
             <PhaseBreadcrumb courseName={courseName} sectionLabel={`Session ${plan.session_number} · Day Board`} />
           </div>
           <div className="flex items-center gap-2">
+            <button onClick={handleSaveBoard} disabled={boardSaving}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-[#4a5264] bg-white border border-[#d0d4dc] rounded-md hover:bg-[#f9f9fb] disabled:opacity-50">
+              {boardSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />} Save
+            </button>
+            <button onClick={handleExportPDF}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-[#4a5264] bg-white border border-[#d0d4dc] rounded-md hover:bg-[#f9f9fb]">
+              <Download className="w-3.5 h-3.5" /> Export PDF
+            </button>
             <button className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-[#4a5264] bg-white border border-[#d0d4dc] rounded-md hover:bg-[#f9f9fb]">
               <Eye className="w-3.5 h-3.5" /> Student view
             </button>

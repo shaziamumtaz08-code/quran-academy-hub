@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
+import { CourseDiscussionBoard } from '@/components/courses/CourseDiscussionBoard';
 import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
@@ -465,9 +466,7 @@ export default function StudentCourseView() {
 
         {/* ─── CHAT ─── */}
         <TabsContent value="chat" className="mt-4">
-          <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">
-            Group discussion coming soon. Use the Announcements section for updates.
-          </CardContent></Card>
+          <CourseDiscussionBoard courseId={courseId!} currentUserId={user?.id || ''} />
         </TabsContent>
       </Tabs>
     </div>
