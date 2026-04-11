@@ -639,6 +639,7 @@ function AddStaffDialog({ open, onOpenChange, classId, staffList, existingStaffI
   const [subjects, setSubjects] = useState<string[]>([]);
   const [payoutType, setPayoutType] = useState('per_session');
   const [search, setSearch] = useState('');
+  const [subjectArea, setSubjectArea] = useState('all');
 
   const SUBJECT_OPTIONS = ['Quran Recitation', 'Tajweed', 'Hifz', 'Qaida', 'Arabic', 'Islamic Studies'];
   const filtered = staffList.filter((s: any) =>
@@ -654,7 +655,8 @@ function AddStaffDialog({ open, onOpenChange, classId, staffList, existingStaffI
         staff_role: role,
         subjects: role === 'teacher' ? subjects : [],
         payout_type: role === 'teacher' ? payoutType : 'volunteer',
-      });
+        subject_area: subjectArea !== 'all' ? subjectArea : null,
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -699,6 +701,21 @@ function AddStaffDialog({ open, onOpenChange, classId, staffList, existingStaffI
           </div>
           {role === 'teacher' && (
             <>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Subject Area (optional)</Label>
+                <Select value={subjectArea} onValueChange={setSubjectArea}>
+                  <SelectTrigger><SelectValue placeholder="All subjects" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All subjects</SelectItem>
+                    <SelectItem value="Arabic Language">Arabic Language</SelectItem>
+                    <SelectItem value="Tajweed">Tajweed</SelectItem>
+                    <SelectItem value="Islamic Studies">Islamic Studies</SelectItem>
+                    <SelectItem value="Hifz">Hifz</SelectItem>
+                    <SelectItem value="Qaida">Qaida</SelectItem>
+                    <SelectItem value="Quran Recitation">Quran Recitation</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Subjects</Label>
                 <div className="flex flex-wrap gap-2">
