@@ -111,7 +111,7 @@ export default function TeachingLanding() {
   // For teachers, use read-only components; for admins, use full pages
   const contentMap: Record<string, React.ReactNode> = useMemo(() => ({
     'live-classes': <Suspense fallback={<Loading />}><ZoomManagement /></Suspense>,
-    'courses': <Suspense fallback={<Loading />}><Courses /></Suspense>,
+    'courses': <Suspense fallback={<Loading />}><Courses embedded /></Suspense>,
     'assignments': isTeacher
       ? <Suspense fallback={<Loading />}><TeacherStudentsView /></Suspense>
       : <Suspense fallback={<Loading />}><Assignments /></Suspense>,
