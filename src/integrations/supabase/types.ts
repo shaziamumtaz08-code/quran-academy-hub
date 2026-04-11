@@ -1299,6 +1299,7 @@ export type Database = {
           id: string
           payout_type: string
           staff_role: string
+          subject_area: string | null
           subjects: string[]
           user_id: string
         }
@@ -1308,6 +1309,7 @@ export type Database = {
           id?: string
           payout_type?: string
           staff_role?: string
+          subject_area?: string | null
           subjects?: string[]
           user_id: string
         }
@@ -1317,6 +1319,7 @@ export type Database = {
           id?: string
           payout_type?: string
           staff_role?: string
+          subject_area?: string | null
           subjects?: string[]
           user_id?: string
         }

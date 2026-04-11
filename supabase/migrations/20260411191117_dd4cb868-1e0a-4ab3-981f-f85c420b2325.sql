@@ -1,0 +1,1 @@
+ALTER TABLE public.course_class_staff ADD COLUMN IF NOT EXISTS subject_area TEXT;
