@@ -338,7 +338,7 @@ export default function UnifiedDashboard() {
                     <Card key={course.id} className="p-4 hover:border-primary/30 transition-colors cursor-pointer"
                       onClick={() => {
                         const isAdmin = userRoles.some(r => ['admin', 'super_admin'].includes(r.role));
-                        navigate(isAdmin ? `/courses/${course.id}` : `/my-courses/${course.id}`);
+                        navigate(isAdmin ? `/courses/${course.id}` : `/my-teaching/${course.id}`);
                       }}>
                       <div className="flex justify-between items-start">
                         <div>

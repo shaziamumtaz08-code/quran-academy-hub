@@ -49,6 +49,7 @@ import LeadsPipeline from "./pages/LeadsPipeline";
 import EnrollmentForm from "./pages/EnrollmentForm";
 import PublicInquiryForm from "./pages/PublicInquiryForm";
 import StudentCourseView from "./pages/StudentCourseView";
+import TeacherCourseView from "./pages/TeacherCourseView";
 import NotFound from "./pages/NotFound";
 import IdentityResolution from "./pages/IdentityResolution";
 import CourseCatalog from "./pages/CourseCatalog";
@@ -306,6 +307,7 @@ function AppRoutes() {
       <Route path="/dashboard" element={<ProtectedRoute><DashboardWrapper /></ProtectedRoute>} />
       <Route path="/my-dashboard" element={<ProtectedRoute><DashboardLayout><UnifiedDashboard /></DashboardLayout></ProtectedRoute>} />
       <Route path="/my-courses/:courseId" element={<ProtectedRoute><DashboardLayout><StudentCourseView /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/my-teaching/:courseId" element={<ProtectedRoute><DashboardLayout><TeacherCourseView /></DashboardLayout></ProtectedRoute>} />
       <Route path="/user-management" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
       <Route path="/assignments" element={<ProtectedRoute><Assignments /></ProtectedRoute>} />
       <Route path="/subjects" element={<ProtectedRoute><Subjects /></ProtectedRoute>} />
