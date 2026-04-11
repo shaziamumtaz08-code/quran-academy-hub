@@ -653,7 +653,7 @@ const ParentDashboard = () => {
             style={{ borderRadius: 7, fontSize: 11 }}>
             <Download className="w-3 h-3 mr-1" /> {t.exportPdf}
           </Button>
-          <Button size="sm" onClick={() => setSection('messages')} className="hidden sm:flex"
+          <Button size="sm" onClick={() => navigate('/communication')} className="hidden sm:flex"
             style={{ background: '#1a7340', color: '#fff', borderRadius: 7, fontSize: 11 }}>
             <MessageSquare className="w-3 h-3 mr-1" /> {t.messageTeacher}
           </Button>
