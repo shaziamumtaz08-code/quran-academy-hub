@@ -218,6 +218,15 @@ export function AppSidebar({ className }: AppSidebarProps) {
   const isMobile = useIsMobile();
 
   // Group numbering for course detail sidebar
+  const SECTION_ICONS: Record<string, { icon: typeof Settings; colorClass: string; bgClass: string }> = {
+    SETUP:       { icon: Settings, colorClass: 'text-blue-600', bgClass: 'bg-blue-50' },
+    CONTENT:     { icon: BookOpen, colorClass: 'text-violet-600', bgClass: 'bg-violet-50' },
+    OUTREACH:    { icon: Megaphone, colorClass: 'text-amber-600', bgClass: 'bg-amber-50' },
+    OPERATIONS:  { icon: Layers, colorClass: 'text-emerald-600', bgClass: 'bg-emerald-50' },
+    ACADEMICS:   { icon: GraduationCap, colorClass: 'text-rose-600', bgClass: 'bg-rose-50' },
+    COMMUNICATE: { icon: MessageSquare, colorClass: 'text-cyan-600', bgClass: 'bg-cyan-50' },
+  };
+
   const GROUP_NUMBERS: Record<string, number> = {
     SETUP: 1, CONTENT: 2, OUTREACH: 3, OPERATIONS: 4, ACADEMICS: 5, COMMUNICATE: 6,
   };
