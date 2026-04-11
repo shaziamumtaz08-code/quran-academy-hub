@@ -464,6 +464,8 @@ const TeachingOSContentKit: React.FC = () => {
         arabicText: s.arabic_text, transliteration: s.transliteration,
         bullets: (s.bullets as any) || [], teacherNote: s.teacher_note,
         activityInstruction: s.activity_instruction,
+        grammarTable: (s.bullets as any)?.grammarTable || null,
+        vocabularyItems: (s.bullets as any)?.vocabularyItems || null,
       })));
     }
     if (quizRes.data?.length) {
