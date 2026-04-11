@@ -181,8 +181,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           });
         }, 0);
-      } else {
+      } else if (event === 'SIGNED_OUT') {
+        // Only clear profile on explicit sign-out, not transient auth events
         setProfile(null);
+        setActiveRoleState(null);
         setActiveRolePermissions([]);
         if (!initialised) {
           initialised = true;
