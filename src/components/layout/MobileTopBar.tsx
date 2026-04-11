@@ -32,6 +32,7 @@ export function MobileTopBar({ title = 'Al-Quran Time', onMenuClick, onLogout }:
         <span className="text-[13px] font-medium text-white truncate px-2">{title}</span>
 
         <div className="flex items-center gap-1.5">
+          <NotificationBell />
           <RoleSwitcher />
           <button
             type="button"
