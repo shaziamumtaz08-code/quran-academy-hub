@@ -22,12 +22,23 @@ export default function UnifiedDashboard() {
   const navigate = useNavigate();
   const [activeDivision, setActiveDivision] = useState<string>('all');
 
-  // ─── User roles with divisions ───
+  // ─── User context (divisions) ───
+  const { data: userContexts = [] } = useQuery({
+    queryKey: ['user-context-dashboard', user?.id],
+    queryFn: async () => {
+      const { data } = await supabase.from('user_context')
+        .select('division_id, divisions:divisions!inner(id, name)')
+        .eq('user_id', user!.id);
+      return data || [];
+    },
+    enabled: !!user?.id,
+  });
+
   const { data: userRoles = [] } = useQuery({
     queryKey: ['user-roles-dashboard', user?.id],
     queryFn: async () => {
       const { data } = await supabase.from('user_roles')
-        .select('role, division_id, divisions:divisions(id, name)')
+        .select('role')
         .eq('user_id', user!.id);
       return data || [];
     },
@@ -35,16 +46,10 @@ export default function UnifiedDashboard() {
   });
 
   const divisions = [...new Map(
-    userRoles
-      .filter(r => r.division_id && r.divisions)
-      .map(r => [r.division_id, { ...(r.divisions as any), roles: [] as string[] }])
+    userContexts
+      .filter(c => c.divisions)
+      .map(c => [c.division_id, { ...(c.divisions as any), roles: userRoles.map(r => r.role) }])
   ).values()];
-
-  // Attach roles to each division
-  userRoles.forEach(r => {
-    const div = divisions.find(d => d.id === r.division_id);
-    if (div && r.role) div.roles.push(r.role);
-  });
 
   // ─── Stats: Active courses ───
   const { data: activeCourses = 0, isLoading: loadingCourses } = useQuery({
