@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,7 +26,9 @@ export default function GroupChat() {
   const { user, activeRole } = useAuth();
   const isAdmin = activeRole && ['super_admin', 'admin', 'admin_admissions', 'admin_fees', 'admin_academic'].includes(activeRole) || activeRole?.startsWith('admin_');
   const queryClient = useQueryClient();
-  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(searchParams.get('group'));
+  const initialGroupHandled = useRef(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupType, setNewGroupType] = useState('project');
