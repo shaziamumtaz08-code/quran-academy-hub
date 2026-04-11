@@ -115,8 +115,8 @@ export function CourseEligibilitySettings({ courseId }: Props) {
       return secret;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['course-webhook', courseId] });
-      toast({ title: 'Webhook secret generated' });
+      queryClient.invalidateQueries({ queryKey: ['course-settings', courseId] });
+      toast.success('Webhook secret generated');
     },
   });
 
@@ -226,7 +226,7 @@ export function CourseEligibilitySettings({ courseId }: Props) {
             <Label className="text-xs">Webhook URL</Label>
             <div className="flex gap-2">
               <code className="flex-1 bg-muted px-3 py-2 rounded text-xs font-mono truncate">{webhookUrl}</code>
-              <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(webhookUrl); toast({ title: 'Copied!' }); }}>
+              <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(webhookUrl); toast.success('Copied!'); }}>
                 <Copy className="h-3.5 w-3.5" />
               </Button>
             </div>
