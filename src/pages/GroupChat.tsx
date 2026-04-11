@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,7 +26,9 @@ export default function GroupChat() {
   const { user, activeRole } = useAuth();
   const isAdmin = activeRole && ['super_admin', 'admin', 'admin_admissions', 'admin_fees', 'admin_academic'].includes(activeRole) || activeRole?.startsWith('admin_');
   const queryClient = useQueryClient();
-  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(searchParams.get('group'));
+  const initialGroupHandled = useRef(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupType, setNewGroupType] = useState('project');
@@ -47,7 +50,7 @@ export default function GroupChat() {
       const { data: memberships } = await supabase.from('chat_members').select('group_id').eq('user_id', user.id);
       if (!memberships?.length) return [];
       const groupIds = memberships.map(m => m.group_id);
-      const { data } = await supabase.from('chat_groups').select('*').in('id', groupIds).eq('is_active', true).order('updated_at', { ascending: false });
+      const { data } = await supabase.from('chat_groups').select('*, courses:courses(name)').in('id', groupIds).eq('is_active', true).order('updated_at', { ascending: false });
       
       // For DM groups, fetch the other user's name
       const dmGroups = (data || []).filter(g => g.is_dm);
@@ -62,13 +65,22 @@ export default function GroupChat() {
           (dmMembers || []).filter(m => m.user_id !== user.id).forEach(m => {
             groupUserMap[m.group_id] = nameMap[m.user_id] || 'User';
           });
-          return (data || []).map(g => g.is_dm ? { ...g, name: groupUserMap[g.id] || 'Direct Message' } : g);
+          return (data || []).map(g => g.is_dm ? { ...g, dmUserName: groupUserMap[g.id] || 'Direct Message' } : g);
         }
       }
       return data || [];
     },
     enabled: !!user?.id,
   });
+
+  // Handle URL ?group= param: auto-select when groups load
+  useEffect(() => {
+    const urlGroup = searchParams.get('group');
+    if (urlGroup && !initialGroupHandled.current && groups.length > 0) {
+      setActiveGroupId(urlGroup);
+      initialGroupHandled.current = true;
+    }
+  }, [groups, searchParams]);
 
   // Fetch members for active group
   const { data: members = [] } = useQuery({
@@ -296,19 +308,22 @@ export default function GroupChat() {
                   activeGroupId === g.id ? 'bg-primary/5 border-l-2 border-l-primary' : ''
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary shrink-0">
-                    {g.is_dm ? '👤' : g.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <p className="text-[13px] font-bold text-foreground truncate">{g.name}</p>
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary shrink-0">
+                      {g.is_dm ? '👤' : g.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2)}
                     </div>
-                    <p className="text-[10px] text-muted-foreground capitalize truncate">
-                      {g.is_dm ? 'Direct message' : g.channel_mode === 'channel' ? '📢 Channel' : g.type}
-                    </p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[13px] font-bold text-foreground truncate">{g.is_dm && g.dmUserName ? g.dmUserName : g.name}</p>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground capitalize truncate">
+                        {g.is_dm && (g.courses as any)?.name
+                          ? `📚 ${(g.courses as any).name}`
+                          : g.is_dm ? 'Direct message'
+                          : g.channel_mode === 'channel' ? '📢 Channel' : g.type}
+                      </p>
+                    </div>
                   </div>
-                </div>
               </button>
             ))}
             {filteredGroups.length === 0 && (

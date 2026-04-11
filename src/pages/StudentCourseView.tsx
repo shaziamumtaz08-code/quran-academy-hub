@@ -12,10 +12,15 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { format, formatDistanceToNow } from 'date-fns';
+import { toast } from 'sonner';
 import {
   ArrowLeft, BookOpen, Calendar, FileText, ClipboardList,
-  GraduationCap, MessageSquare, Video, Clock, ExternalLink
+  GraduationCap, MessageSquare, Video, Clock, ExternalLink, Loader2
 } from 'lucide-react';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
+import { findOrCreateCourseDM, getCourseTeachers } from '@/lib/messaging';
 
 // ─── Helpers ───
 function isClassToday(scheduleDays: string[]): boolean {
@@ -44,6 +49,39 @@ export default function StudentCourseView() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
+  const [messagingTeacher, setMessagingTeacher] = useState(false);
+
+  // ─── Course teachers ───
+  const { data: courseTeachers = [] } = useQuery({
+    queryKey: ['course-teachers', courseId, user?.id],
+    queryFn: () => getCourseTeachers(user!.id, courseId!),
+    enabled: !!courseId && !!user?.id,
+  });
+
+  const handleMessageTeacher = async (teacher: { userId: string; name: string }) => {
+    if (!user?.id || !courseId) return;
+    setMessagingTeacher(true);
+    try {
+      const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single();
+      const dmId = await findOrCreateCourseDM(
+        user.id,
+        teacher.userId,
+        courseId,
+        course?.name || '',
+        profile?.full_name || '',
+        teacher.name,
+      );
+      if (dmId) {
+        navigate(`/communication?group=${dmId}`);
+      } else {
+        toast.error('Failed to create conversation');
+      }
+    } catch {
+      toast.error('Failed to start conversation');
+    } finally {
+      setMessagingTeacher(false);
+    }
+  };
 
   // ─── Course details ───
   const { data: course, isLoading } = useQuery({
@@ -207,9 +245,35 @@ export default function StudentCourseView() {
     <div className="p-4 md:p-6 space-y-4 max-w-4xl mx-auto">
       {/* Back + Header */}
       <div>
-        <Button variant="ghost" size="sm" onClick={() => navigate('/my-dashboard')} className="mb-2 -ml-2">
-          <ArrowLeft className="h-4 w-4 mr-1" /> My Dashboard
-        </Button>
+        <div className="flex items-center justify-between mb-2">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/my-dashboard')} className="-ml-2">
+            <ArrowLeft className="h-4 w-4 mr-1" /> My Dashboard
+          </Button>
+          {/* Message Teacher */}
+          {courseTeachers.length === 1 && (
+            <Button variant="outline" size="sm" onClick={() => handleMessageTeacher(courseTeachers[0])} disabled={messagingTeacher}>
+              {messagingTeacher ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <MessageSquare className="h-4 w-4 mr-1" />}
+              Message {courseTeachers[0].name.split(' ')[0]}
+            </Button>
+          )}
+          {courseTeachers.length > 1 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" disabled={messagingTeacher}>
+                  {messagingTeacher ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <MessageSquare className="h-4 w-4 mr-1" />}
+                  Message Teacher
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {courseTeachers.map(t => (
+                  <DropdownMenuItem key={t.userId} onClick={() => handleMessageTeacher(t)}>
+                    {t.name} <Badge variant="secondary" className="ml-2 text-xs">{t.role}</Badge>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
         {isLoading ? <Skeleton className="h-8 w-64" /> : (
           <div>
             <h1 className="text-xl font-bold text-foreground">{course?.name}</h1>

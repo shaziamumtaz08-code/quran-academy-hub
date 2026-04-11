@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -134,6 +134,7 @@ const MOCK_MESSAGES = [
 ];
 
 const ParentDashboard = () => {
+  const navigate = useNavigate();
   const [lang, setLang] = useState<Lang>('en');
   const [activeChild, setActiveChild] = useState(MOCK_CHILDREN[0]);
   const [section, setSection] = useState<Section>('overview');
@@ -652,7 +653,7 @@ const ParentDashboard = () => {
             style={{ borderRadius: 7, fontSize: 11 }}>
             <Download className="w-3 h-3 mr-1" /> {t.exportPdf}
           </Button>
-          <Button size="sm" onClick={() => setSection('messages')} className="hidden sm:flex"
+          <Button size="sm" onClick={() => navigate('/communication')} className="hidden sm:flex"
             style={{ background: '#1a7340', color: '#fff', borderRadius: 7, fontSize: 11 }}>
             <MessageSquare className="w-3 h-3 mr-1" /> {t.messageTeacher}
           </Button>
@@ -697,7 +698,7 @@ const ParentDashboard = () => {
               {activeChild.name.split(' ')[0].toUpperCase()}
             </div>
             {sidebarNav.map(n => (
-              <button key={n.key} onClick={() => setSection(n.key)}
+              <button key={n.key} onClick={() => n.key === 'messages' ? navigate('/communication') : setSection(n.key)}
                 className="w-full flex items-center gap-2 rounded-lg px-2.5 py-2 mb-0.5 transition-colors"
                 style={{ background: section === n.key ? '#eef2fa' : 'transparent' }}>
                 <n.icon className="w-4 h-4" style={{ color: section === n.key ? '#1a56b0' : '#7a7f8a' }} />
@@ -758,7 +759,7 @@ const ParentDashboard = () => {
       {/* Mobile bottom nav */}
       <div className="md:hidden flex items-center justify-around bg-white shrink-0" style={{ height: 52, borderTop: '0.5px solid #e8e9eb' }}>
         {mobileNav.map(n => (
-          <button key={n.key} onClick={() => setSection(n.key)} className="flex flex-col items-center gap-0.5 py-1"
+          <button key={n.key} onClick={() => n.key === 'messages' ? navigate('/communication') : setSection(n.key)} className="flex flex-col items-center gap-0.5 py-1"
             style={{ color: section === n.key ? '#1a56b0' : '#aab0bc' }}>
             <n.icon className="w-5 h-5" />
             <span style={{ fontSize: 10, fontWeight: 500 }}>{n.label}</span>
