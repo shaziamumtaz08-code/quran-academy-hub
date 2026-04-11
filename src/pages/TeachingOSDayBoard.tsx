@@ -268,6 +268,55 @@ export default function TeachingOSDayBoard() {
     toast.success('Session ended and saved');
   };
 
+  const handleSaveBoard = async () => {
+    if (!plan) return;
+    setBoardSaving(true);
+    const { error } = await supabase.from('session_plans')
+      .update({ activities: plan.activities as any, updated_at: new Date().toISOString() } as any)
+      .eq('id', plan.id);
+    if (error) toast.error(error.message);
+    else toast.success('Board saved');
+    setBoardSaving(false);
+  };
+
+  const handleExportPDF = () => {
+    if (!plan) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <html><head><title>${plan.session_title || 'Day Board'}</title>
+      <style>
+        body { font-family: sans-serif; padding: 40px; }
+        .activity { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+        .phase { font-weight: bold; color: #1e3a5f; text-transform: uppercase; font-size: 12px; }
+        .title { font-size: 16px; margin: 8px 0; }
+        .duration { color: #666; font-size: 12px; }
+        .description { margin-top: 8px; font-size: 14px; line-height: 1.6; }
+      </style></head><body>
+      <h1>${plan.session_title}</h1>
+      <p>Week ${plan.week_number} · Session ${plan.session_number} · ${plan.total_minutes} min</p>
+      <hr/>
+      ${plan.activities.map(a => `
+        <div class="activity">
+          <div class="phase">${a.phase}</div>
+          <div class="title">${a.title}</div>
+          <div class="duration">${a.durationMinutes} minutes</div>
+          <div class="description">${a.description || ''}</div>
+        </div>
+      `).join('')}
+      </body></html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
+  const updateActivity = (idx: number, field: keyof Activity, value: any) => {
+    if (!plan) return;
+    const newActs = [...plan.activities];
+    newActs[idx] = { ...newActs[idx], [field]: value };
+    setPlan({ ...plan, activities: newActs });
+  };
+
   const callAI = async (type: string, userMsg?: string) => {
     if (!currentActivity || !plan) return;
     setAiLoading(true);
