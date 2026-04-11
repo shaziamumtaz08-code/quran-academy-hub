@@ -1,6 +1,7 @@
 import React, { Suspense, lazy, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useDivision } from '@/contexts/DivisionContext';
 import { LandingPageShell, LandingCard } from '@/components/layout/LandingPageShell';
 import { GraduationCap, Users, UserCheck, UserPlus } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,6 +14,9 @@ const LeadsPipeline = lazy(() => import('./LeadsPipeline'));
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
 
 export default function PeopleLanding() {
+  const { activeDivision } = useDivision();
+  const isOneToOne = activeDivision?.model_type === 'one_to_one';
+
   const { data: counts, isLoading } = useQuery({
     queryKey: ['people-landing-counts'],
     queryFn: async () => {
@@ -35,7 +39,7 @@ export default function PeopleLanding() {
     { id: 'teachers', title: 'Teachers', subtitle: 'Active teachers', count: counts?.teachers, countLoading: isLoading, icon: <Users className="h-5 w-5" />, color: 'bg-primary' },
     { id: 'students', title: 'Students', subtitle: 'Enrolled students', count: counts?.students, countLoading: isLoading, icon: <GraduationCap className="h-5 w-5" />, color: 'bg-emerald-500' },
     { id: 'users', title: 'All Users', subtitle: 'Total accounts', count: counts?.users, countLoading: isLoading, icon: <UserCheck className="h-5 w-5" />, color: 'bg-blue-500' },
-    { id: 'leads', title: 'Leads Pipeline', subtitle: 'Open leads', count: counts?.leads, countLoading: isLoading, icon: <UserPlus className="h-5 w-5" />, color: 'bg-amber-500' },
+    ...(isOneToOne ? [{ id: 'leads', title: 'Leads Pipeline', subtitle: 'Open leads', count: counts?.leads, countLoading: isLoading, icon: <UserPlus className="h-5 w-5" />, color: 'bg-amber-500' }] : []),
   ];
 
   const contentMap = useMemo(() => ({
