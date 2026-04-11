@@ -134,6 +134,7 @@ const MOCK_MESSAGES = [
 ];
 
 const ParentDashboard = () => {
+  const navigate = useNavigate();
   const [lang, setLang] = useState<Lang>('en');
   const [activeChild, setActiveChild] = useState(MOCK_CHILDREN[0]);
   const [section, setSection] = useState<Section>('overview');
