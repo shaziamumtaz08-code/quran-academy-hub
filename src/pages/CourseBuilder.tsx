@@ -23,7 +23,7 @@ import {
   ChevronLeft, Save, Plus, Trash2, GripVertical, FileText, Video, File,
   Sparkles, Loader2, Upload, ChevronDown, ChevronRight, Users, Settings,
   BookOpen, X, ExternalLink, ClipboardList, UserPlus, GraduationCap, DollarSign, FolderOpen,
-  Bell, FileText as FileTextIcon
+  Bell, FileText as FileTextIcon, CheckCircle2, Circle
 } from 'lucide-react';
 import { RegistrationFormEditor } from '@/components/courses/RegistrationFormEditor';
 import { CourseApplicants } from '@/components/courses/CourseApplicants';
@@ -199,6 +199,52 @@ export default function CourseBuilder() {
         .eq('course_id', courseId!);
       if (error) throw error;
       return data || [];
+    },
+  });
+
+  // Progress checklist queries
+  const { data: formFieldsCount = 0 } = useQuery({
+    queryKey: ['course-form-fields-count', courseId],
+    enabled: !!courseId,
+    queryFn: async () => {
+      const { count } = await supabase.from('registration_form_fields')
+        .select('id', { count: 'exact', head: true })
+        .eq('form_id', courseId!);
+      return count || 0;
+    },
+  });
+
+  const { data: classCount = 0 } = useQuery({
+    queryKey: ['course-class-count', courseId],
+    enabled: !!courseId,
+    queryFn: async () => {
+      const { count } = await supabase.from('course_classes')
+        .select('id', { count: 'exact', head: true })
+        .eq('course_id', courseId!);
+      return count || 0;
+    },
+  });
+
+  const { data: enrolledCount = 0 } = useQuery({
+    queryKey: ['course-enrolled-count', courseId],
+    enabled: !!courseId,
+    queryFn: async () => {
+      const { count } = await supabase.from('course_enrollments')
+        .select('id', { count: 'exact', head: true })
+        .eq('course_id', courseId!)
+        .eq('status', 'active');
+      return count || 0;
+    },
+  });
+
+  const { data: assignedCount = 0 } = useQuery({
+    queryKey: ['course-assigned-count', courseId],
+    enabled: !!courseId,
+    queryFn: async () => {
+      const { count } = await supabase.from('course_class_students')
+        .select('id, class:course_classes!inner(course_id)', { count: 'exact', head: true })
+        .eq('class.course_id', courseId!);
+      return count || 0;
     },
   });
 
@@ -581,6 +627,32 @@ export default function CourseBuilder() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
           {/* ═══ BUILDER TAB ═══ */}
           <TabsContent value="builder" className="mt-4 flex-1">
+            {/* Course setup progress */}
+            <Card className="mb-6 p-4">
+              <h3 className="text-sm font-medium mb-3">Course setup progress</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {[
+                  { label: 'Settings', done: !!course?.name },
+                  { label: 'Website', done: !!(course as any)?.website_enabled },
+                  { label: 'Reg Form', done: formFieldsCount > 0 },
+                  { label: 'Classes', done: classCount > 0 },
+                  { label: 'Enrolled', done: enrolledCount > 0 },
+                  { label: 'Roster', done: assignedCount > 0 },
+                ].map(item => (
+                  <div key={item.label} className="flex items-center gap-2 text-sm">
+                    {item.done ? (
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    ) : (
+                      <Circle className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    <span className={item.done ? 'text-foreground' : 'text-muted-foreground'}>
+                      {item.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
             {/* Mobile syllabus toggle */}
             <Button
               variant="outline"
