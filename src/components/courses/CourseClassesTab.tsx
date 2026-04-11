@@ -27,8 +27,13 @@ interface CourseClassesTabProps {
 const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const CLASS_TYPES = [
   { value: 'regular', label: 'Regular' },
-  { value: 'trial', label: 'Trial' },
+  { value: 'trial', label: 'Trial / Demo' },
   { value: 'makeup', label: 'Make-up' },
+  { value: 'workshop', label: 'Workshop' },
+  { value: 'webinar', label: 'Webinar' },
+  { value: 'lecture', label: 'Lecture' },
+  { value: 'seminar', label: 'Seminar / Talk' },
+  { value: 'exam_session', label: 'Exam Session' },
 ];
 const PAYOUT_TYPES = [
   { value: 'volunteer', label: 'Volunteer' },
@@ -519,6 +524,9 @@ function ClassDetail({ cls, courseId, onBack, onDelete }: { cls: any; courseId: 
                         <Badge className="text-[10px] bg-primary/10 text-primary border-0 gap-0.5">
                           <GraduationCap className="h-2.5 w-2.5" /> Teacher
                         </Badge>
+                        {s.subject_area && s.subject_area !== 'all' && (
+                          <Badge variant="outline" className="text-[10px]">{s.subject_area}</Badge>
+                        )}
                         {(s.subjects || []).map((sub: string) => <Badge key={sub} variant="secondary" className="text-[10px]">{sub}</Badge>)}
                         <Badge variant="outline" className={cn("text-[10px]", s.payout_type === 'volunteer' && "text-emerald-600 border-emerald-200")}>
                           {s.payout_type === 'per_session' ? '💰 Per Session' : s.payout_type === 'monthly' ? '📅 Monthly' : s.payout_type === 'per_student' ? '👥 Per Student' : '🤝 Volunteer'}
@@ -631,6 +639,7 @@ function AddStaffDialog({ open, onOpenChange, classId, staffList, existingStaffI
   const [subjects, setSubjects] = useState<string[]>([]);
   const [payoutType, setPayoutType] = useState('per_session');
   const [search, setSearch] = useState('');
+  const [subjectArea, setSubjectArea] = useState('all');
 
   const SUBJECT_OPTIONS = ['Quran Recitation', 'Tajweed', 'Hifz', 'Qaida', 'Arabic', 'Islamic Studies'];
   const filtered = staffList.filter((s: any) =>
@@ -646,7 +655,8 @@ function AddStaffDialog({ open, onOpenChange, classId, staffList, existingStaffI
         staff_role: role,
         subjects: role === 'teacher' ? subjects : [],
         payout_type: role === 'teacher' ? payoutType : 'volunteer',
-      });
+        subject_area: subjectArea !== 'all' ? subjectArea : null,
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -691,6 +701,21 @@ function AddStaffDialog({ open, onOpenChange, classId, staffList, existingStaffI
           </div>
           {role === 'teacher' && (
             <>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Subject Area (optional)</Label>
+                <Select value={subjectArea} onValueChange={setSubjectArea}>
+                  <SelectTrigger><SelectValue placeholder="All subjects" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All subjects</SelectItem>
+                    <SelectItem value="Arabic Language">Arabic Language</SelectItem>
+                    <SelectItem value="Tajweed">Tajweed</SelectItem>
+                    <SelectItem value="Islamic Studies">Islamic Studies</SelectItem>
+                    <SelectItem value="Hifz">Hifz</SelectItem>
+                    <SelectItem value="Qaida">Qaida</SelectItem>
+                    <SelectItem value="Quran Recitation">Quran Recitation</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Subjects</Label>
                 <div className="flex flex-wrap gap-2">

@@ -78,6 +78,8 @@ export function RegistrationFormEditor({ courseId, courseSlug, courseName }: Reg
   const [newRequired, setNewRequired] = useState(false);
   const [newOptions, setNewOptions] = useState('');
   const [newPlaceholder, setNewPlaceholder] = useState('');
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importCourseId, setImportCourseId] = useState('');
 
   // Fetch or create form
   const { data: form, isLoading: formLoading } = useQuery({
@@ -273,6 +275,9 @@ export function RegistrationFormEditor({ courseId, courseSlug, courseName }: Reg
                 <p className="text-xs text-muted-foreground">{fields.length} fields</p>
               </div>
               <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => setImportDialogOpen(true)}>
+                  <Download className="h-3.5 w-3.5" /> Import
+                </Button>
                 <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={handleDuplicateForm}>
                   <Copy className="h-3.5 w-3.5" /> Duplicate
                 </Button>
@@ -473,7 +478,104 @@ export function RegistrationFormEditor({ courseId, courseSlug, courseName }: Reg
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Import from another course */}
+      <ImportFormDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        courseId={courseId}
+        formId={form?.id || ''}
+        onSuccess={invalidate}
+      />
     </div>
+  );
+}
+
+// Import form dialog
+function ImportFormDialog({ open, onOpenChange, courseId, formId, onSuccess }: {
+  open: boolean; onOpenChange: (v: boolean) => void; courseId: string; formId: string; onSuccess: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [importCourseId, setImportCourseId] = useState('');
+  const [importing, setImporting] = useState(false);
+
+  const { data: otherCourses = [] } = useQuery({
+    queryKey: ['other-courses-for-import', courseId],
+    queryFn: async () => {
+      const { data } = await supabase.from('courses').select('id, name').neq('id', courseId).order('name').limit(50);
+      return data || [];
+    },
+    enabled: open,
+  });
+
+  // Find the form_id for the selected course
+  const handleImport = async () => {
+    if (!importCourseId) return;
+    setImporting(true);
+
+    // Get source form
+    const { data: sourceForm } = await supabase.from('registration_forms')
+      .select('id').eq('course_id', importCourseId).maybeSingle();
+    if (!sourceForm) {
+      toast({ title: 'No form found for selected course' });
+      setImporting(false);
+      return;
+    }
+
+    const { data: sourceFields } = await supabase.from('registration_form_fields')
+      .select('*').eq('form_id', sourceForm.id).order('sort_order');
+    if (!sourceFields?.length) {
+      toast({ title: 'No fields in source form' });
+      setImporting(false);
+      return;
+    }
+
+    const newFields = sourceFields.map((f: any, i: number) => ({
+      form_id: formId,
+      label: f.label,
+      field_key: f.field_key,
+      field_type: f.field_type,
+      is_required: f.is_required,
+      sort_order: i,
+      options: f.options,
+      is_default: f.is_default,
+      placeholder: f.placeholder,
+    }));
+
+    const { error } = await supabase.from('registration_form_fields').insert(newFields);
+    if (error) {
+      toast({ title: 'Import failed', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: `${newFields.length} fields imported` });
+      onSuccess();
+      onOpenChange(false);
+    }
+    setImporting(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Import Form Fields</DialogTitle>
+          <DialogDescription>Copy all fields from another course's registration form.</DialogDescription>
+        </DialogHeader>
+        <Select value={importCourseId} onValueChange={setImportCourseId}>
+          <SelectTrigger><SelectValue placeholder="Select a course..." /></SelectTrigger>
+          <SelectContent>
+            {otherCourses.map((c: any) => (
+              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={handleImport} disabled={!importCourseId || importing}>
+            {importing ? 'Importing…' : 'Import Fields'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

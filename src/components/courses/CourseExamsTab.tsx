@@ -13,16 +13,36 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, FileText, Trophy, ClipboardCheck, Trash2, GraduationCap } from 'lucide-react';
+import { Plus, FileText, Trophy, ClipboardCheck, Trash2, GraduationCap, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 
 interface CourseExamsTabProps {
   courseId: string;
 }
 
+function TeachingOSQuizNote({ courseId }: { courseId: string }) {
+  const navigate = useNavigate();
+  return (
+    <div className="rounded-md bg-muted/50 px-4 py-3 mb-1 flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <Sparkles className="h-4 w-4 text-amber-500" />
+        <p className="text-sm text-muted-foreground">
+          For AI-generated quizzes linked to your syllabus, use Teaching OS
+        </p>
+      </div>
+      <Button variant="outline" size="sm"
+        onClick={() => navigate(`/teaching-os/assessment?course_id=${courseId}`)}>
+        Open Teaching OS
+      </Button>
+    </div>
+  );
+}
+
 export function CourseExamsTab({ courseId }: CourseExamsTabProps) {
   const { toast } = useToast();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [activeSubTab, setActiveSubTab] = useState('exams');
   const [createQuizOpen, setCreateQuizOpen] = useState(false);
@@ -193,6 +213,7 @@ export function CourseExamsTab({ courseId }: CourseExamsTabProps) {
 
         {/* Quizzes */}
         <TabsContent value="quizzes" className="mt-4 space-y-3">
+          <TeachingOSQuizNote courseId={courseId} />
           <div className="flex justify-between items-center">
             <h3 className="text-sm font-medium">Course Quizzes</h3>
             <Button size="sm" onClick={() => setCreateQuizOpen(true)} className="gap-1.5">
