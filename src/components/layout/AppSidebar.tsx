@@ -264,13 +264,19 @@ export function AppSidebar({ className }: AppSidebarProps) {
 
     for (const item of sidebar.items) {
       if (item.group && (!current || current.group !== item.group)) {
+        // New named group starts
         current = { group: item.group, items: [item] };
         groups.push(current);
-      } else if (!item.group) {
+      } else if (item.group && current && current.group === item.group) {
+        // Same group continues
+        current.items.push(item);
+      } else if (!item.group && current && current.group) {
+        // Item without group following a named group → stays in that group
+        current.items.push(item);
+      } else {
+        // Standalone item (no current group context)
         groups.push({ group: null, items: [item] });
         current = null;
-      } else {
-        current?.items.push(item);
       }
     }
     return groups;
