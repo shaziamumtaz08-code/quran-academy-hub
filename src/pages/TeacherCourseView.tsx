@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -8,18 +8,47 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { toast } from 'sonner';
 import {
   ArrowLeft, Users, BookOpen, Calendar, Video, Sparkles,
   ClipboardCheck, FileText, GraduationCap, ExternalLink, Clock
 } from 'lucide-react';
 
+// ─── Helpers ───
+function isClassToday(scheduleDays: string[]): boolean {
+  const dayNames = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+  const todayName = dayNames[new Date().getDay()];
+  return scheduleDays?.some(d => d.toLowerCase().startsWith(todayName)) ?? false;
+}
+
+function getClassStatus(scheduleDays: string[], startTime: string, durationMinutes: number): 'upcoming' | 'live' | 'ended' | 'not_today' {
+  if (!isClassToday(scheduleDays)) return 'not_today';
+  const now = new Date();
+  const [hours, minutes] = (startTime || '00:00').split(':').map(Number);
+  const classStart = new Date();
+  classStart.setHours(hours, minutes, 0, 0);
+  const classEnd = new Date(classStart.getTime() + durationMinutes * 60000);
+  const joinWindow = new Date(classStart.getTime() - 15 * 60000);
+
+  if (now >= joinWindow && now < classStart) return 'upcoming';
+  if (now >= classStart && now <= classEnd) return 'live';
+  if (now > classEnd) return 'ended';
+  return 'not_today';
+}
+
 export default function TeacherCourseView() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('classes');
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const [attendanceState, setAttendanceState] = useState<Record<string, string>>({});
+  const [savingAttendance, setSavingAttendance] = useState(false);
 
-  const { data: course, isLoading } = useQuery({
+  const { data: course } = useQuery({
     queryKey: ['teacher-course', courseId],
     queryFn: async () => {
       const { data } = await supabase.from('courses')
@@ -50,7 +79,10 @@ export default function TeacherCourseView() {
     enabled: !!courseId && !!user?.id,
   });
 
-  // Student profiles for all classes
+  // Auto-select first class for attendance tab
+  const firstClassId = (myClasses[0] as any)?.class?.id || null;
+  const effectiveClassId = selectedClassId || firstClassId;
+
   const studentIds = [...new Set(
     myClasses.flatMap((mc: any) => (mc.class?.students || []).map((s: any) => s.student_id))
   )];
@@ -94,6 +126,43 @@ export default function TeacherCourseView() {
   });
 
   const totalStudents = myClasses.reduce((sum, c: any) => sum + ((c.class?.students as any[])?.length || 0), 0);
+
+  // ─── Save attendance ───
+  const handleSaveAttendance = async (classId: string) => {
+    const entries = Object.entries(attendanceState);
+    if (!entries.length) { toast.error('Mark at least one student'); return; }
+
+    setSavingAttendance(true);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const records = entries.map(([studentId, status]) => ({
+        student_id: studentId,
+        teacher_id: user!.id,
+        course_id: courseId!,
+        class_date: today,
+        class_time: new Date().toTimeString().slice(0, 5),
+        status,
+        duration_minutes: 30,
+      }));
+
+      const { error } = await supabase.from('attendance').insert(records);
+      if (error) throw error;
+
+      toast.success(`Attendance saved for ${entries.length} students`);
+      setAttendanceState({});
+      queryClient.invalidateQueries({ queryKey: ['teacher-attendance'] });
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save attendance');
+    } finally {
+      setSavingAttendance(false);
+    }
+  };
+
+  // ─── Post-class handler ───
+  const handlePostClass = (classId: string) => {
+    setSelectedClassId(classId);
+    setActiveTab('attendance');
+  };
 
   const quickActions = [
     {
@@ -176,26 +245,42 @@ export default function TeacherCourseView() {
               const studentCount = students.length;
               const maxSeats = cls?.max_seats || 0;
               const capacityPct = maxSeats ? Math.round(studentCount / maxSeats * 100) : 0;
+              const status = cls ? getClassStatus(cls.schedule_days as string[], cls.schedule_time as string, cls.session_duration as number) : 'not_today';
 
               return (
-                <Card key={mc.id}>
+                <Card key={mc.id} className={cn(
+                  status === 'live' && 'border-emerald-500 bg-emerald-50/50',
+                  status === 'upcoming' && 'border-blue-300 bg-blue-50/50',
+                )}>
                   <CardContent className="p-4 space-y-3">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div>
                         <div className="flex items-center gap-2">
                           <p className="font-medium text-sm">{cls?.name}</p>
                           <Badge variant="secondary" className="text-[10px]">{mc.staff_role}</Badge>
+                          {status === 'live' && <Badge className="bg-emerald-500 text-white animate-pulse text-[10px]">LIVE</Badge>}
+                          {status === 'upcoming' && <Badge variant="secondary" className="text-[10px]">Starting soon</Badge>}
                         </div>
                         <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                           <Clock className="h-3 w-3" />
                           {(cls?.schedule_days as string[])?.join(', ')} · {cls?.schedule_time} · {cls?.session_duration} min
                         </p>
                       </div>
-                      {cls?.meeting_link && (
-                        <Button size="sm" className="w-full sm:w-auto" onClick={() => window.open(cls.meeting_link, '_blank')}>
-                          <ExternalLink className="h-3.5 w-3.5 mr-1" /> Start Class
-                        </Button>
-                      )}
+                      <div className="flex gap-2 w-full sm:w-auto">
+                        {cls?.meeting_link && (status === 'live' || status === 'upcoming') && (
+                          <Button size="sm" className={cn('flex-1 sm:flex-none', status === 'live' && 'bg-emerald-600 hover:bg-emerald-700')}
+                            onClick={() => window.open(cls.meeting_link, '_blank')}>
+                            <Video className="h-4 w-4 mr-1" />
+                            {status === 'live' ? 'Rejoin Class' : 'Start Class'}
+                          </Button>
+                        )}
+                        {status === 'ended' && (
+                          <Button size="sm" variant="outline" className="flex-1 sm:flex-none"
+                            onClick={() => handlePostClass(cls.id)}>
+                            <ClipboardCheck className="h-4 w-4 mr-1" /> Mark Attendance
+                          </Button>
+                        )}
+                      </div>
                     </div>
 
                     {/* Capacity */}
@@ -234,14 +319,75 @@ export default function TeacherCourseView() {
         </TabsContent>
 
         {/* ─── ATTENDANCE ─── */}
-        <TabsContent value="attendance" className="mt-4">
-          <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">
-            Quick attendance marking will be available here. Use the{' '}
-            <Button variant="link" className="p-0 h-auto text-sm" onClick={() => navigate('/attendance')}>
-              attendance page
-            </Button>{' '}
-            to mark attendance for now.
-          </CardContent></Card>
+        <TabsContent value="attendance" className="space-y-4 mt-4">
+          {/* Class selector */}
+          {myClasses.length > 1 && (
+            <div className="flex gap-2 flex-wrap">
+              {myClasses.map((mc: any) => (
+                <Button key={mc.id} size="sm"
+                  variant={effectiveClassId === mc.class?.id ? 'default' : 'outline'}
+                  onClick={() => { setSelectedClassId(mc.class?.id); setAttendanceState({}); }}>
+                  {mc.class?.name}
+                </Button>
+              ))}
+            </div>
+          )}
+
+          {effectiveClassId && (() => {
+            const cls = myClasses.find((mc: any) => mc.class?.id === effectiveClassId) as any;
+            const students: any[] = cls?.class?.students || [];
+
+            return (
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-medium text-sm">
+                      {cls?.class?.name} · {format(new Date(), 'EEEE, MMM d')}
+                    </h3>
+                    <Button size="sm" onClick={() => handleSaveAttendance(effectiveClassId)} disabled={savingAttendance}>
+                      {savingAttendance ? 'Saving...' : 'Save Attendance'}
+                    </Button>
+                  </div>
+
+                  {students.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">No students in this class</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {students.map((s: any) => {
+                        const profile = profileMap.get(s.student_id);
+                        const currentStatus = attendanceState[s.student_id] || '';
+                        return (
+                          <div key={s.id} className="flex items-center justify-between py-2.5 border-b border-border/50 last:border-0">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary shrink-0">
+                                {(profile?.full_name || 'S').charAt(0)}
+                              </div>
+                              <p className="text-sm truncate">{profile?.full_name || 'Student'}</p>
+                            </div>
+                            <div className="flex gap-1 shrink-0">
+                              {(['present', 'absent', 'late'] as const).map(status => (
+                                <Button key={status} size="sm"
+                                  variant={currentStatus === status ? 'default' : 'outline'}
+                                  className={cn(
+                                    'text-xs px-2.5 h-8 min-w-[2rem]',
+                                    currentStatus === status && status === 'present' && 'bg-emerald-600 hover:bg-emerald-700',
+                                    currentStatus === status && status === 'absent' && 'bg-destructive hover:bg-destructive/90',
+                                    currentStatus === status && status === 'late' && 'bg-amber-600 hover:bg-amber-700',
+                                  )}
+                                  onClick={() => setAttendanceState(prev => ({ ...prev, [s.student_id]: status }))}>
+                                  {status === 'present' ? 'P' : status === 'absent' ? 'A' : 'L'}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
         </TabsContent>
 
         {/* ─── ASSIGNMENTS ─── */}
