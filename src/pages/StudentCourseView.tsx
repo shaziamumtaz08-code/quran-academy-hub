@@ -245,9 +245,35 @@ export default function StudentCourseView() {
     <div className="p-4 md:p-6 space-y-4 max-w-4xl mx-auto">
       {/* Back + Header */}
       <div>
-        <Button variant="ghost" size="sm" onClick={() => navigate('/my-dashboard')} className="mb-2 -ml-2">
-          <ArrowLeft className="h-4 w-4 mr-1" /> My Dashboard
-        </Button>
+        <div className="flex items-center justify-between mb-2">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/my-dashboard')} className="-ml-2">
+            <ArrowLeft className="h-4 w-4 mr-1" /> My Dashboard
+          </Button>
+          {/* Message Teacher */}
+          {courseTeachers.length === 1 && (
+            <Button variant="outline" size="sm" onClick={() => handleMessageTeacher(courseTeachers[0])} disabled={messagingTeacher}>
+              {messagingTeacher ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <MessageSquare className="h-4 w-4 mr-1" />}
+              Message {courseTeachers[0].name.split(' ')[0]}
+            </Button>
+          )}
+          {courseTeachers.length > 1 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" disabled={messagingTeacher}>
+                  {messagingTeacher ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <MessageSquare className="h-4 w-4 mr-1" />}
+                  Message Teacher
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {courseTeachers.map(t => (
+                  <DropdownMenuItem key={t.userId} onClick={() => handleMessageTeacher(t)}>
+                    {t.name} <Badge variant="secondary" className="ml-2 text-xs">{t.role}</Badge>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
         {isLoading ? <Skeleton className="h-8 w-64" /> : (
           <div>
             <h1 className="text-xl font-bold text-foreground">{course?.name}</h1>
