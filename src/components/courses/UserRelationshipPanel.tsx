@@ -44,18 +44,20 @@ export function UserRelationshipPanel({
 }: UserRelationshipPanelProps) {
   const [activeTab, setActiveTab] = useState('courses');
 
-  // Match profile by email then phone
+  // Match profile by email then phone (whatsapp_number)
   const { data: profile, isLoading: profileLoading } = useQuery({
     queryKey: ['user-profile-match', email, phone],
     queryFn: async () => {
       if (email) {
-        const { data } = await supabase.from('profiles').select('*')
+        const { data } = await supabase.from('profiles')
+          .select('id, full_name, email, whatsapp_number, city, country, gender, created_at')
           .eq('email', email.toLowerCase().trim()).limit(1);
         if (data?.length) return data[0];
       }
       if (phone) {
-        const { data } = await supabase.from('profiles').select('*')
-          .eq('phone', phone.trim()).limit(1);
+        const { data } = await supabase.from('profiles')
+          .select('id, full_name, email, whatsapp_number, city, country, gender, created_at')
+          .eq('whatsapp_number', phone.trim()).limit(1);
         if (data?.length) return data[0];
       }
       return null;
