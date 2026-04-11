@@ -202,6 +202,52 @@ export default function CourseBuilder() {
     },
   });
 
+  // Progress checklist queries
+  const { data: formFieldsCount = 0 } = useQuery({
+    queryKey: ['course-form-fields-count', courseId],
+    enabled: !!courseId,
+    queryFn: async () => {
+      const { count } = await supabase.from('registration_form_fields')
+        .select('id', { count: 'exact', head: true })
+        .eq('form_id', courseId!);
+      return count || 0;
+    },
+  });
+
+  const { data: classCount = 0 } = useQuery({
+    queryKey: ['course-class-count', courseId],
+    enabled: !!courseId,
+    queryFn: async () => {
+      const { count } = await supabase.from('course_classes')
+        .select('id', { count: 'exact', head: true })
+        .eq('course_id', courseId!);
+      return count || 0;
+    },
+  });
+
+  const { data: enrolledCount = 0 } = useQuery({
+    queryKey: ['course-enrolled-count', courseId],
+    enabled: !!courseId,
+    queryFn: async () => {
+      const { count } = await supabase.from('course_enrollments')
+        .select('id', { count: 'exact', head: true })
+        .eq('course_id', courseId!)
+        .eq('status', 'active');
+      return count || 0;
+    },
+  });
+
+  const { data: assignedCount = 0 } = useQuery({
+    queryKey: ['course-assigned-count', courseId],
+    enabled: !!courseId,
+    queryFn: async () => {
+      const { count } = await supabase.from('course_class_students')
+        .select('id, class:course_classes!inner(course_id)', { count: 'exact', head: true })
+        .eq('class.course_id', courseId!);
+      return count || 0;
+    },
+  });
+
   // Teachers list for settings
   const { data: teachers = [] } = useQuery({
     queryKey: ['teachers-list'],
