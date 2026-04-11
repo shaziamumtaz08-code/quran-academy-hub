@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
     }
 
     // Verify webhook secret
-    const { data: course } = await supabaseAdmin.from("courses").select("id, webhook_secret").eq("id", course_id).single();
+    const { data: course } = await supabaseAdmin.from("courses").select("id, webhook_secret, auto_enroll_enabled").eq("id", course_id).single();
     if (!course) {
       return new Response(JSON.stringify({ error: "Course not found" }), { status: 404, headers: corsHeaders });
     }
@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
 
     // Create submission
     const sourceTag = source || "webhook";
-    const { error: subErr } = await supabaseAdmin.from("registration_submissions").insert({
+    const { data: submission, error: subErr } = await supabaseAdmin.from("registration_submissions").insert({
       form_id: course_id,
       course_id,
       data: { full_name, email: emailLower, phone: phoneTrimmed, gender, city },
@@ -113,15 +113,45 @@ Deno.serve(async (req) => {
       source_tag: sourceTag,
       eligibility_status: eligible ? "eligible" : "not_eligible",
       eligibility_notes: eligibilityNotes.length > 0 ? eligibilityNotes.join("; ") : null,
-    });
+    }).select("id").single();
 
     if (subErr) {
       return new Response(JSON.stringify({ error: subErr.message }), { status: 500, headers: corsHeaders });
     }
 
+    // Auto-enroll if eligible and course has auto_enroll_enabled
+    let autoEnrolled = false;
+    if (eligible && course.auto_enroll_enabled && existingProfile) {
+      // Check not already enrolled
+      const { data: existing } = await supabaseAdmin
+        .from("course_enrollments")
+        .select("id")
+        .eq("course_id", course_id)
+        .eq("student_id", existingProfile.id)
+        .limit(1);
+
+      if (!existing?.length) {
+        const { data: enrollment } = await supabaseAdmin.from("course_enrollments").insert({
+          course_id,
+          student_id: existingProfile.id,
+          status: "active",
+        }).select("id").single();
+
+        if (enrollment) {
+          await supabaseAdmin.from("registration_submissions").update({
+            status: "enrolled",
+            processed_at: new Date().toISOString(),
+            enrollment_id: enrollment.id,
+          }).eq("id", submission.id);
+          autoEnrolled = true;
+        }
+      }
+    }
+
     return new Response(JSON.stringify({
-      status: eligible ? "accepted" : "rejected",
+      status: autoEnrolled ? "enrolled" : (eligible ? "accepted" : "rejected"),
       matched_existing: !!existingProfile,
+      auto_enrolled: autoEnrolled,
       eligibility_notes: eligibilityNotes,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
