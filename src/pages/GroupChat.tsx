@@ -73,6 +73,15 @@ export default function GroupChat() {
     enabled: !!user?.id,
   });
 
+  // Handle URL ?group= param: auto-select when groups load
+  useEffect(() => {
+    const urlGroup = searchParams.get('group');
+    if (urlGroup && !initialGroupHandled.current && groups.length > 0) {
+      setActiveGroupId(urlGroup);
+      initialGroupHandled.current = true;
+    }
+  }, [groups, searchParams]);
+
   // Fetch members for active group
   const { data: members = [] } = useQuery({
     queryKey: ['chat-members', activeGroupId],
