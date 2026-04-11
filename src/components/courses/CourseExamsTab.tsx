@@ -24,6 +24,7 @@ interface CourseExamsTabProps {
 export function CourseExamsTab({ courseId }: CourseExamsTabProps) {
   const { toast } = useToast();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [activeSubTab, setActiveSubTab] = useState('exams');
   const [createQuizOpen, setCreateQuizOpen] = useState(false);
