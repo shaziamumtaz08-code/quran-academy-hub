@@ -48,6 +48,7 @@ import WorkHub from "./pages/WorkHub";
 import LeadsPipeline from "./pages/LeadsPipeline";
 import EnrollmentForm from "./pages/EnrollmentForm";
 import PublicInquiryForm from "./pages/PublicInquiryForm";
+import StudentCourseView from "./pages/StudentCourseView";
 import NotFound from "./pages/NotFound";
 import IdentityResolution from "./pages/IdentityResolution";
 import CourseCatalog from "./pages/CourseCatalog";
