@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDivision } from '@/contexts/DivisionContext';
-import { Plus, Search, ArrowLeft } from 'lucide-react';
+import { Plus, Search, ArrowLeft, ChevronDown, ChevronRight } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 /* ─── Section configurations ─── */
 
@@ -154,21 +155,28 @@ function getCourseDetailSidebar(pathname: string): { title: string; subtitle: st
     isCourseDetail: true,
     items: [
       { label: 'Overview', href: `${base}?tab=builder` },
-      { label: 'Website', href: `${base}?tab=website`, group: 'SETUP' },
-      { label: 'Settings', href: `${base}?tab=settings` },
-      { label: 'Marketing', href: `${base}?tab=marketing`, group: 'OUTREACH' },
-      { label: 'Reg Form', href: `${base}?tab=reg-form` },
-      { label: 'Applicants', href: `${base}?tab=applicants`, group: 'PEOPLE' },
-      { label: 'Roster', href: `${base}?tab=roster` },
+
+      { label: 'Settings', href: `${base}?tab=settings`, group: 'SETUP' },
+      { label: 'Website', href: `${base}?tab=website` },
+
+      { label: 'Syllabus', href: `${base}?tab=builder`, group: 'CONTENT' },
+      { label: 'Resources', href: `${base}?tab=resources` },
+
+      { label: 'Reg Form', href: `${base}?tab=reg-form`, group: 'OUTREACH' },
+      { label: 'Marketing', href: `${base}?tab=marketing` },
+      { label: 'Applicants', href: `${base}?tab=applicants` },
+
       { label: 'Classes', href: `${base}?tab=classes`, group: 'OPERATIONS' },
+      { label: 'Roster', href: `${base}?tab=roster` },
       { label: 'Finance', href: `${base}?tab=finance` },
+
       { label: 'Attendance', href: `${base}?tab=attendance`, group: 'ACADEMICS' },
       { label: 'Exams & Quizzes', href: `${base}?tab=exams` },
-      { label: 'Certificates', href: `${base}?tab=certificates` },
-      { label: 'Announcements', href: `${base}?tab=notifications`, group: 'HUB' },
-      { label: 'Group Chat', href: `${base}?tab=community` },
       { label: 'Assignments', href: `${base}?tab=assignments` },
-      { label: 'Resources', href: `${base}?tab=resources` },
+      { label: 'Certificates', href: `${base}?tab=certificates` },
+
+      { label: 'Announcements', href: `${base}?tab=notifications`, group: 'COMMUNICATE' },
+      { label: 'Group Chat', href: `${base}?tab=community` },
     ],
   };
 }
@@ -201,7 +209,88 @@ export function AppSidebar({ className }: AppSidebarProps) {
     return location.pathname === path && !location.search;
   };
 
-  let currentGroup: string | undefined;
+  const isMobile = useIsMobile();
+
+  // Group numbering for course detail sidebar
+  const GROUP_NUMBERS: Record<string, number> = {
+    SETUP: 1, CONTENT: 2, OUTREACH: 3, OPERATIONS: 4, ACADEMICS: 5, COMMUNICATE: 6,
+  };
+
+  // Collapsible group state (localStorage-backed)
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => {
+    const stored = localStorage.getItem('sidebar-collapsed-groups');
+    if (stored) {
+      try { return new Set(JSON.parse(stored)); } catch { /* ignore */ }
+    }
+    // On mobile, collapse all by default
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      const allGroups = new Set(sidebar.items.map(i => i.group).filter(Boolean) as string[]);
+      return allGroups;
+    }
+    return new Set<string>();
+  });
+
+  useEffect(() => {
+    localStorage.setItem('sidebar-collapsed-groups', JSON.stringify([...collapsedGroups]));
+  }, [collapsedGroups]);
+
+  const toggleGroup = (group: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      next.has(group) ? next.delete(group) : next.add(group);
+      return next;
+    });
+  };
+
+  // Group items for rendering
+  const groupedItems = React.useMemo(() => {
+    const groups: { group: string | null; items: SidebarNavItem[] }[] = [];
+    let current: { group: string | null; items: SidebarNavItem[] } | null = null;
+
+    for (const item of sidebar.items) {
+      if (item.group && (!current || current.group !== item.group)) {
+        current = { group: item.group, items: [item] };
+        groups.push(current);
+      } else if (!item.group) {
+        groups.push({ group: null, items: [item] });
+        current = null;
+      } else {
+        current?.items.push(item);
+      }
+    }
+    return groups;
+  }, [sidebar.items]);
+
+  const renderNavItem = (item: SidebarNavItem) => {
+    const active = isItemActive(item);
+    return (
+      <Link
+        key={item.label + (item.href || '')}
+        to={item.href || '#'}
+        className={cn(
+          'flex items-center justify-between px-2 py-[7px] rounded-md text-[11.5px] transition-colors',
+          active
+            ? 'bg-[#eef2fa] text-lms-navy font-medium'
+            : 'text-lms-text-2 hover:bg-lms-surface'
+        )}
+      >
+        <span className="truncate">{item.label}</span>
+        {item.badge !== undefined && item.badge > 0 && (
+          <span className={cn(
+            'text-[9px] font-medium px-1.5 py-0.5 rounded-full',
+            item.badgeType === 'alert' ? 'bg-[#fde8e8] text-lms-danger' : 'bg-[#e8f0fe] text-lms-accent'
+          )}>
+            {item.badge}
+          </span>
+        )}
+        {item.badgeText && (
+          <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700">
+            {item.badgeText}
+          </span>
+        )}
+      </Link>
+    );
+  };
 
   return (
     <div className={cn('w-[200px] bg-white border-r border-lms-border flex flex-col h-full', className)}>
@@ -231,49 +320,63 @@ export function AppSidebar({ className }: AppSidebarProps) {
 
       {/* Nav items */}
       <nav className="flex-1 overflow-y-auto px-2 pb-2">
-        {sidebar.items.map((item, i) => {
-          // Group label
-          const showGroup = item.group && item.group !== currentGroup;
-          if (showGroup) {
-            currentGroup = item.group;
-          }
-          const groupLabel = showGroup ? (
-              <p key={`group-${item.group}`} className="text-[9px] uppercase tracking-[.07em] text-lms-text-4 px-2 pt-3 pb-1">
-                {item.group}
-              </p>
-          ) : null;
+        {isCourseDetail ? (
+          // Course detail: render with collapsible numbered groups
+          groupedItems.map((group, gi) => {
+            if (!group.group) {
+              // Standalone items (Overview)
+              return group.items.map(item => (
+                <div key={item.label}>{renderNavItem(item)}</div>
+              ));
+            }
 
-          const active = isItemActive(item);
-          return (
-            <React.Fragment key={item.label + (item.href || '')}>
-              {groupLabel}
-            <Link
-              to={item.href || '#'}
-              className={cn(
-                'flex items-center justify-between px-2 py-[7px] rounded-md text-[11.5px] transition-colors',
-                active
-                  ? 'bg-[#eef2fa] text-lms-navy font-medium'
-                  : 'text-lms-text-2 hover:bg-lms-surface'
-              )}
-            >
-              <span className="truncate">{item.label}</span>
-              {item.badge !== undefined && item.badge > 0 && (
-                <span className={cn(
-                  'text-[9px] font-medium px-1.5 py-0.5 rounded-full',
-                  item.badgeType === 'alert' ? 'bg-[#fde8e8] text-lms-danger' : 'bg-[#e8f0fe] text-lms-accent'
-                )}>
-                  {item.badge}
-                </span>
-              )}
-              {item.badgeText && (
-                <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700">
-                  {item.badgeText}
-                </span>
-              )}
-            </Link>
-            </React.Fragment>
-          );
-        })}
+            const isCollapsed = collapsedGroups.has(group.group);
+            const num = GROUP_NUMBERS[group.group] || gi;
+            const hasActiveItem = group.items.some(isItemActive);
+
+            return (
+              <div key={group.group}>
+                <button
+                  onClick={() => toggleGroup(group.group!)}
+                  className={cn(
+                    'w-full flex items-center justify-between px-2 pt-3 pb-1 group cursor-pointer',
+                    hasActiveItem && isCollapsed && 'text-lms-navy'
+                  )}
+                >
+                  <span className="text-[9px] uppercase tracking-[.07em] text-lms-text-4 group-hover:text-lms-text-2 transition-colors">
+                    {num} · {group.group}
+                  </span>
+                  {isCollapsed ? (
+                    <ChevronRight className="h-3 w-3 text-lms-text-4" />
+                  ) : (
+                    <ChevronDown className="h-3 w-3 text-lms-text-4" />
+                  )}
+                </button>
+                {!isCollapsed && group.items.map(item => renderNavItem(item))}
+              </div>
+            );
+          })
+        ) : (
+          // Non-course-detail: original rendering
+          (() => {
+            let currentGroup: string | undefined;
+            return sidebar.items.map((item) => {
+              const showGroup = item.group && item.group !== currentGroup;
+              if (showGroup) currentGroup = item.group;
+              const groupLabel = showGroup ? (
+                <p key={`group-${item.group}`} className="text-[9px] uppercase tracking-[.07em] text-lms-text-4 px-2 pt-3 pb-1">
+                  {item.group}
+                </p>
+              ) : null;
+              return (
+                <React.Fragment key={item.label + (item.href || '')}>
+                  {groupLabel}
+                  {renderNavItem(item)}
+                </React.Fragment>
+              );
+            });
+          })()
+        )}
       </nav>
 
       {/* New Course button */}
