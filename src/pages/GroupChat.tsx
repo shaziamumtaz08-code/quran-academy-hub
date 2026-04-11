@@ -50,7 +50,7 @@ export default function GroupChat() {
       const { data: memberships } = await supabase.from('chat_members').select('group_id').eq('user_id', user.id);
       if (!memberships?.length) return [];
       const groupIds = memberships.map(m => m.group_id);
-      const { data } = await supabase.from('chat_groups').select('*').in('id', groupIds).eq('is_active', true).order('updated_at', { ascending: false });
+      const { data } = await supabase.from('chat_groups').select('*, courses:courses(name)').in('id', groupIds).eq('is_active', true).order('updated_at', { ascending: false });
       
       // For DM groups, fetch the other user's name
       const dmGroups = (data || []).filter(g => g.is_dm);
@@ -65,7 +65,7 @@ export default function GroupChat() {
           (dmMembers || []).filter(m => m.user_id !== user.id).forEach(m => {
             groupUserMap[m.group_id] = nameMap[m.user_id] || 'User';
           });
-          return (data || []).map(g => g.is_dm ? { ...g, name: groupUserMap[g.id] || 'Direct Message' } : g);
+          return (data || []).map(g => g.is_dm ? { ...g, dmUserName: groupUserMap[g.id] || 'Direct Message' } : g);
         }
       }
       return data || [];
