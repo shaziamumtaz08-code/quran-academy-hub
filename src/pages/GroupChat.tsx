@@ -308,19 +308,22 @@ export default function GroupChat() {
                   activeGroupId === g.id ? 'bg-primary/5 border-l-2 border-l-primary' : ''
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary shrink-0">
-                    {g.is_dm ? '👤' : g.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <p className="text-[13px] font-bold text-foreground truncate">{g.name}</p>
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary shrink-0">
+                      {g.is_dm ? '👤' : g.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2)}
                     </div>
-                    <p className="text-[10px] text-muted-foreground capitalize truncate">
-                      {g.is_dm ? 'Direct message' : g.channel_mode === 'channel' ? '📢 Channel' : g.type}
-                    </p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[13px] font-bold text-foreground truncate">{g.is_dm && g.dmUserName ? g.dmUserName : g.name}</p>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground capitalize truncate">
+                        {g.is_dm && (g.courses as any)?.name
+                          ? `📚 ${(g.courses as any).name}`
+                          : g.is_dm ? 'Direct message'
+                          : g.channel_mode === 'channel' ? '📢 Channel' : g.type}
+                      </p>
+                    </div>
                   </div>
-                </div>
               </button>
             ))}
             {filteredGroups.length === 0 && (
