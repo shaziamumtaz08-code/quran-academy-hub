@@ -24,6 +24,7 @@ import {
   Star, Award, Medal, Trophy, Target, Zap, Heart, Shield, Crown,
   Sparkles, Bot, ExternalLink, Copy, ClipboardCopy
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface CourseResourcesTabProps {
   courseId: string;
@@ -50,7 +51,7 @@ export function CourseResourcesTab({ courseId, courseName }: CourseResourcesTabP
         <TabsTrigger value="gamification" className="gap-1.5 text-xs"><Trophy className="h-3.5 w-3.5" /> Gamification</TabsTrigger>
       </TabsList>
 
-      <TabsContent value="materials"><MaterialsSection courseId={courseId} /></TabsContent>
+      <TabsContent value="materials"><TeachingOSKitsSection courseId={courseId} /><MaterialsSection courseId={courseId} /></TabsContent>
       <TabsContent value="lesson-planner"><LessonPlannerSection courseId={courseId} /></TabsContent>
       <TabsContent value="teacher-guide"><TeacherGuideSection courseId={courseId} /></TabsContent>
       <TabsContent value="ai-tools"><AIToolsDock courseId={courseId} courseName={courseName} /></TabsContent>

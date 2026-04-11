@@ -18,7 +18,7 @@ import { format } from 'date-fns';
 interface FAQ { question: string; answer: string; }
 interface Outcome { text: string; }
 interface Pricing { amount?: number; currency?: string; period?: string; }
-interface ContactInfo { email?: string; phone?: string; whatsapp?: string; }
+interface ContactInfo { email?: string; phone?: string; whatsapp?: string; instructor_name?: string; instructor_bio?: string; testimonials?: { name: string; quote: string }[] }
 
 export default function PublicCoursePage() {
   const { slug } = useParams<{ slug: string }>();
@@ -264,21 +264,59 @@ export default function PublicCoursePage() {
         </section>
       )}
 
-      {/* Instructor */}
-      <section className="max-w-4xl mx-auto px-6 py-12">
-        <h2 className="text-xl font-semibold mb-6">Your Instructor</h2>
-        <Card className="border-border/40">
-          <CardContent className="p-6 flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xl font-bold">
-              {((course as any).teacher?.full_name || 'T').charAt(0)}
+      {/* Instructor — enhanced with contact_info data */}
+      {contactInfo?.instructor_name ? (
+        <section className="max-w-4xl mx-auto px-6 py-12">
+          <h2 className="text-xl font-semibold mb-6">Your Instructor</h2>
+          <Card className="border-border/40">
+            <CardContent className="p-6 flex items-start gap-4">
+              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xl font-bold shrink-0">
+                {contactInfo.instructor_name.split(' ').map(w => w[0]).join('').slice(0, 2)}
+              </div>
+              <div>
+                <h3 className="font-semibold">{contactInfo.instructor_name}</h3>
+                {contactInfo.instructor_bio && (
+                  <p className="text-sm text-muted-foreground mt-1">{contactInfo.instructor_bio}</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+      ) : (course as any).teacher?.full_name ? (
+        <section className="max-w-4xl mx-auto px-6 py-12">
+          <h2 className="text-xl font-semibold mb-6">Your Instructor</h2>
+          <Card className="border-border/40">
+            <CardContent className="p-6 flex items-center gap-4">
+              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xl font-bold">
+                {((course as any).teacher?.full_name || 'T').charAt(0)}
+              </div>
+              <div>
+                <h3 className="font-semibold">{(course as any).teacher?.full_name}</h3>
+                <p className="text-sm text-muted-foreground">Expert Instructor</p>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+      ) : null}
+
+      {/* Testimonials */}
+      {contactInfo?.testimonials && contactInfo.testimonials.length > 0 && (
+        <section className="bg-muted/30 py-12">
+          <div className="max-w-4xl mx-auto px-6">
+            <h2 className="text-xl font-semibold mb-6">What students say</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {contactInfo.testimonials.map((t, i) => (
+                <Card key={i} className="border-border/40">
+                  <CardContent className="p-4">
+                    <p className="text-sm italic mb-2">"{t.quote}"</p>
+                    <p className="text-xs font-medium text-muted-foreground">— {t.name}</p>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-            <div>
-              <h3 className="font-semibold">{(course as any).teacher?.full_name}</h3>
-              <p className="text-sm text-muted-foreground">Expert Instructor</p>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
+          </div>
+        </section>
+      )}
 
       {/* FAQs */}
       {faqs.length > 0 && (
