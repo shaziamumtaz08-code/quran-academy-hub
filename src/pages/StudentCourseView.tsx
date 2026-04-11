@@ -12,10 +12,15 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { format, formatDistanceToNow } from 'date-fns';
+import { toast } from 'sonner';
 import {
   ArrowLeft, BookOpen, Calendar, FileText, ClipboardList,
-  GraduationCap, MessageSquare, Video, Clock, ExternalLink
+  GraduationCap, MessageSquare, Video, Clock, ExternalLink, Loader2
 } from 'lucide-react';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
+import { findOrCreateCourseDM, getCourseTeachers } from '@/lib/messaging';
 
 // ─── Helpers ───
 function isClassToday(scheduleDays: string[]): boolean {
@@ -44,6 +49,39 @@ export default function StudentCourseView() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
+  const [messagingTeacher, setMessagingTeacher] = useState(false);
+
+  // ─── Course teachers ───
+  const { data: courseTeachers = [] } = useQuery({
+    queryKey: ['course-teachers', courseId, user?.id],
+    queryFn: () => getCourseTeachers(user!.id, courseId!),
+    enabled: !!courseId && !!user?.id,
+  });
+
+  const handleMessageTeacher = async (teacher: { userId: string; name: string }) => {
+    if (!user?.id || !courseId) return;
+    setMessagingTeacher(true);
+    try {
+      const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single();
+      const dmId = await findOrCreateCourseDM(
+        user.id,
+        teacher.userId,
+        courseId,
+        course?.name || '',
+        profile?.full_name || '',
+        teacher.name,
+      );
+      if (dmId) {
+        navigate(`/communication?group=${dmId}`);
+      } else {
+        toast.error('Failed to create conversation');
+      }
+    } catch {
+      toast.error('Failed to start conversation');
+    } finally {
+      setMessagingTeacher(false);
+    }
+  };
 
   // ─── Course details ───
   const { data: course, isLoading } = useQuery({
