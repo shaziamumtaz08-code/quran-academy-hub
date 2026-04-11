@@ -10,6 +10,7 @@ export interface LandingCard {
   countLoading?: boolean;
   icon: React.ReactNode;
   color: string; // tailwind bg class e.g. 'bg-emerald-500'
+  onClick?: () => void;
 }
 
 interface LandingPageShellProps {
