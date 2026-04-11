@@ -3,7 +3,11 @@ import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDivision } from '@/contexts/DivisionContext';
-import { Plus, Search, ArrowLeft, ChevronDown, ChevronRight } from 'lucide-react';
+import {
+  Plus, Search, ArrowLeft, ChevronDown, ChevronRight,
+  Settings, BookOpen, Megaphone, Layers, GraduationCap, MessageSquare,
+  LayoutDashboard
+} from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 /* ─── Section configurations ─── */
