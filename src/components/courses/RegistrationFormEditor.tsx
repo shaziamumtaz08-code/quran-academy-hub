@@ -9,12 +9,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import {
   Plus, Trash2, GripVertical, Copy, ExternalLink, Eye, EyeOff,
-  Type, Mail, Phone, Calendar, CheckSquare, Upload, List, ArrowUp, ArrowDown, Loader2
+  Type, Mail, Phone, Calendar, CheckSquare, Upload, List, ArrowUp, ArrowDown, Loader2,
+  AlignLeft, ListChecks, Hash, Globe, Heading, Download
 } from 'lucide-react';
 
 interface FormField {
@@ -37,13 +40,18 @@ interface RegistrationFormEditorProps {
 }
 
 const FIELD_TYPE_OPTIONS = [
-  { value: 'text', label: 'Text', icon: Type },
+  { value: 'text', label: 'Short Text', icon: Type },
+  { value: 'textarea', label: 'Long Text', icon: AlignLeft },
   { value: 'email', label: 'Email', icon: Mail },
   { value: 'phone', label: 'Phone', icon: Phone },
-  { value: 'dropdown', label: 'Dropdown', icon: List },
-  { value: 'checkbox', label: 'Checkbox', icon: CheckSquare },
-  { value: 'file', label: 'File Upload', icon: Upload },
   { value: 'date', label: 'Date', icon: Calendar },
+  { value: 'dropdown', label: 'Dropdown Select', icon: List },
+  { value: 'multi_select', label: 'Multi Select (checkboxes)', icon: ListChecks },
+  { value: 'checkbox', label: 'Single Checkbox', icon: CheckSquare },
+  { value: 'file', label: 'File Upload', icon: Upload },
+  { value: 'number', label: 'Number', icon: Hash },
+  { value: 'country', label: 'Country Selector', icon: Globe },
+  { value: 'heading', label: 'Section Heading (no input)', icon: Heading },
 ];
 
 const DEFAULT_FIELDS = [
@@ -57,8 +65,9 @@ const DEFAULT_FIELDS = [
 ];
 
 const FIELD_ICON_MAP: Record<string, React.ElementType> = {
-  text: Type, email: Mail, phone: Phone, dropdown: List,
-  checkbox: CheckSquare, file: Upload, date: Calendar,
+  text: Type, textarea: AlignLeft, email: Mail, phone: Phone, dropdown: List,
+  multi_select: ListChecks, checkbox: CheckSquare, file: Upload, date: Calendar,
+  number: Hash, country: Globe, heading: Heading,
 };
 
 export function RegistrationFormEditor({ courseId, courseSlug, courseName }: RegistrationFormEditorProps) {
@@ -82,7 +91,6 @@ export function RegistrationFormEditor({ courseId, courseSlug, courseName }: Reg
 
       if (existing) return existing;
 
-      // Auto-create form with default fields
       const slug = courseSlug || courseId;
       const { data: form, error } = await supabase
         .from('registration_forms')
@@ -91,7 +99,6 @@ export function RegistrationFormEditor({ courseId, courseSlug, courseName }: Reg
         .single();
       if (error) throw error;
 
-      // Insert default fields
       const fieldsToInsert = DEFAULT_FIELDS.map(f => ({
         ...f,
         form_id: form.id,
@@ -127,7 +134,7 @@ export function RegistrationFormEditor({ courseId, courseSlug, courseName }: Reg
     mutationFn: async () => {
       const fieldKey = newLabel.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/(^_|_$)/g, '');
       const maxOrder = fields.length > 0 ? Math.max(...fields.map(f => f.sort_order)) + 1 : 0;
-      const options = newType === 'dropdown' && newOptions.trim()
+      const options = (newType === 'dropdown' || newType === 'multi_select') && newOptions.trim()
         ? newOptions.split(',').map(o => o.trim()).filter(Boolean)
         : null;
 
@@ -136,7 +143,7 @@ export function RegistrationFormEditor({ courseId, courseSlug, courseName }: Reg
         label: newLabel.trim(),
         field_key: fieldKey,
         field_type: newType,
-        is_required: newRequired,
+        is_required: newType === 'heading' ? false : newRequired,
         sort_order: maxOrder,
         options,
         is_default: false,
@@ -210,6 +217,43 @@ export function RegistrationFormEditor({ courseId, courseSlug, courseName }: Reg
     onSuccess: () => { invalidate(); toast({ title: form?.is_active ? 'Form deactivated' : 'Form activated' }); },
   });
 
+  // Duplicate form fields
+  const handleDuplicateForm = async () => {
+    if (!fields.length) return;
+    navigator.clipboard.writeText(JSON.stringify(fields.map(f => ({
+      label: f.label, field_key: f.field_key, field_type: f.field_type,
+      is_required: f.is_required, sort_order: f.sort_order, options: f.options,
+      is_default: f.is_default, placeholder: f.placeholder,
+    }))));
+    toast({ title: 'Form structure copied', description: 'Paste into another course form editor.' });
+  };
+
+  // Download sample CSV
+  const handleDownloadSample = () => {
+    const inputFields = fields.filter(f => f.field_type !== 'heading');
+    const headers = inputFields.map(f => f.field_key).join(',');
+    const sampleRow = inputFields.map(f => {
+      if (f.field_type === 'email') return 'example@email.com';
+      if (f.field_type === 'phone') return '+923001234567';
+      if (f.field_type === 'date') return '2000-01-15';
+      if (f.field_type === 'number') return '0';
+      if (f.field_type === 'dropdown') return (Array.isArray(f.options) ? f.options[0] : '') || '';
+      if (f.field_type === 'multi_select') return (Array.isArray(f.options) ? f.options[0] : '') || '';
+      if (f.field_type === 'checkbox') return 'true';
+      if (f.field_type === 'country') return 'Pakistan';
+      return '';
+    }).join(',');
+
+    const csv = `${headers}\n${sampleRow}`;
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `registration_template_${courseId}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const publicUrl = `/apply/${form?.slug || courseSlug}`;
 
   if (formLoading) {
@@ -224,8 +268,17 @@ export function RegistrationFormEditor({ courseId, courseSlug, courseName }: Reg
         <Card>
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold">Registration Form</h3>
+              <div>
+                <h3 className="text-sm font-semibold">Registration Form</h3>
+                <p className="text-xs text-muted-foreground">{fields.length} fields</p>
+              </div>
               <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={handleDuplicateForm}>
+                  <Copy className="h-3.5 w-3.5" /> Duplicate
+                </Button>
+                <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={handleDownloadSample}>
+                  <Download className="h-3.5 w-3.5" /> Sample CSV
+                </Button>
                 <Label className="text-xs text-muted-foreground">{form?.is_active ? 'Active' : 'Inactive'}</Label>
                 <Switch checked={form?.is_active || false} onCheckedChange={() => toggleActive.mutate()} />
               </div>
@@ -246,7 +299,7 @@ export function RegistrationFormEditor({ courseId, courseSlug, courseName }: Reg
           {fields.map((field, idx) => {
             const Icon = FIELD_ICON_MAP[field.field_type] || Type;
             return (
-              <Card key={field.id} className="shadow-sm">
+              <Card key={field.id} className={cn("shadow-sm", field.field_type === 'heading' && "border-dashed bg-muted/30")}>
                 <CardContent className="p-3 flex items-center gap-2">
                   <div className="flex flex-col gap-0.5 shrink-0">
                     <button onClick={() => moveField.mutate({ fieldId: field.id, direction: 'up' })}
@@ -265,13 +318,15 @@ export function RegistrationFormEditor({ courseId, courseSlug, courseName }: Reg
                   />
                   <Badge variant="outline" className="text-[10px] shrink-0">{field.field_type}</Badge>
                   <div className="flex items-center gap-1 ml-auto shrink-0">
-                    <button
-                      onClick={() => toggleRequired.mutate({ id: field.id, required: !field.is_required })}
-                      className={cn("text-[10px] px-1.5 py-0.5 rounded border transition-colors",
-                        field.is_required ? "bg-primary/10 border-primary/30 text-primary" : "border-border text-muted-foreground hover:border-primary/30"
-                      )}>
-                      {field.is_required ? 'Required' : 'Optional'}
-                    </button>
+                    {field.field_type !== 'heading' && (
+                      <button
+                        onClick={() => toggleRequired.mutate({ id: field.id, required: !field.is_required })}
+                        className={cn("text-[10px] px-1.5 py-0.5 rounded border transition-colors",
+                          field.is_required ? "bg-primary/10 border-primary/30 text-primary" : "border-border text-muted-foreground hover:border-primary/30"
+                        )}>
+                        {field.is_required ? 'Required' : 'Optional'}
+                      </button>
+                    )}
                     {!field.is_default && (
                       <button onClick={() => deleteField.mutate(field.id)}
                         className="text-muted-foreground hover:text-destructive p-1">
@@ -305,31 +360,53 @@ export function RegistrationFormEditor({ courseId, courseSlug, courseName }: Reg
             </div>
             {fields.map(field => (
               <div key={field.id} className="space-y-1">
-                <Label className="text-xs">
-                  {field.label} {field.is_required && <span className="text-destructive">*</span>}
-                </Label>
-                {field.field_type === 'dropdown' ? (
-                  <select className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm" disabled>
-                    <option>Select {field.label}...</option>
-                    {(Array.isArray(field.options) ? field.options : []).map((o: string) => (
-                      <option key={o}>{o}</option>
-                    ))}
-                  </select>
-                ) : field.field_type === 'checkbox' ? (
-                  <div className="flex items-center gap-2">
-                    <input type="checkbox" disabled className="h-4 w-4" />
-                    <span className="text-sm text-muted-foreground">{field.label}</span>
-                  </div>
-                ) : field.field_type === 'file' ? (
-                  <div className="border border-dashed border-border rounded-md p-3 text-center text-xs text-muted-foreground">
-                    <Upload className="h-4 w-4 mx-auto mb-1" /> Click to upload
+                {field.field_type === 'heading' ? (
+                  <div className="pt-3 pb-1 border-b">
+                    <p className="font-medium text-sm">{field.label}</p>
                   </div>
                 ) : (
-                  <Input
-                    type={field.field_type === 'email' ? 'email' : field.field_type === 'phone' ? 'tel' : field.field_type === 'date' ? 'date' : 'text'}
-                    placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
-                    disabled
-                  />
+                  <>
+                    <Label className="text-xs">
+                      {field.label} {field.is_required && <span className="text-destructive">*</span>}
+                    </Label>
+                    {field.field_type === 'dropdown' ? (
+                      <select className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm" disabled>
+                        <option>Select {field.label}...</option>
+                        {(Array.isArray(field.options) ? field.options : []).map((o: string) => (
+                          <option key={o}>{o}</option>
+                        ))}
+                      </select>
+                    ) : field.field_type === 'multi_select' ? (
+                      <div className="space-y-1.5 pl-1">
+                        {(Array.isArray(field.options) ? field.options : []).map((o: string) => (
+                          <label key={o} className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <input type="checkbox" disabled className="h-3.5 w-3.5" /> {o}
+                          </label>
+                        ))}
+                      </div>
+                    ) : field.field_type === 'checkbox' ? (
+                      <div className="flex items-center gap-2">
+                        <input type="checkbox" disabled className="h-4 w-4" />
+                        <span className="text-sm text-muted-foreground">{field.label}</span>
+                      </div>
+                    ) : field.field_type === 'file' ? (
+                      <div className="border border-dashed border-border rounded-md p-3 text-center text-xs text-muted-foreground">
+                        <Upload className="h-4 w-4 mx-auto mb-1" /> Click to upload
+                      </div>
+                    ) : field.field_type === 'textarea' ? (
+                      <Textarea placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`} disabled rows={3} />
+                    ) : field.field_type === 'country' ? (
+                      <select className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm" disabled>
+                        <option>Select country...</option>
+                      </select>
+                    ) : (
+                      <Input
+                        type={field.field_type === 'email' ? 'email' : field.field_type === 'phone' ? 'tel' : field.field_type === 'date' ? 'date' : field.field_type === 'number' ? 'number' : 'text'}
+                        placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+                        disabled
+                      />
+                    )}
+                  </>
                 )}
               </div>
             ))}
@@ -355,26 +432,38 @@ export function RegistrationFormEditor({ courseId, courseSlug, courseName }: Reg
               <Select value={newType} onValueChange={setNewType}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {FIELD_TYPE_OPTIONS.map(t => (
-                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                  ))}
+                  {FIELD_TYPE_OPTIONS.map(t => {
+                    const Icon = t.icon;
+                    return (
+                      <SelectItem key={t.value} value={t.value}>
+                        <span className="flex items-center gap-2">
+                          <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                          {t.label}
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
-            {newType === 'dropdown' && (
+            {(newType === 'dropdown' || newType === 'multi_select') && (
               <div className="space-y-1.5">
                 <Label className="text-xs">Options (comma-separated)</Label>
                 <Input value={newOptions} onChange={e => setNewOptions(e.target.value)} placeholder="Option 1, Option 2, Option 3" />
               </div>
             )}
-            <div className="space-y-1.5">
-              <Label className="text-xs">Placeholder</Label>
-              <Input value={newPlaceholder} onChange={e => setNewPlaceholder(e.target.value)} placeholder="Placeholder text" />
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch checked={newRequired} onCheckedChange={setNewRequired} />
-              <Label className="text-xs">Required field</Label>
-            </div>
+            {newType !== 'heading' && newType !== 'checkbox' && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Placeholder</Label>
+                <Input value={newPlaceholder} onChange={e => setNewPlaceholder(e.target.value)} placeholder="Placeholder text" />
+              </div>
+            )}
+            {newType !== 'heading' && (
+              <div className="flex items-center gap-2">
+                <Switch checked={newRequired} onCheckedChange={setNewRequired} />
+                <Label className="text-xs">Required field</Label>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddFieldOpen(false)}>Cancel</Button>

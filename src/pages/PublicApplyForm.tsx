@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 import {
-  BookOpen, CheckCircle2, Loader2, Upload, AlertCircle
+  BookOpen, CheckCircle2, Loader2, Upload, AlertCircle, Shield
 } from 'lucide-react';
 
 interface FormField {
@@ -22,11 +24,24 @@ interface FormField {
   placeholder: string | null;
 }
 
+const COUNTRIES = [
+  'Afghanistan','Albania','Algeria','Argentina','Australia','Austria','Bahrain','Bangladesh',
+  'Belgium','Brazil','Canada','China','Colombia','Denmark','Egypt','Ethiopia','Finland',
+  'France','Germany','Ghana','Greece','India','Indonesia','Iran','Iraq','Ireland','Italy',
+  'Japan','Jordan','Kenya','Kuwait','Lebanon','Libya','Malaysia','Mexico','Morocco',
+  'Netherlands','New Zealand','Nigeria','Norway','Oman','Pakistan','Palestine','Philippines',
+  'Poland','Portugal','Qatar','Russia','Saudi Arabia','Singapore','Somalia','South Africa',
+  'South Korea','Spain','Sri Lanka','Sudan','Sweden','Switzerland','Syria','Tanzania',
+  'Thailand','Tunisia','Turkey','UAE','Uganda','UK','USA','Uzbekistan','Vietnam','Yemen',
+];
+
 export default function PublicApplyForm() {
   const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [uploadingFile, setUploadingFile] = useState<string | null>(null);
 
   const { data: formInfo, isLoading } = useQuery({
     queryKey: ['public-apply-form', slug],
@@ -40,14 +55,12 @@ export default function PublicApplyForm() {
       if (error) throw error;
       if (!form) return null;
 
-      // Get course name
       const { data: course } = await supabase
         .from('courses')
         .select('name, description, level, hero_image_url')
         .eq('id', form.course_id)
         .single();
 
-      // Get fields
       const { data: fields } = await supabase
         .from('registration_form_fields')
         .select('*')
@@ -58,16 +71,35 @@ export default function PublicApplyForm() {
     },
   });
 
+  const handleFileUpload = (fieldKey: string) => async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: 'File too large', description: 'Max 10MB', variant: 'destructive' });
+      return;
+    }
+    setUploadingFile(fieldKey);
+    const path = `${slug}/${Date.now()}_${file.name}`;
+    const { data, error } = await supabase.storage.from('registration-uploads').upload(path, file);
+    setUploadingFile(null);
+    if (error) {
+      toast({ title: 'Upload failed', description: error.message, variant: 'destructive' });
+      return;
+    }
+    const { data: urlData } = supabase.storage.from('registration-uploads').getPublicUrl(path);
+    updateField(fieldKey, urlData.publicUrl);
+  };
+
   const submitForm = useMutation({
     mutationFn: async () => {
       if (!formInfo?.form) throw new Error('Form not found');
 
-      // Validate required fields
       const newErrors: Record<string, string> = {};
       formInfo.fields.forEach(f => {
+        if (f.field_type === 'heading') return;
         if (f.is_required) {
           const val = formData[f.field_key];
-          if (!val || (typeof val === 'string' && !val.trim())) {
+          if (!val || (typeof val === 'string' && !val.trim()) || (Array.isArray(val) && val.length === 0)) {
             newErrors[f.field_key] = `${f.label} is required`;
           }
         }
@@ -130,21 +162,138 @@ export default function PublicApplyForm() {
   if (submitted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-accent/5 p-4">
-        <Card className="max-w-md w-full">
-          <CardContent className="py-12 text-center space-y-4">
-            <div className="w-16 h-16 mx-auto rounded-full bg-emerald-100 flex items-center justify-center">
-              <CheckCircle2 className="h-8 w-8 text-emerald-600" />
-            </div>
-            <h2 className="text-xl font-semibold">Application Submitted!</h2>
-            <p className="text-sm text-muted-foreground">
-              Thank you for your interest in <strong>{formInfo.course?.name}</strong>.
-              We will review your application and get back to you shortly.
-            </p>
-          </CardContent>
-        </Card>
+        <div className="max-w-lg w-full text-center py-16">
+          <div className="h-16 w-16 rounded-full bg-accent/15 flex items-center justify-center mx-auto mb-4">
+            <CheckCircle2 className="h-8 w-8 text-accent" />
+          </div>
+          <h2 className="text-xl font-semibold mb-2">Application Submitted!</h2>
+          <p className="text-muted-foreground mb-6">
+            Thank you for applying to <strong>{formInfo.course?.name}</strong>. We'll review your application and get back to you soon.
+          </p>
+          <Button variant="outline" onClick={() => navigate('/')}>Back to home</Button>
+        </div>
       </div>
     );
   }
+
+  const renderField = (field: FormField) => {
+    if (field.field_type === 'heading') {
+      return (
+        <div key={field.id} className="pt-6 pb-2 border-b border-border/60">
+          <p className="font-semibold text-sm text-foreground">{field.label}</p>
+        </div>
+      );
+    }
+
+    return (
+      <div key={field.id} className="space-y-1.5">
+        <Label className="text-sm font-medium">
+          {field.label} {field.is_required && <span className="text-destructive">*</span>}
+        </Label>
+
+        {field.field_type === 'textarea' ? (
+          <Textarea
+            placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+            value={formData[field.field_key] || ''}
+            onChange={e => updateField(field.field_key, e.target.value)}
+            className={errors[field.field_key] ? 'border-destructive' : ''}
+            rows={4}
+          />
+        ) : field.field_type === 'dropdown' ? (
+          <select
+            className={`w-full h-10 rounded-md border px-3 text-sm bg-background ${errors[field.field_key] ? 'border-destructive' : 'border-input'}`}
+            value={formData[field.field_key] || ''}
+            onChange={e => updateField(field.field_key, e.target.value)}>
+            <option value="">Select {field.label}...</option>
+            {(Array.isArray(field.options) ? field.options : []).map((o: string) => (
+              <option key={o} value={o}>{o}</option>
+            ))}
+          </select>
+        ) : field.field_type === 'multi_select' ? (
+          <div className="space-y-2 pl-1">
+            {(Array.isArray(field.options) ? field.options : []).map((opt: string) => {
+              const current: string[] = formData[field.field_key] || [];
+              return (
+                <label key={opt} className="flex items-center gap-2.5 text-sm cursor-pointer min-h-[28px]">
+                  <Checkbox
+                    checked={current.includes(opt)}
+                    onCheckedChange={(checked) => {
+                      const updated = checked ? [...current, opt] : current.filter((v: string) => v !== opt);
+                      updateField(field.field_key, updated);
+                    }}
+                  />
+                  {opt}
+                </label>
+              );
+            })}
+            {errors[field.field_key] && <p className="text-xs text-destructive">{errors[field.field_key]}</p>}
+          </div>
+        ) : field.field_type === 'checkbox' ? (
+          <div className="flex items-center gap-2.5 min-h-[28px]">
+            <Checkbox
+              checked={!!formData[field.field_key]}
+              onCheckedChange={checked => updateField(field.field_key, checked)}
+            />
+            <span className="text-sm text-muted-foreground">{field.label}</span>
+          </div>
+        ) : field.field_type === 'file' ? (
+          <div className="space-y-1">
+            {formData[field.field_key] ? (
+              <div className="flex items-center gap-2 p-2 bg-accent/10 rounded-md border border-accent/30">
+                <CheckCircle2 className="h-4 w-4 text-accent shrink-0" />
+                <span className="text-xs text-accent truncate">File uploaded</span>
+                <Button variant="ghost" size="sm" className="h-6 text-xs ml-auto"
+                  onClick={() => updateField(field.field_key, null)}>Change</Button>
+              </div>
+            ) : (
+              <div className="relative">
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                  className="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                  onChange={handleFileUpload(field.field_key)}
+                  disabled={uploadingFile === field.field_key}
+                />
+                {uploadingFile === field.field_key && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-md">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ) : field.field_type === 'country' ? (
+          <select
+            className={`w-full h-10 rounded-md border px-3 text-sm bg-background ${errors[field.field_key] ? 'border-destructive' : 'border-input'}`}
+            value={formData[field.field_key] || ''}
+            onChange={e => updateField(field.field_key, e.target.value)}>
+            <option value="">Select country...</option>
+            {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        ) : field.field_type === 'number' ? (
+          <Input
+            type="number"
+            placeholder={field.placeholder || '0'}
+            value={formData[field.field_key] || ''}
+            onChange={e => updateField(field.field_key, e.target.value)}
+            className={errors[field.field_key] ? 'border-destructive' : ''}
+          />
+        ) : (
+          <Input
+            type={field.field_type === 'email' ? 'email' : field.field_type === 'phone' ? 'tel' : field.field_type === 'date' ? 'date' : 'text'}
+            placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+            value={formData[field.field_key] || ''}
+            onChange={e => updateField(field.field_key, e.target.value)}
+            className={errors[field.field_key] ? 'border-destructive' : ''}
+          />
+        )}
+
+        {field.field_type !== 'multi_select' && errors[field.field_key] && (
+          <p className="text-xs text-destructive">{errors[field.field_key]}</p>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
@@ -168,92 +317,42 @@ export default function PublicApplyForm() {
             </span>
           )}
         </div>
-        {/* Decorative wave */}
         <svg className="absolute bottom-0 left-0 w-full" viewBox="0 0 1440 60" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M0 60V30C360 0 720 60 1080 30C1260 15 1380 22 1440 30V60H0Z" className="fill-background" />
         </svg>
       </div>
 
       {/* Form */}
-      <div className="max-w-2xl mx-auto px-4 py-8 -mt-4 relative z-10">
+      <div className="max-w-lg mx-auto px-4 py-8 -mt-4 relative z-10">
         <Card className="shadow-lg border-border/50">
-          <CardContent className="p-6 sm:p-8 space-y-5">
-            <div className="text-center mb-2">
-              <h2 className="text-lg font-semibold">{formInfo.form.title}</h2>
-              <p className="text-xs text-muted-foreground mt-1">Fields marked with * are required</p>
+          <CardContent className="p-6 sm:p-8">
+            <div className="text-center mb-6">
+              <h2 className="text-lg font-semibold">Apply for this course</h2>
+              <p className="text-xs text-muted-foreground mt-1">Fill in your details below. Fields marked <span className="text-destructive">*</span> are required.</p>
             </div>
 
-            {formInfo.fields.map(field => (
-              <div key={field.id} className="space-y-1.5">
-                <Label className="text-sm font-medium">
-                  {field.label} {field.is_required && <span className="text-destructive">*</span>}
-                </Label>
-
-                {field.field_type === 'dropdown' ? (
-                  <select
-                    className={`w-full h-10 rounded-md border px-3 text-sm bg-background ${errors[field.field_key] ? 'border-destructive' : 'border-input'}`}
-                    value={formData[field.field_key] || ''}
-                    onChange={e => updateField(field.field_key, e.target.value)}>
-                    <option value="">Select {field.label}...</option>
-                    {(Array.isArray(field.options) ? field.options : []).map((o: string) => (
-                      <option key={o} value={o}>{o}</option>
-                    ))}
-                  </select>
-                ) : field.field_type === 'checkbox' ? (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 rounded"
-                      checked={!!formData[field.field_key]}
-                      onChange={e => updateField(field.field_key, e.target.checked)}
-                    />
-                    <span className="text-sm text-muted-foreground">{field.label}</span>
-                  </div>
-                ) : field.field_type === 'file' ? (
-                  <div className="space-y-1">
-                    <input
-                      type="file"
-                      className="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
-                      onChange={e => {
-                        const file = e.target.files?.[0];
-                        if (file) updateField(field.field_key, file.name);
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <Input
-                    type={field.field_type === 'email' ? 'email' : field.field_type === 'phone' ? 'tel' : field.field_type === 'date' ? 'date' : 'text'}
-                    placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
-                    value={formData[field.field_key] || ''}
-                    onChange={e => updateField(field.field_key, e.target.value)}
-                    className={errors[field.field_key] ? 'border-destructive' : ''}
-                  />
-                )}
-
-                {errors[field.field_key] && (
-                  <p className="text-xs text-destructive">{errors[field.field_key]}</p>
-                )}
-              </div>
-            ))}
+            <div className="space-y-5">
+              {formInfo.fields.map(field => renderField(field))}
+            </div>
 
             {Object.keys(errors).length > 0 && (
-              <div className="p-3 bg-destructive/10 rounded-lg text-destructive text-xs flex items-center gap-2">
+              <div className="mt-4 p-3 bg-destructive/10 rounded-lg text-destructive text-xs flex items-center gap-2">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 Please fill in all required fields before submitting.
               </div>
             )}
 
             <Button
-              className="w-full h-11 text-base font-medium"
+              className="w-full h-11 text-base font-medium mt-6"
               onClick={() => submitForm.mutate()}
-              disabled={submitForm.isPending}>
+              disabled={submitForm.isPending || !!uploadingFile}>
               {submitForm.isPending ? (
                 <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Submitting…</>
               ) : 'Submit Application'}
             </Button>
 
-            <p className="text-[10px] text-center text-muted-foreground">
-              Your information is secure and will only be used for enrollment purposes.
+            <p className="text-[10px] text-center text-muted-foreground mt-4 flex items-center justify-center gap-1">
+              <Shield className="h-3 w-3" /> Your information is secure and will only be used for enrollment purposes.
             </p>
           </CardContent>
         </Card>
