@@ -135,15 +135,27 @@ const MOCK_MESSAGES = [
 
 const ParentDashboard = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [lang, setLang] = useState<Lang>('en');
   const [activeChild, setActiveChild] = useState(MOCK_CHILDREN[0]);
-  const [section, setSection] = useState<Section>('overview');
   const [msgInput, setMsgInput] = useState('');
   const [draftIntent, setDraftIntent] = useState('');
   const [showDraft, setShowDraft] = useState(false);
   const [showNotif, setShowNotif] = useState(false);
   const [generatingReport, setGeneratingReport] = useState(false);
   const [aiReport, setAiReport] = useState<any>(null);
+
+  // URL-driven section state
+  const sectionParam = searchParams.get('section') as Section | null;
+  const section: Section = sectionParam && ['overview', 'ai-report', 'sessions', 'materials', 'fees', 'messages'].includes(sectionParam) ? sectionParam : 'overview';
+  const setSection = (s: Section) => {
+    if (s === 'overview') {
+      navigate('/parent', { replace: true });
+    } else {
+      navigate(`/parent?section=${s}`, { replace: true });
+    }
+  };
+
   const t = i18n[lang];
   const isRtl = lang === 'ur' || lang === 'ar';
 
