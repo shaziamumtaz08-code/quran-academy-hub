@@ -413,6 +413,14 @@ export default function TeachingOSDayBoard() {
             <PhaseBreadcrumb courseName={courseName} sectionLabel={`Session ${plan.session_number} · Day Board`} />
           </div>
           <div className="flex items-center gap-2">
+            <button onClick={handleSaveBoard} disabled={boardSaving}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-[#4a5264] bg-white border border-[#d0d4dc] rounded-md hover:bg-[#f9f9fb] disabled:opacity-50">
+              {boardSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />} Save
+            </button>
+            <button onClick={handleExportPDF}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-[#4a5264] bg-white border border-[#d0d4dc] rounded-md hover:bg-[#f9f9fb]">
+              <Download className="w-3.5 h-3.5" /> Export PDF
+            </button>
             <button className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-[#4a5264] bg-white border border-[#d0d4dc] rounded-md hover:bg-[#f9f9fb]">
               <Eye className="w-3.5 h-3.5" /> Student view
             </button>
