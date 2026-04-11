@@ -57,6 +57,8 @@ interface SlideData {
   bullets: string[];
   teacherNote?: string | null;
   activityInstruction?: string | null;
+  grammarTable?: { headers: string[]; rows: string[][] } | null;
+  vocabularyItems?: { arabic: string; transliteration: string; english: string; example: string }[] | null;
 }
 
 interface QuizQuestion {
@@ -78,6 +80,9 @@ interface Flashcard {
   partOfSpeech: string;
   exampleSentence?: string | null;
   exampleTranslation?: string | null;
+  rootLetters?: string | null;
+  category?: string | null;
+  usageNote?: string | null;
 }
 
 interface WorksheetExercise {
