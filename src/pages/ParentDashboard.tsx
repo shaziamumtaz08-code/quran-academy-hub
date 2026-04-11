@@ -698,7 +698,7 @@ const ParentDashboard = () => {
               {activeChild.name.split(' ')[0].toUpperCase()}
             </div>
             {sidebarNav.map(n => (
-              <button key={n.key} onClick={() => setSection(n.key)}
+              <button key={n.key} onClick={() => n.key === 'messages' ? navigate('/communication') : setSection(n.key)}
                 className="w-full flex items-center gap-2 rounded-lg px-2.5 py-2 mb-0.5 transition-colors"
                 style={{ background: section === n.key ? '#eef2fa' : 'transparent' }}>
                 <n.icon className="w-4 h-4" style={{ color: section === n.key ? '#1a56b0' : '#7a7f8a' }} />
