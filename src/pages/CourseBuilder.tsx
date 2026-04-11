@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { CourseBoards } from '@/components/courses/CourseBoards';
+import { CourseDiscussionBoard } from '@/components/courses/CourseDiscussionBoard';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -106,6 +106,10 @@ export default function CourseBuilder() {
   const [webContactWhatsapp, setWebContactWhatsapp] = useState('');
   const [webEnabled, setWebEnabled] = useState(false);
   const [webLevel, setWebLevel] = useState('All Levels');
+  const [heroImageUrl, setHeroImageUrl] = useState('');
+  const [webInstructorName, setWebInstructorName] = useState('');
+  const [webInstructorBio, setWebInstructorBio] = useState('');
+  const [testimonials, setTestimonials] = useState<{name: string; quote: string}[]>([]);
   
   // Ad creative state
   const [adTitle, setAdTitle] = useState('');
@@ -324,6 +328,10 @@ export default function CourseBuilder() {
       const contact = (course.contact_info || {}) as any;
       setWebContactEmail(contact.email || '');
       setWebContactWhatsapp(contact.whatsapp || '');
+      setWebInstructorName(contact.instructor_name || '');
+      setWebInstructorBio(contact.instructor_bio || '');
+      setTestimonials(Array.isArray(contact.testimonials) ? contact.testimonials : []);
+      setHeroImageUrl((course.hero_image_url as string) || '');
       // Ad creative
       const ad = (course.ad_creative || {}) as any;
       setAdTitle(ad.title || '');
@@ -502,7 +510,14 @@ export default function CourseBuilder() {
         outcomes: outcomesArr as any,
         faqs: faqsArr as any,
         pricing: { amount: parseFloat(webPricingAmount) || 0, currency: webPricingCurrency, period: 'month' } as any,
-        contact_info: { email: webContactEmail, whatsapp: webContactWhatsapp } as any,
+        hero_image_url: heroImageUrl || null,
+        contact_info: {
+          email: webContactEmail,
+          whatsapp: webContactWhatsapp,
+          instructor_name: webInstructorName,
+          instructor_bio: webInstructorBio,
+          testimonials: testimonials.filter(t => t.name.trim() || t.quote.trim()),
+        } as any,
         seo_slug: course?.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || null,
       }).eq('id', courseId!);
       if (error) throw error;
@@ -1196,10 +1211,76 @@ export default function CourseBuilder() {
                   </Card>
                 ))}
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2"><Label>Contact Email</Label><Input value={webContactEmail} onChange={e => setWebContactEmail(e.target.value)} /></div>
-                <div className="space-y-2"><Label>WhatsApp</Label><Input value={webContactWhatsapp} onChange={e => setWebContactWhatsapp(e.target.value)} placeholder="+92..." /></div>
+              {/* Hero Image */}
+              <Separator />
+              <div className="space-y-2">
+                <Label>Hero Image</Label>
+                <p className="text-xs text-muted-foreground">Banner image for the public course page (recommended 1200×400)</p>
+                {heroImageUrl ? (
+                  <div className="relative">
+                    <img src={heroImageUrl} alt="Hero" className="rounded-lg w-full h-40 object-cover" />
+                    <Button variant="destructive" size="sm" className="absolute top-2 right-2" onClick={() => setHeroImageUrl('')}>
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                    <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground">Click to upload or drag image</p>
+                    <Input type="file" accept="image/*" className="mt-2" onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const path = `course-heroes/${courseId}/${file.name}`;
+                      const { error } = await supabase.storage.from('course-assets').upload(path, file, { upsert: true });
+                      if (error) { toast({ title: 'Upload failed', description: error.message, variant: 'destructive' }); return; }
+                      const { data: { publicUrl } } = supabase.storage.from('course-assets').getPublicUrl(path);
+                      setHeroImageUrl(publicUrl);
+                    }} />
+                  </div>
+                )}
               </div>
+
+              {/* Instructor */}
+              <Separator />
+              <h4 className="font-semibold text-sm">Instructor</h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2"><Label>Instructor Name</Label><Input value={webInstructorName} onChange={e => setWebInstructorName(e.target.value)} placeholder="e.g., Ustadha Fatima Ali" /></div>
+                <div className="space-y-2"><Label>Contact Email</Label><Input value={webContactEmail} onChange={e => setWebContactEmail(e.target.value)} /></div>
+              </div>
+              <div className="space-y-2"><Label>Instructor Bio</Label><Textarea value={webInstructorBio} onChange={e => setWebInstructorBio(e.target.value)} rows={3} placeholder="Brief introduction of the instructor..." /></div>
+              <div className="space-y-2"><Label>WhatsApp</Label><Input value={webContactWhatsapp} onChange={e => setWebContactWhatsapp(e.target.value)} placeholder="+92..." /></div>
+
+              {/* Testimonials */}
+              <Separator />
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-sm font-semibold">Student Testimonials</Label>
+                    <p className="text-xs text-muted-foreground">Add quotes from past students (shown on public page)</p>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setTestimonials([...testimonials, { name: '', quote: '' }])}>
+                    <Plus className="h-3 w-3 mr-1" /> Add Testimonial
+                  </Button>
+                </div>
+                {testimonials.map((t, i) => (
+                  <Card key={i} className="border-border/50">
+                    <CardContent className="p-3 flex gap-3">
+                      <div className="flex-1 space-y-2">
+                        <Input value={t.name} placeholder="Student name" onChange={e => {
+                          const updated = [...testimonials]; updated[i] = { ...updated[i], name: e.target.value }; setTestimonials(updated);
+                        }} />
+                        <Textarea value={t.quote} placeholder="Their testimonial..." rows={2} onChange={e => {
+                          const updated = [...testimonials]; updated[i] = { ...updated[i], quote: e.target.value }; setTestimonials(updated);
+                        }} />
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => setTestimonials(testimonials.filter((_, idx) => idx !== i))}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
               <Button onClick={() => saveWebsite.mutate()} disabled={saveWebsite.isPending}>
                 {saveWebsite.isPending ? 'Saving…' : 'Save Website Settings'}
               </Button>
@@ -1217,7 +1298,7 @@ export default function CourseBuilder() {
 
           {/* ═══ COMMUNITY TAB ═══ */}
           <TabsContent value="community" className="mt-4">
-            <CourseBoards courseId={courseId!} isAdmin={true} />
+            <CourseDiscussionBoard courseId={courseId!} currentUserId={user!.id} isAdmin={true} />
           </TabsContent>
 
           {/* ═══ ROSTER TAB ═══ */}

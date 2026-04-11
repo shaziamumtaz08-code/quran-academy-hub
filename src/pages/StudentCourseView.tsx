@@ -465,9 +465,7 @@ export default function StudentCourseView() {
 
         {/* ─── CHAT ─── */}
         <TabsContent value="chat" className="mt-4">
-          <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">
-            Group discussion coming soon. Use the Announcements section for updates.
-          </CardContent></Card>
+          <CourseDiscussionBoard courseId={courseId!} currentUserId={profile?.id || ''} />
         </TabsContent>
       </Tabs>
     </div>
