@@ -64,7 +64,7 @@ function getPeopleSidebar(isOneToOne?: boolean): { title: string; subtitle: stri
   };
 }
 
-function getFinanceSidebar(): { title: string; subtitle: string; items: SidebarNavItem[] } {
+function getFinanceSidebar(isOneToOne?: boolean): { title: string; subtitle: string; items: SidebarNavItem[] } {
   return {
     title: 'Finance',
     subtitle: '',
@@ -72,7 +72,9 @@ function getFinanceSidebar(): { title: string; subtitle: string; items: SidebarN
       { label: 'Overview', href: '/finance' },
       { label: 'Fee Plans', href: '/finance?section=fee-setup' },
       { label: 'Payments', href: '/payments' },
-      { label: 'Teacher Payouts', href: '/finance?section=teacher-payouts' },
+      ...(isOneToOne ? [
+        { label: 'Teacher Payouts', href: '/finance?section=teacher-payouts' },
+      ] : []),
       { label: 'Invoices', href: '/finance?section=invoices' },
     ],
   };
@@ -128,7 +130,7 @@ function getSidebarForRoute(pathname: string, isOneToOne?: boolean, role?: strin
     return getPeopleSidebar(isOneToOne);
   }
   if (pathname.startsWith('/finance') || pathname.startsWith('/payments') || pathname.startsWith('/salary') || pathname.startsWith('/expenses') || pathname.startsWith('/cash-advances') || pathname.startsWith('/staff-salaries')) {
-    return getFinanceSidebar();
+    return getFinanceSidebar(isOneToOne);
   }
   if (pathname.startsWith('/communication') || pathname.startsWith('/chat') || pathname.startsWith('/whatsapp') || pathname.startsWith('/notifications') || pathname.startsWith('/zoom') || pathname.startsWith('/hub')) {
     return getCommunicationSidebar(role);

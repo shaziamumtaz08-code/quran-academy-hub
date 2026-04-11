@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Bell, LogOut, Menu, User, ChevronDown } from 'lucide-react';
+import { LogOut, Menu, User, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { RoleSwitcher } from '@/components/layout/RoleSwitcher';
+import { NotificationBell } from '@/components/layout/NotificationBell';
 
 interface MobileTopBarProps {
   title?: string;
@@ -31,6 +32,7 @@ export function MobileTopBar({ title = 'Al-Quran Time', onMenuClick, onLogout }:
         <span className="text-[13px] font-medium text-white truncate px-2">{title}</span>
 
         <div className="flex items-center gap-1.5">
+          <NotificationBell />
           <RoleSwitcher />
           <button
             type="button"
