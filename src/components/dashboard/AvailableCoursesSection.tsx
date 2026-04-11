@@ -22,7 +22,7 @@ export default function AvailableCoursesSection({ activeDivision }: AvailableCou
     queryKey: ['dash-available-courses', user?.id, activeDivision],
     queryFn: async () => {
       let query = supabase.from('courses')
-        .select('id, name, level, description, subject, division_id, divisions:divisions(name), auto_enroll_enabled')
+        .select('id, name, level, description, division_id, divisions:divisions(name), auto_enroll_enabled')
         .eq('status', 'published');
 
       if (activeDivision !== 'all') {
