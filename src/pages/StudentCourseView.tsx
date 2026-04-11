@@ -261,7 +261,7 @@ export default function StudentCourseView() {
                       <p className="text-sm font-medium">{a.title}</p>
                       <p className="text-xs text-muted-foreground">{a.body?.slice(0, 100)}</p>
                       <p className="text-[10px] text-muted-foreground mt-1">
-                        {a.sent_at && formatDistanceToNow(new Date(a.sent_at))} ago
+                        {a.created_at && formatDistanceToNow(new Date(a.created_at))} ago
                       </p>
                     </div>
                   </CardContent></Card>
