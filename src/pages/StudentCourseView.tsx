@@ -402,9 +402,9 @@ export default function StudentCourseView() {
                     </div>
                     {result ? (
                       <div className="text-right shrink-0">
-                        <p className="text-sm font-bold">{result.score}/{exam.total_marks}</p>
-                        <Badge variant={(result.score || 0) >= (exam.total_marks * (exam.pass_mark_percent || 50) / 100) ? 'default' : 'destructive'} className="text-[10px]">
-                          {(result.score || 0) >= (exam.total_marks * (exam.pass_mark_percent || 50) / 100) ? 'Pass' : 'Fail'}
+                        <p className="text-sm font-bold">{result.total_score}/{result.total_possible}</p>
+                        <Badge variant={result.passed ? 'default' : 'destructive'} className="text-[10px]">
+                          {result.passed ? 'Pass' : 'Fail'}
                         </Badge>
                       </div>
                     ) : (
