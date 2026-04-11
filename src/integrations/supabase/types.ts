@@ -2381,6 +2381,7 @@ export type Database = {
       courses: {
         Row: {
           ad_creative: Json | null
+          auto_enroll_enabled: boolean
           branch_id: string | null
           contact_info: Json | null
           created_at: string
@@ -2412,6 +2413,7 @@ export type Database = {
         }
         Insert: {
           ad_creative?: Json | null
+          auto_enroll_enabled?: boolean
           branch_id?: string | null
           contact_info?: Json | null
           created_at?: string
@@ -2443,6 +2445,7 @@ export type Database = {
         }
         Update: {
           ad_creative?: Json | null
+          auto_enroll_enabled?: boolean
           branch_id?: string | null
           contact_info?: Json | null
           created_at?: string
@@ -5315,9 +5318,11 @@ export type Database = {
           data: Json
           eligibility_notes: string | null
           eligibility_status: string | null
+          enrollment_id: string | null
           form_id: string
           id: string
           notes: string | null
+          processed_at: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           source_tag: string | null
@@ -5330,9 +5335,11 @@ export type Database = {
           data?: Json
           eligibility_notes?: string | null
           eligibility_status?: string | null
+          enrollment_id?: string | null
           form_id: string
           id?: string
           notes?: string | null
+          processed_at?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           source_tag?: string | null
@@ -5345,9 +5352,11 @@ export type Database = {
           data?: Json
           eligibility_notes?: string | null
           eligibility_status?: string | null
+          enrollment_id?: string | null
           form_id?: string
           id?: string
           notes?: string | null
+          processed_at?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           source_tag?: string | null
@@ -5360,6 +5369,13 @@ export type Database = {
             columns: ["course_id"]
             isOneToOne: false
             referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registration_submissions_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "course_enrollments"
             referencedColumns: ["id"]
           },
           {
