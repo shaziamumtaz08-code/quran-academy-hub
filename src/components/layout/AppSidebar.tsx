@@ -341,33 +341,83 @@ export function AppSidebar({ className }: AppSidebarProps) {
             if (!group.group) {
               // Standalone items (Overview)
               return group.items.map(item => (
-                <div key={item.label}>{renderNavItem(item)}</div>
+                <div key={item.label} className="mb-1">
+                  <Link
+                    to={item.href || '#'}
+                    className={cn(
+                      'flex items-center gap-2 px-2 py-[7px] rounded-md text-[11.5px] transition-colors',
+                      isItemActive(item)
+                        ? 'bg-[#eef2fa] text-lms-navy font-medium'
+                        : 'text-lms-text-2 hover:bg-lms-surface'
+                    )}
+                  >
+                    <LayoutDashboard className="h-3.5 w-3.5" />
+                    <span>{item.label}</span>
+                  </Link>
+                </div>
               ));
             }
 
             const isCollapsed = collapsedGroups.has(group.group);
             const num = GROUP_NUMBERS[group.group] || gi;
             const hasActiveItem = group.items.some(isItemActive);
+            const sectionConfig = SECTION_ICONS[group.group];
+            const SectionIcon = sectionConfig?.icon || Settings;
 
             return (
-              <div key={group.group}>
+              <div key={group.group} className="mt-1">
                 <button
                   onClick={() => toggleGroup(group.group!)}
                   className={cn(
-                    'w-full flex items-center justify-between px-2 pt-3 pb-1 group cursor-pointer',
-                    hasActiveItem && isCollapsed && 'text-lms-navy'
+                    'w-full flex items-center gap-2 px-2 py-2 rounded-md group cursor-pointer transition-colors min-h-[36px]',
+                    hasActiveItem && isCollapsed
+                      ? sectionConfig?.bgClass || 'bg-muted'
+                      : 'hover:bg-lms-surface'
                   )}
                 >
-                  <span className="text-[9px] uppercase tracking-[.07em] text-lms-text-4 group-hover:text-lms-text-2 transition-colors">
+                  <SectionIcon className={cn('h-3.5 w-3.5 shrink-0', sectionConfig?.colorClass || 'text-muted-foreground')} />
+                  <span className={cn(
+                    'text-[10px] uppercase tracking-[.07em] flex-1 text-left font-medium',
+                    hasActiveItem ? 'text-lms-navy' : 'text-lms-text-4 group-hover:text-lms-text-2'
+                  )}>
                     {num} · {group.group}
                   </span>
                   {isCollapsed ? (
-                    <ChevronRight className="h-3 w-3 text-lms-text-4" />
+                    <ChevronRight className="h-3 w-3 text-lms-text-4 shrink-0" />
                   ) : (
-                    <ChevronDown className="h-3 w-3 text-lms-text-4" />
+                    <ChevronDown className="h-3 w-3 text-lms-text-4 shrink-0" />
                   )}
                 </button>
-                {!isCollapsed && group.items.map(item => renderNavItem(item))}
+                {!isCollapsed && (
+                  <div className="ml-2 pl-3 border-l-2 border-lms-border/50 mt-0.5 space-y-0.5">
+                    {group.items.map(item => {
+                      const active = isItemActive(item);
+                      return (
+                        <Link
+                          key={item.label + (item.href || '')}
+                          to={item.href || '#'}
+                          className={cn(
+                            'flex items-center gap-2 px-2 py-[6px] rounded-md text-[11px] transition-colors',
+                            active
+                              ? 'bg-[#eef2fa] text-lms-navy font-medium'
+                              : 'text-lms-text-2 hover:bg-lms-surface'
+                          )}
+                        >
+                          <div className={cn(
+                            'h-1.5 w-1.5 rounded-full shrink-0',
+                            active ? (sectionConfig?.colorClass || 'bg-primary') : 'bg-lms-text-4/40'
+                          )} style={active && sectionConfig ? { backgroundColor: 'currentColor' } : undefined} />
+                          <span className="truncate">{item.label}</span>
+                          {item.badgeText && (
+                            <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700">
+                              {item.badgeText}
+                            </span>
+                          )}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })
