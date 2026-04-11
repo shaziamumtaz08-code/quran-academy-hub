@@ -131,6 +131,35 @@ export function CourseEligibilitySettings({ courseId }: Props) {
 
   return (
     <div className="space-y-4">
+      {/* Auto-decide toggle */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Auto-decide applicants</p>
+              <p className="text-xs text-muted-foreground">
+                When enabled, applicants are automatically accepted or rejected based on eligibility rules at submission time. When disabled, all applicants go to manual review.
+              </p>
+            </div>
+            <Switch
+              checked={courseData?.auto_enroll_enabled || false}
+              onCheckedChange={(v) => toggleAutoEnroll.mutate(v)}
+            />
+          </div>
+          {courseData?.auto_enroll_enabled ? (
+            <div className="mt-3 rounded-md bg-emerald-50 border border-emerald-200 px-3 py-2">
+              <p className="text-xs text-emerald-700">
+                Applicants will be auto-enrolled if they pass all rules, or auto-rejected with reason.
+              </p>
+            </div>
+          ) : (
+            <p className="mt-3 text-xs text-muted-foreground">
+              All applicants go to "New" status for manual review.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
