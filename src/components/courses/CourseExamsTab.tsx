@@ -13,7 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus, FileText, Trophy, ClipboardCheck, Trash2, GraduationCap } from 'lucide-react';
+import { Plus, FileText, Trophy, ClipboardCheck, Trash2, GraduationCap, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 
 interface CourseExamsTabProps {
@@ -193,6 +194,7 @@ export function CourseExamsTab({ courseId }: CourseExamsTabProps) {
 
         {/* Quizzes */}
         <TabsContent value="quizzes" className="mt-4 space-y-3">
+          <TeachingOSQuizNote courseId={courseId} />
           <div className="flex justify-between items-center">
             <h3 className="text-sm font-medium">Course Quizzes</h3>
             <Button size="sm" onClick={() => setCreateQuizOpen(true)} className="gap-1.5">

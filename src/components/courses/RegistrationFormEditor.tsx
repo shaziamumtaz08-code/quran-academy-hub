@@ -78,6 +78,8 @@ export function RegistrationFormEditor({ courseId, courseSlug, courseName }: Reg
   const [newRequired, setNewRequired] = useState(false);
   const [newOptions, setNewOptions] = useState('');
   const [newPlaceholder, setNewPlaceholder] = useState('');
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importCourseId, setImportCourseId] = useState('');
 
   // Fetch or create form
   const { data: form, isLoading: formLoading } = useQuery({

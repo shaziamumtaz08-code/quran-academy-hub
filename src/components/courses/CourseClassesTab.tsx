@@ -27,8 +27,13 @@ interface CourseClassesTabProps {
 const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const CLASS_TYPES = [
   { value: 'regular', label: 'Regular' },
-  { value: 'trial', label: 'Trial' },
+  { value: 'trial', label: 'Trial / Demo' },
   { value: 'makeup', label: 'Make-up' },
+  { value: 'workshop', label: 'Workshop' },
+  { value: 'webinar', label: 'Webinar' },
+  { value: 'lecture', label: 'Lecture' },
+  { value: 'seminar', label: 'Seminar / Talk' },
+  { value: 'exam_session', label: 'Exam Session' },
 ];
 const PAYOUT_TYPES = [
   { value: 'volunteer', label: 'Volunteer' },

@@ -22,6 +22,7 @@ import {
 import { format } from 'date-fns';
 import { CourseApplicantImport } from './CourseApplicantImport';
 import { UserRelationshipPanel } from './UserRelationshipPanel';
+import { FormPreview } from './FormPreview';
 
 interface Submission {
   id: string;
@@ -660,17 +661,8 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
                 <Badge variant="outline" className="text-xs">{selectedSubmission.source_tag || 'Website'}</Badge>
               </div>
 
-              <div className="space-y-1 border rounded-lg p-3">
-                {Object.entries(selectedSubmission.data).map(([key, value]) => (
-                  <div key={key} className="flex items-start gap-3 py-2 border-b border-border/40 last:border-0">
-                    <span className="text-xs text-muted-foreground font-medium w-32 shrink-0 capitalize">
-                      {key.replace(/_/g, ' ')}
-                    </span>
-                    <span className="text-sm flex-1">
-                      {typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value || '—')}
-                    </span>
-                  </div>
-                ))}
+              <div className="border rounded-lg p-3">
+                <FormPreview formId={courseId} submissionData={selectedSubmission.data} />
               </div>
 
               <div className="flex gap-2 pt-2">

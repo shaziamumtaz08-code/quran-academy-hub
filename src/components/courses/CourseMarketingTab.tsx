@@ -371,7 +371,9 @@ function PostsSection({ courseId, courseName, courseDescription }: { courseId: s
                   <div className="flex items-center gap-2 mt-1.5">
                     <Badge variant="outline" className="text-[10px]">{post.status}</Badge>
                     {(post.channels || []).map((ch: string) => (
-                      <Badge key={ch} variant="secondary" className="text-[10px]">{ch}</Badge>
+                      <Badge key={ch} variant="secondary" className="text-[10px]">
+                        {ch} {post.sent_at ? '✓' : '⏳'}
+                      </Badge>
                     ))}
                     <span className="text-[10px] text-muted-foreground ml-auto">
                       {format(new Date(post.created_at), 'MMM d, h:mm a')}
@@ -401,6 +403,7 @@ function SequencesSection({ courseId }: { courseId: string }) {
   const [delayRule, setDelayRule] = useState('before_start');
   const [delayDays, setDelayDays] = useState(1);
   const [channels, setChannels] = useState<string[]>([]);
+  const [attachmentUrl, setAttachmentUrl] = useState('');
 
   const { data: sequences = [] } = useQuery({
     queryKey: ['msg-sequences', courseId],
@@ -426,13 +429,14 @@ function SequencesSection({ courseId }: { courseId: string }) {
         delay_days: delayDays,
         channels,
         sort_order: maxOrder,
+        attachment_url: attachmentUrl || null,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['msg-sequences', courseId] });
       setAddOpen(false);
-      setTitle(''); setBody(''); setDelayRule('before_start'); setDelayDays(1); setChannels([]);
+      setTitle(''); setBody(''); setDelayRule('before_start'); setDelayDays(1); setChannels([]); setAttachmentUrl('');
       toast({ title: 'Sequence step added' });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
@@ -507,6 +511,11 @@ function SequencesSection({ courseId }: { courseId: string }) {
                       </div>
                       <p className="text-sm font-medium">{step.title}</p>
                       <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{step.body}</p>
+                      {step.attachment_url && (
+                        <span className="text-[10px] text-primary flex items-center gap-0.5 mt-1">
+                          <FileText className="h-3 w-3" /> Attachment
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <Switch
