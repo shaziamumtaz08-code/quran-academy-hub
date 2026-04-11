@@ -385,6 +385,9 @@ export default function UnifiedDashboard() {
         )}
       </div>
 
+      {/* Available Courses */}
+      <AvailableCoursesSection activeDivision={activeDivision} />
+
       <Separator />
 
       {/* Quick Links */}
