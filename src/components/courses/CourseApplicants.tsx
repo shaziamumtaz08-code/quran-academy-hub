@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CourseApplicantImport } from './CourseApplicantImport';
+import { UserRelationshipPanel } from './UserRelationshipPanel';
 
 interface Submission {
   id: string;
@@ -66,6 +67,11 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
   const [manualName, setManualName] = useState('');
   const [manualEmail, setManualEmail] = useState('');
   const [activeTab, setActiveTab] = useState('applicants');
+  const [relationshipApplicant, setRelationshipApplicant] = useState<{
+    email: string;
+    phone?: string;
+    data?: Record<string, any>;
+  } | null>(null);
 
   const { data: submissions = [], isLoading } = useQuery({
     queryKey: ['registration-submissions', courseId],
@@ -394,7 +400,21 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
                             <Checkbox checked={selectedIds.has(sub.id)}
                               onCheckedChange={() => toggleSelect(sub.id)} />
                           </TableCell>
-                          <TableCell className="font-medium">{sub.data?.full_name || '—'}</TableCell>
+                          <TableCell className="font-medium">
+                            <button
+                              className="text-left hover:underline text-primary/80 hover:text-primary"
+                              onClick={e => {
+                                e.stopPropagation();
+                                setRelationshipApplicant({
+                                  email: sub.data?.email || '',
+                                  phone: sub.data?.phone || sub.data?.whatsapp_number || '',
+                                  data: sub.data,
+                                });
+                              }}
+                            >
+                              {sub.data?.full_name || '—'}
+                            </button>
+                          </TableCell>
                           <TableCell className="text-sm">{sub.data?.email || '—'}</TableCell>
                           <TableCell className="text-sm">{sub.data?.phone || '—'}</TableCell>
                           <TableCell>
@@ -550,6 +570,16 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
         onOpenChange={setImportOpen}
         courseId={courseId}
         onComplete={() => queryClient.invalidateQueries({ queryKey: ['registration-submissions', courseId] })}
+      />
+
+      {/* User Relationship Panel */}
+      <UserRelationshipPanel
+        open={!!relationshipApplicant}
+        onOpenChange={() => setRelationshipApplicant(null)}
+        email={relationshipApplicant?.email || ''}
+        phone={relationshipApplicant?.phone}
+        submissionData={relationshipApplicant?.data}
+        courseId={courseId}
       />
     </div>
   );
