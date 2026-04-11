@@ -105,12 +105,29 @@ export default function AvailableCoursesSection({ activeDivision }: AvailableCou
     enabled: !!user?.id && availableCourses.length > 0,
   });
 
-  const handleQuickApply = async (courseId: string) => {
-    setApplyingCourseId(courseId);
+  const handleQuickApply = async (courseIdToApply: string) => {
+    setApplyingCourseId(courseIdToApply);
     try {
-      const { error } = await supabase.from('registration_submissions').insert({
-        form_id: courseId,
-        course_id: courseId,
+      // Check if course has auto-decide enabled
+      const { data: courseConfig } = await supabase.from('courses')
+        .select('auto_enroll_enabled')
+        .eq('id', courseIdToApply)
+        .single();
+
+      const autoMode = courseConfig?.auto_enroll_enabled === true;
+      const elig = eligibilityMap[courseIdToApply];
+      const isEligible = elig?.eligible !== false;
+
+      let status = 'new';
+      let eligStatus = isEligible ? 'eligible' : 'not_eligible';
+
+      if (autoMode && !isEligible) {
+        status = 'rejected';
+      }
+
+      const { data: submission, error } = await supabase.from('registration_submissions').insert({
+        form_id: courseIdToApply,
+        course_id: courseIdToApply,
         data: {
           full_name: (profile as any)?.full_name || '',
           email: (profile as any)?.email || '',
@@ -118,14 +135,37 @@ export default function AvailableCoursesSection({ activeDivision }: AvailableCou
           city: (profile as any)?.city || '',
           gender: (profile as any)?.gender || '',
         },
-        status: 'new',
+        status,
         source_tag: 'dashboard_apply',
-      });
+        eligibility_status: eligStatus,
+        eligibility_notes: elig?.reasons?.length ? elig.reasons.join('; ') : null,
+      }).select('id').single();
 
       if (error) throw error;
 
-      toast.success('Application submitted! You will be notified when reviewed.');
+      // Auto-enroll if auto mode + eligible
+      if (autoMode && isEligible && user?.id) {
+        const { data: enrollment } = await supabase.from('course_enrollments').insert({
+          course_id: courseIdToApply,
+          student_id: user.id,
+          status: 'active',
+        }).select('id').single();
+
+        if (enrollment && submission) {
+          await supabase.from('registration_submissions').update({
+            status: 'enrolled',
+            processed_at: new Date().toISOString(),
+            enrollment_id: enrollment.id,
+          }).eq('id', submission.id);
+        }
+
+        toast.success('You have been automatically enrolled!');
+      } else {
+        toast.success('Application submitted! You will be notified when reviewed.');
+      }
+
       queryClient.invalidateQueries({ queryKey: ['dash-available-courses'] });
+      queryClient.invalidateQueries({ queryKey: ['dash-enrollments'] });
     } catch (err: any) {
       toast.error(err.message || 'Failed to apply');
     } finally {
