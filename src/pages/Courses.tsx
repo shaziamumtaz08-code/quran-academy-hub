@@ -32,7 +32,7 @@ interface Course {
   id: string;
   name: string;
   description: string | null;
-  teacher_id: string;
+  teacher_id: string | null;
   subject_id: string | null;
   start_date: string;
   end_date: string | null;
@@ -46,7 +46,7 @@ interface Course {
   tags: string[];
   hero_image_url: string | null;
   created_at: string;
-  teacher?: { full_name: string };
+  
   subject?: { name: string } | null;
   enrollment_count?: number;
 }
@@ -81,7 +81,7 @@ export default function Courses() {
   // Form state
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
-  const [formTeacherId, setFormTeacherId] = useState('');
+  
   const [formSubjectId, setFormSubjectId] = useState('');
   const [formStartDate, setFormStartDate] = useState('');
   const [formEndDate, setFormEndDate] = useState('');
@@ -106,7 +106,7 @@ export default function Courses() {
     queryFn: async () => {
       let q = supabase
         .from('courses')
-        .select('*, teacher:profiles!courses_teacher_id_fkey(full_name), subject:subjects!courses_subject_id_fkey(name)')
+        .select('*, subject:subjects!courses_subject_id_fkey(name)')
         .order('created_at', { ascending: false });
       if (activeDivision?.id) q = q.eq('division_id', activeDivision.id);
       if (activeBranch?.id) q = q.eq('branch_id', activeBranch.id);
@@ -128,17 +128,6 @@ export default function Courses() {
         tags: c.tags || [],
         enrollment_count: countMap[c.id] || 0,
       })) as Course[];
-    },
-  });
-
-  const { data: teachers = [] } = useQuery({
-    queryKey: ['teachers-for-courses'],
-    queryFn: async () => {
-      const { data: roleRows } = await supabase.from('user_roles').select('user_id').eq('role', 'teacher');
-      if (!roleRows?.length) return [];
-      const { data: profiles } = await supabase.from('profiles').select('id, full_name')
-        .in('id', roleRows.map((r: any) => r.user_id)).is('archived_at', null).order('full_name');
-      return profiles || [];
     },
   });
 
@@ -224,7 +213,7 @@ export default function Courses() {
       const { data, error } = await supabase.from('courses').insert({
         name: formName.trim() || 'Untitled Course',
         description: formDescription || null,
-        teacher_id: formTeacherId || profile?.id,
+        teacher_id: profile?.id,
         subject_id: formSubjectId || null,
         start_date: formStartDate || format(new Date(), 'yyyy-MM-dd'),
         end_date: formEndDate || null,
@@ -256,7 +245,7 @@ export default function Courses() {
   });
 
   const resetForm = () => {
-    setFormName(''); setFormDescription(''); setFormTeacherId('');
+    setFormName(''); setFormDescription('');
     setFormSubjectId(''); setFormStartDate(''); setFormEndDate('');
     setFormLevel('All Levels'); setFormMaxStudents('30'); setFormTags([]);
     setFormWebsiteEnabled(false);
@@ -334,7 +323,7 @@ export default function Courses() {
       const { data: newCourse, error } = await supabase.from('courses').insert({
         name: dupName.trim() || `Copy of ${src.name}`,
         description: src.description,
-        teacher_id: src.teacher_id,
+        teacher_id: profile?.id || src.teacher_id,
         subject_id: src.subject_id,
         start_date: format(new Date(), 'yyyy-MM-dd'),
         end_date: null,
@@ -422,8 +411,7 @@ export default function Courses() {
   // ─── Filtering ────────────────────────────────────────
   const filtered = useMemo(() => {
     return courses.filter(c => {
-      const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase()) ||
-        (c as any).teacher?.full_name?.toLowerCase().includes(search.toLowerCase());
+      const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase());
       const matchStatus = filterStatus === 'all' || c.status === filterStatus;
       const matchLevel = filterLevel === 'all' || c.level === filterLevel;
       return matchSearch && matchStatus && matchLevel;
@@ -522,7 +510,7 @@ export default function Courses() {
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-base truncate">{course.name}</h3>
                       <p className="text-sm text-muted-foreground truncate mt-0.5">
-                        {(course as any).teacher?.full_name || 'Unassigned'}
+                        {course.level || 'All Levels'}
                       </p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
@@ -642,21 +630,10 @@ export default function Courses() {
                 </div>
               </div>
 
-              {/* Teacher + Max Students */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Teacher *</Label>
-                  <Select value={formTeacherId} onValueChange={setFormTeacherId}>
-                    <SelectTrigger><SelectValue placeholder="Select teacher" /></SelectTrigger>
-                    <SelectContent>
-                      {teachers.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.full_name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Max Students</Label>
-                  <Input type="number" value={formMaxStudents} onChange={e => setFormMaxStudents(e.target.value)} />
-                </div>
+              {/* Max Students */}
+              <div className="space-y-1.5">
+                <Label>Max Students</Label>
+                <Input type="number" value={formMaxStudents} onChange={e => setFormMaxStudents(e.target.value)} />
               </div>
 
               {/* Start Date + End Date */}
