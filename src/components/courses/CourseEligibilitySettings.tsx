@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { toast as legacyToast } from '@/hooks/use-toast';
-import { Plus, Trash2, ShieldCheck, BookOpen, BarChart, GraduationCap, Loader2, Copy, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, ShieldCheck, BookOpen, BarChart, GraduationCap, Loader2, Copy, RefreshCw, CheckCircle2, ExternalLink } from 'lucide-react';
 
 interface Props {
   courseId: string;
@@ -21,6 +21,7 @@ export function CourseEligibilitySettings({ courseId }: Props) {
   const [addType, setAddType] = useState('');
   const [prereqCourseId, setPrereqCourseId] = useState('');
   const [minAttendance, setMinAttendance] = useState('75');
+  const [scriptCopied, setScriptCopied] = useState(false);
 
   const { data: rules = [], isLoading } = useQuery({
     queryKey: ['eligibility-rules', courseId],
@@ -43,11 +44,10 @@ export function CourseEligibilitySettings({ courseId }: Props) {
     },
   });
 
-  // Course settings (auto-enroll + webhook)
   const { data: courseData } = useQuery({
     queryKey: ['course-settings', courseId],
     queryFn: async () => {
-      const { data } = await supabase.from('courses').select('webhook_secret, auto_enroll_enabled').eq('id', courseId).single();
+      const { data } = await supabase.from('courses').select('webhook_secret, auto_enroll_enabled, name').eq('id', courseId).single();
       return data;
     },
   });
@@ -128,6 +128,76 @@ export function CourseEligibilitySettings({ courseId }: Props) {
 
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string || '';
   const webhookUrl = `${supabaseUrl}/functions/v1/applicant-webhook`;
+  const secret = courseData?.webhook_secret || '';
+
+  // Build the ready-to-paste Google Apps Script
+  const googleScript = `function onFormSubmit(e) {
+  var r = e.response.getItemResponses();
+  var fields = {};
+  for (var i = 0; i < r.length; i++) {
+    fields[r[i].getItem().getTitle()] = r[i].getResponse();
+  }
+
+  var payload = {
+    full_name: fields[Object.keys(fields)[0]] || "",
+    email: "",
+    phone: "",
+    city: "",
+    gender: "",
+    source: "google_form",
+    course_id: "${courseId}",
+    webhook_secret: "${secret}",
+    extra: fields
+  };
+
+  // Auto-detect common field names
+  var keys = Object.keys(fields);
+  for (var j = 0; j < keys.length; j++) {
+    var k = keys[j].toLowerCase();
+    var v = fields[keys[j]];
+    if (k.indexOf("email") > -1) payload.email = v;
+    else if (k.indexOf("phone") > -1 || k.indexOf("mobile") > -1 || k.indexOf("whatsapp") > -1 || k.indexOf("contact") > -1) payload.phone = v;
+    else if (k.indexOf("city") > -1) payload.city = v;
+    else if (k.indexOf("gender") > -1) payload.gender = v;
+    else if (k.indexOf("name") > -1 && (k.indexOf("full") > -1 || k.indexOf("your") > -1 || k === "name" || k.indexOf("student") > -1)) payload.full_name = v;
+  }
+
+  UrlFetchApp.fetch("${webhookUrl}", {
+    method: "post",
+    contentType: "application/json",
+    payload: JSON.stringify(payload)
+  });
+}
+
+// Run this ONCE to set up the automatic trigger
+function createTrigger() {
+  ScriptApp.newTrigger("onFormSubmit")
+    .forForm(FormApp.getActiveForm())
+    .onFormSubmit()
+    .create();
+  Logger.log("✅ Trigger created! New responses will auto-sync.");
+}`;
+
+  const handleCopyScript = async () => {
+    // Auto-generate secret if not present
+    if (!secret) {
+      const newSecret = crypto.randomUUID().replace(/-/g, '');
+      const { error } = await supabase.from('courses').update({ webhook_secret: newSecret }).eq('id', courseId);
+      if (error) {
+        toast.error('Failed to generate secret');
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: ['course-settings', courseId] });
+      // Build script with new secret inline
+      const updatedScript = googleScript.replace(`"${secret}"`, `"${newSecret}"`);
+      await navigator.clipboard.writeText(updatedScript);
+    } else {
+      await navigator.clipboard.writeText(googleScript);
+    }
+    setScriptCopied(true);
+    toast.success('Script copied! Paste it in Google Forms → Script Editor');
+    setTimeout(() => setScriptCopied(false), 5000);
+  };
 
   return (
     <div className="space-y-4">
@@ -138,7 +208,7 @@ export function CourseEligibilitySettings({ courseId }: Props) {
             <div className="space-y-1">
               <p className="text-sm font-medium">Auto-decide applicants</p>
               <p className="text-xs text-muted-foreground">
-                When enabled, applicants are automatically accepted or rejected based on eligibility rules at submission time. When disabled, all applicants go to manual review.
+                When enabled, applicants are automatically accepted or rejected based on eligibility rules at submission time.
               </p>
             </div>
             <Switch
@@ -168,10 +238,9 @@ export function CourseEligibilitySettings({ courseId }: Props) {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Define rules that applicants must meet before enrollment. Rules are checked during CSV import and webhook submissions.
+            Define rules that applicants must meet before enrollment.
           </p>
 
-          {/* Existing rules */}
           {isLoading ? (
             <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin" /></div>
           ) : rules.length === 0 ? (
@@ -242,51 +311,83 @@ export function CourseEligibilitySettings({ courseId }: Props) {
         </CardContent>
       </Card>
 
-      {/* Webhook Config */}
-      <Card>
+      {/* Google Form Sync — Simple Wizard */}
+      <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-background">
         <CardHeader>
-          <CardTitle className="text-base">External Form Webhook</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2">
+            📋 Connect Google Form
+            <Badge variant="secondary" className="text-[10px]">3 clicks</Badge>
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-5">
           <p className="text-sm text-muted-foreground">
-            Use this endpoint to receive applicants from Google Forms, Zapier, or any external source.
+            Sync any Google Form with this course. All new responses will automatically appear in the <strong>Applicants</strong> tab. No coding needed.
           </p>
-          <div className="space-y-2">
-            <Label className="text-xs">Webhook URL</Label>
-            <div className="flex gap-2">
-              <code className="flex-1 bg-muted px-3 py-2 rounded text-xs font-mono truncate">{webhookUrl}</code>
-              <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(webhookUrl); toast.success('Copied!'); }}>
-                <Copy className="h-3.5 w-3.5" />
+
+          {/* Step 1 */}
+          <div className="flex gap-3 items-start">
+            <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">1</div>
+            <div className="flex-1 space-y-2">
+              <p className="text-sm font-medium">Copy the auto-sync script</p>
+              <p className="text-xs text-muted-foreground">
+                This script is pre-configured for <strong>{courseData?.name || 'this course'}</strong>. It auto-detects fields like Name, Email, Phone from any Google Form — no editing needed.
+              </p>
+              <Button
+                onClick={handleCopyScript}
+                className="w-full sm:w-auto"
+                variant={scriptCopied ? "outline" : "default"}
+              >
+                {scriptCopied ? (
+                  <><CheckCircle2 className="h-4 w-4 mr-2 text-emerald-500" /> Copied! Now go to Step 2</>
+                ) : (
+                  <><Copy className="h-4 w-4 mr-2" /> Copy Script to Clipboard</>
+                )}
               </Button>
             </div>
           </div>
-          <div className="space-y-2">
-            <Label className="text-xs">Webhook Secret</Label>
-            <div className="flex gap-2">
-              {courseData?.webhook_secret ? (
-                <code className="flex-1 bg-muted px-3 py-2 rounded text-xs font-mono truncate">{courseData.webhook_secret}</code>
-              ) : (
-                <span className="flex-1 text-xs text-muted-foreground italic py-2">Not configured</span>
+
+          {/* Step 2 */}
+          <div className="flex gap-3 items-start">
+            <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">2</div>
+            <div className="flex-1 space-y-2">
+              <p className="text-sm font-medium">Paste into Google Form</p>
+              <div className="bg-muted rounded-lg p-3 text-xs space-y-1.5">
+                <p>Open your Google Form → click <strong>⋮ (three dots)</strong> menu → <strong>Script editor</strong></p>
+                <p>Delete any existing code → <strong>Paste</strong> the copied script → <strong>Save</strong> (Ctrl+S)</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Step 3 */}
+          <div className="flex gap-3 items-start">
+            <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">3</div>
+            <div className="flex-1 space-y-2">
+              <p className="text-sm font-medium">Activate the trigger</p>
+              <div className="bg-muted rounded-lg p-3 text-xs space-y-1.5">
+                <p>In the Script editor → click <strong>▶ Run</strong> → select <strong>createTrigger</strong> from dropdown → click <strong>▶ Run</strong></p>
+                <p>Google will ask for permission → click <strong>"Allow"</strong></p>
+                <p className="text-emerald-600 font-medium">✅ Done! Every new form response will appear in Applicants automatically.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Secret management — collapsed/minimal */}
+          <div className="border-t pt-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Security key:</span>
+                {secret ? (
+                  <Badge variant="outline" className="text-[10px] font-mono">{secret.slice(0, 8)}…</Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-[10px]">Auto-generated on copy</Badge>
+                )}
+              </div>
+              {secret && (
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => generateWebhookSecret.mutate()}>
+                  <RefreshCw className="h-3 w-3 mr-1" /> Regenerate
+                </Button>
               )}
-              <Button size="sm" variant="outline" onClick={() => generateWebhookSecret.mutate()}>
-                <RefreshCw className="h-3.5 w-3.5 mr-1" /> {courseData?.webhook_secret ? 'Regenerate' : 'Generate'}
-              </Button>
             </div>
-          </div>
-          <div className="bg-muted/50 rounded-lg p-3 text-xs space-y-1">
-            <p className="font-medium">Sample POST body:</p>
-            <pre className="text-[10px] whitespace-pre-wrap">
-{JSON.stringify({
-  full_name: "Amina Hassan",
-  email: "amina@gmail.com",
-  phone: "+923001112233",
-  gender: "Female",
-  city: "Karachi",
-  source: "google_form",
-  course_id: courseId,
-  webhook_secret: courseData?.webhook_secret || "<generate-a-secret-first>"
-}, null, 2)}
-            </pre>
           </div>
         </CardContent>
       </Card>
