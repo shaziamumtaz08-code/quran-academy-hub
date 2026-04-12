@@ -1331,6 +1331,13 @@ export type Database = {
             referencedRelation: "course_classes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "course_class_staff_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       course_class_students: {
@@ -1361,6 +1368,13 @@ export type Database = {
             columns: ["class_id"]
             isOneToOne: false
             referencedRelation: "course_classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_class_students_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
