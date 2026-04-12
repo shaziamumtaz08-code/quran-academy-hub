@@ -234,13 +234,14 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
     setBatchLoading(true);
     const ids = Array.from(selectedIds);
     
-    // Filter out applicants without emails
+    // Filter out applicants without valid emails
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const withEmail: string[] = [];
     const withoutEmail: string[] = [];
     for (const id of ids) {
       const sub = submissions?.find((s: any) => s.id === id);
       const email = (sub?.data?.email || '').trim();
-      if (email) {
+      if (email && emailRegex.test(email)) {
         withEmail.push(id);
       } else {
         withoutEmail.push(id);
