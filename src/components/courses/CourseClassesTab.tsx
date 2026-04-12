@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import {
   Plus, Trash2, Users, Clock, MapPin, DollarSign, Loader2, Video, UserPlus,
-  Calendar, ArrowLeft, Settings, GraduationCap, Shield, ChevronRight
+  Calendar, ArrowLeft, Settings, GraduationCap, Shield, ChevronRight, Eye
 } from 'lucide-react';
 
 interface CourseClassesTabProps {
