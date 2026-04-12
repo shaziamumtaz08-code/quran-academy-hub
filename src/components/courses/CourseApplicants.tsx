@@ -65,6 +65,8 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
   const [manualName, setManualName] = useState('');
   const [manualEmail, setManualEmail] = useState('');
   const [manualEnrolling, setManualEnrolling] = useState(false);
+  const [editEmailId, setEditEmailId] = useState<string | null>(null);
+  const [editEmailValue, setEditEmailValue] = useState('');
   const [relationshipApplicant, setRelationshipApplicant] = useState<{
     email: string; phone?: string; data?: Record<string, any>;
   } | null>(null);
