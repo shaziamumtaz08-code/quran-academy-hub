@@ -19,7 +19,8 @@ import { cn } from '@/lib/utils';
 import {
   Search, Eye, Clock, CheckCircle2, XCircle, UserPlus, Loader2,
   Users, FileSpreadsheet, X, MoreVertical, Download, Copy,
-  ExternalLink, ArrowUpDown, Trash2
+  ExternalLink, ArrowUpDown, Trash2, ChevronRight, ClipboardList,
+  UserCheck, LayoutList
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CourseApplicantImport } from './CourseApplicantImport';
