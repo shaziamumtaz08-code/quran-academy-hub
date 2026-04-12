@@ -284,7 +284,7 @@ export function CourseEligibilitySettings({ courseId }: Props) {
   city: "Karachi",
   source: "google_form",
   course_id: courseId,
-  webhook_secret: "your-secret-here"
+  webhook_secret: courseData?.webhook_secret || "<generate-a-secret-first>"
 }, null, 2)}
             </pre>
           </div>
