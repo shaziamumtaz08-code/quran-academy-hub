@@ -27,6 +27,7 @@ interface Props {
 
 const STAFF_ROLE_COLORS: Record<string, string> = {
   teacher: 'bg-blue-100 text-blue-700',
+  moderator: 'bg-teal-100 text-teal-700',
   assistant: 'bg-violet-100 text-violet-700',
   examiner: 'bg-amber-100 text-amber-700',
   observer: 'bg-slate-100 text-slate-700',
@@ -490,6 +491,7 @@ export function CourseRoster({ courseId }: Props) {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="teacher">Teacher</SelectItem>
+                <SelectItem value="moderator">Moderator</SelectItem>
                 <SelectItem value="assistant">Assistant</SelectItem>
                 <SelectItem value="examiner">Examiner</SelectItem>
                 <SelectItem value="observer">Observer</SelectItem>

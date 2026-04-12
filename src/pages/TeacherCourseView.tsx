@@ -127,6 +127,10 @@ export default function TeacherCourseView() {
 
   const totalStudents = myClasses.reduce((sum, c: any) => sum + ((c.class?.students as any[])?.length || 0), 0);
 
+  // Determine if user is moderator-only (no teacher assignment in this course)
+  const isModeratorOnly = myClasses.length > 0 && myClasses.every((mc: any) => mc.staff_role === 'moderator');
+  const staffRoles = [...new Set(myClasses.map((mc: any) => mc.staff_role as string))];
+
   // ─── Save attendance ───
   const handleSaveAttendance = async (classId: string) => {
     const entries = Object.entries(attendanceState);
@@ -165,15 +169,25 @@ export default function TeacherCourseView() {
   };
 
   const quickActions = [
-    {
-      icon: Sparkles,
-      label: 'Teaching OS',
-      sub: syllabus ? 'Open planner' : 'Create syllabus',
-      color: 'text-amber-600',
-      onClick: () => syllabus
-        ? navigate(`/teaching-os/planner?syllabus_id=${syllabus.id}&course_id=${courseId}`)
-        : navigate(`/teaching-os?course_id=${courseId}`),
-    },
+    // Teaching OS: teachers can create, moderators can only view
+    ...(isModeratorOnly
+      ? (syllabus ? [{
+          icon: Sparkles,
+          label: 'View Syllabus',
+          sub: 'Read-only',
+          color: 'text-amber-600',
+          onClick: () => navigate(`/teaching-os/planner?syllabus_id=${syllabus.id}&course_id=${courseId}`),
+        }] : [])
+      : [{
+          icon: Sparkles,
+          label: 'Teaching OS',
+          sub: syllabus ? 'Open planner' : 'Create syllabus',
+          color: 'text-amber-600',
+          onClick: () => syllabus
+            ? navigate(`/teaching-os/planner?syllabus_id=${syllabus.id}&course_id=${courseId}`)
+            : navigate(`/teaching-os?course_id=${courseId}`),
+        }]
+    ),
     {
       icon: ClipboardCheck,
       label: 'Attendance',
@@ -181,13 +195,19 @@ export default function TeacherCourseView() {
       color: 'text-emerald-600',
       onClick: () => setActiveTab('attendance'),
     },
-    {
+    ...(!isModeratorOnly ? [{
       icon: GraduationCap,
       label: 'Exams',
       sub: 'Create & grade',
       color: 'text-violet-600',
       onClick: () => navigate(`/teaching-os/assessment?course_id=${courseId}`),
-    },
+    }] : [{
+      icon: GraduationCap,
+      label: 'Exams',
+      sub: 'View results',
+      color: 'text-violet-600',
+      onClick: () => navigate(`/teaching-os/assessment?course_id=${courseId}`),
+    }]),
     {
       icon: FileText,
       label: 'Assignments',
@@ -204,7 +224,14 @@ export default function TeacherCourseView() {
         <Button variant="ghost" size="sm" onClick={() => navigate('/my-dashboard')} className="mb-2 -ml-2">
           <ArrowLeft className="h-4 w-4 mr-1" /> My Dashboard
         </Button>
-        <h1 className="text-xl font-bold text-foreground">{course?.name}</h1>
+        <div className="flex items-center gap-2 flex-wrap">
+          <h1 className="text-xl font-bold text-foreground">{course?.name}</h1>
+          {staffRoles.map(role => (
+            <Badge key={role} variant={role === 'moderator' ? 'secondary' : 'default'} className="text-[10px] capitalize">
+              {role}
+            </Badge>
+          ))}
+        </div>
         <p className="text-sm text-muted-foreground">
           {(course?.divisions as any)?.name}
           {course?.level && ` · ${course.level}`}
