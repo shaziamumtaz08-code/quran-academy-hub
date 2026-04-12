@@ -491,6 +491,7 @@ export function CourseRoster({ courseId }: Props) {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="teacher">Teacher</SelectItem>
+                <SelectItem value="moderator">Moderator</SelectItem>
                 <SelectItem value="assistant">Assistant</SelectItem>
                 <SelectItem value="examiner">Examiner</SelectItem>
                 <SelectItem value="observer">Observer</SelectItem>
