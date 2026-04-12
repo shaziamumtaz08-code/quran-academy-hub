@@ -127,6 +127,10 @@ export default function TeacherCourseView() {
 
   const totalStudents = myClasses.reduce((sum, c: any) => sum + ((c.class?.students as any[])?.length || 0), 0);
 
+  // Determine if user is moderator-only (no teacher assignment in this course)
+  const isModeratorOnly = myClasses.length > 0 && myClasses.every((mc: any) => mc.staff_role === 'moderator');
+  const staffRoles = [...new Set(myClasses.map((mc: any) => mc.staff_role as string))];
+
   // ─── Save attendance ───
   const handleSaveAttendance = async (classId: string) => {
     const entries = Object.entries(attendanceState);
