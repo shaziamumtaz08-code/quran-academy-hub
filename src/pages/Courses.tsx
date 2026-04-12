@@ -106,7 +106,7 @@ export default function Courses() {
     queryFn: async () => {
       let q = supabase
         .from('courses')
-        .select('*, teacher:profiles!courses_teacher_id_fkey(full_name), subject:subjects!courses_subject_id_fkey(name)')
+        .select('*, subject:subjects!courses_subject_id_fkey(name)')
         .order('created_at', { ascending: false });
       if (activeDivision?.id) q = q.eq('division_id', activeDivision.id);
       if (activeBranch?.id) q = q.eq('branch_id', activeBranch.id);
