@@ -184,6 +184,11 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
   }
 
   async function handleEnrollSingle(sub: Submission) {
+    const d = sub.data || {};
+    if (!d.email?.trim()) {
+      toast.error('Email is required before enrollment. Click "Add email" in the table to add one.');
+      return;
+    }
     setEnrollingId(sub.id);
     const result = await enrollSubmission(sub.id);
     if (result.success) {
