@@ -565,8 +565,8 @@ export function CourseRoster({ courseId }: Props) {
           })}
         </div>
       </div>
+      )}
 
-      {/* ─── Add Staff Dialog ─── */}
       <Dialog open={!!addStaffDialog} onOpenChange={() => { setAddStaffDialog(null); setStaffSearch(''); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
