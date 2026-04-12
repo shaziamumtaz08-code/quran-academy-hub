@@ -164,6 +164,9 @@ function getCourseDetailSidebar(pathname: string): { title: string; subtitle: st
 
       { label: 'Settings', href: `${base}?tab=settings`, group: 'SETUP' },
       { label: 'Website', href: `${base}?tab=website` },
+      { label: 'Classes', href: `${base}?tab=classes` },
+      { label: 'Roster', href: `${base}?tab=roster` },
+      { label: 'Finance', href: `${base}?tab=finance` },
 
       { label: 'Syllabus', href: `${base}?tab=builder`, group: 'CONTENT' },
       { label: 'Resources', href: `${base}?tab=resources` },
@@ -171,10 +174,6 @@ function getCourseDetailSidebar(pathname: string): { title: string; subtitle: st
       { label: 'Reg Form', href: `${base}?tab=reg-form`, group: 'OUTREACH' },
       { label: 'Marketing', href: `${base}?tab=marketing` },
       { label: 'Applicants', href: `${base}?tab=applicants` },
-
-      { label: 'Classes', href: `${base}?tab=classes`, group: 'OPERATIONS' },
-      { label: 'Roster', href: `${base}?tab=roster` },
-      { label: 'Finance', href: `${base}?tab=finance` },
 
       { label: 'Attendance', href: `${base}?tab=attendance`, group: 'ACADEMICS' },
       { label: 'Exams & Quizzes', href: `${base}?tab=exams` },
@@ -222,13 +221,12 @@ export function AppSidebar({ className }: AppSidebarProps) {
     SETUP:       { icon: Settings, colorClass: 'text-blue-600', bgClass: 'bg-blue-50' },
     CONTENT:     { icon: BookOpen, colorClass: 'text-violet-600', bgClass: 'bg-violet-50' },
     OUTREACH:    { icon: Megaphone, colorClass: 'text-amber-600', bgClass: 'bg-amber-50' },
-    OPERATIONS:  { icon: Layers, colorClass: 'text-emerald-600', bgClass: 'bg-emerald-50' },
     ACADEMICS:   { icon: GraduationCap, colorClass: 'text-rose-600', bgClass: 'bg-rose-50' },
     COMMUNICATE: { icon: MessageSquare, colorClass: 'text-cyan-600', bgClass: 'bg-cyan-50' },
   };
 
   const GROUP_NUMBERS: Record<string, number> = {
-    SETUP: 1, CONTENT: 2, OUTREACH: 3, OPERATIONS: 4, ACADEMICS: 5, COMMUNICATE: 6,
+    SETUP: 1, CONTENT: 2, OUTREACH: 3, ACADEMICS: 4, COMMUNICATE: 5,
   };
 
   // Collapsible group state (localStorage-backed)
