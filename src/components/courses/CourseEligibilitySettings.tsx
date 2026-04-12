@@ -126,8 +126,8 @@ export function CourseEligibilitySettings({ courseId }: Props) {
     must_pass_exam: { label: 'Must Pass Exam', icon: GraduationCap, color: 'text-emerald-600' },
   };
 
-  const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-  const webhookUrl = `https://${projectId}.supabase.co/functions/v1/applicant-webhook`;
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string || '';
+  const webhookUrl = `${supabaseUrl}/functions/v1/applicant-webhook`;
 
   return (
     <div className="space-y-4">
