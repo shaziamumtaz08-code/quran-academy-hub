@@ -154,6 +154,21 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
     else setSelectedIds(new Set(selectableFiltered.map(s => s.id)));
   };
 
+  // ─── Save email for an applicant ───
+  async function saveEmail(subId: string, newEmail: string) {
+    const sub = submissions.find(s => s.id === subId);
+    if (!sub) return;
+    const updatedData = { ...sub.data, email: newEmail.toLowerCase().trim() };
+    const { error } = await supabase.from('registration_submissions')
+      .update({ data: updatedData as any })
+      .eq('id', subId);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Email saved');
+    setEditEmailId(null);
+    setEditEmailValue('');
+    queryClient.invalidateQueries({ queryKey: ['registration-submissions', courseId] });
+  }
+
   // ─── Enrollment via Edge Function ───
   async function enrollSubmission(submissionId: string): Promise<{ success: boolean; matched: boolean; name: string; error?: string }> {
     const { data, error } = await supabase.functions.invoke('enroll-applicant', {
