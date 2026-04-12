@@ -8506,6 +8506,10 @@ export type Database = {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
       }
+      is_course_staff: {
+        Args: { _course_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_enrolled_in_course: {
         Args: { _course_id: string; _student_id: string }
         Returns: boolean
