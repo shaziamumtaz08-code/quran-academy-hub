@@ -83,6 +83,22 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
     },
   });
 
+  const { data: rosteredCount = 0 } = useQuery({
+    queryKey: ['course-rostered-count', courseId],
+    queryFn: async () => {
+      const { data: classes } = await supabase
+        .from('course_classes')
+        .select('id')
+        .eq('course_id', courseId);
+      if (!classes?.length) return 0;
+      const { count } = await supabase
+        .from('course_class_students')
+        .select('id', { count: 'exact', head: true })
+        .in('class_id', classes.map(c => c.id));
+      return count || 0;
+    },
+  });
+
   // Filter + Search + Sort
   const filtered = useMemo(() => {
     let result = submissions.filter(s => {
