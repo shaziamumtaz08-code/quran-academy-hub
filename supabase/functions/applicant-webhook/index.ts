@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
     );
 
     const body = await req.json();
-    const { full_name, email, phone, gender, city, source, course_id, webhook_secret } = body;
+    const { full_name, email, phone, gender, city, source, course_id, webhook_secret, extra } = body;
 
     if (!course_id) {
       return new Response(JSON.stringify({ error: "course_id is required" }), {
