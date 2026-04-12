@@ -669,6 +669,31 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
                   </button>
                 )}
 
+                {/* Missing email warning */}
+                {!d.email?.trim() && sub.status !== 'enrolled' && (
+                  <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                    <p className="text-xs text-amber-700 dark:text-amber-400 font-medium mb-2">⚠ Email required for enrollment</p>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="email"
+                        value={editEmailId === sub.id ? editEmailValue : ''}
+                        onChange={e => { setEditEmailId(sub.id); setEditEmailValue(e.target.value); }}
+                        onFocus={() => setEditEmailId(sub.id)}
+                        className="h-8 text-sm flex-1"
+                        placeholder="Enter student email"
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && editEmailValue.includes('@')) saveEmail(sub.id, editEmailValue);
+                        }}
+                      />
+                      <Button size="sm" variant="outline"
+                        disabled={!editEmailValue.includes('@') || editEmailId !== sub.id}
+                        onClick={() => saveEmail(sub.id, editEmailValue)}>
+                        Save
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 <Separator />
 
                 {/* Action buttons */}
@@ -676,9 +701,9 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
                   {sub.status !== 'enrolled' && (
                     <Button className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white flex-1"
                       onClick={() => handleEnrollSingle(sub)}
-                      disabled={enrollingId === sub.id}>
+                      disabled={enrollingId === sub.id || !d.email?.trim()}>
                       {enrollingId === sub.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                      Enroll
+                      {!d.email?.trim() ? 'Add email first' : 'Enroll'}
                     </Button>
                   )}
                   {sub.status !== 'reviewed' && sub.status !== 'enrolled' && (
