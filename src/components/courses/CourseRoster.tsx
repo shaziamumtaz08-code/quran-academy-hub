@@ -267,8 +267,93 @@ export function CourseRoster({ courseId }: Props) {
     (s.email || '').toLowerCase().includes(staffSearch.toLowerCase())
   );
 
+  const singleClass = classes.length === 1;
+
   return (
     <>
+      {singleClass ? (
+        /* ─── SINGLE CLASS: flat student list ─── */
+        <div className="space-y-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  {classes[0].name}
+                  <Badge variant="secondary" className="text-xs">
+                    {(classes[0].students?.length || 0)}/{classes[0].max_seats || '∞'}
+                  </Badge>
+                </CardTitle>
+                {unassigned.length > 0 && (
+                  <Button size="sm" variant="outline" onClick={handleAutoAssign} disabled={batchLoading} className="gap-1.5">
+                    {batchLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Shuffle className="h-3.5 w-3.5" />}
+                    Auto-assign {unassigned.length}
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-3">
+              {(classes[0].students || []).length > 0 ? (
+                <div className="space-y-1">
+                  {(classes[0].students || []).map((s: any) => (
+                    <div key={s.id} className="flex items-center gap-2 group px-2 py-1.5 rounded-md hover:bg-muted/50">
+                      <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground shrink-0">
+                        {(s.profile?.full_name || '?')[0].toUpperCase()}
+                      </div>
+                      <span className="text-sm flex-1 truncate">{s.profile?.full_name || 'Unknown'}</span>
+                      <span className="text-xs text-muted-foreground hidden sm:inline truncate max-w-32">{s.profile?.email}</span>
+                      <Button
+                        size="icon" variant="ghost"
+                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                        onClick={() => handleRemoveStudent(s.id, s.profile?.full_name || 'Student')}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic px-2 py-3">No students assigned yet</p>
+              )}
+
+              <Separator />
+
+              {/* Staff section */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Staff</p>
+                  <Button size="sm" variant="ghost" className="h-7 text-xs gap-1"
+                    onClick={() => setAddStaffDialog({ classId: classes[0].id, className: classes[0].name })}>
+                    <UserPlus className="h-3 w-3" /> Add
+                  </Button>
+                </div>
+                {(classes[0].staff || []).length > 0 ? (
+                  <div className="space-y-1">
+                    {(classes[0].staff || []).map((st: any) => {
+                      const roleClass = STAFF_ROLE_COLORS[st.staff_role] || STAFF_ROLE_COLORS.observer;
+                      return (
+                        <div key={st.id} className="flex items-center gap-2 group px-2 py-1.5 rounded-md hover:bg-muted/50">
+                          <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary shrink-0">
+                            {(st.profile?.full_name || '?')[0].toUpperCase()}
+                          </div>
+                          <span className="text-sm flex-1 truncate">{st.profile?.full_name}</span>
+                          <Badge className={cn('text-[10px] border-0', roleClass)}>{st.staff_role}</Badge>
+                          <Button size="icon" variant="ghost"
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                            onClick={() => handleRemoveStaff(st.id)}>
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic px-2">No staff assigned</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
       <div className="flex flex-col lg:flex-row gap-4">
         {/* ─── LEFT: Unassigned Students ─── */}
         <Card className="flex-[2] min-w-0">
@@ -480,8 +565,8 @@ export function CourseRoster({ courseId }: Props) {
           })}
         </div>
       </div>
+      )}
 
-      {/* ─── Add Staff Dialog ─── */}
       <Dialog open={!!addStaffDialog} onOpenChange={() => { setAddStaffDialog(null); setStaffSearch(''); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

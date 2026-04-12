@@ -409,11 +409,8 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
                   </p>
                 )}
                 {statusCounts.enrolled > 0 && rosteredCount < statusCounts.enrolled && (
-                  <p className="text-[11px] text-amber-600 mt-2 flex items-center gap-1">
-                    ⚠ {statusCounts.enrolled - rosteredCount} enrolled student{statusCounts.enrolled - rosteredCount !== 1 ? 's' : ''} not yet assigned to a class.
-                    <button className="underline hover:text-amber-800 font-medium" onClick={() => navigate(`/courses/${courseId}?tab=roster`)}>
-                      Go to Roster →
-                    </button>
+                  <p className="text-[11px] text-emerald-600 mt-2 flex items-center gap-1">
+                    ✓ Students are auto-assigned to the default class on enrollment.
                   </p>
                 )}
               </>
@@ -684,13 +681,11 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
                   ))}
                 </div>
 
-                {/* Roster link if enrolled */}
+                {/* Enrolled badge */}
                 {sub.enrollment_id && (
-                  <button
-                    className="text-xs text-primary flex items-center gap-1 hover:underline"
-                    onClick={() => navigate(`/courses/${courseId}?tab=roster`)}>
-                    <ExternalLink className="h-3 w-3" /> View in Roster →
-                  </button>
+                  <span className="text-xs text-emerald-600 flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" /> Enrolled & rostered
+                  </span>
                 )}
 
                 {/* Missing email warning */}
