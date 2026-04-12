@@ -224,7 +224,7 @@ export default function Courses() {
       const { data, error } = await supabase.from('courses').insert({
         name: formName.trim() || 'Untitled Course',
         description: formDescription || null,
-        teacher_id: formTeacherId || profile?.id,
+        teacher_id: profile?.id,
         subject_id: formSubjectId || null,
         start_date: formStartDate || format(new Date(), 'yyyy-MM-dd'),
         end_date: formEndDate || null,
@@ -522,7 +522,7 @@ export default function Courses() {
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-base truncate">{course.name}</h3>
                       <p className="text-sm text-muted-foreground truncate mt-0.5">
-                        {(course as any).teacher?.full_name || 'Unassigned'}
+                        {course.level || 'All Levels'}
                       </p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
@@ -642,21 +642,10 @@ export default function Courses() {
                 </div>
               </div>
 
-              {/* Teacher + Max Students */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Teacher *</Label>
-                  <Select value={formTeacherId} onValueChange={setFormTeacherId}>
-                    <SelectTrigger><SelectValue placeholder="Select teacher" /></SelectTrigger>
-                    <SelectContent>
-                      {teachers.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.full_name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Max Students</Label>
-                  <Input type="number" value={formMaxStudents} onChange={e => setFormMaxStudents(e.target.value)} />
-                </div>
+              {/* Max Students */}
+              <div className="space-y-1.5">
+                <Label>Max Students</Label>
+                <Input type="number" value={formMaxStudents} onChange={e => setFormMaxStudents(e.target.value)} />
               </div>
 
               {/* Start Date + End Date */}
