@@ -28,6 +28,7 @@ interface Props {
 const STAFF_ROLE_COLORS: Record<string, string> = {
   teacher: 'bg-blue-100 text-blue-700',
   moderator: 'bg-teal-100 text-teal-700',
+  supervisor: 'bg-amber-100 text-amber-700',
   assistant: 'bg-violet-100 text-violet-700',
   examiner: 'bg-amber-100 text-amber-700',
   observer: 'bg-slate-100 text-slate-700',
