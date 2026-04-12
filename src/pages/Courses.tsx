@@ -245,7 +245,7 @@ export default function Courses() {
   });
 
   const resetForm = () => {
-    setFormName(''); setFormDescription(''); setFormTeacherId('');
+    setFormName(''); setFormDescription('');
     setFormSubjectId(''); setFormStartDate(''); setFormEndDate('');
     setFormLevel('All Levels'); setFormMaxStudents('30'); setFormTags([]);
     setFormWebsiteEnabled(false);
