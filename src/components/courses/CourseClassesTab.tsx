@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import {
   Plus, Trash2, Users, Clock, MapPin, DollarSign, Loader2, Video, UserPlus,
-  Calendar, ArrowLeft, Settings, GraduationCap, Shield, ChevronRight
+  Calendar, ArrowLeft, Settings, GraduationCap, Shield, ChevronRight, Eye
 } from 'lucide-react';
 
 interface CourseClassesTabProps {
@@ -505,6 +505,7 @@ function ClassDetail({ cls, courseId, onBack, onDelete }: { cls: any; courseId: 
 
   const teachers = staff.filter((s: any) => s.staff_role === 'teacher');
   const moderators = staff.filter((s: any) => s.staff_role === 'moderator');
+  const supervisors = staff.filter((s: any) => s.staff_role === 'supervisor');
 
   return (
     <div className="space-y-5">
@@ -715,7 +716,30 @@ function ClassDetail({ cls, courseId, onBack, onDelete }: { cls: any; courseId: 
             </div>
           )}
 
-          {staff.length === 0 && <p className="text-xs text-muted-foreground">No staff assigned</p>}
+          {supervisors.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Supervisors ({supervisors.length})</p>
+              {supervisors.map((s: any) => (
+                <div key={s.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/30 border border-border">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center">
+                      <Eye className="h-4 w-4 text-amber-700" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{(s as any).profile?.full_name || 'Unknown'}</p>
+                      <Badge className="text-[10px] bg-amber-100 text-amber-700 border-0 gap-0.5 mt-0.5">
+                        <Eye className="h-2.5 w-2.5" /> Supervisor
+                      </Badge>
+                    </div>
+                  </div>
+                  <button onClick={() => removeStaff.mutate(s.id)} className="p-1 text-muted-foreground hover:text-destructive">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
         </CardContent>
       </Card>
 
@@ -832,6 +856,7 @@ function AddStaffDialog({ open, onOpenChange, classId, staffList, existingStaffI
               <SelectContent>
                 <SelectItem value="teacher">Teacher</SelectItem>
                 <SelectItem value="moderator">Moderator</SelectItem>
+                <SelectItem value="supervisor">Supervisor</SelectItem>
               </SelectContent>
             </Select>
           </div>
