@@ -81,7 +81,7 @@ export default function Courses() {
   // Form state
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
-  const [formTeacherId, setFormTeacherId] = useState('');
+  
   const [formSubjectId, setFormSubjectId] = useState('');
   const [formStartDate, setFormStartDate] = useState('');
   const [formEndDate, setFormEndDate] = useState('');
