@@ -1134,15 +1134,7 @@ export default function CourseBuilder() {
                     <Input type="date" value={settingsEndDate} onChange={e => setSettingsEndDate(e.target.value)} />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Max Students</Label>
-                  <Input type="number" value={settingsMaxStudents} onChange={e => setSettingsMaxStudents(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Teacher</Label>
-                  <Input value={(course as any).teacher?.full_name || '—'} disabled />
-                  <p className="text-xs text-muted-foreground">Teacher can only be changed from the Courses list</p>
-                </div>
+                <p className="text-xs text-muted-foreground">Student capacity and teacher assignment are managed at the class/shift level under <strong>Classes</strong>.</p>
                 <div className="space-y-2">
                   <Label>Subject</Label>
                   <Input value={(course as any).subject?.name || '—'} disabled />
