@@ -79,8 +79,8 @@ export function CourseRoster({ courseId }: Props) {
       const { data } = await supabase.from('course_classes')
         .select(`
           id, name, schedule_days, schedule_time, max_seats,
-          students:course_class_students(id, student_id, status, profiles:profiles!inner(id, full_name, email)),
-          staff:course_class_staff(id, user_id, staff_role, profiles:profiles!inner(id, full_name, email))
+          students:course_class_students(id, student_id, status, profile:student_id(id, full_name, email)),
+          staff:course_class_staff(id, user_id, staff_role, profile:user_id(id, full_name, email))
         `)
         .eq('course_id', courseId)
         .order('created_at');
@@ -412,15 +412,15 @@ export function CourseRoster({ courseId }: Props) {
                       {students.map((s: any) => (
                         <div key={s.id} className="flex items-center gap-2 group px-2 py-1.5 rounded-md hover:bg-muted/50">
                           <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground shrink-0">
-                            {(s.profiles?.full_name || '?')[0].toUpperCase()}
+                            {(s.profile?.full_name || '?')[0].toUpperCase()}
                           </div>
-                          <span className="text-sm flex-1 truncate">{s.profiles?.full_name || 'Unknown'}</span>
-                          <span className="text-xs text-muted-foreground hidden sm:inline truncate max-w-32">{s.profiles?.email}</span>
+                          <span className="text-sm flex-1 truncate">{s.profile?.full_name || 'Unknown'}</span>
+                          <span className="text-xs text-muted-foreground hidden sm:inline truncate max-w-32">{s.profile?.email}</span>
                           <Button
                             size="icon"
                             variant="ghost"
                             className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                            onClick={() => handleRemoveStudent(s.id, s.profiles?.full_name || 'Student')}
+                            onClick={() => handleRemoveStudent(s.id, s.profile?.full_name || 'Student')}
                           >
                             <X className="h-3 w-3" />
                           </Button>
@@ -453,9 +453,9 @@ export function CourseRoster({ courseId }: Props) {
                           return (
                             <div key={st.id} className="flex items-center gap-2 group px-2 py-1.5 rounded-md hover:bg-muted/50">
                               <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary shrink-0">
-                                {(st.profiles?.full_name || '?')[0].toUpperCase()}
+                                {(st.profile?.full_name || '?')[0].toUpperCase()}
                               </div>
-                              <span className="text-sm flex-1 truncate">{st.profiles?.full_name}</span>
+                              <span className="text-sm flex-1 truncate">{st.profile?.full_name}</span>
                               <Badge className={cn('text-[10px] border-0', roleClass)}>{st.staff_role}</Badge>
                               <Button
                                 size="icon"
