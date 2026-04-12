@@ -475,7 +475,41 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
                         </button>
                       </TableCell>
                       <TableCell className="text-sm hidden lg:table-cell">{d.fathers_name || d.father_name || '—'}</TableCell>
-                      <TableCell className="text-sm">{d.email || '—'}</TableCell>
+                      <TableCell className="text-sm" onClick={e => e.stopPropagation()}>
+                        {editEmailId === sub.id ? (
+                          <div className="flex items-center gap-1">
+                            <Input
+                              type="email"
+                              value={editEmailValue}
+                              onChange={e => setEditEmailValue(e.target.value)}
+                              className="h-7 text-xs w-[180px]"
+                              placeholder="email@example.com"
+                              autoFocus
+                              onKeyDown={e => {
+                                if (e.key === 'Enter' && editEmailValue.includes('@')) saveEmail(sub.id, editEmailValue);
+                                if (e.key === 'Escape') { setEditEmailId(null); setEditEmailValue(''); }
+                              }}
+                            />
+                            <Button size="icon" variant="ghost" className="h-6 w-6"
+                              disabled={!editEmailValue.includes('@')}
+                              onClick={() => saveEmail(sub.id, editEmailValue)}>
+                              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-6 w-6"
+                              onClick={() => { setEditEmailId(null); setEditEmailValue(''); }}>
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        ) : d.email ? (
+                          <span>{d.email}</span>
+                        ) : (
+                          <button
+                            className="text-xs text-amber-600 hover:text-amber-800 flex items-center gap-1 font-medium"
+                            onClick={() => { setEditEmailId(sub.id); setEditEmailValue(''); }}>
+                            <UserPlus className="h-3 w-3" /> Add email
+                          </button>
+                        )}
+                      </TableCell>
                       <TableCell className="text-sm hidden md:table-cell">{d.phone || '—'}</TableCell>
                       <TableCell className="text-xs hidden lg:table-cell">{d.gender || '—'}</TableCell>
                       <TableCell className="text-xs hidden lg:table-cell">{d.city || '—'}</TableCell>
