@@ -328,6 +328,42 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
         </div>
       </div>
 
+      {/* ──── Visual Pipeline Tracker ──── */}
+      <Card className="bg-muted/30 border-dashed">
+        <CardContent className="py-4 px-3 sm:px-6">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">Enrollment Pipeline</p>
+          <div className="flex items-center justify-between gap-1 sm:gap-2 overflow-x-auto">
+            {[
+              { label: 'Applied', count: statusCounts.all, icon: ClipboardList, color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30' },
+              { label: 'Reviewed', count: statusCounts.reviewed + statusCounts.enrolled, icon: Eye, color: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30' },
+              { label: 'Enrolled', count: statusCounts.enrolled, icon: UserCheck, color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30' },
+              { label: 'Rostered', count: rosteredCount, icon: LayoutList, color: 'text-violet-600 bg-violet-100 dark:bg-violet-900/30' },
+            ].map((step, i, arr) => (
+              <React.Fragment key={step.label}>
+                <div className="flex flex-col items-center gap-1.5 min-w-[70px]">
+                  <div className={cn("h-10 w-10 rounded-full flex items-center justify-center", step.color)}>
+                    <step.icon className="h-5 w-5" />
+                  </div>
+                  <span className="text-lg font-bold leading-none">{step.count}</span>
+                  <span className="text-[10px] text-muted-foreground font-medium">{step.label}</span>
+                </div>
+                {i < arr.length - 1 && (
+                  <ChevronRight className="h-5 w-5 text-muted-foreground/40 shrink-0 mt-[-18px]" />
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+          {statusCounts.enrolled > 0 && rosteredCount < statusCounts.enrolled && (
+            <p className="text-[11px] text-amber-600 mt-3 flex items-center gap-1">
+              ⚠ {statusCounts.enrolled - rosteredCount} enrolled student{statusCounts.enrolled - rosteredCount !== 1 ? 's' : ''} not yet assigned to a class.
+              <button className="underline hover:text-amber-800 font-medium" onClick={() => navigate(`/courses/${courseId}?tab=roster`)}>
+                Go to Roster →
+              </button>
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Stat Cards — clickable */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
         {(['all', 'new', 'reviewed', 'enrolled', 'rejected'] as const).map(status => (
