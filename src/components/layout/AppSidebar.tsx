@@ -221,7 +221,6 @@ export function AppSidebar({ className }: AppSidebarProps) {
     SETUP:       { icon: Settings, colorClass: 'text-blue-600', bgClass: 'bg-blue-50' },
     CONTENT:     { icon: BookOpen, colorClass: 'text-violet-600', bgClass: 'bg-violet-50' },
     OUTREACH:    { icon: Megaphone, colorClass: 'text-amber-600', bgClass: 'bg-amber-50' },
-    OPERATIONS:  { icon: Layers, colorClass: 'text-emerald-600', bgClass: 'bg-emerald-50' },
     ACADEMICS:   { icon: GraduationCap, colorClass: 'text-rose-600', bgClass: 'bg-rose-50' },
     COMMUNICATE: { icon: MessageSquare, colorClass: 'text-cyan-600', bgClass: 'bg-cyan-50' },
   };
