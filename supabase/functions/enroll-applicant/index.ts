@@ -45,9 +45,10 @@ Deno.serve(async (req) => {
     const country = data.country || null;
     const gender = data.gender || null;
 
-    // Email is mandatory for enrollment
-    if (!email) {
-      return new Response(JSON.stringify({ error: "Email is required before enrollment. Please add an email address for this applicant." }), {
+    // Email is mandatory and must be valid format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email)) {
+      return new Response(JSON.stringify({ error: "A valid email address is required before enrollment." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
