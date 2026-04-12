@@ -323,7 +323,7 @@ export default function Courses() {
       const { data: newCourse, error } = await supabase.from('courses').insert({
         name: dupName.trim() || `Copy of ${src.name}`,
         description: src.description,
-        teacher_id: src.teacher_id,
+        teacher_id: profile?.id || src.teacher_id,
         subject_id: src.subject_id,
         start_date: format(new Date(), 'yyyy-MM-dd'),
         end_date: null,
