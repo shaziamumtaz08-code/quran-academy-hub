@@ -505,6 +505,7 @@ function ClassDetail({ cls, courseId, onBack, onDelete }: { cls: any; courseId: 
 
   const teachers = staff.filter((s: any) => s.staff_role === 'teacher');
   const moderators = staff.filter((s: any) => s.staff_role === 'moderator');
+  const supervisors = staff.filter((s: any) => s.staff_role === 'supervisor');
 
   return (
     <div className="space-y-5">
@@ -832,6 +833,7 @@ function AddStaffDialog({ open, onOpenChange, classId, staffList, existingStaffI
               <SelectContent>
                 <SelectItem value="teacher">Teacher</SelectItem>
                 <SelectItem value="moderator">Moderator</SelectItem>
+                <SelectItem value="supervisor">Supervisor</SelectItem>
               </SelectContent>
             </Select>
           </div>
