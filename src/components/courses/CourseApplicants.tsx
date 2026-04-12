@@ -375,14 +375,26 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
               </React.Fragment>
             ))}
           </div>
-          {statusCounts.enrolled > 0 && rosteredCount < statusCounts.enrolled && (
-            <p className="text-[11px] text-amber-600 mt-3 flex items-center gap-1">
-              ⚠ {statusCounts.enrolled - rosteredCount} enrolled student{statusCounts.enrolled - rosteredCount !== 1 ? 's' : ''} not yet assigned to a class.
-              <button className="underline hover:text-amber-800 font-medium" onClick={() => navigate(`/courses/${courseId}?tab=roster`)}>
-                Go to Roster →
-              </button>
-            </p>
-          )}
+          {(() => {
+            const missingEmailCount = submissions.filter(s => s.status !== 'enrolled' && s.status !== 'rejected' && !s.data?.email?.trim()).length;
+            return (
+              <>
+                {missingEmailCount > 0 && (
+                  <p className="text-[11px] text-destructive mt-3 flex items-center gap-1">
+                    ⚠ {missingEmailCount} applicant{missingEmailCount !== 1 ? 's' : ''} missing email — cannot be enrolled until email is added.
+                  </p>
+                )}
+                {statusCounts.enrolled > 0 && rosteredCount < statusCounts.enrolled && (
+                  <p className="text-[11px] text-amber-600 mt-2 flex items-center gap-1">
+                    ⚠ {statusCounts.enrolled - rosteredCount} enrolled student{statusCounts.enrolled - rosteredCount !== 1 ? 's' : ''} not yet assigned to a class.
+                    <button className="underline hover:text-amber-800 font-medium" onClick={() => navigate(`/courses/${courseId}?tab=roster`)}>
+                      Go to Roster →
+                    </button>
+                  </p>
+                )}
+              </>
+            );
+          })()}
         </CardContent>
       </Card>
 
