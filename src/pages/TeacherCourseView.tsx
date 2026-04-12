@@ -169,15 +169,25 @@ export default function TeacherCourseView() {
   };
 
   const quickActions = [
-    {
-      icon: Sparkles,
-      label: 'Teaching OS',
-      sub: syllabus ? 'Open planner' : 'Create syllabus',
-      color: 'text-amber-600',
-      onClick: () => syllabus
-        ? navigate(`/teaching-os/planner?syllabus_id=${syllabus.id}&course_id=${courseId}`)
-        : navigate(`/teaching-os?course_id=${courseId}`),
-    },
+    // Teaching OS: teachers can create, moderators can only view
+    ...(isModeratorOnly
+      ? (syllabus ? [{
+          icon: Sparkles,
+          label: 'View Syllabus',
+          sub: 'Read-only',
+          color: 'text-amber-600',
+          onClick: () => navigate(`/teaching-os/planner?syllabus_id=${syllabus.id}&course_id=${courseId}`),
+        }] : [])
+      : [{
+          icon: Sparkles,
+          label: 'Teaching OS',
+          sub: syllabus ? 'Open planner' : 'Create syllabus',
+          color: 'text-amber-600',
+          onClick: () => syllabus
+            ? navigate(`/teaching-os/planner?syllabus_id=${syllabus.id}&course_id=${courseId}`)
+            : navigate(`/teaching-os?course_id=${courseId}`),
+        }]
+    ),
     {
       icon: ClipboardCheck,
       label: 'Attendance',
@@ -185,13 +195,19 @@ export default function TeacherCourseView() {
       color: 'text-emerald-600',
       onClick: () => setActiveTab('attendance'),
     },
-    {
+    ...(!isModeratorOnly ? [{
       icon: GraduationCap,
       label: 'Exams',
       sub: 'Create & grade',
       color: 'text-violet-600',
       onClick: () => navigate(`/teaching-os/assessment?course_id=${courseId}`),
-    },
+    }] : [{
+      icon: GraduationCap,
+      label: 'Exams',
+      sub: 'View results',
+      color: 'text-violet-600',
+      onClick: () => navigate(`/teaching-os/assessment?course_id=${courseId}`),
+    }]),
     {
       icon: FileText,
       label: 'Assignments',
