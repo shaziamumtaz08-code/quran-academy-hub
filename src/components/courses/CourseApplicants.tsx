@@ -65,6 +65,8 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
   const [manualName, setManualName] = useState('');
   const [manualEmail, setManualEmail] = useState('');
   const [manualEnrolling, setManualEnrolling] = useState(false);
+  const [editEmailId, setEditEmailId] = useState<string | null>(null);
+  const [editEmailValue, setEditEmailValue] = useState('');
   const [relationshipApplicant, setRelationshipApplicant] = useState<{
     email: string; phone?: string; data?: Record<string, any>;
   } | null>(null);
@@ -152,6 +154,21 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
     else setSelectedIds(new Set(selectableFiltered.map(s => s.id)));
   };
 
+  // ─── Save email for an applicant ───
+  async function saveEmail(subId: string, newEmail: string) {
+    const sub = submissions.find(s => s.id === subId);
+    if (!sub) return;
+    const updatedData = { ...sub.data, email: newEmail.toLowerCase().trim() };
+    const { error } = await supabase.from('registration_submissions')
+      .update({ data: updatedData as any })
+      .eq('id', subId);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Email saved');
+    setEditEmailId(null);
+    setEditEmailValue('');
+    queryClient.invalidateQueries({ queryKey: ['registration-submissions', courseId] });
+  }
+
   // ─── Enrollment via Edge Function ───
   async function enrollSubmission(submissionId: string): Promise<{ success: boolean; matched: boolean; name: string; error?: string }> {
     const { data, error } = await supabase.functions.invoke('enroll-applicant', {
@@ -167,6 +184,11 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
   }
 
   async function handleEnrollSingle(sub: Submission) {
+    const d = sub.data || {};
+    if (!d.email?.trim()) {
+      toast.error('Email is required before enrollment. Click "Add email" in the table to add one.');
+      return;
+    }
     setEnrollingId(sub.id);
     const result = await enrollSubmission(sub.id);
     if (result.success) {
@@ -353,14 +375,26 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
               </React.Fragment>
             ))}
           </div>
-          {statusCounts.enrolled > 0 && rosteredCount < statusCounts.enrolled && (
-            <p className="text-[11px] text-amber-600 mt-3 flex items-center gap-1">
-              ⚠ {statusCounts.enrolled - rosteredCount} enrolled student{statusCounts.enrolled - rosteredCount !== 1 ? 's' : ''} not yet assigned to a class.
-              <button className="underline hover:text-amber-800 font-medium" onClick={() => navigate(`/courses/${courseId}?tab=roster`)}>
-                Go to Roster →
-              </button>
-            </p>
-          )}
+          {(() => {
+            const missingEmailCount = submissions.filter(s => s.status !== 'enrolled' && s.status !== 'rejected' && !s.data?.email?.trim()).length;
+            return (
+              <>
+                {missingEmailCount > 0 && (
+                  <p className="text-[11px] text-destructive mt-3 flex items-center gap-1">
+                    ⚠ {missingEmailCount} applicant{missingEmailCount !== 1 ? 's' : ''} missing email — cannot be enrolled until email is added.
+                  </p>
+                )}
+                {statusCounts.enrolled > 0 && rosteredCount < statusCounts.enrolled && (
+                  <p className="text-[11px] text-amber-600 mt-2 flex items-center gap-1">
+                    ⚠ {statusCounts.enrolled - rosteredCount} enrolled student{statusCounts.enrolled - rosteredCount !== 1 ? 's' : ''} not yet assigned to a class.
+                    <button className="underline hover:text-amber-800 font-medium" onClick={() => navigate(`/courses/${courseId}?tab=roster`)}>
+                      Go to Roster →
+                    </button>
+                  </p>
+                )}
+              </>
+            );
+          })()}
         </CardContent>
       </Card>
 
@@ -458,7 +492,41 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
                         </button>
                       </TableCell>
                       <TableCell className="text-sm hidden lg:table-cell">{d.fathers_name || d.father_name || '—'}</TableCell>
-                      <TableCell className="text-sm">{d.email || '—'}</TableCell>
+                      <TableCell className="text-sm" onClick={e => e.stopPropagation()}>
+                        {editEmailId === sub.id ? (
+                          <div className="flex items-center gap-1">
+                            <Input
+                              type="email"
+                              value={editEmailValue}
+                              onChange={e => setEditEmailValue(e.target.value)}
+                              className="h-7 text-xs w-[180px]"
+                              placeholder="email@example.com"
+                              autoFocus
+                              onKeyDown={e => {
+                                if (e.key === 'Enter' && editEmailValue.includes('@')) saveEmail(sub.id, editEmailValue);
+                                if (e.key === 'Escape') { setEditEmailId(null); setEditEmailValue(''); }
+                              }}
+                            />
+                            <Button size="icon" variant="ghost" className="h-6 w-6"
+                              disabled={!editEmailValue.includes('@')}
+                              onClick={() => saveEmail(sub.id, editEmailValue)}>
+                              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-6 w-6"
+                              onClick={() => { setEditEmailId(null); setEditEmailValue(''); }}>
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        ) : d.email ? (
+                          <span>{d.email}</span>
+                        ) : (
+                          <button
+                            className="text-xs text-amber-600 hover:text-amber-800 flex items-center gap-1 font-medium"
+                            onClick={() => { setEditEmailId(sub.id); setEditEmailValue(''); }}>
+                            <UserPlus className="h-3 w-3" /> Add email
+                          </button>
+                        )}
+                      </TableCell>
                       <TableCell className="text-sm hidden md:table-cell">{d.phone || '—'}</TableCell>
                       <TableCell className="text-xs hidden lg:table-cell">{d.gender || '—'}</TableCell>
                       <TableCell className="text-xs hidden lg:table-cell">{d.city || '—'}</TableCell>
@@ -601,6 +669,31 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
                   </button>
                 )}
 
+                {/* Missing email warning */}
+                {!d.email?.trim() && sub.status !== 'enrolled' && (
+                  <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                    <p className="text-xs text-amber-700 dark:text-amber-400 font-medium mb-2">⚠ Email required for enrollment</p>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="email"
+                        value={editEmailId === sub.id ? editEmailValue : ''}
+                        onChange={e => { setEditEmailId(sub.id); setEditEmailValue(e.target.value); }}
+                        onFocus={() => setEditEmailId(sub.id)}
+                        className="h-8 text-sm flex-1"
+                        placeholder="Enter student email"
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && editEmailValue.includes('@')) saveEmail(sub.id, editEmailValue);
+                        }}
+                      />
+                      <Button size="sm" variant="outline"
+                        disabled={!editEmailValue.includes('@') || editEmailId !== sub.id}
+                        onClick={() => saveEmail(sub.id, editEmailValue)}>
+                        Save
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 <Separator />
 
                 {/* Action buttons */}
@@ -608,9 +701,9 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
                   {sub.status !== 'enrolled' && (
                     <Button className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white flex-1"
                       onClick={() => handleEnrollSingle(sub)}
-                      disabled={enrollingId === sub.id}>
+                      disabled={enrollingId === sub.id || !d.email?.trim()}>
                       {enrollingId === sub.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                      Enroll
+                      {!d.email?.trim() ? 'Add email first' : 'Enroll'}
                     </Button>
                   )}
                   {sub.status !== 'reviewed' && sub.status !== 'enrolled' && (
