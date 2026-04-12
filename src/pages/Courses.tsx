@@ -32,7 +32,7 @@ interface Course {
   id: string;
   name: string;
   description: string | null;
-  teacher_id: string;
+  teacher_id: string | null;
   subject_id: string | null;
   start_date: string;
   end_date: string | null;
@@ -46,7 +46,7 @@ interface Course {
   tags: string[];
   hero_image_url: string | null;
   created_at: string;
-  teacher?: { full_name: string };
+  
   subject?: { name: string } | null;
   enrollment_count?: number;
 }
@@ -411,8 +411,7 @@ export default function Courses() {
   // ─── Filtering ────────────────────────────────────────
   const filtered = useMemo(() => {
     return courses.filter(c => {
-      const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase()) ||
-        (c as any).teacher?.full_name?.toLowerCase().includes(search.toLowerCase());
+      const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase());
       const matchStatus = filterStatus === 'all' || c.status === filterStatus;
       const matchLevel = filterLevel === 'all' || c.level === filterLevel;
       return matchSearch && matchStatus && matchLevel;
