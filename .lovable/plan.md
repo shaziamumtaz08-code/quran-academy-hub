@@ -1,80 +1,53 @@
 
 
-# Plan: AI Content Quality + Visual Rendering Overhaul
+# Fix: "Add Staff" Not Working in Classes Tab
 
-## Overview
-Upgrade the Teaching OS content kit in two areas: (1) richer AI prompts in the edge function for higher-quality slides, flashcards, and worksheets, and (2) layout-aware rendering in the frontend with new slide layout types, enhanced flashcard display, and improved infographic visuals.
+## Root Cause
 
-## Part 1: Edge Function — Better Prompts
+The `course_class_staff` and `course_class_students` tables were created **without foreign key references** to the `profiles` table. PostgREST requires FK relationships to perform embedded joins like `profile:user_id(id, full_name, email)`.
 
-**File: `supabase/functions/generate-content-kit/index.ts`**
+Every time the Classes tab loads staff or students, the query returns a **400 error**:
+> "Could not find a relationship between 'course_class_staff' and 'user_id' in the schema cache"
 
-- **Model**: Keep `google/gemini-3-flash-preview` (it's a supported gateway model). Compensate with better prompts and increased `maxTokens`.
-- **Slides prompt** (lines 31-57): Replace with the detailed prompt from the spec — adds `vocabularyItems`, `grammarTable`, `activityInstruction` fields, new layout types (`dialogue-practice`, `grammar-table`, `visual-prompt`), stricter quality standards, and `maxTokens: 6000`.
-- **Flashcards prompt** (lines 85-108): Add `rootLetters`, `category`, `usageNote` fields, request 15-20 cards, stricter diacritics requirements, `maxTokens: 5000`.
-- **Worksheet prompt** (lines 111-138): Expand exercise types to 8 varieties (sentence construction, reading comprehension, dialogue completion, error correction), request 4-6 items per exercise, `maxTokens: 5000`.
-- **Quiz/infographic/mindmap**: No changes (already adequate).
+Staff inserts (POST) succeed (status 201), but the subsequent GET to refresh the list fails, so the UI never shows the added staff.
 
-After editing, deploy the edge function.
+## Fix
 
-## Part 2: Frontend Types Update
+### Step 1: Database Migration — Add Foreign Keys
 
-**File: `src/pages/TeachingOSContentKit.tsx`**
+Add FK constraints from:
+- `course_class_staff.user_id` → `profiles.id`
+- `course_class_students.student_id` → `profiles.id`
 
-- Extend `SlideData` interface (~line 49) to add optional fields: `grammarTable`, `vocabularyItems`.
-- Extend `Flashcard` interface (~line 73) to add optional fields: `rootLetters`, `category`, `usageNote`.
-- Update the slide DB-to-state mapping (~line 456) to include new fields from the `bullets` JSON (where the DB stores extra data).
+```sql
+ALTER TABLE public.course_class_staff
+  ADD CONSTRAINT course_class_staff_user_id_fkey
+  FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
 
-## Part 3: Slide Layout-Aware Rendering
+ALTER TABLE public.course_class_students
+  ADD CONSTRAINT course_class_students_student_id_fkey
+  FOREIGN KEY (student_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+```
 
-**File: `src/pages/TeachingOSContentKit.tsx`** — `SlideContent` function (~line 1623)
+### Step 2: Fix Query Syntax in CourseRoster.tsx
 
-Replace the single-layout rendering with a switch on `slide.layoutType`:
+The Roster component uses `profiles:profiles!inner(...)` syntax which also won't work without a FK. After the migration, update to use the correct FK hint:
+- `staff:course_class_staff(id, user_id, staff_role, profile:user_id(id, full_name, email))`
+- `students:course_class_students(id, student_id, status, profile:student_id(id, full_name, email))`
 
-- **`arabic-vocab` / `two-column-vocab`**: 2-column vocabulary grid showing arabic, transliteration, english, and example for each item using `slide.vocabularyItems`.
-- **`dialogue-practice`**: Alternating speech-bubble style lines from `slide.bullets` with activity instruction callout.
-- **`grammar-table`**: Renders `slide.grammarTable` as a styled HTML table.
-- **`title-bullets` (default)**: Current layout, kept as-is but with minor polish.
+### Step 3: Fix TeacherPayouts.tsx Query
 
-All layouts keep the existing phase-based theming (SLIDE_THEMES + template overrides).
+Same FK-based join fix for the payout queries that reference `profile:user_id(...)`.
 
-## Part 4: Flashcard Visual Enhancement
+### Files Changed
+- **Migration SQL** (new) — add 2 foreign keys
+- `src/components/courses/CourseClassesTab.tsx` — queries already use correct syntax, will work once FK exists
+- `src/components/courses/CourseRoster.tsx` — fix join syntax to use FK hint
+- `src/pages/TeacherPayouts.tsx` — fix join syntax to use FK hint
 
-**File: `src/pages/TeachingOSContentKit.tsx`** — `FlashcardItem` function (~line 1798)
-
-- Add `rootLetters` display (small badge below Arabic text on front).
-- Add `category` badge on the card.
-- Add `usageNote` on the back side below the example sentence.
-- Keep existing flip animation and script detection logic.
-
-## Part 5: Infographic Visual Polish
-
-**File: `src/pages/TeachingOSContentKit.tsx`** — infographic rendering (~line 948)
-
-- Upgrade the header area with larger typography and template-aware accent colors.
-- Add a subtle decorative border/pattern to the center fact.
-- Keep the existing grid layout but improve card styling with hover effects.
-
-## Part 6: Font Loading
-
-**File: `index.html`**
-
-- The Arabic fonts (Noto Naskh Arabic, Amiri, Noto Nastaliq Urdu) are already loaded.
-- Add Poppins and Lora to the existing Google Fonts link for template heading variety.
-
-## Files Changed
-
-| File | Change |
-|---|---|
-| `supabase/functions/generate-content-kit/index.ts` | Upgraded prompts for slides, flashcards, worksheets; increased maxTokens |
-| `src/pages/TeachingOSContentKit.tsx` | Extended types; layout-aware slide rendering; flashcard & infographic visual upgrades |
-| `index.html` | Add Poppins + Lora fonts |
-
-## What Won't Change
-- Edge function API endpoint, auth, CORS, JSON parsing logic
-- DB table structures (content_kits, slides, flashcards, worksheets)
-- Data flow: generate → parse → save → render
-- Custom prompt / style prompt functionality
-- Template selector, PPTX download, study mode
-- Existing visual templates (kept, not replaced — they already have rich phase-specific overrides)
+### What This Fixes
+- Staff list loads after adding a teacher/moderator
+- Student list loads in class detail
+- Roster view shows names instead of errors
+- Teacher payouts page resolves staff profiles
 
