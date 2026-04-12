@@ -366,6 +366,20 @@ function ClassDetail({ cls, courseId, onBack, onDelete }: { cls: any; courseId: 
   const qc = useQueryClient();
   const [staffOpen, setStaffOpen] = useState(false);
   const [studentOpen, setStudentOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+
+  // Editable fields
+  const [editName, setEditName] = useState(cls.name);
+  const [editDays, setEditDays] = useState<string[]>(cls.schedule_days || []);
+  const [editTime, setEditTime] = useState(cls.schedule_time || '');
+  const [editDuration, setEditDuration] = useState(cls.session_duration || 60);
+  const [editMaxSeats, setEditMaxSeats] = useState(cls.max_seats || 30);
+  const [editClassType, setEditClassType] = useState(cls.class_type || 'regular');
+  const [editMeetingLink, setEditMeetingLink] = useState(cls.meeting_link || '');
+  const [editFeeAmount, setEditFeeAmount] = useState(cls.fee_amount || 0);
+  const [editFeeCurrency, setEditFeeCurrency] = useState(cls.fee_currency || 'PKR');
+  const [editIsVolunteer, setEditIsVolunteer] = useState(cls.is_volunteer || false);
+  const [editTimezone, setEditTimezone] = useState(cls.timezone || '');
 
   // Staff
   const { data: staff = [] } = useQuery({
@@ -418,6 +432,31 @@ function ClassDetail({ cls, courseId, onBack, onDelete }: { cls: any; courseId: 
     },
   });
 
+  const saveEdit = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from('course_classes').update({
+        name: editName,
+        schedule_days: editDays,
+        schedule_time: editTime || null,
+        session_duration: editDuration,
+        max_seats: editMaxSeats,
+        class_type: editClassType,
+        meeting_link: editMeetingLink || null,
+        fee_amount: editFeeAmount,
+        fee_currency: editFeeCurrency,
+        is_volunteer: editIsVolunteer,
+        timezone: editTimezone || null,
+      }).eq('id', cls.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['course-classes', courseId] });
+      setEditing(false);
+      toast({ title: 'Class updated' });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
   const deleteClass = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from('course_classes').delete().eq('id', cls.id);
@@ -448,19 +487,21 @@ function ClassDetail({ cls, courseId, onBack, onDelete }: { cls: any; courseId: 
 
   // Generate upcoming sessions from schedule
   const upcomingSessions = React.useMemo(() => {
-    if (!cls.schedule_days?.length || !cls.schedule_time) return [];
+    const days = editing ? editDays : (cls.schedule_days || []);
+    const time = editing ? editTime : cls.schedule_time;
+    if (!days?.length || !time) return [];
     const sessions: { date: Date; day: string }[] = [];
     const today = new Date();
     for (let i = 0; i < 28; i++) {
       const d = new Date(today);
       d.setDate(today.getDate() + i);
       const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
-      if ((cls.schedule_days as string[]).includes(dayName)) {
+      if ((days as string[]).includes(dayName)) {
         sessions.push({ date: d, day: dayName });
       }
     }
     return sessions.slice(0, 12);
-  }, [cls.schedule_days, cls.schedule_time]);
+  }, [cls.schedule_days, cls.schedule_time, editing, editDays, editTime]);
 
   const teachers = staff.filter((s: any) => s.staff_role === 'teacher');
   const moderators = staff.filter((s: any) => s.staff_role === 'moderator');
@@ -472,30 +513,138 @@ function ClassDetail({ cls, courseId, onBack, onDelete }: { cls: any; courseId: 
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
         <div className="flex-1">
-          <h3 className="font-semibold text-sm">{cls.name}</h3>
+          {editing ? (
+            <Input value={editName} onChange={e => setEditName(e.target.value)} className="h-8 text-sm font-semibold" />
+          ) : (
+            <h3 className="font-semibold text-sm">{cls.name}</h3>
+          )}
           <div className="flex items-center gap-2 mt-0.5">
             <Badge variant="outline" className="text-[10px]">{cls.class_type}</Badge>
             {cls.is_volunteer && <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-200">Volunteer</Badge>}
           </div>
         </div>
-        <Button variant="destructive" size="sm" className="gap-1" onClick={onDelete}>
-          <Trash2 className="h-3.5 w-3.5" /> Delete
-        </Button>
+        {editing ? (
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => setEditing(false)}>Cancel</Button>
+            <Button size="sm" onClick={() => saveEdit.mutate()} disabled={saveEdit.isPending}>
+              {saveEdit.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Save'}
+            </Button>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="gap-1" onClick={() => setEditing(true)}>
+              <Settings className="h-3.5 w-3.5" /> Edit
+            </Button>
+            <Button variant="destructive" size="sm" className="gap-1" onClick={onDelete}>
+              <Trash2 className="h-3.5 w-3.5" /> Delete
+            </Button>
+          </div>
+        )}
       </div>
 
-      {/* Fee Section */}
-      <Card>
-        <CardContent className="p-4">
-          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
-            <DollarSign className="h-3.5 w-3.5" /> Fee
-          </h4>
-          {cls.is_volunteer ? (
-            <p className="text-sm text-emerald-600">Volunteer class — no fees or invoices generated</p>
-          ) : (
-            <p className="text-sm font-medium">{cls.fee_currency} {cls.fee_amount} per student</p>
-          )}
-        </CardContent>
-      </Card>
+      {/* Editable Details Section */}
+      {editing && (
+        <Card>
+          <CardContent className="p-4 space-y-4">
+            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Class Details</h4>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Class Type</Label>
+                <Select value={editClassType} onValueChange={setEditClassType}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {CLASS_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Max Seats</Label>
+                <Input type="number" min={1} value={editMaxSeats} onChange={e => setEditMaxSeats(parseInt(e.target.value) || 1)} />
+              </div>
+            </div>
+
+            <Separator />
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Schedule</p>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Days</Label>
+              <div className="flex flex-wrap gap-2">
+                {DAYS.map(day => (
+                  <label key={day} className="flex items-center gap-1.5 text-xs cursor-pointer">
+                    <Checkbox checked={editDays.includes(day)} onCheckedChange={() =>
+                      setEditDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day])
+                    } />
+                    {day.slice(0, 3)}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Time</Label>
+                <Input type="time" value={editTime} onChange={e => setEditTime(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Duration (min)</Label>
+                <Input type="number" min={15} value={editDuration} onChange={e => setEditDuration(parseInt(e.target.value) || 30)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Timezone</Label>
+                <Input value={editTimezone} onChange={e => setEditTimezone(e.target.value)} placeholder="e.g. Asia/Karachi" />
+              </div>
+            </div>
+
+            <Separator />
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Meeting</p>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Meeting Link</Label>
+              <Input value={editMeetingLink} onChange={e => setEditMeetingLink(e.target.value)} placeholder="https://zoom.us/j/..." />
+            </div>
+
+            <Separator />
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Fee</p>
+            <div className="flex items-center gap-3">
+              <Switch checked={editIsVolunteer} onCheckedChange={setEditIsVolunteer} />
+              <Label className="text-xs">Volunteer (no fees)</Label>
+            </div>
+            {!editIsVolunteer && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Fee Amount</Label>
+                  <Input type="number" min={0} value={editFeeAmount} onChange={e => setEditFeeAmount(parseFloat(e.target.value) || 0)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Currency</Label>
+                  <Select value={editFeeCurrency} onValueChange={setEditFeeCurrency}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PKR">PKR</SelectItem>
+                      <SelectItem value="USD">USD</SelectItem>
+                      <SelectItem value="GBP">GBP</SelectItem>
+                      <SelectItem value="EUR">EUR</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Fee Section (read-only when not editing) */}
+      {!editing && (
+        <Card>
+          <CardContent className="p-4">
+            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <DollarSign className="h-3.5 w-3.5" /> Fee
+            </h4>
+            {cls.is_volunteer ? (
+              <p className="text-sm text-emerald-600">Volunteer class — no fees or invoices generated</p>
+            ) : (
+              <p className="text-sm font-medium">{cls.fee_currency} {cls.fee_amount} per student</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Staff Section */}
       <Card>
