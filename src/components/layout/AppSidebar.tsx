@@ -227,7 +227,7 @@ export function AppSidebar({ className }: AppSidebarProps) {
   };
 
   const GROUP_NUMBERS: Record<string, number> = {
-    SETUP: 1, CONTENT: 2, OUTREACH: 3, OPERATIONS: 4, ACADEMICS: 5, COMMUNICATE: 6,
+    SETUP: 1, CONTENT: 2, OUTREACH: 3, ACADEMICS: 4, COMMUNICATE: 5,
   };
 
   // Collapsible group state (localStorage-backed)
