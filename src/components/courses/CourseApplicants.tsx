@@ -233,8 +233,31 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
   async function handleBulkEnroll() {
     setBatchLoading(true);
     const ids = Array.from(selectedIds);
-    let enrolled = 0, errors = 0;
+    
+    // Filter out applicants without emails
+    const withEmail: string[] = [];
+    const withoutEmail: string[] = [];
     for (const id of ids) {
+      const sub = submissions?.find((s: any) => s.id === id);
+      const email = (sub?.data?.email || '').trim();
+      if (email) {
+        withEmail.push(id);
+      } else {
+        withoutEmail.push(id);
+      }
+    }
+
+    if (withoutEmail.length > 0) {
+      toast.error(`${withoutEmail.length} applicant(s) skipped — email is required before enrollment`);
+    }
+
+    if (withEmail.length === 0) {
+      setBatchLoading(false);
+      return;
+    }
+
+    let enrolled = 0, errors = 0;
+    for (const id of withEmail) {
       const result = await enrollSubmission(id);
       if (result.success) enrolled++; else errors++;
     }
