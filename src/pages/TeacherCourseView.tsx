@@ -224,7 +224,14 @@ export default function TeacherCourseView() {
         <Button variant="ghost" size="sm" onClick={() => navigate('/my-dashboard')} className="mb-2 -ml-2">
           <ArrowLeft className="h-4 w-4 mr-1" /> My Dashboard
         </Button>
-        <h1 className="text-xl font-bold text-foreground">{course?.name}</h1>
+        <div className="flex items-center gap-2 flex-wrap">
+          <h1 className="text-xl font-bold text-foreground">{course?.name}</h1>
+          {staffRoles.map(role => (
+            <Badge key={role} variant={role === 'moderator' ? 'secondary' : 'default'} className="text-[10px] capitalize">
+              {role}
+            </Badge>
+          ))}
+        </div>
         <p className="text-sm text-muted-foreground">
           {(course?.divisions as any)?.name}
           {course?.level && ` · ${course.level}`}
