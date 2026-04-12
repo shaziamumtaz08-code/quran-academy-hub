@@ -79,8 +79,8 @@ export function CourseRoster({ courseId }: Props) {
       const { data } = await supabase.from('course_classes')
         .select(`
           id, name, schedule_days, schedule_time, max_seats,
-          students:course_class_students(id, student_id, status, profiles:profiles!inner(id, full_name, email)),
-          staff:course_class_staff(id, user_id, staff_role, profiles:profiles!inner(id, full_name, email))
+          students:course_class_students(id, student_id, status, profile:student_id(id, full_name, email)),
+          staff:course_class_staff(id, user_id, staff_role, profile:user_id(id, full_name, email))
         `)
         .eq('course_id', courseId)
         .order('created_at');
