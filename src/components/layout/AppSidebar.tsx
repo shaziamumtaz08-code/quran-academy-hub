@@ -164,6 +164,9 @@ function getCourseDetailSidebar(pathname: string): { title: string; subtitle: st
 
       { label: 'Settings', href: `${base}?tab=settings`, group: 'SETUP' },
       { label: 'Website', href: `${base}?tab=website` },
+      { label: 'Classes', href: `${base}?tab=classes` },
+      { label: 'Roster', href: `${base}?tab=roster` },
+      { label: 'Finance', href: `${base}?tab=finance` },
 
       { label: 'Syllabus', href: `${base}?tab=builder`, group: 'CONTENT' },
       { label: 'Resources', href: `${base}?tab=resources` },
@@ -171,10 +174,6 @@ function getCourseDetailSidebar(pathname: string): { title: string; subtitle: st
       { label: 'Reg Form', href: `${base}?tab=reg-form`, group: 'OUTREACH' },
       { label: 'Marketing', href: `${base}?tab=marketing` },
       { label: 'Applicants', href: `${base}?tab=applicants` },
-
-      { label: 'Classes', href: `${base}?tab=classes`, group: 'OPERATIONS' },
-      { label: 'Roster', href: `${base}?tab=roster` },
-      { label: 'Finance', href: `${base}?tab=finance` },
 
       { label: 'Attendance', href: `${base}?tab=attendance`, group: 'ACADEMICS' },
       { label: 'Exams & Quizzes', href: `${base}?tab=exams` },
