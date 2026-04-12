@@ -484,7 +484,6 @@ export default function CourseBuilder() {
     mutationFn: async () => {
       const { error } = await supabase.from('courses').update({
         name: settingsName,
-        max_students: parseInt(settingsMaxStudents) || 30,
         start_date: settingsStartDate,
         end_date: settingsEndDate || null,
         auto_enroll_enabled: autoEnrollEnabled,
