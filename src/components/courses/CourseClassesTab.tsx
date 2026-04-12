@@ -110,7 +110,14 @@ export function CourseClassesTab({ courseId }: CourseClassesTabProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-sm">Classes</h3>
+        <div>
+          <h3 className="font-semibold text-sm">Classes</h3>
+          {classes.length === 1 && (
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              1 default class auto-created. Add more for multiple batches.
+            </p>
+          )}
+        </div>
         <Button size="sm" className="gap-1.5" onClick={() => setCreateOpen(true)}>
           <Plus className="h-4 w-4" /> Create Class
         </Button>
