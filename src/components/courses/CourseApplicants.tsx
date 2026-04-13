@@ -20,7 +20,7 @@ import {
   Search, Eye, Clock, CheckCircle2, XCircle, UserPlus, Loader2,
   Users, FileSpreadsheet, X, MoreVertical, Download, Copy,
   ExternalLink, ArrowUpDown, Trash2, ChevronRight, ClipboardList,
-  UserCheck, LayoutList
+  UserCheck, LayoutList, Combine
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CourseApplicantImport } from './CourseApplicantImport';
@@ -61,6 +61,7 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [deleteDialogId, setDeleteDialogId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [deduplicating, setDeduplicating] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [manualName, setManualName] = useState('');
   const [manualEmail, setManualEmail] = useState('');
