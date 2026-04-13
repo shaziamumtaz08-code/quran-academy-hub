@@ -481,7 +481,7 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
                   <TableHead className="text-xs hidden md:table-cell">Source</TableHead>
                   <TableHead className="text-xs">Applied</TableHead>
                   <TableHead className="text-xs">Status</TableHead>
-                  <TableHead className="w-10 px-2"></TableHead>
+                  <TableHead className="w-10 px-2 sticky right-0 bg-background z-[5]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -563,7 +563,7 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
                           <Icon className="h-3 w-3" /> {cfg.label}
                         </Badge>
                       </TableCell>
-                      <TableCell className="px-2" onClick={e => e.stopPropagation()}>
+                      <TableCell className="px-2 sticky right-0 bg-background z-[5] shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.1)]" onClick={e => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-7 w-7">
