@@ -72,12 +72,31 @@ export default function PeopleLanding() {
   }), []);
 
   return (
-    <LandingPageShell
-      title="People"
-      subtitle="Manage teachers, students, users, and leads"
-      cards={cards}
-      contentMap={contentMap}
-      defaultCard="teachers"
-    />
+    <div>
+      {!!dupCount && dupCount > 0 && (
+        <div className="mx-4 md:mx-6 mt-4 flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-bold text-foreground">
+              {dupCount} duplicate profile{dupCount > 1 ? ' groups' : ' group'} detected
+            </p>
+            <p className="text-xs text-muted-foreground">Profiles sharing the same email need to be merged</p>
+          </div>
+          <button
+            onClick={() => navigate('/identity-resolution')}
+            className="text-xs font-bold text-amber-700 hover:text-amber-800 underline underline-offset-2"
+          >
+            Review
+          </button>
+        </div>
+      )}
+      <LandingPageShell
+        title="People"
+        subtitle="Manage teachers, students, users, and leads"
+        cards={cards}
+        contentMap={contentMap}
+        defaultCard="teachers"
+      />
+    </div>
   );
 }
