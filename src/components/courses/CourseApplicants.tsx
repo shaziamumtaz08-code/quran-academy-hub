@@ -359,6 +359,77 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
     URL.revokeObjectURL(url);
   }
 
+  // Deduplicate applicants — keep latest by email/phone, delete older duplicates
+  async function handleDeduplicate() {
+    setDeduplicating(true);
+    try {
+      // Group by lowercase email
+      const emailGroups: Record<string, Submission[]> = {};
+      const phoneGroups: Record<string, Submission[]> = {};
+      const noKey: Submission[] = [];
+
+      for (const sub of submissions) {
+        const email = (sub.data?.email || '').toLowerCase().trim();
+        const phone = (sub.data?.phone || sub.data?.whatsapp_number || '').trim();
+        
+        if (email) {
+          if (!emailGroups[email]) emailGroups[email] = [];
+          emailGroups[email].push(sub);
+        } else if (phone) {
+          if (!phoneGroups[phone]) phoneGroups[phone] = [];
+          phoneGroups[phone].push(sub);
+        } else {
+          noKey.push(sub);
+        }
+      }
+
+      const idsToDelete: string[] = [];
+
+      // For each email group, keep the latest (by submitted_at), delete rest
+      for (const [, group] of Object.entries(emailGroups)) {
+        if (group.length <= 1) continue;
+        // Sort by submitted_at descending — keep first (latest)
+        const sorted = [...group].sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime());
+        // Keep the one with status 'enrolled' if any, otherwise the latest
+        const enrolledIdx = sorted.findIndex(s => s.status === 'enrolled');
+        const keepIdx = enrolledIdx >= 0 ? enrolledIdx : 0;
+        for (let i = 0; i < sorted.length; i++) {
+          if (i !== keepIdx) idsToDelete.push(sorted[i].id);
+        }
+      }
+
+      // Same for phone groups (only for those without email)
+      for (const [, group] of Object.entries(phoneGroups)) {
+        if (group.length <= 1) continue;
+        const sorted = [...group].sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime());
+        const enrolledIdx = sorted.findIndex(s => s.status === 'enrolled');
+        const keepIdx = enrolledIdx >= 0 ? enrolledIdx : 0;
+        for (let i = 0; i < sorted.length; i++) {
+          if (i !== keepIdx) idsToDelete.push(sorted[i].id);
+        }
+      }
+
+      if (idsToDelete.length === 0) {
+        toast.info('No duplicates found');
+        setDeduplicating(false);
+        return;
+      }
+
+      // Delete in batches of 50
+      for (let i = 0; i < idsToDelete.length; i += 50) {
+        const batch = idsToDelete.slice(i, i + 50);
+        const { error } = await supabase.from('registration_submissions').delete().in('id', batch);
+        if (error) throw error;
+      }
+
+      toast.success(`Removed ${idsToDelete.length} duplicate applicant${idsToDelete.length !== 1 ? 's' : ''}`);
+      queryClient.invalidateQueries({ queryKey: ['registration-submissions', courseId] });
+    } catch (err: any) {
+      toast.error('Deduplication failed: ' + (err.message || 'Unknown error'));
+    }
+    setDeduplicating(false);
+  }
+
   if (isLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   }
