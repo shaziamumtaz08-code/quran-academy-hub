@@ -593,7 +593,7 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
               <Textarea
                 value={aiCriteria}
                 onChange={e => setAiCriteria(e.target.value)}
-                placeholder='e.g. "Show only returning students aged 10-15 from UAE who haven\'t enrolled in any active course"'
+                placeholder={'e.g. "Show only returning students aged 10-15 from UAE who haven\'t enrolled in any active course"'}
                 className="text-sm min-h-[48px] resize-none bg-background"
                 rows={2}
               />
