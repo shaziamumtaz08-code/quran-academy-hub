@@ -355,9 +355,30 @@ export default function PublicApplyForm() {
             onChange={e => updateField(field.field_key, e.target.value)}
             className={cn('h-11 rounded-lg', hasError && 'border-destructive')}
           />
+        ) : field.field_type === 'phone' ? (
+          (() => {
+            const selectedCountry = formData['country'] || formData['student_country'] || '';
+            const dialCode = DIAL_CODES[selectedCountry] || '';
+            return (
+              <div className="flex gap-2">
+                {dialCode && (
+                  <div className="flex items-center px-3 h-11 rounded-lg bg-muted border border-input text-sm font-mono text-muted-foreground shrink-0">
+                    {dialCode}
+                  </div>
+                )}
+                <Input
+                  type="tel"
+                  placeholder={dialCode ? '3001234567' : field.placeholder || `Enter ${field.label.toLowerCase()}`}
+                  value={formData[field.field_key] || ''}
+                  onChange={e => updateField(field.field_key, e.target.value)}
+                  className={cn('h-11 rounded-lg flex-1', hasError && 'border-destructive')}
+                />
+              </div>
+            );
+          })()
         ) : (
           <Input
-            type={field.field_type === 'email' ? 'email' : field.field_type === 'phone' ? 'tel' : field.field_type === 'date' ? 'date' : 'text'}
+            type={field.field_type === 'email' ? 'email' : field.field_type === 'date' ? 'date' : 'text'}
             placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
             value={formData[field.field_key] || ''}
             onChange={e => updateField(field.field_key, e.target.value)}
