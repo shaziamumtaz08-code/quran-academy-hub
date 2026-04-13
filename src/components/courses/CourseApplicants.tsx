@@ -441,7 +441,10 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
         <h3 className="text-sm font-semibold flex items-center gap-2">
           <Users className="h-4 w-4" /> Applicants
         </h3>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={handleDeduplicate} disabled={deduplicating}>
+            {deduplicating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Combine className="h-3.5 w-3.5" />} Deduplicate
+          </Button>
           <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => exportCSV(filtered)}>
             <Download className="h-3.5 w-3.5" /> Export
           </Button>
