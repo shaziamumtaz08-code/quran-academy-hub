@@ -14,19 +14,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
   Search, Eye, Clock, CheckCircle2, XCircle, UserPlus, Loader2,
   Users, FileSpreadsheet, X, MoreVertical, Download, Copy,
   ExternalLink, ArrowUpDown, Trash2, ChevronRight, ClipboardList,
-  UserCheck, LayoutList, Combine
+  UserCheck, LayoutList, Combine, Sparkles, User
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CourseApplicantImport } from './CourseApplicantImport';
 import { UserRelationshipPanel } from './UserRelationshipPanel';
 import { useNavigate } from 'react-router-dom';
-
 interface Submission {
   id: string;
   form_id: string;
@@ -37,6 +39,9 @@ interface Submission {
   submitted_at: string;
   notes: string | null;
   enrollment_id?: string | null;
+  matched_profile_id?: string | null;
+  match_status?: string;
+  match_confidence?: string | null;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
