@@ -47,7 +47,13 @@ Deno.serve(async (req) => {
         break;
       }
 
-      case "assistant":
+      case "applicant_filter": {
+        const parsed = JSON.parse(context || '{}');
+        systemPrompt = `You are a filter assistant. Given a list of applicants (as JSON array) and a natural language criteria description, return ONLY a JSON array of submission IDs that match the criteria. Return [] if none match. No explanation, no markdown. Just the JSON array.`;
+        userPrompt = `Applicants:\n${JSON.stringify(parsed.applicants)}\n\nCriteria: ${parsed.criteria}`;
+        maxTokens = 2000;
+        break;
+      }
       default:
         systemPrompt = `${langInstruction}You are an assistant for a teacher currently running a live ${subject || 'Islamic Studies'} class at ${level || 'Intermediate'} level. Current activity: ${activityTitle}. Description: ${activityDesc || 'N/A'}. Course: ${courseName || 'N/A'}. Provide brief, immediately actionable teaching suggestions. Maximum 150 words.`;
         userPrompt = userMessage || "Give me a quick teaching tip for this activity.";
