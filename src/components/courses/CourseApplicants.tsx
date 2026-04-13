@@ -117,6 +117,8 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
     let result = submissions.filter(s => {
       const matchStatus = filterStatus === 'all' || s.status === filterStatus;
       if (!matchStatus) return false;
+      // AI filter
+      if (aiFilteredIds && !aiFilteredIds.has(s.id)) return false;
       if (!search) return true;
       const q = search.toLowerCase();
       const d = s.data || {};
@@ -136,7 +138,7 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
       }
     });
     return result;
-  }, [submissions, filterStatus, search, sortKey]);
+  }, [submissions, filterStatus, search, sortKey, aiFilteredIds]);
 
   const selectableFiltered = filtered.filter(s => s.status === 'new' || s.status === 'reviewed');
   const statusCounts = useMemo(() => ({
