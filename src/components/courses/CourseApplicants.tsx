@@ -679,15 +679,45 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
                       </TableCell>
                       <TableCell className="px-2 text-xs text-muted-foreground">{idx + 1}</TableCell>
                       <TableCell className="font-medium text-sm">
-                        <button className="text-left hover:underline text-primary/80 hover:text-primary"
-                          onClick={e => {
-                            e.stopPropagation();
-                            setRelationshipApplicant({
-                              email: d.email || '', phone: d.phone || d.whatsapp_number || '', data: d,
-                            });
-                          }}>
-                          {d.full_name || '—'}
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <button className="text-left hover:underline text-primary/80 hover:text-primary"
+                            onClick={e => {
+                              e.stopPropagation();
+                              setRelationshipApplicant({
+                                email: d.email || '', phone: d.phone || d.whatsapp_number || '', data: d,
+                              });
+                            }}>
+                            {d.full_name || '—'}
+                          </button>
+                          {sub.match_status === 'matched_existing' && (
+                            <TooltipProvider delayDuration={200}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800 gap-0.5 cursor-default">
+                                    <User className="h-2.5 w-2.5" /> Existing
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="text-xs">
+                                  Matched by {sub.match_confidence === 'exact_email' ? 'email' : 'phone'}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                          {sub.match_status === 'matched_parent' && (
+                            <TooltipProvider delayDuration={200}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800 gap-0.5 cursor-default">
+                                    <Users className="h-2.5 w-2.5" /> Known Parent
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="text-xs">
+                                  Matched by {sub.match_confidence === 'exact_email' ? 'email' : 'phone'}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-sm hidden lg:table-cell">{d.fathers_name || d.father_name || '—'}</TableCell>
                       <TableCell className="text-sm" onClick={e => e.stopPropagation()}>
