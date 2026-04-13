@@ -234,31 +234,39 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
     setBatchLoading(true);
     const ids = Array.from(selectedIds);
     
-    // Filter out applicants without valid emails
+    // Filter out applicants without valid emails and already-enrolled ones
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const withEmail: string[] = [];
-    const withoutEmail: string[] = [];
+    const toEnroll: string[] = [];
+    let skippedNoEmail = 0;
+    let skippedAlreadyEnrolled = 0;
     for (const id of ids) {
       const sub = submissions?.find((s: any) => s.id === id);
+      if (sub?.status === 'enrolled') {
+        skippedAlreadyEnrolled++;
+        continue;
+      }
       const email = (sub?.data?.email || '').trim();
       if (email && emailRegex.test(email)) {
-        withEmail.push(id);
+        toEnroll.push(id);
       } else {
-        withoutEmail.push(id);
+        skippedNoEmail++;
       }
     }
 
-    if (withoutEmail.length > 0) {
-      toast.error(`${withoutEmail.length} applicant(s) skipped — email is required before enrollment`);
+    const skippedParts: string[] = [];
+    if (skippedNoEmail > 0) skippedParts.push(`${skippedNoEmail} missing email`);
+    if (skippedAlreadyEnrolled > 0) skippedParts.push(`${skippedAlreadyEnrolled} already enrolled`);
+    if (skippedParts.length > 0) {
+      toast.info(`Skipped: ${skippedParts.join(', ')}`);
     }
 
-    if (withEmail.length === 0) {
+    if (toEnroll.length === 0) {
       setBatchLoading(false);
       return;
     }
 
     let enrolled = 0, errors = 0;
-    for (const id of withEmail) {
+    for (const id of toEnroll) {
       const result = await enrollSubmission(id);
       if (result.success) enrolled++; else errors++;
     }
