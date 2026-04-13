@@ -38,6 +38,16 @@ const COUNTRIES = [
   'Thailand','Tunisia','Turkey','UAE','Uganda','UK','USA','Uzbekistan','Vietnam','Yemen',
 ];
 
+const DIAL_CODES: Record<string, string> = {
+  'Pakistan': '+92', 'India': '+91', 'UAE': '+971', 'United Arab Emirates': '+971',
+  'Saudi Arabia': '+966', 'United Kingdom': '+44', 'UK': '+44', 'United States': '+1',
+  'USA': '+1', 'Canada': '+1', 'Australia': '+61', 'Qatar': '+974', 'Kuwait': '+965',
+  'Bahrain': '+973', 'Oman': '+968', 'Bangladesh': '+880', 'Malaysia': '+60',
+  'Germany': '+49', 'France': '+33', 'Netherlands': '+31', 'Belgium': '+32',
+  'Sweden': '+46', 'Norway': '+47', 'Denmark': '+45', 'Turkey': '+90', 'Egypt': '+20',
+  'South Africa': '+27', 'Nigeria': '+234', 'Kenya': '+254',
+};
+
 export default function PublicApplyForm() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
