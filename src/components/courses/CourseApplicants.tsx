@@ -570,6 +570,44 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
         ))}
       </div>
 
+      {/* ──── AI Filter Bar ──── */}
+      <Collapsible open={aiFilterOpen} onOpenChange={setAiFilterOpen}>
+        <div className="flex items-center gap-2">
+          <CollapsibleTrigger asChild>
+            <Button size="sm" variant={aiFilterOpen ? "default" : "outline"} className="gap-1.5 text-xs">
+              <Sparkles className="h-3.5 w-3.5" /> AI Filter
+            </Button>
+          </CollapsibleTrigger>
+          {aiFilterLabel && (
+            <div className="flex items-center gap-1.5 bg-accent/50 rounded-full px-3 py-1 text-xs">
+              <Sparkles className="h-3 w-3 text-primary" />
+              <span className="truncate max-w-[300px]">{aiFilterLabel}</span>
+              <button onClick={() => { setAiFilteredIds(null); setAiFilterLabel(''); setAiCriteria(''); }}
+                className="hover:text-destructive ml-1"><X className="h-3 w-3" /></button>
+            </div>
+          )}
+        </div>
+        <CollapsibleContent className="mt-2">
+          <Card className="bg-muted/40 border-dashed">
+            <CardContent className="py-3 px-4 space-y-2">
+              <Textarea
+                value={aiCriteria}
+                onChange={e => setAiCriteria(e.target.value)}
+                placeholder='e.g. "Show only returning students aged 10-15 from UAE who haven\'t enrolled in any active course"'
+                className="text-sm min-h-[48px] resize-none bg-background"
+                rows={2}
+              />
+              <div className="flex justify-end">
+                <Button size="sm" onClick={handleAiFilter} disabled={aiFilterLoading || !aiCriteria.trim()}>
+                  {aiFilterLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}
+                  Apply Filter
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </CollapsibleContent>
+      </Collapsible>
+
       {/* Toolbar */}
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
