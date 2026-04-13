@@ -5338,6 +5338,9 @@ export type Database = {
           enrollment_id: string | null
           form_id: string
           id: string
+          match_confidence: string | null
+          match_status: string
+          matched_profile_id: string | null
           notes: string | null
           processed_at: string | null
           reviewed_at: string | null
@@ -5355,6 +5358,9 @@ export type Database = {
           enrollment_id?: string | null
           form_id: string
           id?: string
+          match_confidence?: string | null
+          match_status?: string
+          matched_profile_id?: string | null
           notes?: string | null
           processed_at?: string | null
           reviewed_at?: string | null
@@ -5372,6 +5378,9 @@ export type Database = {
           enrollment_id?: string | null
           form_id?: string
           id?: string
+          match_confidence?: string | null
+          match_status?: string
+          matched_profile_id?: string | null
           notes?: string | null
           processed_at?: string | null
           reviewed_at?: string | null
@@ -5400,6 +5409,13 @@ export type Database = {
             columns: ["form_id"]
             isOneToOne: false
             referencedRelation: "registration_forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registration_submissions_matched_profile_id_fkey"
+            columns: ["matched_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
