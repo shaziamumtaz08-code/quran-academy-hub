@@ -3,8 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
 import { LandingPageShell, LandingCard } from '@/components/layout/LandingPageShell';
-import { GraduationCap, Users, UserCheck, UserPlus } from 'lucide-react';
+import { GraduationCap, Users, UserCheck, UserPlus, AlertTriangle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useNavigate } from 'react-router-dom';
 
 const Teachers = lazy(() => import('./Teachers'));
 const Students = lazy(() => import('./Students'));
@@ -16,6 +17,27 @@ const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2x
 export default function PeopleLanding() {
   const { activeDivision } = useDivision();
   const isOneToOne = activeDivision?.model_type === 'one_to_one';
+  const navigate = useNavigate();
+
+  const { data: dupCount } = useQuery({
+    queryKey: ['duplicate-profile-count'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('email')
+        .not('email', 'is', null)
+        .neq('email', '');
+      if (!data?.length) return 0;
+      const seen = new Map<string, number>();
+      data.forEach(p => {
+        const k = p.email!.toLowerCase();
+        seen.set(k, (seen.get(k) || 0) + 1);
+      });
+      let count = 0;
+      seen.forEach(v => { if (v > 1) count++; });
+      return count;
+    },
+  });
 
   const { data: counts, isLoading } = useQuery({
     queryKey: ['people-landing-counts'],
