@@ -20,7 +20,7 @@ import {
   Search, Eye, Clock, CheckCircle2, XCircle, UserPlus, Loader2,
   Users, FileSpreadsheet, X, MoreVertical, Download, Copy,
   ExternalLink, ArrowUpDown, Trash2, ChevronRight, ClipboardList,
-  UserCheck, LayoutList
+  UserCheck, LayoutList, Combine
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CourseApplicantImport } from './CourseApplicantImport';
@@ -61,6 +61,7 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [deleteDialogId, setDeleteDialogId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [deduplicating, setDeduplicating] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [manualName, setManualName] = useState('');
   const [manualEmail, setManualEmail] = useState('');
@@ -358,6 +359,77 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
     URL.revokeObjectURL(url);
   }
 
+  // Deduplicate applicants — keep latest by email/phone, delete older duplicates
+  async function handleDeduplicate() {
+    setDeduplicating(true);
+    try {
+      // Group by lowercase email
+      const emailGroups: Record<string, Submission[]> = {};
+      const phoneGroups: Record<string, Submission[]> = {};
+      const noKey: Submission[] = [];
+
+      for (const sub of submissions) {
+        const email = (sub.data?.email || '').toLowerCase().trim();
+        const phone = (sub.data?.phone || sub.data?.whatsapp_number || '').trim();
+        
+        if (email) {
+          if (!emailGroups[email]) emailGroups[email] = [];
+          emailGroups[email].push(sub);
+        } else if (phone) {
+          if (!phoneGroups[phone]) phoneGroups[phone] = [];
+          phoneGroups[phone].push(sub);
+        } else {
+          noKey.push(sub);
+        }
+      }
+
+      const idsToDelete: string[] = [];
+
+      // For each email group, keep the latest (by submitted_at), delete rest
+      for (const [, group] of Object.entries(emailGroups)) {
+        if (group.length <= 1) continue;
+        // Sort by submitted_at descending — keep first (latest)
+        const sorted = [...group].sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime());
+        // Keep the one with status 'enrolled' if any, otherwise the latest
+        const enrolledIdx = sorted.findIndex(s => s.status === 'enrolled');
+        const keepIdx = enrolledIdx >= 0 ? enrolledIdx : 0;
+        for (let i = 0; i < sorted.length; i++) {
+          if (i !== keepIdx) idsToDelete.push(sorted[i].id);
+        }
+      }
+
+      // Same for phone groups (only for those without email)
+      for (const [, group] of Object.entries(phoneGroups)) {
+        if (group.length <= 1) continue;
+        const sorted = [...group].sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime());
+        const enrolledIdx = sorted.findIndex(s => s.status === 'enrolled');
+        const keepIdx = enrolledIdx >= 0 ? enrolledIdx : 0;
+        for (let i = 0; i < sorted.length; i++) {
+          if (i !== keepIdx) idsToDelete.push(sorted[i].id);
+        }
+      }
+
+      if (idsToDelete.length === 0) {
+        toast.info('No duplicates found');
+        setDeduplicating(false);
+        return;
+      }
+
+      // Delete in batches of 50
+      for (let i = 0; i < idsToDelete.length; i += 50) {
+        const batch = idsToDelete.slice(i, i + 50);
+        const { error } = await supabase.from('registration_submissions').delete().in('id', batch);
+        if (error) throw error;
+      }
+
+      toast.success(`Removed ${idsToDelete.length} duplicate applicant${idsToDelete.length !== 1 ? 's' : ''}`);
+      queryClient.invalidateQueries({ queryKey: ['registration-submissions', courseId] });
+    } catch (err: any) {
+      toast.error('Deduplication failed: ' + (err.message || 'Unknown error'));
+    }
+    setDeduplicating(false);
+  }
+
   if (isLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   }
@@ -369,7 +441,10 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
         <h3 className="text-sm font-semibold flex items-center gap-2">
           <Users className="h-4 w-4" /> Applicants
         </h3>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={handleDeduplicate} disabled={deduplicating}>
+            {deduplicating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Combine className="h-3.5 w-3.5" />} Deduplicate
+          </Button>
           <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => exportCSV(filtered)}>
             <Download className="h-3.5 w-3.5" /> Export
           </Button>
