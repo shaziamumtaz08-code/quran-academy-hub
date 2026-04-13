@@ -465,7 +465,7 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
         <Card>
           <div className="overflow-x-auto max-h-[65vh] overflow-y-auto">
             <Table>
-              <TableHeader>
+              <TableHeader className="sticky top-0 z-10 bg-background">
                 <TableRow>
                   <TableHead className="w-10 px-3">
                     <Checkbox ref={headerCheckboxRef} checked={headerChecked} onCheckedChange={toggleAll} />
