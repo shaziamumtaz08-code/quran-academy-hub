@@ -14,19 +14,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
   Search, Eye, Clock, CheckCircle2, XCircle, UserPlus, Loader2,
   Users, FileSpreadsheet, X, MoreVertical, Download, Copy,
   ExternalLink, ArrowUpDown, Trash2, ChevronRight, ClipboardList,
-  UserCheck, LayoutList, Combine
+  UserCheck, LayoutList, Combine, Sparkles, User
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CourseApplicantImport } from './CourseApplicantImport';
 import { UserRelationshipPanel } from './UserRelationshipPanel';
 import { useNavigate } from 'react-router-dom';
-
 interface Submission {
   id: string;
   form_id: string;
@@ -37,6 +39,9 @@ interface Submission {
   submitted_at: string;
   notes: string | null;
   enrollment_id?: string | null;
+  matched_profile_id?: string | null;
+  match_status?: string;
+  match_confidence?: string | null;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
@@ -71,6 +76,11 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
   const [relationshipApplicant, setRelationshipApplicant] = useState<{
     email: string; phone?: string; data?: Record<string, any>;
   } | null>(null);
+  const [aiFilterOpen, setAiFilterOpen] = useState(false);
+  const [aiCriteria, setAiCriteria] = useState('');
+  const [aiFilteredIds, setAiFilteredIds] = useState<Set<string> | null>(null);
+  const [aiFilterLabel, setAiFilterLabel] = useState('');
+  const [aiFilterLoading, setAiFilterLoading] = useState(false);
   const headerCheckboxRef = useRef<HTMLButtonElement>(null);
 
   const { data: submissions = [], isLoading } = useQuery({
@@ -107,6 +117,8 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
     let result = submissions.filter(s => {
       const matchStatus = filterStatus === 'all' || s.status === filterStatus;
       if (!matchStatus) return false;
+      // AI filter
+      if (aiFilteredIds && !aiFilteredIds.has(s.id)) return false;
       if (!search) return true;
       const q = search.toLowerCase();
       const d = s.data || {};
@@ -126,7 +138,7 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
       }
     });
     return result;
-  }, [submissions, filterStatus, search, sortKey]);
+  }, [submissions, filterStatus, search, sortKey, aiFilteredIds]);
 
   const selectableFiltered = filtered.filter(s => s.status === 'new' || s.status === 'reviewed');
   const statusCounts = useMemo(() => ({
@@ -430,6 +442,50 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
     setDeduplicating(false);
   }
 
+  // ─── AI Filter Handler ───
+  async function handleAiFilter() {
+    if (!aiCriteria.trim()) return;
+    setAiFilterLoading(true);
+    try {
+      const applicantsPayload = submissions.map(s => ({
+        id: s.id,
+        name: s.data?.full_name || '',
+        email: s.data?.email || '',
+        phone: s.data?.phone || '',
+        gender: s.data?.gender || '',
+        age: s.data?.age || '',
+        city: s.data?.city || '',
+        country: s.data?.country || '',
+        match_status: s.match_status || 'new_contact',
+        status: s.status,
+        ...Object.fromEntries(
+          Object.entries(s.data || {}).filter(([k]) => !['full_name','email','phone','gender','age','city','country'].includes(k))
+        ),
+      }));
+
+      const { data: fnData, error: fnError } = await supabase.functions.invoke('ai-teaching-assist', {
+        body: {
+          assistType: 'applicant_filter',
+          context: JSON.stringify({ applicants: applicantsPayload, criteria: aiCriteria }),
+        },
+      });
+
+      if (fnError) throw fnError;
+      const ids = fnData?.data;
+      if (Array.isArray(ids)) {
+        setAiFilteredIds(new Set(ids));
+        setAiFilterLabel(aiCriteria);
+        toast.success(`AI filter applied: ${ids.length} match${ids.length !== 1 ? 'es' : ''}`);
+      } else {
+        toast.error('AI returned unexpected format');
+      }
+    } catch (err: any) {
+      console.error('AI filter error:', err);
+      toast.error('AI filter failed: ' + (err.message || 'Unknown error'));
+    }
+    setAiFilterLoading(false);
+  }
+
   if (isLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   }
@@ -514,6 +570,44 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
         ))}
       </div>
 
+      {/* ──── AI Filter Bar ──── */}
+      <Collapsible open={aiFilterOpen} onOpenChange={setAiFilterOpen}>
+        <div className="flex items-center gap-2">
+          <CollapsibleTrigger asChild>
+            <Button size="sm" variant={aiFilterOpen ? "default" : "outline"} className="gap-1.5 text-xs">
+              <Sparkles className="h-3.5 w-3.5" /> AI Filter
+            </Button>
+          </CollapsibleTrigger>
+          {aiFilterLabel && (
+            <div className="flex items-center gap-1.5 bg-accent/50 rounded-full px-3 py-1 text-xs">
+              <Sparkles className="h-3 w-3 text-primary" />
+              <span className="truncate max-w-[300px]">{aiFilterLabel}</span>
+              <button onClick={() => { setAiFilteredIds(null); setAiFilterLabel(''); setAiCriteria(''); }}
+                className="hover:text-destructive ml-1"><X className="h-3 w-3" /></button>
+            </div>
+          )}
+        </div>
+        <CollapsibleContent className="mt-2">
+          <Card className="bg-muted/40 border-dashed">
+            <CardContent className="py-3 px-4 space-y-2">
+              <Textarea
+                value={aiCriteria}
+                onChange={e => setAiCriteria(e.target.value)}
+                placeholder={'e.g. "Show only returning students aged 10-15 from UAE who haven\'t enrolled in any active course"'}
+                className="text-sm min-h-[48px] resize-none bg-background"
+                rows={2}
+              />
+              <div className="flex justify-end">
+                <Button size="sm" onClick={handleAiFilter} disabled={aiFilterLoading || !aiCriteria.trim()}>
+                  {aiFilterLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}
+                  Apply Filter
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </CollapsibleContent>
+      </Collapsible>
+
       {/* Toolbar */}
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
@@ -585,15 +679,45 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
                       </TableCell>
                       <TableCell className="px-2 text-xs text-muted-foreground">{idx + 1}</TableCell>
                       <TableCell className="font-medium text-sm">
-                        <button className="text-left hover:underline text-primary/80 hover:text-primary"
-                          onClick={e => {
-                            e.stopPropagation();
-                            setRelationshipApplicant({
-                              email: d.email || '', phone: d.phone || d.whatsapp_number || '', data: d,
-                            });
-                          }}>
-                          {d.full_name || '—'}
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <button className="text-left hover:underline text-primary/80 hover:text-primary"
+                            onClick={e => {
+                              e.stopPropagation();
+                              setRelationshipApplicant({
+                                email: d.email || '', phone: d.phone || d.whatsapp_number || '', data: d,
+                              });
+                            }}>
+                            {d.full_name || '—'}
+                          </button>
+                          {sub.match_status === 'matched_existing' && (
+                            <TooltipProvider delayDuration={200}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800 gap-0.5 cursor-default">
+                                    <User className="h-2.5 w-2.5" /> Existing
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="text-xs">
+                                  Matched by {sub.match_confidence === 'exact_email' ? 'email' : 'phone'}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                          {sub.match_status === 'matched_parent' && (
+                            <TooltipProvider delayDuration={200}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800 gap-0.5 cursor-default">
+                                    <Users className="h-2.5 w-2.5" /> Known Parent
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="text-xs">
+                                  Matched by {sub.match_confidence === 'exact_email' ? 'email' : 'phone'}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-sm hidden lg:table-cell">{d.fathers_name || d.father_name || '—'}</TableCell>
                       <TableCell className="text-sm" onClick={e => e.stopPropagation()}>
