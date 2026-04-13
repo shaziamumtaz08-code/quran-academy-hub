@@ -43,7 +43,8 @@ Deno.serve(async (req) => {
     const fullName = data.full_name || email.split("@")[0] || "Student";
     const city = data.city || null;
     const country = data.country || null;
-    const gender = data.gender || null;
+    const rawGender = (data.gender || "").toLowerCase().trim();
+    const gender = (rawGender === 'male' || rawGender === 'female') ? rawGender : null;
 
     // Email is mandatory and must be valid format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
