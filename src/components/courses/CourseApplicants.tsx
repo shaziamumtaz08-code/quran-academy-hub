@@ -463,7 +463,7 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
         </Card>
       ) : (
         <Card>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[65vh] overflow-y-auto">
             <Table>
               <TableHeader>
                 <TableRow>
