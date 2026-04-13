@@ -76,6 +76,11 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
   const [relationshipApplicant, setRelationshipApplicant] = useState<{
     email: string; phone?: string; data?: Record<string, any>;
   } | null>(null);
+  const [aiFilterOpen, setAiFilterOpen] = useState(false);
+  const [aiCriteria, setAiCriteria] = useState('');
+  const [aiFilteredIds, setAiFilteredIds] = useState<Set<string> | null>(null);
+  const [aiFilterLabel, setAiFilterLabel] = useState('');
+  const [aiFilterLoading, setAiFilterLoading] = useState(false);
   const headerCheckboxRef = useRef<HTMLButtonElement>(null);
 
   const { data: submissions = [], isLoading } = useQuery({
