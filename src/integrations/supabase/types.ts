@@ -986,6 +986,21 @@ export type Database = {
           },
         ]
       }
+      country_dial_codes: {
+        Row: {
+          country: string
+          dial_code: string
+        }
+        Insert: {
+          country: string
+          dial_code: string
+        }
+        Update: {
+          country?: string
+          dial_code?: string
+        }
+        Relationships: []
+      }
       course_assets: {
         Row: {
           ad_creative: Json
@@ -8552,6 +8567,10 @@ export type Database = {
       is_ticket_watcher: {
         Args: { _ticket_id: string; _user_id: string }
         Returns: boolean
+      }
+      normalize_phone: {
+        Args: { p_country: string; raw_phone: string }
+        Returns: string
       }
       release_license: {
         Args: { _session_id: string; _teacher_id: string }
