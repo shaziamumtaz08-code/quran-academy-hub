@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { DuplicateProfileMerge } from '@/components/admin/DuplicateProfileMerge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -291,43 +292,47 @@ export default function IdentityResolution() {
           <div className="space-y-3">
             {loadingDupes ? (
               <p className="text-xs text-muted-foreground text-center py-6">Scanning...</p>
-            ) : !duplicates?.length ? (
-              <div className="bg-card rounded-xl border border-border p-8 text-center">
-                <CheckCircle className="w-8 h-8 text-teal mx-auto mb-2" />
-                <p className="text-sm font-bold text-foreground">No duplicates detected</p>
-                <p className="text-xs text-muted-foreground">All identities are unique</p>
-              </div>
             ) : (
-              duplicates.map(group => (
-                <div key={group.email} className="bg-card rounded-xl border border-destructive/20 p-3 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-destructive" />
-                    <p className="text-xs font-bold text-foreground">{group.email}</p>
-                    <span className="text-[9px] bg-destructive/10 text-destructive px-1.5 py-0.5 rounded font-bold">
-                      {group.profiles.length} profiles
-                    </span>
+              <>
+                <DuplicateProfileMerge />
+                {!duplicates?.length && (
+                  <div className="bg-card rounded-xl border border-border p-8 text-center">
+                    <CheckCircle className="w-8 h-8 text-teal mx-auto mb-2" />
+                    <p className="text-sm font-bold text-foreground">No duplicates detected</p>
+                    <p className="text-xs text-muted-foreground">All identities are unique</p>
                   </div>
-                  <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
-                    {group.profiles.map(p => (
-                      <div key={p.id} className="px-3 py-2 flex items-center justify-between bg-background">
-                        <div>
-                          <p className="text-[13px] font-bold">{p.full_name}</p>
-                          <div className="flex gap-1 mt-0.5">
-                            {p.roles.map(r => (
-                              <span key={r} className="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold">{r}</span>
-                            ))}
+                )}
+                {duplicates?.map(group => (
+                  <div key={group.email} className="bg-card rounded-xl border border-destructive/20 p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-destructive" />
+                      <p className="text-xs font-bold text-foreground">{group.email}</p>
+                      <span className="text-[9px] bg-destructive/10 text-destructive px-1.5 py-0.5 rounded font-bold">
+                        {group.profiles.length} profiles
+                      </span>
+                    </div>
+                    <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
+                      {group.profiles.map(p => (
+                        <div key={p.id} className="px-3 py-2 flex items-center justify-between bg-background">
+                          <div>
+                            <p className="text-[13px] font-bold">{p.full_name}</p>
+                            <div className="flex gap-1 mt-0.5">
+                              {p.roles.map(r => (
+                                <span key={r} className="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold">{r}</span>
+                              ))}
+                            </div>
                           </div>
+                          {p.registration_id ? (
+                            <span className="text-[10px] font-mono bg-teal/10 text-teal px-2 py-0.5 rounded">{p.registration_id}</span>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground">No URN</span>
+                          )}
                         </div>
-                        {p.registration_id ? (
-                          <span className="text-[10px] font-mono bg-teal/10 text-teal px-2 py-0.5 rounded">{p.registration_id}</span>
-                        ) : (
-                          <span className="text-[10px] text-muted-foreground">No URN</span>
-                        )}
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))
+                ))}
+              </>
             )}
           </div>
         )}

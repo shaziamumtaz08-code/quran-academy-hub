@@ -38,6 +38,16 @@ const COUNTRIES = [
   'Thailand','Tunisia','Turkey','UAE','Uganda','UK','USA','Uzbekistan','Vietnam','Yemen',
 ];
 
+const DIAL_CODES: Record<string, string> = {
+  'Pakistan': '+92', 'India': '+91', 'UAE': '+971', 'United Arab Emirates': '+971',
+  'Saudi Arabia': '+966', 'United Kingdom': '+44', 'UK': '+44', 'United States': '+1',
+  'USA': '+1', 'Canada': '+1', 'Australia': '+61', 'Qatar': '+974', 'Kuwait': '+965',
+  'Bahrain': '+973', 'Oman': '+968', 'Bangladesh': '+880', 'Malaysia': '+60',
+  'Germany': '+49', 'France': '+33', 'Netherlands': '+31', 'Belgium': '+32',
+  'Sweden': '+46', 'Norway': '+47', 'Denmark': '+45', 'Turkey': '+90', 'Egypt': '+20',
+  'South Africa': '+27', 'Nigeria': '+234', 'Kenya': '+254',
+};
+
 export default function PublicApplyForm() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
@@ -345,9 +355,30 @@ export default function PublicApplyForm() {
             onChange={e => updateField(field.field_key, e.target.value)}
             className={cn('h-11 rounded-lg', hasError && 'border-destructive')}
           />
+        ) : field.field_type === 'phone' ? (
+          (() => {
+            const selectedCountry = formData['country'] || formData['student_country'] || '';
+            const dialCode = DIAL_CODES[selectedCountry] || '';
+            return (
+              <div className="flex gap-2">
+                {dialCode && (
+                  <div className="flex items-center px-3 h-11 rounded-lg bg-muted border border-input text-sm font-mono text-muted-foreground shrink-0">
+                    {dialCode}
+                  </div>
+                )}
+                <Input
+                  type="tel"
+                  placeholder={dialCode ? '3001234567' : field.placeholder || `Enter ${field.label.toLowerCase()}`}
+                  value={formData[field.field_key] || ''}
+                  onChange={e => updateField(field.field_key, e.target.value)}
+                  className={cn('h-11 rounded-lg flex-1', hasError && 'border-destructive')}
+                />
+              </div>
+            );
+          })()
         ) : (
           <Input
-            type={field.field_type === 'email' ? 'email' : field.field_type === 'phone' ? 'tel' : field.field_type === 'date' ? 'date' : 'text'}
+            type={field.field_type === 'email' ? 'email' : field.field_type === 'date' ? 'date' : 'text'}
             placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
             value={formData[field.field_key] || ''}
             onChange={e => updateField(field.field_key, e.target.value)}
