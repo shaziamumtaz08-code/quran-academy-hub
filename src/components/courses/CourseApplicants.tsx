@@ -442,7 +442,50 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
     setDeduplicating(false);
   }
 
-  if (isLoading) {
+  // ─── AI Filter Handler ───
+  async function handleAiFilter() {
+    if (!aiCriteria.trim()) return;
+    setAiFilterLoading(true);
+    try {
+      const applicantsPayload = submissions.map(s => ({
+        id: s.id,
+        name: s.data?.full_name || '',
+        email: s.data?.email || '',
+        phone: s.data?.phone || '',
+        gender: s.data?.gender || '',
+        age: s.data?.age || '',
+        city: s.data?.city || '',
+        country: s.data?.country || '',
+        match_status: s.match_status || 'new_contact',
+        status: s.status,
+        ...Object.fromEntries(
+          Object.entries(s.data || {}).filter(([k]) => !['full_name','email','phone','gender','age','city','country'].includes(k))
+        ),
+      }));
+
+      const { data: fnData, error: fnError } = await supabase.functions.invoke('ai-teaching-assist', {
+        body: {
+          assistType: 'applicant_filter',
+          context: JSON.stringify({ applicants: applicantsPayload, criteria: aiCriteria }),
+        },
+      });
+
+      if (fnError) throw fnError;
+      const ids = fnData?.data;
+      if (Array.isArray(ids)) {
+        setAiFilteredIds(new Set(ids));
+        setAiFilterLabel(aiCriteria);
+        toast.success(`AI filter applied: ${ids.length} match${ids.length !== 1 ? 'es' : ''}`);
+      } else {
+        toast.error('AI returned unexpected format');
+      }
+    } catch (err: any) {
+      console.error('AI filter error:', err);
+      toast.error('AI filter failed: ' + (err.message || 'Unknown error'));
+    }
+    setAiFilterLoading(false);
+  }
+
     return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   }
 
