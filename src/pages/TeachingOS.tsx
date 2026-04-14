@@ -707,8 +707,10 @@ export default function TeachingOS() {
                               await supabase.from('ai_assists').delete().in('session_plan_id', ids);
                             }
                             await supabase.from('session_plans').delete().eq('syllabus_id', s.id);
-                            await (supabase.from('syllabi') as any).delete().eq('id', s.id);
+                            const { error: delErr } = await (supabase.from('syllabi') as any).delete().eq('id', s.id);
+                            if (delErr) throw delErr;
                             queryClient.invalidateQueries({ queryKey: ['teaching-os-existing-syllabi', selectedCourseId] });
+                            queryClient.invalidateQueries({ queryKey: ['teaching-os-existing-syllabi'] });
                             if (syllabusId === s.id) {
                               navigate('/teaching-os', { replace: true });
                             }
