@@ -34,9 +34,10 @@ STRICT RULES:
 4. Output raw JSON ONLY. No markdown: { "questions": [{ "text": "", "type": "mcq|tf|fib", "difficulty": "easy|medium|hard", "options": [], "correctIndex": 0, "correctText": "", "explanation": "" }] }
 5. For MCQ: 4 options, correctIndex is 0-based.
 6. For TF: options should be ["True","False"] or localized equivalents, correctIndex 0 or 1.
-7. For FIB: correctText is the answer, no options needed.`;
+7. For FIB: correctText is the answer, no options needed.
+8. CRITICAL: Focus ONLY on the EDUCATIONAL SUBJECT MATTER content. COMPLETELY IGNORE any PDF metadata, document artifacts, watermarks (e.g. "Scanned with CamScanner"), page numbers, headers/footers, file format details, scanner app names, or any text related to how the document was created/scanned/digitized. NEVER create questions about the document format, scanning process, or file properties. Only create questions about the actual academic/educational content within the document.`;
 
-    const userPrompt = `Create a question bank with ${mix} based on:\n${source_content.substring(0, 30000)}`;
+    const userPrompt = `Create a question bank with ${mix} based on the EDUCATIONAL CONTENT below. Ignore any scanner watermarks, PDF artifacts, page numbers, or document metadata — focus only on the subject matter:\n${source_content.substring(0, 30000)}`;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
