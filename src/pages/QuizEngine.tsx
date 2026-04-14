@@ -126,7 +126,7 @@ export default function QuizEngine() {
     queryKey: ['quiz-attempts'],
     queryFn: async () => {
       const { data } = await (supabase.from('quiz_attempts') as any)
-        .select('*, session:quiz_sessions(title, access_token), student:profiles!quiz_attempts_student_id_fkey(full_name, email)')
+        .select('*, session:quiz_sessions(title, access_token), student:profiles!left_quiz_attempts_student_id_fkey(full_name, email)')
         .eq('status', 'completed')
         .order('created_at', { ascending: false })
         .limit(200);
