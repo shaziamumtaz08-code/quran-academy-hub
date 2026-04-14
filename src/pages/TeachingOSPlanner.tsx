@@ -423,11 +423,30 @@ export default function TeachingOSPlanner() {
 
   const handleBulkGenerate = async () => {
     const ungenerated = sessionPlans.filter(sp =>
-      !sp.activities || (Array.isArray(sp.activities) && sp.activities.length === 0) || sp.status === 'draft'
+      !sp.activities || (Array.isArray(sp.activities) && sp.activities.length === 0)
     );
 
     if (!ungenerated.length) {
-      toast.info('All boards are already generated');
+      // Reload from DB in case local state is stale
+      const { data } = await supabase
+        .from('session_plans')
+        .select('*')
+        .eq('syllabus_id', syllabusId!)
+        .order('week_number')
+        .order('session_number');
+      if (data) {
+        const refreshed = data.map(d => ({
+          ...d,
+          activities: (typeof d.activities === 'string' ? JSON.parse(d.activities) : d.activities) as Activity[],
+        }));
+        setSessionPlans(refreshed);
+        const withActivities = refreshed.filter(s => s.activities.length > 0);
+        if (withActivities.length > 0) {
+          toast.success(`All ${withActivities.length} boards loaded from saved data`);
+        } else {
+          toast.info('No boards to generate — create session plans first via "Plan all weeks"');
+        }
+      }
       return;
     }
 

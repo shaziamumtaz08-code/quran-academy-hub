@@ -112,7 +112,43 @@ function ContentTypeBadges({ types, onChange }: { types: string[]; onChange: (t:
   );
 }
 
-// ─── Main Component ───
+// ─── Export Dropdown ───
+function ExportDropdown({ onCSV, onPDF, onMarkdown }: { onCSV: () => void; onPDF: () => void; onMarkdown: () => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button onClick={() => setOpen(!open)} className="flex items-center gap-1.5 px-3 py-1.5 border border-[#d0d4dc] rounded-[6px] text-[11px] text-[#4a5264] hover:bg-[#f4f5f7]">
+        <Download className="h-3.5 w-3.5" /> Export
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 bg-white border border-[#e8e9eb] rounded-lg shadow-lg py-1 min-w-[160px] z-50">
+          <button onClick={() => { onPDF(); setOpen(false); }} className="w-full text-left px-3 py-2 text-[11px] text-[#4a5264] hover:bg-[#f4f5f7]">Export as PDF</button>
+          <button onClick={() => { onCSV(); setOpen(false); }} className="w-full text-left px-3 py-2 text-[11px] text-[#4a5264] hover:bg-[#f4f5f7]">Export as CSV</button>
+          <button onClick={() => { onMarkdown(); setOpen(false); }} className="w-full text-left px-3 py-2 text-[11px] text-[#4a5264] hover:bg-[#f4f5f7]">Copy as Markdown</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── PDF File type ───
+interface PdfFileEntry {
+  file: File;
+  text: string;
+  pageCount: number;
+  parsed: boolean;
+}
+
+
 export default function TeachingOS() {
   const { user } = useAuth();
   const { language, langClass } = useLanguage();
@@ -137,9 +173,9 @@ export default function TeachingOS() {
   const [learningGoals, setLearningGoals] = useState('');
   const [sourceTab, setSourceTab] = useState<'pdf' | 'paste' | 'url'>('pdf');
   const [pasteText, setPasteText] = useState('');
-  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfFiles, setPdfFiles] = useState<PdfFileEntry[]>([]);
   const [pdfText, setPdfText] = useState('');
-  const [pdfParsed, setPdfParsed] = useState(false);
+  const pdfParsed = pdfFiles.length > 0 && pdfFiles.every(f => f.parsed);
   const [urlInput, setUrlInput] = useState('');
   const [nameError, setNameError] = useState(false);
 
@@ -486,6 +522,27 @@ export default function TeachingOS() {
     toast.success('CSV downloaded');
   };
 
+  const exportPDF = async () => {
+    const { default: jsPDF } = await import('jspdf');
+    const autoTable = (await import('jspdf-autotable')).default;
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text(courseName || 'Syllabus', 14, 20);
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`${subject} · ${level} · ${durationWeeks} weeks · Generated ${new Date().toLocaleDateString()}`, 14, 28);
+    autoTable(doc, {
+      startY: 35,
+      head: [['Week', 'Topic', 'Objectives', 'Content Types']],
+      body: rows.map(r => [r.week, r.topic, r.objectives, r.contentTypes.join(', ')]),
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [15, 32, 68] },
+      columnStyles: { 0: { cellWidth: 16 }, 3: { cellWidth: 35 } },
+    });
+    doc.save(`${courseName || 'syllabus'}-${new Date().toISOString().split('T')[0]}.pdf`);
+    toast.success('PDF downloaded');
+  };
+
   const copyMarkdown = () => {
     const md = `| Week | Topic | Objectives | Content Types |\n|------|-------|------------|---------------|\n` +
       rows.map(r => `| ${r.week} | ${r.topic} | ${r.objectives} | ${r.contentTypes.join(', ')} |`).join('\n');
@@ -735,49 +792,65 @@ export default function TeachingOS() {
                 </div>
                 <div className="p-3">
                   {sourceTab === 'pdf' && (
-                    pdfFile ? (
-                      <div>
-                        <div className="flex items-center gap-2 bg-[#f0f4ff] border border-[#b5d0f8] rounded-[7px] px-3 py-2">
-                          <FileText className="h-4 w-4 text-blue-600" />
-                          <span className="text-[11px] text-[#0f2044] truncate flex-1">{pdfFile.name}</span>
-                          <span className="text-[10px] text-[#7a7f8a]">{(pdfFile.size / 1024 / 1024).toFixed(1)} MB</span>
-                          <button onClick={() => { setPdfFile(null); setPdfText(''); setPdfParsed(false); }}><X className="h-3 w-3 text-[#7a7f8a]" /></button>
+                    <div>
+                      {/* File chips */}
+                      {pdfFiles.map((entry, idx) => (
+                        <div key={idx} className="flex items-center gap-2 bg-[#f0f4ff] border border-[#b5d0f8] rounded-[7px] px-3 py-2 mb-2">
+                          <FileText className="h-4 w-4 text-blue-600 shrink-0" />
+                          <span className="text-[11px] text-[#0f2044] truncate flex-1">{entry.file.name}</span>
+                          <span className="text-[10px] text-[#7a7f8a] shrink-0">{(entry.file.size / 1024 / 1024).toFixed(1)} MB</span>
+                          {entry.parsed && <span className="text-[10px] text-emerald-600 shrink-0">{entry.pageCount}pg</span>}
+                          <button onClick={() => {
+                            const updated = pdfFiles.filter((_, i) => i !== idx);
+                            setPdfFiles(updated);
+                            setPdfText(updated.map(f => `[SOURCE: ${f.file.name}]\n${f.text}`).join('\n\n'));
+                          }}><X className="h-3 w-3 text-[#7a7f8a]" /></button>
                         </div>
-                        {pdfParsed && <p className="text-[10px] text-emerald-600 mt-2 flex items-center gap-1"><Check className="h-3 w-3" /> PDF parsed · {pdfText.length} chars extracted</p>}
-                      </div>
-                    ) : (
-                      <label className="border border-dashed border-[#c8d4e8] rounded-[9px] p-[18px] text-center bg-[#f9fbff] cursor-pointer block">
-                        <Upload className="h-[22px] w-[22px] text-[#aab0bc] mx-auto mb-1" />
-                        <p className="text-[12px] text-[#4a5264]">Drop PDF here or click to upload</p>
-        <p className="text-[11px] text-[#aab0bc]">Max 50MB · PDF only</p>
-                        <input type="file" accept=".pdf" className="hidden" onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          if (file.size > 50 * 1024 * 1024) { toast.error('File too large (max 50MB)'); return; }
-                          setPdfFile(file);
-                          setPdfParsed(false);
-                          // Extract text from PDF
-                          const arrayBuffer = await file.arrayBuffer();
-                          try {
-                            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                            let fullText = '';
-                            for (let i = 1; i <= pdf.numPages; i++) {
-                              const page = await pdf.getPage(i);
-                              const content = await page.getTextContent();
-                              const pageText = content.items.map((item: any) => item.str).join(' ');
-                              fullText += pageText + '\n';
+                      ))}
+                      {pdfParsed && pdfFiles.length > 0 && (
+                        <p className="text-[10px] text-emerald-600 mb-2 flex items-center gap-1"><Check className="h-3 w-3" /> {pdfFiles.length} file{pdfFiles.length > 1 ? 's' : ''} parsed · {pdfText.length} chars</p>
+                      )}
+                      {/* Upload area */}
+                      {pdfFiles.length < 5 && (
+                        <label className="border border-dashed border-[#c8d4e8] rounded-[9px] p-[18px] text-center bg-[#f9fbff] cursor-pointer block">
+                          <Upload className="h-[22px] w-[22px] text-[#aab0bc] mx-auto mb-1" />
+                          <p className="text-[12px] text-[#4a5264]">Drop PDF{pdfFiles.length > 0 ? 's' : ''} here or click to upload</p>
+                          <p className="text-[11px] text-[#aab0bc]">Max 50MB each · Up to 5 files · PDF only</p>
+                          <input type="file" accept=".pdf" multiple className="hidden" onChange={async (e) => {
+                            const files = Array.from(e.target.files || []);
+                            if (!files.length) return;
+                            const remaining = 5 - pdfFiles.length;
+                            const toAdd = files.slice(0, remaining);
+                            if (files.length > remaining) toast.error(`Only ${remaining} more file(s) allowed`);
+
+                            for (const file of toAdd) {
+                              if (file.size > 50 * 1024 * 1024) { toast.error(`${file.name} too large (max 50MB)`); continue; }
+                              const arrayBuffer = await file.arrayBuffer();
+                              try {
+                                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                                let fullText = '';
+                                for (let i = 1; i <= pdf.numPages; i++) {
+                                  const page = await pdf.getPage(i);
+                                  const content = await page.getTextContent();
+                                  fullText += content.items.map((item: any) => item.str).join(' ') + '\n';
+                                }
+                                const entry: PdfFileEntry = { file, text: fullText.trim().slice(0, 15000), pageCount: pdf.numPages, parsed: true };
+                                setPdfFiles(prev => {
+                                  const updated = [...prev, entry];
+                                  setPdfText(updated.map(f => `[SOURCE: ${f.file.name}]\n${f.text}`).join('\n\n'));
+                                  return updated;
+                                });
+                                toast.success(`${file.name} parsed · ${pdf.numPages} pages`);
+                              } catch (err) {
+                                console.error('PDF parse error:', err);
+                                toast.error(`Failed to parse ${file.name}`);
+                              }
                             }
-                            setPdfText(fullText.trim().slice(0, 15000));
-                            setPdfParsed(true);
-                            toast.success(`PDF parsed · ${fullText.length} chars extracted from ${pdf.numPages} pages`);
-                          } catch (err) {
-                            console.error('PDF parse error:', err);
-                            toast.error('Failed to parse PDF. Please try paste instead.');
-                            setPdfFile(null);
-                          }
-                        }} />
-                      </label>
-                    )
+                            e.target.value = '';
+                          }} />
+                        </label>
+                      )}
+                    </div>
                   )}
                   {sourceTab === 'paste' && (
                     <div className="relative">
@@ -828,15 +901,7 @@ export default function TeachingOS() {
               {saveStatus === 'saved' && <span className="text-[11px] text-[#aab0bc]">Saved</span>}
               {rows.length > 0 && (
                 <>
-                  <div className="relative group">
-                    <button className="flex items-center gap-1.5 px-3 py-1.5 border border-[#d0d4dc] rounded-[6px] text-[11px] text-[#4a5264] hover:bg-[#f4f5f7]">
-                      <Download className="h-3.5 w-3.5" /> Export
-                    </button>
-                    <div className="absolute right-0 top-full mt-1 bg-white border border-[#e8e9eb] rounded-lg shadow-lg py-1 min-w-[160px] hidden group-hover:block z-50">
-                      <button onClick={exportCSV} className="w-full text-left px-3 py-2 text-[11px] text-[#4a5264] hover:bg-[#f4f5f7]">Export as CSV</button>
-                      <button onClick={copyMarkdown} className="w-full text-left px-3 py-2 text-[11px] text-[#4a5264] hover:bg-[#f4f5f7]">Copy as Markdown</button>
-                    </div>
-                  </div>
+                  <ExportDropdown onCSV={exportCSV} onPDF={exportPDF} onMarkdown={copyMarkdown} />
                   <button onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success('Link copied'); }} className="flex items-center gap-1.5 px-3 py-1.5 border border-[#d0d4dc] rounded-[6px] text-[11px] text-[#4a5264] hover:bg-[#f4f5f7]">
                     <Share2 className="h-3.5 w-3.5" /> Share
                   </button>
