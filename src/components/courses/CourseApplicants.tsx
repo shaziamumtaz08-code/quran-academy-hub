@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -23,8 +23,9 @@ import {
   Search, Eye, Clock, CheckCircle2, XCircle, UserPlus, Loader2,
   Users, FileSpreadsheet, X, MoreVertical, Download, Copy,
   ExternalLink, ArrowUpDown, Trash2, ChevronRight, ClipboardList,
-  UserCheck, LayoutList, Combine, Sparkles, User
+  UserCheck, LayoutList, Combine, Sparkles, User, ChevronLeft
 } from 'lucide-react';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
 import { CourseApplicantImport } from './CourseApplicantImport';
 import { UserRelationshipPanel } from './UserRelationshipPanel';
@@ -689,7 +690,7 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
                             }}>
                             {d.full_name || '—'}
                           </button>
-                          {sub.match_status === 'matched_existing' && (
+                          {sub.status !== 'enrolled' && sub.match_status === 'matched_existing' && (
                             <TooltipProvider delayDuration={200}>
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -703,7 +704,7 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
                               </Tooltip>
                             </TooltipProvider>
                           )}
-                          {sub.match_status === 'matched_parent' && (
+                          {sub.status !== 'enrolled' && sub.match_status === 'matched_parent' && (
                             <TooltipProvider delayDuration={200}>
                               <Tooltip>
                                 <TooltipTrigger asChild>
