@@ -615,6 +615,99 @@ export default function QuizEngine() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Edit Quiz Bank Dialog */}
+        <Dialog open={editOpen} onOpenChange={setEditOpen}>
+          <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Quiz Bank</DialogTitle>
+              <DialogDescription>Update quiz bank settings. Questions are not changed.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label className="text-xs">Quiz Name *</Label>
+                <Input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
+              </div>
+              <div>
+                <Label className="text-xs">Description</Label>
+                <Input value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Language</Label>
+                  <Select value={editForm.language} onValueChange={v => setEditForm({ ...editForm, language: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="en">English</SelectItem>
+                      <SelectItem value="ur">Urdu (اردو)</SelectItem>
+                      <SelectItem value="ar">Arabic (العربية)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Mode</Label>
+                  <Select value={editForm.mode} onValueChange={v => setEditForm({ ...editForm, mode: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="public">🌐 Public Link</SelectItem>
+                      <SelectItem value="authenticated">🔒 Authenticated</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Link to Course (optional)</Label>
+                <Select value={editForm.course_id} onValueChange={v => setEditForm({ ...editForm, course_id: v })}>
+                  <SelectTrigger><SelectValue placeholder="Select course..." /></SelectTrigger>
+                  <SelectContent>
+                    {courses.map((c: any) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Difficulty Level</Label>
+                <Select value={editForm.difficulty_level} onValueChange={v => setEditForm({ ...editForm, difficulty_level: v })}>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="easy">Easy</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="hard">Hard</SelectItem>
+                    <SelectItem value="mixed">Mixed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Questions per Attempt</Label>
+                  <Input type="number" min={1} value={editForm.questions_per_attempt} onChange={e => setEditForm({ ...editForm, questions_per_attempt: +e.target.value })} />
+                </div>
+                <div>
+                  <Label className="text-xs">Time Limit (minutes)</Label>
+                  <Input type="number" min={0} value={editForm.time_limit_minutes} onChange={e => setEditForm({ ...editForm, time_limit_minutes: +e.target.value })} />
+                  <p className="text-[10px] text-muted-foreground mt-0.5">0 = no timer</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Max Attempts Allowed</Label>
+                  <Input type="number" min={1} value={editForm.max_attempts} onChange={e => setEditForm({ ...editForm, max_attempts: +e.target.value })} />
+                </div>
+                <div>
+                  <Label className="text-xs">Passing Percentage (%)</Label>
+                  <Input type="number" min={0} max={100} value={editForm.passing_percentage} onChange={e => setEditForm({ ...editForm, passing_percentage: +e.target.value })} />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+              <Button onClick={() => updateBank.mutate()} disabled={!editForm.name.trim()}>
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
