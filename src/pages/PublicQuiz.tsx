@@ -53,7 +53,7 @@ export default function PublicQuiz() {
   const [results, setResults] = useState<{ score: number; max_score: number; percentage: number; results: GradedResult[] } | null>(null);
   const [error, setError] = useState('');
   const [timeLeft, setTimeLeft] = useState(0);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef(0);
 
   const isRTL = meta?.language === 'ar' || meta?.language === 'ur';
