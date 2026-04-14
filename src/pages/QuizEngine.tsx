@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
 import {
-  Plus, Loader2, Copy, Share2, Trash2, Eye, FileText,
+  Plus, Loader2, Copy, Share2, Trash2, Eye, FileText, Pencil,
   ClipboardCheck, Trophy, Link as LinkIcon, Globe, Lock, Play, Square, Upload, X
 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
@@ -33,6 +33,13 @@ export default function QuizEngine() {
   const [sessionDialogOpen, setSessionDialogOpen] = useState(false);
   const [selectedBankId, setSelectedBankId] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    id: '', name: '', description: '', language: 'en', mode: 'public' as string,
+    course_id: '', difficulty_level: 'mixed' as string,
+    questions_per_attempt: 10, time_limit_minutes: 0,
+    max_attempts: 1, passing_percentage: 50,
+  });
 
   const [extractingPdf, setExtractingPdf] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<{ name: string; text: string }[]>([]);
@@ -233,6 +240,48 @@ export default function QuizEngine() {
     },
   });
 
+  const updateBank = useMutation({
+    mutationFn: async () => {
+      const { id, ...updates } = editForm;
+      const { error } = await (supabase.from('quiz_banks') as any).update({
+        name: updates.name,
+        description: updates.description || null,
+        language: updates.language,
+        mode: updates.mode,
+        course_id: updates.course_id || null,
+        difficulty_level: updates.difficulty_level,
+        questions_per_attempt: updates.questions_per_attempt,
+        time_limit_minutes: updates.time_limit_minutes || null,
+        max_attempts: updates.max_attempts || 1,
+        passing_percentage: updates.passing_percentage,
+      }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quiz-banks'] });
+      setEditOpen(false);
+      toast({ title: 'Quiz bank updated' });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const openEdit = (bank: any) => {
+    setEditForm({
+      id: bank.id,
+      name: bank.name || '',
+      description: bank.description || '',
+      language: bank.language || 'en',
+      mode: bank.mode || 'public',
+      course_id: bank.course_id || '',
+      difficulty_level: bank.difficulty_level || 'mixed',
+      questions_per_attempt: bank.questions_per_attempt || 10,
+      time_limit_minutes: bank.time_limit_minutes || 0,
+      max_attempts: bank.max_attempts || 1,
+      passing_percentage: bank.passing_percentage || 50,
+    });
+    setEditOpen(true);
+  };
+
   const resetForm = () => {
     setForm({
       name: '', description: '', language: 'en', course_id: '', mode: 'public',
@@ -317,6 +366,10 @@ export default function QuizEngine() {
                             onClick={() => createSession.mutate(bank.id)}
                             disabled={getQuestionCount(bank) === 0}>
                             <Play className="h-3 w-3 mr-1" /> Go Live
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0"
+                            onClick={() => openEdit(bank)}>
+                            <Pencil className="h-3.5 w-3.5" />
                           </Button>
                           <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive"
                             onClick={() => deleteBank.mutate(bank.id)}>
@@ -558,6 +611,99 @@ export default function QuizEngine() {
                 disabled={!form.name.trim() || !form.source_content.trim() || generating}
                 className="gap-1.5">
                 {generating ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</> : 'Create & Generate'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Quiz Bank Dialog */}
+        <Dialog open={editOpen} onOpenChange={setEditOpen}>
+          <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Quiz Bank</DialogTitle>
+              <DialogDescription>Update quiz bank settings. Questions are not changed.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label className="text-xs">Quiz Name *</Label>
+                <Input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
+              </div>
+              <div>
+                <Label className="text-xs">Description</Label>
+                <Input value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Language</Label>
+                  <Select value={editForm.language} onValueChange={v => setEditForm({ ...editForm, language: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="en">English</SelectItem>
+                      <SelectItem value="ur">Urdu (اردو)</SelectItem>
+                      <SelectItem value="ar">Arabic (العربية)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Mode</Label>
+                  <Select value={editForm.mode} onValueChange={v => setEditForm({ ...editForm, mode: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="public">🌐 Public Link</SelectItem>
+                      <SelectItem value="authenticated">🔒 Authenticated</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Link to Course (optional)</Label>
+                <Select value={editForm.course_id} onValueChange={v => setEditForm({ ...editForm, course_id: v })}>
+                  <SelectTrigger><SelectValue placeholder="Select course..." /></SelectTrigger>
+                  <SelectContent>
+                    {courses.map((c: any) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Difficulty Level</Label>
+                <Select value={editForm.difficulty_level} onValueChange={v => setEditForm({ ...editForm, difficulty_level: v })}>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="easy">Easy</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="hard">Hard</SelectItem>
+                    <SelectItem value="mixed">Mixed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Questions per Attempt</Label>
+                  <Input type="number" min={1} value={editForm.questions_per_attempt} onChange={e => setEditForm({ ...editForm, questions_per_attempt: +e.target.value })} />
+                </div>
+                <div>
+                  <Label className="text-xs">Time Limit (minutes)</Label>
+                  <Input type="number" min={0} value={editForm.time_limit_minutes} onChange={e => setEditForm({ ...editForm, time_limit_minutes: +e.target.value })} />
+                  <p className="text-[10px] text-muted-foreground mt-0.5">0 = no timer</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Max Attempts Allowed</Label>
+                  <Input type="number" min={1} value={editForm.max_attempts} onChange={e => setEditForm({ ...editForm, max_attempts: +e.target.value })} />
+                </div>
+                <div>
+                  <Label className="text-xs">Passing Percentage (%)</Label>
+                  <Input type="number" min={0} max={100} value={editForm.passing_percentage} onChange={e => setEditForm({ ...editForm, passing_percentage: +e.target.value })} />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+              <Button onClick={() => updateBank.mutate()} disabled={!editForm.name.trim()}>
+                Save Changes
               </Button>
             </DialogFooter>
           </DialogContent>
