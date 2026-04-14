@@ -70,6 +70,9 @@ import TeachingOSSpeakingTutor from "./pages/TeachingOSSpeakingTutor";
 import TeachingOSAnalytics from "./pages/TeachingOSAnalytics";
 import ParentDashboard from "./pages/ParentDashboard";
 import UnifiedDashboard from "./pages/UnifiedDashboard";
+import QuizEngine from "./pages/QuizEngine";
+import PublicQuiz from "./pages/PublicQuiz";
+import StudentQuizView from "./pages/StudentQuizView";
 
 // Landing pages
 import TeachingLanding from "./pages/TeachingLanding";
@@ -388,6 +391,11 @@ function AppRoutes() {
       <Route path="/recorded-courses" element={<RecordedCourses />} />
       {/* Public Registration Form - no auth */}
       <Route path="/apply/:slug" element={<PublicApplyForm />} />
+      {/* Quiz Engine */}
+      <Route path="/quiz-engine" element={<ProtectedRoute><AdminOrTeacherRoute><QuizEngine /></AdminOrTeacherRoute></ProtectedRoute>} />
+      <Route path="/my-quizzes" element={<ProtectedRoute><StudentQuizView /></ProtectedRoute>} />
+      {/* Public Quiz - no auth */}
+      <Route path="/quiz/:token" element={<PublicQuiz />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
