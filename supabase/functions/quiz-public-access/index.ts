@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
           quiz_bank_id: session.quiz_bank_id,
           guest_email: guest_email.toLowerCase().trim(),
           guest_name: guest_name || null,
-          questions: shuffled, // full questions with answers (server side)
+          questions: shuffledWithOptions, // full questions with shuffled options (server side)
           max_score: numQ,
           status: "in_progress",
         })
