@@ -75,7 +75,10 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
   const [editEmailId, setEditEmailId] = useState<string | null>(null);
   const [editEmailValue, setEditEmailValue] = useState('');
   const [relationshipApplicant, setRelationshipApplicant] = useState<{
-    email: string; phone?: string; data?: Record<string, any>;
+    email: string;
+    phone?: string;
+    matchedProfileId?: string | null;
+    data?: Record<string, any>;
   } | null>(null);
   const [aiFilterOpen, setAiFilterOpen] = useState(false);
   const [aiCriteria, setAiCriteria] = useState('');
@@ -686,7 +689,10 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
                             onClick={e => {
                               e.stopPropagation();
                               setRelationshipApplicant({
-                                email: d.email || '', phone: d.phone || d.whatsapp_number || '', data: d,
+                                email: d.email || '',
+                                phone: d.phone || d.whatsapp_number || '',
+                                matchedProfileId: sub.matched_profile_id || null,
+                                data: d,
                               });
                             }}>
                             {d.full_name || '—'}
@@ -1026,9 +1032,15 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
       </AlertDialog>
 
       {/* User Relationship Panel */}
-      <UserRelationshipPanel open={!!relationshipApplicant} onOpenChange={() => setRelationshipApplicant(null)}
-        email={relationshipApplicant?.email || ''} phone={relationshipApplicant?.phone}
-        submissionData={relationshipApplicant?.data} courseId={courseId} />
+      <UserRelationshipPanel
+        open={!!relationshipApplicant}
+        onOpenChange={() => setRelationshipApplicant(null)}
+        email={relationshipApplicant?.email || ''}
+        phone={relationshipApplicant?.phone}
+        matchedProfileId={relationshipApplicant?.matchedProfileId || null}
+        submissionData={relationshipApplicant?.data}
+        courseId={courseId}
+      />
     </div>
   );
 }
