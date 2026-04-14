@@ -682,15 +682,23 @@ export default function TeachingOS() {
 
             {/* Duration + Sessions */}
             <div className="grid grid-cols-2 gap-[10px]">
-              <SelectField label="Duration" value={duration} onChange={setDuration} options={DURATIONS} />
-              <SelectField label="Sessions/week" value={sessionsPerWeek} onChange={(v) => { setSessionsPerWeek(v); if (v !== 'Custom') setCustomSessions(''); }} options={SESSIONS} />
-              {sessionsPerWeek === 'Custom' && (
-                <div>
-                  <label className="text-[11px] font-medium text-[#4a5264] mb-[5px] block">Enter sessions/week</label>
-                  <input type="number" min={1} max={14} value={customSessions} onChange={(e) => setCustomSessions(e.target.value)}
-                    placeholder="e.g. 4" className="w-full border border-[#d0d4dc] rounded-[7px] px-[10px] py-[7px] text-[12.5px] text-[#0f2044] focus:border-blue-600 focus:ring-2 focus:ring-blue-600/10 outline-none" />
-                </div>
-              )}
+              <div>
+                <SelectField label="Duration" value={duration} onChange={setDuration} options={DURATIONS} />
+                {duration === 'Custom' && (
+                  <input type="number" min={1} max={52} value={duration === 'Custom' ? '' : ''} onChange={(e) => setDuration(`${e.target.value} weeks`)}
+                    placeholder="Enter number of weeks"
+                    className="mt-1.5 w-full border border-[#d0d4dc] rounded-[7px] px-[10px] py-[7px] text-[12.5px] text-[#0f2044] focus:border-blue-600 focus:ring-2 focus:ring-blue-600/10 outline-none" />
+                )}
+              </div>
+              <div>
+                <SelectField label="Sessions/week" value={sessionsPerWeek} onChange={(v) => { setSessionsPerWeek(v); if (v !== 'Custom') setCustomSessions(''); }} options={SESSIONS} />
+                {sessionsPerWeek === 'Custom' && (
+                  <div className="mt-1.5">
+                    <input type="number" min={1} max={14} value={customSessions} onChange={(e) => setCustomSessions(e.target.value)}
+                      placeholder="e.g. 4" className="w-full border border-[#d0d4dc] rounded-[7px] px-[10px] py-[7px] text-[12.5px] text-[#0f2044] focus:border-blue-600 focus:ring-2 focus:ring-blue-600/10 outline-none" />
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Target audience */}
