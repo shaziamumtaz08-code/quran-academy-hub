@@ -153,7 +153,7 @@ export default function QuizEngine() {
         mode: form.mode,
         question_mix: { mcq: form.mcq, tf: form.tf, fib: form.fib },
         difficulty_level: form.difficulty_level,
-        questions_per_attempt: form.questions_per_attempt,
+        questions_per_attempt: form.mcq + form.tf + form.fib,
         time_limit_minutes: form.time_limit_minutes || null,
         max_attempts: form.max_attempts || 1,
         passing_percentage: form.passing_percentage,
