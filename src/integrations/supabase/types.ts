@@ -1980,6 +1980,68 @@ export type Database = {
           },
         ]
       }
+      course_outlines: {
+        Row: {
+          approved: boolean | null
+          chapter_number: number | null
+          chapter_title: string | null
+          course_id: string | null
+          created_at: string
+          day_name: string | null
+          day_number: number
+          duration_minutes: number | null
+          id: string
+          notes: string | null
+          page_end: number | null
+          page_start: number | null
+          session_date: string | null
+          source_filename: string | null
+          topic: string | null
+        }
+        Insert: {
+          approved?: boolean | null
+          chapter_number?: number | null
+          chapter_title?: string | null
+          course_id?: string | null
+          created_at?: string
+          day_name?: string | null
+          day_number: number
+          duration_minutes?: number | null
+          id?: string
+          notes?: string | null
+          page_end?: number | null
+          page_start?: number | null
+          session_date?: string | null
+          source_filename?: string | null
+          topic?: string | null
+        }
+        Update: {
+          approved?: boolean | null
+          chapter_number?: number | null
+          chapter_title?: string | null
+          course_id?: string | null
+          created_at?: string
+          day_name?: string | null
+          day_number?: number
+          duration_minutes?: number | null
+          id?: string
+          notes?: string | null
+          page_end?: number | null
+          page_start?: number | null
+          session_date?: string | null
+          source_filename?: string | null
+          topic?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_outlines_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_post_replies: {
         Row: {
           author_id: string
@@ -6025,6 +6087,7 @@ export type Database = {
           homework_suggestion: string | null
           id: string
           language: string
+          outline_day_id: string | null
           session_date: string | null
           session_day: string | null
           session_number: number
@@ -6043,6 +6106,7 @@ export type Database = {
           homework_suggestion?: string | null
           id?: string
           language?: string
+          outline_day_id?: string | null
           session_date?: string | null
           session_day?: string | null
           session_number: number
@@ -6061,6 +6125,7 @@ export type Database = {
           homework_suggestion?: string | null
           id?: string
           language?: string
+          outline_day_id?: string | null
           session_date?: string | null
           session_day?: string | null
           session_number?: number
@@ -6074,6 +6139,13 @@ export type Database = {
           week_number?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "session_plans_outline_day_id_fkey"
+            columns: ["outline_day_id"]
+            isOneToOne: false
+            referencedRelation: "course_outlines"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "session_plans_syllabus_id_fkey"
             columns: ["syllabus_id"]
@@ -6236,6 +6308,44 @@ export type Database = {
             columns: ["kit_id"]
             isOneToOne: false
             referencedRelation: "content_kits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      source_files: {
+        Row: {
+          course_id: string | null
+          detected_chapters: Json | null
+          extracted_text: string | null
+          filename: string
+          id: string
+          page_count: number | null
+          uploaded_at: string
+        }
+        Insert: {
+          course_id?: string | null
+          detected_chapters?: Json | null
+          extracted_text?: string | null
+          filename: string
+          id?: string
+          page_count?: number | null
+          uploaded_at?: string
+        }
+        Update: {
+          course_id?: string | null
+          detected_chapters?: Json | null
+          extracted_text?: string | null
+          filename?: string
+          id?: string
+          page_count?: number | null
+          uploaded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "source_files_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
             referencedColumns: ["id"]
           },
         ]

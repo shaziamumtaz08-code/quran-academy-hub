@@ -18,7 +18,8 @@ export interface PhaseNavProps {
 }
 
 const PHASES = [
-  { num: 1, label: 'Syllabus',   short: 'Syl',   path: '/teaching-os',                color: '#534AB7' },
+  { num: 0, label: 'Outline',    short: 'Out',    path: '/teaching-os/outline',         color: '#0f2044' },
+  { num: 1, label: 'Syllabus',   short: 'Syl',    path: '/teaching-os',                color: '#534AB7' },
   { num: 2, label: 'Planner',    short: 'Plan',   path: '/teaching-os/planner',         color: '#1a56b0' },
   { num: 3, label: 'Day Board',  short: 'Board',  path: '/teaching-os/dayboard',        color: '#8a5c00' },
   { num: 4, label: 'Content Kit',short: 'Kit',    path: '/teaching-os/content-kit',     color: '#1a7340' },

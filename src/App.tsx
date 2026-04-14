@@ -59,6 +59,7 @@ import GroupChat from "./pages/GroupChat";
 import WhatsAppInbox from "./pages/WhatsAppInbox";
 import PublicApplyForm from "./pages/PublicApplyForm";
 import TeachingOS from "./pages/TeachingOS";
+import TeachingOSOutline from "./pages/TeachingOSOutline";
 import TeachingOSPlanner from "./pages/TeachingOSPlanner";
 import TeachingOSDayBoard from "./pages/TeachingOSDayBoard";
 import TeachingOSStudentView from "./pages/TeachingOSStudentView";
@@ -285,6 +286,7 @@ function AppRoutes() {
       {/* Landing Pages */}
       <Route path="/teaching" element={<ProtectedRoute><DashboardLayout><TeachingLanding /></DashboardLayout></ProtectedRoute>} />
       <Route path="/teaching-os" element={<ProtectedRoute><LanguageProvider><TeachingOS /></LanguageProvider></ProtectedRoute>} />
+      <Route path="/teaching-os/outline" element={<ProtectedRoute><LanguageProvider><TeachingOSOutline /></LanguageProvider></ProtectedRoute>} />
       <Route path="/teaching-os/planner" element={<ProtectedRoute><LanguageProvider><TeachingOSPlanner /></LanguageProvider></ProtectedRoute>} />
       <Route path="/teaching-os/dayboard" element={<ProtectedRoute><LanguageProvider><TeachingOSDayBoard /></LanguageProvider></ProtectedRoute>} />
       <Route path="/teaching-os/dayboard/live" element={<ProtectedRoute><LanguageProvider><TeachingOSDayBoard /></LanguageProvider></ProtectedRoute>} />
