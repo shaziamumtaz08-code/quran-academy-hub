@@ -45,6 +45,7 @@ function getTeachingSidebar(courseCount: number, isOneToOne?: boolean): { title:
     : [
         { label: 'All Courses', href: '/teaching?section=courses' },
         { label: 'AI Teaching OS', href: '/teaching-os', badgeText: 'AI' },
+        { label: 'Quiz Engine', href: '/quiz-engine', badgeText: 'AI' },
       ];
   return {
     title: isOneToOne ? '1-to-1 Teaching' : 'Course Management',
