@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const { quiz_bank_id, source_content, language, question_mix } = await req.json();
+    const { quiz_bank_id, source_content, language, question_mix, difficulty_level } = await req.json();
 
     if (!quiz_bank_id || !source_content) {
       return new Response(JSON.stringify({ error: "quiz_bank_id and source_content required" }), {
@@ -23,15 +23,18 @@ Deno.serve(async (req) => {
       .map(([t, c]) => `${Math.min((c as number) * 3, 30)} ${t}`)
       .join(", ");
 
+    const diffLabel = difficulty_level === 'mixed' ? 'a mix of easy, medium, and hard' : difficulty_level;
+
     const systemPrompt = `You are a high-level academic examiner.
-Generate a large Question Bank in ${lang}.
+Generate a large Question Bank in ${lang} at ${diffLabel} difficulty level.
 STRICT RULES:
 1. ALL TEXT MUST BE IN ${lang.toUpperCase()} SCRIPT.
 2. Provide short explanations for why the correct answer is correct.
-3. Output raw JSON ONLY. No markdown: { "questions": [{ "text": "", "type": "mcq|tf|fib", "options": [], "correctIndex": 0, "correctText": "", "explanation": "" }] }
-4. For MCQ: 4 options, correctIndex is 0-based.
-5. For TF: options should be ["True","False"] or localized equivalents, correctIndex 0 or 1.
-6. For FIB: correctText is the answer, no options needed.`;
+3. Each question MUST include a "difficulty" field: "easy", "medium", or "hard".
+4. Output raw JSON ONLY. No markdown: { "questions": [{ "text": "", "type": "mcq|tf|fib", "difficulty": "easy|medium|hard", "options": [], "correctIndex": 0, "correctText": "", "explanation": "" }] }
+5. For MCQ: 4 options, correctIndex is 0-based.
+6. For TF: options should be ["True","False"] or localized equivalents, correctIndex 0 or 1.
+7. For FIB: correctText is the answer, no options needed.`;
 
     const userPrompt = `Create a question bank with ${mix} based on:\n${source_content.substring(0, 30000)}`;
 

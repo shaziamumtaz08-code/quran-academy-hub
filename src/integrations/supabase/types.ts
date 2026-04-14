@@ -5309,6 +5309,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           description: string | null
+          difficulty_level: string
           id: string
           language: string
           max_attempts: number | null
@@ -5328,6 +5329,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          difficulty_level?: string
           id?: string
           language?: string
           max_attempts?: number | null
@@ -5347,6 +5349,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          difficulty_level?: string
           id?: string
           language?: string
           max_attempts?: number | null

@@ -1,0 +1,1 @@
+ALTER TABLE public.quiz_banks ADD COLUMN IF NOT EXISTS difficulty_level TEXT NOT NULL DEFAULT 'mixed';
