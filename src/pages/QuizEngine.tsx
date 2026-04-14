@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
 import {
-  Plus, Loader2, Copy, Share2, Trash2, Eye, FileText,
+  Plus, Loader2, Copy, Share2, Trash2, Eye, FileText, Pencil,
   ClipboardCheck, Trophy, Link as LinkIcon, Globe, Lock, Play, Square, Upload, X
 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
