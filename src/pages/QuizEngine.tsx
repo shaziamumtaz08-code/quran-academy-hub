@@ -484,31 +484,48 @@ export default function QuizEngine() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-4 gap-3">
-                <div><Label className="text-xs">MCQs</Label><Input type="number" value={form.mcq} onChange={e => setForm({ ...form, mcq: +e.target.value })} /></div>
-                <div><Label className="text-xs">True/False</Label><Input type="number" value={form.tf} onChange={e => setForm({ ...form, tf: +e.target.value })} /></div>
-                <div><Label className="text-xs">Fill Blank</Label><Input type="number" value={form.fib} onChange={e => setForm({ ...form, fib: +e.target.value })} /></div>
-                <div>
-                  <Label className="text-xs">Difficulty</Label>
-                  <Select value={form.difficulty_level} onValueChange={(v: any) => setForm({ ...form, difficulty_level: v })}>
-                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="easy">Easy</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="hard">Hard</SelectItem>
-                      <SelectItem value="mixed">Mixed</SelectItem>
-                    </SelectContent>
-                  </Select>
+              <div className="space-y-1">
+                <Label className="text-xs font-medium">Question Types (how many to generate)</Label>
+                <div className="grid grid-cols-3 gap-3">
+                  <div><Label className="text-[10px] text-muted-foreground">MCQ</Label><Input type="number" min={0} value={form.mcq} onChange={e => setForm({ ...form, mcq: +e.target.value })} /></div>
+                  <div><Label className="text-[10px] text-muted-foreground">True / False</Label><Input type="number" min={0} value={form.tf} onChange={e => setForm({ ...form, tf: +e.target.value })} /></div>
+                  <div><Label className="text-[10px] text-muted-foreground">Fill in Blank</Label><Input type="number" min={0} value={form.fib} onChange={e => setForm({ ...form, fib: +e.target.value })} /></div>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div><Label className="text-xs">Q/Attempt</Label><Input type="number" value={form.questions_per_attempt} onChange={e => setForm({ ...form, questions_per_attempt: +e.target.value })} /></div>
-                <div><Label className="text-xs">Time (min)</Label><Input type="number" value={form.time_limit_minutes} onChange={e => setForm({ ...form, time_limit_minutes: +e.target.value })} placeholder="0=none" /></div>
-                <div><Label className="text-xs">Max Attempts</Label><Input type="number" value={form.max_attempts} onChange={e => setForm({ ...form, max_attempts: +e.target.value })} /></div>
-              </div>
               <div>
-                <Label className="text-xs">Passing %</Label>
-                <Input type="number" value={form.passing_percentage} onChange={e => setForm({ ...form, passing_percentage: +e.target.value })} />
+                <Label className="text-xs">Difficulty Level</Label>
+                <Select value={form.difficulty_level} onValueChange={(v: any) => setForm({ ...form, difficulty_level: v })}>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="easy">Easy</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="hard">Hard</SelectItem>
+                    <SelectItem value="mixed">Mixed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Questions per Attempt</Label>
+                  <Input type="number" min={1} value={form.questions_per_attempt} onChange={e => setForm({ ...form, questions_per_attempt: +e.target.value })} />
+                  <p className="text-[10px] text-muted-foreground mt-0.5">How many random Qs each student gets</p>
+                </div>
+                <div>
+                  <Label className="text-xs">Time Limit (minutes)</Label>
+                  <Input type="number" min={0} value={form.time_limit_minutes} onChange={e => setForm({ ...form, time_limit_minutes: +e.target.value })} />
+                  <p className="text-[10px] text-muted-foreground mt-0.5">0 = no timer, students can take as long</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Max Attempts Allowed</Label>
+                  <Input type="number" min={1} value={form.max_attempts} onChange={e => setForm({ ...form, max_attempts: +e.target.value })} />
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Per email/student</p>
+                </div>
+                <div>
+                  <Label className="text-xs">Passing Percentage (%)</Label>
+                  <Input type="number" min={0} max={100} value={form.passing_percentage} onChange={e => setForm({ ...form, passing_percentage: +e.target.value })} />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label className="text-xs">Source Content *</Label>
