@@ -33,6 +33,13 @@ export default function QuizEngine() {
   const [sessionDialogOpen, setSessionDialogOpen] = useState(false);
   const [selectedBankId, setSelectedBankId] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    id: '', name: '', description: '', language: 'en', mode: 'public' as string,
+    course_id: '', difficulty_level: 'mixed' as string,
+    questions_per_attempt: 10, time_limit_minutes: 0,
+    max_attempts: 1, passing_percentage: 50,
+  });
 
   const [extractingPdf, setExtractingPdf] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<{ name: string; text: string }[]>([]);
