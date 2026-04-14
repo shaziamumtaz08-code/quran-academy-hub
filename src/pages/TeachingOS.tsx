@@ -112,7 +112,43 @@ function ContentTypeBadges({ types, onChange }: { types: string[]; onChange: (t:
   );
 }
 
-// ─── Main Component ───
+// ─── Export Dropdown ───
+function ExportDropdown({ onCSV, onPDF, onMarkdown }: { onCSV: () => void; onPDF: () => void; onMarkdown: () => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button onClick={() => setOpen(!open)} className="flex items-center gap-1.5 px-3 py-1.5 border border-[#d0d4dc] rounded-[6px] text-[11px] text-[#4a5264] hover:bg-[#f4f5f7]">
+        <Download className="h-3.5 w-3.5" /> Export
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 bg-white border border-[#e8e9eb] rounded-lg shadow-lg py-1 min-w-[160px] z-50">
+          <button onClick={() => { onPDF(); setOpen(false); }} className="w-full text-left px-3 py-2 text-[11px] text-[#4a5264] hover:bg-[#f4f5f7]">Export as PDF</button>
+          <button onClick={() => { onCSV(); setOpen(false); }} className="w-full text-left px-3 py-2 text-[11px] text-[#4a5264] hover:bg-[#f4f5f7]">Export as CSV</button>
+          <button onClick={() => { onMarkdown(); setOpen(false); }} className="w-full text-left px-3 py-2 text-[11px] text-[#4a5264] hover:bg-[#f4f5f7]">Copy as Markdown</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── PDF File type ───
+interface PdfFileEntry {
+  file: File;
+  text: string;
+  pageCount: number;
+  parsed: boolean;
+}
+
+
 export default function TeachingOS() {
   const { user } = useAuth();
   const { language, langClass } = useLanguage();
