@@ -810,7 +810,9 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
                 })}
               </TableBody>
             </Table>
-          </div>
+            </div>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
         </Card>
       )}
 
