@@ -153,7 +153,7 @@ export default function QuizEngine() {
         mode: form.mode,
         question_mix: { mcq: form.mcq, tf: form.tf, fib: form.fib },
         difficulty_level: form.difficulty_level,
-        questions_per_attempt: form.questions_per_attempt,
+        questions_per_attempt: form.mcq + form.tf + form.fib,
         time_limit_minutes: form.time_limit_minutes || null,
         max_attempts: form.max_attempts || 1,
         passing_percentage: form.passing_percentage,
@@ -354,10 +354,10 @@ export default function QuizEngine() {
                           </div>
                           {bank.description && <p className="text-xs text-muted-foreground">{bank.description}</p>}
                           <div className="flex gap-3 text-xs text-muted-foreground">
-                            <span>{getQuestionCount(bank)} questions</span>
-                            <span>Lang: {bank.language}</span>
-                            <span>{bank.questions_per_attempt}/attempt</span>
-                            {bank.time_limit_minutes && <span>{bank.time_limit_minutes}min</span>}
+                            <span>{getQuestionCount(bank)} Qs</span>
+                            <span>{bank.language?.toUpperCase()}</span>
+                            {bank.time_limit_minutes ? <span>⏱ {bank.time_limit_minutes}min</span> : <span>No timer</span>}
+                            <span>{bank.max_attempts || 1} attempt{(bank.max_attempts || 1) > 1 ? 's' : ''}</span>
                             <span>Pass: {bank.passing_percentage}%</span>
                           </div>
                         </div>
@@ -538,12 +538,13 @@ export default function QuizEngine() {
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs font-medium">Question Types (how many to generate)</Label>
+                <Label className="text-xs font-medium">Number of Questions by Type</Label>
                 <div className="grid grid-cols-3 gap-3">
                   <div><Label className="text-[10px] text-muted-foreground">MCQ</Label><Input type="number" min={0} value={form.mcq} onChange={e => setForm({ ...form, mcq: +e.target.value })} /></div>
                   <div><Label className="text-[10px] text-muted-foreground">True / False</Label><Input type="number" min={0} value={form.tf} onChange={e => setForm({ ...form, tf: +e.target.value })} /></div>
                   <div><Label className="text-[10px] text-muted-foreground">Fill in Blank</Label><Input type="number" min={0} value={form.fib} onChange={e => setForm({ ...form, fib: +e.target.value })} /></div>
                 </div>
+                <p className="text-[10px] text-muted-foreground">Total questions per quiz: <strong>{form.mcq + form.tf + form.fib}</strong></p>
               </div>
               <div>
                 <Label className="text-xs">Difficulty Level</Label>
@@ -557,26 +558,19 @@ export default function QuizEngine() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs">Questions per Attempt</Label>
-                  <Input type="number" min={1} value={form.questions_per_attempt} onChange={e => setForm({ ...form, questions_per_attempt: +e.target.value })} />
-                  <p className="text-[10px] text-muted-foreground mt-0.5">How many random Qs each student gets</p>
-                </div>
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <Label className="text-xs">Time Limit (minutes)</Label>
                   <Input type="number" min={0} value={form.time_limit_minutes} onChange={e => setForm({ ...form, time_limit_minutes: +e.target.value })} />
-                  <p className="text-[10px] text-muted-foreground mt-0.5">0 = no timer, students can take as long</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">0 = no timer</p>
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs">Max Attempts Allowed</Label>
+                  <Label className="text-xs">Max Attempts</Label>
                   <Input type="number" min={1} value={form.max_attempts} onChange={e => setForm({ ...form, max_attempts: +e.target.value })} />
                   <p className="text-[10px] text-muted-foreground mt-0.5">Per email/student</p>
                 </div>
                 <div>
-                  <Label className="text-xs">Passing Percentage (%)</Label>
+                  <Label className="text-xs">Passing %</Label>
                   <Input type="number" min={0} max={100} value={form.passing_percentage} onChange={e => setForm({ ...form, passing_percentage: +e.target.value })} />
                 </div>
               </div>
@@ -678,24 +672,18 @@ export default function QuizEngine() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <Label className="text-xs">Questions per Attempt</Label>
-                  <Input type="number" min={1} value={editForm.questions_per_attempt} onChange={e => setEditForm({ ...editForm, questions_per_attempt: +e.target.value })} />
-                </div>
-                <div>
-                  <Label className="text-xs">Time Limit (minutes)</Label>
+                  <Label className="text-xs">Time Limit (min)</Label>
                   <Input type="number" min={0} value={editForm.time_limit_minutes} onChange={e => setEditForm({ ...editForm, time_limit_minutes: +e.target.value })} />
                   <p className="text-[10px] text-muted-foreground mt-0.5">0 = no timer</p>
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs">Max Attempts Allowed</Label>
+                  <Label className="text-xs">Max Attempts</Label>
                   <Input type="number" min={1} value={editForm.max_attempts} onChange={e => setEditForm({ ...editForm, max_attempts: +e.target.value })} />
                 </div>
                 <div>
-                  <Label className="text-xs">Passing Percentage (%)</Label>
+                  <Label className="text-xs">Passing %</Label>
                   <Input type="number" min={0} max={100} value={editForm.passing_percentage} onChange={e => setEditForm({ ...editForm, passing_percentage: +e.target.value })} />
                 </div>
               </div>
