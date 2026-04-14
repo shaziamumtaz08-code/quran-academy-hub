@@ -641,7 +641,8 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
         </Card>
       ) : (
         <Card>
-          <div className="overflow-x-auto max-h-[65vh] overflow-y-auto">
+          <ScrollArea className="max-h-[65vh] w-full" type="always">
+            <div className="min-w-[900px]">
             <Table>
               <TableHeader className="sticky top-0 z-10 bg-background">
                 <TableRow>
