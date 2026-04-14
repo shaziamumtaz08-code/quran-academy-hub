@@ -672,24 +672,18 @@ export default function QuizEngine() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <Label className="text-xs">Questions per Attempt</Label>
-                  <Input type="number" min={1} value={editForm.questions_per_attempt} onChange={e => setEditForm({ ...editForm, questions_per_attempt: +e.target.value })} />
-                </div>
-                <div>
-                  <Label className="text-xs">Time Limit (minutes)</Label>
+                  <Label className="text-xs">Time Limit (min)</Label>
                   <Input type="number" min={0} value={editForm.time_limit_minutes} onChange={e => setEditForm({ ...editForm, time_limit_minutes: +e.target.value })} />
                   <p className="text-[10px] text-muted-foreground mt-0.5">0 = no timer</p>
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs">Max Attempts Allowed</Label>
+                  <Label className="text-xs">Max Attempts</Label>
                   <Input type="number" min={1} value={editForm.max_attempts} onChange={e => setEditForm({ ...editForm, max_attempts: +e.target.value })} />
                 </div>
                 <div>
-                  <Label className="text-xs">Passing Percentage (%)</Label>
+                  <Label className="text-xs">Passing %</Label>
                   <Input type="number" min={0} max={100} value={editForm.passing_percentage} onChange={e => setEditForm({ ...editForm, passing_percentage: +e.target.value })} />
                 </div>
               </div>
