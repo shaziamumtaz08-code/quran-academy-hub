@@ -173,9 +173,9 @@ export default function TeachingOS() {
   const [learningGoals, setLearningGoals] = useState('');
   const [sourceTab, setSourceTab] = useState<'pdf' | 'paste' | 'url'>('pdf');
   const [pasteText, setPasteText] = useState('');
-  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfFiles, setPdfFiles] = useState<PdfFileEntry[]>([]);
   const [pdfText, setPdfText] = useState('');
-  const [pdfParsed, setPdfParsed] = useState(false);
+  const pdfParsed = pdfFiles.length > 0 && pdfFiles.every(f => f.parsed);
   const [urlInput, setUrlInput] = useState('');
   const [nameError, setNameError] = useState(false);
 
