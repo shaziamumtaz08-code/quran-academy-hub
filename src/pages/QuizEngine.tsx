@@ -538,12 +538,13 @@ export default function QuizEngine() {
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs font-medium">Question Types (how many to generate)</Label>
+                <Label className="text-xs font-medium">Number of Questions by Type</Label>
                 <div className="grid grid-cols-3 gap-3">
                   <div><Label className="text-[10px] text-muted-foreground">MCQ</Label><Input type="number" min={0} value={form.mcq} onChange={e => setForm({ ...form, mcq: +e.target.value })} /></div>
                   <div><Label className="text-[10px] text-muted-foreground">True / False</Label><Input type="number" min={0} value={form.tf} onChange={e => setForm({ ...form, tf: +e.target.value })} /></div>
                   <div><Label className="text-[10px] text-muted-foreground">Fill in Blank</Label><Input type="number" min={0} value={form.fib} onChange={e => setForm({ ...form, fib: +e.target.value })} /></div>
                 </div>
+                <p className="text-[10px] text-muted-foreground">Total questions per quiz: <strong>{form.mcq + form.tf + form.fib}</strong></p>
               </div>
               <div>
                 <Label className="text-xs">Difficulty Level</Label>
@@ -557,26 +558,19 @@ export default function QuizEngine() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs">Questions per Attempt</Label>
-                  <Input type="number" min={1} value={form.questions_per_attempt} onChange={e => setForm({ ...form, questions_per_attempt: +e.target.value })} />
-                  <p className="text-[10px] text-muted-foreground mt-0.5">How many random Qs each student gets</p>
-                </div>
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <Label className="text-xs">Time Limit (minutes)</Label>
                   <Input type="number" min={0} value={form.time_limit_minutes} onChange={e => setForm({ ...form, time_limit_minutes: +e.target.value })} />
-                  <p className="text-[10px] text-muted-foreground mt-0.5">0 = no timer, students can take as long</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">0 = no timer</p>
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs">Max Attempts Allowed</Label>
+                  <Label className="text-xs">Max Attempts</Label>
                   <Input type="number" min={1} value={form.max_attempts} onChange={e => setForm({ ...form, max_attempts: +e.target.value })} />
                   <p className="text-[10px] text-muted-foreground mt-0.5">Per email/student</p>
                 </div>
                 <div>
-                  <Label className="text-xs">Passing Percentage (%)</Label>
+                  <Label className="text-xs">Passing %</Label>
                   <Input type="number" min={0} max={100} value={form.passing_percentage} onChange={e => setForm({ ...form, passing_percentage: +e.target.value })} />
                 </div>
               </div>
