@@ -486,6 +486,27 @@ export default function TeachingOS() {
     toast.success('CSV downloaded');
   };
 
+  const exportPDF = async () => {
+    const { default: jsPDF } = await import('jspdf');
+    const autoTable = (await import('jspdf-autotable')).default;
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text(courseName || 'Syllabus', 14, 20);
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`${subject} · ${level} · ${durationWeeks} weeks · Generated ${new Date().toLocaleDateString()}`, 14, 28);
+    autoTable(doc, {
+      startY: 35,
+      head: [['Week', 'Topic', 'Objectives', 'Content Types']],
+      body: rows.map(r => [r.week, r.topic, r.objectives, r.contentTypes.join(', ')]),
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [15, 32, 68] },
+      columnStyles: { 0: { cellWidth: 16 }, 3: { cellWidth: 35 } },
+    });
+    doc.save(`${courseName || 'syllabus'}-${new Date().toISOString().split('T')[0]}.pdf`);
+    toast.success('PDF downloaded');
+  };
+
   const copyMarkdown = () => {
     const md = `| Week | Topic | Objectives | Content Types |\n|------|-------|------------|---------------|\n` +
       rows.map(r => `| ${r.week} | ${r.topic} | ${r.objectives} | ${r.contentTypes.join(', ')} |`).join('\n');
@@ -828,15 +849,7 @@ export default function TeachingOS() {
               {saveStatus === 'saved' && <span className="text-[11px] text-[#aab0bc]">Saved</span>}
               {rows.length > 0 && (
                 <>
-                  <div className="relative group">
-                    <button className="flex items-center gap-1.5 px-3 py-1.5 border border-[#d0d4dc] rounded-[6px] text-[11px] text-[#4a5264] hover:bg-[#f4f5f7]">
-                      <Download className="h-3.5 w-3.5" /> Export
-                    </button>
-                    <div className="absolute right-0 top-full mt-1 bg-white border border-[#e8e9eb] rounded-lg shadow-lg py-1 min-w-[160px] hidden group-hover:block z-50">
-                      <button onClick={exportCSV} className="w-full text-left px-3 py-2 text-[11px] text-[#4a5264] hover:bg-[#f4f5f7]">Export as CSV</button>
-                      <button onClick={copyMarkdown} className="w-full text-left px-3 py-2 text-[11px] text-[#4a5264] hover:bg-[#f4f5f7]">Copy as Markdown</button>
-                    </div>
-                  </div>
+                  <ExportDropdown onCSV={exportCSV} onPDF={exportPDF} onMarkdown={copyMarkdown} />
                   <button onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success('Link copied'); }} className="flex items-center gap-1.5 px-3 py-1.5 border border-[#d0d4dc] rounded-[6px] text-[11px] text-[#4a5264] hover:bg-[#f4f5f7]">
                     <Share2 className="h-3.5 w-3.5" /> Share
                   </button>
