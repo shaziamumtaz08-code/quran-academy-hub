@@ -5231,6 +5231,146 @@ export type Database = {
           },
         ]
       }
+      quiz_attempts: {
+        Row: {
+          answers: Json
+          completed_at: string | null
+          created_at: string
+          guest_email: string | null
+          guest_name: string | null
+          id: string
+          max_score: number
+          percentage: number
+          questions: Json
+          quiz_bank_id: string
+          score: number
+          session_id: string
+          started_at: string
+          status: string
+          student_id: string | null
+          time_taken_seconds: number | null
+        }
+        Insert: {
+          answers?: Json
+          completed_at?: string | null
+          created_at?: string
+          guest_email?: string | null
+          guest_name?: string | null
+          id?: string
+          max_score?: number
+          percentage?: number
+          questions?: Json
+          quiz_bank_id: string
+          score?: number
+          session_id: string
+          started_at?: string
+          status?: string
+          student_id?: string | null
+          time_taken_seconds?: number | null
+        }
+        Update: {
+          answers?: Json
+          completed_at?: string | null
+          created_at?: string
+          guest_email?: string | null
+          guest_name?: string | null
+          id?: string
+          max_score?: number
+          percentage?: number
+          questions?: Json
+          quiz_bank_id?: string
+          score?: number
+          session_id?: string
+          started_at?: string
+          status?: string
+          student_id?: string | null
+          time_taken_seconds?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_attempts_quiz_bank_id_fkey"
+            columns: ["quiz_bank_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_banks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_attempts_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_banks: {
+        Row: {
+          course_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          language: string
+          max_attempts: number | null
+          mode: string
+          name: string
+          passing_percentage: number | null
+          question_bank: Json
+          question_mix: Json
+          questions_per_attempt: number
+          source_content: string | null
+          status: string
+          time_limit_minutes: number | null
+          updated_at: string
+        }
+        Insert: {
+          course_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          language?: string
+          max_attempts?: number | null
+          mode?: string
+          name: string
+          passing_percentage?: number | null
+          question_bank?: Json
+          question_mix?: Json
+          questions_per_attempt?: number
+          source_content?: string | null
+          status?: string
+          time_limit_minutes?: number | null
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          language?: string
+          max_attempts?: number | null
+          mode?: string
+          name?: string
+          passing_percentage?: number | null
+          question_bank?: Json
+          question_mix?: Json
+          questions_per_attempt?: number
+          source_content?: string | null
+          status?: string
+          time_limit_minutes?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_banks_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quiz_questions: {
         Row: {
           blooms_level: string | null
@@ -5277,6 +5417,53 @@ export type Database = {
             columns: ["kit_id"]
             isOneToOne: false
             referencedRelation: "content_kits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_sessions: {
+        Row: {
+          access_token: string
+          closes_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          opens_at: string | null
+          quiz_bank_id: string
+          status: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string
+          closes_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          opens_at?: string | null
+          quiz_bank_id: string
+          status?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          closes_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          opens_at?: string | null
+          quiz_bank_id?: string
+          status?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_sessions_quiz_bank_id_fkey"
+            columns: ["quiz_bank_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_banks"
             referencedColumns: ["id"]
           },
         ]
