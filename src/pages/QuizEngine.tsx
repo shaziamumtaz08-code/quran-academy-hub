@@ -287,7 +287,7 @@ export default function QuizEngine() {
     setForm({
       name: '', description: '', language: 'en', course_id: '', mode: 'public',
       mcq: 5, tf: 3, fib: 2, difficulty_level: 'mixed', questions_per_attempt: 10,
-      time_limit_minutes: 0, max_attempts: 1, passing_percentage: 50, source_content: '',
+      time_limit_minutes: 0, max_attempts: 1, passing_percentage: 50, source_content: '', custom_instructions: '',
     });
     setUploadedFiles([]);
   };
