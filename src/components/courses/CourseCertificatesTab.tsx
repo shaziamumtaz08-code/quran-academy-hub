@@ -136,15 +136,35 @@ export function CourseCertificatesTab({ courseId }: CourseCertificatesTabProps) 
 
   const issueCertificates = useMutation({
     mutationFn: async () => {
-      const entries = Array.from(selectedStudents).map((studentId, idx) => ({
-        certificate_id: issuingTemplateId,
-        student_id: studentId,
-        course_id: courseId,
-        issued_by: user?.id,
-        grade: issueGrade || null,
-        custom_text: issueCustomText || null,
-        certificate_number: `CERT-${courseId.slice(0, 6).toUpperCase()}-${Date.now()}-${idx}`,
-      }));
+      const studentIds = Array.from(selectedStudents);
+      
+      // Fetch URN + enrollment_ref for each student
+      const { data: classStudents } = await supabase
+        .from('course_class_students')
+        .select('student_id, enrollment_ref')
+        .in('student_id', studentIds);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, registration_id')
+        .in('id', studentIds);
+      
+      const urnMap = new Map((profiles || []).map(p => [p.id, p.registration_id || '']));
+      const erefMap = new Map((classStudents || []).map(cs => [cs.student_id, cs.enrollment_ref || '']));
+
+      const entries = studentIds.map((studentId) => {
+        const urn = urnMap.get(studentId) || '';
+        const eref = erefMap.get(studentId) || '';
+        const certNum = eref ? `${eref}-CERT` : (urn ? `${urn}-CERT-${Date.now().toString(36).toUpperCase()}` : `CERT-${courseId.slice(0, 6).toUpperCase()}-${Date.now()}`);
+        return {
+          certificate_id: issuingTemplateId,
+          student_id: studentId,
+          course_id: courseId,
+          issued_by: user?.id,
+          grade: issueGrade || null,
+          custom_text: issueCustomText || null,
+          certificate_number: certNum,
+        };
+      });
       const { error } = await supabase.from('course_certificate_awards').insert(entries);
       if (error) throw error;
 
@@ -217,7 +237,12 @@ export function CourseCertificatesTab({ courseId }: CourseCertificatesTabProps) 
         }
 
         if (eligible) {
-          const certNumber = `CERT-${courseId.slice(0, 4).toUpperCase()}-${Date.now().toString(36).toUpperCase()}-${awarded}`;
+          // Build cert number from URN + enrollment_ref
+          const { data: prof } = await supabase.from('profiles').select('registration_id').eq('id', e.student_id).single();
+          const { data: ccs } = await supabase.from('course_class_students').select('enrollment_ref').eq('student_id', e.student_id).limit(1);
+          const eref = ccs?.[0]?.enrollment_ref || '';
+          const urn = prof?.registration_id || '';
+          const certNumber = eref ? `${eref}-CERT` : (urn ? `${urn}-CERT-${Date.now().toString(36).toUpperCase()}` : `CERT-${courseId.slice(0, 4).toUpperCase()}-${Date.now().toString(36).toUpperCase()}-${awarded}`);
           await supabase.from('course_certificate_awards').insert({
             certificate_id: template.id,
             course_id: courseId,
