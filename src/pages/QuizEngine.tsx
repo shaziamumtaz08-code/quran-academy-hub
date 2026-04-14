@@ -52,7 +52,7 @@ export default function QuizEngine() {
     difficulty_level: 'mixed' as 'easy' | 'medium' | 'hard' | 'mixed',
     questions_per_attempt: 10, time_limit_minutes: 0,
     max_attempts: 1, passing_percentage: 50,
-    source_content: '',
+    source_content: '', custom_instructions: '',
   });
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -170,12 +170,13 @@ export default function QuizEngine() {
       const res = await fetch(`https://${projectId}.supabase.co/functions/v1/generate-quiz-bank`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
-        body: JSON.stringify({
+         body: JSON.stringify({
           quiz_bank_id: bank.id,
           source_content: form.source_content,
           language: form.language,
           difficulty_level: form.difficulty_level,
           question_mix: { mcq: form.mcq, tf: form.tf, fib: form.fib },
+          custom_instructions: form.custom_instructions || '',
         }),
       });
 
@@ -286,7 +287,7 @@ export default function QuizEngine() {
     setForm({
       name: '', description: '', language: 'en', course_id: '', mode: 'public',
       mcq: 5, tf: 3, fib: 2, difficulty_level: 'mixed', questions_per_attempt: 10,
-      time_limit_minutes: 0, max_attempts: 1, passing_percentage: 50, source_content: '',
+      time_limit_minutes: 0, max_attempts: 1, passing_percentage: 50, source_content: '', custom_instructions: '',
     });
     setUploadedFiles([]);
   };
@@ -597,6 +598,13 @@ export default function QuizEngine() {
                 <Textarea value={form.source_content} onChange={e => setForm({ ...form, source_content: e.target.value })}
                   placeholder="Upload PDFs above or paste text directly..."
                   className="min-h-[100px] text-xs" />
+              </div>
+              <div>
+                <Label className="text-xs">Custom AI Instructions (optional)</Label>
+                <Textarea value={form.custom_instructions} onChange={e => setForm({ ...form, custom_instructions: e.target.value })}
+                  placeholder="e.g. Only create questions about Fiqh topics. Ignore any website URLs, watermarks, or page headers. Focus on chapters 3-5 only. Do NOT ask questions about dates or author names."
+                  className="min-h-[70px] text-xs" />
+                <p className="text-[10px] text-muted-foreground mt-0.5">Tell AI what to include, exclude, or focus on when generating questions</p>
               </div>
             </div>
             <DialogFooter>
