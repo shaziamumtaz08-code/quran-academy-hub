@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const { quiz_bank_id, source_content, language, question_mix, difficulty_level } = await req.json();
+    const { quiz_bank_id, source_content, language, question_mix, difficulty_level, custom_instructions } = await req.json();
 
     if (!quiz_bank_id || !source_content) {
       return new Response(JSON.stringify({ error: "quiz_bank_id and source_content required" }), {
@@ -37,7 +37,8 @@ STRICT RULES:
 7. For FIB: correctText is the answer, no options needed.
 8. CRITICAL: Focus ONLY on the EDUCATIONAL SUBJECT MATTER content. COMPLETELY IGNORE any PDF metadata, document artifacts, watermarks (e.g. "Scanned with CamScanner"), page numbers, headers/footers, file format details, scanner app names, or any text related to how the document was created/scanned/digitized. NEVER create questions about the document format, scanning process, or file properties. Only create questions about the actual academic/educational content within the document.`;
 
-    const userPrompt = `Create a question bank with ${mix} based on the EDUCATIONAL CONTENT below. Ignore any scanner watermarks, PDF artifacts, page numbers, or document metadata — focus only on the subject matter:\n${source_content.substring(0, 30000)}`;
+    const customBlock = custom_instructions ? `\n\nADDITIONAL INSTRUCTIONS FROM THE ADMIN (follow these strictly):\n${custom_instructions}` : '';
+    const userPrompt = `Create a question bank with ${mix} based on the EDUCATIONAL CONTENT below. Ignore any scanner watermarks, PDF artifacts, page numbers, or document metadata — focus only on the subject matter.${customBlock}\n\nCONTENT:\n${source_content.substring(0, 30000)}`;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
