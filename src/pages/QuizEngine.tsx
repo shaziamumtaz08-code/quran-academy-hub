@@ -17,8 +17,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Switch } from '@/components/ui/switch';
 import {
   Plus, Loader2, Copy, Share2, Trash2, Eye, FileText,
-  ClipboardCheck, Trophy, Link as LinkIcon, Globe, Lock, Play, Square
+  ClipboardCheck, Trophy, Link as LinkIcon, Globe, Lock, Play, Square, Upload, X
 } from 'lucide-react';
+import * as pdfjsLib from 'pdfjs-dist';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 import { format } from 'date-fns';
 
 export default function QuizEngine() {
@@ -31,15 +34,61 @@ export default function QuizEngine() {
   const [selectedBankId, setSelectedBankId] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
 
+  const [extractingPdf, setExtractingPdf] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<{ name: string; text: string }[]>([]);
+
   // Form state
   const [form, setForm] = useState({
     name: '', description: '', language: 'en',
     course_id: '', mode: 'public' as 'authenticated' | 'public',
     mcq: 5, tf: 3, fib: 2,
+    difficulty_level: 'mixed' as 'easy' | 'medium' | 'hard' | 'mixed',
     questions_per_attempt: 10, time_limit_minutes: 0,
     max_attempts: 1, passing_percentage: 50,
     source_content: '',
   });
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    setExtractingPdf(true);
+    try {
+      const newFiles: { name: string; text: string }[] = [];
+      for (let i = 0; i < Math.min(files.length, 5); i++) {
+        const file = files[i];
+        if (file.type === 'application/pdf') {
+          const arrayBuffer = await file.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+          let text = '';
+          for (let p = 1; p <= Math.min(pdf.numPages, 50); p++) {
+            const page = await pdf.getPage(p);
+            const content = await page.getTextContent();
+            text += content.items.map((item: any) => item.str).join(' ') + '\n';
+          }
+          newFiles.push({ name: file.name, text: text.trim() });
+        } else {
+          const text = await file.text();
+          newFiles.push({ name: file.name, text: text.trim() });
+        }
+      }
+      setUploadedFiles(prev => [...prev, ...newFiles].slice(0, 5));
+      const allText = [...uploadedFiles, ...newFiles].map(f => `[SOURCE: ${f.name}]\n${f.text}`).join('\n\n');
+      setForm(prev => ({ ...prev, source_content: allText }));
+      toast({ title: `${newFiles.length} file(s) processed` });
+    } catch (err: any) {
+      toast({ title: 'File processing failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setExtractingPdf(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const removeFile = (index: number) => {
+    const updated = uploadedFiles.filter((_, i) => i !== index);
+    setUploadedFiles(updated);
+    const allText = updated.map(f => `[SOURCE: ${f.name}]\n${f.text}`).join('\n\n');
+    setForm(prev => ({ ...prev, source_content: allText }));
+  };
 
   // Load courses for dropdown
   const { data: courses = [] } = useQuery({
@@ -96,6 +145,7 @@ export default function QuizEngine() {
         course_id: form.course_id || null,
         mode: form.mode,
         question_mix: { mcq: form.mcq, tf: form.tf, fib: form.fib },
+        difficulty_level: form.difficulty_level,
         questions_per_attempt: form.questions_per_attempt,
         time_limit_minutes: form.time_limit_minutes || null,
         max_attempts: form.max_attempts || 1,
@@ -117,6 +167,7 @@ export default function QuizEngine() {
           quiz_bank_id: bank.id,
           source_content: form.source_content,
           language: form.language,
+          difficulty_level: form.difficulty_level,
           question_mix: { mcq: form.mcq, tf: form.tf, fib: form.fib },
         }),
       });
@@ -182,11 +233,14 @@ export default function QuizEngine() {
     },
   });
 
-  const resetForm = () => setForm({
-    name: '', description: '', language: 'en', course_id: '', mode: 'public',
-    mcq: 5, tf: 3, fib: 2, questions_per_attempt: 10, time_limit_minutes: 0,
-    max_attempts: 1, passing_percentage: 50, source_content: '',
-  });
+  const resetForm = () => {
+    setForm({
+      name: '', description: '', language: 'en', course_id: '', mode: 'public',
+      mcq: 5, tf: 3, fib: 2, difficulty_level: 'mixed', questions_per_attempt: 10,
+      time_limit_minutes: 0, max_attempts: 1, passing_percentage: 50, source_content: '',
+    });
+    setUploadedFiles([]);
+  };
 
   const copyLink = (token: string) => {
     const url = `${window.location.origin}/quiz/${token}`;
@@ -430,10 +484,22 @@ export default function QuizEngine() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-4 gap-3">
                 <div><Label className="text-xs">MCQs</Label><Input type="number" value={form.mcq} onChange={e => setForm({ ...form, mcq: +e.target.value })} /></div>
                 <div><Label className="text-xs">True/False</Label><Input type="number" value={form.tf} onChange={e => setForm({ ...form, tf: +e.target.value })} /></div>
                 <div><Label className="text-xs">Fill Blank</Label><Input type="number" value={form.fib} onChange={e => setForm({ ...form, fib: +e.target.value })} /></div>
+                <div>
+                  <Label className="text-xs">Difficulty</Label>
+                  <Select value={form.difficulty_level} onValueChange={(v: any) => setForm({ ...form, difficulty_level: v })}>
+                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="easy">Easy</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="hard">Hard</SelectItem>
+                      <SelectItem value="mixed">Mixed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div><Label className="text-xs">Q/Attempt</Label><Input type="number" value={form.questions_per_attempt} onChange={e => setForm({ ...form, questions_per_attempt: +e.target.value })} /></div>
@@ -444,11 +510,29 @@ export default function QuizEngine() {
                 <Label className="text-xs">Passing %</Label>
                 <Input type="number" value={form.passing_percentage} onChange={e => setForm({ ...form, passing_percentage: +e.target.value })} />
               </div>
-              <div>
-                <Label className="text-xs">Source Content (paste text from PDFs/notes) *</Label>
+              <div className="space-y-2">
+                <Label className="text-xs">Source Content *</Label>
+                <div className="flex items-center gap-2">
+                  <label className="flex items-center gap-1.5 px-3 py-1.5 border border-dashed border-border rounded-md cursor-pointer hover:bg-muted/50 transition-colors text-xs text-muted-foreground">
+                    {extractingPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                    Upload PDF / Text
+                    <input type="file" multiple accept=".pdf,.txt,.md,.doc,.docx" className="hidden" onChange={handleFileUpload} disabled={extractingPdf} />
+                  </label>
+                  <span className="text-[10px] text-muted-foreground">Max 5 files, 50 pages each</span>
+                </div>
+                {uploadedFiles.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {uploadedFiles.map((f, i) => (
+                      <Badge key={i} variant="secondary" className="text-xs gap-1 pr-1">
+                        <FileText className="h-3 w-3" /> {f.name}
+                        <button onClick={() => removeFile(i)} className="ml-0.5 hover:text-destructive"><X className="h-3 w-3" /></button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
                 <Textarea value={form.source_content} onChange={e => setForm({ ...form, source_content: e.target.value })}
-                  placeholder="Paste the content you want AI to generate questions from..."
-                  className="min-h-[120px]" />
+                  placeholder="Upload PDFs above or paste text directly..."
+                  className="min-h-[100px] text-xs" />
               </div>
             </div>
             <DialogFooter>
