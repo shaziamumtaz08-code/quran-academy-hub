@@ -240,6 +240,48 @@ export default function QuizEngine() {
     },
   });
 
+  const updateBank = useMutation({
+    mutationFn: async () => {
+      const { id, ...updates } = editForm;
+      const { error } = await (supabase.from('quiz_banks') as any).update({
+        name: updates.name,
+        description: updates.description || null,
+        language: updates.language,
+        mode: updates.mode,
+        course_id: updates.course_id || null,
+        difficulty_level: updates.difficulty_level,
+        questions_per_attempt: updates.questions_per_attempt,
+        time_limit_minutes: updates.time_limit_minutes || null,
+        max_attempts: updates.max_attempts || 1,
+        passing_percentage: updates.passing_percentage,
+      }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quiz-banks'] });
+      setEditOpen(false);
+      toast({ title: 'Quiz bank updated' });
+    },
+    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const openEdit = (bank: any) => {
+    setEditForm({
+      id: bank.id,
+      name: bank.name || '',
+      description: bank.description || '',
+      language: bank.language || 'en',
+      mode: bank.mode || 'public',
+      course_id: bank.course_id || '',
+      difficulty_level: bank.difficulty_level || 'mixed',
+      questions_per_attempt: bank.questions_per_attempt || 10,
+      time_limit_minutes: bank.time_limit_minutes || 0,
+      max_attempts: bank.max_attempts || 1,
+      passing_percentage: bank.passing_percentage || 50,
+    });
+    setEditOpen(true);
+  };
+
   const resetForm = () => {
     setForm({
       name: '', description: '', language: 'en', course_id: '', mode: 'public',
