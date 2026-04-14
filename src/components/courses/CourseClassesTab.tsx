@@ -427,15 +427,22 @@ function ClassDetail({ cls, courseId, onBack, onDelete }: { cls: any; courseId: 
     },
   });
 
-  // Staff list for picker
+  // Staff list for picker — only users with staff-like roles
   const { data: staffList = [] } = useQuery({
-    queryKey: ['staff-list'],
+    queryKey: ['staff-list-for-classes'],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data: roleRows } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .in('role', ['teacher', 'moderator', 'supervisor', 'admin', 'super_admin']);
+      if (!roleRows?.length) return [];
+      const uniqueIds = [...new Set(roleRows.map(r => r.user_id))];
+      const { data: profiles } = await supabase
         .from('profiles')
         .select('id, full_name, email')
+        .in('id', uniqueIds)
         .order('full_name');
-      return data || [];
+      return profiles || [];
     },
   });
 
