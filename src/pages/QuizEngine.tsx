@@ -354,10 +354,10 @@ export default function QuizEngine() {
                           </div>
                           {bank.description && <p className="text-xs text-muted-foreground">{bank.description}</p>}
                           <div className="flex gap-3 text-xs text-muted-foreground">
-                            <span>{getQuestionCount(bank)} questions</span>
-                            <span>Lang: {bank.language}</span>
-                            <span>{bank.questions_per_attempt}/attempt</span>
-                            {bank.time_limit_minutes && <span>{bank.time_limit_minutes}min</span>}
+                            <span>{getQuestionCount(bank)} Qs</span>
+                            <span>{bank.language?.toUpperCase()}</span>
+                            {bank.time_limit_minutes ? <span>⏱ {bank.time_limit_minutes}min</span> : <span>No timer</span>}
+                            <span>{bank.max_attempts || 1} attempt{(bank.max_attempts || 1) > 1 ? 's' : ''}</span>
                             <span>Pass: {bank.passing_percentage}%</span>
                           </div>
                         </div>
