@@ -86,8 +86,25 @@ Deno.serve(async (req) => {
       const numQ = Math.min(bank.questions_per_attempt || 10, allQ.length);
       const shuffled = [...allQ].sort(() => Math.random() - 0.5).slice(0, numQ);
 
+      // Shuffle options for MCQ/TF so correct answer isn't always "A"
+      const shuffledWithOptions = shuffled.map((q: any) => {
+        if (q.type === 'fib' || !q.options || q.options.length === 0) return { ...q };
+        
+        // Create index mapping and shuffle
+        const indices = q.options.map((_: any, i: number) => i);
+        for (let i = indices.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [indices[i], indices[j]] = [indices[j], indices[i]];
+        }
+        
+        const newOptions = indices.map((idx: number) => q.options[idx]);
+        const newCorrectIndex = indices.indexOf(q.correctIndex);
+        
+        return { ...q, options: newOptions, correctIndex: newCorrectIndex };
+      });
+
       // Remove correct answers from what we send to client
-      const clientQuestions = shuffled.map((q: any, i: number) => ({
+      const clientQuestions = shuffledWithOptions.map((q: any, i: number) => ({
         index: i,
         text: q.text,
         type: q.type,
@@ -102,7 +119,7 @@ Deno.serve(async (req) => {
           quiz_bank_id: session.quiz_bank_id,
           guest_email: guest_email.toLowerCase().trim(),
           guest_name: guest_name || null,
-          questions: shuffled, // full questions with answers (server side)
+          questions: shuffledWithOptions, // full questions with shuffled options (server side)
           max_score: numQ,
           status: "in_progress",
         })
