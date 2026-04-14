@@ -105,11 +105,29 @@ Deno.serve(async (req) => {
       }
       profileId = newId;
 
-      // Add student role
+      // Add student role (trigger auto-generates URN)
       await supabaseAdmin.from("user_roles").insert({
         user_id: newId,
         role: "student",
       });
+    } else if (matchedExisting) {
+      // Ensure existing matched profile has a URN
+      const { data: existingProfile } = await supabaseAdmin
+        .from("profiles")
+        .select("registration_id")
+        .eq("id", profileId)
+        .single();
+      
+      if (!existingProfile?.registration_id) {
+        const { data: regId } = await supabaseAdmin.rpc("generate_registration_id", {
+          _org_code: "AQT",
+          _branch_code: "ONL",
+          _role_code: "STU",
+        });
+        if (regId) {
+          await supabaseAdmin.from("profiles").update({ registration_id: regId }).eq("id", profileId);
+        }
+      }
     }
 
     // 4. Create course enrollment (skip if exists)

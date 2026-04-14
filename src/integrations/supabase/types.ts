@@ -1359,6 +1359,7 @@ export type Database = {
         Row: {
           class_id: string
           enrolled_at: string
+          enrollment_ref: string | null
           id: string
           status: string
           student_id: string
@@ -1366,6 +1367,7 @@ export type Database = {
         Insert: {
           class_id: string
           enrolled_at?: string
+          enrollment_ref?: string | null
           id?: string
           status?: string
           student_id: string
@@ -1373,6 +1375,7 @@ export type Database = {
         Update: {
           class_id?: string
           enrolled_at?: string
+          enrollment_ref?: string | null
           id?: string
           status?: string
           student_id?: string
@@ -2752,6 +2755,29 @@ export type Database = {
             columns: ["drill_id"]
             isOneToOne: false
             referencedRelation: "speaking_drills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      enrollment_ref_sequences: {
+        Row: {
+          next_val: number
+          profile_id: string
+        }
+        Insert: {
+          next_val?: number
+          profile_id: string
+        }
+        Update: {
+          next_val?: number
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrollment_ref_sequences_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -6892,6 +6918,7 @@ export type Database = {
           duration_minutes: number
           effective_from_date: string | null
           effective_to_date: string | null
+          enrollment_ref: string | null
           fee_package_id: string | null
           first_month_prorated_fee: number | null
           id: string
@@ -6922,6 +6949,7 @@ export type Database = {
           duration_minutes?: number
           effective_from_date?: string | null
           effective_to_date?: string | null
+          enrollment_ref?: string | null
           fee_package_id?: string | null
           first_month_prorated_fee?: number | null
           id?: string
@@ -6952,6 +6980,7 @@ export type Database = {
           duration_minutes?: number
           effective_from_date?: string | null
           effective_to_date?: string | null
+          enrollment_ref?: string | null
           fee_package_id?: string | null
           first_month_prorated_fee?: number | null
           id?: string
