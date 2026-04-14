@@ -434,7 +434,7 @@ function ClassDetail({ cls, courseId, onBack, onDelete }: { cls: any; courseId: 
       const { data: roleRows } = await supabase
         .from('user_roles')
         .select('user_id, role')
-        .in('role', ['teacher', 'moderator', 'supervisor', 'admin', 'super_admin']);
+        .in('role', ['teacher', 'admin', 'super_admin'] as any[]);
       if (!roleRows?.length) return [];
       const uniqueIds = [...new Set(roleRows.map(r => r.user_id))];
       const { data: profiles } = await supabase
