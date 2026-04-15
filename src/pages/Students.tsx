@@ -717,6 +717,33 @@ export default function Students() {
           onOpenChange={(open) => !open && setDrawerTeacher(null)}
           teacher={drawerTeacher}
         />
+
+        {/* Create Login Confirmation */}
+        <AlertDialog open={!!createLoginStudent} onOpenChange={() => setCreateLoginStudent(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Create Login Account</AlertDialogTitle>
+              <AlertDialogDescription>
+                Create a login for <strong>{createLoginStudent?.full_name}</strong>?
+                <br />
+                Password will be: <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono">
+                  {createLoginStudent ? (createLoginStudent.full_name.split(/\s+/)[0].charAt(0).toUpperCase() + createLoginStudent.full_name.split(/\s+/)[0].slice(1).toLowerCase() + '1234') : ''}
+                </code>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => createLoginStudent && createLoginMutation.mutate(createLoginStudent)}
+                disabled={createLoginMutation.isPending}
+              >
+                {createLoginMutation.isPending ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Creating...</>
+                ) : 'Create Login'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DashboardLayout>
   );
