@@ -27,18 +27,33 @@ export function TeachTodayTab({ courseId }: TeachTodayTabProps) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewSlideIdx, setPreviewSlideIdx] = useState(0);
 
-  // ─── Fetch session plans for this course ───
+  // ─── Fetch syllabi for this course ───
+  const { data: syllabus } = useQuery({
+    queryKey: ['teach-today-syllabus', courseId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('syllabi')
+        .select('id')
+        .eq('course_id', courseId)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      return data?.[0] || null;
+    },
+    enabled: !!courseId,
+  });
+
+  // ─── Fetch session plans for this course's syllabus ───
   const { data: sessionPlans = [], isLoading } = useQuery({
-    queryKey: ['teach-today-plans', courseId],
+    queryKey: ['teach-today-plans', syllabus?.id],
     queryFn: async () => {
       const { data } = await supabase
         .from('session_plans')
         .select('id, session_title, session_objective, activities, created_at, syllabus_id')
-        .eq('course_id', courseId)
+        .eq('syllabus_id', syllabus!.id)
         .order('created_at', { ascending: false });
       return (data || []) as any[];
     },
-    enabled: !!courseId,
+    enabled: !!syllabus?.id,
   });
 
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
