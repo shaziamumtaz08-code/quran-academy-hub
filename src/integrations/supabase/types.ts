@@ -8629,6 +8629,63 @@ export type Database = {
           },
         ]
       }
+      virtual_sessions: {
+        Row: {
+          class_id: string | null
+          course_id: string
+          created_at: string
+          created_by: string
+          ended_at: string | null
+          id: string
+          provider: string
+          room_name: string
+          room_token: string | null
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          class_id?: string | null
+          course_id: string
+          created_at?: string
+          created_by: string
+          ended_at?: string | null
+          id?: string
+          provider?: string
+          room_name: string
+          room_token?: string | null
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          class_id?: string | null
+          course_id?: string
+          created_at?: string
+          created_by?: string
+          ended_at?: string | null
+          id?: string
+          provider?: string
+          room_name?: string
+          room_token?: string | null
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "virtual_sessions_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "course_classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "virtual_sessions_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_contacts: {
         Row: {
           created_at: string
