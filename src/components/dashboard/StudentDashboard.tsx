@@ -127,7 +127,7 @@ export function StudentDashboard() {
       // ── Group course enrollments ──
       const { data: courseEnrollments } = await supabase
         .from('course_enrollments')
-        .select('id, course_id, course:courses(id, name, cover_image_url, description)')
+        .select('id, course_id, course:courses(id, name, description)')
         .eq('student_id', user.id)
         .eq('status', 'active');
 
