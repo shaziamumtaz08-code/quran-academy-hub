@@ -5,8 +5,18 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Search, Mail, User, Loader2, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, RotateCcw } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { StudentCard } from '@/components/students/StudentCard';
@@ -17,6 +27,7 @@ import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendance
 import { useSearchParams } from 'react-router-dom';
 import { EntityLink } from '@/components/shared/EntityLink';
 import { TeacherDetailDrawer } from '@/components/teachers/TeacherDetailDrawer';
+import { useToast } from '@/hooks/use-toast';
 
 interface Student {
   id: string;
@@ -57,7 +68,10 @@ export default function Students() {
   const [scheduleStudent, setScheduleStudent] = useState<TeacherStudent | null>(null);
   const [attendanceStudent, setAttendanceStudent] = useState<TeacherStudent | null>(null);
   const [drawerTeacher, setDrawerTeacher] = useState<{ id: string; full_name: string } | null>(null);
-  const { user, activeRole } = useAuth();
+  const [createLoginStudent, setCreateLoginStudent] = useState<Student | null>(null);
+  const { user, activeRole, session } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   
   // Sorting & Filtering
@@ -266,6 +280,45 @@ export default function Students() {
       })) as Student[];
     },
     enabled: !!user?.id && !isTeacher,
+  });
+
+  // Auth status check for admin view
+  const { data: authStatusMap = {} } = useQuery({
+    queryKey: ['student-auth-status', students.map(s => s.id).join(',')],
+    queryFn: async () => {
+      const ids = students.map(s => s.id);
+      if (ids.length === 0) return {};
+      const { data, error } = await supabase.functions.invoke('check-auth-status', {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+        body: { profile_ids: ids },
+      });
+      if (error) return {};
+      return (data || {}) as Record<string, boolean>;
+    },
+    enabled: isAdmin && students.length > 0 && !!session?.access_token,
+  });
+
+  // Create login mutation
+  const createLoginMutation = useMutation({
+    mutationFn: async (student: Student) => {
+      const firstName = (student.full_name || 'User').split(/\s+/)[0];
+      const password = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase() + '1234';
+      const { data, error } = await supabase.functions.invoke('admin-create-user', {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+        body: { email: student.email, password, fullName: student.full_name, role: 'student' },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      toast({ title: 'Login created', description: 'Auth account created successfully.' });
+      queryClient.invalidateQueries({ queryKey: ['student-auth-status'] });
+      setCreateLoginStudent(null);
+    },
+    onError: (err) => {
+      toast({ title: 'Failed', description: err instanceof Error ? err.message : 'Error', variant: 'destructive' });
+    },
   });
 
   const isLoading = isTeacher ? isLoadingTeacher : isLoadingOther;
@@ -543,7 +596,18 @@ export default function Students() {
                     <TableRow key={student.id}>
                       <TableCell>
                         <div className="flex flex-col">
-                          <span className="font-medium">{student.full_name}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{student.full_name}</span>
+                            {isAdmin && authStatusMap[student.id] === false && (
+                              <Badge
+                                variant="destructive"
+                                className="text-[10px] px-1.5 py-0 cursor-pointer hover:opacity-80"
+                                onClick={() => setCreateLoginStudent(student)}
+                              >
+                                No Login
+                              </Badge>
+                            )}
+                          </div>
                           {student.email && (
                             <span className="flex items-center gap-1 text-sm text-muted-foreground">
                               <Mail className="h-3 w-3" />
@@ -653,6 +717,33 @@ export default function Students() {
           onOpenChange={(open) => !open && setDrawerTeacher(null)}
           teacher={drawerTeacher}
         />
+
+        {/* Create Login Confirmation */}
+        <AlertDialog open={!!createLoginStudent} onOpenChange={() => setCreateLoginStudent(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Create Login Account</AlertDialogTitle>
+              <AlertDialogDescription>
+                Create a login for <strong>{createLoginStudent?.full_name}</strong>?
+                <br />
+                Password will be: <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono">
+                  {createLoginStudent ? (createLoginStudent.full_name.split(/\s+/)[0].charAt(0).toUpperCase() + createLoginStudent.full_name.split(/\s+/)[0].slice(1).toLowerCase() + '1234') : ''}
+                </code>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => createLoginStudent && createLoginMutation.mutate(createLoginStudent)}
+                disabled={createLoginMutation.isPending}
+              >
+                {createLoginMutation.isPending ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Creating...</>
+                ) : 'Create Login'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DashboardLayout>
   );

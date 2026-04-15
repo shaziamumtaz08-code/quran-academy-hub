@@ -78,6 +78,7 @@ import {
 } from 'lucide-react';
 import { BulkUserImportDialog } from '@/components/users/BulkUserImportDialog';
 import { ExportUsersDialog } from '@/components/users/ExportUsersDialog';
+import { AuthAuditTab } from '@/components/admin/AuthAuditTab';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Country, State, City, ICountry, IState, ICity } from 'country-state-city';
 import { SearchableCitySelect } from '@/components/ui/searchable-city-select';
@@ -1069,6 +1070,12 @@ export default function UserManagement() {
               <Shield className="h-4 w-4" />
               Role Templates
             </TabsTrigger>
+            {(isSuperAdmin || hasPermission('users.view')) && (
+              <TabsTrigger value="auth-audit" className="gap-2">
+                <AlertCircle className="h-4 w-4" />
+                Auth Audit
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* Users Tab */}
@@ -1429,6 +1436,11 @@ export default function UserManagement() {
                 </Card>
               ))}
             </div>
+          </TabsContent>
+
+          {/* Auth Audit Tab */}
+          <TabsContent value="auth-audit">
+            <AuthAuditTab />
           </TabsContent>
         </Tabs>
 

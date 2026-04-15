@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.applicant-webhook]
 verify_jwt = false
+
+[functions.check-auth-status]
+verify_jwt = false
