@@ -543,69 +543,164 @@ export default function TeacherCourseView() {
                   <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />No assignments yet
                 </CardContent></Card>
               ) : (
-                assignments.map(a => {
-                  const subs = allSubmissions.filter(s => s.assignment_id === a.id);
-                  return (
-                    <Collapsible key={a.id}>
-                      <Card>
-                        <CollapsibleTrigger className="w-full">
-                          <CardContent className="p-4 flex items-center justify-between">
-                            <div className="text-left">
-                              <p className="text-sm font-semibold">{a.title}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {a.due_date && `Due: ${format(new Date(a.due_date), 'MMM d, yyyy')}`} · {subs.length}/{classStudents.length} submitted
-                              </p>
-                            </div>
-                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                          </CardContent>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <div className="px-4 pb-4">
+                <>
+                  {/* Assignment selector */}
+                  <div className="flex gap-2 flex-wrap">
+                    {assignments.map(a => (
+                      <Button
+                        key={a.id}
+                        size="sm"
+                        variant={(selectedAssignmentId || assignments[0]?.id) === a.id ? 'default' : 'outline'}
+                        className="text-xs"
+                        onClick={() => setSelectedAssignmentId(a.id)}
+                      >
+                        {a.title}
+                      </Button>
+                    ))}
+                  </div>
+
+                  {(() => {
+                    const activeAssignment = assignments.find(a => a.id === (selectedAssignmentId || assignments[0]?.id));
+                    if (!activeAssignment) return null;
+
+                    const subs = allSubmissions.filter(s => s.assignment_id === activeAssignment.id);
+                    const submittedIds = new Set(subs.map(s => s.student_id));
+                    const gradedCount = subs.filter(s => s.status === 'graded').length;
+                    const submittedCount = subs.filter(s => s.status === 'submitted').length;
+                    const revisionCount = subs.filter(s => s.status === 'needs_revision').length;
+                    const notSubmittedCount = classStudents.length - submittedIds.size;
+
+                    // Build rows: submitted students + not-submitted students
+                    const rows: Array<{ studentId: string; name: string; sub: any | null }> = [];
+                    classStudents.forEach((s: any) => {
+                      const sub = subs.find(sub => sub.student_id === s.student_id) || null;
+                      rows.push({ studentId: s.student_id, name: s.profile?.full_name || 'Student', sub });
+                    });
+                    // Sort: submitted first, then not submitted
+                    rows.sort((a, b) => (a.sub ? 0 : 1) - (b.sub ? 0 : 1));
+
+                    const submissionIdsForNav = rows.filter(r => r.sub).map(r => r.sub.id);
+
+                    const rowColor = (sub: any) => {
+                      if (!sub) return 'bg-muted/30';
+                      if (sub.status === 'graded') return 'bg-emerald-50 dark:bg-emerald-950/20';
+                      if (sub.status === 'needs_revision') return 'bg-orange-50 dark:bg-orange-950/20';
+                      return 'bg-amber-50 dark:bg-amber-950/20';
+                    };
+
+                    return (
+                      <>
+                        {/* Summary bar */}
+                        <div className="flex gap-3 flex-wrap">
+                          <div className="flex items-center gap-1.5 text-xs">
+                            <div className="h-2.5 w-2.5 rounded-full bg-primary" />
+                            <span>Enrolled: <strong>{classStudents.length}</strong></span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs">
+                            <div className="h-2.5 w-2.5 rounded-full bg-amber-500" />
+                            <span>Submitted: <strong>{submittedCount}</strong></span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs">
+                            <div className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                            <span>Graded: <strong>{gradedCount}</strong></span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs">
+                            <div className="h-2.5 w-2.5 rounded-full bg-orange-500" />
+                            <span>Revision: <strong>{revisionCount}</strong></span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs">
+                            <div className="h-2.5 w-2.5 rounded-full bg-muted-foreground/30" />
+                            <span>Not Submitted: <strong>{notSubmittedCount}</strong></span>
+                          </div>
+                        </div>
+
+                        {/* Student table */}
+                        <Card>
+                          <CardContent className="p-0">
                             <Table>
                               <TableHeader>
                                 <TableRow>
                                   <TableHead>Student</TableHead>
-                                  <TableHead>Submitted</TableHead>
                                   <TableHead>Status</TableHead>
+                                  <TableHead>Submitted At</TableHead>
                                   <TableHead>Score</TableHead>
                                   <TableHead>Action</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
-                                {subs.length === 0 ? (
-                                  <TableRow><TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-4">No submissions yet</TableCell></TableRow>
-                                ) : subs.map(sub => {
-                                  const profile = profileMap.get(sub.student_id);
-                                  return (
-                                    <TableRow key={sub.id}>
-                                      <TableCell className="text-sm">{(profile as any)?.full_name || 'Student'}</TableCell>
-                                      <TableCell className="text-xs">{sub.submitted_at && format(new Date(sub.submitted_at), 'MMM d, h:mm a')}</TableCell>
-                                      <TableCell>
-                                        <Badge variant={sub.status === 'graded' ? 'default' : sub.status === 'submitted' ? 'secondary' : 'outline'}
-                                          className={cn('text-[9px]', sub.status === 'graded' && 'bg-emerald-500', sub.status === 'needs_revision' && 'border-orange-500 text-orange-600')}>
-                                          {sub.status}
+                                {rows.length === 0 ? (
+                                  <TableRow><TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-6">
+                                    No submissions yet{activeAssignment.due_date && ` · Due ${format(new Date(activeAssignment.due_date), 'MMM d, yyyy')}`}
+                                  </TableCell></TableRow>
+                                ) : rows.map(row => (
+                                  <TableRow key={row.studentId} className={rowColor(row.sub)}>
+                                    <TableCell>
+                                      <div className="flex items-center gap-2">
+                                        <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary shrink-0">
+                                          {row.name.charAt(0)}
+                                        </div>
+                                        <span className="text-sm">{row.name}</span>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      {row.sub ? (
+                                        <Badge variant={row.sub.status === 'graded' ? 'default' : row.sub.status === 'submitted' ? 'secondary' : 'outline'}
+                                          className={cn('text-[9px]',
+                                            row.sub.status === 'graded' && 'bg-emerald-500',
+                                            row.sub.status === 'needs_revision' && 'border-orange-500 text-orange-600',
+                                          )}>
+                                          {row.sub.status}
                                         </Badge>
-                                      </TableCell>
-                                      <TableCell className="text-sm">{(sub as any).score ?? '—'}</TableCell>
-                                      <TableCell>
-                                        <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => {
-                                          setGradingSubmission(sub);
-                                          setGradeScore(String((sub as any).score ?? ''));
-                                          setGradeFeedback(sub.feedback || '');
-                                          setGradeStatus(sub.status === 'submitted' ? 'graded' : sub.status);
-                                        }}>Review</Button>
-                                      </TableCell>
-                                    </TableRow>
-                                  );
-                                })}
+                                      ) : (
+                                        <span className="text-xs text-muted-foreground">Not submitted</span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-xs">
+                                      {row.sub?.submitted_at ? format(new Date(row.sub.submitted_at), 'MMM d, h:mm a') : '—'}
+                                    </TableCell>
+                                    <TableCell className="text-sm">{row.sub?.score ?? '—'}</TableCell>
+                                    <TableCell>
+                                      {row.sub ? (
+                                        <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => setGradingSubId(row.sub.id)}>
+                                          Grade
+                                        </Button>
+                                      ) : null}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
                               </TableBody>
                             </Table>
-                          </div>
-                        </CollapsibleContent>
-                      </Card>
-                    </Collapsible>
-                  );
-                })
+                          </CardContent>
+                        </Card>
+
+                        {/* Bulk action for not-submitted */}
+                        {notSubmittedCount > 0 && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-xs"
+                            onClick={async () => {
+                              const missing = classStudents
+                                .filter((s: any) => !submittedIds.has(s.student_id))
+                                .map((s: any) => ({
+                                  assignment_id: activeAssignment.id,
+                                  student_id: s.student_id,
+                                  status: 'missing',
+                                  submitted_at: new Date().toISOString(),
+                                }));
+                              const { error } = await supabase.from('course_assignment_submissions').insert(missing);
+                              if (error) { toast.error(error.message); return; }
+                              toast.success(`${missing.length} students marked as missing`);
+                              queryClient.invalidateQueries({ queryKey: ['teacher-all-submissions'] });
+                            }}
+                          >
+                            <AlertTriangle className="h-3.5 w-3.5 mr-1" /> Mark All Not Submitted as Missing
+                          </Button>
+                        )}
+                      </>
+                    );
+                  })()}
+                </>
               )}
             </>
           )}
