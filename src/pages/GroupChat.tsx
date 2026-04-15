@@ -39,7 +39,7 @@ export default function GroupChat() {
   const [forwardMsg, setForwardMsg] = useState<any | null>(null);
   const [dmOpen, setDmOpen] = useState(false);
   const [dmSearch, setDmSearch] = useState('');
-  const [sidebarFilter, setSidebarFilter] = useState('all');
+  const [sidebarFilter, setSidebarFilter] = useState(searchParams.get('filter') === 'dm' ? 'dm' : 'all');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Fetch groups
