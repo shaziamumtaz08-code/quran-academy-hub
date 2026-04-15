@@ -5,14 +5,28 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-async function gradeFibAnswersWithAI(fibItems: { question: string; correctAnswer: string; userAnswer: string }[], language: string): Promise<boolean[]> {
+async function gradeFibAnswersWithAI(fibItems: { question: string; correctAnswer: string; alternatives: string[]; userAnswer: string }[], language: string): Promise<boolean[]> {
   if (fibItems.length === 0) return [];
+
+  // First try local matching (fast, no AI cost)
+  const localResults = fibItems.map(item => fuzzyMatchWithAlts(item.userAnswer, item.correctAnswer, item.alternatives));
+  // If all matched locally, skip AI
+  if (localResults.every(r => r)) return localResults;
 
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_API_KEY) {
-    // Fallback to fuzzy matching if no AI key
-    return fibItems.map(item => fuzzyMatch(item.userAnswer, item.correctAnswer));
+    return localResults;
   }
+
+  // Only send items that failed local matching to AI
+  const aiNeededIndices: number[] = [];
+  const aiItems: typeof fibItems = [];
+  localResults.forEach((matched, i) => {
+    if (!matched) {
+      aiNeededIndices.push(i);
+      aiItems.push(fibItems[i]);
+    }
+  });
 
   const lang = language === "ur" ? "Urdu" : language === "ar" ? "Arabic" : "English";
 
@@ -21,15 +35,16 @@ async function gradeFibAnswersWithAI(fibItems: { question: string; correctAnswer
 Grade the following fill-in-the-blank answers. A student's answer should be marked CORRECT if:
 1. It matches the correct answer semantically (same meaning)
 2. It is the same word but WITHOUT Arabic diacritics/harakat/tashkeel (e.g., "معلم" = "مُعَلِّمُ")
-3. It is a valid Roman/transliteration of the correct answer (e.g., "bayt" for "بَيْتٌ")
-4. It is a correct synonym or equivalent term for the concept
+3. It is a valid Roman/transliteration of the correct answer (e.g., "bayt" for "بَيْتٌ", "muallim" for "معلم")
+4. It is a correct synonym or equivalent term for the concept (e.g., "استاد" for "معلم")
 5. Minor spelling variations that clearly refer to the same word
+6. The answer captures the same concept even if phrased differently
 
 Mark INCORRECT only if the answer is genuinely wrong or refers to a different concept.
 
 Questions and answers:
-${fibItems.map((item, i) => `${i + 1}. Question: "${item.question}"
-   Correct answer: "${item.correctAnswer}"
+${aiItems.map((item, i) => `${i + 1}. Question: "${item.question}"
+   Correct answer: "${item.correctAnswer}"${item.alternatives.length > 0 ? `\n   Also acceptable: ${item.alternatives.join(', ')}` : ''}
    Student answer: "${item.userAnswer}"`).join('\n')}
 
 Return ONLY a JSON array of booleans, one per question. Example: [true, false, true]
@@ -51,40 +66,43 @@ No explanation needed.`;
     });
 
     if (!aiRes.ok) {
-      console.error("AI grading failed, falling back to fuzzy match:", await aiRes.text());
-      return fibItems.map(item => fuzzyMatch(item.userAnswer, item.correctAnswer));
+      console.error("AI grading failed:", await aiRes.text());
+      return localResults;
     }
 
     const aiData = await aiRes.json();
     const raw = aiData.choices?.[0]?.message?.content || "[]";
     const clean = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
     const parsed = JSON.parse(clean);
-    
-    // Handle both array and object with results key
-    const results = Array.isArray(parsed) ? parsed : (parsed.results || parsed.answers || []);
-    
-    if (results.length === fibItems.length) {
-      return results.map((r: any) => Boolean(r));
+    const aiResults = Array.isArray(parsed) ? parsed : (parsed.results || parsed.answers || []);
+
+    if (aiResults.length === aiItems.length) {
+      const finalResults = [...localResults];
+      aiNeededIndices.forEach((origIdx, aiIdx) => {
+        finalResults[origIdx] = Boolean(aiResults[aiIdx]);
+      });
+      return finalResults;
     }
-    
-    console.error("AI returned wrong number of results, falling back");
-    return fibItems.map(item => fuzzyMatch(item.userAnswer, item.correctAnswer));
+
+    return localResults;
   } catch (e) {
     console.error("AI grading error:", e);
-    return fibItems.map(item => fuzzyMatch(item.userAnswer, item.correctAnswer));
+    return localResults;
   }
 }
 
 function fuzzyMatch(userAnswer: string, correctAnswer: string): boolean {
   if (!userAnswer || !correctAnswer) return false;
-  
-  // Strip Arabic diacritics (harakat/tashkeel)
   const stripDiacritics = (s: string) => s.replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED]/g, "");
-  
   const ua = stripDiacritics(userAnswer.toString().toLowerCase().trim());
   const ca = stripDiacritics(correctAnswer.toLowerCase().trim());
-  
   return ua === ca;
+}
+
+function fuzzyMatchWithAlts(userAnswer: string, correctAnswer: string, alternatives: string[]): boolean {
+  if (!userAnswer) return false;
+  if (fuzzyMatch(userAnswer, correctAnswer)) return true;
+  return alternatives.some(alt => fuzzyMatch(userAnswer, alt));
 }
 
 Deno.serve(async (req) => {
@@ -232,13 +250,13 @@ Deno.serve(async (req) => {
 
       // Separate FIB questions for AI grading
       const fibIndices: number[] = [];
-      const fibItems: { question: string; correctAnswer: string; userAnswer: string }[] = [];
+      const fibItems: { question: string; correctAnswer: string; alternatives: string[]; userAnswer: string }[] = [];
 
       questions.forEach((q: any, i: number) => {
         const userAnswer = answers[i];
         if (q.type === "fib" && userAnswer && q.correctText) {
           fibIndices.push(i);
-          fibItems.push({ question: q.text, correctAnswer: q.correctText, userAnswer: userAnswer.toString() });
+          fibItems.push({ question: q.text, correctAnswer: q.correctText, alternatives: q.correctAlt || [], userAnswer: userAnswer.toString() });
         }
       });
 

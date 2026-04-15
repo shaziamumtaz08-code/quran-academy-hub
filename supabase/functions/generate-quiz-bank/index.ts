@@ -25,17 +25,31 @@ Deno.serve(async (req) => {
 
     const diffLabel = difficulty_level === 'mixed' ? 'a mix of easy, medium, and hard' : difficulty_level;
 
+    const arabicRules = (language === 'ar' || language === 'ur') ? `
+ARABIC/URDU LANGUAGE HANDLING (CRITICAL):
+- For FIB correctText: provide the answer WITHOUT diacritics/harakat/tashkeel (no fatḥa, kasra, ḍamma, shadda, sukūn, tanwīn). Write bare letters only. Example: write "معلم" NOT "مُعَلِّمُ".
+- Also add a "correctAlt" field: an array of acceptable alternative answers including:
+  a) The word WITH full diacritics/tashkeel
+  b) A Roman/transliteration (e.g. "muallim" for معلم, "bayt" for بيت)
+  c) Common synonyms in the same language (e.g. "استاد" for "معلم")
+- For MCQ options: write Arabic/Urdu text WITHOUT heavy diacritics so students can read them easily. Only add diacritics when they change the meaning of the word.
+- For TF: use localized options like ["صحیح","غلط"] for Urdu or ["صح","خطأ"] for Arabic.
+- NEVER mark an answer wrong just because it lacks diacritics — the base letters are what matter.
+- Questions should test understanding of CONCEPTS, not ability to reproduce exact diacritical marks.
+` : '';
+
     const systemPrompt = `You are a high-level academic examiner.
 Generate a large Question Bank in ${lang} at ${diffLabel} difficulty level.
 STRICT RULES:
 1. ALL TEXT MUST BE IN ${lang.toUpperCase()} SCRIPT.
 2. Provide short explanations for why the correct answer is correct.
 3. Each question MUST include a "difficulty" field: "easy", "medium", or "hard".
-4. Output raw JSON ONLY. No markdown: { "questions": [{ "text": "", "type": "mcq|tf|fib", "difficulty": "easy|medium|hard", "options": [], "correctIndex": 0, "correctText": "", "explanation": "" }] }
+4. Output raw JSON ONLY. No markdown: { "questions": [{ "text": "", "type": "mcq|tf|fib", "difficulty": "easy|medium|hard", "options": [], "correctIndex": 0, "correctText": "", "correctAlt": [], "explanation": "" }] }
 5. For MCQ: 4 options, correctIndex is 0-based.
 6. For TF: options should be ["True","False"] or localized equivalents, correctIndex 0 or 1.
-7. For FIB: correctText is the answer, no options needed.
-8. CRITICAL: Focus ONLY on the EDUCATIONAL SUBJECT MATTER content. COMPLETELY IGNORE any PDF metadata, document artifacts, watermarks (e.g. "Scanned with CamScanner"), page numbers, headers/footers, file format details, scanner app names, or any text related to how the document was created/scanned/digitized. NEVER create questions about the document format, scanning process, or file properties. Only create questions about the actual academic/educational content within the document.`;
+7. For FIB: correctText is the PRIMARY answer (plain text, no diacritics for Arabic/Urdu), correctAlt is an array of ALL acceptable alternatives (with diacritics, transliteration, synonyms). No options needed.
+8. CRITICAL: Focus ONLY on the EDUCATIONAL SUBJECT MATTER content. COMPLETELY IGNORE any PDF metadata, document artifacts, watermarks (e.g. "Scanned with CamScanner"), page numbers, headers/footers, file format details, scanner app names, or any text related to how the document was created/scanned/digitized. NEVER create questions about the document format, scanning process, or file properties. Only create questions about the actual academic/educational content within the document.
+${arabicRules}`;
 
     const customBlock = custom_instructions ? `\n\nADDITIONAL INSTRUCTIONS FROM THE ADMIN (follow these strictly):\n${custom_instructions}` : '';
     const userPrompt = `Create a question bank with ${mix} based on the EDUCATIONAL CONTENT below. Ignore any scanner watermarks, PDF artifacts, page numbers, or document metadata — focus only on the subject matter.${customBlock}\n\nCONTENT:\n${source_content.substring(0, 30000)}`;
