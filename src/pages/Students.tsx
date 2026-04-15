@@ -5,8 +5,18 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Search, Mail, User, Loader2, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, RotateCcw } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { StudentCard } from '@/components/students/StudentCard';
@@ -17,6 +27,7 @@ import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendance
 import { useSearchParams } from 'react-router-dom';
 import { EntityLink } from '@/components/shared/EntityLink';
 import { TeacherDetailDrawer } from '@/components/teachers/TeacherDetailDrawer';
+import { useToast } from '@/hooks/use-toast';
 
 interface Student {
   id: string;
