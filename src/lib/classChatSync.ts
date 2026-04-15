@@ -10,11 +10,11 @@ export async function ensureClassChatGroup(
   createdBy: string,
 ): Promise<string | null> {
   // Check if group already exists
-  const { data: existing } = await supabase
+  const { data: existing } = await (supabase
     .from('chat_groups')
-    .select('id')
-    .eq('class_id' as any, classId)
-    .limit(1) as any;
+    .select('id') as any)
+    .eq('class_id', classId)
+    .limit(1);
 
   if (existing && existing.length > 0) return existing[0].id;
 
