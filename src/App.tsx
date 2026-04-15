@@ -73,6 +73,7 @@ import UnifiedDashboard from "./pages/UnifiedDashboard";
 import QuizEngine from "./pages/QuizEngine";
 import PublicQuiz from "./pages/PublicQuiz";
 import StudentQuizView from "./pages/StudentQuizView";
+import VirtualClassroom from "./pages/VirtualClassroom";
 
 // Landing pages
 import TeachingLanding from "./pages/TeachingLanding";
@@ -396,6 +397,8 @@ function AppRoutes() {
       <Route path="/my-quizzes" element={<ProtectedRoute><StudentQuizView /></ProtectedRoute>} />
       {/* Public Quiz - no auth */}
       <Route path="/quiz/:token" element={<PublicQuiz />} />
+      {/* Virtual Classroom */}
+      <Route path="/classroom/:sessionId" element={<ProtectedRoute><VirtualClassroom /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
