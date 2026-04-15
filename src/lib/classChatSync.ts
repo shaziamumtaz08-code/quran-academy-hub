@@ -110,10 +110,10 @@ export async function removeStudentFromClassChat(classId: string, studentId: str
  * Check if a class has a chat group.
  */
 export async function classHasChatGroup(classId: string): Promise<boolean> {
-  const { data } = await supabase
+  const { data } = await (supabase
     .from('chat_groups')
-    .select('id')
-    .eq('class_id' as any, classId)
-    .limit(1) as any;
+    .select('id') as any)
+    .eq('class_id', classId)
+    .limit(1);
   return (data?.length || 0) > 0;
 }
