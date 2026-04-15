@@ -246,8 +246,9 @@ export default function QuizEngine() {
   });
 
   const updateBank = useMutation({
-    mutationFn: async () => {
-      const { id, ...updates } = editForm;
+    mutationFn: async ({ regenerate }: { regenerate?: boolean } = {}) => {
+      const { id, mcq, tf, fib, custom_instructions, ...updates } = editForm;
+      const totalQ = mcq + tf + fib;
       const { error } = await (supabase.from('quiz_banks') as any).update({
         name: updates.name,
         description: updates.description || null,
@@ -255,19 +256,44 @@ export default function QuizEngine() {
         mode: updates.mode,
         course_id: updates.course_id || null,
         difficulty_level: updates.difficulty_level,
-        questions_per_attempt: updates.questions_per_attempt,
+        questions_per_attempt: totalQ,
         time_limit_minutes: updates.time_limit_minutes || null,
         max_attempts: updates.max_attempts || 1,
         passing_percentage: updates.passing_percentage,
+        question_mix: { mcq, tf, fib },
       }).eq('id', id);
       if (error) throw error;
+
+      if (regenerate && editSourceContent.trim()) {
+        setRegenerating(true);
+        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+        const res = await fetch(`https://${projectId}.supabase.co/functions/v1/generate-quiz-bank`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+          body: JSON.stringify({
+            quiz_bank_id: id,
+            source_content: editSourceContent,
+            language: updates.language,
+            difficulty_level: updates.difficulty_level,
+            question_mix: { mcq, tf, fib },
+            custom_instructions: custom_instructions || '',
+          }),
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || 'Regeneration failed');
+        return result;
+      }
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      setRegenerating(false);
       queryClient.invalidateQueries({ queryKey: ['quiz-banks'] });
       setEditOpen(false);
-      toast({ title: 'Quiz bank updated' });
+      toast({ title: data?.count ? `Regenerated ${data.count} questions` : 'Quiz bank updated' });
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => {
+      setRegenerating(false);
+      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+    },
   });
 
   const openEdit = (bank: any) => {
