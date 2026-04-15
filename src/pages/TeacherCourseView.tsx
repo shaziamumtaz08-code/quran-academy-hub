@@ -229,6 +229,19 @@ export default function TeacherCourseView() {
     enabled: !!courseId,
   });
 
+  // ─── Pending DM requests count ───
+  const { data: pendingDMCount = 0 } = useQuery({
+    queryKey: ['pending-dm-count', courseId],
+    queryFn: async () => {
+      const { count } = await supabase.from('dm_requests')
+        .select('id', { count: 'exact', head: true })
+        .eq('course_id', courseId!)
+        .eq('status', 'pending');
+      return count || 0;
+    },
+    enabled: !!courseId,
+  });
+
   // ═══ HANDLERS ═══
 
   const handleSaveAttendance = async () => {
