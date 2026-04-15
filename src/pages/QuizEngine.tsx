@@ -39,7 +39,11 @@ export default function QuizEngine() {
     course_id: '', difficulty_level: 'mixed' as string,
     questions_per_attempt: 10, time_limit_minutes: 0,
     max_attempts: 1, passing_percentage: 50,
+    mcq: 5, tf: 3, fib: 2, custom_instructions: '',
   });
+  const [editUploadedFiles, setEditUploadedFiles] = useState<{ name: string; text: string }[]>([]);
+  const [editSourceContent, setEditSourceContent] = useState('');
+  const [regenerating, setRegenerating] = useState(false);
 
   const [extractingPdf, setExtractingPdf] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<{ name: string; text: string }[]>([]);
