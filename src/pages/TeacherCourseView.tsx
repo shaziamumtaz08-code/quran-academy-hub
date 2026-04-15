@@ -847,52 +847,19 @@ export default function TeacherCourseView() {
       {/* ═══ DIALOGS ═══ */}
 
       {/* Grading sheet */}
-      <Sheet open={!!gradingSubmission} onOpenChange={o => { if (!o) setGradingSubmission(null); }}>
+      <Sheet open={!!gradingSubId} onOpenChange={o => { if (!o) setGradingSubId(null); }}>
         <SheetContent className="w-full sm:max-w-md overflow-y-auto">
-          <SheetHeader><SheetTitle>Review Submission</SheetTitle></SheetHeader>
-          {gradingSubmission && (
-            <div className="mt-4 space-y-4">
-              <div>
-                <p className="text-xs text-muted-foreground">Student</p>
-                <p className="text-sm font-medium">{(profileMap.get(gradingSubmission.student_id) as any)?.full_name || 'Student'}</p>
-              </div>
-              {gradingSubmission.submitted_at && (
-                <p className="text-xs text-muted-foreground">Submitted {format(new Date(gradingSubmission.submitted_at), 'MMM d, h:mm a')}</p>
-              )}
-              {gradingSubmission.response_text && (
-                <div>
-                  <Label className="text-xs">Response</Label>
-                  <Textarea value={gradingSubmission.response_text} readOnly rows={4} className="bg-muted/50" />
-                </div>
-              )}
-              {gradingSubmission.file_url && (
-                <Button variant="outline" size="sm" onClick={() => window.open(gradingSubmission.file_url, '_blank')}>
-                  <Download className="h-4 w-4 mr-1" /> Download Submission
-                </Button>
-              )}
-              <div>
-                <Label className="text-xs">Score (0-100)</Label>
-                <Input type="number" min={0} max={100} value={gradeScore} onChange={e => setGradeScore(e.target.value)} />
-              </div>
-              <div>
-                <Label className="text-xs">Feedback</Label>
-                <Textarea value={gradeFeedback} onChange={e => setGradeFeedback(e.target.value)} rows={3} placeholder="Feedback for student..." />
-              </div>
-              <div>
-                <Label className="text-xs">Status</Label>
-                <Select value={gradeStatus} onValueChange={setGradeStatus}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="graded">Graded</SelectItem>
-                    <SelectItem value="needs_revision">Needs Revision</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button className="w-full" onClick={handleSaveGrade} disabled={savingGrade}>
-                {savingGrade ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />}
-                Save Grade
-              </Button>
-            </div>
+          <SheetHeader><SheetTitle>Grade Submission</SheetTitle></SheetHeader>
+          {gradingSubId && (
+            <GradingPanel
+              submissionId={gradingSubId}
+              submissionIds={allSubmissions.filter(s => s.assignment_id === allSubmissions.find(x => x.id === gradingSubId)?.assignment_id).map(s => s.id)}
+              onGraded={() => {
+                setGradingSubId(null);
+                queryClient.invalidateQueries({ queryKey: ['teacher-all-submissions'] });
+              }}
+              onNavigate={(id) => setGradingSubId(id)}
+            />
           )}
         </SheetContent>
       </Sheet>
