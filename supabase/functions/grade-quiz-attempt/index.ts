@@ -5,13 +5,20 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-async function gradeFibAnswersWithAI(fibItems: { question: string; correctAnswer: string; userAnswer: string }[], language: string): Promise<boolean[]> {
+async function gradeFibAnswersWithAI(fibItems: { question: string; correctAnswer: string; alternatives: string[]; userAnswer: string }[], language: string): Promise<boolean[]> {
   if (fibItems.length === 0) return [];
 
+  const localResults = fibItems.map(item => fuzzyMatchWithAlts(item.userAnswer, item.correctAnswer, item.alternatives));
+  if (localResults.every(r => r)) return localResults;
+
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) {
-    return fibItems.map(item => fuzzyMatch(item.userAnswer, item.correctAnswer));
-  }
+  if (!LOVABLE_API_KEY) return localResults;
+
+  const aiNeededIndices: number[] = [];
+  const aiItems: typeof fibItems = [];
+  localResults.forEach((matched, i) => {
+    if (!matched) { aiNeededIndices.push(i); aiItems.push(fibItems[i]); }
+  });
 
   const lang = language === "ur" ? "Urdu" : language === "ar" ? "Arabic" : "English";
 
@@ -20,26 +27,24 @@ async function gradeFibAnswersWithAI(fibItems: { question: string; correctAnswer
 Grade the following fill-in-the-blank answers. A student's answer should be marked CORRECT if:
 1. It matches the correct answer semantically (same meaning)
 2. It is the same word but WITHOUT Arabic diacritics/harakat/tashkeel (e.g., "معلم" = "مُعَلِّمُ")
-3. It is a valid Roman/transliteration of the correct answer (e.g., "bayt" for "بَيْتٌ")
-4. It is a correct synonym or equivalent term for the concept
+3. It is a valid Roman/transliteration of the correct answer (e.g., "bayt" for "بَيْتٌ", "muallim" for "معلم")
+4. It is a correct synonym or equivalent term for the concept (e.g., "استاد" for "معلم")
 5. Minor spelling variations that clearly refer to the same word
+6. The answer captures the same concept even if phrased differently
 
 Mark INCORRECT only if the answer is genuinely wrong or refers to a different concept.
 
 Questions and answers:
-${fibItems.map((item, i) => `${i + 1}. Question: "${item.question}"
-   Correct answer: "${item.correctAnswer}"
+${aiItems.map((item, i) => `${i + 1}. Question: "${item.question}"
+   Correct answer: "${item.correctAnswer}"${item.alternatives.length > 0 ? `\n   Also acceptable: ${item.alternatives.join(', ')}` : ''}
    Student answer: "${item.userAnswer}"`).join('\n')}
 
-Return ONLY a JSON object with a "results" key containing an array of booleans, one per question. Example: {"results": [true, false, true]}`;
+Return ONLY a JSON object with a "results" key containing an array of booleans. Example: {"results": [true, false, true]}`;
 
   try {
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${LOVABLE_API_KEY}` },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [{ role: "user", content: prompt }],
@@ -48,24 +53,23 @@ Return ONLY a JSON object with a "results" key containing an array of booleans, 
       }),
     });
 
-    if (!aiRes.ok) {
-      console.error("AI grading failed:", await aiRes.text());
-      return fibItems.map(item => fuzzyMatch(item.userAnswer, item.correctAnswer));
-    }
+    if (!aiRes.ok) { console.error("AI grading failed:", await aiRes.text()); return localResults; }
 
     const aiData = await aiRes.json();
     const raw = aiData.choices?.[0]?.message?.content || "{}";
     const clean = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
     const parsed = JSON.parse(clean);
-    const results = Array.isArray(parsed) ? parsed : (parsed.results || parsed.answers || []);
+    const aiResults = Array.isArray(parsed) ? parsed : (parsed.results || parsed.answers || []);
 
-    if (results.length === fibItems.length) {
-      return results.map((r: any) => Boolean(r));
+    if (aiResults.length === aiItems.length) {
+      const finalResults = [...localResults];
+      aiNeededIndices.forEach((origIdx, aiIdx) => { finalResults[origIdx] = Boolean(aiResults[aiIdx]); });
+      return finalResults;
     }
-    return fibItems.map(item => fuzzyMatch(item.userAnswer, item.correctAnswer));
+    return localResults;
   } catch (e) {
     console.error("AI grading error:", e);
-    return fibItems.map(item => fuzzyMatch(item.userAnswer, item.correctAnswer));
+    return localResults;
   }
 }
 
@@ -75,6 +79,12 @@ function fuzzyMatch(userAnswer: string, correctAnswer: string): boolean {
   const ua = stripDiacritics(userAnswer.toString().toLowerCase().trim());
   const ca = stripDiacritics(correctAnswer.toLowerCase().trim());
   return ua === ca;
+}
+
+function fuzzyMatchWithAlts(userAnswer: string, correctAnswer: string, alternatives: string[]): boolean {
+  if (!userAnswer) return false;
+  if (fuzzyMatch(userAnswer, correctAnswer)) return true;
+  return alternatives.some(alt => fuzzyMatch(userAnswer, alt));
 }
 
 Deno.serve(async (req) => {
@@ -104,7 +114,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get language
     const { data: bankData } = await supabase
       .from("quiz_banks")
       .select("language")
@@ -117,13 +126,13 @@ Deno.serve(async (req) => {
     const gradedResults: any[] = [];
 
     const fibIndices: number[] = [];
-    const fibItems: { question: string; correctAnswer: string; userAnswer: string }[] = [];
+    const fibItems: { question: string; correctAnswer: string; alternatives: string[]; userAnswer: string }[] = [];
 
     questions.forEach((q: any, i: number) => {
       const userAnswer = answers[i];
       if (q.type === "fib" && userAnswer && q.correctText) {
         fibIndices.push(i);
-        fibItems.push({ question: q.text, correctAnswer: q.correctText, userAnswer: userAnswer.toString() });
+        fibItems.push({ question: q.text, correctAnswer: q.correctText, alternatives: q.correctAlt || [], userAnswer: userAnswer.toString() });
       }
     });
 
