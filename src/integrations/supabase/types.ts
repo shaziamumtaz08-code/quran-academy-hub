@@ -891,6 +891,7 @@ export type Database = {
           group_id: string
           id: string
           is_deleted: boolean
+          is_flagged: boolean | null
           is_forwarded: boolean
           linked_task_id: string | null
           reply_to: string | null
@@ -905,6 +906,7 @@ export type Database = {
           group_id: string
           id?: string
           is_deleted?: boolean
+          is_flagged?: boolean | null
           is_forwarded?: boolean
           linked_task_id?: string | null
           reply_to?: string | null
@@ -919,6 +921,7 @@ export type Database = {
           group_id?: string
           id?: string
           is_deleted?: boolean
+          is_flagged?: boolean | null
           is_forwarded?: boolean
           linked_task_id?: string | null
           reply_to?: string | null
@@ -2798,6 +2801,47 @@ export type Database = {
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dm_requests: {
+        Row: {
+          course_id: string
+          created_at: string
+          id: string
+          recipient_id: string
+          requester_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          id?: string
+          recipient_id: string
+          requester_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          id?: string
+          recipient_id?: string
+          requester_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dm_requests_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
             referencedColumns: ["id"]
           },
         ]
