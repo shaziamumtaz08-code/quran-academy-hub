@@ -737,7 +737,7 @@ function ClassDetail({ cls, courseId, onBack, onDelete }: { cls: any; courseId: 
                       </div>
                     </div>
                   </div>
-                  <button onClick={() => removeStaff.mutate(s.id)} className="p-1 text-muted-foreground hover:text-destructive">
+                   <button onClick={() => removeStaff.mutate({ id: s.id, userId: s.user_id })} className="p-1 text-muted-foreground hover:text-destructive">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -761,7 +761,7 @@ function ClassDetail({ cls, courseId, onBack, onDelete }: { cls: any; courseId: 
                       </Badge>
                     </div>
                   </div>
-                  <button onClick={() => removeStaff.mutate(s.id)} className="p-1 text-muted-foreground hover:text-destructive">
+                   <button onClick={() => removeStaff.mutate({ id: s.id, userId: s.user_id })} className="p-1 text-muted-foreground hover:text-destructive">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -785,7 +785,7 @@ function ClassDetail({ cls, courseId, onBack, onDelete }: { cls: any; courseId: 
                       </Badge>
                     </div>
                   </div>
-                  <button onClick={() => removeStaff.mutate(s.id)} className="p-1 text-muted-foreground hover:text-destructive">
+                  <button onClick={() => removeStaff.mutate({ id: s.id, userId: s.user_id })} className="p-1 text-muted-foreground hover:text-destructive">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
