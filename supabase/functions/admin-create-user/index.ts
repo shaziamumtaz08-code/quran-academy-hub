@@ -474,18 +474,21 @@ serve(async (req) => {
       }
     }
 
-    // User doesn't exist - create new user (requires password)
-    if (!password) {
-      return json(400, { error: "Password is required for new users" }, requestOrigin);
+    // User doesn't exist - create new user
+    // Auto-generate default password if none provided: FirstName1234
+    let finalPassword = password;
+    if (!finalPassword) {
+      const firstName = fullName.split(/\s+/)[0] || "User";
+      finalPassword = firstName + "1234";
     }
 
-    if (!isValidPassword(password)) {
+    if (!isValidPassword(finalPassword)) {
       return json(400, { error: "Password must be 8-100 characters" }, requestOrigin);
     }
 
     const { data: created, error: createErr } = await adminClient.auth.admin.createUser({
       email,
-      password,
+      password: finalPassword,
       email_confirm: true,
       user_metadata: { full_name: fullName },
     });
