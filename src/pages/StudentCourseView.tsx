@@ -1,10 +1,7 @@
-import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
-import { CourseDiscussionBoard } from '@/components/courses/CourseDiscussionBoard';
-import { ClassChatTab } from '@/components/courses/ClassChatTab';
-import { StudentActivitiesSection } from '@/components/courses/StudentActivitiesSection';
 import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,46 +9,138 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { format, formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow, isToday, isPast } from 'date-fns';
 import { toast } from 'sonner';
 import {
   ArrowLeft, BookOpen, Calendar, FileText, ClipboardList,
-  GraduationCap, MessageSquare, Video, Clock, ExternalLink, Loader2
+  GraduationCap, MessageSquare, Video, Clock, ExternalLink,
+  Loader2, Award, ChevronLeft, ChevronRight, RotateCcw,
+  Upload, Download, Bell, BarChart3, Radio, Layers, FlipVertical,
+  HelpCircle, Check, X,
 } from 'lucide-react';
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { findOrCreateCourseDM, getCourseTeachers } from '@/lib/messaging';
+import { ClassChatTab } from '@/components/courses/ClassChatTab';
 
 // ─── Helpers ───
-function isClassToday(scheduleDays: string[]): boolean {
-  const dayNames = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-  const todayName = dayNames[new Date().getDay()];
-  return scheduleDays?.some(d => d.toLowerCase().startsWith(todayName)) ?? false;
-}
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-function getClassStatus(scheduleDays: string[], startTime: string, durationMinutes: number): 'upcoming' | 'live' | 'ended' | 'not_today' {
-  if (!isClassToday(scheduleDays)) return 'not_today';
+function getNowInTimezone(tz: string) {
   const now = new Date();
-  const [hours, minutes] = (startTime || '00:00').split(':').map(Number);
-  const classStart = new Date();
-  classStart.setHours(hours, minutes, 0, 0);
-  const classEnd = new Date(classStart.getTime() + durationMinutes * 60000);
-  const joinWindow = new Date(classStart.getTime() - 15 * 60000);
-
-  if (now >= joinWindow && now < classStart) return 'upcoming';
-  if (now >= classStart && now <= classEnd) return 'live';
-  if (now > classEnd) return 'ended';
-  return 'not_today';
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz, weekday: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+  });
+  const parts = formatter.formatToParts(now);
+  const get = (type: string) => parts.find(p => p.type === type)?.value || '0';
+  const weekday = get('weekday');
+  const dayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  return {
+    dayIndex: dayMap[weekday] ?? 0,
+    hours: parseInt(get('hour'), 10),
+    minutes: parseInt(get('minute'), 10),
+    seconds: parseInt(get('second'), 10),
+    absoluteMs: now.getTime(),
+    dayName: DAY_NAMES[dayMap[weekday] ?? 0],
+  };
 }
 
+function buildNextOccurrence(dayName: string, timeStr: string, durationMinutes: number, tz: string): Date {
+  const tzNow = getNowInTimezone(tz);
+  const targetDayIndex = DAY_NAMES.indexOf(dayName.charAt(0).toUpperCase() + dayName.slice(1).toLowerCase());
+  if (targetDayIndex === -1) return new Date(tzNow.absoluteMs + 7 * 86400000);
+  const [targetH, targetM] = (timeStr || '00:00').split(':').map(Number);
+  let daysUntil = targetDayIndex - tzNow.dayIndex;
+  if (daysUntil < 0) daysUntil += 7;
+  if (daysUntil === 0) {
+    const nowMins = tzNow.hours * 60 + tzNow.minutes;
+    const classEndMins = targetH * 60 + targetM + durationMinutes;
+    if (nowMins >= classEndMins) daysUntil = 7;
+  }
+  const nowSecsOfDay = tzNow.hours * 3600 + tzNow.minutes * 60 + tzNow.seconds;
+  const targetSecsOfDay = targetH * 3600 + targetM * 60;
+  const totalSecsDiff = daysUntil * 86400 + (targetSecsOfDay - nowSecsOfDay);
+  return new Date(tzNow.absoluteMs + totalSecsDiff * 1000);
+}
+
+function formatTime12(time: string) {
+  const [hh, mm] = (time || '00:00').split(':').map(Number);
+  const ampm = hh >= 12 ? 'PM' : 'AM';
+  return `${hh % 12 || 12}:${String(mm).padStart(2, '0')} ${ampm}`;
+}
+
+function useCountdown(target: Date | null) {
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, mins: 0, secs: 0, total: 0 });
+  useEffect(() => {
+    if (!target) return;
+    const calc = () => {
+      const diff = Math.max(0, target.getTime() - Date.now());
+      setTimeLeft({
+        days: Math.floor(diff / 86400000),
+        hours: Math.floor((diff % 86400000) / 3600000),
+        mins: Math.floor((diff % 3600000) / 60000),
+        secs: Math.floor((diff % 60000) / 1000),
+        total: diff,
+      });
+    };
+    calc();
+    const t = setInterval(calc, 1000);
+    return () => clearInterval(t);
+  }, [target]);
+  return timeLeft;
+}
+
+// ═══════════════════════════════════════════════
+// MAIN COMPONENT
+// ═══════════════════════════════════════════════
 export default function StudentCourseView() {
   const { courseId } = useParams<{ courseId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('overview');
+  const queryClient = useQueryClient();
+  const initialTab = searchParams.get('tab') || 'today';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [messagingTeacher, setMessagingTeacher] = useState(false);
+  const [showZoomIframe, setShowZoomIframe] = useState(false);
+  const [iframeError, setIframeError] = useState(false);
+
+  // Dialogs
+  const [slidesOpen, setSlidesOpen] = useState(false);
+  const [flashcardsOpen, setFlashcardsOpen] = useState(false);
+  const [quizOpen, setQuizOpen] = useState(false);
+  const [lessonSheetOpen, setLessonSheetOpen] = useState(false);
+  const [selectedLesson, setSelectedLesson] = useState<any>(null);
+  const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
+  const [submitAssignment, setSubmitAssignment] = useState<any>(null);
+  const [submissionText, setSubmissionText] = useState('');
+  const [submissionFile, setSubmissionFile] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Flashcard state
+  const [currentFlashcardIdx, setCurrentFlashcardIdx] = useState(0);
+  const [flashcardFlipped, setFlashcardFlipped] = useState(false);
+
+  // Slides state
+  const [currentSlideIdx, setCurrentSlideIdx] = useState(0);
+
+  // Quiz state
+  const [currentQuizIdx, setCurrentQuizIdx] = useState(0);
+  const [quizAnswers, setQuizAnswers] = useState<Record<string, string>>({});
+  const [quizSubmitted, setQuizSubmitted] = useState(false);
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setSearchParams({ tab });
+  };
 
   // ─── Course teachers ───
   const { data: courseTeachers = [] } = useQuery({
@@ -65,24 +154,11 @@ export default function StudentCourseView() {
     setMessagingTeacher(true);
     try {
       const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single();
-      const dmId = await findOrCreateCourseDM(
-        user.id,
-        teacher.userId,
-        courseId,
-        course?.name || '',
-        profile?.full_name || '',
-        teacher.name,
-      );
-      if (dmId) {
-        navigate(`/communication?group=${dmId}`);
-      } else {
-        toast.error('Failed to create conversation');
-      }
-    } catch {
-      toast.error('Failed to start conversation');
-    } finally {
-      setMessagingTeacher(false);
-    }
+      const dmId = await findOrCreateCourseDM(user.id, teacher.userId, courseId, course?.name || '', profile?.full_name || '', teacher.name);
+      if (dmId) navigate(`/communication?group=${dmId}`);
+      else toast.error('Failed to create conversation');
+    } catch { toast.error('Failed to start conversation'); }
+    finally { setMessagingTeacher(false); }
   };
 
   // ─── Course details ───
@@ -91,8 +167,7 @@ export default function StudentCourseView() {
     queryFn: async () => {
       const { data } = await supabase.from('courses')
         .select('id, name, level, description, division_id, divisions:divisions(name)')
-        .eq('id', courseId!)
-        .single();
+        .eq('id', courseId!).single();
       return data;
     },
     enabled: !!courseId,
@@ -104,154 +179,301 @@ export default function StudentCourseView() {
     queryFn: async () => {
       const { data } = await supabase.from('course_enrollments')
         .select('id, status, enrolled_at')
-        .eq('course_id', courseId!)
-        .eq('student_id', user!.id)
-        .single();
+        .eq('course_id', courseId!).eq('student_id', user!.id).single();
       return data;
     },
     enabled: !!courseId && !!user?.id,
   });
 
-  // ─── My class assignment ───
+  // ─── My class ───
   const { data: myClass } = useQuery({
     queryKey: ['student-class', courseId, user?.id],
     queryFn: async () => {
       const { data } = await supabase.from('course_class_students')
         .select('id, class:course_classes!inner(id, name, schedule_days, schedule_time, session_duration, meeting_link, timezone, course_id)')
-        .eq('student_id', user!.id)
-        .eq('class.course_id', courseId!);
+        .eq('student_id', user!.id).eq('class.course_id', courseId!);
       return (data?.[0] as any)?.class || null;
     },
     enabled: !!courseId && !!user?.id,
   });
 
-  // ─── My attendance ───
-  const { data: attendanceRecords = [] } = useQuery({
-    queryKey: ['student-attendance', courseId, user?.id],
+  // ─── Class staff (teacher name) ───
+  const { data: classTeacher } = useQuery({
+    queryKey: ['class-teacher', myClass?.id],
     queryFn: async () => {
-      const { data } = await supabase.from('attendance')
-        .select('id, class_date, status')
-        .eq('student_id', user!.id)
-        .eq('course_id', courseId!)
-        .order('class_date', { ascending: false });
-      return data || [];
+      const { data } = await supabase.from('course_class_staff')
+        .select('user_id, profile:profiles!course_class_staff_user_id_fkey(full_name)')
+        .eq('class_id', myClass!.id).eq('staff_role', 'teacher').limit(1);
+      return (data?.[0] as any)?.profile?.full_name || 'Teacher';
     },
-    enabled: !!courseId && !!user?.id,
+    enabled: !!myClass?.id,
   });
 
-  // ─── Teaching OS syllabus ───
-  const { data: syllabus } = useQuery({
-    queryKey: ['student-syllabus', courseId],
+  // ─── Student timezone ───
+  const { data: studentTz } = useQuery({
+    queryKey: ['student-tz', user?.id],
     queryFn: async () => {
-      const { data } = await supabase.from('syllabi')
-        .select('id, rows, duration_weeks, sessions_week, subject, level')
+      const { data } = await supabase.from('profiles').select('timezone').eq('id', user!.id).single();
+      return data?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    },
+    enabled: !!user?.id,
+  });
+  const tz = studentTz || Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  // ─── Next class calculation ───
+  const nextClassDate = useMemo(() => {
+    if (!myClass) return null;
+    const days: string[] = myClass.schedule_days || [];
+    let earliest: Date | null = null;
+    days.forEach(day => {
+      const dt = buildNextOccurrence(day, myClass.schedule_time || '00:00', myClass.session_duration || 30, myClass.timezone || tz);
+      if (!earliest || dt < earliest) earliest = dt;
+    });
+    return earliest;
+  }, [myClass, tz]);
+
+  const countdown = useCountdown(nextClassDate);
+  const minutesUntilClass = nextClassDate ? (nextClassDate.getTime() - Date.now()) / 60000 : Infinity;
+  const isLive = minutesUntilClass <= 0 && minutesUntilClass > -(myClass?.session_duration || 30);
+  const isJoinable = minutesUntilClass <= 15 || isLive;
+
+  // ─── Pushed content kit ───
+  const { data: pushedKit } = useQuery({
+    queryKey: ['pushed-kit', courseId],
+    queryFn: async () => {
+      const { data } = await (supabase.from('content_kits')
+        .select('id, session_plan_id, pushed_at') as any)
         .eq('course_id', courseId!)
-        .order('created_at', { ascending: false })
+        .eq('pushed_to_class', true)
+        .order('pushed_at', { ascending: false })
         .limit(1);
       return data?.[0] || null;
     },
     enabled: !!courseId,
   });
 
-  // ─── Materials ───
-  const { data: materials = [] } = useQuery({
-    queryKey: ['student-materials', courseId],
+  // ─── Kit assets ───
+  const { data: kitAssets } = useQuery({
+    queryKey: ['kit-assets', pushedKit?.id],
     queryFn: async () => {
-      const { data } = await supabase.from('course_library_assets')
-        .select('id, title, asset_type, content_url, created_at')
-        .eq('course_id', courseId!);
-      return data || [];
+      const kitId = pushedKit!.id;
+      const [{ data: slides }, { data: flashcards }, { data: quizQs }] = await Promise.all([
+        supabase.from('slides').select('*').eq('kit_id', kitId).order('sort_order'),
+        supabase.from('flashcards').select('*').eq('kit_id', kitId).order('sort_order'),
+        supabase.from('quiz_questions').select('*').eq('kit_id', kitId).order('sort_order'),
+      ]);
+      return { slides: slides || [], flashcards: flashcards || [], quizQuestions: quizQs || [] };
     },
-    enabled: !!courseId && activeTab === 'materials',
+    enabled: !!pushedKit?.id,
   });
 
-  // ─── Assignments ───
+  // ─── Modules & Lessons (Tab 2) ───
+  const { data: modules = [] } = useQuery({
+    queryKey: ['course-modules', courseId],
+    queryFn: async () => {
+      const { data } = await supabase.from('course_modules')
+        .select('id, title, sort_order')
+        .eq('course_id', courseId!)
+        .order('sort_order');
+      return data || [];
+    },
+    enabled: !!courseId && activeTab === 'lessons',
+  });
+
+  const moduleIds = modules.map(m => m.id);
+  const { data: lessons = [] } = useQuery({
+    queryKey: ['course-lessons', moduleIds.join(',')],
+    queryFn: async () => {
+      const { data } = await supabase.from('course_lessons')
+        .select('id, title, content_type, content_html, video_url, file_url, module_id, sort_order')
+        .in('module_id', moduleIds)
+        .order('sort_order');
+      return data || [];
+    },
+    enabled: moduleIds.length > 0,
+  });
+
+  // ─── Assignments (Tab 3) ───
   const { data: assignments = [] } = useQuery({
     queryKey: ['student-assignments', courseId],
     queryFn: async () => {
       const { data } = await supabase.from('course_assignments')
-        .select('id, title, instructions, due_date, created_at')
+        .select('id, title, instructions, due_date, file_url, file_name, created_at')
         .eq('course_id', courseId!)
+        .eq('status', 'active')
         .order('due_date', { ascending: true });
       return data || [];
     },
     enabled: !!courseId && activeTab === 'assignments',
   });
 
-  // ─── My submissions ───
   const { data: mySubmissions = [] } = useQuery({
     queryKey: ['student-submissions', courseId, user?.id],
     queryFn: async () => {
+      const assignmentIds = assignments.map(a => a.id);
+      if (!assignmentIds.length) return [];
       const { data } = await supabase.from('course_assignment_submissions')
-        .select('id, assignment_id, status, submitted_at, feedback')
-        .eq('student_id', user!.id);
+        .select('id, assignment_id, status, submitted_at, feedback, score, response_text, file_url, file_name')
+        .eq('student_id', user!.id)
+        .in('assignment_id', assignmentIds);
       return data || [];
     },
-    enabled: !!courseId && !!user?.id && activeTab === 'assignments',
+    enabled: !!user?.id && assignments.length > 0,
   });
 
-  // ─── Exams ───
-  const { data: exams = [] } = useQuery({
-    queryKey: ['student-exams', courseId],
-    queryFn: async () => {
-      const { data } = await supabase.from('teaching_exams')
-        .select('id, title, duration_minutes, total_marks, pass_mark_percent, status, published_at')
-        .eq('course_id', courseId!)
-        .eq('status', 'published');
-      return data || [];
-    },
-    enabled: !!courseId && activeTab === 'exams',
-  });
-
-  // ─── My exam results ───
-  const { data: myExamResults = [] } = useQuery({
-    queryKey: ['student-exam-results', courseId, user?.id],
-    queryFn: async () => {
-      const { data } = await supabase.from('teaching_exam_submissions')
-        .select('id, exam_id, total_score, total_possible, percentage, passed, status, submitted_at')
-        .eq('student_id', user!.id);
-      return data || [];
-    },
-    enabled: !!courseId && !!user?.id && activeTab === 'exams',
-  });
-
-  // ─── Announcements ───
+  // ─── Announcements (Tab 4) ───
   const { data: announcements = [] } = useQuery({
     queryKey: ['student-announcements', courseId],
     queryFn: async () => {
       const { data } = await supabase.from('course_notifications')
-        .select('id, title, body, created_at')
+        .select('id, title, body, created_at, attachment_url')
         .eq('course_id', courseId!)
-        .order('created_at', { ascending: false })
-        .limit(10);
+        .order('created_at', { ascending: false });
       return data || [];
     },
-    enabled: !!courseId,
+    enabled: !!courseId && activeTab === 'announcements',
   });
 
-  const attendancePct = attendanceRecords.length > 0
-    ? Math.round(attendanceRecords.filter(a => a.status === 'present').length / attendanceRecords.length * 100)
-    : 0;
+  // Mark announcements seen
+  useEffect(() => {
+    if (activeTab === 'announcements' && courseId) {
+      localStorage.setItem(`seen_announcements_${courseId}`, new Date().toISOString());
+    }
+  }, [activeTab, courseId]);
 
-  const syllabusRows: Array<{ week: number; topic: string; objectives: string; contentTypes: string[] }> =
-    syllabus?.rows
-      ? (typeof syllabus.rows === 'string' ? JSON.parse(syllabus.rows) : syllabus.rows as any)
-      : [];
+  const lastSeenAnnouncement = courseId ? localStorage.getItem(`seen_announcements_${courseId}`) : null;
+  const hasUnreadAnnouncements = announcements.some(a =>
+    a.created_at && (!lastSeenAnnouncement || new Date(a.created_at) > new Date(lastSeenAnnouncement))
+  );
 
-  // ─── Class status ───
-  const classStatus = myClass
-    ? getClassStatus(myClass.schedule_days as string[], myClass.schedule_time as string, myClass.session_duration as number)
-    : 'not_today';
+  // ─── Attendance (Tab 6 — Progress) ───
+  const { data: attendanceRecords = [] } = useQuery({
+    queryKey: ['student-attendance', courseId, user?.id],
+    queryFn: async () => {
+      const { data } = await supabase.from('attendance')
+        .select('id, class_date, status, lesson_notes')
+        .eq('student_id', user!.id)
+        .eq('course_id', courseId!)
+        .order('class_date', { ascending: false });
+      return data || [];
+    },
+    enabled: !!courseId && !!user?.id && activeTab === 'progress',
+  });
+
+  // ─── Certificates (Tab 6) ───
+  const { data: certificates = [] } = useQuery({
+    queryKey: ['student-certificates', courseId, user?.id],
+    queryFn: async () => {
+      const { data } = await supabase.from('course_certificate_awards')
+        .select('id, certificate_number, grade, issued_at, certificate:course_certificates(template_name)')
+        .eq('student_id', user!.id)
+        .eq('course_id', courseId!);
+      return data || [];
+    },
+    enabled: !!courseId && !!user?.id && activeTab === 'progress',
+  });
+
+  // ─── Assignment submission ───
+  const handleSubmitAssignment = async () => {
+    if (!submitAssignment || !user?.id) return;
+    setSubmitting(true);
+    try {
+      let fileUrl: string | null = null;
+      let fileName: string | null = null;
+
+      if (submissionFile) {
+        const filePath = `assignments/${user.id}/${Date.now()}_${submissionFile.name}`;
+        const { error: uploadErr } = await supabase.storage.from('course-materials').upload(filePath, submissionFile);
+        if (uploadErr) throw uploadErr;
+        const { data: urlData } = supabase.storage.from('course-materials').getPublicUrl(filePath);
+        fileUrl = urlData.publicUrl;
+        fileName = submissionFile.name;
+      }
+
+      const { error } = await supabase.from('course_assignment_submissions').insert({
+        assignment_id: submitAssignment.id,
+        student_id: user.id,
+        response_text: submissionText || null,
+        file_url: fileUrl,
+        file_name: fileName,
+        status: 'submitted',
+      });
+      if (error) throw error;
+
+      toast.success('Assignment submitted!');
+      setSubmitDialogOpen(false);
+      setSubmissionText('');
+      setSubmissionFile(null);
+      queryClient.invalidateQueries({ queryKey: ['student-submissions'] });
+    } catch (err: any) {
+      toast.error(err.message || 'Submission failed');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ─── Flashcard progress ───
+  const trackFlashcard = async (flashcardId: string, isKnown: boolean) => {
+    if (!user?.id) return;
+    await supabase.from('flashcard_progress').upsert({
+      student_id: user.id,
+      flashcard_id: flashcardId,
+      is_known: isKnown,
+    } as any, { onConflict: 'student_id,flashcard_id' });
+  };
+
+  // ─── Quiz submission ───
+  const handleSubmitQuiz = async () => {
+    if (!user?.id || !pushedKit?.id) return;
+    const qs = kitAssets?.quizQuestions || [];
+    let score = 0;
+    qs.forEach((q: any) => {
+      if (quizAnswers[q.id] === q.correct_option) score++;
+    });
+    try {
+      await supabase.from('course_quiz_attempts').insert({
+        student_id: user.id,
+        course_id: courseId,
+        kit_id: pushedKit.id,
+        answers: quizAnswers,
+        score,
+        total: qs.length,
+      } as any);
+      setQuizSubmitted(true);
+      toast.success(`Quiz submitted! Score: ${score}/${qs.length}`);
+    } catch {
+      toast.error('Failed to submit quiz');
+    }
+  };
+
+  // ─── Stats ───
+  const presentCount = attendanceRecords.filter(a => a.status === 'present' || a.status === 'late').length;
+  const absentCount = attendanceRecords.filter(a => a.status === 'absent' || a.status === 'student_absent').length;
+  const lateCount = attendanceRecords.filter(a => a.status === 'late').length;
+  const attendancePct = attendanceRecords.length > 0 ? Math.round((presentCount / attendanceRecords.length) * 100) : 0;
+  const submittedCount = mySubmissions.filter(s => s.status === 'submitted' || s.status === 'graded').length;
+  const avgScore = mySubmissions.filter(s => (s as any).score != null).length > 0
+    ? Math.round(mySubmissions.filter(s => (s as any).score != null).reduce((sum, s) => sum + Number((s as any).score), 0) / mySubmissions.filter(s => (s as any).score != null).length)
+    : null;
+
+  if (isLoading) {
+    return (
+      <div className="p-4 md:p-6 space-y-4 max-w-4xl mx-auto">
+        <Skeleton className="h-32 rounded-xl" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-64 rounded-xl" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-4xl mx-auto">
-      {/* Back + Header */}
+      {/* ═══ HEADER ═══ */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/my-dashboard')} className="-ml-2">
-            <ArrowLeft className="h-4 w-4 mr-1" /> My Dashboard
+          <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="-ml-2">
+            <ArrowLeft className="h-4 w-4 mr-1" /> Dashboard
           </Button>
-          {/* Message Teacher */}
           {courseTeachers.length === 1 && (
             <Button variant="outline" size="sm" onClick={() => handleMessageTeacher(courseTeachers[0])} disabled={messagingTeacher}>
               {messagingTeacher ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <MessageSquare className="h-4 w-4 mr-1" />}
@@ -276,273 +498,589 @@ export default function StudentCourseView() {
             </DropdownMenu>
           )}
         </div>
-        {isLoading ? <Skeleton className="h-8 w-64" /> : (
-          <div>
-            <h1 className="text-xl font-bold text-foreground">{course?.name}</h1>
-            <p className="text-sm text-muted-foreground">
-              {(course?.divisions as any)?.name}
-              {course?.level && ` · ${course.level}`}
-              {enrollment && ` · Enrolled ${format(new Date(enrollment.enrolled_at), 'MMM yyyy')}`}
-            </p>
-          </div>
-        )}
+
+        {/* Banner */}
+        <div className="bg-gradient-to-r from-primary to-primary/60 rounded-xl p-5 text-primary-foreground">
+          <h1 className="text-xl font-bold">{course?.name}</h1>
+          <p className="text-sm text-primary-foreground/70 mt-0.5">
+            {(course?.divisions as any)?.name}
+            {course?.level && ` · ${course.level}`}
+          </p>
+          {enrollment && (
+            <Badge className="mt-2 bg-primary-foreground/20 text-primary-foreground text-[10px]">
+              Enrolled {format(new Date(enrollment.enrolled_at), 'MMM yyyy')}
+            </Badge>
+          )}
+        </div>
       </div>
 
-      {/* Next Class Card — Smart Join */}
-      {myClass && (
-        <Card className={cn(
-          'border',
-          classStatus === 'live' && 'border-emerald-500 bg-emerald-50/50',
-          classStatus === 'upcoming' && 'border-blue-300 bg-blue-50/50',
-          classStatus === 'not_today' && 'border-border',
-          classStatus === 'ended' && 'border-border',
-        )}>
-          <CardContent className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className={cn(
-                'h-10 w-10 rounded-full flex items-center justify-center',
-                classStatus === 'live' ? 'bg-emerald-100' : 'bg-primary/10',
-              )}>
-                <Video className={cn('h-5 w-5', classStatus === 'live' ? 'text-emerald-600' : 'text-primary')} />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="font-medium text-sm">{myClass.name}</p>
-                  {classStatus === 'live' && <Badge className="bg-emerald-500 text-white animate-pulse text-[10px]">LIVE</Badge>}
-                  {classStatus === 'upcoming' && <Badge variant="secondary" className="text-[10px]">Starting soon</Badge>}
-                </div>
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  {(myClass.schedule_days as string[])?.join(', ')} · {myClass.schedule_time} · {myClass.session_duration} min
-                </p>
-              </div>
-            </div>
-            {myClass.meeting_link && (classStatus === 'live' || classStatus === 'upcoming') ? (
-              <Button size="sm" className={cn('w-full sm:w-auto', classStatus === 'live' && 'bg-emerald-600 hover:bg-emerald-700')}
-                onClick={() => window.open(myClass.meeting_link as string, '_blank')}>
-                <Video className="h-4 w-4 mr-1" /> Join Class
-              </Button>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                {classStatus === 'ended' ? 'Class ended for today' : `Next: ${(myClass.schedule_days as string[])?.[0] || '—'}`}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full overflow-x-auto justify-start h-auto flex-wrap">
-          <TabsTrigger value="overview" className="gap-1"><BookOpen className="h-3.5 w-3.5" /> Overview</TabsTrigger>
-          <TabsTrigger value="schedule" className="gap-1"><Calendar className="h-3.5 w-3.5" /> Schedule</TabsTrigger>
-          <TabsTrigger value="materials" className="gap-1"><FileText className="h-3.5 w-3.5" /> Materials</TabsTrigger>
-          <TabsTrigger value="assignments" className="gap-1"><ClipboardList className="h-3.5 w-3.5" /> Assignments</TabsTrigger>
-          <TabsTrigger value="exams" className="gap-1"><GraduationCap className="h-3.5 w-3.5" /> Exams</TabsTrigger>
-          <TabsTrigger value="class-chat" className="gap-1"><MessageSquare className="h-3.5 w-3.5" /> Class Chat</TabsTrigger>
-          <TabsTrigger value="chat" className="gap-1"><BookOpen className="h-3.5 w-3.5" /> Discussion</TabsTrigger>
+      {/* ═══ TABS ═══ */}
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
+        <TabsList className="w-full overflow-x-auto justify-start h-auto flex-nowrap sticky top-0 z-10 bg-background">
+          <TabsTrigger value="today" className="gap-1 shrink-0"><Video className="h-3.5 w-3.5" /> Today</TabsTrigger>
+          <TabsTrigger value="lessons" className="gap-1 shrink-0"><BookOpen className="h-3.5 w-3.5" /> Lessons</TabsTrigger>
+          <TabsTrigger value="assignments" className="gap-1 shrink-0"><ClipboardList className="h-3.5 w-3.5" /> Assignments</TabsTrigger>
+          <TabsTrigger value="announcements" className="gap-1 shrink-0 relative">
+            <Bell className="h-3.5 w-3.5" /> Announcements
+            {hasUnreadAnnouncements && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-destructive" />}
+          </TabsTrigger>
+          <TabsTrigger value="class-chat" className="gap-1 shrink-0"><MessageSquare className="h-3.5 w-3.5" /> Class Chat</TabsTrigger>
+          <TabsTrigger value="progress" className="gap-1 shrink-0"><BarChart3 className="h-3.5 w-3.5" /> My Progress</TabsTrigger>
         </TabsList>
 
-        {/* ─── OVERVIEW ─── */}
-        <TabsContent value="overview" className="space-y-4 mt-4">
-          {/* Today's Activities from pushed content kit */}
-          <StudentActivitiesSection courseId={courseId!} />
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <Card><CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-foreground">{attendancePct}%</p>
-              <p className="text-xs text-muted-foreground">Attendance</p>
-            </CardContent></Card>
-            <Card><CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-foreground">
-                {mySubmissions.filter(s => s.status === 'submitted' || s.status === 'graded').length}/{assignments.length || '—'}
-              </p>
-              <p className="text-xs text-muted-foreground">Assignments</p>
-            </CardContent></Card>
-            <Card><CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-foreground">
-                {myExamResults.length}/{exams.length || '—'}
-              </p>
-              <p className="text-xs text-muted-foreground">Exams taken</p>
-            </CardContent></Card>
-          </div>
-
-          {announcements.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold mb-2">Recent announcements</h3>
-              <div className="space-y-2">
-                {announcements.slice(0, 3).map(a => (
-                  <Card key={a.id}><CardContent className="p-3 flex items-start gap-3">
-                    <div className="h-2 w-2 rounded-full bg-primary/50 mt-1.5 shrink-0" />
+        {/* ═══ TAB 1: TODAY ═══ */}
+        <TabsContent value="today" className="space-y-4 mt-4">
+          {/* Class card */}
+          {myClass ? (
+            <Card className={cn(
+              'border-2',
+              isLive && 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20',
+              isJoinable && !isLive && 'border-primary/50 bg-primary/5',
+            )}>
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={cn('h-10 w-10 rounded-full flex items-center justify-center', isLive ? 'bg-emerald-100 dark:bg-emerald-900/50' : 'bg-primary/10')}>
+                      <Video className={cn('h-5 w-5', isLive ? 'text-emerald-600' : 'text-primary')} />
+                    </div>
                     <div>
-                      <p className="text-sm font-medium">{a.title}</p>
-                      <p className="text-xs text-muted-foreground">{a.body?.slice(0, 100)}</p>
-                      <p className="text-[10px] text-muted-foreground mt-1">
-                        {a.created_at && formatDistanceToNow(new Date(a.created_at))} ago
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-sm">{myClass.name}</p>
+                        {isLive && <Badge className="bg-emerald-500 text-white animate-pulse text-[9px]"><Radio className="h-3 w-3 mr-0.5" /> LIVE</Badge>}
+                        {isJoinable && !isLive && <Badge variant="secondary" className="text-[9px]">Starting soon</Badge>}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {(myClass.schedule_days as string[])?.join(', ')} · {formatTime12(myClass.schedule_time || '00:00')} · {myClass.session_duration} min
                       </p>
+                      {classTeacher && <p className="text-xs text-muted-foreground">Teacher: {classTeacher}</p>}
                     </div>
-                  </CardContent></Card>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {syllabusRows.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold mb-2">Syllabus · {syllabusRows.length} weeks</h3>
-              <div className="space-y-1.5">
-                {syllabusRows.map((row, idx) => (
-                  <Card key={idx}><CardContent className="p-3 flex items-start gap-3">
-                    <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-medium text-primary shrink-0">
-                      {row.week}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">{row.topic}</p>
-                      <p className="text-xs text-muted-foreground">{row.objectives}</p>
-                    </div>
-                  </CardContent></Card>
-                ))}
-              </div>
-            </div>
-          )}
-        </TabsContent>
-
-        {/* ─── SCHEDULE ─── */}
-        <TabsContent value="schedule" className="space-y-4 mt-4">
-          <Card><CardContent className="p-4">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold">My attendance</h3>
-              <span className="text-sm font-bold text-foreground">{attendancePct}%</span>
-            </div>
-            <Progress value={attendancePct} className="h-2 mb-2" />
-            <p className="text-xs text-muted-foreground">
-              {attendanceRecords.filter(a => a.status === 'present').length} present ·{' '}
-              {attendanceRecords.filter(a => a.status === 'absent').length} absent
-            </p>
-          </CardContent></Card>
-
-          <div className="space-y-1">
-            {attendanceRecords.map(a => (
-              <div key={a.id} className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-muted/50">
-                <span className="text-sm">{format(new Date(a.class_date), 'EEE, MMM d, yyyy')}</span>
-                <Badge variant={a.status === 'present' ? 'default' : a.status === 'late' ? 'secondary' : 'destructive'} className="text-[10px]">
-                  {a.status}
-                </Badge>
-              </div>
-            ))}
-            {attendanceRecords.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-8">No attendance records yet</p>
-            )}
-          </div>
-        </TabsContent>
-
-        {/* ─── MATERIALS ─── */}
-        <TabsContent value="materials" className="space-y-2 mt-4">
-          {materials.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">No materials shared yet</p>
-          ) : (
-            materials.map(m => (
-              <Card key={m.id}><CardContent className="p-3 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">{m.title}</p>
-                    <p className="text-xs text-muted-foreground">{m.asset_type} · {format(new Date(m.created_at!), 'MMM d')}</p>
                   </div>
                 </div>
-                {m.content_url && (
-                  <Button variant="ghost" size="sm" onClick={() => window.open(m.content_url!, '_blank')}>
-                    <ExternalLink className="h-4 w-4" />
-                  </Button>
+
+                {/* Countdown */}
+                {!isLive && nextClassDate && (
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex gap-1">
+                      {countdown.days > 0 && <span className="bg-muted rounded px-2 py-0.5 text-xs font-bold">{countdown.days}d</span>}
+                      <span className="bg-muted rounded px-2 py-0.5 text-xs font-bold">{countdown.hours}h</span>
+                      <span className="bg-muted rounded px-2 py-0.5 text-xs font-bold">{String(countdown.mins).padStart(2, '0')}m</span>
+                      <span className="bg-muted rounded px-2 py-0.5 text-xs font-bold">{String(countdown.secs).padStart(2, '0')}s</span>
+                    </div>
+                  </div>
                 )}
-              </CardContent></Card>
+
+                {/* Join button */}
+                <Button
+                  className={cn('w-full', isLive && 'bg-emerald-600 hover:bg-emerald-700')}
+                  disabled={!isJoinable}
+                  onClick={() => {
+                    if (myClass.meeting_link) setShowZoomIframe(true);
+                  }}
+                >
+                  <Video className="h-4 w-4 mr-2" />
+                  {isLive ? 'Join Live Class' : isJoinable ? 'Join Class' : 'Class Not Started Yet'}
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="py-10 text-center">
+                <Calendar className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
+                <p className="text-sm text-muted-foreground">No class assigned yet</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Zoom iframe */}
+          {showZoomIframe && myClass?.meeting_link && (
+            <Card>
+              <CardContent className="p-0">
+                <div className="flex items-center justify-between px-3 py-2 border-b">
+                  <p className="text-sm font-medium">{myClass.name} — Live Session</p>
+                  <Button variant="ghost" size="sm" onClick={() => setShowZoomIframe(false)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                {iframeError ? (
+                  <div className="p-6 text-center">
+                    <p className="text-sm text-muted-foreground mb-2">Unable to load meeting in browser</p>
+                    <Button variant="outline" onClick={() => window.open(myClass.meeting_link as string, '_blank')}>
+                      <ExternalLink className="h-4 w-4 mr-1" /> Open in Browser
+                    </Button>
+                  </div>
+                ) : (
+                  <iframe
+                    src={myClass.meeting_link as string}
+                    className="w-full h-[600px] border-0"
+                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                    allow="camera; microphone; fullscreen; display-capture"
+                    onError={() => setIframeError(true)}
+                  />
+                )}
+                <div className="px-3 py-2 border-t text-center">
+                  <a href={myClass.meeting_link as string} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+                    <ExternalLink className="h-3 w-3" /> Open in browser instead
+                  </a>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Pushed activities */}
+          {pushedKit && kitAssets && (
+            <div>
+              <p className="text-[13px] font-bold text-foreground mb-2">📚 Today's Activities</p>
+              <div className="grid grid-cols-3 gap-3">
+                {/* Slides */}
+                <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setCurrentSlideIdx(0); setSlidesOpen(true); }}>
+                  <CardContent className="p-4 text-center">
+                    <Layers className="h-6 w-6 mx-auto mb-1 text-primary" />
+                    <p className="text-lg font-bold text-foreground">{kitAssets.slides.length}</p>
+                    <p className="text-xs text-muted-foreground">Slides</p>
+                  </CardContent>
+                </Card>
+                {/* Flashcards */}
+                <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setCurrentFlashcardIdx(0); setFlashcardFlipped(false); setFlashcardsOpen(true); }}>
+                  <CardContent className="p-4 text-center">
+                    <FlipVertical className="h-6 w-6 mx-auto mb-1 text-teal" />
+                    <p className="text-lg font-bold text-foreground">{kitAssets.flashcards.length}</p>
+                    <p className="text-xs text-muted-foreground">Flashcards</p>
+                  </CardContent>
+                </Card>
+                {/* Quiz */}
+                <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setCurrentQuizIdx(0); setQuizAnswers({}); setQuizSubmitted(false); setQuizOpen(true); }}>
+                  <CardContent className="p-4 text-center">
+                    <HelpCircle className="h-6 w-6 mx-auto mb-1 text-gold" />
+                    <p className="text-lg font-bold text-foreground">{kitAssets.quizQuestions.length}</p>
+                    <p className="text-xs text-muted-foreground">Quiz Qs</p>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ═══ TAB 2: LESSONS ═══ */}
+        <TabsContent value="lessons" className="space-y-2 mt-4">
+          {modules.length === 0 ? (
+            <Card><CardContent className="py-10 text-center">
+              <BookOpen className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground">No lessons available yet</p>
+            </CardContent></Card>
+          ) : (
+            <Accordion type="multiple" className="space-y-2">
+              {modules.map(mod => {
+                const modLessons = lessons.filter(l => l.module_id === mod.id);
+                return (
+                  <AccordionItem key={mod.id} value={mod.id} className="border rounded-lg">
+                    <AccordionTrigger className="px-4 py-3 text-sm font-semibold hover:no-underline">
+                      {mod.title}
+                      <Badge variant="secondary" className="ml-2 text-[10px]">{modLessons.length} lessons</Badge>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-2 pb-2">
+                      {modLessons.length === 0 ? (
+                        <p className="text-xs text-muted-foreground px-3 py-2">No lessons in this module</p>
+                      ) : (
+                        <div className="space-y-1">
+                          {modLessons.map(lesson => (
+                            <button
+                              key={lesson.id}
+                              className="w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted/50 text-left transition-colors"
+                              onClick={() => { setSelectedLesson(lesson); setLessonSheetOpen(true); }}
+                            >
+                              <span className="text-sm">
+                                {lesson.content_type === 'video' ? '🎬' : lesson.content_type === 'file' ? '📎' : '📄'}
+                              </span>
+                              <span className="text-sm text-foreground">{lesson.title}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
+          )}
+        </TabsContent>
+
+        {/* ═══ TAB 3: ASSIGNMENTS ═══ */}
+        <TabsContent value="assignments" className="space-y-2 mt-4">
+          {assignments.length === 0 ? (
+            <Card><CardContent className="py-10 text-center">
+              <ClipboardList className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground">No assignments yet</p>
+            </CardContent></Card>
+          ) : (
+            assignments.map(a => {
+              const sub = mySubmissions.find(s => s.assignment_id === a.id);
+              const isOverdue = a.due_date && isPast(new Date(a.due_date));
+              const isDueToday = a.due_date && isToday(new Date(a.due_date));
+              const canSubmit = !sub || sub.status === 'needs_revision';
+              const statusBadge = sub
+                ? sub.status === 'graded'
+                  ? { label: 'Graded', variant: 'default' as const, color: 'bg-emerald-500' }
+                  : sub.status === 'submitted'
+                  ? { label: 'Submitted', variant: 'secondary' as const, color: '' }
+                  : sub.status === 'needs_revision'
+                  ? { label: 'Revision Needed', variant: 'outline' as const, color: 'border-orange-500 text-orange-600' }
+                  : { label: sub.status, variant: 'secondary' as const, color: '' }
+                : { label: 'Not Submitted', variant: 'destructive' as const, color: '' };
+
+              return (
+                <Card key={a.id}>
+                  <CardContent className="p-4 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold">{a.title}</p>
+                        {a.instructions && <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{a.instructions.slice(0, 120)}</p>}
+                        {a.due_date && (
+                          <p className={cn('text-xs mt-1 flex items-center gap-1',
+                            isOverdue ? 'text-destructive font-semibold' : isDueToday ? 'text-gold font-semibold' : 'text-muted-foreground'
+                          )}>
+                            <Clock className="h-3 w-3" />
+                            {isOverdue ? 'Overdue — ' : isDueToday ? 'Due today — ' : 'Due: '}
+                            {format(new Date(a.due_date), 'MMM d, yyyy')}
+                          </p>
+                        )}
+                      </div>
+                      <Badge variant={statusBadge.variant} className={cn('text-[10px] shrink-0', statusBadge.color)}>
+                        {statusBadge.label}
+                      </Badge>
+                    </div>
+                    {sub?.status === 'submitted' && sub.submitted_at && (
+                      <p className="text-[10px] text-muted-foreground">Submitted {format(new Date(sub.submitted_at), 'MMM d, h:mm a')}</p>
+                    )}
+                    {sub?.status === 'graded' && (
+                      <div className="text-xs space-y-1">
+                        {(sub as any).score != null && <p className="font-semibold text-emerald-600">Score: {(sub as any).score}</p>}
+                        {sub.feedback && <p className="text-muted-foreground border-t pt-1">Feedback: {sub.feedback}</p>}
+                      </div>
+                    )}
+                    {sub?.status === 'needs_revision' && sub.feedback && (
+                      <p className="text-xs text-orange-600 border-t pt-1">Feedback: {sub.feedback}</p>
+                    )}
+                    {canSubmit && (
+                      <Button size="sm" variant="outline" className="w-full" onClick={() => { setSubmitAssignment(a); setSubmissionText(''); setSubmissionFile(null); setSubmitDialogOpen(true); }}>
+                        <Upload className="h-3.5 w-3.5 mr-1" /> {sub?.status === 'needs_revision' ? 'Resubmit' : 'Submit'}
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
+        </TabsContent>
+
+        {/* ═══ TAB 4: ANNOUNCEMENTS ═══ */}
+        <TabsContent value="announcements" className="space-y-2 mt-4">
+          {announcements.length === 0 ? (
+            <Card><CardContent className="py-10 text-center">
+              <Bell className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground">No announcements yet</p>
+            </CardContent></Card>
+          ) : (
+            announcements.map(a => (
+              <Card key={a.id}>
+                <CardContent className="p-4">
+                  <p className="text-sm font-semibold">{a.title}</p>
+                  <p className="text-xs text-muted-foreground mt-1 whitespace-pre-line">{a.body}</p>
+                  <div className="flex items-center justify-between mt-2">
+                    <p className="text-[10px] text-muted-foreground">
+                      {a.created_at && format(new Date(a.created_at), 'MMM d, yyyy · h:mm a')}
+                    </p>
+                    {(a as any).attachment_url && (
+                      <Button variant="ghost" size="sm" onClick={() => window.open((a as any).attachment_url, '_blank')}>
+                        <Download className="h-3.5 w-3.5 mr-1" /> Attachment
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             ))
           )}
         </TabsContent>
 
-        {/* ─── ASSIGNMENTS ─── */}
-        <TabsContent value="assignments" className="space-y-2 mt-4">
-          {assignments.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">No assignments yet</p>
-          ) : (
-            assignments.map(a => {
-              const submission = mySubmissions.find(s => s.assignment_id === a.id);
-              const isPastDue = a.due_date && new Date(a.due_date) < new Date();
-              return (
-                <Card key={a.id}><CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">{a.title}</p>
-                      <p className="text-xs text-muted-foreground line-clamp-2">{a.instructions?.slice(0, 120)}</p>
-                      {a.due_date && (
-                        <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                          <Clock className="h-3 w-3" /> Due: {format(new Date(a.due_date), 'MMM d, yyyy')}
-                        </p>
-                      )}
-                    </div>
-                    {submission ? (
-                      <Badge variant={submission.status === 'graded' ? 'default' : 'secondary'} className="text-[10px] shrink-0">
-                        {submission.status}
-                      </Badge>
-                    ) : isPastDue ? (
-                      <Badge variant="destructive" className="text-[10px] shrink-0">Past due</Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-[10px] shrink-0">Pending</Badge>
-                    )}
-                  </div>
-                  {submission?.feedback && (
-                    <p className="text-xs text-muted-foreground mt-2 border-t pt-2">
-                      Feedback: {submission.feedback}
-                    </p>
-                  )}
-                </CardContent></Card>
-              );
-            })
-          )}
-        </TabsContent>
-
-        {/* ─── EXAMS ─── */}
-        <TabsContent value="exams" className="space-y-2 mt-4">
-          {exams.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">No exams published yet</p>
-          ) : (
-            exams.map(exam => {
-              const result = myExamResults.find(r => r.exam_id === exam.id);
-              return (
-                <Card key={exam.id}><CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-medium">{exam.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {exam.duration_minutes} min · {exam.total_marks} marks · Pass: {exam.pass_mark_percent}%
-                      </p>
-                    </div>
-                    {result ? (
-                      <div className="text-right shrink-0">
-                        <p className="text-sm font-bold">{result.total_score}/{result.total_possible}</p>
-                        <Badge variant={result.passed ? 'default' : 'destructive'} className="text-[10px]">
-                          {result.passed ? 'Pass' : 'Fail'}
-                        </Badge>
-                      </div>
-                    ) : (
-                      <Badge variant="outline" className="text-[10px] shrink-0">Not taken</Badge>
-                    )}
-                  </div>
-                </CardContent></Card>
-              );
-            })
-          )}
-        </TabsContent>
-
-        {/* ─── CLASS CHAT ─── */}
+        {/* ═══ TAB 5: CLASS CHAT ═══ */}
         <TabsContent value="class-chat" className="mt-4">
           <ClassChatTab courseId={courseId!} mode="student" />
         </TabsContent>
 
-        {/* ─── DISCUSSION ─── */}
-        <TabsContent value="chat" className="mt-4">
-          <CourseDiscussionBoard courseId={courseId!} currentUserId={user?.id || ''} />
+        {/* ═══ TAB 6: MY PROGRESS ═══ */}
+        <TabsContent value="progress" className="space-y-4 mt-4">
+          {/* Attendance */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-semibold">Attendance</p>
+                <span className={cn('text-lg font-black', attendancePct >= 80 ? 'text-emerald-600' : attendancePct >= 50 ? 'text-gold' : 'text-destructive')}>
+                  {attendancePct}%
+                </span>
+              </div>
+              <Progress value={attendancePct} className="h-2 mb-3" />
+              <div className="grid grid-cols-4 gap-2 text-center">
+                <div><p className="text-lg font-bold">{attendanceRecords.length}</p><p className="text-[10px] text-muted-foreground">Total</p></div>
+                <div><p className="text-lg font-bold text-emerald-600">{presentCount}</p><p className="text-[10px] text-muted-foreground">Present</p></div>
+                <div><p className="text-lg font-bold text-destructive">{absentCount}</p><p className="text-[10px] text-muted-foreground">Absent</p></div>
+                <div><p className="text-lg font-bold text-gold">{lateCount}</p><p className="text-[10px] text-muted-foreground">Late</p></div>
+              </div>
+              {attendanceRecords.length > 0 && (
+                <div className="mt-3 space-y-1 max-h-60 overflow-y-auto">
+                  {attendanceRecords.slice(0, 10).map(a => (
+                    <div key={a.id} className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-muted/50">
+                      <span className="text-xs">{format(new Date(a.class_date), 'EEE, MMM d')}</span>
+                      <div className="flex items-center gap-2">
+                        {a.lesson_notes && <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">{a.lesson_notes}</span>}
+                        <Badge variant={a.status === 'present' ? 'default' : a.status === 'late' ? 'secondary' : 'destructive'} className="text-[9px]">
+                          {a.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Assignments */}
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-sm font-semibold mb-2">Assignments</p>
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div><p className="text-lg font-bold">{submittedCount}/{assignments.length || '—'}</p><p className="text-[10px] text-muted-foreground">Submitted</p></div>
+                <div><p className="text-lg font-bold">{mySubmissions.filter(s => s.status === 'graded').length}</p><p className="text-[10px] text-muted-foreground">Graded</p></div>
+                <div><p className="text-lg font-bold">{avgScore != null ? avgScore : '—'}</p><p className="text-[10px] text-muted-foreground">Avg Score</p></div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Certificates */}
+          {certificates.length > 0 && (
+            <Card>
+              <CardContent className="p-4">
+                <p className="text-sm font-semibold mb-2 flex items-center gap-1.5"><Award className="h-4 w-4 text-gold" /> Certificates</p>
+                <div className="space-y-2">
+                  {certificates.map((cert: any) => (
+                    <div key={cert.id} className="flex items-center justify-between p-2 rounded bg-gold/5 border border-gold/20">
+                      <div>
+                        <p className="text-sm font-medium">{cert.certificate?.template_name || 'Certificate'}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {cert.grade && `Grade: ${cert.grade} · `}
+                          {cert.certificate_number && `#${cert.certificate_number} · `}
+                          Issued {format(new Date(cert.issued_at), 'MMM d, yyyy')}
+                        </p>
+                      </div>
+                      <Badge className="bg-gold text-foreground text-[9px]"><Award className="h-3 w-3 mr-0.5" /> Awarded</Badge>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
+
+      {/* ═══ DIALOGS ═══ */}
+
+      {/* Slides dialog */}
+      <Dialog open={slidesOpen} onOpenChange={setSlidesOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Slides ({currentSlideIdx + 1}/{kitAssets?.slides.length || 0})</DialogTitle>
+          </DialogHeader>
+          {kitAssets?.slides[currentSlideIdx] && (() => {
+            const slide = kitAssets.slides[currentSlideIdx] as any;
+            return (
+              <div className="space-y-4">
+                <h3 className="text-lg font-bold">{slide.title}</h3>
+                {slide.arabic_text && <p className="text-xl text-right font-arabic leading-relaxed" dir="rtl">{slide.arabic_text}</p>}
+                {slide.bullets && (
+                  <ul className="space-y-1">
+                    {(Array.isArray(slide.bullets) ? slide.bullets : []).map((b: string, i: number) => (
+                      <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                        <span className="text-primary mt-0.5">•</span> {b}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {slide.teacher_note && <p className="text-xs text-muted-foreground italic border-t pt-2">Note: {slide.teacher_note}</p>}
+                <div className="flex justify-between pt-2">
+                  <Button variant="outline" size="sm" disabled={currentSlideIdx === 0} onClick={() => setCurrentSlideIdx(i => i - 1)}>
+                    <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                  </Button>
+                  <Button variant="outline" size="sm" disabled={currentSlideIdx >= (kitAssets?.slides.length || 1) - 1} onClick={() => setCurrentSlideIdx(i => i + 1)}>
+                    Next <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Flashcards dialog */}
+      <Dialog open={flashcardsOpen} onOpenChange={setFlashcardsOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Flashcards ({currentFlashcardIdx + 1}/{kitAssets?.flashcards.length || 0})</DialogTitle>
+          </DialogHeader>
+          {kitAssets?.flashcards[currentFlashcardIdx] && (() => {
+            const fc = kitAssets.flashcards[currentFlashcardIdx] as any;
+            return (
+              <div className="space-y-4">
+                <div
+                  className="min-h-[200px] rounded-xl border-2 border-primary/20 p-6 flex items-center justify-center cursor-pointer hover:bg-primary/5 transition-colors"
+                  onClick={() => setFlashcardFlipped(!flashcardFlipped)}
+                >
+                  <div className="text-center">
+                    <p className="text-[10px] text-muted-foreground uppercase mb-2">{flashcardFlipped ? 'Answer' : 'Question'}</p>
+                    <p className="text-lg font-semibold">{flashcardFlipped ? fc.back_content : fc.front_content}</p>
+                    <p className="text-[10px] text-primary mt-3">Tap to flip</p>
+                  </div>
+                </div>
+                {flashcardFlipped && (
+                  <div className="flex gap-2">
+                    <Button variant="outline" className="flex-1 border-destructive/30 text-destructive" onClick={() => {
+                      trackFlashcard(fc.id, false);
+                      toast('Marked as needs review');
+                      setFlashcardFlipped(false);
+                      if (currentFlashcardIdx < (kitAssets?.flashcards.length || 1) - 1) setCurrentFlashcardIdx(i => i + 1);
+                    }}>
+                      <X className="h-4 w-4 mr-1" /> Don't Know
+                    </Button>
+                    <Button variant="outline" className="flex-1 border-emerald-500/30 text-emerald-600" onClick={() => {
+                      trackFlashcard(fc.id, true);
+                      toast.success('Marked as known!');
+                      setFlashcardFlipped(false);
+                      if (currentFlashcardIdx < (kitAssets?.flashcards.length || 1) - 1) setCurrentFlashcardIdx(i => i + 1);
+                    }}>
+                      <Check className="h-4 w-4 mr-1" /> Got It
+                    </Button>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <Button variant="ghost" size="sm" disabled={currentFlashcardIdx === 0} onClick={() => { setCurrentFlashcardIdx(i => i - 1); setFlashcardFlipped(false); }}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm" disabled={currentFlashcardIdx >= (kitAssets?.flashcards.length || 1) - 1} onClick={() => { setCurrentFlashcardIdx(i => i + 1); setFlashcardFlipped(false); }}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Quiz dialog */}
+      <Dialog open={quizOpen} onOpenChange={setQuizOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Quiz ({currentQuizIdx + 1}/{kitAssets?.quizQuestions.length || 0})</DialogTitle>
+          </DialogHeader>
+          {kitAssets?.quizQuestions[currentQuizIdx] && !quizSubmitted && (() => {
+            const q = kitAssets.quizQuestions[currentQuizIdx] as any;
+            const options: string[] = q.options || [];
+            return (
+              <div className="space-y-4">
+                <p className="text-sm font-semibold">{q.question_text || q.question}</p>
+                <div className="space-y-2">
+                  {options.map((opt, i) => (
+                    <button
+                      key={i}
+                      className={cn(
+                        'w-full text-left p-3 rounded-lg border text-sm transition-colors',
+                        quizAnswers[q.id] === opt ? 'border-primary bg-primary/10 font-medium' : 'border-border hover:bg-muted/50',
+                      )}
+                      onClick={() => setQuizAnswers(prev => ({ ...prev, [q.id]: opt }))}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex justify-between pt-2">
+                  <Button variant="outline" size="sm" disabled={currentQuizIdx === 0} onClick={() => setCurrentQuizIdx(i => i - 1)}>
+                    <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                  </Button>
+                  {currentQuizIdx < (kitAssets?.quizQuestions.length || 1) - 1 ? (
+                    <Button size="sm" onClick={() => setCurrentQuizIdx(i => i + 1)} disabled={!quizAnswers[q.id]}>
+                      Next <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  ) : (
+                    <Button size="sm" onClick={handleSubmitQuiz} disabled={Object.keys(quizAnswers).length < (kitAssets?.quizQuestions.length || 0)}>
+                      Submit Quiz
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+          {quizSubmitted && (
+            <div className="py-6 text-center">
+              <Check className="h-12 w-12 mx-auto mb-3 text-emerald-500" />
+              <p className="text-lg font-bold">Quiz Submitted!</p>
+              <p className="text-sm text-muted-foreground mt-1">Your answers have been recorded.</p>
+              <Button className="mt-4" onClick={() => setQuizOpen(false)}>Close</Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Lesson sheet */}
+      <Sheet open={lessonSheetOpen} onOpenChange={setLessonSheetOpen}>
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>{selectedLesson?.title}</SheetTitle>
+          </SheetHeader>
+          {selectedLesson && (
+            <div className="mt-4">
+              {selectedLesson.content_type === 'text' && selectedLesson.content_html && (
+                <div className="prose prose-sm max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: selectedLesson.content_html }} />
+              )}
+              {selectedLesson.content_type === 'video' && selectedLesson.video_url && (
+                <iframe src={selectedLesson.video_url} className="w-full aspect-video rounded-lg" allowFullScreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" />
+              )}
+              {selectedLesson.content_type === 'file' && selectedLesson.file_url && (
+                <div className="text-center py-8">
+                  <FileText className="h-12 w-12 mx-auto mb-3 text-muted-foreground/40" />
+                  <Button onClick={() => window.open(selectedLesson.file_url, '_blank')}>
+                    <Download className="h-4 w-4 mr-2" /> Download File
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Assignment submission dialog */}
+      <Dialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Submit: {submitAssignment?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm">Your Response</Label>
+              <Textarea
+                value={submissionText}
+                onChange={e => setSubmissionText(e.target.value)}
+                placeholder="Type your response here..."
+                rows={4}
+              />
+            </div>
+            <div>
+              <Label className="text-sm">Attach File (optional)</Label>
+              <Input type="file" onChange={e => setSubmissionFile(e.target.files?.[0] || null)} className="mt-1" />
+            </div>
+            <Button className="w-full" onClick={handleSubmitAssignment} disabled={submitting || (!submissionText.trim() && !submissionFile)}>
+              {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+              Submit Assignment
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
