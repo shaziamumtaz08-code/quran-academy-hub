@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import {
   Video, Clock, ExternalLink, Lock, Radio, CheckCircle2,
-  CalendarPlus, X,
+  CalendarPlus, X, MonitorUp,
 } from 'lucide-react';
 
 // ─── Types ───
@@ -22,6 +25,8 @@ interface ZoomClassPanelProps {
   classInfo: ClassInfo;
   userRole: 'teacher' | 'student';
   onSessionEnd?: () => void;
+  courseId?: string;
+  classId?: string;
 }
 
 // ─── Time helpers ───
@@ -137,10 +142,28 @@ function generateIcsUrl(classInfo: ClassInfo, nextDate: Date): string {
 type PanelState = 'upcoming' | 'starting-soon' | 'live' | 'ended';
 
 // ═══ COMPONENT ═══
-export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd }: ZoomClassPanelProps) {
+export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd, courseId, classId }: ZoomClassPanelProps) {
+  const navigate = useNavigate();
   const [showIframe, setShowIframe] = useState(false);
   const [iframeError, setIframeError] = useState(false);
   const [sessionEnded, setSessionEnded] = useState(false);
+
+  // Check for virtual session (LiveKit)
+  const { data: virtualSession } = useQuery({
+    queryKey: ['virtual-session-class', classId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('virtual_sessions' as any)
+        .select('id, provider, status')
+        .eq('class_id', classId!)
+        .in('status', ['scheduled', 'live'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data as any;
+    },
+    enabled: !!classId,
+  });
 
   // Recalculate every second via the countdown
   const occurrence = useMemo(
@@ -341,6 +364,19 @@ export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd 
                 <ExternalLink className="h-3 w-3" /> Open in browser instead
               </a>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Virtual Classroom Entry (future LiveKit) */}
+      {virtualSession?.provider === 'livekit' && (
+        <Card className="border-2 border-primary/30">
+          <CardContent className="p-4 text-center space-y-2">
+            <MonitorUp className="h-6 w-6 mx-auto text-primary" />
+            <p className="text-sm font-medium">Virtual Classroom Available</p>
+            <Button className="w-full" onClick={() => navigate(`/classroom/${virtualSession.id}`)}>
+              Enter Classroom
+            </Button>
           </CardContent>
         </Card>
       )}
