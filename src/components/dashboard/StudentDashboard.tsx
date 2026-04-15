@@ -276,7 +276,7 @@ export function StudentDashboard() {
         const resolvedCourseName = courseObj?.name || 'Course';
           todaySchedule.push({
             time: cls.schedule_time || '00:00',
-            courseName,
+            courseName: resolvedCourseName,
             className: cls.name,
             teacherName: classStaffMap[cls.id] || 'Teacher',
             duration: cls.session_duration || 30,
