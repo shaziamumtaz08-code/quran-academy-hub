@@ -384,10 +384,25 @@ export default function TeacherCourseView() {
           <ArrowLeft className="h-4 w-4 mr-1" /> Dashboard
         </Button>
         <div className="bg-gradient-to-r from-primary to-primary/60 rounded-xl p-5 text-primary-foreground">
-          <h1 className="text-xl font-bold">{course?.name}</h1>
-          <p className="text-sm text-primary-foreground/70 mt-0.5">
-            {(course?.divisions as any)?.name}{course?.level && ` · ${course.level}`}
-          </p>
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-xl font-bold">{course?.name}</h1>
+              <p className="text-sm text-primary-foreground/70 mt-0.5">
+                {(course?.divisions as any)?.name}{course?.level && ` · ${course.level}`}
+              </p>
+            </div>
+            {pendingDMCount > 0 && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-primary-foreground hover:bg-primary-foreground/20 text-xs gap-1.5"
+                onClick={() => setDmApprovalOpen(true)}
+              >
+                <MessageSquare className="h-4 w-4" />
+                {pendingDMCount} pending DM {pendingDMCount === 1 ? 'request' : 'requests'}
+              </Button>
+            )}
+          </div>
           {/* Class selector */}
           {myClasses.length > 1 && (
             <Select value={selectedClassId || ''} onValueChange={setSelectedClassId}>
@@ -904,6 +919,9 @@ export default function TeacherCourseView() {
 
       {/* DM Chat Sheet */}
       <DMChatSheet open={dmSheetOpen} onOpenChange={setDmSheetOpen} groupId={dmGroupId} recipientName={dmRecipientName} />
+
+      {/* DM Approval Inbox */}
+      <DMApprovalInbox courseId={courseId!} open={dmApprovalOpen} onOpenChange={setDmApprovalOpen} />
     </div>
   );
 }
