@@ -93,14 +93,16 @@ No explanation needed.`;
 
 function fuzzyMatch(userAnswer: string, correctAnswer: string): boolean {
   if (!userAnswer || !correctAnswer) return false;
-  
-  // Strip Arabic diacritics (harakat/tashkeel)
   const stripDiacritics = (s: string) => s.replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED]/g, "");
-  
   const ua = stripDiacritics(userAnswer.toString().toLowerCase().trim());
   const ca = stripDiacritics(correctAnswer.toLowerCase().trim());
-  
   return ua === ca;
+}
+
+function fuzzyMatchWithAlts(userAnswer: string, correctAnswer: string, alternatives: string[]): boolean {
+  if (!userAnswer) return false;
+  if (fuzzyMatch(userAnswer, correctAnswer)) return true;
+  return alternatives.some(alt => fuzzyMatch(userAnswer, alt));
 }
 
 Deno.serve(async (req) => {
