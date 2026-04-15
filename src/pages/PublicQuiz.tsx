@@ -23,7 +23,7 @@ interface QuizMeta {
 interface Question {
   index: number;
   text: string;
-  type: 'mcq' | 'tf' | 'fib';
+  type: 'mcq' | 'tf' | 'fib' | 'error_detection' | 'dialogue_completion' | 'matching' | 'scenario' | 'translation';
   options: string[];
 }
 
