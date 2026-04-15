@@ -345,6 +345,8 @@ export default function StudentCourseView() {
 
         {/* ─── OVERVIEW ─── */}
         <TabsContent value="overview" className="space-y-4 mt-4">
+          {/* Today's Activities from pushed content kit */}
+          <StudentActivitiesSection courseId={courseId!} />
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <Card><CardContent className="p-4 text-center">
               <p className="text-2xl font-bold text-foreground">{attendancePct}%</p>
