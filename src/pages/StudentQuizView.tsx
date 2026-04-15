@@ -92,34 +92,21 @@ export default function StudentQuizView() {
     setPhase('submitting');
     const timeTaken = Math.round((Date.now() - startTime) / 1000);
 
-    // Get full questions from attempt to grade
-    const { data: attempt } = await (supabase.from('quiz_attempts') as any).select('questions').eq('id', attemptId).single();
-    const fullQ = attempt?.questions || [];
+    try {
+      // Use server-side AI grading
+      const { data, error } = await supabase.functions.invoke('grade-quiz-attempt', {
+        body: { attempt_id: attemptId, answers, time_taken_seconds: timeTaken },
+      });
 
-    let score = 0;
-    const graded: any[] = [];
-    fullQ.forEach((q: any, i: number) => {
-      const ua = answers[i];
-      let correct = false;
-      if (q.type === 'fib') {
-        correct = ua && q.correctText && ua.toString().toLowerCase().trim() === q.correctText.toLowerCase().trim();
-      } else {
-        correct = ua !== undefined && ua === q.correctIndex;
-      }
-      if (correct) score++;
-      graded.push({ ...q, userAnswer: ua, correct });
-    });
+      if (error) throw error;
 
-    const pct = fullQ.length > 0 ? Math.round((score / fullQ.length) * 100) : 0;
-
-    await (supabase.from('quiz_attempts') as any).update({
-      answers, score, percentage: pct, time_taken_seconds: timeTaken,
-      status: 'completed', completed_at: new Date().toISOString(),
-    }).eq('id', attemptId);
-
-    setResults({ score, max_score: fullQ.length, percentage: pct, results: graded });
-    queryClient.invalidateQueries({ queryKey: ['student-quiz-attempts'] });
-    setPhase('results');
+      setResults(data);
+      queryClient.invalidateQueries({ queryKey: ['student-quiz-attempts'] });
+      setPhase('results');
+    } catch (e: any) {
+      toast({ title: 'Grading error', description: e.message, variant: 'destructive' });
+      setPhase('quiz');
+    }
   };
 
   if (phase === 'submitting') return (
