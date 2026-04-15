@@ -64,6 +64,20 @@ export function CourseClassesTab({ courseId }: CourseClassesTabProps) {
     },
   });
 
+  // Fetch which classes have chat groups for the "Chat ✓" badge
+  const classIds = classes.map((c: any) => c.id);
+  const { data: classChatGroups = [] } = useQuery({
+    queryKey: ['class-chat-groups-check', classIds.join(',')],
+    queryFn: async () => {
+      if (!classIds.length) return [];
+      const { data } = await (supabase.from('chat_groups').select('class_id') as any)
+        .in('class_id', classIds);
+      return data || [];
+    },
+    enabled: classIds.length > 0,
+  });
+  const classesWithChat = new Set((classChatGroups as any[]).map((g: any) => g.class_id));
+
   const handleDeleteClass = async () => {
     if (!deleteClassTarget) return;
     setClassDeleting(true);
