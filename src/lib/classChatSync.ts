@@ -20,7 +20,7 @@ export async function ensureClassChatGroup(
 
   // Create group
   const { data: newGroup, error } = await supabase.from('chat_groups').insert({
-    name: `${className} Chat`,
+    name: `${className} — Class Chat`,
     type: 'group',
     created_by: createdBy,
     course_id: courseId,
@@ -63,15 +63,9 @@ export async function ensureClassChatGroup(
  * Sync a single student into the class chat group.
  */
 export async function addStudentToClassChat(classId: string, studentId: string) {
-  const { data: groups } = await (supabase
-    .from('chat_groups')
-    .select('id') as any)
-    .eq('class_id', classId)
-    .limit(1);
+  const groupId = await getClassChatGroupId(classId);
+  if (!groupId) return;
 
-  if (!groups?.length) return;
-
-  const groupId = groups[0].id;
   const { data: existing } = await supabase
     .from('chat_members')
     .select('id')
@@ -89,21 +83,89 @@ export async function addStudentToClassChat(classId: string, studentId: string) 
 }
 
 /**
+ * Add multiple students to the class chat group.
+ */
+export async function addStudentsToClassChat(classId: string, studentIds: string[]) {
+  if (!studentIds.length) return;
+  const groupId = await getClassChatGroupId(classId);
+  if (!groupId) return;
+
+  // Get existing members to avoid duplicates
+  const { data: existing } = await supabase
+    .from('chat_members')
+    .select('user_id')
+    .eq('group_id', groupId)
+    .in('user_id', studentIds);
+
+  const existingIds = new Set((existing || []).map(e => e.user_id));
+  const newMembers = studentIds
+    .filter(id => !existingIds.has(id))
+    .map(id => ({ group_id: groupId, user_id: id, role: 'member' }));
+
+  if (newMembers.length > 0) {
+    await supabase.from('chat_members').insert(newMembers);
+  }
+}
+
+/**
  * Remove a student from the class chat group.
  */
 export async function removeStudentFromClassChat(classId: string, studentId: string) {
-  const { data: groups } = await (supabase
+  const groupId = await getClassChatGroupId(classId);
+  if (!groupId) return;
+
+  await supabase.from('chat_members')
+    .delete()
+    .eq('group_id', groupId)
+    .eq('user_id', studentId);
+}
+
+/**
+ * Sync a staff member into the class chat group.
+ */
+export async function addStaffToClassChat(classId: string, userId: string) {
+  const groupId = await getClassChatGroupId(classId);
+  if (!groupId) return;
+
+  const { data: existing } = await supabase
+    .from('chat_members')
+    .select('id')
+    .eq('group_id', groupId)
+    .eq('user_id', userId)
+    .limit(1);
+
+  if (existing?.length) return;
+
+  await supabase.from('chat_members').insert({
+    group_id: groupId,
+    user_id: userId,
+    role: 'admin',
+  });
+}
+
+/**
+ * Remove a staff member from the class chat group.
+ */
+export async function removeStaffFromClassChat(classId: string, userId: string) {
+  const groupId = await getClassChatGroupId(classId);
+  if (!groupId) return;
+
+  await supabase.from('chat_members')
+    .delete()
+    .eq('group_id', groupId)
+    .eq('user_id', userId);
+}
+
+/**
+ * Get the chat group ID for a class (cached per call).
+ */
+async function getClassChatGroupId(classId: string): Promise<string | null> {
+  const { data } = await (supabase
     .from('chat_groups')
     .select('id') as any)
     .eq('class_id', classId)
     .limit(1);
-
-  if (!groups?.length) return;
-
-  await supabase.from('chat_members')
-    .delete()
-    .eq('group_id', groups[0].id)
-    .eq('user_id', studentId);
+  return data?.[0]?.id || null;
 }
 
 /**

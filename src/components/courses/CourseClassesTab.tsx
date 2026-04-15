@@ -20,7 +20,7 @@ import {
   Plus, Trash2, Users, Clock, MapPin, DollarSign, Loader2, Video, UserPlus,
   Calendar, ArrowLeft, Settings, GraduationCap, Shield, ChevronRight, Eye, MessageSquare
 } from 'lucide-react';
-import { ensureClassChatGroup, classHasChatGroup } from '@/lib/classChatSync';
+import { ensureClassChatGroup, addStudentsToClassChat, addStaffToClassChat, removeStudentFromClassChat, removeStaffFromClassChat } from '@/lib/classChatSync';
 
 interface CourseClassesTabProps {
   courseId: string;
@@ -63,6 +63,20 @@ export function CourseClassesTab({ courseId }: CourseClassesTabProps) {
       return data || [];
     },
   });
+
+  // Fetch which classes have chat groups for the "Chat ✓" badge
+  const classIds = classes.map((c: any) => c.id);
+  const { data: classChatGroups = [] } = useQuery({
+    queryKey: ['class-chat-groups-check', classIds.join(',')],
+    queryFn: async () => {
+      if (!classIds.length) return [];
+      const { data } = await (supabase.from('chat_groups').select('class_id') as any)
+        .in('class_id', classIds);
+      return data || [];
+    },
+    enabled: classIds.length > 0,
+  });
+  const classesWithChat = new Set((classChatGroups as any[]).map((g: any) => g.class_id));
 
   const handleDeleteClass = async () => {
     if (!deleteClassTarget) return;
@@ -142,6 +156,9 @@ export function CourseClassesTab({ courseId }: CourseClassesTabProps) {
                   <div>
                     <p className="font-medium text-sm">{cls.name}</p>
                     <Badge variant="outline" className="text-[10px] mt-1">{cls.class_type}</Badge>
+                    {classesWithChat.has(cls.id) && (
+                      <Badge variant="outline" className="text-[10px] mt-1 text-emerald-600 border-emerald-200"><MessageSquare className="h-2.5 w-2.5 mr-0.5" />Chat ✓</Badge>
+                    )}
                   </div>
                   <div className="flex items-center gap-1">
                     <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 text-destructive"
@@ -475,8 +492,14 @@ function ClassDetail({ cls, courseId, onBack, onDelete }: { cls: any; courseId: 
       }).eq('id', cls.id);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Ensure chat group exists after update
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.id) await ensureClassChatGroup(cls.id, editName, courseId, user.id);
+      } catch { /* non-critical */ }
       qc.invalidateQueries({ queryKey: ['course-classes', courseId] });
+      qc.invalidateQueries({ queryKey: ['class-chat-groups-check'] });
       setEditing(false);
       toast({ title: 'Class updated' });
     },
@@ -496,17 +519,21 @@ function ClassDetail({ cls, courseId, onBack, onDelete }: { cls: any; courseId: 
   });
 
   const removeStaff = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, userId }: { id: string; userId: string }) => {
       const { error } = await supabase.from('course_class_staff').delete().eq('id', id);
       if (error) throw error;
+      // Sync: remove from class chat
+      try { await removeStaffFromClassChat(cls.id, userId); } catch { /* non-critical */ }
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['class-staff', cls.id] }); toast({ title: 'Staff removed' }); },
   });
 
   const removeStudent = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, studentId }: { id: string; studentId: string }) => {
       const { error } = await supabase.from('course_class_students').delete().eq('id', id);
       if (error) throw error;
+      // Sync: remove from class chat
+      try { await removeStudentFromClassChat(cls.id, studentId); } catch { /* non-critical */ }
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['class-students', cls.id] }); toast({ title: 'Student removed' }); },
   });
@@ -710,7 +737,7 @@ function ClassDetail({ cls, courseId, onBack, onDelete }: { cls: any; courseId: 
                       </div>
                     </div>
                   </div>
-                  <button onClick={() => removeStaff.mutate(s.id)} className="p-1 text-muted-foreground hover:text-destructive">
+                   <button onClick={() => removeStaff.mutate({ id: s.id, userId: s.user_id })} className="p-1 text-muted-foreground hover:text-destructive">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -734,7 +761,7 @@ function ClassDetail({ cls, courseId, onBack, onDelete }: { cls: any; courseId: 
                       </Badge>
                     </div>
                   </div>
-                  <button onClick={() => removeStaff.mutate(s.id)} className="p-1 text-muted-foreground hover:text-destructive">
+                   <button onClick={() => removeStaff.mutate({ id: s.id, userId: s.user_id })} className="p-1 text-muted-foreground hover:text-destructive">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -758,7 +785,7 @@ function ClassDetail({ cls, courseId, onBack, onDelete }: { cls: any; courseId: 
                       </Badge>
                     </div>
                   </div>
-                  <button onClick={() => removeStaff.mutate(s.id)} className="p-1 text-muted-foreground hover:text-destructive">
+                  <button onClick={() => removeStaff.mutate({ id: s.id, userId: s.user_id })} className="p-1 text-muted-foreground hover:text-destructive">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -812,7 +839,7 @@ function ClassDetail({ cls, courseId, onBack, onDelete }: { cls: any; courseId: 
                     <p className="text-sm font-medium">{(s as any).profile?.full_name || 'Unknown'}</p>
                     <p className="text-[10px] text-muted-foreground">{(s as any).profile?.email}</p>
                   </div>
-                  <button onClick={() => removeStudent.mutate(s.id)} className="p-1 text-muted-foreground hover:text-destructive">
+                  <button onClick={() => removeStudent.mutate({ id: s.id, studentId: s.student_id })} className="p-1 text-muted-foreground hover:text-destructive">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -858,7 +885,9 @@ function AddStaffDialog({ open, onOpenChange, classId, staffList, existingStaffI
       } as any);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Sync: add staff to class chat
+      try { await addStaffToClassChat(classId, userId); } catch { /* non-critical */ }
       qc.invalidateQueries({ queryKey: ['class-staff', classId] });
       onOpenChange(false);
       setUserId(''); setSubjects([]); setSearch('');
@@ -967,11 +996,14 @@ function AddStudentDialog({ open, onOpenChange, classId, enrolledStudents, exist
       const { error } = await supabase.from('course_class_students').insert(rows);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Sync: add students to class chat
+      try { await addStudentsToClassChat(classId, selected); } catch { /* non-critical */ }
       qc.invalidateQueries({ queryKey: ['class-students', classId] });
       onOpenChange(false);
+      const count = selected.length;
       setSelected([]);
-      toast({ title: `${selected.length} student(s) added` });
+      toast({ title: `${count} student(s) added` });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
