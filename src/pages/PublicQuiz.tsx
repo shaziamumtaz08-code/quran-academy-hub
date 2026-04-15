@@ -213,12 +213,15 @@ export default function PublicQuiz() {
                   <div className="ml-7 space-y-1">
                     <p className="text-sm text-muted-foreground">
                       Your answer: <span className="text-red-600 font-medium">
-                        {r.type === 'fib' ? (r.userAnswer || 'blank') : (r.options?.[r.userAnswer] || 'skipped')}
+                        {typeof r.userAnswer === 'string' ? (r.userAnswer || 'blank') : 
+                         r.type === 'fib' ? (r.userAnswer || 'blank') : 
+                         ['error_detection', 'dialogue_completion', 'scenario', 'translation'].includes(r.type) ? (r.userAnswer || 'blank') :
+                         (r.options?.[r.userAnswer] || 'skipped')}
                       </span>
                     </p>
                     <p className="text-sm text-muted-foreground">
                       Correct: <span className="text-green-600 font-medium">
-                        {r.type === 'fib' ? r.correctText : r.options?.[r.correctIndex!]}
+                        {r.correctText || (r.options?.[r.correctIndex!])}
                       </span>
                     </p>
                   </div>
