@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Layers, BookOpen, FlipHorizontal, HelpCircle, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Layers, BookOpen, FlipHorizontal, HelpCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface StudentActivitiesSectionProps {
@@ -20,18 +20,18 @@ export function StudentActivitiesSection({ courseId }: StudentActivitiesSectionP
   const [currentFlashcard, setCurrentFlashcard] = useState(0);
   const [flipped, setFlipped] = useState(false);
 
-  // Fetch latest pushed content kit
+  // Fetch latest pushed content kit using raw query to avoid type issues with new columns
   const { data: kit, isLoading } = useQuery({
     queryKey: ['student-pushed-kit', courseId],
     queryFn: async () => {
       const { data } = await supabase
         .from('content_kits')
-        .select('id, status, pushed_at')
+        .select('*')
         .eq('course_id', courseId)
-        .eq('pushed_to_class' as any, true)
-        .order('pushed_at' as any, { ascending: false })
-        .limit(1);
-      return data?.[0] || null;
+        .order('created_at', { ascending: false });
+      // Filter for pushed_to_class in JS since it's a new column
+      const pushed = (data || []).filter((k: any) => k.pushed_to_class === true);
+      return pushed[0] as any || null;
     },
     enabled: !!courseId,
   });
@@ -44,7 +44,7 @@ export function StudentActivitiesSection({ courseId }: StudentActivitiesSectionP
         .select('id, title, arabic_text, bullets, sort_order')
         .eq('kit_id', kit!.id)
         .order('sort_order');
-      return data || [];
+      return (data || []) as any[];
     },
     enabled: !!kit?.id,
   });
@@ -57,7 +57,7 @@ export function StudentActivitiesSection({ courseId }: StudentActivitiesSectionP
         .select('id, front, back, sort_order')
         .eq('kit_id', kit!.id)
         .order('sort_order');
-      return data || [];
+      return (data || []) as any[];
     },
     enabled: !!kit?.id,
   });
@@ -78,9 +78,9 @@ export function StudentActivitiesSection({ courseId }: StudentActivitiesSectionP
   if (!kit) return null;
 
   const activities = [
-    { icon: BookOpen, label: 'Slides', count: slides.length, color: 'text-blue-600 bg-blue-50', onClick: () => { setCurrentSlide(0); setSlidesOpen(true); } },
-    { icon: FlipHorizontal, label: 'Flashcards', count: flashcards.length, color: 'text-amber-600 bg-amber-50', onClick: () => { setCurrentFlashcard(0); setFlipped(false); setFlashcardsOpen(true); } },
-    { icon: HelpCircle, label: 'Quiz', count: quizCount, color: 'text-emerald-600 bg-emerald-50', onClick: () => {} },
+    { icon: BookOpen, label: 'Slides', count: slides.length, color: 'text-primary bg-primary/10', onClick: () => { setCurrentSlide(0); setSlidesOpen(true); } },
+    { icon: FlipHorizontal, label: 'Flashcards', count: flashcards.length, color: 'text-accent bg-accent/10', onClick: () => { setCurrentFlashcard(0); setFlipped(false); setFlashcardsOpen(true); } },
+    { icon: HelpCircle, label: 'Quiz', count: quizCount, color: 'text-secondary-foreground bg-secondary', onClick: () => {} },
   ].filter(a => a.count > 0);
 
   if (activities.length === 0) return null;
@@ -89,7 +89,7 @@ export function StudentActivitiesSection({ courseId }: StudentActivitiesSectionP
     <>
       <div>
         <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
-          <Layers className="h-4 w-4 text-amber-500" /> Today's Activities
+          <Layers className="h-4 w-4 text-accent" /> Today's Activities
         </h3>
         <div className="grid grid-cols-3 gap-2">
           {activities.map(act => (
@@ -114,15 +114,15 @@ export function StudentActivitiesSection({ courseId }: StudentActivitiesSectionP
           </DialogHeader>
           {slides[currentSlide] && (
             <div className="space-y-4 py-4">
-              <h2 className="text-lg font-bold text-center">{(slides[currentSlide] as any).title}</h2>
-              {(slides[currentSlide] as any).arabic_text && (
-                <p className="text-2xl text-center font-arabic leading-loose" dir="rtl">
-                  {(slides[currentSlide] as any).arabic_text}
+              <h2 className="text-lg font-bold text-center">{slides[currentSlide].title}</h2>
+              {slides[currentSlide].arabic_text && (
+                <p className="text-2xl text-center leading-loose" dir="rtl">
+                  {slides[currentSlide].arabic_text}
                 </p>
               )}
-              {(slides[currentSlide] as any).bullets && (
+              {slides[currentSlide].bullets && (
                 <ul className="space-y-2 list-disc pl-5">
-                  {((slides[currentSlide] as any).bullets as string[])?.map((b: string, i: number) => (
+                  {(slides[currentSlide].bullets as string[])?.map((b: string, i: number) => (
                     <li key={i} className="text-sm">{b}</li>
                   ))}
                 </ul>
@@ -156,11 +156,8 @@ export function StudentActivitiesSection({ courseId }: StudentActivitiesSectionP
                 <CardContent className="p-6 flex items-center justify-center min-h-[200px]">
                   <div className="text-center">
                     <p className="text-xs text-muted-foreground mb-2">{flipped ? 'Answer' : 'Question'}</p>
-                    <p className={cn('font-medium', flipped ? 'text-emerald-700' : 'text-foreground')}>
-                      {flipped
-                        ? (flashcards[currentFlashcard] as any).back
-                        : (flashcards[currentFlashcard] as any).front
-                      }
+                    <p className={cn('font-medium', flipped ? 'text-primary' : 'text-foreground')}>
+                      {flipped ? flashcards[currentFlashcard].back : flashcards[currentFlashcard].front}
                     </p>
                     <p className="text-[10px] text-muted-foreground mt-4">Tap to flip</p>
                   </div>

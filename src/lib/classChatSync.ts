@@ -14,7 +14,7 @@ export async function ensureClassChatGroup(
     .from('chat_groups')
     .select('id')
     .eq('class_id' as any, classId)
-    .limit(1);
+    .limit(1) as any;
 
   if (existing && existing.length > 0) return existing[0].id;
 
@@ -48,7 +48,6 @@ export async function ensureClassChatGroup(
     members.push({ group_id: newGroup.id, user_id: s.user_id, role: 'admin' });
   });
 
-  // Add creator if not already in the list
   if (!members.some(m => m.user_id === createdBy)) {
     members.push({ group_id: newGroup.id, user_id: createdBy, role: 'admin' });
   }
@@ -68,13 +67,11 @@ export async function addStudentToClassChat(classId: string, studentId: string) 
     .from('chat_groups')
     .select('id')
     .eq('class_id' as any, classId)
-    .limit(1);
+    .limit(1) as any;
 
   if (!groups?.length) return;
 
   const groupId = groups[0].id;
-
-  // Check if already a member
   const { data: existing } = await supabase
     .from('chat_members')
     .select('id')
@@ -99,7 +96,7 @@ export async function removeStudentFromClassChat(classId: string, studentId: str
     .from('chat_groups')
     .select('id')
     .eq('class_id' as any, classId)
-    .limit(1);
+    .limit(1) as any;
 
   if (!groups?.length) return;
 
@@ -117,6 +114,6 @@ export async function classHasChatGroup(classId: string): Promise<boolean> {
     .from('chat_groups')
     .select('id')
     .eq('class_id' as any, classId)
-    .limit(1);
+    .limit(1) as any;
   return (data?.length || 0) > 0;
 }
