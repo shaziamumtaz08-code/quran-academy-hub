@@ -560,6 +560,37 @@ export default function OrganizationSettings() {
           <TabsContent value="payouts">
             <DefaultPayoutRatesSection />
           </TabsContent>
+
+          {/* ── Tab 6: Virtual Classroom ── */}
+          <TabsContent value="classroom">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Virtual Classroom Provider</CardTitle>
+                <CardDescription className="text-xs">
+                  Choose how live classes are delivered. This applies to all new course classes.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Provider</Label>
+                  <Select defaultValue="zoom">
+                    <SelectTrigger className="max-w-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="zoom">Zoom (Meeting Link)</SelectItem>
+                      <SelectItem value="livekit" disabled>
+                        Built-in Virtual Room (Coming Soon)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Zoom uses external meeting links per class. The built-in virtual room will provide an integrated classroom experience with video, chat, and tools — coming soon.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
 
