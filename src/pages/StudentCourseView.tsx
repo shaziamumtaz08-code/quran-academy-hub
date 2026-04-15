@@ -23,7 +23,7 @@ import {
   GraduationCap, MessageSquare, Video, Clock, ExternalLink,
   Loader2, Award, ChevronLeft, ChevronRight, RotateCcw,
   Upload, Download, Bell, BarChart3, Radio, Layers, FlipVertical,
-  HelpCircle, Check, X,
+  HelpCircle, Check, X, Users,
 } from 'lucide-react';
 import { DMChatSheet } from '@/components/chat/DMChatSheet';
 import {
@@ -129,6 +129,7 @@ export default function StudentCourseView() {
   const [submissionText, setSubmissionText] = useState('');
   const [submissionFile, setSubmissionFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [chatSubTab, setChatSubTab] = useState<'chat' | 'classmates'>('chat');
 
   // Flashcard state
   const [currentFlashcardIdx, setCurrentFlashcardIdx] = useState(0);
