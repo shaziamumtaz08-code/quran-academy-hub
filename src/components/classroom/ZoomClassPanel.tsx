@@ -142,10 +142,28 @@ function generateIcsUrl(classInfo: ClassInfo, nextDate: Date): string {
 type PanelState = 'upcoming' | 'starting-soon' | 'live' | 'ended';
 
 // ═══ COMPONENT ═══
-export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd }: ZoomClassPanelProps) {
+export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd, courseId, classId }: ZoomClassPanelProps) {
+  const navigate = useNavigate();
   const [showIframe, setShowIframe] = useState(false);
   const [iframeError, setIframeError] = useState(false);
   const [sessionEnded, setSessionEnded] = useState(false);
+
+  // Check for virtual session (LiveKit)
+  const { data: virtualSession } = useQuery({
+    queryKey: ['virtual-session-class', classId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('virtual_sessions' as any)
+        .select('id, provider, status')
+        .eq('class_id', classId!)
+        .in('status', ['scheduled', 'live'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data as any;
+    },
+    enabled: !!classId,
+  });
 
   // Recalculate every second via the countdown
   const occurrence = useMemo(
