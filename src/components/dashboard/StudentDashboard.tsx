@@ -271,7 +271,9 @@ export function StudentDashboard() {
       allClasses.forEach(cls => {
         const days: string[] = (cls.schedule_days || []).map((d: string) => d.charAt(0).toUpperCase() + d.slice(1).toLowerCase());
         if (days.includes(todayName)) {
-          const courseName = (courseEnrollments || []).find((ce: any) => ce.course_id === cls.course_id)?.course?.name || 'Course';
+        const courseName = '';
+        const courseObj = (courseEnrollments || []).find((ce: any) => ce.course_id === cls.course_id)?.course as any;
+        const resolvedCourseName = courseObj?.name || 'Course';
           todaySchedule.push({
             time: cls.schedule_time || '00:00',
             courseName,
