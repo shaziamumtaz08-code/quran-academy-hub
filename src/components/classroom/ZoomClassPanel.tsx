@@ -367,6 +367,19 @@ export function ZoomClassPanel({ meetingLink, classInfo, userRole, onSessionEnd,
           </CardContent>
         </Card>
       )}
+
+      {/* Virtual Classroom Entry (future LiveKit) */}
+      {virtualSession?.provider === 'livekit' && (
+        <Card className="border-2 border-primary/30">
+          <CardContent className="p-4 text-center space-y-2">
+            <MonitorUp className="h-6 w-6 mx-auto text-primary" />
+            <p className="text-sm font-medium">Virtual Classroom Available</p>
+            <Button className="w-full" onClick={() => navigate(`/classroom/${virtualSession.id}`)}>
+              Enter Classroom
+            </Button>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
