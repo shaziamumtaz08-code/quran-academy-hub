@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { TeachTodayTab } from '@/components/courses/TeachTodayTab';
+import { ClassChatTab } from '@/components/courses/ClassChatTab';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -254,8 +256,10 @@ export default function TeacherCourseView() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full overflow-x-auto justify-start">
           <TabsTrigger value="classes" className="gap-1"><Users className="h-3.5 w-3.5" /> My Classes</TabsTrigger>
+          <TabsTrigger value="teach-today" className="gap-1"><Sparkles className="h-3.5 w-3.5" /> Teach Today</TabsTrigger>
           <TabsTrigger value="attendance" className="gap-1"><Calendar className="h-3.5 w-3.5" /> Attendance</TabsTrigger>
           <TabsTrigger value="assignments" className="gap-1"><FileText className="h-3.5 w-3.5" /> Assignments</TabsTrigger>
+          <TabsTrigger value="class-chat" className="gap-1"><Video className="h-3.5 w-3.5" /> Class Chat</TabsTrigger>
           <TabsTrigger value="students" className="gap-1"><BookOpen className="h-3.5 w-3.5" /> Students</TabsTrigger>
         </TabsList>
 
@@ -345,6 +349,11 @@ export default function TeacherCourseView() {
           )}
         </TabsContent>
 
+        {/* ─── TEACH TODAY ─── */}
+        <TabsContent value="teach-today" className="mt-4">
+          <TeachTodayTab courseId={courseId!} />
+        </TabsContent>
+
         {/* ─── ATTENDANCE ─── */}
         <TabsContent value="attendance" className="space-y-4 mt-4">
           {/* Class selector */}
@@ -429,6 +438,11 @@ export default function TeacherCourseView() {
           <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">
             Full assignment management coming soon.
           </CardContent></Card>
+        </TabsContent>
+
+        {/* ─── CLASS CHAT ─── */}
+        <TabsContent value="class-chat" className="mt-4">
+          <ClassChatTab courseId={courseId!} mode="teacher" />
         </TabsContent>
 
         {/* ─── STUDENTS ─── */}
