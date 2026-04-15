@@ -295,7 +295,7 @@ export function TeachTodayTab({ courseId }: TeachTodayTabProps) {
                   <Layers className="h-4 w-4 text-primary" />
                   <h3 className="font-semibold text-sm">Content Kit</h3>
                   {contentKit.pushed_to_class && (
-                    <Badge className="bg-emerald-600 text-white text-[10px]">
+                    <Badge className="bg-primary text-primary-foreground text-[10px]">
                       <CheckCircle2 className="h-3 w-3 mr-0.5" /> Pushed
                     </Badge>
                   )}
