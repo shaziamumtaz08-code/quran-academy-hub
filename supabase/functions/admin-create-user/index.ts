@@ -475,10 +475,11 @@ serve(async (req) => {
     }
 
     // User doesn't exist - create new user
-    // Auto-generate default password if none provided: FirstName1234
+    // Auto-generate default password if none provided: FirstName1234 (title case)
     let finalPassword = password;
     if (!finalPassword) {
-      const firstName = fullName.split(/\s+/)[0] || "User";
+      const rawFirst = fullName.split(/\s+/)[0] || "User";
+      const firstName = rawFirst.charAt(0).toUpperCase() + rawFirst.slice(1).toLowerCase();
       finalPassword = firstName + "1234";
     }
 
