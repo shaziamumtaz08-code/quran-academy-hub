@@ -250,13 +250,13 @@ Deno.serve(async (req) => {
 
       // Separate FIB questions for AI grading
       const fibIndices: number[] = [];
-      const fibItems: { question: string; correctAnswer: string; userAnswer: string }[] = [];
+      const fibItems: { question: string; correctAnswer: string; alternatives: string[]; userAnswer: string }[] = [];
 
       questions.forEach((q: any, i: number) => {
         const userAnswer = answers[i];
         if (q.type === "fib" && userAnswer && q.correctText) {
           fibIndices.push(i);
-          fibItems.push({ question: q.text, correctAnswer: q.correctText, userAnswer: userAnswer.toString() });
+          fibItems.push({ question: q.text, correctAnswer: q.correctText, alternatives: q.correctAlt || [], userAnswer: userAnswer.toString() });
         }
       });
 
