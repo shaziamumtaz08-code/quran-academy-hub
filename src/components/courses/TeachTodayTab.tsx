@@ -422,9 +422,9 @@ export function TeachTodayTab({ courseId }: TeachTodayTabProps) {
               )}
 
               {currentSlide.teacher_note && (
-                <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-                  <p className="text-xs font-medium text-amber-800 dark:text-amber-200 mb-1">Teacher Note</p>
-                  <p className="text-sm text-amber-700 dark:text-amber-300">{currentSlide.teacher_note}</p>
+                <div className="bg-muted/40 border border-border rounded-lg p-3">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Teacher Note</p>
+                  <p className="text-sm text-foreground">{currentSlide.teacher_note}</p>
                 </div>
               )}
 
