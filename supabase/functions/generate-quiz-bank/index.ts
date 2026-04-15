@@ -51,12 +51,45 @@ CORE PHILOSOPHY
 - Quality over speed. If requirements are not met, regenerate.
 
 ═══════════════════════════════════════════
+ALLOWED QUESTION TYPES (STRICT — NO EXCEPTIONS)
+═══════════════════════════════════════════
+You may ONLY use these 3 question types:
+1. "mcq" — Multiple Choice Questions (4 options, correctIndex 0-based)
+2. "tf" — True/False (2 options, correctIndex 0 or 1)
+3. "fib" — Fill in the Blank (correctText + correctAlt, NO options)
+
+DO NOT create any other types like "dialogue_completion", "error_detection", "scenario", "translation", "matching", or "sentence_construction". These are FORBIDDEN as standalone types.
+
+═══════════════════════════════════════════
+INTELLIGENCE EMBEDDING (CRITICAL)
+═══════════════════════════════════════════
+Advanced assessment styles MUST be embedded INSIDE mcq, tf, or fib using the "subtype" field:
+- Use MCQ for dialogue completion (subtype: "dialogue_completion")
+- Use MCQ for error detection (subtype: "error_detection")
+- Use MCQ for scenario-based questions (subtype: "scenario")
+- Use MCQ for translation questions (subtype: "translation")
+- Use MCQ for matching questions (subtype: "matching")
+- Use TF for dialogue understanding (subtype: "dialogue_tf")
+- Use TF for grammar rule verification (subtype: "grammar_tf")
+- Use FIB for grammar production (subtype: "grammar_fib")
+- Use FIB for vocabulary recall (subtype: "vocab_fib")
+
+The "subtype" field is OPTIONAL metadata — it does NOT change the rendering. The "type" field MUST always be "mcq", "tf", or "fib".
+
+═══════════════════════════════════════════
 SOURCE DISTRIBUTION (MANDATORY)
 ═══════════════════════════════════════════
 - At least 40% of questions must come from GRAMMAR content in the source material.
 - At least 40% of questions must come from DIALOGUE/CONVERSATION content in the source material.
-- At least 20% must be INTEGRATED questions that combine grammar + dialogue (e.g., apply grammar rules inside a dialogue, fix grammatical errors in conversation, select correct response based on grammar + meaning).
+- At least 20% must be INTEGRATED questions that combine grammar + dialogue.
 - Do NOT ignore any source material. Questions must be proportionally distributed across ALL provided content.
+
+═══════════════════════════════════════════
+DIALOGUE MANDATE (AT LEAST 30%)
+═══════════════════════════════════════════
+- At least 30% of ALL questions must involve dialogue (Hiwarat/conversation).
+- These dialogue questions MUST be implemented as MCQ, TF, or FIB — NOT as separate types.
+- Examples: MCQ asking to complete a dialogue, TF checking if a dialogue response is correct, FIB asking for a missing word in a conversation.
 
 ═══════════════════════════════════════════
 ANTI-REPETITION RULES (STRICT)
@@ -69,28 +102,19 @@ ANTI-REPETITION RULES (STRICT)
 ═══════════════════════════════════════════
 FOUR ASSESSMENT LAYERS (ALL REQUIRED)
 ═══════════════════════════════════════════
-Every quiz bank MUST cover ALL four layers. Do NOT skip any:
+Every quiz bank MUST cover ALL four layers using ONLY mcq/tf/fib:
 
 1. KNOWLEDGE LAYER: vocabulary, definitions, direct recall
 2. STRUCTURE LAYER: grammar correction, identify errors, apply nahw/sarf rules
 3. USAGE LAYER: sentence usage, context meaning, real-life application
-4. CONVERSATION LAYER (NEVER SKIP): complete dialogue, choose correct response, match question-answer, detect incorrect response, situational Arabic usage
+4. CONVERSATION LAYER (NEVER SKIP): complete dialogue, choose correct response, detect incorrect response — ALL as MCQ or TF
 
 ═══════════════════════════════════════════
-DIALOGUE INTEGRATION (MANDATORY)
+MCQ REQUIREMENTS
 ═══════════════════════════════════════════
-- Use dialogue PATTERNS, not just copied lines from the source.
-- Create incomplete dialogues for learners to complete.
-- Test WHEN and HOW a sentence is used.
-- Include situational context (who speaks, why, when).
-
-═══════════════════════════════════════════
-QUESTION TYPE DISTRIBUTION
-═══════════════════════════════════════════
-- MCQ should be at most 30% of total questions.
-- FIB should be at most 20% of total questions.
-- The remaining 50%+ MUST include OTHER types: error_detection, sentence_construction, dialogue_completion, matching, scenario_based, translation.
-- Use the "type" field values: "mcq", "tf", "fib", "error_detection", "dialogue_completion", "matching", "scenario", "translation"
+- ALL MCQs must have exactly 4 options.
+- Distractors must be meaningful and based on common learner mistakes, NOT random options.
+- correctIndex is 0-based.
 
 ═══════════════════════════════════════════
 DIFFICULTY DISTRIBUTION
@@ -105,11 +129,12 @@ Output raw JSON ONLY. No markdown. Format:
   "questions": [
     {
       "text": "question text",
-      "type": "mcq|tf|fib|error_detection|dialogue_completion|matching|scenario|translation",
+      "type": "mcq|tf|fib",
+      "subtype": "optional: dialogue_completion|error_detection|scenario|translation|matching|dialogue_tf|grammar_tf|grammar_fib|vocab_fib",
       "difficulty": "easy|medium|hard",
       "source": "grammar|dialogue|integrated",
       "skill_layer": "knowledge|structure|usage|conversation",
-      "options": ["ALWAYS provide 4 options for ALL types except FIB"],
+      "options": ["4 options for MCQ, 2 for TF, NONE for FIB"],
       "correctIndex": 0,
       "correctText": "ONLY for fib type - primary answer without diacritics",
       "correctAlt": ["alternative acceptable answers - ONLY for fib type"],
@@ -118,30 +143,26 @@ Output raw JSON ONLY. No markdown. Format:
   ]
 }
 
-CRITICAL RULE — OPTIONS ARE MANDATORY FOR ALL TYPES EXCEPT FIB:
-- MCQ: 4 options, correctIndex is 0-based.
-- TF: options ["True","False"] or localized equivalents, correctIndex 0 or 1.
-- FIB: correctText is PRIMARY answer (plain text, no diacritics for Arabic/Urdu), correctAlt has alternatives. FIB is the ONLY type without options.
-- error_detection: Present a sentence with an error. Provide 4 options with possible corrections. correctIndex points to the right one.
-- dialogue_completion: Present an incomplete dialogue. Provide 4 options to complete it. correctIndex points to the right one.
-- matching: Provide 4 options. correctIndex points to the correct match.
-- scenario: Present a real-life situation. Provide 4 options. correctIndex points to the right one.
-- translation: Provide 4 translation options. correctIndex points to the correct one.
+CRITICAL RULES:
+- MCQ: MUST have exactly 4 options. correctIndex is 0-based.
+- TF: MUST have exactly 2 options ["True","False"] or localized equivalents. correctIndex is 0 or 1.
+- FIB: MUST have correctText (primary answer). NO options array. correctAlt for alternatives.
+- The "type" field MUST ONLY be "mcq", "tf", or "fib". Any other value is INVALID.
 
 ═══════════════════════════════════════════
 CONTENT FILTERING
 ═══════════════════════════════════════════
-CRITICAL: Focus ONLY on the EDUCATIONAL SUBJECT MATTER content. COMPLETELY IGNORE any PDF metadata, document artifacts, watermarks (e.g. "Scanned with CamScanner"), page numbers, headers/footers, file format details, scanner app names, URLs, external links, or any text related to how the document was created/scanned/digitized. NEVER create questions about the document format, scanning process, or file properties.
+CRITICAL: Focus ONLY on the EDUCATIONAL SUBJECT MATTER content. COMPLETELY IGNORE any PDF metadata, document artifacts, watermarks (e.g. "Scanned with CamScanner"), page numbers, headers/footers, file format details, scanner app names, URLs, external links, or any text related to how the document was created/scanned/digitized.
 
 ═══════════════════════════════════════════
 QUALITY CHECKLIST (VERIFY BEFORE OUTPUT)
 ═══════════════════════════════════════════
+□ ONLY mcq, tf, fib types used — NO other types
+□ At least 30% questions involve dialogue (as MCQ/TF/FIB)
 □ Both grammar AND dialogue sources are used
-□ Conversational/dialogue questions are included
-□ No repetition of concepts across questions
-□ All 4 assessment layers (knowledge, structure, usage, conversation) are covered
-□ Integrated questions (grammar+dialogue combined) exist
-□ Question type distribution is diverse (not all MCQ)
+□ All 4 assessment layers covered
+□ No repetition of concepts
+□ MCQ distractors are meaningful
 □ Difficulty is distributed (easy/medium/hard)
 
 ${arabicRules}`;
@@ -185,7 +206,17 @@ ${arabicRules}`;
       throw new Error("AI returned invalid JSON");
     }
 
-    const questions = parsed.questions || [];
+    // Post-process: normalize any rogue types back to mcq/tf/fib
+    const ALLOWED_TYPES = new Set(['mcq', 'tf', 'fib']);
+    const questions = (parsed.questions || []).map((q: any) => {
+      if (!ALLOWED_TYPES.has(q.type)) {
+        // Convert non-allowed types to mcq (they should have options)
+        const originalType = q.type;
+        q.subtype = q.subtype || originalType;
+        q.type = q.options && q.options.length > 0 ? 'mcq' : 'fib';
+      }
+      return q;
+    });
 
     // Save to DB
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
