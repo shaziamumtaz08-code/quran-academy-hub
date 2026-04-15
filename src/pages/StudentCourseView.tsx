@@ -1088,6 +1088,9 @@ export default function StudentCourseView() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* DM Chat Sheet */}
+      <DMChatSheet open={dmSheetOpen} onOpenChange={setDmSheetOpen} groupId={dmGroupId} recipientName={dmRecipientName} />
     </div>
   );
 }
