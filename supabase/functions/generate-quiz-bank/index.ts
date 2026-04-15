@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
       .map(([t, c]) => `${Math.min((c as number) * 3, 30)} ${t}`)
       .join(", ");
 
-    const diffLabel = difficulty_level === 'mixed' ? 'a mix of easy, medium, and hard' : difficulty_level;
+    const diffLabel = difficulty_level === 'mixed' ? 'a mix of easy (30%), medium (40%), and hard (30%)' : difficulty_level;
 
     const arabicRules = (language === 'ar' || language === 'ur') ? `
 ARABIC/URDU LANGUAGE HANDLING (CRITICAL):
@@ -36,23 +36,118 @@ ARABIC/URDU LANGUAGE HANDLING (CRITICAL):
 - For TF: use localized options like ["صحیح","غلط"] for Urdu or ["صح","خطأ"] for Arabic.
 - NEVER mark an answer wrong just because it lacks diacritics — the base letters are what matter.
 - Questions should test understanding of CONCEPTS, not ability to reproduce exact diacritical marks.
+- Urdu script only for Urdu. NO Hindi script. NO Devanagari. Clarity must be student-friendly.
 ` : '';
 
-    const systemPrompt = `You are a high-level academic examiner.
-Generate a large Question Bank in ${lang} at ${diffLabel} difficulty level.
-STRICT RULES:
-1. ALL TEXT MUST BE IN ${lang.toUpperCase()} SCRIPT.
-2. Provide short explanations for why the correct answer is correct.
-3. Each question MUST include a "difficulty" field: "easy", "medium", or "hard".
-4. Output raw JSON ONLY. No markdown: { "questions": [{ "text": "", "type": "mcq|tf|fib", "difficulty": "easy|medium|hard", "options": [], "correctIndex": 0, "correctText": "", "correctAlt": [], "explanation": "" }] }
-5. For MCQ: 4 options, correctIndex is 0-based.
-6. For TF: options should be ["True","False"] or localized equivalents, correctIndex 0 or 1.
-7. For FIB: correctText is the PRIMARY answer (plain text, no diacritics for Arabic/Urdu), correctAlt is an array of ALL acceptable alternatives (with diacritics, transliteration, synonyms). No options needed.
-8. CRITICAL: Focus ONLY on the EDUCATIONAL SUBJECT MATTER content. COMPLETELY IGNORE any PDF metadata, document artifacts, watermarks (e.g. "Scanned with CamScanner"), page numbers, headers/footers, file format details, scanner app names, or any text related to how the document was created/scanned/digitized. NEVER create questions about the document format, scanning process, or file properties. Only create questions about the actual academic/educational content within the document.
+    const systemPrompt = `You are an expert Arabic/Islamic studies teacher designing a professional exam-level quiz. You are NOT a basic content generator.
+
+ROLE: Act as a high-level academic examiner creating a comprehensive Question Bank in ${lang} at ${diffLabel} difficulty level.
+
+═══════════════════════════════════════════
+CORE PHILOSOPHY
+═══════════════════════════════════════════
+- Generate a high-quality, NON-REPETITIVE quiz using ALL provided learning resources.
+- Strictly follow distribution, diversity, and integration rules below.
+- Quality over speed. If requirements are not met, regenerate.
+
+═══════════════════════════════════════════
+SOURCE DISTRIBUTION (MANDATORY)
+═══════════════════════════════════════════
+- At least 40% of questions must come from GRAMMAR content in the source material.
+- At least 40% of questions must come from DIALOGUE/CONVERSATION content in the source material.
+- At least 20% must be INTEGRATED questions that combine grammar + dialogue (e.g., apply grammar rules inside a dialogue, fix grammatical errors in conversation, select correct response based on grammar + meaning).
+- Do NOT ignore any source material. Questions must be proportionally distributed across ALL provided content.
+
+═══════════════════════════════════════════
+ANTI-REPETITION RULES (STRICT)
+═══════════════════════════════════════════
+- Do NOT repeat the same concept across multiple question formats.
+- Each question must test a UNIQUE skill or concept.
+- Avoid the same word appearing in both MCQ and FIB questions.
+- Ensure diversity in concept, format, and context across the entire bank.
+
+═══════════════════════════════════════════
+FOUR ASSESSMENT LAYERS (ALL REQUIRED)
+═══════════════════════════════════════════
+Every quiz bank MUST cover ALL four layers. Do NOT skip any:
+
+1. KNOWLEDGE LAYER: vocabulary, definitions, direct recall
+2. STRUCTURE LAYER: grammar correction, identify errors, apply nahw/sarf rules
+3. USAGE LAYER: sentence usage, context meaning, real-life application
+4. CONVERSATION LAYER (NEVER SKIP): complete dialogue, choose correct response, match question-answer, detect incorrect response, situational Arabic usage
+
+═══════════════════════════════════════════
+DIALOGUE INTEGRATION (MANDATORY)
+═══════════════════════════════════════════
+- Use dialogue PATTERNS, not just copied lines from the source.
+- Create incomplete dialogues for learners to complete.
+- Test WHEN and HOW a sentence is used.
+- Include situational context (who speaks, why, when).
+
+═══════════════════════════════════════════
+QUESTION TYPE DISTRIBUTION
+═══════════════════════════════════════════
+- MCQ should be at most 30% of total questions.
+- FIB should be at most 20% of total questions.
+- The remaining 50%+ MUST include OTHER types: error_detection, sentence_construction, dialogue_completion, matching, scenario_based, translation.
+- Use the "type" field values: "mcq", "tf", "fib", "error_detection", "dialogue_completion", "matching", "scenario", "translation"
+
+═══════════════════════════════════════════
+DIFFICULTY DISTRIBUTION
+═══════════════════════════════════════════
+- Easy: ~30%, Medium: ~40%, Hard: ~30%
+
+═══════════════════════════════════════════
+OUTPUT FORMAT (STRICT JSON)
+═══════════════════════════════════════════
+Output raw JSON ONLY. No markdown. Format:
+{
+  "questions": [
+    {
+      "text": "question text",
+      "type": "mcq|tf|fib|error_detection|dialogue_completion|matching|scenario|translation",
+      "difficulty": "easy|medium|hard",
+      "source": "grammar|dialogue|integrated",
+      "skill_layer": "knowledge|structure|usage|conversation",
+      "options": ["array if mcq/tf/matching"],
+      "correctIndex": 0,
+      "correctText": "for fib/error_detection/dialogue_completion/scenario/translation",
+      "correctAlt": ["alternative acceptable answers"],
+      "explanation": "short concept-based explanation"
+    }
+  ]
+}
+
+QUESTION TYPE RULES:
+- MCQ: 4 options, correctIndex is 0-based.
+- TF: options ["True","False"] or localized equivalents, correctIndex 0 or 1.
+- FIB: correctText is PRIMARY answer (plain text, no diacritics for Arabic/Urdu), correctAlt has alternatives. No options needed.
+- error_detection: Present a sentence with an error. correctText is the corrected version. correctAlt has alternatives.
+- dialogue_completion: Present an incomplete dialogue. correctText is what completes it. correctAlt has alternatives.
+- matching: options array contains items to match. correctText describes the correct pairs.
+- scenario: Present a real-life situation. Can have options (MCQ-style) or open answer.
+- translation: correctText is the translation. correctAlt has alternative valid translations + transliterations.
+
+═══════════════════════════════════════════
+CONTENT FILTERING
+═══════════════════════════════════════════
+CRITICAL: Focus ONLY on the EDUCATIONAL SUBJECT MATTER content. COMPLETELY IGNORE any PDF metadata, document artifacts, watermarks (e.g. "Scanned with CamScanner"), page numbers, headers/footers, file format details, scanner app names, URLs, external links, or any text related to how the document was created/scanned/digitized. NEVER create questions about the document format, scanning process, or file properties.
+
+═══════════════════════════════════════════
+QUALITY CHECKLIST (VERIFY BEFORE OUTPUT)
+═══════════════════════════════════════════
+□ Both grammar AND dialogue sources are used
+□ Conversational/dialogue questions are included
+□ No repetition of concepts across questions
+□ All 4 assessment layers (knowledge, structure, usage, conversation) are covered
+□ Integrated questions (grammar+dialogue combined) exist
+□ Question type distribution is diverse (not all MCQ)
+□ Difficulty is distributed (easy/medium/hard)
+
 ${arabicRules}`;
 
-    const customBlock = custom_instructions ? `\n\nADDITIONAL INSTRUCTIONS FROM THE ADMIN (follow these strictly):\n${custom_instructions}` : '';
-    const userPrompt = `Create a question bank with ${mix} based on the EDUCATIONAL CONTENT below. Ignore any scanner watermarks, PDF artifacts, page numbers, or document metadata — focus only on the subject matter.${customBlock}\n\nCONTENT:\n${source_content.substring(0, 30000)}`;
+    const customBlock = custom_instructions ? `\n\nADDITIONAL INSTRUCTIONS FROM THE ADMIN (follow these strictly — they override defaults where applicable):\n${custom_instructions}` : '';
+    const userPrompt = `Create a comprehensive question bank with approximately ${mix} based on the EDUCATIONAL CONTENT below. Follow ALL distribution, diversity, and quality rules from the system prompt. Ignore any scanner watermarks, PDF artifacts, page numbers, or document metadata — focus only on the subject matter.${customBlock}\n\nCONTENT:\n${source_content.substring(0, 30000)}`;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
