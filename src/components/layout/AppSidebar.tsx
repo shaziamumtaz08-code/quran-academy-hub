@@ -87,11 +87,13 @@ function getFinanceSidebar(isOneToOne?: boolean): { title: string; subtitle: str
 
 function getCommunicationSidebar(role?: string | null): { title: string; subtitle: string; items: SidebarNavItem[] } {
   const isAdmin = role === 'super_admin' || role === 'admin' || role?.startsWith('admin_');
+  const isStudentOrTeacher = role === 'student' || role === 'teacher';
   return {
     title: 'Communication',
     subtitle: '',
     items: [
       { label: 'Group Chat', href: '/chat' },
+      ...(isStudentOrTeacher ? [{ label: 'Direct Messages', href: '/chat?filter=dm' }] : []),
       ...(isAdmin ? [{ label: 'WhatsApp Inbox', href: '/whatsapp' }] : []),
       { label: 'Notifications', href: '/notifications' },
       ...(isAdmin ? [{ label: 'Zoom', href: '/zoom-management' }] : []),
