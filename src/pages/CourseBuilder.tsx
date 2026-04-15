@@ -38,6 +38,7 @@ import { CourseAttendanceTab } from '@/components/courses/CourseAttendanceTab';
 import { CourseExamsTab } from '@/components/courses/CourseExamsTab';
 import { CourseCertificatesTab } from '@/components/courses/CourseCertificatesTab';
 import { CourseRoster } from '@/components/courses/CourseRoster';
+import { CommunitySettingsSection } from '@/components/courses/CommunitySettingsSection';
 
 // ─── Types ──────────────────────────────────────────────
 interface Module {
@@ -1320,7 +1321,8 @@ export default function CourseBuilder() {
           </TabsContent>
 
           {/* ═══ COMMUNITY TAB ═══ */}
-          <TabsContent value="community" className="mt-4">
+          <TabsContent value="community" className="mt-4 space-y-4">
+            <CommunitySettingsSection courseId={courseId!} courseName={course.name} />
             <CourseDiscussionBoard courseId={courseId!} currentUserId={user!.id} isAdmin={true} />
           </TabsContent>
 
