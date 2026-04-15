@@ -251,7 +251,7 @@ export function StudentDashboard() {
         return {
           id: course.id,
           name: course.name,
-          coverImage: course.cover_image_url,
+          coverImage: null, // courses table has no cover_image_url yet
           description: course.description,
           gradient: GRADIENTS[idx % GRADIENTS.length],
           nextClass: nextClassInfo,
