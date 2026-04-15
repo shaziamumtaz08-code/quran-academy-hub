@@ -46,7 +46,7 @@ export function GradingPanel({ submissionId, submissionIds, onGraded, onNavigate
       // Fetch student profile
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id, full_name, email, photo_url')
+        .select('id, full_name, email')
         .eq('id', data.student_id)
         .single();
       
