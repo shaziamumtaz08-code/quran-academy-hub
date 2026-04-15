@@ -156,6 +156,9 @@ export function CourseClassesTab({ courseId }: CourseClassesTabProps) {
                   <div>
                     <p className="font-medium text-sm">{cls.name}</p>
                     <Badge variant="outline" className="text-[10px] mt-1">{cls.class_type}</Badge>
+                    {classesWithChat.has(cls.id) && (
+                      <Badge variant="outline" className="text-[10px] mt-1 text-emerald-600 border-emerald-200"><MessageSquare className="h-2.5 w-2.5 mr-0.5" />Chat ✓</Badge>
+                    )}
                   </div>
                   <div className="flex items-center gap-1">
                     <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 text-destructive"
@@ -489,8 +492,14 @@ function ClassDetail({ cls, courseId, onBack, onDelete }: { cls: any; courseId: 
       }).eq('id', cls.id);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Ensure chat group exists after update
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.id) await ensureClassChatGroup(cls.id, editName, courseId, user.id);
+      } catch { /* non-critical */ }
       qc.invalidateQueries({ queryKey: ['course-classes', courseId] });
+      qc.invalidateQueries({ queryKey: ['class-chat-groups-check'] });
       setEditing(false);
       toast({ title: 'Class updated' });
     },
@@ -510,17 +519,21 @@ function ClassDetail({ cls, courseId, onBack, onDelete }: { cls: any; courseId: 
   });
 
   const removeStaff = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, userId }: { id: string; userId: string }) => {
       const { error } = await supabase.from('course_class_staff').delete().eq('id', id);
       if (error) throw error;
+      // Sync: remove from class chat
+      try { await removeStaffFromClassChat(cls.id, userId); } catch { /* non-critical */ }
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['class-staff', cls.id] }); toast({ title: 'Staff removed' }); },
   });
 
   const removeStudent = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, studentId }: { id: string; studentId: string }) => {
       const { error } = await supabase.from('course_class_students').delete().eq('id', id);
       if (error) throw error;
+      // Sync: remove from class chat
+      try { await removeStudentFromClassChat(cls.id, studentId); } catch { /* non-critical */ }
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['class-students', cls.id] }); toast({ title: 'Student removed' }); },
   });
