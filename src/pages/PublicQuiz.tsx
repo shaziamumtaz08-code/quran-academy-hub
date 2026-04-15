@@ -262,14 +262,21 @@ export default function PublicQuiz() {
         <Card><CardContent className="p-6">
           <h2 className={`text-lg font-bold mb-6 leading-relaxed ${isRTL ? 'text-right font-urdu' : ''}`}>{q.text}</h2>
 
-          {q.type === 'fib' ? (
-            <Input
-              className={`text-center text-lg ${isRTL ? 'text-right' : ''}`}
-              placeholder={isRTL ? 'یہاں لکھیں...' : 'Type your answer...'}
-              value={answers[currentQ] || ''}
-              onChange={e => setAnswers({ ...answers, [currentQ]: e.target.value })}
-            />
-          ) : (
+          {/* Free-text input types */}
+          {['fib', 'error_detection', 'dialogue_completion', 'scenario', 'translation'].includes(q.type) && (!q.options || q.options.length === 0) ? (
+            <div className="space-y-2">
+              <Input
+                className={`text-center text-lg ${isRTL ? 'text-right' : ''}`}
+                placeholder={isRTL ? 'یہاں لکھیں...' : 'Type your answer...'}
+                value={answers[currentQ] || ''}
+                onChange={e => setAnswers({ ...answers, [currentQ]: e.target.value })}
+                dir={isRTL ? 'rtl' : 'ltr'}
+              />
+              <p className="text-xs text-muted-foreground text-center">
+                {isRTL ? 'عربی، اردو یا رومن میں لکھ سکتے ہیں' : 'You can type in Arabic, Urdu, or Roman/English'}
+              </p>
+            </div>
+          ) : q.options && q.options.length > 0 ? (
             <div className="grid gap-2">
               {q.options.map((opt, oi) => (
                 <button
@@ -286,6 +293,14 @@ export default function PublicQuiz() {
                 </button>
               ))}
             </div>
+          ) : (
+            <Input
+              className={`text-center text-lg ${isRTL ? 'text-right' : ''}`}
+              placeholder={isRTL ? 'یہاں لکھیں...' : 'Type your answer...'}
+              value={answers[currentQ] || ''}
+              onChange={e => setAnswers({ ...answers, [currentQ]: e.target.value })}
+              dir={isRTL ? 'rtl' : 'ltr'}
+            />
           )}
         </CardContent></Card>
 
