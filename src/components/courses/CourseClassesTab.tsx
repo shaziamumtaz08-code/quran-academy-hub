@@ -885,7 +885,9 @@ function AddStaffDialog({ open, onOpenChange, classId, staffList, existingStaffI
       } as any);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Sync: add staff to class chat
+      try { await addStaffToClassChat(classId, userId); } catch { /* non-critical */ }
       qc.invalidateQueries({ queryKey: ['class-staff', classId] });
       onOpenChange(false);
       setUserId(''); setSubjects([]); setSearch('');
@@ -994,11 +996,14 @@ function AddStudentDialog({ open, onOpenChange, classId, enrolledStudents, exist
       const { error } = await supabase.from('course_class_students').insert(rows);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Sync: add students to class chat
+      try { await addStudentsToClassChat(classId, selected); } catch { /* non-critical */ }
       qc.invalidateQueries({ queryKey: ['class-students', classId] });
       onOpenChange(false);
+      const count = selected.length;
       setSelected([]);
-      toast({ title: `${selected.length} student(s) added` });
+      toast({ title: `${count} student(s) added` });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
