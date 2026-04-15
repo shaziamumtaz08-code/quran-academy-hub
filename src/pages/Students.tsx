@@ -282,6 +282,45 @@ export default function Students() {
     enabled: !!user?.id && !isTeacher,
   });
 
+  // Auth status check for admin view
+  const { data: authStatusMap = {} } = useQuery({
+    queryKey: ['student-auth-status', students.map(s => s.id).join(',')],
+    queryFn: async () => {
+      const ids = students.map(s => s.id);
+      if (ids.length === 0) return {};
+      const { data, error } = await supabase.functions.invoke('check-auth-status', {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+        body: { profile_ids: ids },
+      });
+      if (error) return {};
+      return (data || {}) as Record<string, boolean>;
+    },
+    enabled: isAdmin && students.length > 0 && !!session?.access_token,
+  });
+
+  // Create login mutation
+  const createLoginMutation = useMutation({
+    mutationFn: async (student: Student) => {
+      const firstName = (student.full_name || 'User').split(/\s+/)[0];
+      const password = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase() + '1234';
+      const { data, error } = await supabase.functions.invoke('admin-create-user', {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+        body: { email: student.email, password, fullName: student.full_name, role: 'student' },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: () => {
+      toast({ title: 'Login created', description: 'Auth account created successfully.' });
+      queryClient.invalidateQueries({ queryKey: ['student-auth-status'] });
+      setCreateLoginStudent(null);
+    },
+    onError: (err) => {
+      toast({ title: 'Failed', description: err instanceof Error ? err.message : 'Error', variant: 'destructive' });
+    },
+  });
+
   const isLoading = isTeacher ? isLoadingTeacher : isLoadingOther;
 
   // Get unique values for filters
