@@ -23,7 +23,7 @@ import {
   GraduationCap, MessageSquare, Video, Clock, ExternalLink,
   Loader2, Award, ChevronLeft, ChevronRight, RotateCcw,
   Upload, Download, Bell, BarChart3, Radio, Layers, FlipVertical,
-  HelpCircle, Check, X,
+  HelpCircle, Check, X, Users,
 } from 'lucide-react';
 import { DMChatSheet } from '@/components/chat/DMChatSheet';
 import {
@@ -32,6 +32,7 @@ import {
 import { findOrCreateCourseDM, getCourseTeachers } from '@/lib/messaging';
 import { ClassChatTab } from '@/components/courses/ClassChatTab';
 import { ZoomClassPanel } from '@/components/classroom/ZoomClassPanel';
+import { ClassmatesDirectory } from '@/components/courses/ClassmatesDirectory';
 
 // ─── Helpers ───
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -129,6 +130,7 @@ export default function StudentCourseView() {
   const [submissionText, setSubmissionText] = useState('');
   const [submissionFile, setSubmissionFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [chatSubTab, setChatSubTab] = useState<'chat' | 'classmates'>('chat');
 
   // Flashcard state
   const [currentFlashcardIdx, setCurrentFlashcardIdx] = useState(0);
@@ -174,7 +176,7 @@ export default function StudentCourseView() {
     queryKey: ['student-course', courseId],
     queryFn: async () => {
       const { data } = await supabase.from('courses')
-        .select('id, name, level, description, division_id, divisions:divisions(name)')
+        .select('id, name, level, description, division_id, student_dm_mode, divisions:divisions(name)')
         .eq('id', courseId!).single();
       return data;
     },
@@ -776,8 +778,29 @@ export default function StudentCourseView() {
         </TabsContent>
 
         {/* ═══ TAB 5: CLASS CHAT ═══ */}
-        <TabsContent value="class-chat" className="mt-4">
-          <ClassChatTab courseId={courseId!} mode="student" />
+        <TabsContent value="class-chat" className="mt-4 space-y-3">
+          {/* Sub-tabs: Chat | Classmates */}
+          <div className="flex gap-2">
+            <Button size="sm" variant={chatSubTab === 'chat' ? 'default' : 'outline'} onClick={() => setChatSubTab('chat')}>
+              <MessageSquare className="h-3.5 w-3.5 mr-1" /> Chat
+            </Button>
+            <Button size="sm" variant={chatSubTab === 'classmates' ? 'default' : 'outline'} onClick={() => setChatSubTab('classmates')}>
+              <Users className="h-3.5 w-3.5 mr-1" /> Classmates
+            </Button>
+          </div>
+
+          {chatSubTab === 'chat' && <ClassChatTab courseId={courseId!} mode="student" />}
+
+          {chatSubTab === 'classmates' && (
+            <ClassmatesDirectory
+              courseId={courseId!}
+              classId={myClass?.id || null}
+              dmMode={(course as any)?.student_dm_mode || 'disabled'}
+              userId={user?.id || ''}
+              courseName={course?.name || ''}
+              onOpenDM={(groupId, name) => { setDmGroupId(groupId); setDmRecipientName(name); setDmSheetOpen(true); }}
+            />
+          )}
         </TabsContent>
 
         {/* ═══ TAB 6: MY PROGRESS ═══ */}
