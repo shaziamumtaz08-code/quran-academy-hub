@@ -364,12 +364,13 @@ export default function OrganizationSettings() {
         </div>
 
         <Tabs defaultValue="identity" className="space-y-4">
-          <TabsList>
+          <TabsList className="flex-wrap">
             <TabsTrigger value="identity">🏢 Identity</TabsTrigger>
             <TabsTrigger value="branches">🌐 Branches</TabsTrigger>
             <TabsTrigger value="divisions">📦 Divisions</TabsTrigger>
             <TabsTrigger value="holidays">📅 Holidays</TabsTrigger>
             <TabsTrigger value="payouts">💰 Payouts</TabsTrigger>
+            <TabsTrigger value="classroom">🖥️ Classroom</TabsTrigger>
           </TabsList>
 
           {/* ── Tab 1: Identity ── */}
