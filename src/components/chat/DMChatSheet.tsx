@@ -6,18 +6,28 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Loader2, Send, User } from 'lucide-react';
+import { Loader2, Send, User, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+
+const FLAGGED_KEYWORDS = ['phone', 'whatsapp', 'number', 'meet', 'address', 'snapchat', 'instagram', 'contact'];
+
+function checkFlaggedContent(text: string): boolean {
+  const lower = text.toLowerCase();
+  return FLAGGED_KEYWORDS.some(kw => lower.includes(kw));
+}
 
 interface DMChatSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   groupId: string | null;
   recipientName: string;
+  /** If true, flagged messages show yellow highlight (for teachers/moderators) */
+  showFlaggedHighlight?: boolean;
 }
 
-export function DMChatSheet({ open, onOpenChange, groupId, recipientName }: DMChatSheetProps) {
+export function DMChatSheet({ open, onOpenChange, groupId, recipientName, showFlaggedHighlight = false }: DMChatSheetProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [message, setMessage] = useState('');
@@ -29,7 +39,7 @@ export function DMChatSheet({ open, onOpenChange, groupId, recipientName }: DMCh
       if (!groupId) return [];
       const { data } = await supabase
         .from('chat_messages')
-        .select('id, content, sender_id, created_at')
+        .select('id, content, sender_id, created_at, is_flagged')
         .eq('group_id', groupId)
         .eq('is_deleted', false)
         .order('created_at', { ascending: true })
@@ -64,12 +74,20 @@ export function DMChatSheet({ open, onOpenChange, groupId, recipientName }: DMCh
   const sendMessage = useMutation({
     mutationFn: async () => {
       if (!message.trim() || !groupId || !user?.id) return;
+      const content = message.trim();
+      const isFlagged = checkFlaggedContent(content);
+
       const { error } = await supabase.from('chat_messages').insert({
         group_id: groupId,
         sender_id: user.id,
-        content: message.trim(),
+        content,
+        is_flagged: isFlagged,
       });
       if (error) throw error;
+
+      if (isFlagged) {
+        toast.warning('⚠️ This message may violate community guidelines');
+      }
     },
     onSuccess: () => {
       setMessage('');
@@ -107,12 +125,27 @@ export function DMChatSheet({ open, onOpenChange, groupId, recipientName }: DMCh
           ) : (
             messages.map((msg: any) => {
               const isMe = msg.sender_id === user?.id;
+              const isFlagged = showFlaggedHighlight && msg.is_flagged;
               return (
                 <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[80%] rounded-lg px-3 py-2 ${isMe ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                  <div className={cn(
+                    'max-w-[80%] rounded-lg px-3 py-2',
+                    isFlagged ? 'bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700' :
+                      isMe ? 'bg-primary text-primary-foreground' : 'bg-muted',
+                  )}>
                     {!isMe && <p className="text-[10px] font-medium mb-0.5 opacity-70">{msg.senderName}</p>}
-                    <p className="text-sm">{msg.content}</p>
-                    <p className={`text-[10px] mt-0.5 ${isMe ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>
+                    {isFlagged && (
+                      <div className="flex items-center gap-1 mb-1">
+                        <AlertTriangle className="h-3 w-3 text-amber-600" />
+                        <span className="text-[9px] font-medium text-amber-600">Flagged</span>
+                      </div>
+                    )}
+                    <p className={cn('text-sm', isFlagged && !isMe && 'text-foreground')}>{msg.content}</p>
+                    <p className={cn(
+                      'text-[10px] mt-0.5',
+                      isFlagged ? 'text-amber-600/60' :
+                        isMe ? 'text-primary-foreground/60' : 'text-muted-foreground'
+                    )}>
                       {format(new Date(msg.created_at), 'h:mm a')}
                     </p>
                   </div>
