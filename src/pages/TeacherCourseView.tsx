@@ -918,7 +918,7 @@ export default function TeacherCourseView() {
       </Dialog>
 
       {/* DM Chat Sheet */}
-      <DMChatSheet open={dmSheetOpen} onOpenChange={setDmSheetOpen} groupId={dmGroupId} recipientName={dmRecipientName} />
+      <DMChatSheet open={dmSheetOpen} onOpenChange={setDmSheetOpen} groupId={dmGroupId} recipientName={dmRecipientName} showFlaggedHighlight />
 
       {/* DM Approval Inbox */}
       <DMApprovalInbox courseId={courseId!} open={dmApprovalOpen} onOpenChange={setDmApprovalOpen} />
