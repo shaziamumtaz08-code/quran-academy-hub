@@ -20,7 +20,7 @@ import {
   Plus, Trash2, Users, Clock, MapPin, DollarSign, Loader2, Video, UserPlus,
   Calendar, ArrowLeft, Settings, GraduationCap, Shield, ChevronRight, Eye, MessageSquare
 } from 'lucide-react';
-import { ensureClassChatGroup, classHasChatGroup } from '@/lib/classChatSync';
+import { ensureClassChatGroup, addStudentsToClassChat, addStaffToClassChat, removeStudentFromClassChat, removeStaffFromClassChat } from '@/lib/classChatSync';
 
 interface CourseClassesTabProps {
   courseId: string;
