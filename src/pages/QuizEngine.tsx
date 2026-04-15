@@ -313,7 +313,7 @@ export default function QuizEngine() {
       mcq: mix.mcq || 5,
       tf: mix.tf || 3,
       fib: mix.fib || 2,
-      custom_instructions: '',
+      custom_instructions: bank.custom_instructions || '',
     });
     setEditSourceContent(bank.source_content || '');
     setEditUploadedFiles([]);
