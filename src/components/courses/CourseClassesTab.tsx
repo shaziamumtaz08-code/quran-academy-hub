@@ -226,7 +226,7 @@ function CreateClassDialog({ open, onOpenChange, courseId }: { open: boolean; on
   const create = useMutation({
     mutationFn: async () => {
       const selectedLicense = zoomLicenses.find((z: any) => z.id === zoomLicenseId);
-      const { error } = await supabase.from('course_classes').insert({
+      const { data, error } = await supabase.from('course_classes').insert({
         course_id: courseId,
         name: name.trim(),
         schedule_days: days,
@@ -240,14 +240,24 @@ function CreateClassDialog({ open, onOpenChange, courseId }: { open: boolean; on
         fee_amount: isVolunteer ? 0 : feeAmount,
         fee_currency: feeCurrency,
         is_volunteer: isVolunteer,
-      });
+      }).select('id').single();
       if (error) throw error;
+      return data;
     },
-    onSuccess: () => {
+    onSuccess: async (data) => {
+      // Auto-create chat group for the new class
+      if (data?.id) {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user?.id) {
+            await ensureClassChatGroup(data.id, name.trim(), courseId, user.id);
+          }
+        } catch { /* non-critical */ }
+      }
       qc.invalidateQueries({ queryKey: ['course-classes', courseId] });
       onOpenChange(false);
       setName(''); setDays([]); setTime(''); setMeetingLink(''); setZoomLicenseId('');
-      toast({ title: 'Class created' });
+      toast({ title: 'Class created with chat group' });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
