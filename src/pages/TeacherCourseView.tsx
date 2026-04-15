@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { DMChatSheet } from '@/components/chat/DMChatSheet';
 import { GradingPanel } from '@/components/assignments/GradingPanel';
+import { DMApprovalInbox } from '@/components/courses/DMApprovalInbox';
 
 // ─── Helpers ───
 function formatTime12(time: string) {
@@ -90,6 +91,7 @@ export default function TeacherCourseView() {
   const [dmSheetOpen, setDmSheetOpen] = useState(false);
   const [dmGroupId, setDmGroupId] = useState<string | null>(null);
   const [dmRecipientName, setDmRecipientName] = useState('');
+  const [dmApprovalOpen, setDmApprovalOpen] = useState(false);
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
