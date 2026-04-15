@@ -5,13 +5,17 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-async function gradeFibAnswersWithAI(fibItems: { question: string; correctAnswer: string; userAnswer: string }[], language: string): Promise<boolean[]> {
+async function gradeFibAnswersWithAI(fibItems: { question: string; correctAnswer: string; alternatives: string[]; userAnswer: string }[], language: string): Promise<boolean[]> {
   if (fibItems.length === 0) return [];
+
+  // First try local matching (fast, no AI cost)
+  const localResults = fibItems.map(item => fuzzyMatchWithAlts(item.userAnswer, item.correctAnswer, item.alternatives));
+  // If all matched locally, skip AI
+  if (localResults.every(r => r)) return localResults;
 
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_API_KEY) {
-    // Fallback to fuzzy matching if no AI key
-    return fibItems.map(item => fuzzyMatch(item.userAnswer, item.correctAnswer));
+    return localResults;
   }
 
   const lang = language === "ur" ? "Urdu" : language === "ar" ? "Arabic" : "English";
