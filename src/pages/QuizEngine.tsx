@@ -271,6 +271,7 @@ export default function QuizEngine() {
   });
 
   const openEdit = (bank: any) => {
+    const mix = bank.question_mix || {};
     setEditForm({
       id: bank.id,
       name: bank.name || '',
@@ -283,7 +284,13 @@ export default function QuizEngine() {
       time_limit_minutes: bank.time_limit_minutes || 0,
       max_attempts: bank.max_attempts || 1,
       passing_percentage: bank.passing_percentage || 50,
+      mcq: mix.mcq || 5,
+      tf: mix.tf || 3,
+      fib: mix.fib || 2,
+      custom_instructions: '',
     });
+    setEditSourceContent(bank.source_content || '');
+    setEditUploadedFiles([]);
     setEditOpen(true);
   };
 
