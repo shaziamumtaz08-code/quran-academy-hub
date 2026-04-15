@@ -25,6 +25,7 @@ import {
   Upload, Download, Bell, BarChart3, Radio, Layers, FlipVertical,
   HelpCircle, Check, X,
 } from 'lucide-react';
+import { DMChatSheet } from '@/components/chat/DMChatSheet';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -110,6 +111,9 @@ export default function StudentCourseView() {
   const initialTab = searchParams.get('tab') || 'today';
   const [activeTab, setActiveTab] = useState(initialTab);
   const [messagingTeacher, setMessagingTeacher] = useState(false);
+  const [dmSheetOpen, setDmSheetOpen] = useState(false);
+  const [dmGroupId, setDmGroupId] = useState<string | null>(null);
+  const [dmRecipientName, setDmRecipientName] = useState('');
   const [showZoomIframe, setShowZoomIframe] = useState(false);
   const [iframeError, setIframeError] = useState(false);
 
@@ -155,8 +159,11 @@ export default function StudentCourseView() {
     try {
       const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single();
       const dmId = await findOrCreateCourseDM(user.id, teacher.userId, courseId, course?.name || '', profile?.full_name || '', teacher.name);
-      if (dmId) navigate(`/communication?group=${dmId}`);
-      else toast.error('Failed to create conversation');
+      if (dmId) {
+        setDmGroupId(dmId);
+        setDmRecipientName(teacher.name);
+        setDmSheetOpen(true);
+      } else toast.error('Failed to create conversation');
     } catch { toast.error('Failed to start conversation'); }
     finally { setMessagingTeacher(false); }
   };
@@ -1081,6 +1088,9 @@ export default function StudentCourseView() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* DM Chat Sheet */}
+      <DMChatSheet open={dmSheetOpen} onOpenChange={setDmSheetOpen} groupId={dmGroupId} recipientName={dmRecipientName} />
     </div>
   );
 }
