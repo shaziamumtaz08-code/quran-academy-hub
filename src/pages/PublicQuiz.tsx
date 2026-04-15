@@ -23,7 +23,7 @@ interface QuizMeta {
 interface Question {
   index: number;
   text: string;
-  type: 'mcq' | 'tf' | 'fib';
+  type: 'mcq' | 'tf' | 'fib' | 'error_detection' | 'dialogue_completion' | 'matching' | 'scenario' | 'translation';
   options: string[];
 }
 
@@ -213,12 +213,15 @@ export default function PublicQuiz() {
                   <div className="ml-7 space-y-1">
                     <p className="text-sm text-muted-foreground">
                       Your answer: <span className="text-red-600 font-medium">
-                        {r.type === 'fib' ? (r.userAnswer || 'blank') : (r.options?.[r.userAnswer] || 'skipped')}
+                        {typeof r.userAnswer === 'string' ? (r.userAnswer || 'blank') : 
+                         r.type === 'fib' ? (r.userAnswer || 'blank') : 
+                         ['error_detection', 'dialogue_completion', 'scenario', 'translation'].includes(r.type) ? (r.userAnswer || 'blank') :
+                         (r.options?.[r.userAnswer] || 'skipped')}
                       </span>
                     </p>
                     <p className="text-sm text-muted-foreground">
                       Correct: <span className="text-green-600 font-medium">
-                        {r.type === 'fib' ? r.correctText : r.options?.[r.correctIndex!]}
+                        {r.correctText || (r.options?.[r.correctIndex!])}
                       </span>
                     </p>
                   </div>
@@ -254,22 +257,29 @@ export default function PublicQuiz() {
       <div className="max-w-2xl mx-auto p-4 space-y-4">
         <Progress value={((currentQ + 1) / questions.length) * 100} className="h-1.5" />
 
-        <div className="text-xs text-muted-foreground">
-          Question {currentQ + 1} of {questions.length}
-          <Badge variant="outline" className="ml-2 text-xs">{q.type.toUpperCase()}</Badge>
+        <div className="text-xs text-muted-foreground text-center">
+          <Badge variant="outline" className="text-xs">{q.type.toUpperCase().replace(/_/g, ' ')}</Badge>
+          <span className="ml-2">Question {currentQ + 1} of {questions.length}</span>
         </div>
 
         <Card><CardContent className="p-6">
           <h2 className={`text-lg font-bold mb-6 leading-relaxed ${isRTL ? 'text-right font-urdu' : ''}`}>{q.text}</h2>
 
-          {q.type === 'fib' ? (
-            <Input
-              className={`text-center text-lg ${isRTL ? 'text-right' : ''}`}
-              placeholder={isRTL ? 'یہاں لکھیں...' : 'Type your answer...'}
-              value={answers[currentQ] || ''}
-              onChange={e => setAnswers({ ...answers, [currentQ]: e.target.value })}
-            />
-          ) : (
+          {/* Free-text input types */}
+          {['fib', 'error_detection', 'dialogue_completion', 'scenario', 'translation'].includes(q.type) && (!q.options || q.options.length === 0) ? (
+            <div className="space-y-2">
+              <Input
+                className={`text-center text-lg ${isRTL ? 'text-right' : ''}`}
+                placeholder={isRTL ? 'یہاں لکھیں...' : 'Type your answer...'}
+                value={answers[currentQ] || ''}
+                onChange={e => setAnswers({ ...answers, [currentQ]: e.target.value })}
+                dir={isRTL ? 'rtl' : 'ltr'}
+              />
+              <p className="text-xs text-muted-foreground text-center">
+                {isRTL ? 'عربی، اردو یا رومن میں لکھ سکتے ہیں' : 'You can type in Arabic, Urdu, or Roman/English'}
+              </p>
+            </div>
+          ) : q.options && q.options.length > 0 ? (
             <div className="grid gap-2">
               {q.options.map((opt, oi) => (
                 <button
@@ -286,6 +296,14 @@ export default function PublicQuiz() {
                 </button>
               ))}
             </div>
+          ) : (
+            <Input
+              className={`text-center text-lg ${isRTL ? 'text-right' : ''}`}
+              placeholder={isRTL ? 'یہاں لکھیں...' : 'Type your answer...'}
+              value={answers[currentQ] || ''}
+              onChange={e => setAnswers({ ...answers, [currentQ]: e.target.value })}
+              dir={isRTL ? 'rtl' : 'ltr'}
+            />
           )}
         </CardContent></Card>
 
