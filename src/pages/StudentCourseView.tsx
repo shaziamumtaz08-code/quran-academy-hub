@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { CourseDiscussionBoard } from '@/components/courses/CourseDiscussionBoard';
+import { ClassChatTab } from '@/components/courses/ClassChatTab';
+import { StudentActivitiesSection } from '@/components/courses/StudentActivitiesSection';
 import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
@@ -337,7 +339,8 @@ export default function StudentCourseView() {
           <TabsTrigger value="materials" className="gap-1"><FileText className="h-3.5 w-3.5" /> Materials</TabsTrigger>
           <TabsTrigger value="assignments" className="gap-1"><ClipboardList className="h-3.5 w-3.5" /> Assignments</TabsTrigger>
           <TabsTrigger value="exams" className="gap-1"><GraduationCap className="h-3.5 w-3.5" /> Exams</TabsTrigger>
-          <TabsTrigger value="chat" className="gap-1"><MessageSquare className="h-3.5 w-3.5" /> Chat</TabsTrigger>
+          <TabsTrigger value="class-chat" className="gap-1"><MessageSquare className="h-3.5 w-3.5" /> Class Chat</TabsTrigger>
+          <TabsTrigger value="chat" className="gap-1"><BookOpen className="h-3.5 w-3.5" /> Discussion</TabsTrigger>
         </TabsList>
 
         {/* ─── OVERVIEW ─── */}
@@ -528,7 +531,12 @@ export default function StudentCourseView() {
           )}
         </TabsContent>
 
-        {/* ─── CHAT ─── */}
+        {/* ─── CLASS CHAT ─── */}
+        <TabsContent value="class-chat" className="mt-4">
+          <ClassChatTab courseId={courseId!} mode="student" />
+        </TabsContent>
+
+        {/* ─── DISCUSSION ─── */}
         <TabsContent value="chat" className="mt-4">
           <CourseDiscussionBoard courseId={courseId!} currentUserId={user?.id || ''} />
         </TabsContent>
