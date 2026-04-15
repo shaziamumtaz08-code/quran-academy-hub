@@ -16,7 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { format, formatDistanceToNow, isToday, isPast } from 'date-fns';
+import { format, formatDistanceToNow, isToday, isPast, differenceInHours } from 'date-fns';
 import { toast } from 'sonner';
 import {
   ArrowLeft, BookOpen, Calendar, FileText, ClipboardList,
@@ -579,11 +579,10 @@ export default function StudentCourseView() {
           )}
 
           {/* Pushed activities */}
-          {pushedKit && kitAssets && (
-            <div>
-              <p className="text-[13px] font-bold text-foreground mb-2">📚 Today's Activities</p>
+          {pushedKit && kitAssets && (() => {
+            const isRecent = pushedKit.pushed_at && differenceInHours(new Date(), new Date(pushedKit.pushed_at)) < 24;
+            const sectionContent = (
               <div className="grid grid-cols-3 gap-3">
-                {/* Slides */}
                 <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setCurrentSlideIdx(0); setSlidesOpen(true); }}>
                   <CardContent className="p-4 text-center">
                     <Layers className="h-6 w-6 mx-auto mb-1 text-primary" />
@@ -591,25 +590,48 @@ export default function StudentCourseView() {
                     <p className="text-xs text-muted-foreground">Slides</p>
                   </CardContent>
                 </Card>
-                {/* Flashcards */}
                 <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setCurrentFlashcardIdx(0); setFlashcardFlipped(false); setFlashcardsOpen(true); }}>
                   <CardContent className="p-4 text-center">
-                    <FlipVertical className="h-6 w-6 mx-auto mb-1 text-teal" />
+                    <FlipVertical className="h-6 w-6 mx-auto mb-1 text-accent" />
                     <p className="text-lg font-bold text-foreground">{kitAssets.flashcards.length}</p>
                     <p className="text-xs text-muted-foreground">Flashcards</p>
                   </CardContent>
                 </Card>
-                {/* Quiz */}
                 <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setCurrentQuizIdx(0); setQuizAnswers({}); setQuizSubmitted(false); setQuizOpen(true); }}>
                   <CardContent className="p-4 text-center">
-                    <HelpCircle className="h-6 w-6 mx-auto mb-1 text-gold" />
+                    <HelpCircle className="h-6 w-6 mx-auto mb-1 text-primary" />
                     <p className="text-lg font-bold text-foreground">{kitAssets.quizQuestions.length}</p>
                     <p className="text-xs text-muted-foreground">Quiz Qs</p>
                   </CardContent>
                 </Card>
               </div>
-            </div>
-          )}
+            );
+
+            if (isRecent) {
+              return (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <p className="text-[13px] font-bold text-foreground">📚 Today's Material</p>
+                    <Badge className="bg-primary text-primary-foreground text-[10px]">New</Badge>
+                  </div>
+                  {sectionContent}
+                </div>
+              );
+            }
+
+            return (
+              <details className="group">
+                <summary className="text-[13px] font-bold text-muted-foreground cursor-pointer list-none flex items-center gap-2 mb-2 hover:text-foreground transition-colors">
+                  📚 Previous Material
+                  <ChevronLeft className="h-3.5 w-3.5 transition-transform group-open:rotate-[-90deg]" />
+                  <span className="text-[10px] font-normal text-muted-foreground">
+                    {pushedKit.pushed_at && formatDistanceToNow(new Date(pushedKit.pushed_at), { addSuffix: true })}
+                  </span>
+                </summary>
+                {sectionContent}
+              </details>
+            );
+          })()}
         </TabsContent>
 
         {/* ═══ TAB 2: LESSONS ═══ */}
