@@ -1,12 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { format, subDays } from 'date-fns';
-import { Video, AlertTriangle, MessageSquare, ChevronRight, Flame, Clock, BookOpen, Calendar, CalendarOff, Pin, Megaphone, Bell, Brain, MessagesSquare, FolderOpen } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { format, isToday, isBefore, addDays, isPast } from 'date-fns';
+import {
+  BookOpen, Clock, Calendar, CalendarOff, Bell, MessagesSquare, FolderOpen,
+  ChevronRight, Flame, AlertTriangle, MessageSquare, Pin, Megaphone,
+  Video, ExternalLink, FileText, ClipboardList, Radio,
+} from 'lucide-react';
 import { StudentAttendanceSection } from './StudentAttendanceSection';
 import { AiInsightsWidget } from './AiInsightsWidget';
 import { JoinClassButton } from '@/components/zoom/JoinClassButton';
@@ -40,6 +46,7 @@ function getNowInTimezone(tz: string) {
     minutes: parseInt(get('minute'), 10),
     seconds: parseInt(get('second'), 10),
     absoluteMs: now.getTime(),
+    dayName: DAY_NAMES[dayMap[weekday] ?? 0],
   };
 }
 
@@ -81,33 +88,30 @@ function useCountdown(target: Date | null) {
   return timeLeft;
 }
 
-interface Enrollment {
-  id: string;
-  type: '1-on-1' | 'group' | 'recorded';
-  courseName: string;
-  teacherName: string;
-  teacherId?: string;
-  lastClassStatus: 'attended' | 'missed' | 'not_marked' | null;
-  lastClassDate: string | null;
-  attendanceRate: number;
-  totalClasses: number;
-  presentClasses: number;
-  nextClass: { dayOfWeek: string; time: string; dateTime: Date; duration: number } | null;
+function formatTime12(time: string) {
+  const [hh, mm] = (time || '00:00').split(':').map(Number);
+  const ampm = hh >= 12 ? 'PM' : 'AM';
+  const h12 = hh % 12 || 12;
+  return `${h12}:${String(mm).padStart(2, '0')} ${ampm}`;
 }
 
-interface Alert {
-  type: 'urgent' | 'warning' | 'info';
-  message: string;
-  action?: string;
-  actionPath?: string;
-}
+// ─── Course card gradient fallback ───
+const GRADIENTS = [
+  'from-primary/80 to-primary/40',
+  'from-teal/80 to-teal/40',
+  'from-sky/80 to-sky/40',
+  'from-gold/80 to-gold/40',
+  'from-purple-500/80 to-purple-400/40',
+  'from-emerald-500/80 to-emerald-400/40',
+];
 
 export function StudentDashboard() {
   const { profile, user } = useAuth();
   const navigate = useNavigate();
 
+  // ═══ MAIN DATA FETCH ═══
   const { data: dashData, isLoading } = useQuery({
-    queryKey: ['student-unified-dashboard', user?.id],
+    queryKey: ['student-dashboard-v2', user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
 
@@ -117,15 +121,179 @@ export function StudentDashboard() {
         .eq('id', user.id)
         .single();
       const studentTz = profileData?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const tzNow = getNowInTimezone(studentTz);
+      const todayName = tzNow.dayName;
 
-      // 1) 1-on-1 assignments
+      // ── Group course enrollments ──
+      const { data: courseEnrollments } = await supabase
+        .from('course_enrollments')
+        .select('id, course_id, course:courses(id, name, description)')
+        .eq('student_id', user.id)
+        .eq('status', 'active');
+
+      const courseIds = (courseEnrollments || []).map((ce: any) => ce.course_id).filter(Boolean);
+
+      // ── Student's class memberships ──
+      let classStudentRows: any[] = [];
+      if (courseIds.length) {
+        const { data } = await supabase
+          .from('course_class_students')
+          .select('class_id, student_id')
+          .eq('student_id', user.id);
+        classStudentRows = data || [];
+      }
+      const myClassIds = classStudentRows.map(r => r.class_id);
+
+      // ── Classes for those courses ──
+      let allClasses: any[] = [];
+      if (myClassIds.length) {
+        const { data } = await supabase
+          .from('course_classes')
+          .select('id, course_id, name, schedule_days, schedule_time, session_duration, timezone, meeting_link, status')
+          .in('id', myClassIds)
+          .eq('status', 'active');
+        allClasses = data || [];
+      }
+
+      // ── Staff for classes (teachers) ──
+      let classStaffMap: Record<string, string> = {};
+      if (myClassIds.length) {
+        const { data: staff } = await supabase
+          .from('course_class_staff')
+          .select('class_id, user_id, staff_role, profile:profiles!course_class_staff_user_id_fkey(full_name)')
+          .in('class_id', myClassIds)
+          .eq('staff_role', 'teacher');
+        (staff || []).forEach((s: any) => {
+          classStaffMap[s.class_id] = s.profile?.full_name || 'Teacher';
+        });
+      }
+
+      // ── Pending assignments (across courses, due within 7 days) ──
+      let pendingAssignments: any[] = [];
+      if (courseIds.length) {
+        const { data: allAssignments } = await supabase
+          .from('course_assignments')
+          .select('id, title, course_id, due_date, course:courses(name)')
+          .in('course_id', courseIds)
+          .eq('status', 'active')
+          .gte('due_date', new Date(Date.now() - 86400000 * 7).toISOString())
+          .order('due_date', { ascending: true });
+
+        // Filter out already submitted
+        const { data: submissions } = await supabase
+          .from('course_assignment_submissions')
+          .select('assignment_id')
+          .eq('student_id', user.id);
+        const submittedIds = new Set((submissions || []).map(s => s.assignment_id));
+
+        pendingAssignments = (allAssignments || []).filter(a => !submittedIds.has(a.id));
+      }
+
+      // ── Course notifications (for unread count) ──
+      let courseNotifCounts: Record<string, number> = {};
+      if (courseIds.length) {
+        const { data: notifs } = await supabase
+          .from('course_notifications')
+          .select('id, course_id, created_at')
+          .in('course_id', courseIds)
+          .order('created_at', { ascending: false })
+          .limit(200);
+        (notifs || []).forEach((n: any) => {
+          const key = `seen_announcements_${n.course_id}`;
+          const lastSeen = localStorage.getItem(key);
+          if (!lastSeen || new Date(n.created_at) > new Date(lastSeen)) {
+            courseNotifCounts[n.course_id] = (courseNotifCounts[n.course_id] || 0) + 1;
+          }
+        });
+      }
+
+      // ── Build course cards ──
+      const courseCards = (courseEnrollments || []).map((ce: any, idx: number) => {
+        const course = ce.course;
+        if (!course) return null;
+        const courseClasses = allClasses.filter(c => c.course_id === course.id);
+
+        // Next class calculation
+        let nextClassInfo: { className: string; time: string; dateTime: Date; duration: number; meetingLink: string | null; dayOfWeek: string } | null = null;
+        let isLive = false;
+        let minutesUntilStart = Infinity;
+
+        courseClasses.forEach(cls => {
+          const tz = cls.timezone || studentTz;
+          const days: string[] = cls.schedule_days || [];
+          days.forEach(day => {
+            const dt = buildNextOccurrence(day, cls.schedule_time || '00:00', cls.session_duration || 30, tz);
+            const minsUntil = (dt.getTime() - Date.now()) / 60000;
+            if (!nextClassInfo || dt < nextClassInfo.dateTime) {
+              nextClassInfo = {
+                className: cls.name,
+                time: cls.schedule_time || '00:00',
+                dateTime: dt,
+                duration: cls.session_duration || 30,
+                meetingLink: cls.meeting_link,
+                dayOfWeek: day,
+              };
+              minutesUntilStart = minsUntil;
+            }
+            // Check if currently live
+            if (minsUntil <= 0 && minsUntil > -(cls.session_duration || 30)) {
+              isLive = true;
+            }
+          });
+        });
+
+        const isSoon = minutesUntilStart <= 15 && minutesUntilStart > 0;
+
+        // Pending assignments for this course
+        const coursePendingCount = pendingAssignments.filter(a => a.course_id === course.id).length;
+        const unreadAnnouncements = courseNotifCounts[course.id] || 0;
+
+        return {
+          id: course.id,
+          name: course.name,
+          coverImage: null, // courses table has no cover_image_url yet
+          description: course.description,
+          gradient: GRADIENTS[idx % GRADIENTS.length],
+          nextClass: nextClassInfo,
+          isLive,
+          isSoon,
+          pendingAssignments: coursePendingCount,
+          unreadAnnouncements,
+        };
+      }).filter(Boolean);
+
+      // ── Today's schedule (all classes today) ──
+      const todaySchedule: Array<{
+        time: string; courseName: string; className: string; teacherName: string;
+        duration: number; meetingLink: string | null; courseId: string;
+      }> = [];
+
+      allClasses.forEach(cls => {
+        const days: string[] = (cls.schedule_days || []).map((d: string) => d.charAt(0).toUpperCase() + d.slice(1).toLowerCase());
+        if (days.includes(todayName)) {
+        const courseName = '';
+        const courseObj = (courseEnrollments || []).find((ce: any) => ce.course_id === cls.course_id)?.course as any;
+        const resolvedCourseName = courseObj?.name || 'Course';
+          todaySchedule.push({
+            time: cls.schedule_time || '00:00',
+            courseName: resolvedCourseName,
+            className: cls.name,
+            teacherName: classStaffMap[cls.id] || 'Teacher',
+            duration: cls.session_duration || 30,
+            meetingLink: cls.meeting_link,
+            courseId: cls.course_id,
+          });
+        }
+      });
+      todaySchedule.sort((a, b) => a.time.localeCompare(b.time));
+
+      // ── 1-on-1 assignments (existing logic, kept for alerts/stats) ──
       const { data: assignments } = await supabase
         .from('student_teacher_assignments')
         .select('id, teacher_id, subject:subjects(name), teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name)')
         .eq('student_id', user.id)
         .eq('status', 'active');
 
-      // 2) All schedules for assignments
       const assignmentIds = (assignments || []).map(a => a.id);
       let scheduleMap: Record<string, any[]> = {};
       if (assignmentIds.length) {
@@ -138,33 +306,71 @@ export function StudentDashboard() {
           if (!scheduleMap[s.assignment_id!]) scheduleMap[s.assignment_id!] = [];
           scheduleMap[s.assignment_id!].push(s);
         });
+
+        // Add 1-on-1 to today schedule
+        (assignments || []).forEach((a: any) => {
+          const scheds = scheduleMap[a.id] || [];
+          scheds.forEach(s => {
+            const dayFormatted = s.day_of_week ? s.day_of_week.charAt(0).toUpperCase() + s.day_of_week.slice(1).toLowerCase() : '';
+            if (dayFormatted === todayName) {
+              todaySchedule.push({
+                time: s.student_local_time || '00:00',
+                courseName: a.subject?.name || 'Quran',
+                className: '1-on-1',
+                teacherName: a.teacher?.full_name || 'Teacher',
+                duration: s.duration_minutes || 30,
+                meetingLink: null,
+                courseId: '',
+              });
+            }
+          });
+        });
+        todaySchedule.sort((a, b) => a.time.localeCompare(b.time));
       }
 
-      // 3) Attendance for this student
+      // ── Attendance stats ──
       const { data: attendance } = await supabase
         .from('attendance')
-        .select('status, class_date, course_id, teacher_id, lesson_covered, homework, surah_name, ayah_from')
+        .select('status, class_date, course_id, teacher_id')
         .eq('student_id', user.id)
         .order('class_date', { ascending: false });
       const allAtt = attendance || [];
+      const totalPresent = allAtt.filter(a => a.status === 'present' || a.status === 'late').length;
+      const overallRate = allAtt.length > 0 ? Math.round((totalPresent / allAtt.length) * 100) : 0;
 
-      // 4) Group course enrollments
-      const { data: courseEnrollments } = await supabase
-        .from('course_enrollments')
-        .select('id, course:courses(id, name, teacher_id, teacher:profiles!courses_teacher_id_fkey(full_name))')
-        .eq('student_id', user.id)
-        .eq('status', 'active');
+      // Streak
+      const presentDates = allAtt
+        .filter(a => a.status === 'present' || a.status === 'late')
+        .map(a => a.class_date).sort().reverse();
+      let streak = 0;
+      if (presentDates.length) {
+        streak = 1;
+        for (let i = 1; i < presentDates.length; i++) {
+          const diff = (new Date(presentDates[i - 1]).getTime() - new Date(presentDates[i]).getTime()) / 86400000;
+          if (diff <= 3) streak++; else break;
+        }
+      }
 
-      // 5) Fee status
+      // ── Alerts ──
+      const alerts: Array<{ type: 'urgent' | 'warning' | 'info'; message: string; action?: string; actionPath?: string }> = [];
+      const recentAtt = allAtt.slice(0, 5);
+      const consecutiveMissed = recentAtt.filter(a => a.status === 'absent' || a.status === 'student_absent');
+      if (consecutiveMissed.length >= 2) {
+        alerts.push({ type: 'urgent', message: `You missed ${consecutiveMissed.length} recent classes. Stay consistent!`, action: 'View Lessons', actionPath: '/attendance' });
+      }
       const { data: invoices } = await supabase
         .from('fee_invoices')
-        .select('amount, currency, status, due_date')
+        .select('amount, currency, status')
         .eq('student_id', user.id)
         .in('status', ['pending', 'overdue'])
-        .order('due_date', { ascending: true })
         .limit(3);
+      if ((invoices || []).length > 0) {
+        const total = (invoices || []).reduce((s, i) => s + Number(i.amount), 0);
+        const currency = invoices![0].currency || 'PKR';
+        alerts.push({ type: 'urgent', message: `Fee pending: ${currency} ${total.toLocaleString()}`, action: 'Pay Now', actionPath: '/payments' });
+      }
 
-      // 6) Notifications / messages
+      // ── Notifications (priority inbox) ──
       const { data: notifications } = await supabase
         .from('notification_queue')
         .select('id, title, body, created_at, status, channel')
@@ -172,206 +378,61 @@ export function StudentDashboard() {
         .order('created_at', { ascending: false })
         .limit(5);
 
-      // 7) Priority Inbox: pinned announcements, teacher messages, system alerts
-      const { data: announcements } = await supabase
-        .from('notification_queue')
-        .select('id, title, body, created_at, status, channel')
-        .eq('recipient_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      // Build priority inbox items
-      const inboxItems: Array<{
-        id: string;
-        type: 'pinned' | 'announcement' | 'teacher' | 'system';
-        title: string;
-        body: string;
-        timestamp: string;
-        isUnread: boolean;
-      }> = [];
-
-      (announcements || []).forEach((n: any) => {
+      const inboxItems = (notifications || []).map((n: any) => {
         const isPinned = n.channel === 'pinned' || (n.title || '').toLowerCase().includes('important');
         const isAnnouncement = n.channel === 'announcement' || (n.title || '').toLowerCase().includes('announcement');
-        inboxItems.push({
+        return {
           id: n.id,
           type: isPinned ? 'pinned' : isAnnouncement ? 'announcement' : n.channel === 'system' ? 'system' : 'teacher',
           title: n.title || 'Notification',
           body: n.body || '',
           timestamp: n.created_at,
           isUnread: n.status === 'pending',
-        });
+        };
       });
-
-      // Sort: pinned first, then by timestamp
-      inboxItems.sort((a, b) => {
+      inboxItems.sort((a: any, b: any) => {
         if (a.type === 'pinned' && b.type !== 'pinned') return -1;
         if (b.type === 'pinned' && a.type !== 'pinned') return 1;
         return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
       });
 
-      // Build unified enrollments
-      const enrollments: Enrollment[] = [];
-
-      // 1-on-1 enrollments
+      // Global next class across 1-on-1
+      let globalNextClass: { dayOfWeek: string; time: string; dateTime: Date; duration: number } | null = null;
+      let globalNextEnrollmentName = '';
+      let globalNextTeacherId: string | undefined;
       (assignments || []).forEach((a: any) => {
-        const teacherName = a.teacher?.full_name || 'Teacher';
-        const subjectName = a.subject?.name || 'Quran';
         const scheds = scheduleMap[a.id] || [];
-
-        // Attendance for this teacher
-        const teacherAtt = allAtt.filter(att => att.teacher_id === a.teacher_id && !att.course_id);
-        const present = teacherAtt.filter(att => att.status === 'present' || att.status === 'late').length;
-        const lastAtt = teacherAtt[0];
-
-        let lastClassStatus: Enrollment['lastClassStatus'] = null;
-        if (lastAtt) {
-          if (lastAtt.status === 'present' || lastAtt.status === 'late') lastClassStatus = 'attended';
-          else if (lastAtt.status === 'absent' || lastAtt.status === 'student_absent') lastClassStatus = 'missed';
-          else lastClassStatus = 'not_marked';
-        }
-
-        // Next class from schedules
-        let nextClass: Enrollment['nextClass'] = null;
-        if (scheds.length) {
-          const upcoming = scheds.map(s => ({
-            dayOfWeek: s.day_of_week ? s.day_of_week.charAt(0).toUpperCase() + s.day_of_week.slice(1).toLowerCase() : '',
-            time: s.student_local_time || '00:00',
-            duration: s.duration_minutes,
-            dateTime: buildNextOccurrence(s.day_of_week, s.student_local_time || '00:00', s.duration_minutes, studentTz),
-          })).sort((a, b) => a.dateTime.getTime() - b.dateTime.getTime());
-          nextClass = upcoming[0];
-        }
-
-        enrollments.push({
-          id: a.id,
-          type: '1-on-1',
-          courseName: subjectName,
-          teacherName,
-          teacherId: a.teacher_id,
-          lastClassStatus,
-          lastClassDate: lastAtt?.class_date || null,
-          attendanceRate: teacherAtt.length > 0 ? Math.round((present / teacherAtt.length) * 100) : 0,
-          totalClasses: teacherAtt.length,
-          presentClasses: present,
-          nextClass,
+        scheds.forEach(s => {
+          const dt = buildNextOccurrence(s.day_of_week, s.student_local_time || '00:00', s.duration_minutes, studentTz);
+          if (!globalNextClass || dt < globalNextClass.dateTime) {
+            globalNextClass = { dayOfWeek: s.day_of_week, time: s.student_local_time || '00:00', dateTime: dt, duration: s.duration_minutes };
+            globalNextEnrollmentName = a.subject?.name || 'Quran';
+            globalNextTeacherId = a.teacher_id;
+          }
         });
       });
-
-      // Group course enrollments
-      (courseEnrollments || []).forEach((ce: any) => {
-        const course = ce.course;
-        if (!course) return;
-        const courseAtt = allAtt.filter(att => att.course_id === course.id);
-        const present = courseAtt.filter(att => att.status === 'present' || att.status === 'late').length;
-        const lastAtt = courseAtt[0];
-
-        let lastClassStatus: Enrollment['lastClassStatus'] = null;
-        if (lastAtt) {
-          if (lastAtt.status === 'present' || lastAtt.status === 'late') lastClassStatus = 'attended';
-          else if (lastAtt.status === 'absent') lastClassStatus = 'missed';
-          else lastClassStatus = 'not_marked';
+      // Also check group courses
+      courseCards.forEach((cc: any) => {
+        if (cc?.nextClass) {
+          if (!globalNextClass || cc.nextClass.dateTime < globalNextClass.dateTime) {
+            globalNextClass = cc.nextClass;
+            globalNextEnrollmentName = cc.name;
+            globalNextTeacherId = undefined;
+          }
         }
-
-        enrollments.push({
-          id: ce.id,
-          type: 'group',
-          courseName: course.name,
-          teacherName: course.teacher?.full_name || 'Instructor',
-          lastClassStatus,
-          lastClassDate: lastAtt?.class_date || null,
-          attendanceRate: courseAtt.length > 0 ? Math.round((present / courseAtt.length) * 100) : 0,
-          totalClasses: courseAtt.length,
-          presentClasses: present,
-          nextClass: null, // Group classes use course schedules — not yet mapped
-        });
       });
-
-      // Sort enrollments: soonest next class first
-      enrollments.sort((a, b) => {
-        if (a.nextClass && b.nextClass) return a.nextClass.dateTime.getTime() - b.nextClass.dateTime.getTime();
-        if (a.nextClass) return -1;
-        if (b.nextClass) return 1;
-        return 0;
-      });
-
-      // Global next class across all enrollments
-      const globalNextClass = enrollments.find(e => e.nextClass)?.nextClass || null;
-      const globalNextEnrollment = enrollments.find(e => e.nextClass) || null;
-
-      // Build alerts
-      const alerts: Alert[] = [];
-
-      // Missed 2+ consecutive classes
-      const recentAtt = allAtt.slice(0, 5);
-      const consecutiveMissed = recentAtt.filter(a => a.status === 'absent' || a.status === 'student_absent');
-      if (consecutiveMissed.length >= 2) {
-        alerts.push({
-          type: 'urgent',
-          message: `You missed ${consecutiveMissed.length} recent classes. Stay consistent!`,
-          action: 'View Lessons',
-          actionPath: '/attendance',
-        });
-      }
-
-      // Unmarked lessons
-      const unmarked = recentAtt.filter(a => !a.lesson_covered && a.status === 'present');
-      if (unmarked.length > 0) {
-        alerts.push({
-          type: 'warning',
-          message: `${unmarked.length} class${unmarked.length > 1 ? 'es' : ''} with no lesson recorded`,
-        });
-      }
-
-      // Pending fees
-      const pendingFees = invoices || [];
-      if (pendingFees.length > 0) {
-        const total = pendingFees.reduce((s, i) => s + Number(i.amount), 0);
-        const currency = pendingFees[0].currency || 'PKR';
-        alerts.push({
-          type: 'urgent',
-          message: `Fee pending: ${currency} ${total.toLocaleString()}`,
-          action: 'Pay Now',
-          actionPath: '/payments',
-        });
-      }
-
-      // Consistency streak
-      const presentDates = allAtt
-        .filter(a => a.status === 'present' || a.status === 'late')
-        .map(a => a.class_date)
-        .sort()
-        .reverse();
-      let streak = 0;
-      if (presentDates.length) {
-        streak = 1;
-        for (let i = 1; i < presentDates.length; i++) {
-          const diff = (new Date(presentDates[i - 1]).getTime() - new Date(presentDates[i]).getTime()) / 86400000;
-          if (diff <= 3) streak++;
-          else break;
-        }
-      }
-
-      // Overall stats
-      const totalPresent = allAtt.filter(a => a.status === 'present' || a.status === 'late').length;
-      const overallRate = allAtt.length > 0 ? Math.round((totalPresent / allAtt.length) * 100) : 0;
-
-      const unreadCount = inboxItems.filter(i => i.isUnread).length;
 
       return {
-        enrollments,
-        globalNextClass,
-        globalNextEnrollment,
+        courseCards,
+        todaySchedule,
+        pendingAssignments,
         alerts,
-        notifications: notifications || [],
         priorityInbox: inboxItems.slice(0, 3),
-        unreadCount,
-        overallStats: {
-          totalClasses: allAtt.length,
-          attended: totalPresent,
-          rate: overallRate,
-          streak,
-        },
+        unreadCount: inboxItems.filter((i: any) => i.isUnread).length,
+        overallStats: { totalClasses: allAtt.length, attended: totalPresent, rate: overallRate, streak },
+        globalNextClass,
+        globalNextEnrollmentName,
+        globalNextTeacherId,
         studentTz,
       };
     },
@@ -384,39 +445,37 @@ export function StudentDashboard() {
     return (
       <div className="min-h-screen bg-background">
         <div className="h-12 bg-primary md:hidden" />
-        <div className="p-4 space-y-3 max-w-[680px] mx-auto pt-16">
+        <div className="p-4 space-y-4 max-w-5xl mx-auto pt-16">
           <Skeleton className="h-20 rounded-2xl" />
-          <Skeleton className="h-14 rounded-xl" />
-          <Skeleton className="h-32 rounded-xl" />
+          <div className="flex gap-3 overflow-hidden">
+            {[1, 2, 3].map(i => <Skeleton key={i} className="h-48 w-72 rounded-xl shrink-0" />)}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <Skeleton className="h-40 rounded-xl md:col-span-3" />
+            <Skeleton className="h-40 rounded-xl md:col-span-2" />
+          </div>
         </div>
       </div>
     );
   }
 
   const nc = dashData?.globalNextClass;
-  const ncEnrollment = dashData?.globalNextEnrollment;
+  const ncName = dashData?.globalNextEnrollmentName;
+  const ncTeacherId = dashData?.globalNextTeacherId;
+  const stats = dashData?.overallStats;
 
-  // Format time
   let timeDisplay = '';
   let shortDay = '';
   if (nc) {
-    const [hh, mm] = nc.time.split(':').map(Number);
-    const ampm = hh >= 12 ? 'PM' : 'AM';
-    const h12 = hh % 12 || 12;
-    timeDisplay = `${h12}:${String(mm).padStart(2, '0')} ${ampm}`;
-    shortDay = SHORT_DAYS[nc.dayOfWeek] || nc.dayOfWeek;
+    timeDisplay = formatTime12(nc.time);
+    shortDay = SHORT_DAYS[nc.dayOfWeek?.charAt(0).toUpperCase() + nc.dayOfWeek?.slice(1).toLowerCase()] || nc.dayOfWeek;
   }
-
-  // Is class within 30 minutes or currently in session?
   const minutesUntil = nc ? (nc.dateTime.getTime() - Date.now()) / 60000 : Infinity;
   const isJoinable = minutesUntil <= 30 && minutesUntil > -90;
 
-  const stats = dashData?.overallStats;
-
-  // Show join button area — always show JoinClassButton when within window, countdown otherwise
   const renderJoinArea = () => {
     if (isJoinable) {
-      return <JoinClassButton teacherId={ncEnrollment?.teacherId} />;
+      return <JoinClassButton teacherId={ncTeacherId} />;
     }
     return (
       <div className="flex items-center gap-1 shrink-0">
@@ -429,22 +488,22 @@ export function StudentDashboard() {
 
   const leftContent = (
     <>
-      {/* ═══ NEXT ACTION PANEL ═══ */}
-      {nc && ncEnrollment ? (
+      {/* ═══ NEXT CLASS PANEL ═══ */}
+      {nc && ncName ? (
         <div className="bg-gradient-to-br from-primary to-[hsl(var(--navy-light))] rounded-2xl px-4 py-3.5 text-primary-foreground shadow-card">
           <div className="flex items-center justify-between mb-1">
             <p className="text-[10px] opacity-70 font-extrabold tracking-widest uppercase">⏰ Next Class</p>
             {renderJoinArea()}
           </div>
-          <p className="text-base font-black truncate">{ncEnrollment.courseName}</p>
+          <p className="text-base font-black truncate">{ncName}</p>
           <p className="text-[11px] text-primary-foreground/70 font-semibold mt-0.5">
-            {ncEnrollment.teacherName} · {shortDay} · {timeDisplay}
+            {shortDay} · {timeDisplay}
           </p>
         </div>
       ) : (
         <div className="bg-card rounded-2xl border border-border px-4 py-4">
           <p className="text-[10px] text-muted-foreground font-extrabold tracking-widest uppercase mb-1">⏰ Next Class</p>
-          <p className="text-sm font-bold text-foreground">No class scheduled today</p>
+          <p className="text-sm font-bold text-foreground">No class scheduled</p>
           <p className="text-xs text-muted-foreground mt-0.5">Use this time to revise your last lesson 📖</p>
         </div>
       )}
@@ -456,10 +515,8 @@ export function StudentDashboard() {
             <div
               key={i}
               className={`rounded-xl px-3.5 py-2.5 flex items-center gap-2.5 border ${
-                alert.type === 'urgent'
-                  ? 'bg-destructive/8 border-destructive/20'
-                  : alert.type === 'warning'
-                  ? 'bg-gold/8 border-gold/20'
+                alert.type === 'urgent' ? 'bg-destructive/8 border-destructive/20'
+                  : alert.type === 'warning' ? 'bg-gold/8 border-gold/20'
                   : 'bg-teal/8 border-teal/20'
               }`}
             >
@@ -471,9 +528,7 @@ export function StudentDashboard() {
                 <button
                   onClick={() => navigate(alert.actionPath!)}
                   className={`text-[10px] font-bold px-2.5 py-1 rounded-lg shrink-0 ${
-                    alert.type === 'urgent'
-                      ? 'bg-destructive text-destructive-foreground'
-                      : 'bg-gold text-foreground'
+                    alert.type === 'urgent' ? 'bg-destructive text-destructive-foreground' : 'bg-gold text-foreground'
                   }`}
                 >
                   {alert.action}
@@ -484,70 +539,204 @@ export function StudentDashboard() {
         </div>
       )}
 
-      {/* ═══ UNIFIED LEARNING — ALL ENROLLMENTS ═══ */}
+      {/* ═══ SECTION 1: MY COURSES ═══ */}
       <div>
         <p className="text-[13px] font-extrabold text-foreground mb-2 flex items-center gap-1.5">
-          <BookOpen className="h-4 w-4 text-primary" /> My Enrollments
+          <BookOpen className="h-4 w-4 text-primary" /> My Courses
         </p>
-        <div className="space-y-2">
-          {(dashData?.enrollments || []).length === 0 ? (
-            <div className="bg-card rounded-xl border border-border p-6 text-center">
-              <p className="text-sm text-muted-foreground">No active enrollments yet</p>
-            </div>
-          ) : (
-            (dashData!.enrollments).map((enrollment) => (
-              <div
-                key={enrollment.id}
-                className="bg-card rounded-xl border border-border p-3 flex items-center gap-3 hover:bg-secondary/30 transition-colors cursor-pointer"
-                onClick={() => navigate('/attendance')}
+
+        {(dashData?.courseCards || []).length === 0 ? (
+          <Card>
+            <CardContent className="py-10 text-center">
+              <BookOpen className="h-10 w-10 mx-auto mb-2 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">No courses enrolled yet</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="flex gap-3 overflow-x-auto pb-2 md:grid md:grid-cols-3 md:overflow-visible scrollbar-hide">
+            {dashData!.courseCards.map((course: any) => (
+              <Card
+                key={course.id}
+                className="min-w-[260px] md:min-w-0 shrink-0 overflow-hidden hover:shadow-md transition-shadow"
               >
-                {/* Type badge */}
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
-                  enrollment.type === '1-on-1' ? 'bg-primary/10 text-primary' : 'bg-sky/10 text-sky'
-                }`}>
-                  {enrollment.type === '1-on-1' ? '1:1' : '👥'}
-                </div>
-
-                {/* Details */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <p className="text-[13px] font-bold text-foreground truncate">{enrollment.courseName}</p>
-                    <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 shrink-0 capitalize">
-                      {enrollment.type}
-                    </Badge>
+                {/* Cover image or gradient */}
+                <div className={`h-24 relative ${!course.coverImage ? `bg-gradient-to-br ${course.gradient}` : ''}`}>
+                  {course.coverImage ? (
+                    <img src={course.coverImage} alt={course.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <span className="text-3xl font-black text-white/80">{course.name.charAt(0)}</span>
+                    </div>
+                  )}
+                  {/* Live / Soon badges */}
+                  <div className="absolute top-2 right-2 flex gap-1">
+                    {course.isLive && (
+                      <Badge className="bg-destructive text-destructive-foreground text-[9px] px-1.5 py-0 h-5 gap-1">
+                        <Radio className="h-3 w-3 animate-pulse" /> Live Now
+                      </Badge>
+                    )}
+                    {course.isSoon && !course.isLive && (
+                      <Badge className="bg-gold text-foreground text-[9px] px-1.5 py-0 h-5">
+                        ⏰ In 15 min
+                      </Badge>
+                    )}
                   </div>
-                  <p className="text-[11px] text-muted-foreground truncate">{enrollment.teacherName}</p>
                 </div>
 
-                {/* Status + Attendance */}
-                <div className="flex items-center gap-2 shrink-0">
-                  {/* Last class status icon */}
-                  {enrollment.lastClassStatus === 'attended' && (
-                    <span className="w-6 h-6 rounded-full bg-teal/10 flex items-center justify-center text-[10px]" title="Last class: Attended">✅</span>
-                  )}
-                  {enrollment.lastClassStatus === 'missed' && (
-                    <span className="w-6 h-6 rounded-full bg-destructive/10 flex items-center justify-center text-[10px]" title="Last class: Missed">❌</span>
-                  )}
-                  {enrollment.lastClassStatus === 'not_marked' && (
-                    <span className="w-6 h-6 rounded-full bg-gold/10 flex items-center justify-center text-[10px]" title="Last class: Not marked">⚠️</span>
+                <CardContent className="p-3 space-y-2">
+                  <p className="text-sm font-bold text-foreground truncate">{course.name}</p>
+
+                  {/* Next class info */}
+                  {course.nextClass && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Next: {SHORT_DAYS[course.nextClass.dayOfWeek?.charAt(0).toUpperCase() + course.nextClass.dayOfWeek?.slice(1).toLowerCase()] || course.nextClass.dayOfWeek} · {formatTime12(course.nextClass.time)}
+                    </p>
                   )}
 
-                  {/* Attendance rate */}
-                  <span className={`text-xs font-black ${
-                    enrollment.attendanceRate >= 80 ? 'text-teal' : enrollment.attendanceRate >= 50 ? 'text-gold' : 'text-destructive'
-                  }`}>
-                    {enrollment.attendanceRate}%
-                  </span>
+                  {/* Counters */}
+                  <div className="flex gap-2">
+                    {course.pendingAssignments > 0 && (
+                      <Badge variant="outline" className="text-[9px] gap-1 h-5">
+                        <ClipboardList className="h-3 w-3" /> {course.pendingAssignments} due
+                      </Badge>
+                    )}
+                    {course.unreadAnnouncements > 0 && (
+                      <Badge variant="outline" className="text-[9px] gap-1 h-5">
+                        <Bell className="h-3 w-3" /> {course.unreadAnnouncements} new
+                      </Badge>
+                    )}
+                  </div>
 
-                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                  {/* Action buttons */}
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="default"
+                      className="flex-1 text-[11px] h-7"
+                      onClick={() => navigate(`/my-courses/${course.id}`)}
+                    >
+                      Continue Learning
+                    </Button>
+                    {(course.isLive || course.isSoon) && course.nextClass?.meetingLink && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-[11px] h-7 gap-1"
+                        onClick={() => window.open(course.nextClass.meetingLink, '_blank')}
+                      >
+                        <Video className="h-3 w-3" /> Join
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ═══ SECTION 2 & 3: TODAY'S SCHEDULE + PENDING ACTIONS ═══ */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        {/* Today's Schedule (left 60%) */}
+        <div className="md:col-span-3">
+          <p className="text-[13px] font-extrabold text-foreground mb-2 flex items-center gap-1.5">
+            <Calendar className="h-4 w-4 text-primary" /> Today's Schedule
+          </p>
+          <Card>
+            <CardContent className="p-0">
+              {(dashData?.todaySchedule || []).length === 0 ? (
+                <div className="py-8 text-center">
+                  <CalendarOff className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
+                  <p className="text-sm text-muted-foreground">No classes today</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Enjoy your free time! 🎉</p>
                 </div>
-              </div>
-            ))
-          )}
+              ) : (
+                <div className="divide-y divide-border">
+                  {dashData!.todaySchedule.map((cls: any, idx: number) => {
+                    const [hh, mm] = (cls.time || '00:00').split(':').map(Number);
+                    const nowMins = getNowInTimezone(dashData?.studentTz || 'UTC').hours * 60 + getNowInTimezone(dashData?.studentTz || 'UTC').minutes;
+                    const classMins = hh * 60 + mm;
+                    const isNow = nowMins >= classMins && nowMins < classMins + cls.duration;
+
+                    return (
+                      <div key={idx} className={`flex items-center gap-3 px-3.5 py-3 ${isNow ? 'bg-primary/5' : ''}`}>
+                        <div className="text-center shrink-0 w-14">
+                          <p className="text-sm font-bold text-foreground">{formatTime12(cls.time)}</p>
+                          <p className="text-[10px] text-muted-foreground">{cls.duration}m</p>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] font-bold text-foreground truncate">{cls.courseName}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">{cls.className} · {cls.teacherName}</p>
+                        </div>
+                        {isNow && <Badge className="bg-destructive text-destructive-foreground text-[9px] h-5 shrink-0">LIVE</Badge>}
+                        {cls.meetingLink && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-[10px] h-7 shrink-0"
+                            onClick={() => window.open(cls.meetingLink, '_blank')}
+                          >
+                            Join
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Pending Actions (right 40%) */}
+        <div className="md:col-span-2">
+          <p className="text-[13px] font-extrabold text-foreground mb-2 flex items-center gap-1.5">
+            <ClipboardList className="h-4 w-4 text-primary" /> Pending Actions
+          </p>
+          <Card>
+            <CardContent className="p-0">
+              {(dashData?.pendingAssignments || []).length === 0 ? (
+                <div className="py-8 text-center">
+                  <ClipboardList className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
+                  <p className="text-sm text-muted-foreground">All caught up!</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">No pending assignments 🎯</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {dashData!.pendingAssignments.slice(0, 6).map((asn: any) => {
+                    const due = asn.due_date ? new Date(asn.due_date) : null;
+                    const isOverdue = due && isPast(due);
+                    const isDueToday = due && isToday(due);
+                    const dueDateColor = isOverdue ? 'text-destructive' : isDueToday ? 'text-gold' : 'text-muted-foreground';
+
+                    return (
+                      <div
+                        key={asn.id}
+                        className="flex items-center gap-2.5 px-3.5 py-2.5 hover:bg-secondary/30 transition-colors cursor-pointer"
+                        onClick={() => navigate(`/my-courses/${asn.course_id}?tab=assignments`)}
+                      >
+                        <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[12px] font-bold text-foreground truncate">{asn.title}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">{(asn.course as any)?.name || 'Course'}</p>
+                        </div>
+                        {due && (
+                          <p className={`text-[10px] font-semibold shrink-0 ${dueDateColor}`}>
+                            {isOverdue ? 'Overdue' : isDueToday ? 'Today' : format(due, 'MMM dd')}
+                          </p>
+                        )}
+                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
 
-      {/* ═══ RECENT LESSONS WITH COMMENTS ═══ */}
+      {/* ═══ RECENT LESSONS ═══ */}
       <StudentAttendanceSection />
 
       {/* ═══ AI INSIGHTS ═══ */}
