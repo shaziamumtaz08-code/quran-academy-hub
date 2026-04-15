@@ -1437,6 +1437,11 @@ export default function UserManagement() {
               ))}
             </div>
           </TabsContent>
+
+          {/* Auth Audit Tab */}
+          <TabsContent value="auth-audit">
+            <AuthAuditTab />
+          </TabsContent>
         </Tabs>
 
         {/* Add Role Dialog */}
