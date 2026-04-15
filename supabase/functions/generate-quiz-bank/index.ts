@@ -109,24 +109,24 @@ Output raw JSON ONLY. No markdown. Format:
       "difficulty": "easy|medium|hard",
       "source": "grammar|dialogue|integrated",
       "skill_layer": "knowledge|structure|usage|conversation",
-      "options": ["array if mcq/tf/matching"],
+      "options": ["ALWAYS provide 4 options for ALL types except FIB"],
       "correctIndex": 0,
-      "correctText": "for fib/error_detection/dialogue_completion/scenario/translation",
-      "correctAlt": ["alternative acceptable answers"],
+      "correctText": "ONLY for fib type - primary answer without diacritics",
+      "correctAlt": ["alternative acceptable answers - ONLY for fib type"],
       "explanation": "short concept-based explanation"
     }
   ]
 }
 
-QUESTION TYPE RULES:
+CRITICAL RULE — OPTIONS ARE MANDATORY FOR ALL TYPES EXCEPT FIB:
 - MCQ: 4 options, correctIndex is 0-based.
 - TF: options ["True","False"] or localized equivalents, correctIndex 0 or 1.
-- FIB: correctText is PRIMARY answer (plain text, no diacritics for Arabic/Urdu), correctAlt has alternatives. No options needed.
-- error_detection: Present a sentence with an error. correctText is the corrected version. correctAlt has alternatives.
-- dialogue_completion: Present an incomplete dialogue. correctText is what completes it. correctAlt has alternatives.
-- matching: options array contains items to match. correctText describes the correct pairs.
-- scenario: Present a real-life situation. Can have options (MCQ-style) or open answer.
-- translation: correctText is the translation. correctAlt has alternative valid translations + transliterations.
+- FIB: correctText is PRIMARY answer (plain text, no diacritics for Arabic/Urdu), correctAlt has alternatives. FIB is the ONLY type without options.
+- error_detection: Present a sentence with an error. Provide 4 options with possible corrections. correctIndex points to the right one.
+- dialogue_completion: Present an incomplete dialogue. Provide 4 options to complete it. correctIndex points to the right one.
+- matching: Provide 4 options. correctIndex points to the correct match.
+- scenario: Present a real-life situation. Provide 4 options. correctIndex points to the right one.
+- translation: Provide 4 translation options. correctIndex points to the correct one.
 
 ═══════════════════════════════════════════
 CONTENT FILTERING
