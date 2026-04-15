@@ -839,7 +839,7 @@ function ClassDetail({ cls, courseId, onBack, onDelete }: { cls: any; courseId: 
                     <p className="text-sm font-medium">{(s as any).profile?.full_name || 'Unknown'}</p>
                     <p className="text-[10px] text-muted-foreground">{(s as any).profile?.email}</p>
                   </div>
-                  <button onClick={() => removeStudent.mutate(s.id)} className="p-1 text-muted-foreground hover:text-destructive">
+                  <button onClick={() => removeStudent.mutate({ id: s.id, studentId: s.student_id })} className="p-1 text-muted-foreground hover:text-destructive">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
