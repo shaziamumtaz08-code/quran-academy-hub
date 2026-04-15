@@ -596,7 +596,18 @@ export default function Students() {
                     <TableRow key={student.id}>
                       <TableCell>
                         <div className="flex flex-col">
-                          <span className="font-medium">{student.full_name}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{student.full_name}</span>
+                            {isAdmin && authStatusMap[student.id] === false && (
+                              <Badge
+                                variant="destructive"
+                                className="text-[10px] px-1.5 py-0 cursor-pointer hover:opacity-80"
+                                onClick={() => setCreateLoginStudent(student)}
+                              >
+                                No Login
+                              </Badge>
+                            )}
+                          </div>
                           {student.email && (
                             <span className="flex items-center gap-1 text-sm text-muted-foreground">
                               <Mail className="h-3 w-3" />
