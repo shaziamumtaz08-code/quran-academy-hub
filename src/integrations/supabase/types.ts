@@ -795,6 +795,7 @@ export type Database = {
       chat_groups: {
         Row: {
           channel_mode: string
+          class_id: string | null
           course_id: string | null
           created_at: string
           created_by: string
@@ -807,6 +808,7 @@ export type Database = {
         }
         Insert: {
           channel_mode?: string
+          class_id?: string | null
           course_id?: string | null
           created_at?: string
           created_by: string
@@ -819,6 +821,7 @@ export type Database = {
         }
         Update: {
           channel_mode?: string
+          class_id?: string | null
           course_id?: string | null
           created_at?: string
           created_by?: string
@@ -830,6 +833,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "chat_groups_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "course_classes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "chat_groups_course_id_fkey"
             columns: ["course_id"]
@@ -945,6 +955,8 @@ export type Database = {
           generated_at: string | null
           id: string
           language: string
+          pushed_at: string | null
+          pushed_to_class: boolean
           session_plan_id: string
           status: string
           updated_at: string
@@ -955,6 +967,8 @@ export type Database = {
           generated_at?: string | null
           id?: string
           language?: string
+          pushed_at?: string | null
+          pushed_to_class?: boolean
           session_plan_id: string
           status?: string
           updated_at?: string
@@ -965,6 +979,8 @@ export type Database = {
           generated_at?: string | null
           id?: string
           language?: string
+          pushed_at?: string | null
+          pushed_to_class?: boolean
           session_plan_id?: string
           status?: string
           updated_at?: string
@@ -2480,6 +2496,7 @@ export type Database = {
           ad_creative: Json | null
           auto_enroll_enabled: boolean
           branch_id: string | null
+          community_chat_enabled: boolean
           contact_info: Json | null
           created_at: string
           description: string | null
@@ -2498,6 +2515,7 @@ export type Database = {
           seo_slug: string | null
           start_date: string
           status: string
+          student_dm_mode: string
           subject_id: string | null
           support_messages: Json | null
           syllabus_text: string | null
@@ -2512,6 +2530,7 @@ export type Database = {
           ad_creative?: Json | null
           auto_enroll_enabled?: boolean
           branch_id?: string | null
+          community_chat_enabled?: boolean
           contact_info?: Json | null
           created_at?: string
           description?: string | null
@@ -2530,6 +2549,7 @@ export type Database = {
           seo_slug?: string | null
           start_date: string
           status?: string
+          student_dm_mode?: string
           subject_id?: string | null
           support_messages?: Json | null
           syllabus_text?: string | null
@@ -2544,6 +2564,7 @@ export type Database = {
           ad_creative?: Json | null
           auto_enroll_enabled?: boolean
           branch_id?: string | null
+          community_chat_enabled?: boolean
           contact_info?: Json | null
           created_at?: string
           description?: string | null
@@ -2562,6 +2583,7 @@ export type Database = {
           seo_slug?: string | null
           start_date?: string
           status?: string
+          student_dm_mode?: string
           subject_id?: string | null
           support_messages?: Json | null
           syllabus_text?: string | null
