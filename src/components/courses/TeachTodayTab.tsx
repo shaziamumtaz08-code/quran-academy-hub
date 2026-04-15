@@ -33,7 +33,7 @@ export function TeachTodayTab({ courseId }: TeachTodayTabProps) {
     queryFn: async () => {
       const { data } = await supabase
         .from('session_plans')
-        .select('id, session_title, session_objective, activities, objectives, created_at, syllabus_id, course_id')
+        .select('id, session_title, session_objective, activities, created_at, syllabus_id')
         .eq('course_id', courseId)
         .order('created_at', { ascending: false });
       return (data || []) as any[];
