@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,8 +18,9 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import {
   Plus, Trash2, Users, Clock, MapPin, DollarSign, Loader2, Video, UserPlus,
-  Calendar, ArrowLeft, Settings, GraduationCap, Shield, ChevronRight, Eye
+  Calendar, ArrowLeft, Settings, GraduationCap, Shield, ChevronRight, Eye, MessageSquare
 } from 'lucide-react';
+import { ensureClassChatGroup, classHasChatGroup } from '@/lib/classChatSync';
 
 interface CourseClassesTabProps {
   courseId: string;
