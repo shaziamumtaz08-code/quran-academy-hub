@@ -68,13 +68,10 @@ export default function TeacherCourseView() {
   const [assignDueDate, setAssignDueDate] = useState('');
   const [assignFile, setAssignFile] = useState<File | null>(null);
   const [creatingAssignment, setCreatingAssignment] = useState(false);
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
 
   // Grading sheet
-  const [gradingSubmission, setGradingSubmission] = useState<any>(null);
-  const [gradeScore, setGradeScore] = useState('');
-  const [gradeFeedback, setGradeFeedback] = useState('');
-  const [gradeStatus, setGradeStatus] = useState('graded');
-  const [savingGrade, setSavingGrade] = useState(false);
+  const [gradingSubId, setGradingSubId] = useState<string | null>(null);
 
   // Lesson planner
   const [editingLesson, setEditingLesson] = useState<any>(null);
