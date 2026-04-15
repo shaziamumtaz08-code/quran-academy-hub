@@ -213,15 +213,12 @@ export default function PublicQuiz() {
                   <div className="ml-7 space-y-1">
                     <p className="text-sm text-muted-foreground">
                       Your answer: <span className="text-red-600 font-medium">
-                        {typeof r.userAnswer === 'string' ? (r.userAnswer || 'blank') : 
-                         r.type === 'fib' ? (r.userAnswer || 'blank') : 
-                         ['error_detection', 'dialogue_completion', 'scenario', 'translation'].includes(r.type) ? (r.userAnswer || 'blank') :
-                         (r.options?.[r.userAnswer] || 'skipped')}
+                        {r.type === 'fib' ? (r.userAnswer || 'blank') : (r.options?.[r.userAnswer] || 'skipped')}
                       </span>
                     </p>
                     <p className="text-sm text-muted-foreground">
                       Correct: <span className="text-green-600 font-medium">
-                        {r.correctText || (r.options?.[r.correctIndex!])}
+                        {r.type === 'fib' ? r.correctText : r.options?.[r.correctIndex!]}
                       </span>
                     </p>
                   </div>
@@ -265,8 +262,7 @@ export default function PublicQuiz() {
         <Card><CardContent className="p-6">
           <h2 className={`text-lg font-bold mb-6 leading-relaxed ${isRTL ? 'text-right font-urdu' : ''}`}>{q.text}</h2>
 
-          {/* Free-text input types */}
-          {['fib', 'error_detection', 'dialogue_completion', 'scenario', 'translation'].includes(q.type) && (!q.options || q.options.length === 0) ? (
+          {q.type === 'fib' ? (
             <div className="space-y-2">
               <Input
                 className={`text-center text-lg ${isRTL ? 'text-right' : ''}`}
