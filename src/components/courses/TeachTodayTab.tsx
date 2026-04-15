@@ -321,7 +321,7 @@ export function TeachTodayTab({ courseId }: TeachTodayTabProps) {
 
                 {/* Push actions */}
                 {!contentKit.pushed_to_class ? (
-                  <Button className="w-full gap-1.5 bg-emerald-600 hover:bg-emerald-700" onClick={() => handlePush(false)} disabled={pushing}>
+                  <Button className="w-full gap-1.5 bg-primary hover:bg-primary/90" onClick={() => handlePush(false)} disabled={pushing}>
                     {pushing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                     Push to Students
                   </Button>
