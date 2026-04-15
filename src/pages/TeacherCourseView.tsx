@@ -276,24 +276,7 @@ export default function TeacherCourseView() {
     finally { setCreatingAssignment(false); }
   };
 
-  const handleSaveGrade = async () => {
-    if (!gradingSubmission) return;
-    setSavingGrade(true);
-    try {
-      const { error } = await supabase.from('course_assignment_submissions').update({
-        score: gradeScore ? Number(gradeScore) : null,
-        feedback: gradeFeedback || null,
-        status: gradeStatus,
-        graded_by: user!.id,
-        graded_at: new Date().toISOString(),
-      }).eq('id', gradingSubmission.id);
-      if (error) throw error;
-      toast.success('Grade saved');
-      setGradingSubmission(null);
-      queryClient.invalidateQueries({ queryKey: ['teacher-all-submissions'] });
-    } catch (err: any) { toast.error(err.message); }
-    finally { setSavingGrade(false); }
-  };
+  // handleSaveGrade removed — now handled by GradingPanel component
 
   const handleSaveLessonPlan = async () => {
     if (!editingLesson) return;
