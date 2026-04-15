@@ -63,11 +63,11 @@ export async function ensureClassChatGroup(
  * Sync a single student into the class chat group.
  */
 export async function addStudentToClassChat(classId: string, studentId: string) {
-  const { data: groups } = await supabase
+  const { data: groups } = await (supabase
     .from('chat_groups')
-    .select('id')
-    .eq('class_id' as any, classId)
-    .limit(1) as any;
+    .select('id') as any)
+    .eq('class_id', classId)
+    .limit(1);
 
   if (!groups?.length) return;
 
