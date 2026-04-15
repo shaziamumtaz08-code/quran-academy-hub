@@ -254,9 +254,9 @@ export default function PublicQuiz() {
       <div className="max-w-2xl mx-auto p-4 space-y-4">
         <Progress value={((currentQ + 1) / questions.length) * 100} className="h-1.5" />
 
-        <div className="text-xs text-muted-foreground">
-          Question {currentQ + 1} of {questions.length}
-          <Badge variant="outline" className="ml-2 text-xs">{q.type.toUpperCase()}</Badge>
+        <div className="text-xs text-muted-foreground text-center">
+          <Badge variant="outline" className="text-xs">{q.type.toUpperCase().replace(/_/g, ' ')}</Badge>
+          <span className="ml-2">Question {currentQ + 1} of {questions.length}</span>
         </div>
 
         <Card><CardContent className="p-6">
