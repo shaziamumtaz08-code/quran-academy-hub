@@ -27,9 +27,10 @@ import { ZoomClassPanel } from '@/components/classroom/ZoomClassPanel';
 import {
   ArrowLeft, Video, Calendar, FileText, Bell, BarChart3,
   BookOpen, Users, Clock, ExternalLink, X, Check, ChevronDown,
-  Loader2, Upload, Download, MessageSquare, Sparkles, Send, Plus
+  Loader2, Upload, Download, MessageSquare, Sparkles, Send, Plus, AlertTriangle
 } from 'lucide-react';
 import { DMChatSheet } from '@/components/chat/DMChatSheet';
+import { GradingPanel } from '@/components/assignments/GradingPanel';
 
 // ─── Helpers ───
 function formatTime12(time: string) {
