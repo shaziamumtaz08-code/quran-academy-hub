@@ -206,7 +206,17 @@ ${arabicRules}`;
       throw new Error("AI returned invalid JSON");
     }
 
-    const questions = parsed.questions || [];
+    // Post-process: normalize any rogue types back to mcq/tf/fib
+    const ALLOWED_TYPES = new Set(['mcq', 'tf', 'fib']);
+    const questions = (parsed.questions || []).map((q: any) => {
+      if (!ALLOWED_TYPES.has(q.type)) {
+        // Convert non-allowed types to mcq (they should have options)
+        const originalType = q.type;
+        q.subtype = q.subtype || originalType;
+        q.type = q.options && q.options.length > 0 ? 'mcq' : 'fib';
+      }
+      return q;
+    });
 
     // Save to DB
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
