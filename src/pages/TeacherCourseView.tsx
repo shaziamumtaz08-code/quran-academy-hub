@@ -28,6 +28,7 @@ import {
   BookOpen, Users, Clock, ExternalLink, X, Check, ChevronDown,
   Loader2, Upload, Download, MessageSquare, Sparkles, Send, Plus
 } from 'lucide-react';
+import { DMChatSheet } from '@/components/chat/DMChatSheet';
 
 // ─── Helpers ───
 function formatTime12(time: string) {
@@ -87,6 +88,9 @@ export default function TeacherCourseView() {
 
   // DM
   const [dmLoading, setDmLoading] = useState<string | null>(null);
+  const [dmSheetOpen, setDmSheetOpen] = useState(false);
+  const [dmGroupId, setDmGroupId] = useState<string | null>(null);
+  const [dmRecipientName, setDmRecipientName] = useState('');
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
@@ -358,8 +362,11 @@ export default function TeacherCourseView() {
     try {
       const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single();
       const dmId = await findOrCreateCourseDM(user.id, studentId, courseId, course?.name || '', profile?.full_name || '', studentName);
-      if (dmId) navigate(`/communication?group=${dmId}`);
-      else toast.error('Could not create conversation');
+      if (dmId) {
+        setDmGroupId(dmId);
+        setDmRecipientName(studentName);
+        setDmSheetOpen(true);
+      } else toast.error('Could not create conversation');
     } catch { toast.error('Failed'); }
     finally { setDmLoading(null); }
   };
