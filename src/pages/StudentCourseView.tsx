@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { findOrCreateCourseDM, getCourseTeachers } from '@/lib/messaging';
 import { ClassChatTab } from '@/components/courses/ClassChatTab';
+import { ZoomClassPanel } from '@/components/classroom/ZoomClassPanel';
 
 // ─── Helpers ───
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -537,57 +538,35 @@ export default function StudentCourseView() {
 
         {/* ═══ TAB 1: TODAY ═══ */}
         <TabsContent value="today" className="space-y-4 mt-4">
-          {/* Class card */}
-          {myClass ? (
-            <Card className={cn(
-              'border-2',
-              isLive && 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20',
-              isJoinable && !isLive && 'border-primary/50 bg-primary/5',
-            )}>
+          {/* Class panel */}
+          {myClass && myClass.meeting_link ? (
+            <ZoomClassPanel
+              meetingLink={myClass.meeting_link as string}
+              classInfo={{
+                name: myClass.name,
+                scheduleTime: myClass.schedule_time || '00:00',
+                scheduleDays: (myClass.schedule_days as string[]) || [],
+                timezone: myClass.timezone || tz,
+                sessionDuration: myClass.session_duration || 30,
+              }}
+              userRole="student"
+            />
+          ) : myClass ? (
+            <Card>
               <CardContent className="p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={cn('h-10 w-10 rounded-full flex items-center justify-center', isLive ? 'bg-emerald-100 dark:bg-emerald-900/50' : 'bg-primary/10')}>
-                      <Video className={cn('h-5 w-5', isLive ? 'text-emerald-600' : 'text-primary')} />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-sm">{myClass.name}</p>
-                        {isLive && <Badge className="bg-emerald-500 text-white animate-pulse text-[9px]"><Radio className="h-3 w-3 mr-0.5" /> LIVE</Badge>}
-                        {isJoinable && !isLive && <Badge variant="secondary" className="text-[9px]">Starting soon</Badge>}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {(myClass.schedule_days as string[])?.join(', ')} · {formatTime12(myClass.schedule_time || '00:00')} · {myClass.session_duration} min
-                      </p>
-                      {classTeacher && <p className="text-xs text-muted-foreground">Teacher: {classTeacher}</p>}
-                    </div>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Video className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm">{myClass.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {(myClass.schedule_days as string[])?.join(', ')} · {formatTime12(myClass.schedule_time || '00:00')} · {myClass.session_duration} min
+                    </p>
+                    {classTeacher && <p className="text-xs text-muted-foreground">Teacher: {classTeacher}</p>}
                   </div>
                 </div>
-
-                {/* Countdown */}
-                {!isLive && nextClassDate && (
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <div className="flex gap-1">
-                      {countdown.days > 0 && <span className="bg-muted rounded px-2 py-0.5 text-xs font-bold">{countdown.days}d</span>}
-                      <span className="bg-muted rounded px-2 py-0.5 text-xs font-bold">{countdown.hours}h</span>
-                      <span className="bg-muted rounded px-2 py-0.5 text-xs font-bold">{String(countdown.mins).padStart(2, '0')}m</span>
-                      <span className="bg-muted rounded px-2 py-0.5 text-xs font-bold">{String(countdown.secs).padStart(2, '0')}s</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Join button */}
-                <Button
-                  className={cn('w-full', isLive && 'bg-emerald-600 hover:bg-emerald-700')}
-                  disabled={!isJoinable}
-                  onClick={() => {
-                    if (myClass.meeting_link) setShowZoomIframe(true);
-                  }}
-                >
-                  <Video className="h-4 w-4 mr-2" />
-                  {isLive ? 'Join Live Class' : isJoinable ? 'Join Class' : 'Class Not Started Yet'}
-                </Button>
+                <p className="text-xs text-muted-foreground">No meeting link configured for this class yet.</p>
               </CardContent>
             </Card>
           ) : (
@@ -595,41 +574,6 @@ export default function StudentCourseView() {
               <CardContent className="py-10 text-center">
                 <Calendar className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
                 <p className="text-sm text-muted-foreground">No class assigned yet</p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Zoom iframe */}
-          {showZoomIframe && myClass?.meeting_link && (
-            <Card>
-              <CardContent className="p-0">
-                <div className="flex items-center justify-between px-3 py-2 border-b">
-                  <p className="text-sm font-medium">{myClass.name} — Live Session</p>
-                  <Button variant="ghost" size="sm" onClick={() => setShowZoomIframe(false)}>
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-                {iframeError ? (
-                  <div className="p-6 text-center">
-                    <p className="text-sm text-muted-foreground mb-2">Unable to load meeting in browser</p>
-                    <Button variant="outline" onClick={() => window.open(myClass.meeting_link as string, '_blank')}>
-                      <ExternalLink className="h-4 w-4 mr-1" /> Open in Browser
-                    </Button>
-                  </div>
-                ) : (
-                  <iframe
-                    src={myClass.meeting_link as string}
-                    className="w-full h-[600px] border-0"
-                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-                    allow="camera; microphone; fullscreen; display-capture"
-                    onError={() => setIframeError(true)}
-                  />
-                )}
-                <div className="px-3 py-2 border-t text-center">
-                  <a href={myClass.meeting_link as string} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
-                    <ExternalLink className="h-3 w-3" /> Open in browser instead
-                  </a>
-                </div>
               </CardContent>
             </Card>
           )}

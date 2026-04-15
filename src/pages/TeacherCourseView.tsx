@@ -23,6 +23,7 @@ import { toast } from 'sonner';
 import { findOrCreateCourseDM } from '@/lib/messaging';
 import { TeachTodayTab } from '@/components/courses/TeachTodayTab';
 import { ClassChatTab } from '@/components/courses/ClassChatTab';
+import { ZoomClassPanel } from '@/components/classroom/ZoomClassPanel';
 import {
   ArrowLeft, Video, Calendar, FileText, Bell, BarChart3,
   BookOpen, Users, Clock, ExternalLink, X, Check, ChevronDown,
@@ -492,7 +493,20 @@ export default function TeacherCourseView() {
             {/* RIGHT: Live Class */}
             <div className="md:col-span-5 space-y-3">
               <h3 className="text-sm font-semibold">Live Class</h3>
-              {selectedClass ? (
+              {selectedClass?.meeting_link ? (
+                <ZoomClassPanel
+                  meetingLink={selectedClass.meeting_link as string}
+                  classInfo={{
+                    name: selectedClass.name,
+                    scheduleTime: selectedClass.schedule_time || '00:00',
+                    scheduleDays: (selectedClass.schedule_days as string[]) || [],
+                    timezone: selectedClass.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    sessionDuration: selectedClass.session_duration || 30,
+                  }}
+                  userRole="teacher"
+                  onSessionEnd={() => handleTabChange('today')}
+                />
+              ) : selectedClass ? (
                 <Card>
                   <CardContent className="p-4 space-y-3">
                     <div className="flex items-center gap-2">
@@ -504,34 +518,7 @@ export default function TeacherCourseView() {
                         </p>
                       </div>
                     </div>
-                    {!showZoomIframe ? (
-                      <Button className="w-full" disabled={!selectedClass.meeting_link} onClick={() => { setShowZoomIframe(true); setIframeError(false); }}>
-                        <Video className="h-4 w-4 mr-2" /> Launch Class
-                      </Button>
-                    ) : (
-                      <div className="space-y-2">
-                        {iframeError ? (
-                          <div className="p-4 text-center border rounded-lg">
-                            <p className="text-sm text-muted-foreground mb-2">Unable to embed meeting</p>
-                            <Button variant="outline" onClick={() => window.open(selectedClass.meeting_link as string, '_blank')}>
-                              <ExternalLink className="h-4 w-4 mr-1" /> Open in Browser
-                            </Button>
-                          </div>
-                        ) : (
-                          <iframe src={selectedClass.meeting_link as string} className="w-full rounded-lg border border-border" style={{ height: '500px' }}
-                            sandbox="allow-same-origin allow-scripts allow-popups allow-forms" allow="camera; microphone; fullscreen; display-capture"
-                            onError={() => setIframeError(true)} title="Zoom Meeting" />
-                        )}
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm" className="flex-1" onClick={() => window.open(selectedClass.meeting_link as string, '_blank')}>
-                            <ExternalLink className="h-3.5 w-3.5 mr-1" /> Open in Browser
-                          </Button>
-                          <Button variant="destructive" size="sm" className="flex-1" onClick={() => setShowZoomIframe(false)}>
-                            <X className="h-3.5 w-3.5 mr-1" /> End Session
-                          </Button>
-                        </div>
-                      </div>
-                    )}
+                    <p className="text-xs text-muted-foreground">No meeting link configured yet.</p>
                   </CardContent>
                 </Card>
               ) : (
