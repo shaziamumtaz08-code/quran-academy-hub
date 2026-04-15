@@ -656,21 +656,24 @@ export default function QuizEngine() {
         </Dialog>
 
         {/* Edit Quiz Bank Dialog */}
-        <Dialog open={editOpen} onOpenChange={setEditOpen}>
-          <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+        <Dialog open={editOpen} onOpenChange={v => { if (!regenerating) setEditOpen(v); }}>
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Quiz Bank</DialogTitle>
-              <DialogDescription>Update quiz bank settings. Questions are not changed.</DialogDescription>
+              <DialogDescription>Update settings, question mix, or regenerate questions with new content.</DialogDescription>
             </DialogHeader>
             <div className="space-y-3">
-              <div>
-                <Label className="text-xs">Quiz Name *</Label>
-                <Input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <Label className="text-xs">Quiz Name *</Label>
+                  <Input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
+                </div>
+                <div className="col-span-2">
+                  <Label className="text-xs">Description</Label>
+                  <Input value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} />
+                </div>
               </div>
-              <div>
-                <Label className="text-xs">Description</Label>
-                <Input value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} />
-              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs">Language</Label>
@@ -694,29 +697,49 @@ export default function QuizEngine() {
                   </Select>
                 </div>
               </div>
-              <div>
-                <Label className="text-xs">Link to Course (optional)</Label>
-                <Select value={editForm.course_id} onValueChange={v => setEditForm({ ...editForm, course_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Select course..." /></SelectTrigger>
-                  <SelectContent>
-                    {courses.map((c: any) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Link to Course (optional)</Label>
+                  <Select value={editForm.course_id} onValueChange={v => setEditForm({ ...editForm, course_id: v })}>
+                    <SelectTrigger><SelectValue placeholder="Select course..." /></SelectTrigger>
+                    <SelectContent>
+                      {courses.map((c: any) => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Difficulty Level</Label>
+                  <Select value={editForm.difficulty_level} onValueChange={v => setEditForm({ ...editForm, difficulty_level: v })}>
+                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="easy">Easy</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="hard">Hard</SelectItem>
+                      <SelectItem value="mixed">Mixed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div>
-                <Label className="text-xs">Difficulty Level</Label>
-                <Select value={editForm.difficulty_level} onValueChange={v => setEditForm({ ...editForm, difficulty_level: v })}>
-                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="easy">Easy</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="hard">Hard</SelectItem>
-                    <SelectItem value="mixed">Mixed</SelectItem>
-                  </SelectContent>
-                </Select>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <Label className="text-xs">MCQ Count</Label>
+                  <Input type="number" min={0} value={editForm.mcq} onChange={e => setEditForm({ ...editForm, mcq: +e.target.value })} />
+                </div>
+                <div>
+                  <Label className="text-xs">True/False Count</Label>
+                  <Input type="number" min={0} value={editForm.tf} onChange={e => setEditForm({ ...editForm, tf: +e.target.value })} />
+                </div>
+                <div>
+                  <Label className="text-xs">Fill-in-Blank Count</Label>
+                  <Input type="number" min={0} value={editForm.fib} onChange={e => setEditForm({ ...editForm, fib: +e.target.value })} />
+                </div>
               </div>
+              <p className="text-[10px] text-muted-foreground">Total questions per attempt: {editForm.mcq + editForm.tf + editForm.fib}</p>
+
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <Label className="text-xs">Time Limit (min)</Label>
@@ -732,11 +755,89 @@ export default function QuizEngine() {
                   <Input type="number" min={0} max={100} value={editForm.passing_percentage} onChange={e => setEditForm({ ...editForm, passing_percentage: +e.target.value })} />
                 </div>
               </div>
+
+              <div className="border-t pt-3 mt-3">
+                <h4 className="text-sm font-medium mb-2">Regenerate Questions (optional)</h4>
+                <p className="text-[10px] text-muted-foreground mb-2">Upload new source files or modify AI instructions to regenerate the question bank. Leave empty to keep existing questions.</p>
+                
+                <div>
+                  <Label className="text-xs">Upload Source Files (PDF/Text, up to 5)</Label>
+                  <Input type="file" accept=".pdf,.txt,.doc,.docx" multiple onChange={async (e) => {
+                    const files = e.target.files;
+                    if (!files) return;
+                    setExtractingPdf(true);
+                    try {
+                      const newFiles: { name: string; text: string }[] = [];
+                      for (let i = 0; i < Math.min(files.length, 5); i++) {
+                        const file = files[i];
+                        if (file.type === 'application/pdf') {
+                          const arrayBuffer = await file.arrayBuffer();
+                          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                          let text = '';
+                          for (let p = 1; p <= Math.min(pdf.numPages, 50); p++) {
+                            const page = await pdf.getPage(p);
+                            const content = await page.getTextContent();
+                            text += content.items.map((item: any) => item.str).join(' ') + '\n';
+                          }
+                          newFiles.push({ name: file.name, text: text.trim() });
+                        } else {
+                          const text = await file.text();
+                          newFiles.push({ name: file.name, text: text.trim() });
+                        }
+                      }
+                      const allFiles = [...editUploadedFiles, ...newFiles].slice(0, 5);
+                      setEditUploadedFiles(allFiles);
+                      setEditSourceContent(allFiles.map(f => `[SOURCE: ${f.name}]\n${f.text}`).join('\n\n'));
+                      toast({ title: `${newFiles.length} file(s) processed` });
+                    } catch (err: any) {
+                      toast({ title: 'File processing failed', description: err.message, variant: 'destructive' });
+                    } finally {
+                      setExtractingPdf(false);
+                      if (e.target) e.target.value = '';
+                    }
+                  }} className="text-xs" disabled={extractingPdf} />
+                  {extractingPdf && <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Extracting text...</p>}
+                </div>
+
+                {editUploadedFiles.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {editUploadedFiles.map((f, i) => (
+                      <Badge key={i} variant="secondary" className="gap-1 text-xs">
+                        <FileText className="h-3 w-3" /> {f.name}
+                        <button onClick={() => {
+                          const updated = editUploadedFiles.filter((_, idx) => idx !== i);
+                          setEditUploadedFiles(updated);
+                          setEditSourceContent(updated.length > 0 ? updated.map(fl => `[SOURCE: ${fl.name}]\n${fl.text}`).join('\n\n') : '');
+                        }} className="ml-0.5 hover:text-destructive"><X className="h-3 w-3" /></button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                <div className="mt-2">
+                  <Label className="text-xs">Or paste content directly</Label>
+                  <Textarea value={editSourceContent} onChange={e => setEditSourceContent(e.target.value)}
+                    className="min-h-[80px] text-xs" placeholder="Paste syllabus, notes, or content here..." />
+                </div>
+
+                <div className="mt-2">
+                  <Label className="text-xs">Custom AI Instructions (optional)</Label>
+                  <Textarea value={editForm.custom_instructions} onChange={e => setEditForm({ ...editForm, custom_instructions: e.target.value })}
+                    placeholder="e.g. Only create questions about Fiqh topics. Ignore watermarks. Focus on chapters 3-5. Do NOT ask about dates."
+                    className="min-h-[60px] text-xs" />
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Tell AI what to include, exclude, or focus on</p>
+                </div>
+              </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
-              <Button onClick={() => updateBank.mutate()} disabled={!editForm.name.trim()}>
-                Save Changes
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              <Button variant="outline" onClick={() => setEditOpen(false)} disabled={regenerating}>Cancel</Button>
+              <Button onClick={() => updateBank.mutate({ regenerate: false })} disabled={!editForm.name.trim() || regenerating}>
+                Save Settings Only
+              </Button>
+              <Button onClick={() => updateBank.mutate({ regenerate: true })}
+                disabled={!editForm.name.trim() || !editSourceContent.trim() || regenerating}
+                variant="default" className="gap-1.5">
+                {regenerating ? <><Loader2 className="h-4 w-4 animate-spin" /> Regenerating...</> : '🔄 Save & Regenerate Questions'}
               </Button>
             </DialogFooter>
           </DialogContent>
