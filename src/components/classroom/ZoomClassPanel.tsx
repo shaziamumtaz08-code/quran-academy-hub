@@ -25,6 +25,8 @@ interface ZoomClassPanelProps {
   classInfo: ClassInfo;
   userRole: 'teacher' | 'student';
   onSessionEnd?: () => void;
+  courseId?: string;
+  classId?: string;
 }
 
 // ─── Time helpers ───
