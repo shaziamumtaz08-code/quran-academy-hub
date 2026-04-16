@@ -9017,6 +9017,10 @@ export type Database = {
         Args: { _course_id: string; _student_id: string }
         Returns: boolean
       }
+      is_student_in_class: {
+        Args: { _class_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_ticket_participant: {
         Args: { _ticket_id: string; _user_id: string }
