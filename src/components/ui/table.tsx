@@ -2,20 +2,9 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement> & { wrapperClassName?: string; stickyScroll?: boolean }>(
-  ({ className, wrapperClassName, stickyScroll, ...props }, ref) => (
-    <div
-      className={cn(
-        "relative w-full overflow-auto max-h-[70vh] md:max-h-none",
-        stickyScroll && "[overflow:auto] [scrollbar-gutter:stable]",
-        wrapperClassName,
-      )}
-      style={stickyScroll ? {
-        overflowX: 'auto',
-        overflowY: 'auto',
-        // Make horizontal scrollbar always visible and sticky at viewport bottom
-      } : undefined}
-    >
+const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement> & { wrapperClassName?: string }>(
+  ({ className, wrapperClassName, ...props }, ref) => (
+    <div className={cn("relative w-full overflow-auto max-h-[70vh] md:max-h-none", wrapperClassName)}>
       <table ref={ref} className={cn("w-full caption-bottom text-sm", className)} {...props} />
     </div>
   ),
