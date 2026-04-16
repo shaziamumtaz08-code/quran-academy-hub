@@ -513,6 +513,7 @@ export default function Teachers() {
                   >
                     <span className="flex items-center justify-center">Students {getSortIcon('student_count')}</span>
                   </TableHead>
+                  <TableHead>Division(s)</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
