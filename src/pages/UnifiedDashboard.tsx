@@ -372,15 +372,20 @@ export default function UnifiedDashboard() {
         });
       });
 
-      // Check pending tasks
+      // Check pending tasks — only show items due today or later, or created in last 7 days
+      const sevenDaysAgo = format(new Date(Date.now() - 7 * 86400000), 'yyyy-MM-dd');
       const { data: tasks } = await supabase.from('tickets')
-        .select('id, subject, due_date')
+        .select('id, subject, due_date, created_at')
         .eq('assignee_id', user!.id)
         .in('status', ['open', 'in_progress'])
         .order('due_date', { ascending: true })
-        .limit(5);
+        .limit(10);
 
       (tasks || []).forEach(t => {
+        const dueDate = t.due_date ? new Date(t.due_date) : null;
+        const createdAt = new Date(t.created_at);
+        const isRelevant = (dueDate && dueDate >= new Date(today)) || createdAt >= new Date(sevenDaysAgo);
+        if (!isRelevant) return;
         items.push({
           id: t.id,
           label: t.subject,
