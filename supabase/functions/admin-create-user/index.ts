@@ -381,10 +381,10 @@ serve(async (req) => {
         }, requestOrigin);
       }
 
-      const { error: roleErr } = await adminClient.from("user_roles").insert({
+      const { error: roleErr } = await adminClient.from("user_roles").upsert({
         user_id: existingUserId,
         role,
-      });
+      }, { onConflict: 'user_id,role' });
 
       if (roleErr) {
         console.error("Error adding role:", roleErr.message);
@@ -439,10 +439,10 @@ serve(async (req) => {
           return json(500, { error: "Failed to create sibling profile" }, requestOrigin);
         }
         
-        const { error: roleErr } = await adminClient.from("user_roles").insert({
+        const { error: roleErr } = await adminClient.from("user_roles").upsert({
           user_id: newProfileId,
           role,
-        });
+        }, { onConflict: 'user_id,role' });
 
         if (roleErr) {
           console.error("Error adding role to sibling profile:", roleErr.message);
@@ -545,10 +545,10 @@ serve(async (req) => {
             }, requestOrigin);
           }
 
-          const { error: roleErr } = await adminClient.from("user_roles").insert({
+          const { error: roleErr } = await adminClient.from("user_roles").upsert({
             user_id: authUser.id,
             role,
-          });
+          }, { onConflict: 'user_id,role' });
 
           if (roleErr) {
             console.error("Error adding role to existing auth user:", roleErr.message);
@@ -601,10 +601,10 @@ serve(async (req) => {
       return json(500, { error: "User created but profile setup failed" }, requestOrigin);
     }
 
-    const { error: roleErr } = await adminClient.from("user_roles").insert({
+    const { error: roleErr } = await adminClient.from("user_roles").upsert({
       user_id: newUserId,
       role,
-    });
+    }, { onConflict: 'user_id,role' });
 
     if (roleErr) {
       console.error("Error adding role:", roleErr.message);
