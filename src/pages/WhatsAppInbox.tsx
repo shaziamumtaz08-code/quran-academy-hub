@@ -554,6 +554,9 @@ function WhatsAppInner() {
           />
         );
       })()}
+    </div>
+  );
+}
 
 export default function WhatsAppInbox() {
   return (
@@ -564,3 +567,4 @@ export default function WhatsAppInbox() {
     </DashboardLayout>
   );
 }
+
