@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,6 +13,8 @@ import {
   Tooltip, TooltipContent, TooltipTrigger, TooltipProvider,
 } from '@/components/ui/tooltip';
 import ClassroomTeachingPanel from '@/components/classroom/ClassroomTeachingPanel';
+import { Tldraw, createTLStore, defaultShapeUtils } from 'tldraw';
+import 'tldraw/tldraw.css';
 
 /* ─── TYPES ─── */
 type Mode = 'standard' | 'conversation' | 'whiteboard';
@@ -170,7 +172,7 @@ export default function VirtualClassroom() {
     if (!recording) {
       const { data, error } = await supabase
         .from('session_recordings')
-        .insert({ session_id: sessionId, status: 'recording', recording_start: new Date().toISOString(), recording_type: 'classroom' })
+        .insert({ virtual_session_id: sessionId, status: 'recording', recording_start: new Date().toISOString(), recording_type: 'classroom' } as any)
         .select('id')
         .single();
       if (!error && data) {
@@ -272,7 +274,19 @@ export default function VirtualClassroom() {
               className="relative transition-all duration-[250ms] ease-in-out"
               style={{ width: mode === 'whiteboard' ? '100%' : '65%' }}
             >
-              <div className="absolute inset-0 bg-white">
+              {/* Tldraw boards — each preserved via display toggle */}
+              {boards.map((_, i) => (
+                <div
+                  key={i}
+                  className="absolute inset-0"
+                  style={{ display: activeBoard === i ? 'block' : 'none', zIndex: 1 }}
+                >
+                  <Tldraw hideUi inferDarkMode={false} />
+                </div>
+              ))}
+
+              {/* Dot grid fallback behind tldraw */}
+              <div className="absolute inset-0 bg-white" style={{ zIndex: 0 }}>
                 <svg className="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg">
                   <defs>
                     <pattern id="dotGrid" width="20" height="20" patternUnits="userSpaceOnUse">
@@ -281,9 +295,6 @@ export default function VirtualClassroom() {
                   </defs>
                   <rect width="100%" height="100%" fill="url(#dotGrid)" />
                 </svg>
-                <span className="absolute inset-0 flex items-center justify-center text-[#9ca3af] text-[13px] select-none pointer-events-none">
-                  Whiteboard
-                </span>
               </div>
 
               {/* Floating Toolbar */}

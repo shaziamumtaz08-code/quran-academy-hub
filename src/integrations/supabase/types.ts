@@ -6471,8 +6471,9 @@ export type Database = {
           recording_end: string | null
           recording_start: string | null
           recording_type: string
-          session_id: string
+          session_id: string | null
           status: string
+          virtual_session_id: string | null
         }
         Insert: {
           created_at?: string
@@ -6485,8 +6486,9 @@ export type Database = {
           recording_end?: string | null
           recording_start?: string | null
           recording_type?: string
-          session_id: string
+          session_id?: string | null
           status?: string
+          virtual_session_id?: string | null
         }
         Update: {
           created_at?: string
@@ -6499,8 +6501,9 @@ export type Database = {
           recording_end?: string | null
           recording_start?: string | null
           recording_type?: string
-          session_id?: string
+          session_id?: string | null
           status?: string
+          virtual_session_id?: string | null
         }
         Relationships: [
           {
