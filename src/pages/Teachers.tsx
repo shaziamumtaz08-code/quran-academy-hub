@@ -348,6 +348,11 @@ export default function Teachers() {
           <div>
             <h1 className="font-serif text-3xl font-bold text-foreground">Teachers</h1>
             <p className="text-muted-foreground mt-1">Manage your academy's teachers</p>
+            {activeDivision && (
+              <Badge variant="outline" className="mt-1 text-xs">
+                Filtered: {activeDivision.name}
+              </Badge>
+            )}
           </div>
           <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) resetForm(); else setIsDialogOpen(true); }}>
             <div className="flex gap-2">
