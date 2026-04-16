@@ -22,6 +22,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDivision } from '@/contexts/DivisionContext';
 import { StudentCard } from '@/components/students/StudentCard';
 import { StudentDetailDrawer } from '@/components/students/StudentDetailDrawer';
+import { useDivisionMembership, getDivisionShortName, getDivisionBadgeClass } from '@/hooks/useDivisionMembership';
 import { StudentHistoryDialog } from '@/components/students/StudentHistoryDialog';
 import { StudentScheduleDialog } from '@/components/students/StudentScheduleDialog';
 import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
