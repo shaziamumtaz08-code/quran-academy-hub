@@ -105,11 +105,12 @@ Deno.serve(async (req) => {
       });
 
       if (authErr) {
-        if (authErr.message?.includes("already been registered")) {
-          // Auth exists — get real auth UUID
-          const { data: existingAuthData } = await supabaseAdmin.auth.admin.getUserByEmail(email);
-          if (existingAuthData?.user) {
-            const authUid = existingAuthData.user.id;
+        if (authErr.message?.includes("already been registered") || authErr.message?.includes("already exists")) {
+          // Auth exists — find via listUsers (getUserByEmail not available in this SDK version)
+          const { data: list } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+          const existingAuth = list?.users?.find((u: any) => (u.email || "").toLowerCase() === email);
+          if (existingAuth) {
+            const authUid = existingAuth.id;
             if (authUid !== profileId) {
               console.log(`Syncing profile ${profileId} → auth uid ${authUid}`);
               await supabaseAdmin.from("profiles").update({ id: authUid }).eq("id", profileId);
