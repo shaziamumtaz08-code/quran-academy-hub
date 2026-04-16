@@ -1257,6 +1257,7 @@ export default function UserManagement() {
                           </div>
                         </TableHead>
                         <TableHead>Location</TableHead>
+                        <TableHead>Division(s)</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
