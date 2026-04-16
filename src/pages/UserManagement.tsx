@@ -705,8 +705,11 @@ export default function UserManagement() {
       const matchesCity = !filterCity || user.city === filterCity;
       const matchesRole = !filterRole || user.roles?.includes(filterRole as AppRole);
       const matchesDivision = !filterDivision || (divMembershipMap?.get(user.id) || []).some(d => d.divisionId === filterDivision);
+      // Staff mode: exclude users whose ONLY roles are teaching roles (teacher/student/parent).
+      // Keep users that have at least one non-teaching role (admin, super_admin, examiner, moderator, etc.).
+      const matchesStaffMode = !staffMode || (user.roles && user.roles.some(r => !TEACHING_ROLES.includes(r)));
       
-      return matchesArchive && matchesSearch && matchesCountry && matchesCity && matchesRole && matchesDivision;
+      return matchesArchive && matchesSearch && matchesCountry && matchesCity && matchesRole && matchesDivision && matchesStaffMode;
     })
     ?.sort((a, b) => {
       let comparison = 0;
