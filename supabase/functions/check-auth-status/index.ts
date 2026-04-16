@@ -32,19 +32,21 @@ serve(async (req) => {
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
   if (!token) return json(401, { error: "Unauthorized" }, origin);
 
-  const authedClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: authHeader } },
-  });
+  const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-  const { data: { user: caller }, error: callerErr } = await authedClient.auth.getUser(token);
-  if (callerErr || !caller) return json(401, { error: "Invalid session" }, origin);
+  // Verify caller via getClaims (works with new signing-keys system)
+  const { data: claimsData, error: claimsErr } = await adminClient.auth.getClaims(token);
+  if (claimsErr || !claimsData?.claims?.sub) {
+    console.error("getClaims failed:", claimsErr);
+    return json(401, { error: "Invalid session" }, origin);
+  }
+  const callerId = claimsData.claims.sub as string;
 
   // Check caller is admin/super_admin
-  const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
   const { data: callerRoles } = await adminClient
     .from("user_roles")
     .select("role")
-    .eq("user_id", caller.id)
+    .eq("user_id", callerId)
     .in("role", ["super_admin", "admin"]);
 
   if (!callerRoles || callerRoles.length === 0) {
