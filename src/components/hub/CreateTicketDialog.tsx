@@ -19,6 +19,14 @@ interface CreateTicketDialogProps {
   onOpenChange: (open: boolean) => void;
   defaultCategory?: string;
   onCreated?: () => void;
+  // Prefill props (used when converting a chat / WhatsApp message into a ticket)
+  prefillSubject?: string;
+  prefillDescription?: string;
+  prefillAttachmentUrl?: string;
+  prefillAssigneeId?: string;
+  sourceType?: string; // 'chat' | 'whatsapp' | etc
+  sourceId?: string;
+  onLinkSource?: (ticketId: string) => Promise<void> | void;
 }
 
 const CATEGORIES = [
