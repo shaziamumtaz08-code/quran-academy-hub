@@ -57,11 +57,12 @@ serve(async (req) => {
     return json(400, { error: "profile_ids array required" }, origin);
   }
 
-  const profileIds: string[] = body.profile_ids.slice(0, 500); // cap at 500
+  const profileIds: string[] = body.profile_ids.slice(0, 500);
 
   try {
-    // Fetch all auth users in pages
+    // Build auth email→id and id set from all auth users
     const authUserIds = new Set<string>();
+    const authEmailToId = new Map<string, string>();
     let page = 1;
     const perPage = 1000;
     
@@ -69,15 +70,38 @@ serve(async (req) => {
       const { data: { users }, error } = await adminClient.auth.admin.listUsers({ page, perPage });
       if (error) throw error;
       if (!users || users.length === 0) break;
-      users.forEach(u => authUserIds.add(u.id));
+      for (const u of users) {
+        authUserIds.add(u.id);
+        if (u.email) authEmailToId.set(u.email.toLowerCase(), u.id);
+      }
       if (users.length < perPage) break;
       page++;
     }
 
-    // Build result map
+    // Fetch emails for the requested profile IDs
+    const profileEmails = new Map<string, string>();
+    for (let i = 0; i < profileIds.length; i += 500) {
+      const batch = profileIds.slice(i, i + 500);
+      const { data: profiles } = await adminClient
+        .from("profiles")
+        .select("id, email")
+        .in("id", batch);
+      if (profiles) {
+        for (const p of profiles) {
+          if (p.email) profileEmails.set(p.id, p.email.toLowerCase());
+        }
+      }
+    }
+
+    // Build result: profile has auth if ID matches OR email matches
     const result: Record<string, boolean> = {};
     for (const pid of profileIds) {
-      result[pid] = authUserIds.has(pid);
+      if (authUserIds.has(pid)) {
+        result[pid] = true;
+      } else {
+        const email = profileEmails.get(pid);
+        result[pid] = email ? authEmailToId.has(email) : false;
+      }
     }
 
     return json(200, result, origin);
