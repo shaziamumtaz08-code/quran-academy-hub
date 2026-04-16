@@ -781,35 +781,34 @@ export default function UnifiedDashboard() {
         <p className="text-sm text-muted-foreground mt-1">Your unified dashboard across all divisions</p>
       </div>
 
-      {/* Division Toggle */}
-      <div className="overflow-x-auto pb-1">
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant={activeDivision === 'all' ? 'default' : 'outline'}
-            onClick={() => handleDivisionChange('all')}
-            className="shrink-0"
-          >
-            All
-          </Button>
-          {effectiveDivisions.map(div => (
-            <Button
-              key={div.id}
-              size="sm"
-              variant={activeDivision === div.id ? 'default' : 'outline'}
-              onClick={() => handleDivisionChange(div.id)}
-              className="shrink-0 gap-1.5"
-            >
-              {div.name}
-              {div.roles?.length > 0 && (
-                <Badge variant="secondary" className="text-[9px] px-1 py-0">
-                  {div.roles[0]}
-                </Badge>
-              )}
-            </Button>
-          ))}
+      {/* Division Toggle — only show if user has multiple divisions */}
+      {showTabs && (
+        <div className="overflow-x-auto pb-1">
+          <div className="flex gap-2">
+            {showAllTab && (
+              <Button
+                size="sm"
+                variant={activeDivision === 'all' ? 'default' : 'outline'}
+                onClick={() => handleDivisionChange('all')}
+                className="shrink-0"
+              >
+                All
+              </Button>
+            )}
+            {visibleDivisions.map(div => (
+              <Button
+                key={div.id}
+                size="sm"
+                variant={activeDivision === div.id ? 'default' : 'outline'}
+                onClick={() => handleDivisionChange(div.id)}
+                className="shrink-0 gap-1.5"
+              >
+                {div.name}
+              </Button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Role-ordered sections */}
       {sectionOrder.map(section => sectionRenderers[section]())}
