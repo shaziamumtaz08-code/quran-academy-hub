@@ -832,6 +832,48 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
                         </DropdownMenu>
                       </TableCell>
                     </TableRow>
+                    {/* Enrollment summary card */}
+                    {(sub.status === 'enrolled' || enrollmentSummaries[sub.id]) && enrollmentSummaries[sub.id] && (
+                      <TableRow className="bg-emerald-50/50 dark:bg-emerald-950/20 hover:bg-emerald-50/50">
+                        <TableCell colSpan={12} className="py-2 px-4">
+                          <div className="flex flex-wrap items-center gap-3 text-xs">
+                            <span className="text-emerald-600 font-medium flex items-center gap-1">
+                              <CheckCircle2 className="h-3 w-3" /> Profile created
+                            </span>
+                            <span className={cn("font-medium flex items-center gap-1",
+                              enrollmentSummaries[sub.id].auth_created ? "text-emerald-600" : "text-amber-600")}>
+                              {enrollmentSummaries[sub.id].auth_created ? (
+                                <><CheckCircle2 className="h-3 w-3" /> Login ready</>
+                              ) : (
+                                <><CheckCircle2 className="h-3 w-3" /> Login exists</>
+                              )}
+                            </span>
+                            <span className={cn("font-medium flex items-center gap-1",
+                              enrollmentSummaries[sub.id].class_assigned ? "text-emerald-600" : "text-muted-foreground")}>
+                              {enrollmentSummaries[sub.id].class_assigned ? (
+                                <><CheckCircle2 className="h-3 w-3" /> Class: {enrollmentSummaries[sub.id].class_assigned}</>
+                              ) : (
+                                <><XCircle className="h-3 w-3" /> No class</>
+                              )}
+                            </span>
+                            <span className={cn("font-medium flex items-center gap-1",
+                              enrollmentSummaries[sub.id].chat_joined ? "text-emerald-600" : "text-muted-foreground")}>
+                              {enrollmentSummaries[sub.id].chat_joined ? (
+                                <><CheckCircle2 className="h-3 w-3" /> Chat joined</>
+                              ) : (
+                                <><XCircle className="h-3 w-3" /> No chat</>
+                              )}
+                            </span>
+                            {enrollmentSummaries[sub.id].temp_password && (
+                              <span className="text-muted-foreground ml-2">
+                                Password: <code className="bg-muted px-1 py-0.5 rounded text-[10px]">{enrollmentSummaries[sub.id].temp_password}</code>
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </React.Fragment>
                   );
                 })}
               </TableBody>
