@@ -21,12 +21,17 @@ interface ProfileWithAuth {
 }
 
 export function AuthAuditTab() {
-  const { session } = useAuth();
+  const { session, profile } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<'all' | 'missing'>('missing');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkProgress, setBulkProgress] = useState<{ current: number; total: number; created: number; skipped: number; failed: number } | null>(null);
+  const [syncRunning, setSyncRunning] = useState(false);
+  const [syncResult, setSyncResult] = useState<any>(null);
+  const [syncDialogOpen, setSyncDialogOpen] = useState(false);
+
+  const isSuperAdmin = profile?.role === 'super_admin';
 
   // Scan query
   const { data: scanResults, isLoading: isScanning, refetch: runScan, isFetched } = useQuery({
