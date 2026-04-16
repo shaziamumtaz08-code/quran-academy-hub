@@ -1368,6 +1368,21 @@ export default function UserManagement() {
                               <span className="text-muted-foreground text-sm">—</span>
                             )}
                           </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {(() => {
+                                const memberships = divMembershipMap?.get(user.id) || [];
+                                if (memberships.length === 0) {
+                                  return <Badge variant="outline" className="text-[10px] text-muted-foreground">Unassigned</Badge>;
+                                }
+                                return memberships.map(m => (
+                                  <Badge key={m.divisionId} variant="outline" className={`text-[10px] ${getDivisionBadgeClass(m.modelType)}`}>
+                                    {getDivisionShortName(m.divisionName)}
+                                  </Badge>
+                                ));
+                              })()}
+                            </div>
+                          </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1">
                               <Button
