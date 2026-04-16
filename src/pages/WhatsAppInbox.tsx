@@ -21,6 +21,7 @@ import {
   CommThemeProvider, CommThemeToggle, useCommTheme,
   colorFromName, initialsFromName, formatCommTime,
 } from "@/components/comm/CommThemeProvider";
+import { CreateTicketDialog } from "@/components/hub/CreateTicketDialog";
 
 type WhatsAppContact = {
   id: string;
