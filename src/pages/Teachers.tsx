@@ -59,17 +59,34 @@ export default function Teachers() {
 
   // Fetch teachers from Supabase with assigned students and schedules
   const { data: teachers = [], isLoading } = useQuery({
-    queryKey: ['teachers-list-full'],
+    queryKey: ['teachers-list-full', activeDivisionId],
     queryFn: async () => {
-      // Get all users with teacher role
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'teacher');
+      let teacherIds: string[];
 
-      if (roleError) throw roleError;
+      if (activeDivisionId) {
+        // Filter teachers by division: from assignments (1:1) or course_class_staff (group)
+        const [assignRes, staffRes] = await Promise.all([
+          supabase.from('student_teacher_assignments')
+            .select('teacher_id')
+            .eq('division_id', activeDivisionId)
+            .eq('status', 'active'),
+          supabase.from('course_class_staff')
+            .select('user_id, class:course_classes!inner(courses:courses!inner(division_id))')
+            .eq('class.courses.division_id', activeDivisionId),
+        ]);
 
-      const teacherIds = roleData?.map(r => r.user_id) || [];
+        const fromAssign = new Set((assignRes.data || []).map(a => a.teacher_id));
+        const fromStaff = new Set((staffRes.data || []).map((s: any) => s.user_id));
+        teacherIds = [...new Set([...fromAssign, ...fromStaff])];
+      } else {
+        const { data: roleData, error: roleError } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', 'teacher');
+        if (roleError) throw roleError;
+        teacherIds = roleData?.map(r => r.user_id) || [];
+      }
+
       if (teacherIds.length === 0) return [];
 
       // Get profiles for those teachers with location
@@ -81,8 +98,8 @@ export default function Teachers() {
 
       if (profileError) throw profileError;
 
-      // Get all student assignments with student details
-      const { data: assignments, error: assignError } = await supabase
+      // Get student assignments — filter by division if active
+      let assignQuery = supabase
         .from('student_teacher_assignments')
         .select(`
           teacher_id,
@@ -92,6 +109,11 @@ export default function Teachers() {
         .in('teacher_id', teacherIds)
         .eq('status', 'active');
 
+      if (activeDivisionId) {
+        assignQuery = assignQuery.eq('division_id', activeDivisionId);
+      }
+
+      const { data: assignments, error: assignError } = await assignQuery;
       if (assignError) throw assignError;
 
       // Group students by teacher
