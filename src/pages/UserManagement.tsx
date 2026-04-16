@@ -143,6 +143,9 @@ export default function UserManagement() {
   const { isSuperAdmin, hasPermission, user: currentUser, session } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const location = useLocation();
+  const staffMode = new URLSearchParams(location.search).get('mode') === 'staff';
+  const TEACHING_ROLES: AppRole[] = ['teacher', 'student', 'parent'];
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserWithRoles | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
