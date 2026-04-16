@@ -41,6 +41,8 @@ type SortOrder = 'asc' | 'desc';
 export default function Teachers() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { activeDivision } = useDivision();
+  const activeDivisionId = activeDivision?.id || null;
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
