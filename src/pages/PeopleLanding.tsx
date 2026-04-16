@@ -39,20 +39,87 @@ export default function PeopleLanding() {
     },
   });
 
+  const divisionId = activeDivision?.id;
   const { data: counts, isLoading } = useQuery({
-    queryKey: ['people-landing-counts'],
+    queryKey: ['people-landing-counts', divisionId],
+    enabled: !!divisionId,
     queryFn: async () => {
-      const [teacherRoles, studentRoles, allProfiles, openLeads] = await Promise.all([
-        supabase.from('user_roles').select('id', { count: 'exact', head: true }).eq('role', 'teacher'),
-        supabase.from('user_roles').select('id', { count: 'exact', head: true }).eq('role', 'student'),
-        supabase.from('profiles').select('id', { count: 'exact', head: true }).is('archived_at', null),
-        supabase.from('leads').select('id', { count: 'exact', head: true }).neq('status', 'closed'),
-      ]);
+      // Collect user IDs that belong to this division via 1:1 assignments and group classes
+      const teacherIds = new Set<string>();
+      const studentIds = new Set<string>();
+
+      // 1:1 assignments
+      const { data: sta } = await supabase
+        .from('student_teacher_assignments')
+        .select('student_id, teacher_id')
+        .eq('status', 'active')
+        .eq('division_id', divisionId!);
+      (sta || []).forEach(a => {
+        if (a.teacher_id) teacherIds.add(a.teacher_id);
+        if (a.student_id) studentIds.add(a.student_id);
+      });
+
+      // Group: get courses in this division
+      const { data: divCourses } = await supabase
+        .from('courses')
+        .select('id')
+        .eq('division_id', divisionId!);
+      const courseIds = (divCourses || []).map(c => c.id);
+
+      if (courseIds.length > 0) {
+        const { data: classes } = await supabase
+          .from('course_classes')
+          .select('id')
+          .in('course_id', courseIds);
+        const classIds = (classes || []).map(c => c.id);
+
+        if (classIds.length > 0) {
+          const [{ data: ccs }, { data: ccst }] = await Promise.all([
+            supabase.from('course_class_students').select('student_id').in('class_id', classIds).eq('status', 'active'),
+            supabase.from('course_class_staff').select('user_id, staff_role').in('class_id', classIds),
+          ]);
+          (ccs || []).forEach(r => r.student_id && studentIds.add(r.student_id));
+          (ccst || []).forEach((r: any) => {
+            if (r.user_id && (r.staff_role === 'teacher' || !r.staff_role)) teacherIds.add(r.user_id);
+          });
+        }
+      }
+
+      // Filter to actual role holders
+      const allUserIds = Array.from(new Set([...teacherIds, ...studentIds]));
+      let teacherCount = 0;
+      let studentCount = 0;
+      let usersCount = 0;
+      if (allUserIds.length > 0) {
+        const { data: roles } = await supabase
+          .from('user_roles')
+          .select('user_id, role')
+          .in('user_id', allUserIds);
+        const teacherSet = new Set((roles || []).filter(r => r.role === 'teacher').map(r => r.user_id));
+        const studentSet = new Set((roles || []).filter(r => r.role === 'student').map(r => r.user_id));
+        teacherCount = [...teacherIds].filter(id => teacherSet.has(id)).length;
+        studentCount = [...studentIds].filter(id => studentSet.has(id)).length;
+
+        // All Users = unique non-archived profiles in this division
+        const { count: profCount } = await supabase
+          .from('profiles')
+          .select('id', { count: 'exact', head: true })
+          .in('id', allUserIds)
+          .is('archived_at', null);
+        usersCount = profCount || 0;
+      }
+
+      const { count: leadsCount } = await supabase
+        .from('leads')
+        .select('id', { count: 'exact', head: true })
+        .eq('division_id', divisionId!)
+        .neq('status', 'closed');
+
       return {
-        teachers: teacherRoles.count || 0,
-        students: studentRoles.count || 0,
-        users: allProfiles.count || 0,
-        leads: openLeads.count || 0,
+        teachers: teacherCount,
+        students: studentCount,
+        users: usersCount,
+        leads: leadsCount || 0,
       };
     },
   });
