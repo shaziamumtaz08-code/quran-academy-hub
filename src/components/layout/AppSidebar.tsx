@@ -22,17 +22,18 @@ interface SidebarNavItem {
   group?: string;
 }
 
-function getHomeSidebar(isOneToOne?: boolean): { title: string; subtitle: string; items: SidebarNavItem[] } {
+function getHomeSidebar(isOneToOne?: boolean, role?: string | null): { title: string; subtitle: string; items: SidebarNavItem[] } {
+  const isStudent = role === 'student';
   return {
     title: 'Academy',
     subtitle: 'Dashboard',
     items: [
       { label: 'Dashboard', href: '/dashboard' },
       { label: 'My Dashboard', href: '/my-dashboard' },
-      { label: 'Divisions', group: 'DIVISIONS' },
-      ...(!isOneToOne ? [{ label: 'Group Academy', href: '/teaching?section=courses' }] : []),
-      { label: '1-to-1', href: '/teaching?section=assignments' },
-      ...(!isOneToOne ? [{ label: 'Recorded', href: '/teaching?section=recorded' }] : []),
+      ...(!isStudent ? [{ label: 'Divisions', group: 'DIVISIONS' }] : []),
+      ...(!isOneToOne && !isStudent ? [{ label: 'Group Academy', href: '/teaching?section=courses' }] : []),
+      ...(!isStudent ? [{ label: '1-to-1', href: '/teaching?section=assignments' }] : []),
+      ...(!isOneToOne && !isStudent ? [{ label: 'Recorded', href: '/teaching?section=recorded' }] : []),
     ],
   };
 }
@@ -130,7 +131,9 @@ function getReportsSidebar(): { title: string; subtitle: string; items: SidebarN
 
 /* ─── Route to section mapping ─── */
 function getSidebarForRoute(pathname: string, isOneToOne?: boolean, role?: string | null) {
-  if (pathname.startsWith('/teaching') || pathname.startsWith('/courses') || pathname.startsWith('/assignments') || pathname.startsWith('/subjects') || pathname.startsWith('/attendance') || pathname.startsWith('/schedules') || pathname.startsWith('/monthly-planning')) {
+  const isStudent = role === 'student';
+  // Students should never see Teaching sidebar
+  if (!isStudent && (pathname.startsWith('/teaching') || pathname.startsWith('/courses') || pathname.startsWith('/assignments') || pathname.startsWith('/subjects') || pathname.startsWith('/attendance') || pathname.startsWith('/schedules') || pathname.startsWith('/monthly-planning'))) {
     return getTeachingSidebar(0, isOneToOne);
   }
   if (pathname.startsWith('/people') || pathname.startsWith('/students') || pathname.startsWith('/teachers') || pathname.startsWith('/user-management') || pathname.startsWith('/leads')) {
@@ -148,7 +151,7 @@ function getSidebarForRoute(pathname: string, isOneToOne?: boolean, role?: strin
   if (pathname.startsWith('/reports') || pathname.startsWith('/student-reports') || pathname.startsWith('/kpi') || pathname.startsWith('/report-card')) {
     return getReportsSidebar();
   }
-  return getHomeSidebar(isOneToOne);
+  return getHomeSidebar(isOneToOne, role);
 }
 
 /* ─── Course Detail sidebar ─── */
