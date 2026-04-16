@@ -147,6 +147,10 @@ export default function Teachers() {
     },
   });
 
+  // Division membership for badge display
+  const teacherUserIds = useMemo(() => teachers.map(t => t.id), [teachers]);
+  const { data: divMembershipMap } = useDivisionMembership(teacherUserIds, teachers.length > 0);
+
   // Get unique countries and cities for filters
   const uniqueCountries = useMemo(() => {
     const countries = new Set(teachers.map(t => t.country).filter(Boolean) as string[]);

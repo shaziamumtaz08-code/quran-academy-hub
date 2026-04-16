@@ -349,6 +349,10 @@ export default function Students() {
 
   const isLoading = isTeacher ? isLoadingTeacher : isLoadingOther;
 
+  // Division membership for badge display
+  const studentUserIds = useMemo(() => students.map(s => s.id), [students]);
+  const { data: divMembershipMap } = useDivisionMembership(studentUserIds, isAdmin && students.length > 0);
+
   // Get unique values for filters
   const uniqueCountries = useMemo(() => {
     const countries = new Set(students.map(s => s.country).filter(Boolean) as string[]);
