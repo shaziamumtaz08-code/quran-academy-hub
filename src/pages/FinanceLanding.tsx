@@ -51,8 +51,7 @@ export default function FinanceLanding() {
       if (divisionId) feesQuery = feesQuery.eq('division_id', divisionId);
       const feesRes = await feesQuery;
 
-      let salaryQuery = sb.from('salary_payouts').select('net_salary, status').eq('month', currentMonth);
-      if (divisionId) salaryQuery = salaryQuery.eq('division_id', divisionId);
+      let salaryQuery = sb.from('salary_payouts').select('net_salary, status, teacher_id').eq('salary_month', currentMonth);
       const salaryRes = await salaryQuery;
 
       let expQuery = sb.from('expenses').select('amount').gte('expense_date', `${currentMonth}-01`);
@@ -63,11 +62,21 @@ export default function FinanceLanding() {
       if (divisionId) advQuery = advQuery.eq('division_id', divisionId);
       const advancesRes = await advQuery;
 
+      // Filter salaries by division via user_context
+      let divisionTeacherIds: string[] = [];
+      if (divisionId) {
+        const { data: uctx } = await sb.from('user_context').select('user_id').eq('division_id', divisionId);
+        divisionTeacherIds = (uctx || []).map((u: any) => u.user_id);
+      }
+
       const fees = feesRes.data || [];
       const pending = fees.filter(f => f.status !== 'paid' && f.status !== 'waived')
         .reduce((s, f) => s + Math.max(0, Number(f.amount) - Number(f.amount_paid)), 0);
 
-      const salaries = salaryRes.data || [];
+      const allSalaries = salaryRes.data || [];
+      const salaries = divisionId
+        ? allSalaries.filter((s: any) => divisionTeacherIds.includes(s.teacher_id))
+        : allSalaries;
       const salaryDue = salaries.filter(s => s.status !== 'paid')
         .reduce((s, p) => s + Number(p.net_salary), 0);
 
