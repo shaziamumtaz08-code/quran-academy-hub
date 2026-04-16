@@ -596,6 +596,7 @@ export default function Students() {
                       <span className="flex items-center">Assigned Teacher {getSortIcon('teacher')}</span>
                     </TableHead>
                     <TableHead>Subject(s)</TableHead>
+                    {isAdmin && <TableHead>Division(s)</TableHead>}
                     {isAdmin && (
                       <>
                         <TableHead 
