@@ -19,6 +19,7 @@ import { Search, Mail, User, Loader2, AlertCircle, ArrowUpDown, ArrowUp, ArrowDo
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDivision } from '@/contexts/DivisionContext';
 import { StudentCard } from '@/components/students/StudentCard';
 import { StudentDetailDrawer } from '@/components/students/StudentDetailDrawer';
 import { StudentHistoryDialog } from '@/components/students/StudentHistoryDialog';
@@ -70,6 +71,8 @@ export default function Students() {
   const [drawerTeacher, setDrawerTeacher] = useState<{ id: string; full_name: string } | null>(null);
   const [createLoginStudent, setCreateLoginStudent] = useState<Student | null>(null);
   const { user, activeRole, session } = useAuth();
+  const { activeDivision, activeModelType } = useDivision();
+  const activeDivisionId = activeDivision?.id || null;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -161,7 +164,7 @@ export default function Students() {
 
   // Fetch students for admin/parent (original simple view)
   const { data: students = [], isLoading: isLoadingOther } = useQuery({
-    queryKey: ['students-list-full', user?.id, activeRole],
+    queryKey: ['students-list-full', user?.id, activeRole, activeDivisionId],
     queryFn: async () => {
       if (!user?.id) return [];
 
@@ -216,15 +219,35 @@ export default function Students() {
         })) as Student[];
       }
 
-      // For admins: show all students with location data and subjects
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'student');
+      // For admins: show students filtered by active division
+      let studentIds: string[] = [];
 
-      if (roleError) throw roleError;
+      if (activeDivisionId) {
+        // Filter by division: get students from assignments (1:1) or course enrollments (group)
+        const [assignRes, enrollRes] = await Promise.all([
+          supabase.from('student_teacher_assignments')
+            .select('student_id')
+            .eq('division_id', activeDivisionId)
+            .eq('status', 'active'),
+          supabase.from('course_enrollments')
+            .select('student_id, courses:courses!inner(division_id)')
+            .eq('courses.division_id', activeDivisionId)
+            .eq('status', 'active'),
+        ]);
 
-      const studentIds = roleData?.map(r => r.user_id) || [];
+        const fromAssign = new Set((assignRes.data || []).map(a => a.student_id));
+        const fromEnroll = new Set((enrollRes.data || []).map((e: any) => e.student_id));
+        studentIds = [...new Set([...fromAssign, ...fromEnroll])];
+      } else {
+        // No division filter: all students
+        const { data: roleData, error: roleError } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', 'student');
+        if (roleError) throw roleError;
+        studentIds = roleData?.map(r => r.user_id) || [];
+      }
+
       if (studentIds.length === 0) return [];
 
       const { data: profiles, error: profileError } = await supabase
@@ -235,6 +258,8 @@ export default function Students() {
 
       if (profileError) throw profileError;
 
+      const validIds = (profiles || []).map(p => p.id);
+
       const { data: assignments, error: assignError } = await supabase
         .from('student_teacher_assignments')
         .select(`
@@ -244,7 +269,7 @@ export default function Students() {
           teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name),
           subject:subjects(id, name)
         `)
-        .in('student_id', studentIds)
+        .in('student_id', validIds)
         .eq('status', 'active');
 
       if (assignError) throw assignError;
@@ -435,6 +460,11 @@ export default function Students() {
           <div>
             <h1 className="font-serif text-3xl font-bold text-foreground">Students</h1>
             <p className="text-muted-foreground mt-1">{getSubtitle()}</p>
+            {activeDivision && (
+              <Badge variant="outline" className="mt-1 text-xs">
+                Filtered: {activeDivision.name}
+              </Badge>
+            )}
           </div>
         </div>
 

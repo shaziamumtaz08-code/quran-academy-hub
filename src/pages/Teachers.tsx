@@ -7,11 +7,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Search, Mail, Users, MoreHorizontal, Pencil, Trash2, Loader2, AlertCircle, ChevronDown, ChevronRight, User, Clock, BookOpen, ArrowUpDown, ArrowUp, ArrowDown, RotateCcw, Download } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { useDivision } from '@/contexts/DivisionContext';
 import { ExportDialog } from '@/components/export/ExportDialog';
 import { TeacherDetailDrawer } from '@/components/teachers/TeacherDetailDrawer';
 import { EntityLink } from '@/components/shared/EntityLink';
@@ -40,6 +42,8 @@ type SortOrder = 'asc' | 'desc';
 export default function Teachers() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { activeDivision } = useDivision();
+  const activeDivisionId = activeDivision?.id || null;
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
@@ -56,17 +60,34 @@ export default function Teachers() {
 
   // Fetch teachers from Supabase with assigned students and schedules
   const { data: teachers = [], isLoading } = useQuery({
-    queryKey: ['teachers-list-full'],
+    queryKey: ['teachers-list-full', activeDivisionId],
     queryFn: async () => {
-      // Get all users with teacher role
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'teacher');
+      let teacherIds: string[];
 
-      if (roleError) throw roleError;
+      if (activeDivisionId) {
+        // Filter teachers by division: from assignments (1:1) or course_class_staff (group)
+        const [assignRes, staffRes] = await Promise.all([
+          supabase.from('student_teacher_assignments')
+            .select('teacher_id')
+            .eq('division_id', activeDivisionId)
+            .eq('status', 'active'),
+          supabase.from('course_class_staff')
+            .select('user_id, class:course_classes!inner(courses:courses!inner(division_id))')
+            .eq('class.courses.division_id', activeDivisionId),
+        ]);
 
-      const teacherIds = roleData?.map(r => r.user_id) || [];
+        const fromAssign = new Set((assignRes.data || []).map(a => a.teacher_id));
+        const fromStaff = new Set((staffRes.data || []).map((s: any) => s.user_id));
+        teacherIds = [...new Set([...fromAssign, ...fromStaff])];
+      } else {
+        const { data: roleData, error: roleError } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', 'teacher');
+        if (roleError) throw roleError;
+        teacherIds = roleData?.map(r => r.user_id) || [];
+      }
+
       if (teacherIds.length === 0) return [];
 
       // Get profiles for those teachers with location
@@ -78,8 +99,8 @@ export default function Teachers() {
 
       if (profileError) throw profileError;
 
-      // Get all student assignments with student details
-      const { data: assignments, error: assignError } = await supabase
+      // Get student assignments — filter by division if active
+      let assignQuery = supabase
         .from('student_teacher_assignments')
         .select(`
           teacher_id,
@@ -89,6 +110,11 @@ export default function Teachers() {
         .in('teacher_id', teacherIds)
         .eq('status', 'active');
 
+      if (activeDivisionId) {
+        assignQuery = assignQuery.eq('division_id', activeDivisionId);
+      }
+
+      const { data: assignments, error: assignError } = await assignQuery;
       if (assignError) throw assignError;
 
       // Group students by teacher
@@ -323,6 +349,11 @@ export default function Teachers() {
           <div>
             <h1 className="font-serif text-3xl font-bold text-foreground">Teachers</h1>
             <p className="text-muted-foreground mt-1">Manage your academy's teachers</p>
+            {activeDivision && (
+              <Badge variant="outline" className="mt-1 text-xs">
+                Filtered: {activeDivision.name}
+              </Badge>
+            )}
           </div>
           <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) resetForm(); else setIsDialogOpen(true); }}>
             <div className="flex gap-2">
