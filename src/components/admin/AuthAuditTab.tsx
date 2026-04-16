@@ -8,8 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Search, CheckCircle2, XCircle, ShieldAlert, RefreshCw } from 'lucide-react';
+import { Loader2, Search, CheckCircle2, XCircle, ShieldAlert, RefreshCw, Wrench } from 'lucide-react';
 
 interface ProfileWithAuth {
   id: string;
@@ -20,12 +21,17 @@ interface ProfileWithAuth {
 }
 
 export function AuthAuditTab() {
-  const { session } = useAuth();
+  const { session, profile } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<'all' | 'missing'>('missing');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkProgress, setBulkProgress] = useState<{ current: number; total: number; created: number; skipped: number; failed: number } | null>(null);
+  const [syncRunning, setSyncRunning] = useState(false);
+  const [syncResult, setSyncResult] = useState<any>(null);
+  const [syncDialogOpen, setSyncDialogOpen] = useState(false);
+
+  const isSuperAdmin = profile?.role === 'super_admin';
 
   // Scan query
   const { data: scanResults, isLoading: isScanning, refetch: runScan, isFetched } = useQuery({
@@ -143,6 +149,29 @@ export function AuthAuditTab() {
     runScan();
   };
 
+  const handleProfileSync = async () => {
+    setSyncRunning(true);
+    setSyncDialogOpen(true);
+    setSyncResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('fix-profile-auth-sync', {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      if (error) throw error;
+      setSyncResult(data);
+      toast({
+        title: `Profile Sync Complete`,
+        description: `${data.fixed}/${data.total_mismatched} profiles fixed`,
+      });
+      runScan();
+    } catch (e: any) {
+      setSyncResult({ error: e.message });
+      toast({ title: 'Sync failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setSyncRunning(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Section 1: Scan */}
@@ -162,6 +191,21 @@ export function AuthAuditTab() {
                 <><Search className="h-4 w-4 mr-2" /> Scan for Missing Auth Accounts</>
               )}
             </Button>
+
+            {isSuperAdmin && (
+              <Button
+                variant="outline"
+                className="border-orange-400 text-orange-600 hover:bg-orange-50"
+                onClick={handleProfileSync}
+                disabled={syncRunning}
+              >
+                {syncRunning ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Syncing...</>
+                ) : (
+                  <><Wrench className="h-4 w-4 mr-2" /> Fix Profile Sync</>
+                )}
+              </Button>
+            )}
 
             {isFetched && (
               <>
@@ -293,6 +337,63 @@ export function AuthAuditTab() {
           </CardContent>
         </Card>
       )}
+
+      {/* Sync Results Dialog */}
+      <Dialog open={syncDialogOpen} onOpenChange={setSyncDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Profile Auth Sync Results</DialogTitle>
+          </DialogHeader>
+          {syncRunning && !syncResult && (
+            <div className="flex items-center gap-3 py-8 justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
+              <span>Scanning and fixing mismatched profiles...</span>
+            </div>
+          )}
+          {syncResult?.error && (
+            <div className="text-destructive p-4 rounded bg-destructive/10">{syncResult.error}</div>
+          )}
+          {syncResult && !syncResult.error && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-3">
+                <Card><CardContent className="pt-4 text-center"><div className="text-2xl font-bold">{syncResult.total_mismatched}</div><div className="text-xs text-muted-foreground">Mismatched</div></CardContent></Card>
+                <Card><CardContent className="pt-4 text-center"><div className="text-2xl font-bold text-emerald-600">{syncResult.fixed}</div><div className="text-xs text-muted-foreground">Fixed</div></CardContent></Card>
+                <Card><CardContent className="pt-4 text-center"><div className="text-2xl font-bold text-destructive">{syncResult.failed?.length || 0}</div><div className="text-xs text-muted-foreground">Failed</div></CardContent></Card>
+              </div>
+              {syncResult.details?.length > 0 && (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {syncResult.details.map((d: any, i: number) => (
+                      <TableRow key={i}>
+                        <TableCell className="text-sm">{d.email}</TableCell>
+                        <TableCell>
+                          {d.error ? (
+                            <Badge variant="destructive">{d.error}</Badge>
+                          ) : (
+                            <Badge className="bg-emerald-100 text-emerald-700"><CheckCircle2 className="h-3 w-3 mr-1" /> Synced</Badge>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+              {syncResult.total_mismatched === 0 && (
+                <div className="text-center py-6 text-muted-foreground">
+                  <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-emerald-500" />
+                  All profiles are already in sync!
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
