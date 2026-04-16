@@ -460,6 +460,11 @@ export default function Students() {
           <div>
             <h1 className="font-serif text-3xl font-bold text-foreground">Students</h1>
             <p className="text-muted-foreground mt-1">{getSubtitle()}</p>
+            {activeDivision && (
+              <Badge variant="outline" className="mt-1 text-xs">
+                Filtered: {activeDivision.name}
+              </Badge>
+            )}
           </div>
         </div>
 
