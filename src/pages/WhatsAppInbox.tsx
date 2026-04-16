@@ -69,6 +69,7 @@ function WhatsAppInner() {
   const [showForwardDialog, setShowForwardDialog] = useState(false);
   const [forwardingMessage, setForwardingMessage] = useState<WhatsAppMessage | null>(null);
   const [forwardTarget, setForwardTarget] = useState<"task" | "group" | "user">("task");
+  const [taskFromMsg, setTaskFromMsg] = useState<WhatsAppMessage | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Contacts
