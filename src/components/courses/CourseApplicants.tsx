@@ -100,6 +100,7 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
   const [aiFilterLabel, setAiFilterLabel] = useState('');
   const [aiFilterLoading, setAiFilterLoading] = useState(false);
   const [enrollmentSummaries, setEnrollmentSummaries] = useState<Record<string, EnrollmentResult>>({});
+  const [activateApplicant, setActivateApplicant] = useState<{ id: string; full_name: string; email: string } | null>(null);
   const headerCheckboxRef = useRef<HTMLButtonElement>(null);
 
   const { data: submissions = [], isLoading } = useQuery({
