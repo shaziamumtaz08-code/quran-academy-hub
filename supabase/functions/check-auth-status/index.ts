@@ -53,7 +53,8 @@ serve(async (req) => {
     .in("role", ["super_admin", "admin"]);
 
   if (!callerRoles || callerRoles.length === 0) {
-    return json(403, { error: "Forbidden" }, origin);
+    // Non-admin caller: return empty result instead of error to avoid breaking UI
+    return json(200, {}, origin);
   }
 
   // Parse body
