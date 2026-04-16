@@ -337,7 +337,6 @@ export function AuthAuditTab() {
           </CardContent>
         </Card>
       )}
-    </div>
 
       {/* Sync Results Dialog */}
       <Dialog open={syncDialogOpen} onOpenChange={setSyncDialogOpen}>
