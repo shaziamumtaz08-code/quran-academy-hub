@@ -77,11 +77,17 @@ function getFinanceSidebar(isOneToOne?: boolean): { title: string; subtitle: str
     items: [
       { label: 'Overview', href: '/finance' },
       { label: 'Fee Plans', href: '/finance?section=fee-setup' },
-      { label: 'Payments', href: '/payments' },
+      { label: 'Payments', href: '/finance?section=payments' },
       ...(isOneToOne ? [
+        { label: 'Salaries', href: '/finance?section=salaries' },
+      ] : []),
+      ...(!isOneToOne ? [
         { label: 'Teacher Payouts', href: '/finance?section=teacher-payouts' },
       ] : []),
-      { label: 'Invoices', href: '/finance?section=invoices' },
+      { label: 'Expenses', href: '/finance?section=expenses' },
+      ...(isOneToOne ? [
+        { label: 'Cash Advances', href: '/finance?section=advances' },
+      ] : []),
     ],
   };
 }

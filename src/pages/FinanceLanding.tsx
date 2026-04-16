@@ -1,5 +1,6 @@
-import React, { Suspense, lazy, useMemo } from 'react';
+import React, { Suspense, lazy, useMemo, useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
 import { LandingPageShell, LandingCard } from '@/components/layout/LandingPageShell';
@@ -16,10 +17,29 @@ const TeacherPayouts = lazy(() => import('./TeacherPayouts'));
 
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
 
+// Map URL ?section= values to card IDs
+const SECTION_TO_CARD: Record<string, string> = {
+  'fees': 'fees',
+  'payments': 'fees',
+  'salaries': 'salaries',
+  'expenses': 'expenses',
+  'advances': 'advances',
+  'fee-setup': 'setup',
+  'setup': 'setup',
+  'teacher-payouts': 'payouts',
+  'payouts': 'payouts',
+  'invoices': 'fees', // invoices are inside the Payments/fees view
+};
+
 export default function FinanceLanding() {
   const { activeDivision } = useDivision();
   const isOneToOne = activeDivision?.model_type === 'one_to_one';
   const currentMonth = format(new Date(), 'yyyy-MM');
+  const [searchParams] = useSearchParams();
+
+  // Determine initial card from URL ?section= param
+  const sectionParam = searchParams.get('section');
+  const initialCard = (sectionParam && SECTION_TO_CARD[sectionParam]) || 'fees';
 
   const divisionId = activeDivision?.id || null;
 
@@ -71,7 +91,7 @@ export default function FinanceLanding() {
       { id: 'advances', title: 'Cash Advances', subtitle: 'Outstanding', count: fmt(counts?.advOutstanding), countLoading: isLoading, icon: <Banknote className="h-5 w-5" />, color: 'bg-rose-500' },
     ] : []),
     { id: 'setup', title: 'Finance Setup', subtitle: 'Plans & config', count: '⚙️', countLoading: false, icon: <Settings className="h-5 w-5" />, color: 'bg-muted' },
-    ...(isOneToOne ? [
+    ...(!isOneToOne ? [
       { id: 'payouts', title: 'Teacher Payouts', subtitle: 'Course staff pay', count: '🎓', countLoading: false, icon: <GraduationCap className="h-5 w-5" />, color: 'bg-violet-500' },
     ] : []),
   ];
@@ -91,7 +111,7 @@ export default function FinanceLanding() {
       subtitle={isOneToOne ? "Fees, salaries, expenses, and financial configuration" : "Course fees, expenses, and financial configuration"}
       cards={cards}
       contentMap={contentMap}
-      defaultCard="fees"
+      defaultCard={initialCard}
     />
   );
 }
