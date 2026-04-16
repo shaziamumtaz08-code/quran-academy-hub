@@ -1174,7 +1174,7 @@ export default function UserManagement() {
                     <p className="text-muted-foreground">No users found</p>
                   </div>
                 ) : (
-                  <Table>
+                  <Table wrapperClassName="max-h-[60vh] overflow-auto">
                     <TableHeader>
                       <TableRow>
                         {isSuperAdmin && (
