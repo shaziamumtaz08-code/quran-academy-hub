@@ -83,7 +83,7 @@ export default function PeopleLanding() {
             <p className="text-xs text-muted-foreground">Profiles sharing the same email need to be merged</p>
           </div>
           <button
-            onClick={() => navigate('/identity-resolution')}
+            onClick={() => navigate('/identity')}
             className="text-xs font-bold text-amber-700 hover:text-amber-800 underline underline-offset-2"
           >
             Review
