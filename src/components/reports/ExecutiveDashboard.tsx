@@ -2,27 +2,41 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Users, CalendarCheck, BookOpen, DollarSign, TrendingDown, UserPlus } from "lucide-react";
-import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { format, startOfMonth, subMonths } from "date-fns";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { useDivision } from "@/contexts/DivisionContext";
 
 export default function ExecutiveDashboard() {
-  const { activeDivision } = useDivision();
+  const { activeDivision, activeModelType } = useDivision();
   const divisionId = activeDivision?.id;
+  const isGroup = activeModelType === 'group';
   const today = format(new Date(), "yyyy-MM-dd");
   const currentBillingMonth = format(new Date(), "yyyy-MM");
 
-  // Active students count — via assignments in this division
+  // Active students count — division-aware
   const { data: studentStats } = useQuery({
-    queryKey: ["exec-students", divisionId],
+    queryKey: ["exec-students", divisionId, isGroup],
     queryFn: async () => {
-      let query = supabase.from("student_teacher_assignments").select("student_id, status");
-      if (divisionId) query = query.eq("division_id", divisionId);
-      const { data } = await query;
-      const all = data || [];
-      const uniqueStudents = [...new Set(all.map(a => a.student_id))];
-      const activeStudents = [...new Set(all.filter(a => a.status === "active").map(a => a.student_id))];
-      return { active: activeStudents.length, total: uniqueStudents.length, inactive: uniqueStudents.length - activeStudents.length };
+      if (isGroup && divisionId) {
+        // Group Academy: students via course enrollments
+        const { data } = await supabase
+          .from("course_enrollments")
+          .select("student_id, status, courses!inner(division_id)")
+          .eq("courses.division_id", divisionId);
+        const all = data || [];
+        const uniqueStudents = [...new Set(all.map((a: any) => a.student_id))];
+        const activeStudents = [...new Set(all.filter((a: any) => a.status === "active").map((a: any) => a.student_id))];
+        return { active: activeStudents.length, total: uniqueStudents.length, inactive: uniqueStudents.length - activeStudents.length };
+      } else {
+        // 1:1: students via assignments
+        let query = supabase.from("student_teacher_assignments").select("student_id, status");
+        if (divisionId) query = query.eq("division_id", divisionId);
+        const { data } = await query;
+        const all = data || [];
+        const uniqueStudents = [...new Set(all.map(a => a.student_id))];
+        const activeStudents = [...new Set(all.filter(a => a.status === "active").map(a => a.student_id))];
+        return { active: activeStudents.length, total: uniqueStudents.length, inactive: uniqueStudents.length - activeStudents.length };
+      }
     },
   });
 
@@ -43,14 +57,12 @@ export default function ExecutiveDashboard() {
   const { data: feeStats } = useQuery({
     queryKey: ["exec-fees", currentBillingMonth, divisionId],
     queryFn: async () => {
-      // Get invoices for current billing month
       let invQuery = supabase.from("fee_invoices").select("id, amount, amount_paid, status, currency, forgiven_amount");
       invQuery = invQuery.eq("billing_month", currentBillingMonth);
       if (divisionId) invQuery = invQuery.eq("division_id", divisionId);
       const { data: invoices } = await invQuery;
       const inv = invoices || [];
 
-      // Collected from payment_transactions ledger (PKR source of truth)
       const invoiceIds = inv.map(i => i.id);
       let collectedPKR = 0;
       if (invoiceIds.length > 0) {
@@ -61,7 +73,6 @@ export default function ExecutiveDashboard() {
         collectedPKR = (txns || []).reduce((s: number, t: any) => s + Number(t.amount_local || 0), 0);
       }
 
-      // Expected = sum of invoice amounts (simplified, PKR-first)
       const expectedPKR = inv.reduce((s, i) => s + Number(i.amount || 0), 0);
       const pendingPKR = inv.filter(i => i.status === "pending" || i.status === "partially_paid")
         .reduce((s, i) => s + (Number(i.amount) - Number(i.amount_paid || 0) - Number(i.forgiven_amount || 0)), 0);
@@ -70,19 +81,28 @@ export default function ExecutiveDashboard() {
     },
   });
 
-  // New enrollments this month
+  // New enrollments this month — division-aware
   const { data: enrollmentStats } = useQuery({
-    queryKey: ["exec-enrollments", currentBillingMonth, divisionId],
+    queryKey: ["exec-enrollments", currentBillingMonth, divisionId, isGroup],
     queryFn: async () => {
       const monthStart = format(startOfMonth(new Date()), "yyyy-MM-dd");
-      let query = supabase.from("student_teacher_assignments").select("*", { count: "exact", head: true }).gte("created_at", monthStart);
-      if (divisionId) query = query.eq("division_id", divisionId);
-      const { count } = await query;
-      return { new: count || 0 };
+      if (isGroup && divisionId) {
+        const { data } = await supabase
+          .from("course_enrollments")
+          .select("id, courses!inner(division_id)")
+          .eq("courses.division_id", divisionId)
+          .gte("enrolled_at", monthStart);
+        return { new: (data || []).length };
+      } else {
+        let query = supabase.from("student_teacher_assignments").select("*", { count: "exact", head: true }).gte("created_at", monthStart);
+        if (divisionId) query = query.eq("division_id", divisionId);
+        const { count } = await query;
+        return { new: count || 0 };
+      }
     },
   });
 
-  // Attendance trend (last 7 days) — single batch query
+  // Attendance trend (last 7 days)
   const { data: attendanceTrend } = useQuery({
     queryKey: ["exec-attendance-trend", divisionId],
     queryFn: async () => {
@@ -91,7 +111,6 @@ export default function ExecutiveDashboard() {
       if (divisionId) query = query.eq("division_id", divisionId);
       const { data } = await query;
 
-      // Also fetch holidays to exclude
       let holQuery = supabase.from("holidays").select("holiday_date").gte("holiday_date", weekAgo).lte("holiday_date", today);
       if (divisionId) holQuery = holQuery.eq("division_id", divisionId);
       const { data: holidays } = await holQuery;
@@ -119,7 +138,7 @@ export default function ExecutiveDashboard() {
     },
   });
 
-  // Fee collection trend (last 6 months) — use billing_month + ledger
+  // Fee collection trend (last 6 months)
   const { data: feeTrend } = useQuery({
     queryKey: ["exec-fee-trend", divisionId],
     queryFn: async () => {
@@ -132,7 +151,6 @@ export default function ExecutiveDashboard() {
         const { data: inv } = await query;
         const invoices = inv || [];
 
-        // Get collected from ledger
         const ids = invoices.map(i => i.id);
         let collected = 0;
         if (ids.length > 0) {

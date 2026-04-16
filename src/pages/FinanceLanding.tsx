@@ -21,14 +21,27 @@ export default function FinanceLanding() {
   const isOneToOne = activeDivision?.model_type === 'one_to_one';
   const currentMonth = format(new Date(), 'yyyy-MM');
 
+  const divisionId = activeDivision?.id || null;
+
   const { data: counts, isLoading } = useQuery({
-    queryKey: ['finance-landing-counts', activeDivision?.id],
+    queryKey: ['finance-landing-counts', divisionId],
     queryFn: async () => {
       const sb = supabase as any;
-      const feesRes = await sb.from('fee_invoices').select('amount, amount_paid, status').eq('billing_month', currentMonth);
-      const salaryRes = await sb.from('salary_payouts').select('net_salary, status').eq('month', currentMonth);
-      const expensesRes = await sb.from('expenses').select('amount').gte('expense_date', `${currentMonth}-01`);
-      const advancesRes = await sb.from('cash_advances').select('remaining_balance, status');
+      let feesQuery = sb.from('fee_invoices').select('amount, amount_paid, status').eq('billing_month', currentMonth);
+      if (divisionId) feesQuery = feesQuery.eq('division_id', divisionId);
+      const feesRes = await feesQuery;
+
+      let salaryQuery = sb.from('salary_payouts').select('net_salary, status').eq('month', currentMonth);
+      if (divisionId) salaryQuery = salaryQuery.eq('division_id', divisionId);
+      const salaryRes = await salaryQuery;
+
+      let expQuery = sb.from('expenses').select('amount').gte('expense_date', `${currentMonth}-01`);
+      if (divisionId) expQuery = expQuery.eq('division_id', divisionId);
+      const expensesRes = await expQuery;
+
+      let advQuery = sb.from('cash_advances').select('remaining_balance, status');
+      if (divisionId) advQuery = advQuery.eq('division_id', divisionId);
+      const advancesRes = await advQuery;
 
       const fees = feesRes.data || [];
       const pending = fees.filter(f => f.status !== 'paid' && f.status !== 'waived')

@@ -35,58 +35,141 @@ interface DiscountRule {
   is_active: boolean;
 }
 
+interface CourseFeePlan {
+  id: string;
+  plan_name: string;
+  total_amount: number;
+  currency: string;
+  installments: number;
+  status: string;
+  course_name: string;
+}
+
 const CURRENCIES = ['USD', 'GBP', 'PKR', 'EUR', 'AED', 'SAR', 'CAD', 'AUD', 'NZD'];
 const DAYS_PER_WEEK_OPTIONS = [2, 3, 4, 5, 6];
 
 const EXCEL_SEED_DATA = [
-  // USA & Canada (USD)
   { name: 'USA & Canada - 3 Days', amount: 35, currency: 'USD', days_per_week: 3 },
   { name: 'USA & Canada - 4 Days', amount: 45, currency: 'USD', days_per_week: 4 },
   { name: 'USA & Canada - 5 Days', amount: 50, currency: 'USD', days_per_week: 5 },
   { name: 'USA & Canada - 6 Days', amount: 60, currency: 'USD', days_per_week: 6 },
-  // UAE (AED)
   { name: 'UAE - 3 Days', amount: 100, currency: 'AED', days_per_week: 3 },
   { name: 'UAE - 4 Days', amount: 130, currency: 'AED', days_per_week: 4 },
   { name: 'UAE - 5 Days', amount: 150, currency: 'AED', days_per_week: 5 },
   { name: 'UAE - 6 Days', amount: 180, currency: 'AED', days_per_week: 6 },
-  // KSA (SAR)
   { name: 'KSA - 3 Days', amount: 100, currency: 'SAR', days_per_week: 3 },
   { name: 'KSA - 4 Days', amount: 130, currency: 'SAR', days_per_week: 4 },
   { name: 'KSA - 5 Days', amount: 150, currency: 'SAR', days_per_week: 5 },
   { name: 'KSA - 6 Days', amount: 180, currency: 'SAR', days_per_week: 6 },
-  // United Kingdom (GBP)
   { name: 'UK - 3 Days', amount: 25, currency: 'GBP', days_per_week: 3 },
   { name: 'UK - 4 Days', amount: 30, currency: 'GBP', days_per_week: 4 },
   { name: 'UK - 5 Days', amount: 35, currency: 'GBP', days_per_week: 5 },
   { name: 'UK - 6 Days', amount: 40, currency: 'GBP', days_per_week: 6 },
-  // Europe (EUR)
   { name: 'Europe - 3 Days', amount: 30, currency: 'EUR', days_per_week: 3 },
   { name: 'Europe - 4 Days', amount: 35, currency: 'EUR', days_per_week: 4 },
   { name: 'Europe - 5 Days', amount: 40, currency: 'EUR', days_per_week: 5 },
   { name: 'Europe - 6 Days', amount: 45, currency: 'EUR', days_per_week: 6 },
-  // Australia (AUD)
   { name: 'Australia - 3 Days', amount: 35, currency: 'AUD', days_per_week: 3 },
   { name: 'Australia - 4 Days', amount: 45, currency: 'AUD', days_per_week: 4 },
   { name: 'Australia - 5 Days', amount: 50, currency: 'AUD', days_per_week: 5 },
   { name: 'Australia - 6 Days', amount: 60, currency: 'AUD', days_per_week: 6 },
-  // New Zealand (NZD)
   { name: 'New Zealand - 3 Days', amount: 40, currency: 'NZD', days_per_week: 3 },
   { name: 'New Zealand - 4 Days', amount: 50, currency: 'NZD', days_per_week: 4 },
   { name: 'New Zealand - 5 Days', amount: 60, currency: 'NZD', days_per_week: 5 },
   { name: 'New Zealand - 6 Days', amount: 70, currency: 'NZD', days_per_week: 6 },
-  // Pakistan (PKR)
   { name: 'Pakistan - 3 Days', amount: 3500, currency: 'PKR', days_per_week: 3 },
   { name: 'Pakistan - 4 Days', amount: 4500, currency: 'PKR', days_per_week: 4 },
   { name: 'Pakistan - 5 Days', amount: 5000, currency: 'PKR', days_per_week: 5 },
   { name: 'Pakistan - 6 Days', amount: 6000, currency: 'PKR', days_per_week: 6 },
-  // Rest of World (USD)
   { name: 'Rest of World - 3 Days', amount: 30, currency: 'USD', days_per_week: 3 },
   { name: 'Rest of World - 4 Days', amount: 35, currency: 'USD', days_per_week: 4 },
   { name: 'Rest of World - 5 Days', amount: 40, currency: 'USD', days_per_week: 5 },
   { name: 'Rest of World - 6 Days', amount: 50, currency: 'USD', days_per_week: 6 },
 ];
 
-// ─── Fee Packages Tab ────────────────────────────────────────────────
+// ─── Course Fee Plans Tab (Group Academy) ────────────────────────────
+function CourseFeePlansTab() {
+  const { activeDivision } = useDivision();
+  const activeDivisionId = activeDivision?.id || null;
+
+  const { data: plans = [], isLoading } = useQuery({
+    queryKey: ['course-fee-plans-division', activeDivisionId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('course_fee_plans')
+        .select(`
+          id, plan_name, total_amount, currency, installments, status,
+          courses!inner(name, division_id)
+        `)
+        .eq('courses.division_id', activeDivisionId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []).map((p: any) => ({
+        id: p.id,
+        plan_name: p.plan_name,
+        total_amount: p.total_amount,
+        currency: p.currency,
+        installments: p.installments,
+        status: p.status,
+        course_name: p.courses?.name || '—',
+      })) as CourseFeePlan[];
+    },
+    enabled: !!activeDivisionId,
+  });
+
+  if (isLoading) {
+    return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  }
+
+  if (plans.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+        <Package className="h-12 w-12 mb-4 opacity-40" />
+        <p className="font-medium">No course fee plans configured</p>
+        <p className="text-sm">Set up fee plans from within each course's Finance tab</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-card rounded-xl border border-border overflow-hidden">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Course</TableHead>
+            <TableHead>Plan Name</TableHead>
+            <TableHead className="text-right">Total Amount</TableHead>
+            <TableHead>Currency</TableHead>
+            <TableHead className="text-center">Installments</TableHead>
+            <TableHead className="text-center">Status</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {plans.map((plan) => (
+            <TableRow key={plan.id}>
+              <TableCell className="font-medium">{plan.course_name}</TableCell>
+              <TableCell>{plan.plan_name}</TableCell>
+              <TableCell className="text-right font-mono font-semibold">
+                {Number(plan.total_amount).toLocaleString()}
+              </TableCell>
+              <TableCell>
+                <Badge variant="secondary">{plan.currency}</Badge>
+              </TableCell>
+              <TableCell className="text-center">{plan.installments}</TableCell>
+              <TableCell className="text-center">
+                <Badge variant={plan.status === 'active' ? 'default' : 'outline'} className="capitalize">
+                  {plan.status}
+                </Badge>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+// ─── Fee Packages Tab (1:1) ──────────────────────────────────────────
 function FeePackagesTab() {
   const { activeBranch, activeDivision } = useDivision();
   const activeBranchId = activeBranch?.id || null;
@@ -167,7 +250,6 @@ function FeePackagesTab() {
   const seedMutation = useMutation({
     mutationFn: async () => {
       setSeeding(true);
-      // Delete existing seeded packages for this branch/division to prevent duplicates
       if (activeBranchId) {
         let delQuery = supabase.from('fee_packages').delete().eq('branch_id', activeBranchId);
         if (activeDivisionId) delQuery = delQuery.eq('division_id', activeDivisionId);
@@ -613,27 +695,53 @@ function DiscountRulesTab() {
 
 // ─── Main Page ───────────────────────────────────────────────────────
 export default function FinanceSetup() {
+  const { activeModelType } = useDivision();
+  const isGroup = activeModelType === 'group';
+
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
         <div>
           <h1 className="font-serif text-3xl font-bold text-foreground">Finance Setup</h1>
-          <p className="text-muted-foreground mt-1">Configure fee packages and discount rules for your branch</p>
+          <p className="text-muted-foreground mt-1">
+            {isGroup
+              ? 'Course fee plans and discount rules for your division'
+              : 'Configure fee packages and discount rules for your branch'}
+          </p>
         </div>
 
-        <Tabs defaultValue="packages" className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
-            <TabsTrigger value="packages" className="gap-2">
-              <Package className="h-4 w-4" /> Fee Packages
-            </TabsTrigger>
-            <TabsTrigger value="discounts" className="gap-2">
-              <Tag className="h-4 w-4" /> Global Discounts
-            </TabsTrigger>
+        <Tabs defaultValue={isGroup ? 'course-fees' : 'packages'} className="w-full">
+          <TabsList className={`grid w-full max-w-md ${isGroup ? 'grid-cols-2' : 'grid-cols-2'}`}>
+            {isGroup ? (
+              <>
+                <TabsTrigger value="course-fees" className="gap-2">
+                  <Package className="h-4 w-4" /> Course Fee Plans
+                </TabsTrigger>
+                <TabsTrigger value="discounts" className="gap-2">
+                  <Tag className="h-4 w-4" /> Global Discounts
+                </TabsTrigger>
+              </>
+            ) : (
+              <>
+                <TabsTrigger value="packages" className="gap-2">
+                  <Package className="h-4 w-4" /> Fee Packages
+                </TabsTrigger>
+                <TabsTrigger value="discounts" className="gap-2">
+                  <Tag className="h-4 w-4" /> Global Discounts
+                </TabsTrigger>
+              </>
+            )}
           </TabsList>
 
-          <TabsContent value="packages" className="mt-6">
-            <FeePackagesTab />
-          </TabsContent>
+          {isGroup ? (
+            <TabsContent value="course-fees" className="mt-6">
+              <CourseFeePlansTab />
+            </TabsContent>
+          ) : (
+            <TabsContent value="packages" className="mt-6">
+              <FeePackagesTab />
+            </TabsContent>
+          )}
 
           <TabsContent value="discounts" className="mt-6">
             <DiscountRulesTab />
