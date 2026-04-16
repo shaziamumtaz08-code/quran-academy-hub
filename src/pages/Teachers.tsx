@@ -566,6 +566,19 @@ export default function Teachers() {
                           {teacher.student_count}
                         </span>
                       </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {(() => {
+                            const memberships = divMembershipMap?.get(teacher.id) || [];
+                            if (memberships.length === 0) return <Badge variant="outline" className="text-[10px] text-muted-foreground">Unassigned</Badge>;
+                            return memberships.map(m => (
+                              <Badge key={m.divisionId} variant="outline" className={`text-[10px] ${getDivisionBadgeClass(m.modelType)}`}>
+                                {getDivisionShortName(m.divisionName)}
+                              </Badge>
+                            ));
+                          })()}
+                        </div>
+                      </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
