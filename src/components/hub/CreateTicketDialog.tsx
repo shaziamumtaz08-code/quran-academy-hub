@@ -38,19 +38,28 @@ const CATEGORIES = [
   { value: 'general', label: 'General' },
 ];
 
-export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCreated }: CreateTicketDialogProps) {
+export function CreateTicketDialog({
+  open, onOpenChange, defaultCategory, onCreated,
+  prefillSubject, prefillDescription, prefillAttachmentUrl, prefillAssigneeId,
+  sourceType, sourceId, onLinkSource,
+}: CreateTicketDialogProps) {
   const { profile } = useAuth();
   const { activeDivision, activeBranch } = useDivision();
   const queryClient = useQueryClient();
 
   const [category, setCategory] = useState(defaultCategory || 'general');
 
-  // Sync defaultCategory when dialog opens
+  // Sync prefill values when dialog opens
   useEffect(() => {
-    if (open && defaultCategory) {
-      setCategory(defaultCategory);
+    if (open) {
+      if (defaultCategory) setCategory(defaultCategory);
+      if (prefillSubject !== undefined) setSubject(prefillSubject);
+      if (prefillDescription !== undefined) setDescription(prefillDescription);
+      if (prefillAttachmentUrl !== undefined) setAttachmentUrl(prefillAttachmentUrl);
+      if (prefillAssigneeId !== undefined) setAssigneeId(prefillAssigneeId);
     }
-  }, [open, defaultCategory]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
   const [subcategoryId, setSubcategoryId] = useState<string>('');
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
