@@ -468,7 +468,7 @@ function GroupChatInner() {
                       key={msg.id}
                       msg={msg}
                       isMe={msg.sender_id === user?.id}
-                      onConvertToTask={(m) => convertToTask.mutate(m)}
+                      onConvertToTask={(m) => setTaskFromMsg(m)}
                       onReply={(m) => setReplyTo(m)}
                       onForward={(m) => setForwardMsg(m)}
                       replyToContent={replyContent}
