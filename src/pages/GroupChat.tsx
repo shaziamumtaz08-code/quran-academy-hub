@@ -41,6 +41,7 @@ function GroupChatInner() {
   const [aiOpen, setAiOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<any | null>(null);
   const [forwardMsg, setForwardMsg] = useState<any | null>(null);
+  const [taskFromMsg, setTaskFromMsg] = useState<any | null>(null);
   const [dmOpen, setDmOpen] = useState(false);
   const [dmSearch, setDmSearch] = useState('');
   const [sidebarFilter, setSidebarFilter] = useState<'all' | 'groups' | 'dm'>(searchParams.get('filter') === 'dm' ? 'dm' : 'all');
