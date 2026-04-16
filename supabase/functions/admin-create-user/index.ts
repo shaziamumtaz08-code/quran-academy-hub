@@ -371,13 +371,67 @@ serve(async (req) => {
         .maybeSingle();
 
       if (existingRole) {
+        // Profile + role exist, but auth account might be missing — create it
+        let authCreated = false;
+        let tempPassword = "";
+        try {
+          const rawFirst = fullName.split(/\s+/)[0] || "User";
+          const firstName = rawFirst.charAt(0).toUpperCase() + rawFirst.slice(1).toLowerCase();
+          tempPassword = password || (firstName + "1234");
+
+          const { data: authData, error: authErr } = await adminClient.auth.admin.createUser({
+            email,
+            password: tempPassword,
+            email_confirm: true,
+            user_metadata: { full_name: fullName },
+          });
+
+          if (authErr) {
+            if (authErr.message?.includes("already been registered")) {
+              // Auth already exists — sync profile ID if needed
+              const { data: existingAuthData } = await adminClient.auth.admin.getUserByEmail(email);
+              if (existingAuthData?.user && existingAuthData.user.id !== existingUserId) {
+                console.log(`Syncing profile ${existingUserId} → auth uid ${existingAuthData.user.id}`);
+                await adminClient.from("course_enrollments").update({ student_id: existingAuthData.user.id } as any).eq("student_id", existingUserId);
+                await adminClient.from("course_class_students").update({ student_id: existingAuthData.user.id } as any).eq("student_id", existingUserId);
+                await adminClient.from("user_roles").update({ user_id: existingAuthData.user.id } as any).eq("user_id", existingUserId);
+                await adminClient.from("chat_members").update({ user_id: existingAuthData.user.id } as any).eq("user_id", existingUserId);
+                await adminClient.from("attendance").update({ student_id: existingAuthData.user.id } as any).eq("student_id", existingUserId);
+                await adminClient.from("profiles").update({ id: existingAuthData.user.id } as any).eq("id", existingUserId);
+              }
+              console.log(`Auth already exists for ${email}`);
+            } else {
+              console.error(`Auth creation failed for ${email}:`, authErr.message);
+            }
+          } else if (authData?.user) {
+            authCreated = true;
+            // Sync profile ID to match auth UUID
+            if (authData.user.id !== existingUserId) {
+              console.log(`Syncing profile ${existingUserId} → auth uid ${authData.user.id}`);
+              await adminClient.from("course_enrollments").update({ student_id: authData.user.id } as any).eq("student_id", existingUserId);
+              await adminClient.from("course_class_students").update({ student_id: authData.user.id } as any).eq("student_id", existingUserId);
+              await adminClient.from("user_roles").update({ user_id: authData.user.id } as any).eq("user_id", existingUserId);
+              await adminClient.from("chat_members").update({ user_id: authData.user.id } as any).eq("user_id", existingUserId);
+              await adminClient.from("attendance").update({ student_id: authData.user.id } as any).eq("student_id", existingUserId);
+              await adminClient.from("profiles").update({ id: authData.user.id } as any).eq("id", existingUserId);
+            }
+            console.log(`Auth account created for existing profile ${email}`);
+          }
+        } catch (e: any) {
+          console.error(`Auth creation attempt failed for ${email}:`, e.message);
+        }
+
         return json(200, {
           userId: existingUserId,
           email,
           role,
-          message: `User already exists with the ${role} role`,
+          message: authCreated
+            ? `Auth account created for existing user`
+            : `User already exists with the ${role} role`,
           roleAdded: false,
-          alreadyExists: true,
+          alreadyExists: !authCreated,
+          authCreated,
+          tempPassword: authCreated ? tempPassword : undefined,
         }, requestOrigin);
       }
 
