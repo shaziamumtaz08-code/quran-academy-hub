@@ -149,6 +149,29 @@ export function AuthAuditTab() {
     runScan();
   };
 
+  const handleProfileSync = async () => {
+    setSyncRunning(true);
+    setSyncDialogOpen(true);
+    setSyncResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('fix-profile-auth-sync', {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      if (error) throw error;
+      setSyncResult(data);
+      toast({
+        title: `Profile Sync Complete`,
+        description: `${data.fixed}/${data.total_mismatched} profiles fixed`,
+      });
+      runScan();
+    } catch (e: any) {
+      setSyncResult({ error: e.message });
+      toast({ title: 'Sync failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setSyncRunning(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Section 1: Scan */}
