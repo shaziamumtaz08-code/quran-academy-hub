@@ -193,13 +193,35 @@ serve(async (req) => {
 
     // Update password if provided
     if (password) {
-      const { error: passwordErr } = await adminClient.auth.admin.updateUserById(userId, {
-        password,
-      });
+      // First check if auth user exists
+      const { data: authUser, error: getUserErr } = await adminClient.auth.admin.getUserById(userId);
 
-      if (passwordErr) {
-        console.error("Password update error:", passwordErr.message);
-        return json(500, { error: "Failed to update password" }, requestOrigin);
+      if (getUserErr || !authUser?.user) {
+        // Auth user doesn't exist — create one using profile email
+        const profileEmail = email ?? (await adminClient.from("profiles").select("email").eq("id", userId).single()).data?.email;
+        if (profileEmail) {
+          const { error: createErr } = await adminClient.auth.admin.createUser({
+            id: userId,
+            email: profileEmail,
+            password,
+            email_confirm: true,
+          });
+          if (createErr) {
+            console.error("Auth account creation error:", createErr.message);
+            return json(500, { error: "Failed to create auth account: " + createErr.message }, requestOrigin);
+          }
+          console.log(`Created auth account for ${userId}`);
+        } else {
+          return json(400, { error: "No email found to create auth account" }, requestOrigin);
+        }
+      } else {
+        const { error: passwordErr } = await adminClient.auth.admin.updateUserById(userId, {
+          password,
+        });
+        if (passwordErr) {
+          console.error("Password update error:", passwordErr.message);
+          return json(500, { error: "Failed to update password" }, requestOrigin);
+        }
       }
     }
 
