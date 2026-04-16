@@ -63,7 +63,7 @@ function getPeopleSidebar(isOneToOne?: boolean): { title: string; subtitle: stri
     items: [
       { label: 'Students', href: '/students' },
       { label: 'Teachers', href: '/teachers' },
-      { label: 'Staff', href: '/user-management' },
+      { label: 'Staff', href: '/user-management?mode=staff' },
       ...(isOneToOne ? [{ label: 'Applicants', href: '/leads', badge: 0, badgeType: 'alert' as const }] : []),
     ],
     showSearch: true,

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FunctionsFetchError, FunctionsHttpError, FunctionsRelayError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -142,6 +143,9 @@ export default function UserManagement() {
   const { isSuperAdmin, hasPermission, user: currentUser, session } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const location = useLocation();
+  const staffMode = new URLSearchParams(location.search).get('mode') === 'staff';
+  const TEACHING_ROLES: AppRole[] = ['teacher', 'student', 'parent'];
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserWithRoles | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -701,8 +705,11 @@ export default function UserManagement() {
       const matchesCity = !filterCity || user.city === filterCity;
       const matchesRole = !filterRole || user.roles?.includes(filterRole as AppRole);
       const matchesDivision = !filterDivision || (divMembershipMap?.get(user.id) || []).some(d => d.divisionId === filterDivision);
+      // Staff mode: exclude users whose ONLY roles are teaching roles (teacher/student/parent).
+      // Keep users that have at least one non-teaching role (admin, super_admin, examiner, moderator, etc.).
+      const matchesStaffMode = !staffMode || (user.roles && user.roles.some(r => !TEACHING_ROLES.includes(r)));
       
-      return matchesArchive && matchesSearch && matchesCountry && matchesCity && matchesRole && matchesDivision;
+      return matchesArchive && matchesSearch && matchesCountry && matchesCity && matchesRole && matchesDivision && matchesStaffMode;
     })
     ?.sort((a, b) => {
       let comparison = 0;
@@ -788,8 +795,8 @@ export default function UserManagement() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-serif font-bold text-foreground">User Management</h1>
-            <p className="text-muted-foreground">Manage users, roles, and permissions</p>
+            <h1 className="text-2xl font-serif font-bold text-foreground">{staffMode ? 'Staff' : 'User Management'}</h1>
+            <p className="text-muted-foreground">{staffMode ? 'Non-teaching staff (admins, moderators, supervisors, examiners)' : 'Manage users, roles, and permissions'}</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="icon" onClick={() => refetch()} title="Refresh" disabled={isFetching}>
