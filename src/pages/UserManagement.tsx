@@ -695,6 +695,9 @@ export default function UserManagement() {
     return Array.from(cities).sort();
   }, [users, filterCountry]);
 
+  // Roles that are considered "global" (org-wide, not tied to any specific division)
+  const GLOBAL_ROLES: AppRole[] = ['super_admin', 'admin', 'admin_admissions', 'admin_fees', 'admin_academic'];
+
   const filteredUsers = users
     ?.filter(user => {
       const matchesArchive = showArchived ? !!user.archived_at : !user.archived_at;
@@ -704,12 +707,20 @@ export default function UserManagement() {
       const matchesCountry = !filterCountry || user.country === filterCountry;
       const matchesCity = !filterCity || user.city === filterCity;
       const matchesRole = !filterRole || user.roles?.includes(filterRole as AppRole);
-      const matchesDivision = !filterDivision || (divMembershipMap?.get(user.id) || []).some(d => d.divisionId === filterDivision);
+      const userMemberships = divMembershipMap?.get(user.id) || [];
+      const matchesDivision = !filterDivision || userMemberships.some(d => d.divisionId === filterDivision);
       // Staff mode: exclude users whose ONLY roles are teaching roles (teacher/student/parent).
       // Keep users that have at least one non-teaching role (admin, super_admin, examiner, moderator, etc.).
       const matchesStaffMode = !staffMode || (user.roles && user.roles.some(r => !TEACHING_ROLES.includes(r)));
-      
-      return matchesArchive && matchesSearch && matchesCountry && matchesCity && matchesRole && matchesDivision && matchesStaffMode;
+
+      // Auto-filter by ACTIVE division so counts/listings match the division switcher.
+      // Users with global roles (super_admin/admin/etc.) and no division membership stay visible.
+      const hasGlobalRole = (user.roles || []).some(r => GLOBAL_ROLES.includes(r));
+      const inActiveDivision = !activeDivision
+        || userMemberships.some(d => d.divisionId === activeDivision.id)
+        || (hasGlobalRole && userMemberships.length === 0);
+
+      return matchesArchive && matchesSearch && matchesCountry && matchesCity && matchesRole && matchesDivision && matchesStaffMode && inActiveDivision;
     })
     ?.sort((a, b) => {
       let comparison = 0;
