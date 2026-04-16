@@ -604,6 +604,25 @@ function GroupChatInner() {
           currentGroupName={activeGroup?.name}
         />
       )}
+      {taskFromMsg && (
+        <CreateTicketDialog
+          open={!!taskFromMsg}
+          onOpenChange={(v) => { if (!v) setTaskFromMsg(null); }}
+          defaultCategory="task"
+          prefillSubject={(taskFromMsg.content || (taskFromMsg.attachment_url ? 'Voice / file from chat' : 'Task from chat')).slice(0, 100)}
+          prefillDescription={[
+            taskFromMsg.content || '',
+            `\n\n— From chat: ${activeGroup?.name || 'conversation'}`,
+            taskFromMsg.senderName ? `\nSender: ${taskFromMsg.senderName}` : '',
+            taskFromMsg.attachment_url ? `\nAttachment: ${taskFromMsg.attachment_url}` : '',
+          ].join('').trim()}
+          prefillAttachmentUrl={taskFromMsg.attachment_url || undefined}
+          prefillAssigneeId={taskFromMsg.sender_id !== user?.id ? taskFromMsg.sender_id : undefined}
+          sourceType="chat"
+          sourceId={taskFromMsg.id}
+          onLinkSource={(ticketId) => linkMessageToTicket(taskFromMsg.id, ticketId)}
+        />
+      )}
     </div>
   );
 }
