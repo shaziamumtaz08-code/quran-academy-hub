@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -7,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, CalendarCheck, DollarSign, Users, GraduationCap,
-  BookOpen, Activity, AlertTriangle, Wrench, ChevronLeft, ChevronRight, Menu, ShieldCheck,
+  BookOpen, Activity, AlertTriangle, Wrench, ChevronLeft, Menu, ShieldCheck,
 } from "lucide-react";
 import ExecutiveDashboard from "@/components/reports/ExecutiveDashboard";
 import AttendanceReports from "@/components/reports/AttendanceReports";
@@ -20,23 +21,44 @@ import AlertsAutomation from "@/components/reports/AlertsAutomation";
 import CustomReportBuilder from "@/components/reports/CustomReportBuilder";
 import AccountabilityReport from "@/components/reports/AccountabilityReport";
 
-const sections = [
-  { id: "executive", label: "Executive Dashboard", icon: LayoutDashboard },
-  { id: "attendance", label: "Attendance Reports", icon: CalendarCheck },
-  { id: "fees", label: "Fee & Financial", icon: DollarSign },
-  { id: "engagement", label: "Student Engagement", icon: Users },
-  { id: "teacher", label: "Teacher Performance", icon: GraduationCap },
-  { id: "accountability", label: "Accountability", icon: ShieldCheck },
-  { id: "courses", label: "Course / Batch", icon: BookOpen },
-  { id: "logs", label: "Activity Logs", icon: Activity },
-  { id: "alerts", label: "Alerts & Automation", icon: AlertTriangle },
-  { id: "custom", label: "Custom Report Builder", icon: Wrench },
+type GroupKey = 'OVERVIEW' | 'ANALYTICS' | 'TOOLS';
+type Section = {
+  id: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  group: GroupKey;
+};
+
+const sections: Section[] = [
+  { id: "executive", label: "Executive Dashboard", icon: LayoutDashboard, group: 'OVERVIEW' },
+  { id: "attendance", label: "Attendance Reports", icon: CalendarCheck, group: 'ANALYTICS' },
+  { id: "fees", label: "Fee & Financial", icon: DollarSign, group: 'ANALYTICS' },
+  { id: "engagement", label: "Student Engagement", icon: Users, group: 'ANALYTICS' },
+  { id: "teacher", label: "Teacher Performance", icon: GraduationCap, group: 'ANALYTICS' },
+  { id: "accountability", label: "Accountability", icon: ShieldCheck, group: 'ANALYTICS' },
+  { id: "courses", label: "Course / Batch", icon: BookOpen, group: 'ANALYTICS' },
+  { id: "logs", label: "Activity Logs", icon: Activity, group: 'TOOLS' },
+  { id: "alerts", label: "Alerts & Automation", icon: AlertTriangle, group: 'TOOLS' },
+  { id: "custom", label: "Custom Report Builder", icon: Wrench, group: 'TOOLS' },
 ];
+
+const GROUP_ORDER: GroupKey[] = ['OVERVIEW', 'ANALYTICS', 'TOOLS'];
 
 export default function Reports() {
   const { activeRole } = useAuth();
-  const [activeSection, setActiveSection] = useState("executive");
+  const [searchParams] = useSearchParams();
+  const initial = searchParams.get('section') || 'executive';
+  const [activeSection, setActiveSection] = useState(initial);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Sync when query param changes (e.g., navigating from Reports Hub cards)
+  useEffect(() => {
+    const next = searchParams.get('section');
+    if (next && next !== activeSection) {
+      setActiveSection(next);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const isAdmin = activeRole === "super_admin" || activeRole === "admin" || activeRole?.startsWith("admin_");
 
@@ -58,6 +80,11 @@ export default function Reports() {
 
   const currentSection = sections.find(s => s.id === activeSection);
 
+  const isVisible = (section: Section) => {
+    if (!isAdmin && ["logs", "alerts", "custom", "teacher", "accountability"].includes(section.id)) return false;
+    return true;
+  };
+
   return (
     <DashboardLayout>
       <div className="flex h-[calc(100vh-4rem)] -m-4 sm:-m-6">
@@ -74,24 +101,33 @@ export default function Reports() {
           </div>
           <ScrollArea className="flex-1">
             <nav className="p-1 space-y-0.5">
-              {sections.map((section) => {
-                // Non-admin only sees limited sections
-                if (!isAdmin && ["logs", "alerts", "custom", "teacher", "accountability"].includes(section.id)) return null;
+              {GROUP_ORDER.map(groupKey => {
+                const groupItems = sections.filter(s => s.group === groupKey && isVisible(s));
+                if (groupItems.length === 0) return null;
                 return (
-                  <button
-                    key={section.id}
-                    onClick={() => setActiveSection(section.id)}
-                    className={cn(
-                      "w-full flex items-center gap-2 px-2 py-2 rounded-md text-sm transition-colors",
-                      activeSection === section.id
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  <div key={groupKey} className="pt-2 first:pt-0">
+                    {sidebarOpen && (
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 px-2 pt-1 pb-1">
+                        {groupKey}
+                      </p>
                     )}
-                    title={section.label}
-                  >
-                    <section.icon className="h-4 w-4 shrink-0" />
-                    {sidebarOpen && <span className="truncate">{section.label}</span>}
-                  </button>
+                    {groupItems.map((section) => (
+                      <button
+                        key={section.id}
+                        onClick={() => setActiveSection(section.id)}
+                        className={cn(
+                          "w-full flex items-center gap-2 px-2 py-2 rounded-md text-sm transition-colors",
+                          activeSection === section.id
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        )}
+                        title={section.label}
+                      >
+                        <section.icon className="h-4 w-4 shrink-0" />
+                        {sidebarOpen && <span className="truncate">{section.label}</span>}
+                      </button>
+                    ))}
+                  </div>
                 );
               })}
             </nav>
