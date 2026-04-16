@@ -82,6 +82,8 @@ import { AuthAuditTab } from '@/components/admin/AuthAuditTab';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Country, State, City, ICountry, IState, ICity } from 'country-state-city';
 import { SearchableCitySelect } from '@/components/ui/searchable-city-select';
+import { useDivisionMembership, getDivisionShortName, getDivisionBadgeClass } from '@/hooks/useDivisionMembership';
+import { useDivision } from '@/contexts/DivisionContext';
 
 const ALL_PERMISSIONS = [
   { group: 'Users', permissions: ['users.view', 'users.create', 'users.edit', 'users.delete', 'users.assign_roles'] },
@@ -183,6 +185,7 @@ export default function UserManagement() {
   const [filterCountry, setFilterCountry] = useState<string>('');
   const [filterCity, setFilterCity] = useState<string>('');
   const [filterRole, setFilterRole] = useState<string>('');
+  const [filterDivision, setFilterDivision] = useState<string>('');
   const [showArchived, setShowArchived] = useState(false);
   // Sorting state
   type SortField = 'name' | 'role' | 'gender' | 'age' | 'country' | 'city';
