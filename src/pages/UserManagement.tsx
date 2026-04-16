@@ -795,8 +795,8 @@ export default function UserManagement() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-serif font-bold text-foreground">User Management</h1>
-            <p className="text-muted-foreground">Manage users, roles, and permissions</p>
+            <h1 className="text-2xl font-serif font-bold text-foreground">{staffMode ? 'Staff' : 'User Management'}</h1>
+            <p className="text-muted-foreground">{staffMode ? 'Non-teaching staff (admins, moderators, supervisors, examiners)' : 'Manage users, roles, and permissions'}</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="icon" onClick={() => refetch()} title="Refresh" disabled={isFetching}>
