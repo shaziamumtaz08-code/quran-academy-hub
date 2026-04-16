@@ -29,6 +29,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
 import { CourseApplicantImport } from './CourseApplicantImport';
 import { UserRelationshipPanel } from './UserRelationshipPanel';
+import { ActivateApplicantDialog } from './ActivateApplicantDialog';
 import { useNavigate } from 'react-router-dom';
 interface Submission {
   id: string;
