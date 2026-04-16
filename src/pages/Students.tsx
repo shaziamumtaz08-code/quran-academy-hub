@@ -219,15 +219,35 @@ export default function Students() {
         })) as Student[];
       }
 
-      // For admins: show all students with location data and subjects
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'student');
+      // For admins: show students filtered by active division
+      let studentIds: string[] = [];
 
-      if (roleError) throw roleError;
+      if (activeDivisionId) {
+        // Filter by division: get students from assignments (1:1) or course enrollments (group)
+        const [assignRes, enrollRes] = await Promise.all([
+          supabase.from('student_teacher_assignments')
+            .select('student_id')
+            .eq('division_id', activeDivisionId)
+            .eq('status', 'active'),
+          supabase.from('course_enrollments')
+            .select('student_id, courses:courses!inner(division_id)')
+            .eq('courses.division_id', activeDivisionId)
+            .eq('status', 'active'),
+        ]);
 
-      const studentIds = roleData?.map(r => r.user_id) || [];
+        const fromAssign = new Set((assignRes.data || []).map(a => a.student_id));
+        const fromEnroll = new Set((enrollRes.data || []).map((e: any) => e.student_id));
+        studentIds = [...new Set([...fromAssign, ...fromEnroll])];
+      } else {
+        // No division filter: all students
+        const { data: roleData, error: roleError } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', 'student');
+        if (roleError) throw roleError;
+        studentIds = roleData?.map(r => r.user_id) || [];
+      }
+
       if (studentIds.length === 0) return [];
 
       const { data: profiles, error: profileError } = await supabase
@@ -238,6 +258,8 @@ export default function Students() {
 
       if (profileError) throw profileError;
 
+      const validIds = (profiles || []).map(p => p.id);
+
       const { data: assignments, error: assignError } = await supabase
         .from('student_teacher_assignments')
         .select(`
@@ -247,7 +269,7 @@ export default function Students() {
           teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name),
           subject:subjects(id, name)
         `)
-        .in('student_id', studentIds)
+        .in('student_id', validIds)
         .eq('status', 'active');
 
       if (assignError) throw assignError;
