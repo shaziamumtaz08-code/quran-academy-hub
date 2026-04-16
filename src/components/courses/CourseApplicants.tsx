@@ -1106,6 +1106,18 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
         submissionData={relationshipApplicant?.data}
         courseId={courseId}
       />
+
+      {/* Activate Student Dialog */}
+      <ActivateApplicantDialog
+        open={!!activateApplicant}
+        onOpenChange={(o) => !o && setActivateApplicant(null)}
+        applicant={activateApplicant}
+        courseId={courseId}
+        onActivated={() => {
+          queryClient.invalidateQueries({ queryKey: ['registration-submissions', courseId] });
+          queryClient.invalidateQueries({ queryKey: ['course-rostered-count', courseId] });
+        }}
+      />
     </div>
   );
 }
