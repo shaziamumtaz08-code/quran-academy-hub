@@ -21,11 +21,14 @@ interface DivisionBreakdown {
   count: number;
 }
 
-function KPIWithBreakdown({ label, value, icon, color, breakdown }: {
-  label: string; value: string | number; icon: string; color: string; breakdown: DivisionBreakdown[];
+function KPIWithBreakdown({ label, value, icon, color, breakdown, onClick }: {
+  label: string; value: string | number; icon: string; color: string; breakdown: DivisionBreakdown[]; onClick?: () => void;
 }) {
   const card = (
-    <div className="bg-card rounded-2xl border border-border p-3.5 shadow-card text-center">
+    <div
+      className={`bg-card rounded-2xl border border-border p-3.5 shadow-card text-center ${onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
+      onClick={onClick}
+    >
       <span className="text-xl">{icon}</span>
       <p className={`text-2xl font-black ${color} mt-1`}>{value}</p>
       <p className="text-[10px] text-muted-foreground font-bold">{label}</p>
@@ -146,10 +149,10 @@ export function SuperAdminDashboard() {
     <>
       {/* KPI Boxes */}
       <div className="grid grid-cols-2 gap-2.5">
-        <KPIWithBreakdown label="Total Students" value={stats?.totalStudents || 0} icon="🎓" color="text-teal" breakdown={stats?.studentBreakdown || []} />
-        <KPIWithBreakdown label="Total Teachers" value={stats?.totalTeachers || 0} icon="👨‍🏫" color="text-sky" breakdown={stats?.teacherBreakdown || []} />
-        <KPIWithBreakdown label="Revenue" value={(stats?.revenue || 0).toLocaleString()} icon="💰" color="text-gold" breakdown={stats?.revenueBreakdown || []} />
-        <KPIWithBreakdown label="Outstanding" value={(stats?.outstanding || 0).toLocaleString()} icon="⚠️" color="text-destructive" breakdown={stats?.outstandingBreakdown || []} />
+        <KPIWithBreakdown label="Total Students" value={stats?.totalStudents || 0} icon="🎓" color="text-teal" breakdown={stats?.studentBreakdown || []} onClick={() => navigate('/students')} />
+        <KPIWithBreakdown label="Total Teachers" value={stats?.totalTeachers || 0} icon="👨‍🏫" color="text-sky" breakdown={stats?.teacherBreakdown || []} onClick={() => navigate('/teachers')} />
+        <KPIWithBreakdown label="Revenue" value={(stats?.revenue || 0).toLocaleString()} icon="💰" color="text-gold" breakdown={stats?.revenueBreakdown || []} onClick={() => navigate('/finance')} />
+        <KPIWithBreakdown label="Outstanding" value={(stats?.outstanding || 0).toLocaleString()} icon="⚠️" color="text-destructive" breakdown={stats?.outstandingBreakdown || []} onClick={() => navigate('/finance')} />
       </div>
 
       {/* Revenue placeholder */}
