@@ -1166,6 +1166,19 @@ export default function UserManagement() {
                 </SelectContent>
               </Select>
               
+              {/* Division Filter */}
+              <Select value={filterDivision || "all"} onValueChange={(v) => setFilterDivision(v === "all" ? "" : v)}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="All Divisions" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Divisions</SelectItem>
+                  {allDivisions.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
               {/* Reset Filters Button */}
               {hasActiveFilters && (
                 <Button variant="outline" size="sm" onClick={resetFilters} className="h-10">
