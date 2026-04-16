@@ -316,6 +316,10 @@ export function AppSidebar({ className }: AppSidebarProps) {
     );
   };
 
+  if (!isCourseDetail && sidebar.items.length === 0) {
+    return null;
+  }
+
   return (
     <div className={cn('w-[200px] bg-white border-r border-lms-border flex flex-col h-full', className)}>
       {/* Header */}
