@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
@@ -25,6 +25,13 @@ interface LandingPageShellProps {
 
 export function LandingPageShell({ title, subtitle, cards, contentMap, defaultCard }: LandingPageShellProps) {
   const [activeCard, setActiveCard] = useState(defaultCard || cards[0]?.id || '');
+
+  // Sync with URL param changes
+  useEffect(() => {
+    if (defaultCard && defaultCard !== activeCard) {
+      setActiveCard(defaultCard);
+    }
+  }, [defaultCard]);
 
   return (
     <div className="space-y-6 animate-fade-in">
