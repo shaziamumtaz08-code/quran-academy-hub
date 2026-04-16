@@ -67,6 +67,59 @@ export default function UnifiedDashboard() {
 
   const effectiveDivisions = divisions.length > 0 ? divisions : allDivisions.map(d => ({ ...d, roles: userRoles.map(r => r.role) }));
 
+  // ─── Filter divisions by actual user activity ───
+  const { data: activeDivisionIds = new Set<string>() } = useQuery({
+    queryKey: ['user-active-divisions', user?.id],
+    queryFn: async () => {
+      const ids = new Set<string>();
+
+      // Check student_teacher_assignments
+      const { data: sta } = await supabase.from('student_teacher_assignments')
+        .select('division_id')
+        .or(`student_id.eq.${user!.id},teacher_id.eq.${user!.id}`)
+        .eq('status', 'active');
+      (sta || []).forEach(r => { if (r.division_id) ids.add(r.division_id); });
+
+      // Check course_class_students → course_classes → courses
+      const { data: ccs } = await supabase.from('course_class_students')
+        .select('class:course_classes!inner(courses:courses!inner(division_id))')
+        .eq('student_id', user!.id)
+        .eq('status', 'active');
+      (ccs || []).forEach((r: any) => {
+        const did = r.class?.courses?.division_id;
+        if (did) ids.add(did);
+      });
+
+      // Check course_class_staff
+      const { data: staff } = await supabase.from('course_class_staff')
+        .select('class:course_classes!inner(courses:courses!inner(division_id))')
+        .eq('user_id', user!.id);
+      (staff || []).forEach((r: any) => {
+        const did = r.class?.courses?.division_id;
+        if (did) ids.add(did);
+      });
+
+      return ids;
+    },
+    enabled: !!user?.id && !isSuperAdmin,
+  });
+
+  // For super_admin, show all divisions; for others, only those with activity
+  const visibleDivisions = isSuperAdmin
+    ? effectiveDivisions
+    : effectiveDivisions.filter(d => activeDivisionIds.has(d.id));
+
+  const showTabs = visibleDivisions.length > 1;
+  const showAllTab = visibleDivisions.length > 1;
+
+  // If single division, auto-select it
+  useEffect(() => {
+    if (!isSuperAdmin && visibleDivisions.length === 1 && activeDivision === 'all') {
+      setActiveDivision(visibleDivisions[0].id);
+      setActiveDivisionId(visibleDivisions[0].id);
+    }
+  }, [visibleDivisions.length, isSuperAdmin]);
+
   const activeDivisionMeta = effectiveDivisions.find(d => d.id === activeDivision);
   const isOneToOne = activeDivisionMeta?.model_type === 'one_to_one';
   const isParent = userRoles.some(r => r.role === 'parent');
@@ -319,15 +372,20 @@ export default function UnifiedDashboard() {
         });
       });
 
-      // Check pending tasks
+      // Check pending tasks — only show items due today or later, or created in last 7 days
+      const sevenDaysAgo = format(new Date(Date.now() - 7 * 86400000), 'yyyy-MM-dd');
       const { data: tasks } = await supabase.from('tickets')
-        .select('id, subject, due_date')
+        .select('id, subject, due_date, created_at')
         .eq('assignee_id', user!.id)
         .in('status', ['open', 'in_progress'])
         .order('due_date', { ascending: true })
-        .limit(5);
+        .limit(10);
 
       (tasks || []).forEach(t => {
+        const dueDate = t.due_date ? new Date(t.due_date) : null;
+        const createdAt = new Date(t.created_at);
+        const isRelevant = (dueDate && dueDate >= new Date(today)) || createdAt >= new Date(sevenDaysAgo);
+        if (!isRelevant) return;
         items.push({
           id: t.id,
           label: t.subject,
@@ -723,35 +781,34 @@ export default function UnifiedDashboard() {
         <p className="text-sm text-muted-foreground mt-1">Your unified dashboard across all divisions</p>
       </div>
 
-      {/* Division Toggle */}
-      <div className="overflow-x-auto pb-1">
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant={activeDivision === 'all' ? 'default' : 'outline'}
-            onClick={() => handleDivisionChange('all')}
-            className="shrink-0"
-          >
-            All
-          </Button>
-          {effectiveDivisions.map(div => (
-            <Button
-              key={div.id}
-              size="sm"
-              variant={activeDivision === div.id ? 'default' : 'outline'}
-              onClick={() => handleDivisionChange(div.id)}
-              className="shrink-0 gap-1.5"
-            >
-              {div.name}
-              {div.roles?.length > 0 && (
-                <Badge variant="secondary" className="text-[9px] px-1 py-0">
-                  {div.roles[0]}
-                </Badge>
-              )}
-            </Button>
-          ))}
+      {/* Division Toggle — only show if user has multiple divisions */}
+      {showTabs && (
+        <div className="overflow-x-auto pb-1">
+          <div className="flex gap-2">
+            {showAllTab && (
+              <Button
+                size="sm"
+                variant={activeDivision === 'all' ? 'default' : 'outline'}
+                onClick={() => handleDivisionChange('all')}
+                className="shrink-0"
+              >
+                All
+              </Button>
+            )}
+            {visibleDivisions.map(div => (
+              <Button
+                key={div.id}
+                size="sm"
+                variant={activeDivision === div.id ? 'default' : 'outline'}
+                onClick={() => handleDivisionChange(div.id)}
+                className="shrink-0 gap-1.5"
+              >
+                {div.name}
+              </Button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Role-ordered sections */}
       {sectionOrder.map(section => sectionRenderers[section]())}
