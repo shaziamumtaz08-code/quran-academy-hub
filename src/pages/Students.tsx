@@ -164,7 +164,7 @@ export default function Students() {
 
   // Fetch students for admin/parent (original simple view)
   const { data: students = [], isLoading: isLoadingOther } = useQuery({
-    queryKey: ['students-list-full', user?.id, activeRole],
+    queryKey: ['students-list-full', user?.id, activeRole, activeDivisionId],
     queryFn: async () => {
       if (!user?.id) return [];
 
