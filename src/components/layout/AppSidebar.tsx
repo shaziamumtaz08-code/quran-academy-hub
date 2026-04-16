@@ -123,16 +123,9 @@ function getSettingsSidebar(): { title: string; subtitle: string; items: Sidebar
 }
 
 function getReportsSidebar(): { title: string; subtitle: string; items: SidebarNavItem[] } {
-  return {
-    title: 'Reports',
-    subtitle: '',
-    items: [
-      { label: 'Overview', href: '/reports-hub' },
-      { label: 'Student Reports', href: '/student-reports' },
-      { label: 'KPI', href: '/kpi' },
-      { label: 'Report Cards', href: '/report-card-templates' },
-    ],
-  };
+  // Outer secondary sidebar removed for Reports — the Reports Hub overview
+  // and the inner Reports.tsx sidebar are the only nav surfaces needed.
+  return { title: 'Reports', subtitle: '', items: [] };
 }
 
 /* ─── Route to section mapping ─── */
