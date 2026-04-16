@@ -474,14 +474,16 @@ export function StudentDashboard() {
   const isJoinable = minutesUntil <= 30 && minutesUntil > -90;
 
   const renderJoinArea = () => {
-    if (isJoinable) {
-      return <JoinClassButton teacherId={ncTeacherId} />;
-    }
     return (
-      <div className="flex items-center gap-1 shrink-0">
-        {countdown.days > 0 && <span className="bg-primary-foreground/15 rounded-md px-2 py-0.5 text-[11px] font-bold">{countdown.days}d</span>}
-        <span className="bg-primary-foreground/15 rounded-md px-2 py-0.5 text-[11px] font-bold">{countdown.hours}h</span>
-        <span className="bg-primary-foreground/15 rounded-md px-2 py-0.5 text-[11px] font-bold">{String(countdown.mins).padStart(2, '0')}m</span>
+      <div className="flex items-center gap-2 shrink-0">
+        {!isJoinable && (
+          <div className="flex items-center gap-1">
+            {countdown.days > 0 && <span className="bg-primary-foreground/15 rounded-md px-2 py-0.5 text-[11px] font-bold">{countdown.days}d</span>}
+            <span className="bg-primary-foreground/15 rounded-md px-2 py-0.5 text-[11px] font-bold">{countdown.hours}h</span>
+            <span className="bg-primary-foreground/15 rounded-md px-2 py-0.5 text-[11px] font-bold">{String(countdown.mins).padStart(2, '0')}m</span>
+          </div>
+        )}
+        <JoinClassButton teacherId={ncTeacherId} className="h-7 text-xs px-2.5" />
       </div>
     );
   };
