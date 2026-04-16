@@ -51,8 +51,7 @@ export default function FinanceLanding() {
       if (divisionId) feesQuery = feesQuery.eq('division_id', divisionId);
       const feesRes = await feesQuery;
 
-      let salaryQuery = sb.from('salary_payouts').select('net_salary, status').eq('month', currentMonth);
-      if (divisionId) salaryQuery = salaryQuery.eq('division_id', divisionId);
+      let salaryQuery = sb.from('salary_payouts').select('net_salary, status, teacher_id').eq('salary_month', currentMonth);
       const salaryRes = await salaryQuery;
 
       let expQuery = sb.from('expenses').select('amount').gte('expense_date', `${currentMonth}-01`);
