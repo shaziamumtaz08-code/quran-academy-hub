@@ -321,7 +321,7 @@ export default function UnifiedDashboard() {
 
       // Check pending tasks
       const { data: tasks } = await supabase.from('tickets')
-        .select('id, title, due_date')
+        .select('id, subject, due_date')
         .eq('assignee_id', user!.id)
         .in('status', ['open', 'in_progress'])
         .order('due_date', { ascending: true })
@@ -330,7 +330,7 @@ export default function UnifiedDashboard() {
       (tasks || []).forEach(t => {
         items.push({
           id: t.id,
-          label: t.title,
+          label: t.subject,
           detail: t.due_date ? format(new Date(t.due_date), 'MMM d') : 'No due date',
           type: 'task',
         });
