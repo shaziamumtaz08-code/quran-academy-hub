@@ -654,6 +654,24 @@ export default function UserManagement() {
       });
     },
   });
+  // Fetch divisions for filter dropdown
+  const { data: allDivisions = [] } = useQuery({
+    queryKey: ['all-divisions-list'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('divisions')
+        .select('id, name, model_type')
+        .eq('is_active', true)
+        .order('name');
+      if (error) throw error;
+      return data as Array<{ id: string; name: string; model_type: string }>;
+    },
+  });
+
+  // Division membership resolution
+  const allUserIds = useMemo(() => (users || []).map(u => u.id), [users]);
+  const { data: divMembershipMap } = useDivisionMembership(allUserIds, !!users && users.length > 0);
+
   const availableCountries = useMemo(() => {
     const countries = new Set<string>();
     users?.forEach(u => {
