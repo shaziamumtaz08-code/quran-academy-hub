@@ -21,6 +21,7 @@ import {
   CommThemeProvider, CommThemeToggle, useCommTheme,
   colorFromName, initialsFromName, formatCommTime,
 } from "@/components/comm/CommThemeProvider";
+import { CreateTicketDialog } from "@/components/hub/CreateTicketDialog";
 
 type WhatsAppContact = {
   id: string;
@@ -68,6 +69,7 @@ function WhatsAppInner() {
   const [showForwardDialog, setShowForwardDialog] = useState(false);
   const [forwardingMessage, setForwardingMessage] = useState<WhatsAppMessage | null>(null);
   const [forwardTarget, setForwardTarget] = useState<"task" | "group" | "user">("task");
+  const [taskFromMsg, setTaskFromMsg] = useState<WhatsAppMessage | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Contacts
@@ -427,7 +429,8 @@ function WhatsAppInner() {
                             {!msg.forwarded_to_task_id && (
                               <Button
                                 variant="secondary" size="icon" className="h-6 w-6 rounded-full shadow"
-                                onClick={() => forwardToTask.mutate(msg)}
+                                onClick={() => setTaskFromMsg(msg)}
+                                title="Convert to ticket / task"
                               >
                                 <ListTodo className="h-3 w-3" />
                               </Button>
@@ -498,35 +501,59 @@ function WhatsAppInner() {
         )}
       </div>
 
-      {/* Forward Dialog */}
-      <Dialog open={showForwardDialog} onOpenChange={setShowForwardDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Forward Message</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="p-3 bg-muted rounded text-sm">
-              {forwardingMessage?.message_text || "[Attachment]"}
+      {/* Forward → opens full ticket dialog */}
+      {showForwardDialog && forwardingMessage && (
+        <Dialog open={showForwardDialog} onOpenChange={setShowForwardDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Forward Message</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="p-3 bg-muted rounded text-sm">
+                {forwardingMessage?.message_text || "[Attachment]"}
+              </div>
+              <Button
+                className="w-full"
+                onClick={() => {
+                  setTaskFromMsg(forwardingMessage);
+                  setShowForwardDialog(false);
+                }}
+              >
+                Create Ticket / Task from Message
+              </Button>
             </div>
-            <div>
-              <Label>Forward as</Label>
-              <Select value={forwardTarget} onValueChange={(v: any) => setForwardTarget(v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="task">WorkHub Task</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button
-              className="w-full"
-              onClick={() => { if (forwardingMessage) forwardToTask.mutate(forwardingMessage); }}
-              disabled={forwardToTask.isPending}
-            >
-              {forwardToTask.isPending ? "Creating..." : "Create Task"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Full ticket creation dialog (task / complaint / feedback / etc.) */}
+      {taskFromMsg && (() => {
+        const contact = contacts.find(c => c.id === taskFromMsg.contact_id);
+        return (
+          <CreateTicketDialog
+            open={!!taskFromMsg}
+            onOpenChange={(v) => { if (!v) setTaskFromMsg(null); }}
+            defaultCategory="task"
+            prefillSubject={`WhatsApp: ${(taskFromMsg.message_text || (taskFromMsg.attachment_url ? 'Attachment / voice' : 'Message')).slice(0, 80)}`}
+            prefillDescription={[
+              `From: ${contact?.name || contact?.phone || 'Unknown'}`,
+              '',
+              taskFromMsg.message_text || '[No text]',
+              taskFromMsg.attachment_url ? `\nAttachment: ${taskFromMsg.attachment_url}` : '',
+            ].join('\n').trim()}
+            prefillAttachmentUrl={taskFromMsg.attachment_url || undefined}
+            prefillAssigneeId={contact?.profile_id || undefined}
+            sourceType="whatsapp"
+            sourceId={taskFromMsg.id}
+            onLinkSource={async (ticketId) => {
+              await supabase.from('whatsapp_messages')
+                .update({ is_forwarded: true, forwarded_to_task_id: ticketId })
+                .eq('id', taskFromMsg.id);
+              queryClient.invalidateQueries({ queryKey: ['whatsapp-messages', selectedContactId] });
+            }}
+          />
+        );
+      })()}
     </div>
   );
 }
@@ -540,3 +567,4 @@ export default function WhatsAppInbox() {
     </DashboardLayout>
   );
 }
+

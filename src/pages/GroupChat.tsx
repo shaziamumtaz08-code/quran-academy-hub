@@ -18,6 +18,7 @@ import { ChatInput } from '@/components/chat/ChatInput';
 import { MembersPanel } from '@/components/chat/MembersPanel';
 import { AIAssistantDialog } from '@/components/chat/AIAssistantDialog';
 import { ForwardMessageDialog } from '@/components/chat/ForwardMessageDialog';
+import { CreateTicketDialog } from '@/components/hub/CreateTicketDialog';
 import {
   CommThemeProvider, CommThemeToggle, useCommTheme,
   colorFromName, initialsFromName, formatCommTime,
@@ -40,6 +41,7 @@ function GroupChatInner() {
   const [aiOpen, setAiOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<any | null>(null);
   const [forwardMsg, setForwardMsg] = useState<any | null>(null);
+  const [taskFromMsg, setTaskFromMsg] = useState<any | null>(null);
   const [dmOpen, setDmOpen] = useState(false);
   const [dmSearch, setDmSearch] = useState('');
   const [sidebarFilter, setSidebarFilter] = useState<'all' | 'groups' | 'dm'>(searchParams.get('filter') === 'dm' ? 'dm' : 'all');
@@ -248,21 +250,12 @@ function GroupChatInner() {
     },
   });
 
-  const convertToTask = useMutation({
-    mutationFn: async (msg: any) => {
-      if (!user?.id) return;
-      const { error } = await supabase.from('tasks').insert({
-        title: (msg.content || 'Task from chat').slice(0, 100),
-        description: msg.content || '',
-        created_by: user.id, assigned_to: msg.sender_id,
-        priority: 'medium', status: 'open',
-        source_type: 'chat', source_id: msg.id,
-      });
-      if (error) throw error;
-      await supabase.from('chat_messages').update({ linked_task_id: msg.id }).eq('id', msg.id);
-    },
-    onSuccess: () => toast({ title: 'Task created from message' }),
-  });
+  // Convert chat message → opens full ticket dialog (task / complaint / feedback / etc.)
+  // The message body becomes the description and any attachment (incl. voice notes) is carried over.
+  const linkMessageToTicket = async (messageId: string, ticketId: string) => {
+    await supabase.from('chat_messages').update({ linked_task_id: ticketId }).eq('id', messageId);
+    queryClient.invalidateQueries({ queryKey: ['chat-messages', activeGroupId] });
+  };
 
   const activeGroup = groups.find((g: any) => g.id === activeGroupId);
   const msgMap = Object.fromEntries(messages.map((m: any) => [m.id, m]));
@@ -475,7 +468,7 @@ function GroupChatInner() {
                       key={msg.id}
                       msg={msg}
                       isMe={msg.sender_id === user?.id}
-                      onConvertToTask={(m) => convertToTask.mutate(m)}
+                      onConvertToTask={(m) => setTaskFromMsg(m)}
                       onReply={(m) => setReplyTo(m)}
                       onForward={(m) => setForwardMsg(m)}
                       replyToContent={replyContent}
@@ -609,6 +602,25 @@ function GroupChatInner() {
           onOpenChange={(v) => { if (!v) setForwardMsg(null); }}
           message={forwardMsg}
           currentGroupName={activeGroup?.name}
+        />
+      )}
+      {taskFromMsg && (
+        <CreateTicketDialog
+          open={!!taskFromMsg}
+          onOpenChange={(v) => { if (!v) setTaskFromMsg(null); }}
+          defaultCategory="task"
+          prefillSubject={(taskFromMsg.content || (taskFromMsg.attachment_url ? 'Voice / file from chat' : 'Task from chat')).slice(0, 100)}
+          prefillDescription={[
+            taskFromMsg.content || '',
+            `\n\n— From chat: ${activeGroup?.name || 'conversation'}`,
+            taskFromMsg.senderName ? `\nSender: ${taskFromMsg.senderName}` : '',
+            taskFromMsg.attachment_url ? `\nAttachment: ${taskFromMsg.attachment_url}` : '',
+          ].join('').trim()}
+          prefillAttachmentUrl={taskFromMsg.attachment_url || undefined}
+          prefillAssigneeId={taskFromMsg.sender_id !== user?.id ? taskFromMsg.sender_id : undefined}
+          sourceType="chat"
+          sourceId={taskFromMsg.id}
+          onLinkSource={(ticketId) => linkMessageToTicket(taskFromMsg.id, ticketId)}
         />
       )}
     </div>

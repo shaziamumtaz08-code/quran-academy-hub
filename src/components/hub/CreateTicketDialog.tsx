@@ -19,6 +19,14 @@ interface CreateTicketDialogProps {
   onOpenChange: (open: boolean) => void;
   defaultCategory?: string;
   onCreated?: () => void;
+  // Prefill props (used when converting a chat / WhatsApp message into a ticket)
+  prefillSubject?: string;
+  prefillDescription?: string;
+  prefillAttachmentUrl?: string;
+  prefillAssigneeId?: string;
+  sourceType?: string; // 'chat' | 'whatsapp' | etc
+  sourceId?: string;
+  onLinkSource?: (ticketId: string) => Promise<void> | void;
 }
 
 const CATEGORIES = [
@@ -30,19 +38,28 @@ const CATEGORIES = [
   { value: 'general', label: 'General' },
 ];
 
-export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCreated }: CreateTicketDialogProps) {
+export function CreateTicketDialog({
+  open, onOpenChange, defaultCategory, onCreated,
+  prefillSubject, prefillDescription, prefillAttachmentUrl, prefillAssigneeId,
+  sourceType, sourceId, onLinkSource,
+}: CreateTicketDialogProps) {
   const { profile } = useAuth();
   const { activeDivision, activeBranch } = useDivision();
   const queryClient = useQueryClient();
 
   const [category, setCategory] = useState(defaultCategory || 'general');
 
-  // Sync defaultCategory when dialog opens
+  // Sync prefill values when dialog opens
   useEffect(() => {
-    if (open && defaultCategory) {
-      setCategory(defaultCategory);
+    if (open) {
+      if (defaultCategory) setCategory(defaultCategory);
+      if (prefillSubject !== undefined) setSubject(prefillSubject);
+      if (prefillDescription !== undefined) setDescription(prefillDescription);
+      if (prefillAttachmentUrl !== undefined) setAttachmentUrl(prefillAttachmentUrl);
+      if (prefillAssigneeId !== undefined) setAssigneeId(prefillAssigneeId);
     }
-  }, [open, defaultCategory]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
   const [subcategoryId, setSubcategoryId] = useState<string>('');
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
@@ -131,7 +148,7 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCrea
 
       const finalAssigneeId = assigneeId || profile!.id;
 
-      const { error } = await supabase.from('tickets').insert({
+      const { data: created, error } = await supabase.from('tickets').insert({
         creator_id: profile!.id,
         assignee_id: finalAssigneeId,
         category,
@@ -142,14 +159,18 @@ export function CreateTicketDialog({ open, onOpenChange, defaultCategory, onCrea
         tat_hours: tatHours,
         tat_deadline: tatDeadline,
         due_date: tatDeadline,
-        metadata,
+        metadata: { ...metadata, ...(sourceType ? { source_type: sourceType, source_id: sourceId } : {}) },
         is_anonymous: isAnonymous,
         target_role: targetRole || null,
         branch_id: activeBranch?.id || null,
         division_id: activeDivision?.id || null,
         attachment_url: attachmentUrl || null,
-      } as any);
+      } as any).select('id').single();
       if (error) throw error;
+      if (created?.id && onLinkSource) {
+        try { await onLinkSource(created.id); } catch (e) { /* non-fatal */ }
+      }
+      return created;
     },
     onSuccess: () => {
       toast.success('Ticket created successfully');
