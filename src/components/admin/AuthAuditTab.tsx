@@ -8,8 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Search, CheckCircle2, XCircle, ShieldAlert, RefreshCw } from 'lucide-react';
+import { Loader2, Search, CheckCircle2, XCircle, ShieldAlert, RefreshCw, Wrench } from 'lucide-react';
 
 interface ProfileWithAuth {
   id: string;
