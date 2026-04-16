@@ -9038,6 +9038,10 @@ export type Database = {
         Args: { _session_id: string; _teacher_id: string }
         Returns: boolean
       }
+      share_a_class: {
+        Args: { _user_a: string; _user_b: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role:
