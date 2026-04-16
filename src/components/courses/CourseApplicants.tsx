@@ -802,37 +802,54 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
                         </Badge>
                       </TableCell>
                       <TableCell className="px-2 sticky right-0 bg-background z-[5] shadow-[-2px_0_4px_-2px_rgba(0,0,0,0.1)]" onClick={e => e.stopPropagation()}>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7">
-                              <MoreVertical className="h-3.5 w-3.5" />
+                        <div className="flex items-center gap-1 justify-end">
+                          {sub.status !== 'enrolled' && (
+                            <Button
+                              size="sm"
+                              className="h-7 px-2.5 text-xs gap-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                              disabled={!d.email?.trim()}
+                              title={!d.email?.trim() ? 'Add an email first' : 'Activate student'}
+                              onClick={() => setActivateApplicant({
+                                id: sub.id,
+                                full_name: d.full_name || 'Applicant',
+                                email: (d.email || '').trim(),
+                              })}
+                            >
+                              <UserCheck className="h-3.5 w-3.5" /> Activate
                             </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-40">
-                            <DropdownMenuItem onClick={() => setSelectedSubmission(sub)}>
-                              <Eye className="h-3.5 w-3.5 mr-2" /> View Details
-                            </DropdownMenuItem>
-                            {sub.status !== 'enrolled' && (
-                              <DropdownMenuItem onClick={() => handleEnrollSingle(sub)}>
-                                <CheckCircle2 className="h-3.5 w-3.5 mr-2" /> Enroll
+                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7">
+                                <MoreVertical className="h-3.5 w-3.5" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-40">
+                              <DropdownMenuItem onClick={() => setSelectedSubmission(sub)}>
+                                <Eye className="h-3.5 w-3.5 mr-2" /> View Details
                               </DropdownMenuItem>
-                            )}
-                            {sub.status !== 'reviewed' && sub.status !== 'enrolled' && (
-                              <DropdownMenuItem onClick={() => updateStatus.mutate({ id: sub.id, status: 'reviewed' })}>
-                                <Eye className="h-3.5 w-3.5 mr-2" /> Mark Reviewed
+                              {sub.status !== 'enrolled' && (
+                                <DropdownMenuItem onClick={() => handleEnrollSingle(sub)}>
+                                  <CheckCircle2 className="h-3.5 w-3.5 mr-2" /> Quick Enroll
+                                </DropdownMenuItem>
+                              )}
+                              {sub.status !== 'reviewed' && sub.status !== 'enrolled' && (
+                                <DropdownMenuItem onClick={() => updateStatus.mutate({ id: sub.id, status: 'reviewed' })}>
+                                  <Eye className="h-3.5 w-3.5 mr-2" /> Mark Reviewed
+                                </DropdownMenuItem>
+                              )}
+                              {sub.status !== 'rejected' && sub.status !== 'enrolled' && (
+                                <DropdownMenuItem onClick={() => updateStatus.mutate({ id: sub.id, status: 'rejected' })}>
+                                  <XCircle className="h-3.5 w-3.5 mr-2" /> Reject
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="text-destructive" onClick={() => setDeleteDialogId(sub.id)}>
+                                <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
                               </DropdownMenuItem>
-                            )}
-                            {sub.status !== 'rejected' && sub.status !== 'enrolled' && (
-                              <DropdownMenuItem onClick={() => updateStatus.mutate({ id: sub.id, status: 'rejected' })}>
-                                <XCircle className="h-3.5 w-3.5 mr-2" /> Reject
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive" onClick={() => setDeleteDialogId(sub.id)}>
-                              <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </TableCell>
                     </TableRow>
                     {/* Enrollment summary card */}
