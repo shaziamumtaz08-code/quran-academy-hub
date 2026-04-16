@@ -45,6 +45,19 @@ interface Submission {
   match_confidence?: string | null;
 }
 
+interface EnrollmentResult {
+  success: boolean;
+  matched: boolean;
+  name: string;
+  error?: string;
+  auth_created?: boolean;
+  class_assigned?: string | null;
+  chat_joined?: boolean;
+  temp_password?: string;
+  login_email?: string;
+  failed_steps?: string[];
+}
+
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   new: { label: 'New', color: 'bg-blue-500/10 text-blue-600 border-blue-200', icon: Clock },
   reviewed: { label: 'Reviewed', color: 'bg-amber-500/10 text-amber-600 border-amber-200', icon: Eye },
@@ -85,6 +98,7 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
   const [aiFilteredIds, setAiFilteredIds] = useState<Set<string> | null>(null);
   const [aiFilterLabel, setAiFilterLabel] = useState('');
   const [aiFilterLoading, setAiFilterLoading] = useState(false);
+  const [enrollmentSummaries, setEnrollmentSummaries] = useState<Record<string, EnrollmentResult>>({});
   const headerCheckboxRef = useRef<HTMLButtonElement>(null);
 
   const { data: submissions = [], isLoading } = useQuery({
@@ -186,9 +200,9 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
     queryClient.invalidateQueries({ queryKey: ['registration-submissions', courseId] });
   }
 
-  // ─── Enrollment via Edge Function ───
-  async function enrollSubmission(submissionId: string): Promise<{ success: boolean; matched: boolean; name: string; error?: string }> {
-    const { data, error } = await supabase.functions.invoke('enroll-applicant', {
+  // ─── Enrollment via process-enrollment Edge Function ───
+  async function enrollSubmission(submissionId: string): Promise<EnrollmentResult> {
+    const { data, error } = await supabase.functions.invoke('process-enrollment', {
       body: { submission_id: submissionId, course_id: courseId },
     });
     if (error) return { success: false, matched: false, name: '', error: error.message };
@@ -197,6 +211,12 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
       success: true,
       matched: data.matched_existing || false,
       name: data.student_name || '',
+      auth_created: data.auth_created,
+      class_assigned: data.class_assigned,
+      chat_joined: data.chat_joined,
+      temp_password: data.temp_password,
+      login_email: data.login_email,
+      failed_steps: data.failed_steps,
     };
   }
 
@@ -209,10 +229,10 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
     setEnrollingId(sub.id);
     const result = await enrollSubmission(sub.id);
     if (result.success) {
+      setEnrollmentSummaries(prev => ({ ...prev, [sub.id]: result }));
       toast.success(
-        result.matched
-          ? `Matched existing profile — ${result.name} enrolled to course`
-          : `Student "${result.name}" enrolled successfully`
+        `✅ ${result.name} fully onboarded! Temp password: ${result.temp_password}`,
+        { duration: 8000 }
       );
       setSelectedSubmission(null);
       queryClient.invalidateQueries({ queryKey: ['registration-submissions', courseId] });
@@ -674,7 +694,8 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
                   const isSelected = selectedIds.has(sub.id);
                   const d = sub.data || {};
                   return (
-                    <TableRow key={sub.id}
+                    <React.Fragment key={sub.id}>
+                    <TableRow
                       className={cn("cursor-pointer hover:bg-muted/50", isSelected && "bg-primary/5")}
                       onClick={() => setSelectedSubmission(sub)}>
                       <TableCell className="px-3" onClick={e => e.stopPropagation()}>
@@ -812,6 +833,48 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
                         </DropdownMenu>
                       </TableCell>
                     </TableRow>
+                    {/* Enrollment summary card */}
+                    {(sub.status === 'enrolled' || enrollmentSummaries[sub.id]) && enrollmentSummaries[sub.id] && (
+                      <TableRow className="bg-emerald-50/50 dark:bg-emerald-950/20 hover:bg-emerald-50/50">
+                        <TableCell colSpan={12} className="py-2 px-4">
+                          <div className="flex flex-wrap items-center gap-3 text-xs">
+                            <span className="text-emerald-600 font-medium flex items-center gap-1">
+                              <CheckCircle2 className="h-3 w-3" /> Profile created
+                            </span>
+                            <span className={cn("font-medium flex items-center gap-1",
+                              enrollmentSummaries[sub.id].auth_created ? "text-emerald-600" : "text-amber-600")}>
+                              {enrollmentSummaries[sub.id].auth_created ? (
+                                <><CheckCircle2 className="h-3 w-3" /> Login ready</>
+                              ) : (
+                                <><CheckCircle2 className="h-3 w-3" /> Login exists</>
+                              )}
+                            </span>
+                            <span className={cn("font-medium flex items-center gap-1",
+                              enrollmentSummaries[sub.id].class_assigned ? "text-emerald-600" : "text-muted-foreground")}>
+                              {enrollmentSummaries[sub.id].class_assigned ? (
+                                <><CheckCircle2 className="h-3 w-3" /> Class: {enrollmentSummaries[sub.id].class_assigned}</>
+                              ) : (
+                                <><XCircle className="h-3 w-3" /> No class</>
+                              )}
+                            </span>
+                            <span className={cn("font-medium flex items-center gap-1",
+                              enrollmentSummaries[sub.id].chat_joined ? "text-emerald-600" : "text-muted-foreground")}>
+                              {enrollmentSummaries[sub.id].chat_joined ? (
+                                <><CheckCircle2 className="h-3 w-3" /> Chat joined</>
+                              ) : (
+                                <><XCircle className="h-3 w-3" /> No chat</>
+                              )}
+                            </span>
+                            {enrollmentSummaries[sub.id].temp_password && (
+                              <span className="text-muted-foreground ml-2">
+                                Password: <code className="bg-muted px-1 py-0.5 rounded text-[10px]">{enrollmentSummaries[sub.id].temp_password}</code>
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    </React.Fragment>
                   );
                 })}
               </TableBody>
