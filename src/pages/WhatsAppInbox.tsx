@@ -429,7 +429,8 @@ function WhatsAppInner() {
                             {!msg.forwarded_to_task_id && (
                               <Button
                                 variant="secondary" size="icon" className="h-6 w-6 rounded-full shadow"
-                                onClick={() => forwardToTask.mutate(msg)}
+                                onClick={() => setTaskFromMsg(msg)}
+                                title="Convert to ticket / task"
                               >
                                 <ListTodo className="h-3 w-3" />
                               </Button>
