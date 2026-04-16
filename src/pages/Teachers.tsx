@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { useDivision } from '@/contexts/DivisionContext';
 import { ExportDialog } from '@/components/export/ExportDialog';
 import { TeacherDetailDrawer } from '@/components/teachers/TeacherDetailDrawer';
 import { EntityLink } from '@/components/shared/EntityLink';
