@@ -34,13 +34,16 @@ serve(async (req) => {
 
   const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-  // Verify caller via getClaims (works with new signing-keys system)
-  const { data: claimsData, error: claimsErr } = await adminClient.auth.getClaims(token);
-  if (claimsErr || !claimsData?.claims?.sub) {
-    console.error("getClaims failed:", claimsErr);
+  // Verify caller using anon client with the user's token in headers
+  const authedClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
+  const { data: userData, error: userErr } = await authedClient.auth.getUser();
+  if (userErr || !userData?.user?.id) {
+    console.error("getUser failed:", userErr);
     return json(401, { error: "Invalid session" }, origin);
   }
-  const callerId = claimsData.claims.sub as string;
+  const callerId = userData.user.id;
 
   // Check caller is admin/super_admin
   const { data: callerRoles } = await adminClient
