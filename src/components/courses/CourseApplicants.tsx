@@ -874,7 +874,7 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
                         </TableCell>
                       </TableRow>
                     )}
-                  </React.Fragment>
+                    </React.Fragment>
                   );
                 })}
               </TableBody>
