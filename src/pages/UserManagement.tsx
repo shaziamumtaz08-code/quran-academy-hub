@@ -82,6 +82,8 @@ import { AuthAuditTab } from '@/components/admin/AuthAuditTab';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Country, State, City, ICountry, IState, ICity } from 'country-state-city';
 import { SearchableCitySelect } from '@/components/ui/searchable-city-select';
+import { useDivisionMembership, getDivisionShortName, getDivisionBadgeClass } from '@/hooks/useDivisionMembership';
+import { useDivision } from '@/contexts/DivisionContext';
 
 const ALL_PERMISSIONS = [
   { group: 'Users', permissions: ['users.view', 'users.create', 'users.edit', 'users.delete', 'users.assign_roles'] },
@@ -183,6 +185,7 @@ export default function UserManagement() {
   const [filterCountry, setFilterCountry] = useState<string>('');
   const [filterCity, setFilterCity] = useState<string>('');
   const [filterRole, setFilterRole] = useState<string>('');
+  const [filterDivision, setFilterDivision] = useState<string>('');
   const [showArchived, setShowArchived] = useState(false);
   // Sorting state
   type SortField = 'name' | 'role' | 'gender' | 'age' | 'country' | 'city';
@@ -651,6 +654,24 @@ export default function UserManagement() {
       });
     },
   });
+  // Fetch divisions for filter dropdown
+  const { data: allDivisions = [] } = useQuery({
+    queryKey: ['all-divisions-list'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('divisions')
+        .select('id, name, model_type')
+        .eq('is_active', true)
+        .order('name');
+      if (error) throw error;
+      return data as Array<{ id: string; name: string; model_type: string }>;
+    },
+  });
+
+  // Division membership resolution
+  const allUserIds = useMemo(() => (users || []).map(u => u.id), [users]);
+  const { data: divMembershipMap } = useDivisionMembership(allUserIds, !!users && users.length > 0);
+
   const availableCountries = useMemo(() => {
     const countries = new Set<string>();
     users?.forEach(u => {
@@ -672,24 +693,16 @@ export default function UserManagement() {
 
   const filteredUsers = users
     ?.filter(user => {
-      // Archive filter — show only archived or only active
       const matchesArchive = showArchived ? !!user.archived_at : !user.archived_at;
-      
-      // Text search filter
       const matchesSearch = !searchTerm || 
         user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.email?.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      // Country filter
       const matchesCountry = !filterCountry || user.country === filterCountry;
-      
-      // City filter
       const matchesCity = !filterCity || user.city === filterCity;
-      
-      // Role filter
       const matchesRole = !filterRole || user.roles?.includes(filterRole as AppRole);
+      const matchesDivision = !filterDivision || (divMembershipMap?.get(user.id) || []).some(d => d.divisionId === filterDivision);
       
-      return matchesArchive && matchesSearch && matchesCountry && matchesCity && matchesRole;
+      return matchesArchive && matchesSearch && matchesCountry && matchesCity && matchesRole && matchesDivision;
     })
     ?.sort((a, b) => {
       let comparison = 0;
@@ -718,12 +731,13 @@ export default function UserManagement() {
       return sortDirection === 'asc' ? comparison : -comparison;
     });
 
-  const hasActiveFilters = !!filterCountry || !!filterCity || !!filterRole || showArchived;
+  const hasActiveFilters = !!filterCountry || !!filterCity || !!filterRole || !!filterDivision || showArchived;
 
   const resetFilters = () => {
     setFilterCountry('');
     setFilterCity('');
     setFilterRole('');
+    setFilterDivision('');
     setSearchTerm('');
     setShowArchived(false);
   };
@@ -1152,6 +1166,19 @@ export default function UserManagement() {
                 </SelectContent>
               </Select>
               
+              {/* Division Filter */}
+              <Select value={filterDivision || "all"} onValueChange={(v) => setFilterDivision(v === "all" ? "" : v)}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="All Divisions" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Divisions</SelectItem>
+                  {allDivisions.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
               {/* Reset Filters Button */}
               {hasActiveFilters && (
                 <Button variant="outline" size="sm" onClick={resetFilters} className="h-10">
@@ -1230,6 +1257,7 @@ export default function UserManagement() {
                           </div>
                         </TableHead>
                         <TableHead>Location</TableHead>
+                        <TableHead>Division(s)</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1339,6 +1367,21 @@ export default function UserManagement() {
                             ) : (
                               <span className="text-muted-foreground text-sm">—</span>
                             )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {(() => {
+                                const memberships = divMembershipMap?.get(user.id) || [];
+                                if (memberships.length === 0) {
+                                  return <Badge variant="outline" className="text-[10px] text-muted-foreground">Unassigned</Badge>;
+                                }
+                                return memberships.map(m => (
+                                  <Badge key={m.divisionId} variant="outline" className={`text-[10px] ${getDivisionBadgeClass(m.modelType)}`}>
+                                    {getDivisionShortName(m.divisionName)}
+                                  </Badge>
+                                ));
+                              })()}
+                            </div>
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1">

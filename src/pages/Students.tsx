@@ -22,6 +22,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDivision } from '@/contexts/DivisionContext';
 import { StudentCard } from '@/components/students/StudentCard';
 import { StudentDetailDrawer } from '@/components/students/StudentDetailDrawer';
+import { useDivisionMembership, getDivisionShortName, getDivisionBadgeClass } from '@/hooks/useDivisionMembership';
 import { StudentHistoryDialog } from '@/components/students/StudentHistoryDialog';
 import { StudentScheduleDialog } from '@/components/students/StudentScheduleDialog';
 import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
@@ -348,6 +349,10 @@ export default function Students() {
 
   const isLoading = isTeacher ? isLoadingTeacher : isLoadingOther;
 
+  // Division membership for badge display
+  const studentUserIds = useMemo(() => students.map(s => s.id), [students]);
+  const { data: divMembershipMap } = useDivisionMembership(studentUserIds, isAdmin && students.length > 0);
+
   // Get unique values for filters
   const uniqueCountries = useMemo(() => {
     const countries = new Set(students.map(s => s.country).filter(Boolean) as string[]);
@@ -591,6 +596,7 @@ export default function Students() {
                       <span className="flex items-center">Assigned Teacher {getSortIcon('teacher')}</span>
                     </TableHead>
                     <TableHead>Subject(s)</TableHead>
+                    {isAdmin && <TableHead>Division(s)</TableHead>}
                     {isAdmin && (
                       <>
                         <TableHead 
@@ -681,6 +687,19 @@ export default function Students() {
                       </TableCell>
                       {isAdmin && (
                         <>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {(() => {
+                                const memberships = divMembershipMap?.get(student.id) || [];
+                                if (memberships.length === 0) return <Badge variant="outline" className="text-[10px] text-muted-foreground">Unassigned</Badge>;
+                                return memberships.map(m => (
+                                  <Badge key={m.divisionId} variant="outline" className={`text-[10px] ${getDivisionBadgeClass(m.modelType)}`}>
+                                    {getDivisionShortName(m.divisionName)}
+                                  </Badge>
+                                ));
+                              })()}
+                            </div>
+                          </TableCell>
                           <TableCell className="text-muted-foreground">{student.country || '-'}</TableCell>
                           <TableCell className="text-muted-foreground">{student.city || '-'}</TableCell>
                           <TableCell className="capitalize text-muted-foreground">{student.gender || '-'}</TableCell>

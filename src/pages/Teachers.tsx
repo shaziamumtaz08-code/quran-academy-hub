@@ -17,6 +17,7 @@ import { useDivision } from '@/contexts/DivisionContext';
 import { ExportDialog } from '@/components/export/ExportDialog';
 import { TeacherDetailDrawer } from '@/components/teachers/TeacherDetailDrawer';
 import { EntityLink } from '@/components/shared/EntityLink';
+import { useDivisionMembership, getDivisionShortName, getDivisionBadgeClass } from '@/hooks/useDivisionMembership';
 
 interface StudentWithSchedule {
   id: string;
@@ -145,6 +146,10 @@ export default function Teachers() {
       })) as Teacher[];
     },
   });
+
+  // Division membership for badge display
+  const teacherUserIds = useMemo(() => teachers.map(t => t.id), [teachers]);
+  const { data: divMembershipMap } = useDivisionMembership(teacherUserIds, teachers.length > 0);
 
   // Get unique countries and cities for filters
   const uniqueCountries = useMemo(() => {
@@ -508,6 +513,7 @@ export default function Teachers() {
                   >
                     <span className="flex items-center justify-center">Students {getSortIcon('student_count')}</span>
                   </TableHead>
+                  <TableHead>Division(s)</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -559,6 +565,19 @@ export default function Teachers() {
                           <Users className="h-3 w-3" />
                           {teacher.student_count}
                         </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {(() => {
+                            const memberships = divMembershipMap?.get(teacher.id) || [];
+                            if (memberships.length === 0) return <Badge variant="outline" className="text-[10px] text-muted-foreground">Unassigned</Badge>;
+                            return memberships.map(m => (
+                              <Badge key={m.divisionId} variant="outline" className={`text-[10px] ${getDivisionBadgeClass(m.modelType)}`}>
+                                {getDivisionShortName(m.divisionName)}
+                              </Badge>
+                            ));
+                          })()}
+                        </div>
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
