@@ -77,9 +77,20 @@ export function NavRail({ items, orgInitials = 'AQ' }: NavRailProps) {
   const location = useLocation();
   const { logout } = useAuth();
 
+  // Map rail items to the set of route prefixes that should highlight them
+  const ROUTE_GROUPS: Record<string, string[]> = {
+    '/people': ['/people', '/students', '/teachers', '/user-management', '/leads', '/identity', '/applicants'],
+    '/teaching': ['/teaching', '/teaching-os', '/quiz-engine', '/courses', '/course-builder', '/my-teaching', '/my-courses', '/lessons', '/assignments', '/subjects', '/schedules', '/attendance', '/monthly-planning'],
+    '/finance': ['/finance', '/payments', '/expenses', '/cash-advances', '/salary', '/staff-salary', '/teacher-payouts'],
+    '/reports-hub': ['/reports-hub', '/reports', '/student-reports', '/kpi'],
+    '/communication': ['/communication', '/group-chat', '/whatsapp-inbox', '/notifications', '/work-hub'],
+    '/settings': ['/settings', '/organization-settings', '/zoom-management', '/report-card-templates'],
+  };
+
   const isActive = (href: string) => {
-    if (href === '/dashboard') return location.pathname === '/dashboard';
-    return location.pathname.startsWith(href);
+    if (href === '/dashboard') return location.pathname === '/dashboard' || location.pathname === '/my-dashboard';
+    const prefixes = ROUTE_GROUPS[href] || [href];
+    return prefixes.some(p => location.pathname === p || location.pathname.startsWith(p + '/') || location.pathname.startsWith(p + '?') || location.pathname === p);
   };
 
   return (
