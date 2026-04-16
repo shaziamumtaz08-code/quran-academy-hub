@@ -67,6 +67,59 @@ export default function UnifiedDashboard() {
 
   const effectiveDivisions = divisions.length > 0 ? divisions : allDivisions.map(d => ({ ...d, roles: userRoles.map(r => r.role) }));
 
+  // ─── Filter divisions by actual user activity ───
+  const { data: activeDivisionIds = new Set<string>() } = useQuery({
+    queryKey: ['user-active-divisions', user?.id],
+    queryFn: async () => {
+      const ids = new Set<string>();
+
+      // Check student_teacher_assignments
+      const { data: sta } = await supabase.from('student_teacher_assignments')
+        .select('division_id')
+        .or(`student_id.eq.${user!.id},teacher_id.eq.${user!.id}`)
+        .eq('status', 'active');
+      (sta || []).forEach(r => { if (r.division_id) ids.add(r.division_id); });
+
+      // Check course_class_students → course_classes → courses
+      const { data: ccs } = await supabase.from('course_class_students')
+        .select('class:course_classes!inner(courses:courses!inner(division_id))')
+        .eq('student_id', user!.id)
+        .eq('status', 'active');
+      (ccs || []).forEach((r: any) => {
+        const did = r.class?.courses?.division_id;
+        if (did) ids.add(did);
+      });
+
+      // Check course_class_staff
+      const { data: staff } = await supabase.from('course_class_staff')
+        .select('class:course_classes!inner(courses:courses!inner(division_id))')
+        .eq('user_id', user!.id);
+      (staff || []).forEach((r: any) => {
+        const did = r.class?.courses?.division_id;
+        if (did) ids.add(did);
+      });
+
+      return ids;
+    },
+    enabled: !!user?.id && !isSuperAdmin,
+  });
+
+  // For super_admin, show all divisions; for others, only those with activity
+  const visibleDivisions = isSuperAdmin
+    ? effectiveDivisions
+    : effectiveDivisions.filter(d => activeDivisionIds.has(d.id));
+
+  const showTabs = visibleDivisions.length > 1;
+  const showAllTab = visibleDivisions.length > 1;
+
+  // If single division, auto-select it
+  useEffect(() => {
+    if (!isSuperAdmin && visibleDivisions.length === 1 && activeDivision === 'all') {
+      setActiveDivision(visibleDivisions[0].id);
+      setActiveDivisionId(visibleDivisions[0].id);
+    }
+  }, [visibleDivisions.length, isSuperAdmin]);
+
   const activeDivisionMeta = effectiveDivisions.find(d => d.id === activeDivision);
   const isOneToOne = activeDivisionMeta?.model_type === 'one_to_one';
   const isParent = userRoles.some(r => r.role === 'parent');
