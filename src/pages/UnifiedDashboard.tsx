@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDivision } from '@/contexts/DivisionContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,68 +13,14 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import {
   BookOpen, CalendarCheck, CreditCard, Award, AlertTriangle,
-  Receipt, User, Search, LayoutDashboard, Users
+  Receipt, User, Search, LayoutDashboard, Users, Clock, CheckSquare
 } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import AvailableCoursesSection from '@/components/dashboard/AvailableCoursesSection';
-
-// ─── Promo Carousel ───
-function PromoCarousel({ items, onApply }: { items: Array<{ type: string; id: string; title: string; subtitle: string; imageUrl?: string; courseId?: string }>; onApply: (id: string) => void }) {
-  const [currentIdx, setCurrentIdx] = useState(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval>>();
-
-  useEffect(() => {
-    if (items.length <= 1) return;
-    intervalRef.current = setInterval(() => {
-      setCurrentIdx(prev => (prev + 1) % items.length);
-    }, 5000);
-    return () => clearInterval(intervalRef.current);
-  }, [items.length]);
-
-  const current = items[currentIdx];
-  if (!current) return null;
-
-  return (
-    <div className="relative rounded-xl overflow-hidden">
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 p-6 md:p-8">
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <Badge className="bg-white/15 text-white text-xs mb-2 border-0">
-              {current.type === 'promo' ? 'Featured' : 'Open for enrollment'}
-            </Badge>
-            <h3 className="text-lg md:text-xl font-bold text-white mb-1">{current.title}</h3>
-            <p className="text-sm text-white/60 line-clamp-2">{current.subtitle}</p>
-            {current.courseId && (
-              <Button size="sm" className="mt-4 bg-white text-slate-900 hover:bg-white/90"
-                onClick={() => onApply(current.courseId!)}>
-                Learn More →
-              </Button>
-            )}
-          </div>
-          {current.imageUrl && (
-            <img src={current.imageUrl} alt="" className="h-24 w-24 md:h-32 md:w-32 rounded-lg object-cover ml-4 hidden sm:block" />
-          )}
-        </div>
-
-        {items.length > 1 && (
-          <div className="flex gap-1.5 mt-4">
-            {items.map((_, i) => (
-              <button key={i}
-                className={cn("h-1.5 rounded-full transition-all",
-                  i === currentIdx ? "w-6 bg-white" : "w-1.5 bg-white/30"
-                )}
-                onClick={() => { setCurrentIdx(i); clearInterval(intervalRef.current); }}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 export default function UnifiedDashboard() {
   const { user, profile, activeRole } = useAuth();
+  const { switcherOptions, setActiveDivisionId } = useDivision();
   const navigate = useNavigate();
   const [activeDivision, setActiveDivision] = useState<string>('all');
 
@@ -82,7 +29,7 @@ export default function UnifiedDashboard() {
     queryKey: ['user-context-dashboard', user?.id],
     queryFn: async () => {
       const { data } = await supabase.from('user_context')
-        .select('division_id, divisions:divisions!inner(id, name)')
+        .select('division_id, divisions:divisions!inner(id, name, model_type)')
         .eq('user_id', user!.id);
       return data || [];
     },
@@ -100,18 +47,52 @@ export default function UnifiedDashboard() {
     enabled: !!user?.id,
   });
 
+  // Build unique divisions with model_type
   const divisions = [...new Map(
     userContexts
       .filter(c => c.divisions)
       .map(c => [c.division_id, { ...(c.divisions as any), roles: userRoles.map(r => r.role) }])
   ).values()];
 
+  // Also include all divisions from switcher for super_admin
+  const isSuperAdmin = userRoles.some(r => r.role === 'super_admin');
+  const { data: allDivisions = [] } = useQuery({
+    queryKey: ['all-divisions-for-dash'],
+    queryFn: async () => {
+      const { data } = await supabase.from('divisions').select('id, name, model_type').eq('is_active', true);
+      return data || [];
+    },
+    enabled: isSuperAdmin && divisions.length === 0,
+  });
+
+  const effectiveDivisions = divisions.length > 0 ? divisions : allDivisions.map(d => ({ ...d, roles: userRoles.map(r => r.role) }));
+
+  const activeDivisionMeta = effectiveDivisions.find(d => d.id === activeDivision);
+  const isOneToOne = activeDivisionMeta?.model_type === 'one_to_one';
   const isParent = userRoles.some(r => r.role === 'parent');
 
-  // ─── Stats: Active courses ───
+  // When division tab changes, also update the global DivisionContext
+  const handleDivisionChange = (divId: string) => {
+    setActiveDivision(divId);
+    if (divId !== 'all') {
+      setActiveDivisionId(divId);
+    }
+  };
+
+  // ─── Stats: Active courses / students ───
   const { data: activeCourses = 0, isLoading: loadingCourses } = useQuery({
     queryKey: ['dash-active-courses', user?.id, activeDivision],
     queryFn: async () => {
+      if (isOneToOne) {
+        // For 1:1, count active student_teacher_assignments
+        let query = supabase.from('student_teacher_assignments')
+          .select('id', { count: 'exact', head: true })
+          .or(`student_id.eq.${user!.id},teacher_id.eq.${user!.id}`)
+          .eq('status', 'active');
+        if (activeDivision !== 'all') query = query.eq('division_id', activeDivision);
+        const { count } = await query;
+        return count || 0;
+      }
       let query = supabase.from('course_enrollments')
         .select('id, courses:courses!inner(division_id)', { count: 'exact', head: true })
         .eq('student_id', user!.id)
@@ -128,9 +109,9 @@ export default function UnifiedDashboard() {
     queryKey: ['dash-attendance', user?.id, activeDivision],
     queryFn: async () => {
       let query = supabase.from('attendance')
-        .select('status, courses:courses!inner(division_id)')
+        .select('status, division_id')
         .eq('student_id', user!.id);
-      if (activeDivision !== 'all') query = query.eq('courses.division_id', activeDivision);
+      if (activeDivision !== 'all') query = query.eq('division_id', activeDivision);
       const { data } = await query;
       if (!data?.length) return 0;
       return Math.round(data.filter(a => a.status === 'present').length / data.length * 100);
@@ -142,16 +123,16 @@ export default function UnifiedDashboard() {
   const { data: feeStats = { count: 0, total: 0 }, isLoading: loadingFees } = useQuery({
     queryKey: ['dash-pending-fees', user?.id, activeDivision],
     queryFn: async () => {
-      let query = supabase.from('course_student_fees')
-        .select('total_due, total_paid, status, courses:courses!inner(division_id)')
+      let query = supabase.from('fee_invoices')
+        .select('amount, amount_paid, status, division_id')
         .eq('student_id', user!.id)
         .in('status', ['pending', 'overdue']);
-      if (activeDivision !== 'all') query = query.eq('courses.division_id', activeDivision);
+      if (activeDivision !== 'all') query = query.eq('division_id', activeDivision);
       const { data } = await query;
       if (!data?.length) return { count: 0, total: 0 };
       return {
         count: data.length,
-        total: data.reduce((sum, f) => sum + ((f.total_due || 0) - (f.total_paid || 0)), 0),
+        total: data.reduce((sum, f) => sum + ((f.amount || 0) - (f.amount_paid || 0)), 0),
       };
     },
     enabled: !!user?.id,
@@ -173,7 +154,7 @@ export default function UnifiedDashboard() {
     enabled: !!user?.id,
   });
 
-  // ─── My Enrollments ───
+  // ─── My Enrollments (Group) ───
   const { data: myEnrollments = [], isLoading: loadingEnroll } = useQuery({
     queryKey: ['dash-enrollments', user?.id, activeDivision],
     queryFn: async () => {
@@ -186,6 +167,21 @@ export default function UnifiedDashboard() {
       return data || [];
     },
     enabled: !!user?.id,
+  });
+
+  // ─── My Students (1:1) ───
+  const { data: myStudents = [] } = useQuery({
+    queryKey: ['dash-my-students-1to1', user?.id, activeDivision],
+    queryFn: async () => {
+      let query = supabase.from('student_teacher_assignments')
+        .select('id, student_id, status, start_date, profiles:student_id(id, full_name, email), subjects:subject_id(name)')
+        .eq('teacher_id', user!.id)
+        .eq('status', 'active');
+      if (activeDivision !== 'all') query = query.eq('division_id', activeDivision);
+      const { data } = await query;
+      return data || [];
+    },
+    enabled: !!user?.id && isOneToOne,
   });
 
   // ─── Teaching courses ───
@@ -230,7 +226,7 @@ export default function UnifiedDashboard() {
           ? Math.round(att.filter(a => a.status === 'present').length / att.length * 100)
           : 0;
 
-        const { data: fees } = await supabase.from('course_student_fees')
+        const { data: fees } = await supabase.from('fee_invoices')
           .select('id')
           .eq('student_id', child.id)
           .in('status', ['pending', 'overdue']);
@@ -247,63 +243,21 @@ export default function UnifiedDashboard() {
     enabled: !!user?.id && isParent,
   });
 
-  // ─── Promotional Carousel ───
-  const { data: promoItems = [] } = useQuery({
-    queryKey: ['dash-promo-carousel'],
-    queryFn: async () => {
-      const { data: promos } = await supabase.from('promotional_posts')
-        .select('id, content, attachment_url, course_id, courses:courses!inner(name, level)')
-        .eq('status', 'published')
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      const { data: available } = await supabase.from('courses')
-        .select('id, name, level, description, hero_image_url, divisions:divisions(name)')
-        .eq('status', 'published')
-        .eq('website_enabled', true)
-        .limit(5);
-
-      const items: Array<{ type: string; id: string; title: string; subtitle: string; imageUrl?: string; courseId?: string }> = [];
-
-      promos?.forEach(p => {
-        items.push({
-          type: 'promo',
-          id: p.id,
-          title: (p.courses as any)?.name || 'New Course',
-          subtitle: p.content?.slice(0, 100) || '',
-          imageUrl: p.attachment_url || undefined,
-          courseId: p.course_id,
-        });
-      });
-
-      available?.forEach(c => {
-        if (!items.some(i => i.courseId === c.id)) {
-          items.push({
-            type: 'course',
-            id: c.id,
-            title: c.name,
-            subtitle: c.description?.slice(0, 80) || `${c.level} · ${(c.divisions as any)?.name || ''}`,
-            imageUrl: c.hero_image_url || undefined,
-            courseId: c.id,
-          });
-        }
-      });
-
-      return items.slice(0, 6);
-    },
-  });
-
-  // ─── Recent Activity ───
+  // ─── Recent Activity (division-filtered) ───
   const { data: activities = [] } = useQuery({
-    queryKey: ['dash-activity', user?.id],
+    queryKey: ['dash-activity', user?.id, activeDivision],
     queryFn: async () => {
       const items: { id: string; description: string; date: Date }[] = [];
 
-      const { data: recentEnroll } = await supabase.from('course_enrollments')
-        .select('id, enrolled_at, courses:courses!inner(name)')
+      const enrollQuery = supabase.from('course_enrollments')
+        .select('id, enrolled_at, courses:courses!inner(name, division_id)')
         .eq('student_id', user!.id)
         .order('enrolled_at', { ascending: false })
         .limit(5);
+
+      const { data: recentEnroll } = activeDivision !== 'all'
+        ? await enrollQuery.eq('courses.division_id', activeDivision)
+        : await enrollQuery;
 
       recentEnroll?.forEach(e => {
         items.push({
@@ -313,21 +267,76 @@ export default function UnifiedDashboard() {
         });
       });
 
-      const { data: recentAtt } = await supabase.from('attendance')
-        .select('id, class_date, status, courses:courses!inner(name)')
+      const attQuery = supabase.from('attendance')
+        .select('id, class_date, status, division_id')
         .eq('student_id', user!.id)
         .order('class_date', { ascending: false })
         .limit(5);
 
+      const { data: recentAtt } = activeDivision !== 'all'
+        ? await attQuery.eq('division_id', activeDivision)
+        : await attQuery;
+
       recentAtt?.forEach(a => {
         items.push({
           id: `att-${a.id}`,
-          description: `${a.status === 'present' ? 'Attended' : 'Missed'} ${(a.courses as any)?.name}`,
+          description: `${a.status === 'present' ? 'Attended' : 'Missed'} class`,
           date: new Date(a.class_date),
         });
       });
 
       return items.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 8);
+    },
+    enabled: !!user?.id,
+  });
+
+  // ─── Upcoming classes / pending tasks ───
+  const { data: upcomingItems = [] } = useQuery({
+    queryKey: ['dash-upcoming', user?.id, activeDivision],
+    queryFn: async () => {
+      const items: { id: string; label: string; detail: string; type: 'class' | 'task' }[] = [];
+
+      // Check schedules
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const dayName = format(new Date(), 'EEEE').toLowerCase();
+
+      const { data: schedules } = await supabase.from('schedules')
+        .select('id, day_of_week, student_local_time, duration_minutes, assignment:student_teacher_assignments!inner(student_id, teacher_id, profiles:student_id(full_name))')
+        .eq('is_active', true)
+        .ilike('day_of_week', dayName)
+        .limit(5);
+
+      const filteredSchedules = (schedules || []).filter((s: any) =>
+        s.assignment?.student_id === user!.id || s.assignment?.teacher_id === user!.id
+      );
+
+      filteredSchedules.forEach((s: any) => {
+        items.push({
+          id: s.id,
+          label: `Class with ${(s.assignment?.profiles as any)?.full_name || 'Student'}`,
+          detail: s.student_local_time || dayName,
+          type: 'class',
+        });
+      });
+
+      // Check pending tasks
+      const { data: tasks } = await supabase.from('tickets')
+        .select('id, subject, due_date')
+        .eq('assignee_id', user!.id)
+        .in('status', ['open', 'in_progress'])
+        .order('due_date', { ascending: true })
+        .limit(5);
+
+      (tasks || []).forEach(t => {
+        items.push({
+          id: t.id,
+          label: t.subject,
+          detail: t.due_date ? format(new Date(t.due_date), 'MMM d') : 'No due date',
+          type: 'task',
+        });
+      });
+
+      return items.slice(0, 6);
     },
     enabled: !!user?.id,
   });
@@ -351,7 +360,7 @@ export default function UnifiedDashboard() {
   const statsLoading = loadingCourses || loadingAtt || loadingFees || loadingCerts;
 
   const statCards = [
-    { icon: BookOpen, label: 'Active courses', value: activeCourses, color: 'text-blue-600' },
+    { icon: isOneToOne ? Users : BookOpen, label: isOneToOne ? 'Active students' : 'Active courses', value: activeCourses, color: 'text-blue-600' },
     { icon: CalendarCheck, label: 'Attendance', value: `${attendancePct}%`, color: 'text-emerald-600' },
     { icon: CreditCard, label: 'Pending fees', value: feeStats.count, color: 'text-amber-600' },
     { icon: Award, label: 'Certificates', value: certCount, color: 'text-violet-600' },
@@ -377,29 +386,27 @@ export default function UnifiedDashboard() {
   };
 
   // ─── Role-aware section ordering ───
-  type Section = 'promo' | 'stats' | 'alerts' | 'courses' | 'children' | 'available' | 'teaching' | 'quicklinks' | 'activity';
+  type Section = 'stats' | 'alerts' | 'courses' | 'students1to1' | 'children' | 'available' | 'teaching' | 'quicklinks' | 'activity' | 'upcoming';
 
   const sectionOrder: Section[] = (() => {
-    const base: Section[] = ['promo', 'stats', 'alerts'];
+    const base: Section[] = ['stats', 'alerts'];
+    if (isOneToOne) {
+      return [...base, 'students1to1', 'teaching', 'quicklinks', 'activity', 'upcoming'];
+    }
     switch (activeRole) {
       case 'parent':
-        return [...base, 'children', 'courses', 'available', 'teaching', 'quicklinks', 'activity'];
+        return [...base, 'children', 'courses', 'available', 'teaching', 'quicklinks', 'activity', 'upcoming'];
       case 'teacher':
-        return [...base, 'teaching', 'courses', 'available', 'children', 'quicklinks', 'activity'];
+        return [...base, 'teaching', 'courses', 'available', 'children', 'quicklinks', 'activity', 'upcoming'];
       case 'admin':
       case 'super_admin':
-        return [...base, 'courses', 'teaching', 'children', 'available', 'quicklinks', 'activity'];
+        return [...base, 'courses', 'teaching', 'children', 'available', 'quicklinks', 'activity', 'upcoming'];
       default:
-        return [...base, 'courses', 'available', 'children', 'teaching', 'quicklinks', 'activity'];
+        return [...base, 'courses', 'available', 'children', 'teaching', 'quicklinks', 'activity', 'upcoming'];
     }
   })();
 
   // ─── Section renderers ───
-  const renderPromo = () =>
-    promoItems.length > 0 ? (
-      <PromoCarousel key="promo" items={promoItems} onApply={(id) => navigate(`/my-courses/${id}`)} />
-    ) : null;
-
   const renderStats = () => (
     <div key="stats" className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {statCards.map(s => (
@@ -436,7 +443,45 @@ export default function UnifiedDashboard() {
       </Alert>
     ) : null;
 
+  // 1:1 Students section
+  const renderStudents1to1 = () => {
+    if (!isOneToOne || myStudents.length === 0) return null;
+    return (
+      <div key="students1to1">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+            My Students
+            <Badge variant="secondary" className="text-xs">{myStudents.length}</Badge>
+          </h2>
+          <Button variant="link" className="text-xs p-0 h-auto" onClick={() => navigate(`/students?division=${activeDivision}`)}>View all</Button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {myStudents.map((s: any) => {
+            const studentProfile = s.profiles as any;
+            const subject = s.subjects as any;
+            return (
+              <Card key={s.id} className="p-4 hover:border-primary/30 transition-colors cursor-pointer"
+                onClick={() => navigate(`/students?id=${s.student_id}`)}>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary">
+                    {studentProfile?.full_name?.split(' ').map((w: string) => w[0]).join('').slice(0, 2) || '?'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{studentProfile?.full_name || 'Student'}</p>
+                    <p className="text-xs text-muted-foreground">{subject?.name || 'No subject'}</p>
+                  </div>
+                  <Badge variant="default" className="text-[10px] shrink-0">{s.status}</Badge>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   const renderCourses = () => {
+    if (isOneToOne) return null; // Don't show courses in 1:1 mode
     if (myEnrollments.length === 0 && uniqueTeaching.size === 0 && activeRole !== 'teacher') return null;
     return (
       <div key="courses">
@@ -572,19 +617,6 @@ export default function UnifiedDashboard() {
                   <p className="text-[10px] text-muted-foreground">Pending fees</p>
                 </div>
               </div>
-
-              <div className="flex flex-wrap gap-1 mt-3">
-                {child.enrollments.slice(0, 3).map((e: any) => (
-                  <Badge key={e.id} variant="outline" className="text-xs font-normal">
-                    {(e.courses as any)?.name}
-                  </Badge>
-                ))}
-                {child.enrollments.length > 3 && (
-                  <Badge variant="outline" className="text-xs font-normal">
-                    +{child.enrollments.length - 3} more
-                  </Badge>
-                )}
-              </div>
             </Card>
           ))}
         </div>
@@ -592,7 +624,10 @@ export default function UnifiedDashboard() {
     );
   };
 
-  const renderAvailable = () => <AvailableCoursesSection key="available" activeDivision={activeDivision} />;
+  const renderAvailable = () => {
+    if (isOneToOne) return null;
+    return <AvailableCoursesSection key="available" activeDivision={activeDivision} />;
+  };
 
   const renderQuickLinks = () => (
     <div key="quicklinks">
@@ -635,16 +670,46 @@ export default function UnifiedDashboard() {
     );
   };
 
+  const renderUpcoming = () => {
+    if (upcomingItems.length === 0) return null;
+    return (
+      <div key="upcoming">
+        <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+          <Clock className="h-5 w-5 text-primary" />
+          Upcoming & Pending
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {upcomingItems.map(item => (
+            <Card key={item.id} className="p-4">
+              <div className="flex items-center gap-3">
+                {item.type === 'class' ? (
+                  <CalendarCheck className="h-4 w-4 text-emerald-500 shrink-0" />
+                ) : (
+                  <CheckSquare className="h-4 w-4 text-amber-500 shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{item.label}</p>
+                  <p className="text-xs text-muted-foreground">{item.detail}</p>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   const sectionRenderers: Record<Section, () => React.ReactNode> = {
-    promo: renderPromo,
     stats: renderStats,
     alerts: renderAlerts,
     courses: renderCourses,
+    students1to1: renderStudents1to1,
     children: renderChildren,
     available: renderAvailable,
     teaching: renderTeaching,
     quicklinks: renderQuickLinks,
     activity: renderActivity,
+    upcoming: renderUpcoming,
   };
 
   return (
@@ -664,21 +729,21 @@ export default function UnifiedDashboard() {
           <Button
             size="sm"
             variant={activeDivision === 'all' ? 'default' : 'outline'}
-            onClick={() => setActiveDivision('all')}
+            onClick={() => handleDivisionChange('all')}
             className="shrink-0"
           >
             All
           </Button>
-          {divisions.map(div => (
+          {effectiveDivisions.map(div => (
             <Button
               key={div.id}
               size="sm"
               variant={activeDivision === div.id ? 'default' : 'outline'}
-              onClick={() => setActiveDivision(div.id)}
+              onClick={() => handleDivisionChange(div.id)}
               className="shrink-0 gap-1.5"
             >
               {div.name}
-              {div.roles.length > 0 && (
+              {div.roles?.length > 0 && (
                 <Badge variant="secondary" className="text-[9px] px-1 py-0">
                   {div.roles[0]}
                 </Badge>
