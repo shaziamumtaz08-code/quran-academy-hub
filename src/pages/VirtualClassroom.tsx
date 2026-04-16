@@ -240,7 +240,7 @@ export default function VirtualClassroom() {
                 ))}
               </div>
             ) : (
-              /* Full video grid */}
+              /* Full video grid */
               <>
                 <div className={`flex-1 p-3 grid gap-2 auto-rows-fr ${showVideoFull ? 'grid-cols-3' : 'grid-cols-2'}`}>
                   {PARTICIPANTS.map(p => (
