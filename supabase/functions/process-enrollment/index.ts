@@ -106,19 +106,28 @@ Deno.serve(async (req) => {
 
       if (authErr) {
         if (authErr.message?.includes("already been registered")) {
-          // Auth exists — try to update password
-          const { data: existingAuth } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1 });
-          // Just skip, auth already exists
+          // Auth exists — get real auth UUID
+          const { data: existingAuthData } = await supabaseAdmin.auth.admin.getUserByEmail(email);
+          if (existingAuthData?.user) {
+            const authUid = existingAuthData.user.id;
+            if (authUid !== profileId) {
+              console.log(`Syncing profile ${profileId} → auth uid ${authUid}`);
+              await supabaseAdmin.from("profiles").update({ id: authUid }).eq("id", profileId);
+              profileId = authUid;
+            }
+          }
           authCreated = false;
         } else {
           throw authErr;
         }
       } else {
         authCreated = true;
-        // If auth user id differs from profile id, update profile to match
+        // Sync profile id to match auth user id for RLS
         if (authData?.user && authData.user.id !== profileId) {
-          // Profile exists with different ID — link via email is sufficient
-          console.log(`Auth user ${authData.user.id} linked to profile ${profileId} via email`);
+          const authUid = authData.user.id;
+          console.log(`Syncing new profile ${profileId} → auth uid ${authUid}`);
+          await supabaseAdmin.from("profiles").update({ id: authUid }).eq("id", profileId);
+          profileId = authUid;
         }
       }
     } catch (e: any) {
