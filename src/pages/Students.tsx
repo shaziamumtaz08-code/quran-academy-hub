@@ -71,6 +71,8 @@ export default function Students() {
   const [drawerTeacher, setDrawerTeacher] = useState<{ id: string; full_name: string } | null>(null);
   const [createLoginStudent, setCreateLoginStudent] = useState<Student | null>(null);
   const { user, activeRole, session } = useAuth();
+  const { activeDivision, activeModelType } = useDivision();
+  const activeDivisionId = activeDivision?.id || null;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
