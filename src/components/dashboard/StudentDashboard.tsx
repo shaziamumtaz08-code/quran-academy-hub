@@ -555,11 +555,11 @@ export function StudentDashboard() {
             </CardContent>
           </Card>
         ) : (
-          <div className="flex gap-3 overflow-x-auto pb-2 md:grid md:grid-cols-3 md:overflow-visible scrollbar-hide">
+          <div className="flex gap-3 overflow-x-auto pb-2 md:flex-wrap md:overflow-visible scrollbar-hide">
             {dashData!.courseCards.map((course: any) => (
               <Card
                 key={course.id}
-                className="min-w-[260px] md:min-w-0 shrink-0 overflow-hidden hover:shadow-md transition-shadow"
+                className="min-w-[260px] md:min-w-[280px] md:max-w-[340px] md:flex-1 shrink-0 overflow-hidden hover:shadow-md transition-shadow"
               >
                 {/* Cover image or gradient */}
                 <div className={`h-24 relative ${!course.coverImage ? `bg-gradient-to-br ${course.gradient}` : ''}`}>
