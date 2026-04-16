@@ -125,6 +125,8 @@ export function AuthAuditTab() {
 
         if (error) {
           progress.failed++;
+        } else if (data?.authCreated) {
+          progress.created++;
         } else if (data?.alreadyExists) {
           progress.skipped++;
         } else {
