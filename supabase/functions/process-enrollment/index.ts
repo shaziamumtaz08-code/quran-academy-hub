@@ -223,60 +223,71 @@ Deno.serve(async (req) => {
       console.error("Step 5 failed:", e.message);
     }
 
-    // ── STEP 6: Chat Group Membership ──
+    // ── STEP 6: Chat Group Membership (per-class) ──
     try {
-      const { data: chatGroups } = await supabaseAdmin
-        .from("chat_groups")
-        .select("id, name")
-        .eq("course_id", course_id)
-        .eq("is_dm", false)
-        .eq("is_active", true)
+      // Find the class the student was just rostered into
+      const { data: rosterRow } = await supabaseAdmin
+        .from("course_class_students")
+        .select("class_id")
+        .eq("student_id", profileId)
+        .eq("status", "active")
+        .order("enrolled_at", { ascending: false })
         .limit(1);
 
-      let groupId: string | null = null;
+      const classIdForChat = rosterRow?.[0]?.class_id || null;
 
-      if (chatGroups?.length) {
-        groupId = chatGroups[0].id;
-      } else {
-        // Fetch course name for chat group
-        const { data: course } = await supabaseAdmin
-          .from("courses")
-          .select("name")
-          .eq("id", course_id)
-          .single();
-
-        const { data: newGroup, error: grpErr } = await supabaseAdmin
+      if (classIdForChat) {
+        // Find existing class chat group
+        const { data: existingGroup } = await supabaseAdmin
           .from("chat_groups")
-          .insert({
-            name: (course?.name || "Course") + " Class Chat",
-            course_id,
-            is_dm: false,
-            is_active: true,
-            created_by: profileId,
-            type: "course",
-          })
           .select("id")
-          .single();
-
-        if (!grpErr && newGroup) groupId = newGroup.id;
-      }
-
-      if (groupId) {
-        const { data: existingMember } = await supabaseAdmin
-          .from("chat_members")
-          .select("id")
-          .eq("group_id", groupId)
-          .eq("user_id", profileId)
+          .eq("class_id", classIdForChat)
           .limit(1);
 
-        if (!existingMember?.length) {
-          await supabaseAdmin.from("chat_members").insert({
-            group_id: groupId,
-            user_id: profileId,
-            role: "member",
-          });
+        let groupId: string | null = existingGroup?.[0]?.id || null;
+
+        // Create class chat group if missing
+        if (!groupId) {
+          const { data: cls } = await supabaseAdmin
+            .from("course_classes")
+            .select("name")
+            .eq("id", classIdForChat)
+            .single();
+
+          const { data: newGroup, error: grpErr } = await supabaseAdmin
+            .from("chat_groups")
+            .insert({
+              name: (cls?.name || "Class") + " — Class Chat",
+              type: "group",
+              created_by: profileId,
+              course_id,
+              class_id: classIdForChat,
+              channel_mode: "class",
+              is_active: true,
+              is_dm: false,
+            })
+            .select("id")
+            .single();
+          if (!grpErr && newGroup) groupId = newGroup.id;
         }
-        chatJoined = true;
+
+        if (groupId) {
+          const { data: existingMember } = await supabaseAdmin
+            .from("chat_members")
+            .select("id")
+            .eq("group_id", groupId)
+            .eq("user_id", profileId)
+            .limit(1);
+
+          if (!existingMember?.length) {
+            await supabaseAdmin.from("chat_members").insert({
+              group_id: groupId,
+              user_id: profileId,
+              role: "member",
+            });
+          }
+          chatJoined = true;
+        }
       }
     } catch (e: any) {
       failedSteps.push(`Step 6 (Chat): ${e.message}`);
