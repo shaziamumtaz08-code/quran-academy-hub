@@ -18,6 +18,7 @@ import { ChatInput } from '@/components/chat/ChatInput';
 import { MembersPanel } from '@/components/chat/MembersPanel';
 import { AIAssistantDialog } from '@/components/chat/AIAssistantDialog';
 import { ForwardMessageDialog } from '@/components/chat/ForwardMessageDialog';
+import { CreateTicketDialog } from '@/components/hub/CreateTicketDialog';
 import {
   CommThemeProvider, CommThemeToggle, useCommTheme,
   colorFromName, initialsFromName, formatCommTime,
