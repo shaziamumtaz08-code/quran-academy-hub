@@ -694,7 +694,8 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
                   const isSelected = selectedIds.has(sub.id);
                   const d = sub.data || {};
                   return (
-                    <TableRow key={sub.id}
+                    <React.Fragment key={sub.id}>
+                    <TableRow
                       className={cn("cursor-pointer hover:bg-muted/50", isSelected && "bg-primary/5")}
                       onClick={() => setSelectedSubmission(sub)}>
                       <TableCell className="px-3" onClick={e => e.stopPropagation()}>
