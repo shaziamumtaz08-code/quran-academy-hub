@@ -687,6 +687,19 @@ export default function Students() {
                       </TableCell>
                       {isAdmin && (
                         <>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {(() => {
+                                const memberships = divMembershipMap?.get(student.id) || [];
+                                if (memberships.length === 0) return <Badge variant="outline" className="text-[10px] text-muted-foreground">Unassigned</Badge>;
+                                return memberships.map(m => (
+                                  <Badge key={m.divisionId} variant="outline" className={`text-[10px] ${getDivisionBadgeClass(m.modelType)}`}>
+                                    {getDivisionShortName(m.divisionName)}
+                                  </Badge>
+                                ));
+                              })()}
+                            </div>
+                          </TableCell>
                           <TableCell className="text-muted-foreground">{student.country || '-'}</TableCell>
                           <TableCell className="text-muted-foreground">{student.city || '-'}</TableCell>
                           <TableCell className="capitalize text-muted-foreground">{student.gender || '-'}</TableCell>
