@@ -108,11 +108,20 @@ export default function TeachingLanding() {
       const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
       const weekEnd = format(endOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
 
-      const [coursesRes, enrolledRes, attRes] = await Promise.all([
-        supabase.from('courses').select('id', { count: 'exact', head: true })
-          .eq('division_id', divisionId!).eq('status', 'active'),
-        supabase.from('course_enrollments').select('id, courses!inner(division_id)', { count: 'exact', head: true })
-          .eq('courses.division_id', divisionId!).eq('status', 'active'),
+      // Get course IDs for this division first
+      const { data: divCourses } = await supabase.from('courses')
+        .select('id')
+        .eq('division_id', divisionId!)
+        .eq('status', 'active');
+
+      const courseIds = (divCourses || []).map(c => c.id);
+
+      const [coursesCount, enrolledRes, attRes] = await Promise.all([
+        Promise.resolve(courseIds.length),
+        courseIds.length > 0
+          ? supabase.from('course_enrollments').select('id', { count: 'exact', head: true })
+              .in('course_id', courseIds).eq('status', 'active')
+          : Promise.resolve({ count: 0 }),
         (supabase as any).from('attendance').select('status')
           .eq('division_id', divisionId).gte('class_date', weekStart).lte('class_date', weekEnd),
       ]);
@@ -122,8 +131,8 @@ export default function TeachingLanding() {
       const attPct = attData.length > 0 ? Math.round((presentCount / attData.length) * 100) : 0;
 
       return {
-        courses: coursesRes.count || 0,
-        enrolled: enrolledRes.count || 0,
+        courses: coursesCount,
+        enrolled: (enrolledRes as any).count || 0,
         attPct,
       };
     },
