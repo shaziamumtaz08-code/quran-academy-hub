@@ -2,12 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -16,10 +14,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   MessageSquare, Send, Search, Phone, Check, CheckCheck, Clock,
-  XCircle, Paperclip, Forward, ListTodo, ArrowLeft, Image, FileText, User
+  XCircle, Forward, ListTodo, ArrowLeft, FileText, User,
 } from "lucide-react";
-import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import {
+  CommThemeProvider, CommThemeToggle, useCommTheme,
+  colorFromName, initialsFromName, formatCommTime,
+} from "@/components/comm/CommThemeProvider";
 
 type WhatsAppContact = {
   id: string;
@@ -48,17 +49,19 @@ type WhatsAppMessage = {
 };
 
 const deliveryIcons: Record<string, React.ReactNode> = {
-  queued: <Clock className="h-3 w-3 text-muted-foreground" />,
-  sent: <Check className="h-3 w-3 text-muted-foreground" />,
-  delivered: <CheckCheck className="h-3 w-3 text-muted-foreground" />,
+  queued: <Clock className="h-3 w-3 opacity-60" />,
+  sent: <Check className="h-3 w-3 opacity-60" />,
+  delivered: <CheckCheck className="h-3 w-3 opacity-60" />,
   read: <CheckCheck className="h-3 w-3 text-blue-500" />,
   failed: <XCircle className="h-3 w-3 text-destructive" />,
 };
 
-export default function WhatsAppInbox() {
+function WhatsAppInner() {
   const { profile } = useAuth();
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
+  const { palette } = useCommTheme();
+
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [messageText, setMessageText] = useState("");
@@ -67,27 +70,25 @@ export default function WhatsAppInbox() {
   const [forwardTarget, setForwardTarget] = useState<"task" | "group" | "user">("task");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Fetch contacts
+  // Contacts
   const { data: contacts = [] } = useQuery({
     queryKey: ["whatsapp-contacts"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("whatsapp_contacts")
-        .select("*")
+        .from("whatsapp_contacts").select("*")
         .order("last_message_at", { ascending: false });
       if (error) throw error;
       return data as WhatsAppContact[];
     },
   });
 
-  // Fetch messages for selected contact
+  // Messages
   const { data: messages = [] } = useQuery({
     queryKey: ["whatsapp-messages", selectedContactId],
     queryFn: async () => {
       if (!selectedContactId) return [];
       const { data, error } = await supabase
-        .from("whatsapp_messages")
-        .select("*")
+        .from("whatsapp_messages").select("*")
         .eq("contact_id", selectedContactId)
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -96,13 +97,33 @@ export default function WhatsAppInbox() {
     enabled: !!selectedContactId,
   });
 
-  // Realtime subscription
+  // Last message preview per contact
+  const { data: lastMap = {} } = useQuery({
+    queryKey: ["whatsapp-last-msg", contacts.length],
+    queryFn: async () => {
+      if (!contacts.length) return {};
+      const ids = contacts.map(c => c.id);
+      const { data } = await supabase
+        .from("whatsapp_messages")
+        .select("contact_id, message_text, direction, delivery_status, created_at")
+        .in("contact_id", ids)
+        .order("created_at", { ascending: false })
+        .limit(500);
+      const out: Record<string, any> = {};
+      (data || []).forEach((m: any) => { if (!out[m.contact_id]) out[m.contact_id] = m; });
+      return out;
+    },
+    enabled: contacts.length > 0,
+  });
+
+  // Realtime
   useEffect(() => {
     const channel = supabase
       .channel("whatsapp-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "whatsapp_messages" }, () => {
         queryClient.invalidateQueries({ queryKey: ["whatsapp-messages", selectedContactId] });
         queryClient.invalidateQueries({ queryKey: ["whatsapp-contacts"] });
+        queryClient.invalidateQueries({ queryKey: ["whatsapp-last-msg"] });
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -113,7 +134,7 @@ export default function WhatsAppInbox() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Send message
+  // Send
   const sendMessage = useMutation({
     mutationFn: async (text: string) => {
       const { data, error } = await supabase.functions.invoke("whatsapp-send", {
@@ -137,19 +158,12 @@ export default function WhatsAppInbox() {
       const { data, error } = await supabase.from("tasks").insert({
         title: `WhatsApp: ${(msg.message_text || "").slice(0, 60)}...`,
         description: `From: ${contact?.name || contact?.phone}\n\n${msg.message_text || "[Attachment]"}`,
-        created_by: profile?.id,
-        priority: "medium",
-        status: "open",
-        source_type: "whatsapp",
-        source_id: msg.id,
+        created_by: profile?.id, priority: "medium", status: "open",
+        source_type: "whatsapp", source_id: msg.id,
       }).select().single();
       if (error) throw error;
-
-      // Mark message as forwarded
       await supabase.from("whatsapp_messages")
-        .update({ is_forwarded: true, forwarded_to_task_id: data.id })
-        .eq("id", msg.id);
-
+        .update({ is_forwarded: true, forwarded_to_task_id: data.id }).eq("id", msg.id);
       return data;
     },
     onSuccess: () => {
@@ -159,7 +173,6 @@ export default function WhatsAppInbox() {
     },
   });
 
-  // Mark as read
   const markRead = async (contactId: string) => {
     await supabase.from("whatsapp_contacts").update({ unread_count: 0 }).eq("id", contactId);
     queryClient.invalidateQueries({ queryKey: ["whatsapp-contacts"] });
@@ -177,127 +190,189 @@ export default function WhatsAppInbox() {
 
   const showThreadView = isMobile ? !!selectedContactId : true;
   const showContactList = isMobile ? !selectedContactId : true;
+  const totalUnread = contacts.reduce((sum, c) => sum + (c.unread_count || 0), 0);
+
+  // WhatsApp brand green for outgoing bubbles, regardless of theme
+  const waGreen = '#25D366';
+  const waGreenDark = '#075E54';
 
   return (
-    <DashboardLayout>
-      <div className="h-[calc(100vh-4rem)] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b bg-card">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center">
-              <MessageSquare className="h-4 w-4 text-white" />
-            </div>
-            <h1 className="text-lg font-bold">WhatsApp Inbox</h1>
+    <div className="h-[calc(100vh-4rem)] flex flex-col" style={{ backgroundColor: palette.bg, color: palette.text }}>
+      {/* Top header */}
+      <div
+        className="flex items-center gap-3 px-4 py-3"
+        style={{ backgroundColor: palette.panel, borderBottom: `1px solid ${palette.border}` }}
+      >
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: waGreen }}>
+            <MessageSquare className="h-4 w-4 text-white" />
           </div>
-          <Badge variant="secondary" className="text-xs">
-            {contacts.reduce((sum, c) => sum + (c.unread_count || 0), 0)} unread
-          </Badge>
+          <h1 className="text-lg font-bold" style={{ color: palette.text }}>WhatsApp Inbox</h1>
         </div>
+        {totalUnread > 0 && (
+          <span
+            className="text-[11px] font-bold px-2.5 py-0.5 rounded-full"
+            style={{ backgroundColor: waGreen, color: 'white' }}
+          >
+            {totalUnread} unread
+          </span>
+        )}
+        <div className="ml-auto">
+          <CommThemeToggle />
+        </div>
+      </div>
 
-        <div className="flex flex-1 min-h-0">
-          {/* Contact List */}
-          {showContactList && (
-            <div className={cn("border-r flex flex-col", isMobile ? "w-full" : "w-80 shrink-0")}>
-              <div className="p-3 border-b">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search contacts..."
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    className="pl-9"
-                  />
-                </div>
+      <div className="flex flex-1 min-h-0">
+        {/* Contact list */}
+        {showContactList && (
+          <div
+            className={cn("flex flex-col", isMobile ? "w-full" : "w-80 shrink-0")}
+            style={{ backgroundColor: palette.panel, borderRight: `1px solid ${palette.border}` }}
+          >
+            <div className="p-3" style={{ borderBottom: `1px solid ${palette.border}` }}>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: palette.textMuted }} />
+                <input
+                  placeholder="Search contacts..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 rounded-full text-sm outline-none"
+                  style={{
+                    backgroundColor: palette.panelAlt,
+                    color: palette.text,
+                    border: `1px solid ${palette.border}`,
+                  }}
+                />
               </div>
-              <div className="flex-1 overflow-y-auto">
-                {filteredContacts.map(contact => (
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5">
+              {filteredContacts.map(contact => {
+                const isActive = selectedContactId === contact.id;
+                const name = contact.name || contact.phone;
+                const initials = initialsFromName(name);
+                const color = colorFromName(name);
+                const last = lastMap[contact.id];
+                const preview = last?.message_text
+                  ? last.message_text.slice(0, 40) + (last.message_text.length > 40 ? '…' : '')
+                  : 'No messages yet';
+                const ts = contact.last_message_at || last?.created_at;
+
+                return (
                   <button
                     key={contact.id}
                     onClick={() => handleSelectContact(contact.id)}
-                    className={cn(
-                      "w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition text-left border-b",
-                      selectedContactId === contact.id && "bg-muted"
-                    )}
+                    className="w-full text-left rounded-xl p-2.5 transition-all duration-150"
+                    style={{
+                      backgroundColor: isActive ? palette.accentSoft : 'transparent',
+                      border: `1px solid ${isActive ? palette.accent + '55' : 'transparent'}`,
+                    }}
                   >
-                    <Avatar className="h-10 w-10 shrink-0">
-                      <AvatarFallback className="bg-green-100 text-green-700 text-sm">
-                        {(contact.name || contact.phone).charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <p className="font-medium text-sm truncate">{contact.name || contact.phone}</p>
-                        {contact.last_message_at && (
-                          <span className="text-[10px] text-muted-foreground shrink-0">
-                            {format(new Date(contact.last_message_at), "HH:mm")}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground truncate">{contact.phone}</p>
-                    </div>
-                    {contact.unread_count > 0 && (
-                      <span className="bg-green-600 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center shrink-0">
-                        {contact.unread_count}
-                      </span>
-                    )}
-                  </button>
-                ))}
-                {filteredContacts.length === 0 && (
-                  <div className="p-6 text-center text-muted-foreground text-sm">
-                    <Phone className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p>No contacts yet</p>
-                    <p className="text-xs mt-1">Incoming WhatsApp messages will appear here</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Thread View */}
-          {showThreadView && (
-            <div className="flex-1 flex flex-col min-w-0">
-              {selectedContact ? (
-                <>
-                  {/* Thread Header */}
-                  <div className="flex items-center gap-3 px-4 py-3 border-b bg-card">
-                    {isMobile && (
-                      <Button variant="ghost" size="icon" onClick={() => setSelectedContactId(null)}>
-                        <ArrowLeft className="h-4 w-4" />
-                      </Button>
-                    )}
-                    <Avatar className="h-9 w-9">
-                      <AvatarFallback className="bg-green-100 text-green-700 text-sm">
-                        {(selectedContact.name || selectedContact.phone).charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm">{selectedContact.name || selectedContact.phone}</p>
-                      <p className="text-xs text-muted-foreground">{selectedContact.phone}</p>
-                    </div>
-                    {selectedContact.profile_id && (
-                      <Badge variant="outline" className="text-xs gap-1">
-                        <User className="h-3 w-3" /> Linked
-                      </Badge>
-                    )}
-                  </div>
-
-                  {/* Messages */}
-                  <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-muted/30">
-                    {messages.map(msg => (
+                    <div className="flex items-center gap-2.5">
                       <div
-                        key={msg.id}
-                        className={cn(
-                          "flex",
-                          msg.direction === "outbound" ? "justify-end" : "justify-start"
-                        )}
+                        className="h-10 w-10 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+                        style={{ backgroundColor: color }}
                       >
-                        <div
-                          className={cn(
-                            "max-w-[75%] rounded-xl px-3 py-2 shadow-sm group relative",
-                            msg.direction === "outbound"
-                              ? "bg-green-600 text-white rounded-br-sm"
-                              : "bg-card border rounded-bl-sm"
+                        {initials}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-semibold truncate" style={{ color: palette.text }}>{name}</p>
+                          {ts && (
+                            <span className="text-[10px] shrink-0" style={{ color: palette.textMuted }}>
+                              {formatCommTime(ts)}
+                            </span>
                           )}
+                        </div>
+                        <div className="flex items-center justify-between gap-2 mt-0.5">
+                          <p className="text-[11px] truncate flex-1" style={{ color: palette.textMuted }}>
+                            {last?.direction === 'outbound' && (
+                              <span className="inline-flex mr-1">
+                                {deliveryIcons[last.delivery_status]}
+                              </span>
+                            )}
+                            {preview}
+                          </p>
+                          {contact.unread_count > 0 && (
+                            <span
+                              className="text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center shrink-0 text-white"
+                              style={{ backgroundColor: waGreen }}
+                            >
+                              {contact.unread_count}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+              {filteredContacts.length === 0 && (
+                <div className="p-6 text-center" style={{ color: palette.textMuted }}>
+                  <Phone className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No contacts yet</p>
+                  <p className="text-xs mt-1">Incoming WhatsApp messages will appear here</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Thread view */}
+        {showThreadView && (
+          <div className="flex-1 flex flex-col min-w-0" style={{ backgroundColor: palette.bg }}>
+            {selectedContact ? (
+              <>
+                {/* Thread header */}
+                <div
+                  className="flex items-center gap-3 px-4 py-3"
+                  style={{ backgroundColor: palette.panel, borderBottom: `1px solid ${palette.border}` }}
+                >
+                  {isMobile && (
+                    <Button variant="ghost" size="icon" onClick={() => setSelectedContactId(null)}>
+                      <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                  )}
+                  <div
+                    className="h-10 w-10 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+                    style={{ backgroundColor: colorFromName(selectedContact.name || selectedContact.phone) }}
+                  >
+                    {initialsFromName(selectedContact.name || selectedContact.phone)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm truncate" style={{ color: palette.text }}>
+                      {selectedContact.name || selectedContact.phone}
+                    </p>
+                    <p className="text-xs truncate" style={{ color: palette.textMuted }}>
+                      {selectedContact.phone}
+                      {selectedContact.profile_id && ' • Linked profile'}
+                    </p>
+                  </div>
+                  {selectedContact.profile_id && (
+                    <Badge variant="outline" className="text-xs gap-1">
+                      <User className="h-3 w-3" /> Linked
+                    </Badge>
+                  )}
+                </div>
+
+                {/* Messages */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-2 animate-fade-in">
+                  {messages.map(msg => {
+                    const isOut = msg.direction === 'outbound';
+                    return (
+                      <div key={msg.id} className={cn("flex", isOut ? "justify-end" : "justify-start")}>
+                        <div
+                          className="max-w-[75%] rounded-2xl px-3 py-2 shadow-sm group relative"
+                          style={{
+                            backgroundColor: isOut
+                              ? (palette.bg === '#ffffff' ? '#dcf8c6' : waGreenDark)
+                              : palette.panel,
+                            color: isOut
+                              ? (palette.bg === '#ffffff' ? '#111b21' : '#ffffff')
+                              : palette.text,
+                            borderTopRightRadius: isOut ? 4 : undefined,
+                            borderTopLeftRadius: !isOut ? 4 : undefined,
+                          }}
                         >
                           {msg.is_forwarded && (
                             <div className="flex items-center gap-1 mb-1 opacity-70">
@@ -306,16 +381,23 @@ export default function WhatsAppInbox() {
                             </div>
                           )}
 
+                          {msg.template_name && (
+                            <span
+                              className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded mb-1"
+                              style={{ backgroundColor: 'rgba(255,255,255,0.18)' }}
+                            >
+                              TEMPLATE
+                            </span>
+                          )}
+
                           {msg.attachment_url && (
                             <div className="mb-1">
                               {msg.attachment_type?.startsWith("image") ? (
                                 <img src={msg.attachment_url} alt="attachment" className="rounded max-w-full max-h-48 object-cover" />
                               ) : (
                                 <a
-                                  href={msg.attachment_url}
-                                  target="_blank"
-                                  rel="noopener"
-                                  className={cn("flex items-center gap-1 text-xs underline", msg.direction === "outbound" ? "text-white/90" : "text-primary")}
+                                  href={msg.attachment_url} target="_blank" rel="noopener"
+                                  className="flex items-center gap-1 text-xs underline"
                                 >
                                   <FileText className="h-3 w-3" /> Attachment
                                 </a>
@@ -327,28 +409,24 @@ export default function WhatsAppInbox() {
                             <p className="text-sm whitespace-pre-wrap break-words">{msg.message_text}</p>
                           )}
 
-                          <div className={cn("flex items-center gap-1 mt-1", msg.direction === "outbound" ? "justify-end" : "justify-start")}>
-                            <span className={cn("text-[10px]", msg.direction === "outbound" ? "text-white/70" : "text-muted-foreground")}>
-                              {format(new Date(msg.created_at), "HH:mm")}
+                          <div className={cn("flex items-center gap-1 mt-1", isOut ? "justify-end" : "justify-start")}>
+                            <span className="text-[10px] opacity-70">
+                              {formatCommTime(msg.created_at)}
                             </span>
-                            {msg.direction === "outbound" && deliveryIcons[msg.delivery_status]}
+                            {isOut && deliveryIcons[msg.delivery_status]}
                           </div>
 
                           {/* Hover actions */}
                           <div className="absolute top-0 right-0 -mt-2 -mr-1 hidden group-hover:flex gap-1">
                             <Button
-                              variant="secondary"
-                              size="icon"
-                              className="h-6 w-6 rounded-full shadow"
+                              variant="secondary" size="icon" className="h-6 w-6 rounded-full shadow"
                               onClick={() => { setForwardingMessage(msg); setShowForwardDialog(true); }}
                             >
                               <Forward className="h-3 w-3" />
                             </Button>
                             {!msg.forwarded_to_task_id && (
                               <Button
-                                variant="secondary"
-                                size="icon"
-                                className="h-6 w-6 rounded-full shadow"
+                                variant="secondary" size="icon" className="h-6 w-6 rounded-full shadow"
                                 onClick={() => forwardToTask.mutate(msg)}
                               >
                                 <ListTodo className="h-3 w-3" />
@@ -357,51 +435,67 @@ export default function WhatsAppInbox() {
                           </div>
                         </div>
                       </div>
-                    ))}
-                    <div ref={messagesEndRef} />
-                  </div>
-
-                  {/* Input */}
-                  <div className="p-3 border-t bg-card flex items-end gap-2">
-                    <Textarea
-                      placeholder="Type a message..."
-                      value={messageText}
-                      onChange={e => setMessageText(e.target.value)}
-                      className="min-h-[40px] max-h-24 resize-none"
-                      rows={1}
-                      onKeyDown={e => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          if (messageText.trim()) sendMessage.mutate(messageText.trim());
-                        }
-                      }}
-                    />
-                    <Button
-                      size="icon"
-                      className="shrink-0 bg-green-600 hover:bg-green-700"
-                      disabled={!messageText.trim() || sendMessage.isPending}
-                      onClick={() => { if (messageText.trim()) sendMessage.mutate(messageText.trim()); }}
-                    >
-                      <Send className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <div className="flex-1 flex items-center justify-center text-center p-8">
-                  <div>
-                    <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-                      <MessageSquare className="h-8 w-8 text-green-600" />
-                    </div>
-                    <h3 className="font-medium text-lg">WhatsApp Inbox</h3>
-                    <p className="text-muted-foreground text-sm mt-1">
-                      Select a contact to view messages
-                    </p>
-                  </div>
+                    );
+                  })}
+                  <div ref={messagesEndRef} />
                 </div>
-              )}
-            </div>
-          )}
-        </div>
+
+                {/* Input */}
+                <div
+                  className="p-3 flex items-end gap-2"
+                  style={{ backgroundColor: palette.panel, borderTop: `1px solid ${palette.border}` }}
+                >
+                  <Textarea
+                    placeholder="Type a message..."
+                    value={messageText}
+                    onChange={e => setMessageText(e.target.value)}
+                    className="min-h-[40px] max-h-24 resize-none"
+                    style={{
+                      backgroundColor: palette.panelAlt,
+                      color: palette.text,
+                      borderColor: palette.border,
+                    }}
+                    rows={1}
+                    onKeyDown={e => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        if (messageText.trim()) sendMessage.mutate(messageText.trim());
+                      }
+                    }}
+                  />
+                  <Button
+                    size="icon"
+                    className="shrink-0"
+                    style={{ backgroundColor: waGreen, color: 'white' }}
+                    disabled={!messageText.trim() || sendMessage.isPending}
+                    onClick={() => { if (messageText.trim()) sendMessage.mutate(messageText.trim()); }}
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              </>
+            ) : (
+              // Polished empty state with pulse ring
+              <div className="flex-1 flex items-center justify-center p-8 animate-fade-in">
+                <div className="text-center space-y-4 max-w-sm">
+                  <div className="relative w-28 h-28 mx-auto">
+                    <div className="absolute inset-0 rounded-full pulse" style={{ backgroundColor: 'rgba(37,211,102,0.2)' }} />
+                    <div
+                      className="absolute inset-3 rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: waGreen }}
+                    >
+                      <MessageSquare className="h-10 w-10 text-white" />
+                    </div>
+                  </div>
+                  <h3 className="text-2xl font-bold" style={{ color: palette.text }}>Select a conversation</h3>
+                  <p className="text-sm" style={{ color: palette.textMuted }}>
+                    Incoming messages from students and parents will appear here.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Forward Dialog */}
@@ -433,6 +527,16 @@ export default function WhatsAppInbox() {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+export default function WhatsAppInbox() {
+  return (
+    <DashboardLayout>
+      <CommThemeProvider>
+        <WhatsAppInner />
+      </CommThemeProvider>
     </DashboardLayout>
   );
 }
