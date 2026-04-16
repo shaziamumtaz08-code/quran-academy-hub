@@ -250,21 +250,12 @@ function GroupChatInner() {
     },
   });
 
-  const convertToTask = useMutation({
-    mutationFn: async (msg: any) => {
-      if (!user?.id) return;
-      const { error } = await supabase.from('tasks').insert({
-        title: (msg.content || 'Task from chat').slice(0, 100),
-        description: msg.content || '',
-        created_by: user.id, assigned_to: msg.sender_id,
-        priority: 'medium', status: 'open',
-        source_type: 'chat', source_id: msg.id,
-      });
-      if (error) throw error;
-      await supabase.from('chat_messages').update({ linked_task_id: msg.id }).eq('id', msg.id);
-    },
-    onSuccess: () => toast({ title: 'Task created from message' }),
-  });
+  // Convert chat message → opens full ticket dialog (task / complaint / feedback / etc.)
+  // The message body becomes the description and any attachment (incl. voice notes) is carried over.
+  const linkMessageToTicket = async (messageId: string, ticketId: string) => {
+    await supabase.from('chat_messages').update({ linked_task_id: ticketId }).eq('id', messageId);
+    queryClient.invalidateQueries({ queryKey: ['chat-messages', activeGroupId] });
+  };
 
   const activeGroup = groups.find((g: any) => g.id === activeGroupId);
   const msgMap = Object.fromEntries(messages.map((m: any) => [m.id, m]));
