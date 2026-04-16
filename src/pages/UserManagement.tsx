@@ -693,24 +693,16 @@ export default function UserManagement() {
 
   const filteredUsers = users
     ?.filter(user => {
-      // Archive filter — show only archived or only active
       const matchesArchive = showArchived ? !!user.archived_at : !user.archived_at;
-      
-      // Text search filter
       const matchesSearch = !searchTerm || 
         user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.email?.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      // Country filter
       const matchesCountry = !filterCountry || user.country === filterCountry;
-      
-      // City filter
       const matchesCity = !filterCity || user.city === filterCity;
-      
-      // Role filter
       const matchesRole = !filterRole || user.roles?.includes(filterRole as AppRole);
+      const matchesDivision = !filterDivision || (divMembershipMap?.get(user.id) || []).some(d => d.divisionId === filterDivision);
       
-      return matchesArchive && matchesSearch && matchesCountry && matchesCity && matchesRole;
+      return matchesArchive && matchesSearch && matchesCountry && matchesCity && matchesRole && matchesDivision;
     })
     ?.sort((a, b) => {
       let comparison = 0;
@@ -739,12 +731,13 @@ export default function UserManagement() {
       return sortDirection === 'asc' ? comparison : -comparison;
     });
 
-  const hasActiveFilters = !!filterCountry || !!filterCity || !!filterRole || showArchived;
+  const hasActiveFilters = !!filterCountry || !!filterCity || !!filterRole || !!filterDivision || showArchived;
 
   const resetFilters = () => {
     setFilterCountry('');
     setFilterCity('');
     setFilterRole('');
+    setFilterDivision('');
     setSearchTerm('');
     setShowArchived(false);
   };
