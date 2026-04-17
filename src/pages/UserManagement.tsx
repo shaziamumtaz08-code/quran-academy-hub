@@ -826,8 +826,10 @@ export default function UserManagement() {
   // Roles that are considered "global" (org-wide, not tied to any specific division)
   const GLOBAL_ROLES: AppRole[] = ['super_admin', 'admin', 'admin_admissions', 'admin_fees', 'admin_academic'];
 
-  // Effective division being filtered: explicit dropdown wins, else auto from activeDivision.
-  const effectiveDivisionId = filterDivision || activeDivision?.id || '';
+  // Effective division: '__all__' = user explicitly picked All (override global), '' = follow global context, <id> = specific.
+  const effectiveDivisionId = filterDivision === '__all__'
+    ? ''
+    : (filterDivision || activeDivision?.id || '');
 
   const filteredAll = users
     ?.filter(user => {
