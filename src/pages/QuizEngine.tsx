@@ -17,8 +17,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Switch } from '@/components/ui/switch';
 import {
   Plus, Loader2, Copy, Share2, Trash2, Eye, FileText, Pencil,
-  ClipboardCheck, Trophy, Link as LinkIcon, Globe, Lock, Play, Square, Upload, X
+  ClipboardCheck, Trophy, Link as LinkIcon, Globe, Lock, Play, Square, Upload, X, Download
 } from 'lucide-react';
+import { ExportDialog } from '@/components/export/ExportDialog';
 import * as pdfjsLib from 'pdfjs-dist';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -47,6 +48,7 @@ export default function QuizEngine() {
 
   const [extractingPdf, setExtractingPdf] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<{ name: string; text: string }[]>([]);
+  const [exportOpen, setExportOpen] = useState(false);
 
   // Form state
   const [form, setForm] = useState({
@@ -476,8 +478,11 @@ export default function QuizEngine() {
           {/* Results Tab */}
           <TabsContent value="results" className="mt-4">
             <Card>
-              <CardHeader className="py-3 px-4">
+              <CardHeader className="py-3 px-4 flex flex-row items-center justify-between">
                 <CardTitle className="text-sm">All Results ({attempts.length})</CardTitle>
+                <Button size="sm" variant="outline" onClick={() => setExportOpen(true)} disabled={attempts.length === 0}>
+                  <Download className="h-3.5 w-3.5 mr-1" /> Export CSV
+                </Button>
               </CardHeader>
               <CardContent className="px-4 pb-3">
                 {attempts.length === 0 ? (
@@ -842,6 +847,35 @@ export default function QuizEngine() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <ExportDialog
+          open={exportOpen}
+          onOpenChange={setExportOpen}
+          title="Quiz Results"
+          filename="quiz-results"
+          fields={[
+            { key: 'name', label: 'Name' },
+            { key: 'email', label: 'Email' },
+            { key: 'quiz', label: 'Quiz' },
+            { key: 'score', label: 'Score' },
+            { key: 'max_score', label: 'Max Score' },
+            { key: 'percentage', label: 'Percentage' },
+            { key: 'time_taken', label: 'Time Taken' },
+            { key: 'status', label: 'Status' },
+            { key: 'submitted_at', label: 'Submitted At' },
+          ]}
+          data={attempts.map((a: any) => ({
+            name: a.guest_name || a.student?.full_name || '',
+            email: a.guest_email || a.student?.email || '',
+            quiz: a.session?.title || '',
+            score: a.score,
+            max_score: a.max_score,
+            percentage: `${a.percentage}%`,
+            time_taken: a.time_taken_seconds ? `${Math.floor(a.time_taken_seconds / 60)}m ${a.time_taken_seconds % 60}s` : '',
+            status: a.percentage >= (a.passing_percentage || 50) ? 'Pass' : 'Fail',
+            submitted_at: format(new Date(a.created_at), 'yyyy-MM-dd HH:mm'),
+          }))}
+        />
       </div>
     </DashboardLayout>
   );
