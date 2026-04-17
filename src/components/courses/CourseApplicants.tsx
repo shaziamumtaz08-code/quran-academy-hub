@@ -666,7 +666,7 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
         </Card>
       ) : (
         <Card>
-          <ScrollArea className="max-h-[65vh] w-full" type="always">
+          <div className="w-full overflow-x-auto overflow-y-visible">
             <div className="min-w-[900px]">
             <Table>
               <TableHeader className="sticky top-0 z-10 bg-background">
@@ -899,8 +899,7 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
               </TableBody>
             </Table>
             </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
+          </div>
         </Card>
       )}
 
