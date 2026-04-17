@@ -1594,20 +1594,6 @@ export default function UserManagement() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            {user.gender ? (
-                              <span className="text-sm capitalize">{user.gender}</span>
-                            ) : (
-                              <span className="text-muted-foreground text-sm">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {user.age ? (
-                              <span className="text-sm">{user.age}</span>
-                            ) : (
-                              <span className="text-muted-foreground text-sm">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
                             {user.city || user.country ? (
                               <span className="text-sm">
                                 {[user.city, user.country].filter(Boolean).join(', ')}
