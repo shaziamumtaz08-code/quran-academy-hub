@@ -76,7 +76,10 @@ import {
   Download,
   Archive,
   ArchiveRestore,
+  MapPin,
+  MessageCircle,
 } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { BulkUserImportDialog } from '@/components/users/BulkUserImportDialog';
 import { ExportUsersDialog } from '@/components/users/ExportUsersDialog';
 import { AuthAuditTab } from '@/components/admin/AuthAuditTab';
