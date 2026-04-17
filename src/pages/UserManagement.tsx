@@ -128,7 +128,66 @@ const ROLE_COLORS: Record<AppRole, string> = {
   parent: 'bg-pink-500/10 text-pink-700 border-pink-200',
 };
 
-interface UserWithRoles {
+// Premium pill styles for role badges (used in redesigned table — softer, dot-prefixed)
+const ROLE_PILL: Record<AppRole, { bg: string; text: string; dot: string; ring: string }> = {
+  super_admin: { bg: 'bg-red-500/10', text: 'text-red-700 dark:text-red-400', dot: 'bg-red-500', ring: 'ring-red-500/20' },
+  admin: { bg: 'bg-purple-500/10', text: 'text-purple-700 dark:text-purple-400', dot: 'bg-purple-500', ring: 'ring-purple-500/20' },
+  admin_admissions: { bg: 'bg-blue-500/10', text: 'text-blue-700 dark:text-blue-400', dot: 'bg-blue-500', ring: 'ring-blue-500/20' },
+  admin_fees: { bg: 'bg-emerald-500/10', text: 'text-emerald-700 dark:text-emerald-400', dot: 'bg-emerald-500', ring: 'ring-emerald-500/20' },
+  admin_academic: { bg: 'bg-orange-500/10', text: 'text-orange-700 dark:text-orange-400', dot: 'bg-orange-500', ring: 'ring-orange-500/20' },
+  teacher: { bg: 'bg-violet-500/10', text: 'text-violet-700 dark:text-violet-400', dot: 'bg-violet-500', ring: 'ring-violet-500/20' },
+  examiner: { bg: 'bg-indigo-500/10', text: 'text-indigo-700 dark:text-indigo-400', dot: 'bg-indigo-500', ring: 'ring-indigo-500/20' },
+  student: { bg: 'bg-teal-500/10', text: 'text-teal-700 dark:text-teal-400', dot: 'bg-teal-500', ring: 'ring-teal-500/20' },
+  parent: { bg: 'bg-pink-500/10', text: 'text-pink-700 dark:text-pink-400', dot: 'bg-pink-500', ring: 'ring-pink-500/20' },
+};
+
+// Avatar background colors per primary role
+const AVATAR_COLORS: Record<string, string> = {
+  super_admin: 'bg-red-600',
+  admin: 'bg-slate-700',
+  admin_admissions: 'bg-blue-600',
+  admin_fees: 'bg-emerald-600',
+  admin_academic: 'bg-orange-600',
+  teacher: 'bg-violet-600',
+  examiner: 'bg-indigo-600',
+  student: 'bg-teal-600',
+  parent: 'bg-pink-600',
+  default: 'bg-slate-500',
+};
+
+const getInitials = (name: string | null | undefined): string => {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
+
+const getPrimaryRole = (roles: AppRole[] | undefined): AppRole | 'default' => {
+  if (!roles || roles.length === 0) return 'default';
+  const priority: AppRole[] = ['super_admin', 'admin', 'admin_admissions', 'admin_fees', 'admin_academic', 'teacher', 'examiner', 'parent', 'student'];
+  for (const r of priority) if (roles.includes(r)) return r;
+  return roles[0];
+};
+
+// Map dial code → flag emoji (covers common codes; falls back to globe)
+const dialCodeToFlag = (phone: string | null | undefined): string => {
+  if (!phone) return '';
+  const p = phone.replace(/[^\d+]/g, '');
+  const map: Record<string, string> = {
+    '+92': '🇵🇰', '+1': '🇺🇸', '+44': '🇬🇧', '+91': '🇮🇳', '+971': '🇦🇪', '+966': '🇸🇦',
+    '+61': '🇦🇺', '+49': '🇩🇪', '+33': '🇫🇷', '+39': '🇮🇹', '+34': '🇪🇸', '+90': '🇹🇷',
+    '+880': '🇧🇩', '+60': '🇲🇾', '+62': '🇮🇩', '+86': '🇨🇳', '+81': '🇯🇵', '+82': '🇰🇷',
+    '+27': '🇿🇦', '+20': '🇪🇬', '+212': '🇲🇦', '+974': '🇶🇦', '+965': '🇰🇼', '+973': '🇧🇭',
+    '+968': '🇴🇲', '+964': '🇮🇶', '+98': '🇮🇷', '+93': '🇦🇫', '+7': '🇷🇺', '+31': '🇳🇱',
+    '+32': '🇧🇪', '+46': '🇸🇪', '+47': '🇳🇴', '+45': '🇩🇰', '+358': '🇫🇮', '+48': '🇵🇱',
+    '+353': '🇮🇪', '+64': '🇳🇿', '+65': '🇸🇬', '+852': '🇭🇰', '+66': '🇹🇭', '+84': '🇻🇳',
+    '+63': '🇵🇭', '+92322': '🇵🇰',
+  };
+  // Try longest match first
+  const codes = Object.keys(map).sort((a, b) => b.length - a.length);
+  for (const c of codes) if (p.startsWith(c)) return map[c];
+  return '🌐';
+};
   id: string;
   full_name: string;
   email: string | null;
