@@ -1386,79 +1386,64 @@ export default function UserManagement() {
               </div>
             </div>
 
-            {/* Users Table */}
-            <Card>
+            {/* Users Table — premium redesign */}
+            <Card className="overflow-hidden border-border/60 shadow-sm">
               <CardContent className="p-0">
                 {usersLoading ? (
-                  <div className="flex items-center justify-center py-12">
+                  <div className="flex items-center justify-center py-16">
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
                 ) : !filteredUsers?.length ? (
-                  <div className="text-center py-12">
-                    <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">No users found</p>
+                  <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+                    <div className="h-16 w-16 rounded-full bg-muted/60 flex items-center justify-center mb-4">
+                      <Search className="h-7 w-7 text-muted-foreground" />
+                    </div>
+                    <p className="text-base font-medium text-foreground">No users found</p>
+                    <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+                      Try adjusting your search or filters to find what you're looking for.
+                    </p>
+                    {hasActiveFilters && (
+                      <Button variant="outline" size="sm" className="mt-4 rounded-lg" onClick={resetFilters}>
+                        <X className="h-3.5 w-3.5 mr-1.5" />
+                        Clear filters
+                      </Button>
+                    )}
                   </div>
                 ) : (
-                  <Table wrapperClassName="max-h-[60vh] overflow-auto">
-                    <TableHeader>
-                      <TableRow>
+                  <Table wrapperClassName="max-h-[65vh] overflow-auto">
+                    <TableHeader className="bg-muted/40 backdrop-blur-sm">
+                      <TableRow className="border-b border-border/60 hover:bg-transparent">
                         {isSuperAdmin && (
-                          <TableHead className="w-10">
+                          <TableHead className="w-10 h-11">
                             <Checkbox
                               checked={selectedUserIds.length === filteredUsers.length && filteredUsers.length > 0}
                               onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setSelectedUserIds(filteredUsers.map(u => u.id));
-                                } else {
-                                  setSelectedUserIds([]);
-                                }
+                                if (checked) setSelectedUserIds(filteredUsers.map(u => u.id));
+                                else setSelectedUserIds([]);
                               }}
                             />
                           </TableHead>
                         )}
-                        <TableHead className="w-12 text-muted-foreground">#</TableHead>
-                        <TableHead 
-                          className="cursor-pointer select-none hover:bg-muted/50"
+                        <TableHead className="w-12 h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">#</TableHead>
+                        <TableHead
+                          className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors"
                           onClick={() => handleSort('name')}
                         >
-                          <div className="flex items-center">
-                            Name
-                            {getSortIcon('name')}
-                          </div>
+                          <div className="flex items-center">User{getSortIcon('name')}</div>
                         </TableHead>
-                        <TableHead>ID</TableHead>
-                        <TableHead>Phone</TableHead>
+                        <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">ID</TableHead>
+                        <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Phone</TableHead>
                         <TableHead
-                          className="cursor-pointer select-none hover:bg-muted/50"
+                          className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors"
                           onClick={() => handleSort('role')}
                         >
-                          <div className="flex items-center">
-                            {effectiveDivisionId ? 'Role' : 'Division · Role'}
-                            {getSortIcon('role')}
-                          </div>
+                          <div className="flex items-center">{effectiveDivisionId ? 'Role' : 'Division · Role'}{getSortIcon('role')}</div>
                         </TableHead>
-                        <TableHead
-                          className="cursor-pointer select-none hover:bg-muted/50"
-                          onClick={() => handleSort('gender')}
-                        >
-                          <div className="flex items-center">
-                            Gender
-                            {getSortIcon('gender')}
-                          </div>
-                        </TableHead>
-                        <TableHead
-                          className="cursor-pointer select-none hover:bg-muted/50"
-                          onClick={() => handleSort('age')}
-                        >
-                          <div className="flex items-center">
-                            Age
-                            {getSortIcon('age')}
-                          </div>
-                        </TableHead>
-                        <TableHead>Location</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Location</TableHead>
+                        <TableHead className="h-11 text-right text-[10px] uppercase tracking-wider font-semibold text-muted-foreground pr-4">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
+
                     <TableBody>
                       {filteredUsers.map((user, idx) => (
                         <TableRow key={user.id}>
