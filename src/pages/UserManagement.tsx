@@ -826,8 +826,10 @@ export default function UserManagement() {
   // Roles that are considered "global" (org-wide, not tied to any specific division)
   const GLOBAL_ROLES: AppRole[] = ['super_admin', 'admin', 'admin_admissions', 'admin_fees', 'admin_academic'];
 
-  // Effective division being filtered: explicit dropdown wins, else auto from activeDivision.
-  const effectiveDivisionId = filterDivision || activeDivision?.id || '';
+  // Effective division: '__all__' = user explicitly picked All (override global), '' = follow global context, <id> = specific.
+  const effectiveDivisionId = filterDivision === '__all__'
+    ? ''
+    : (filterDivision || activeDivision?.id || '');
 
   const filteredAll = users
     ?.filter(user => {
@@ -1321,12 +1323,13 @@ export default function UserManagement() {
 
               {/* Secondary row: contextual filters */}
               <div className="flex flex-wrap gap-2 items-center">
-                <Select value={filterDivision || "all"} onValueChange={(v) => setFilterDivision(v === "all" ? "" : v)}>
-                  <SelectTrigger className="w-[170px] h-9 rounded-lg bg-card text-sm">
-                    <SelectValue placeholder="All Divisions" />
+                <Select value={filterDivision || "context"} onValueChange={(v) => setFilterDivision(v === "context" ? "" : v)}>
+                  <SelectTrigger className="w-[200px] h-9 rounded-lg bg-card text-sm">
+                    <SelectValue placeholder="Division filter" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Divisions</SelectItem>
+                    <SelectItem value="context">Current context{activeDivision ? ` (${activeDivision.name})` : ''}</SelectItem>
+                    <SelectItem value="__all__">All Divisions (combined)</SelectItem>
                     {allDivisions.map((d) => (
                       <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
                     ))}
