@@ -128,17 +128,28 @@ const ROLE_COLORS: Record<AppRole, string> = {
   parent: 'bg-pink-500/10 text-pink-700 border-pink-200',
 };
 
-// Premium pill styles for role badges (used in redesigned table — softer, dot-prefixed)
-const ROLE_PILL: Record<AppRole, { bg: string; text: string; dot: string; ring: string }> = {
-  super_admin: { bg: 'bg-red-500/10', text: 'text-red-700 dark:text-red-400', dot: 'bg-red-500', ring: 'ring-red-500/20' },
-  admin: { bg: 'bg-purple-500/10', text: 'text-purple-700 dark:text-purple-400', dot: 'bg-purple-500', ring: 'ring-purple-500/20' },
-  admin_admissions: { bg: 'bg-blue-500/10', text: 'text-blue-700 dark:text-blue-400', dot: 'bg-blue-500', ring: 'ring-blue-500/20' },
-  admin_fees: { bg: 'bg-emerald-500/10', text: 'text-emerald-700 dark:text-emerald-400', dot: 'bg-emerald-500', ring: 'ring-emerald-500/20' },
-  admin_academic: { bg: 'bg-orange-500/10', text: 'text-orange-700 dark:text-orange-400', dot: 'bg-orange-500', ring: 'ring-orange-500/20' },
-  teacher: { bg: 'bg-violet-500/10', text: 'text-violet-700 dark:text-violet-400', dot: 'bg-violet-500', ring: 'ring-violet-500/20' },
-  examiner: { bg: 'bg-indigo-500/10', text: 'text-indigo-700 dark:text-indigo-400', dot: 'bg-indigo-500', ring: 'ring-indigo-500/20' },
-  student: { bg: 'bg-teal-500/10', text: 'text-teal-700 dark:text-teal-400', dot: 'bg-teal-500', ring: 'ring-teal-500/20' },
-  parent: { bg: 'bg-pink-500/10', text: 'text-pink-700 dark:text-pink-400', dot: 'bg-pink-500', ring: 'ring-pink-500/20' },
+// Premium pill styles for role badges (soft tinted background + colored dot)
+const ROLE_PILL: Record<AppRole, { bg: string; text: string; dot: string }> = {
+  super_admin: { bg: 'bg-red-100 dark:bg-red-500/15', text: 'text-red-700 dark:text-red-300', dot: 'bg-red-500' },
+  admin: { bg: 'bg-slate-100 dark:bg-slate-500/15', text: 'text-slate-700 dark:text-slate-300', dot: 'bg-slate-500' },
+  admin_admissions: { bg: 'bg-blue-100 dark:bg-blue-500/15', text: 'text-blue-700 dark:text-blue-300', dot: 'bg-blue-500' },
+  admin_fees: { bg: 'bg-emerald-100 dark:bg-emerald-500/15', text: 'text-emerald-700 dark:text-emerald-300', dot: 'bg-emerald-500' },
+  admin_academic: { bg: 'bg-orange-100 dark:bg-orange-500/15', text: 'text-orange-700 dark:text-orange-300', dot: 'bg-orange-500' },
+  teacher: { bg: 'bg-violet-100 dark:bg-violet-500/15', text: 'text-violet-700 dark:text-violet-300', dot: 'bg-violet-500' },
+  examiner: { bg: 'bg-indigo-100 dark:bg-indigo-500/15', text: 'text-indigo-700 dark:text-indigo-300', dot: 'bg-indigo-500' },
+  student: { bg: 'bg-teal-100 dark:bg-teal-500/15', text: 'text-teal-700 dark:text-teal-300', dot: 'bg-teal-500' },
+  parent: { bg: 'bg-pink-100 dark:bg-pink-500/15', text: 'text-pink-700 dark:text-pink-300', dot: 'bg-pink-500' },
+};
+
+const RolePill = ({ role, prefix }: { role: AppRole; prefix?: string }) => {
+  const p = ROLE_PILL[role] || ROLE_PILL.student;
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${p.bg} ${p.text}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${p.dot}`} />
+      {prefix && <><span className="font-semibold">{prefix}</span><span className="opacity-50">·</span></>}
+      <span>{formatRoleLabel(role)}</span>
+    </span>
+  );
 };
 
 // Avatar background colors per primary role
