@@ -66,10 +66,13 @@ export function ExportUsersDialog({
   onOpenChange,
   selectedUserIds,
   searchTerm,
+  filteredUserIds = [],
+  filteredCount,
   totalUsers,
 }: ExportUsersDialogProps) {
   const { user, session } = useAuth();
   const { toast } = useToast();
+  const hasFilter = filteredUserIds.length > 0 && filteredUserIds.length !== totalUsers;
   
   const [exportType, setExportType] = useState<'selected' | 'filtered' | 'all'>('all');
   const [format, setFormat] = useState<'csv' | 'xlsx'>('csv');
