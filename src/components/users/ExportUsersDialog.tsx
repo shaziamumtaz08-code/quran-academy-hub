@@ -41,6 +41,8 @@ interface ExportUsersDialogProps {
   onOpenChange: (open: boolean) => void;
   selectedUserIds: string[];
   searchTerm: string;
+  filteredUserIds?: string[];
+  filteredCount?: number;
   totalUsers: number;
 }
 
