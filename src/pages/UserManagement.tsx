@@ -1460,9 +1460,12 @@ export default function UserManagement() {
 
                     <TableBody>
                       {filteredUsers.map((user, idx) => (
-                        <TableRow key={user.id}>
+                        <TableRow
+                          key={user.id}
+                          className={`group min-h-[64px] border-l-2 border-transparent transition-colors hover:bg-muted/30 hover:border-l-primary ${idx % 2 === 0 ? 'bg-transparent' : 'bg-muted/20'}`}
+                        >
                           {isSuperAdmin && (
-                            <TableCell>
+                            <TableCell className="py-3">
                               <Checkbox
                                 checked={selectedUserIds.includes(user.id)}
                                 onCheckedChange={(checked) => {
@@ -1475,14 +1478,24 @@ export default function UserManagement() {
                               />
                             </TableCell>
                           )}
-                          <TableCell className="text-muted-foreground text-sm tabular-nums">{idx + 1}</TableCell>
-                          <TableCell className="font-medium">
-                            <div className="flex items-center gap-2">
-                              {user.full_name}
-                              {user.archived_at && (
-                                <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-200">Archived</Badge>
-                              )}
-                          </div>
+                          <TableCell className="py-3 text-muted-foreground text-sm tabular-nums">{idx + 1}</TableCell>
+                          <TableCell className="py-3 font-medium">
+                            <div className="flex items-center gap-3">
+                              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white ${AVATAR_COLORS[getPrimaryRole(user.roles as AppRole[])] || AVATAR_COLORS.default}`}>
+                                {getInitials(user.full_name)}
+                              </div>
+                              <div className="flex flex-col min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="truncate text-sm font-semibold text-foreground">{user.full_name}</span>
+                                  {user.archived_at && (
+                                    <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-200">Archived</Badge>
+                                  )}
+                                </div>
+                                {user.email && (
+                                  <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+                                )}
+                              </div>
+                            </div>
                           </TableCell>
                           <TableCell>
                             {(() => {
