@@ -217,13 +217,13 @@ export function ExportUsersDialog({
                   <RadioGroupItem 
                     value="filtered" 
                     id="filtered"
-                    disabled={!searchTerm}
+                    disabled={!hasFilter}
                   />
                   <Label htmlFor="filtered" className="flex items-center gap-2">
                     Filtered Users
-                    {searchTerm && (
+                    {hasFilter && (
                       <Badge variant="outline" className="text-xs">
-                        "{searchTerm}"
+                        {filteredCount ?? filteredUserIds.length}
                       </Badge>
                     )}
                   </Label>
