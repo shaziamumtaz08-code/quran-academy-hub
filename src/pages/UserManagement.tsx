@@ -1237,6 +1237,7 @@ export default function UserManagement() {
                             />
                           </TableHead>
                         )}
+                        <TableHead className="w-12 text-muted-foreground">#</TableHead>
                         <TableHead 
                           className="cursor-pointer select-none hover:bg-muted/50"
                           onClick={() => handleSort('name')}
