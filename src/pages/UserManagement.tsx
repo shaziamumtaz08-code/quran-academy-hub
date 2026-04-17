@@ -83,8 +83,10 @@ import { AuthAuditTab } from '@/components/admin/AuthAuditTab';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Country, State, City, ICountry, IState, ICity } from 'country-state-city';
 import { SearchableCitySelect } from '@/components/ui/searchable-city-select';
-import { useDivisionMembership, getDivisionShortName, getDivisionBadgeClass } from '@/hooks/useDivisionMembership';
+import { useDivisionMembership, getDivisionShortName, getDivisionBadgeClass, formatRoleLabel } from '@/hooks/useDivisionMembership';
 import { useDivision } from '@/contexts/DivisionContext';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Copy, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
 
 const ALL_PERMISSIONS = [
   { group: 'Users', permissions: ['users.view', 'users.create', 'users.edit', 'users.delete', 'users.assign_roles'] },
@@ -677,6 +679,48 @@ export default function UserManagement() {
   const allUserIds = useMemo(() => (users || []).map(u => u.id), [users]);
   const { data: divMembershipMap } = useDivisionMembership(allUserIds, !!users && users.length > 0);
 
+  // Permanent person number: AQT-NNNNNN derived from profiles ordered by created_at ASC.
+  // Stable per person — survives role changes, division moves, re-enrollments.
+  const personNumberMap = useMemo(() => {
+    const m = new Map<string, string>();
+    if (!users) return m;
+    const sorted = [...users].sort((a, b) =>
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    sorted.forEach((u, i) => {
+      m.set(u.id, `AQT-${String(i + 1).padStart(6, '0')}`);
+    });
+    return m;
+  }, [users]);
+
+  // Collapsible "Unassigned" section state (only relevant when a division filter is active)
+  const [showUnassigned, setShowUnassigned] = useState(false);
+
+  // One-click "Assign to current filtered division" mutation
+  const assignDivisionMutation = useMutation({
+    mutationFn: async ({ userId, divisionId }: { userId: string; divisionId: string }) => {
+      const { data: divFull } = await supabase
+        .from('divisions')
+        .select('branch_id')
+        .eq('id', divisionId)
+        .maybeSingle();
+      const branchId = (divFull as any)?.branch_id;
+      if (!branchId) throw new Error('Division has no branch');
+      const { error } = await supabase
+        .from('user_context')
+        .insert({ user_id: userId, division_id: divisionId, branch_id: branchId, is_default: false });
+      if (error && !String(error.message).toLowerCase().includes('duplicate')) throw error;
+      return { userId, divisionId };
+    },
+    onSuccess: () => {
+      toast({ title: 'Assigned', description: 'User added to this division.' });
+      queryClient.invalidateQueries({ queryKey: ['division-membership'] });
+    },
+    onError: (e: any) => {
+      toast({ title: 'Failed to assign', description: e?.message || 'Unknown error', variant: 'destructive' });
+    },
+  });
+
   const availableCountries = useMemo(() => {
     const countries = new Set<string>();
     users?.forEach(u => {
@@ -699,29 +743,35 @@ export default function UserManagement() {
   // Roles that are considered "global" (org-wide, not tied to any specific division)
   const GLOBAL_ROLES: AppRole[] = ['super_admin', 'admin', 'admin_admissions', 'admin_fees', 'admin_academic'];
 
-  const filteredUsers = users
+  // Effective division being filtered: explicit dropdown wins, else auto from activeDivision.
+  const effectiveDivisionId = filterDivision || activeDivision?.id || '';
+
+  const filteredAll = users
     ?.filter(user => {
       const matchesArchive = showArchived ? !!user.archived_at : !user.archived_at;
-      const matchesSearch = !searchTerm || 
+      const matchesSearch = !searchTerm ||
         user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.email?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCountry = !filterCountry || user.country === filterCountry;
       const matchesCity = !filterCity || user.city === filterCity;
-      const matchesRole = !filterRole || user.roles?.includes(filterRole as AppRole);
-      const userMemberships = divMembershipMap?.get(user.id) || [];
-      const matchesDivision = !filterDivision || userMemberships.some(d => d.divisionId === filterDivision);
-      // Staff mode: exclude users whose ONLY roles are teaching roles (teacher/student/parent).
-      // Keep users that have at least one non-teaching role (admin, super_admin, examiner, moderator, etc.).
       const matchesStaffMode = !staffMode || (user.roles && user.roles.some(r => !TEACHING_ROLES.includes(r)));
 
-      // Auto-filter by ACTIVE division so counts/listings match the division switcher.
-      // Users with global roles (super_admin/admin/etc.) and no division membership stay visible.
-      const hasGlobalRole = (user.roles || []).some(r => GLOBAL_ROLES.includes(r));
-      const inActiveDivision = !activeDivision
-        || userMemberships.some(d => d.divisionId === activeDivision.id)
-        || (hasGlobalRole && userMemberships.length === 0);
+      // Role filter is division-aware:
+      // - If a division is in scope, the user must hold that role inside that division.
+      // - Otherwise, fall back to global role list.
+      const userMemberships = divMembershipMap?.get(user.id) || [];
+      let matchesRole = true;
+      if (filterRole) {
+        if (effectiveDivisionId) {
+          matchesRole = userMemberships.some(
+            d => d.divisionId === effectiveDivisionId && d.roles.includes(filterRole),
+          );
+        } else {
+          matchesRole = !!user.roles?.includes(filterRole as AppRole);
+        }
+      }
 
-      return matchesArchive && matchesSearch && matchesCountry && matchesCity && matchesRole && matchesDivision && matchesStaffMode && inActiveDivision;
+      return matchesArchive && matchesSearch && matchesCountry && matchesCity && matchesRole && matchesStaffMode;
     })
     ?.sort((a, b) => {
       let comparison = 0;
@@ -749,6 +799,25 @@ export default function UserManagement() {
       }
       return sortDirection === 'asc' ? comparison : -comparison;
     });
+
+  // Split into matched (in scope division) vs unassigned (no memberships at all).
+  // Global-role users (admin/super_admin/etc.) are always matched.
+  const filteredUsers = (filteredAll || []).filter(user => {
+    if (!effectiveDivisionId) return true;
+    const memberships = divMembershipMap?.get(user.id) || [];
+    if (memberships.some(d => d.divisionId === effectiveDivisionId)) return true;
+    const hasGlobalRole = (user.roles || []).some(r => GLOBAL_ROLES.includes(r));
+    if (hasGlobalRole && memberships.length === 0) return true;
+    return false;
+  });
+
+  const unassignedUsers = (filteredAll || []).filter(user => {
+    if (!effectiveDivisionId) return false;
+    const memberships = divMembershipMap?.get(user.id) || [];
+    if (memberships.length > 0) return false;
+    const hasGlobalRole = (user.roles || []).some(r => GLOBAL_ROLES.includes(r));
+    return !hasGlobalRole; // global-role users without context already counted as matched
+  });
 
   const hasActiveFilters = !!filterCountry || !!filterCity || !!filterRole || !!filterDivision || showArchived;
 
@@ -1247,18 +1316,18 @@ export default function UserManagement() {
                             {getSortIcon('name')}
                           </div>
                         </TableHead>
-                        <TableHead>Reg ID</TableHead>
-                        <TableHead>WhatsApp</TableHead>
-                        <TableHead 
+                        <TableHead>ID</TableHead>
+                        <TableHead>Phone</TableHead>
+                        <TableHead
                           className="cursor-pointer select-none hover:bg-muted/50"
                           onClick={() => handleSort('role')}
                         >
                           <div className="flex items-center">
-                            Role
+                            {effectiveDivisionId ? 'Role' : 'Division · Role'}
                             {getSortIcon('role')}
                           </div>
                         </TableHead>
-                        <TableHead 
+                        <TableHead
                           className="cursor-pointer select-none hover:bg-muted/50"
                           onClick={() => handleSort('gender')}
                         >
@@ -1267,7 +1336,7 @@ export default function UserManagement() {
                             {getSortIcon('gender')}
                           </div>
                         </TableHead>
-                        <TableHead 
+                        <TableHead
                           className="cursor-pointer select-none hover:bg-muted/50"
                           onClick={() => handleSort('age')}
                         >
@@ -1277,7 +1346,6 @@ export default function UserManagement() {
                           </div>
                         </TableHead>
                         <TableHead>Location</TableHead>
-                        <TableHead>Division(s)</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1308,11 +1376,39 @@ export default function UserManagement() {
                           </div>
                           </TableCell>
                           <TableCell>
-                            {user.registration_id ? (
-                              <Badge variant="outline" className="text-xs font-mono">{user.registration_id}</Badge>
-                            ) : (
-                              <span className="text-muted-foreground text-xs">—</span>
-                            )}
+                            {(() => {
+                              const personNo = personNumberMap.get(user.id);
+                              const fullUrn = user.registration_id;
+                              if (!personNo) {
+                                return <span className="text-muted-foreground text-xs">—</span>;
+                              }
+                              return (
+                                <TooltipProvider delayDuration={150}>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <button
+                                        type="button"
+                                        className="inline-flex items-center gap-1 group"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          navigator.clipboard.writeText(fullUrn || personNo);
+                                          toast({ title: 'Copied', description: fullUrn || personNo });
+                                        }}
+                                        title="Click to copy"
+                                      >
+                                        <Badge variant="outline" className="text-xs font-mono">{personNo}</Badge>
+                                        <Copy className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                      </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right" className="text-xs">
+                                      <div className="font-medium">Universal ID: {personNo}</div>
+                                      {fullUrn && <div className="text-muted-foreground mt-1">URN: {fullUrn}</div>}
+                                      <div className="text-muted-foreground mt-1 italic">Click to copy</div>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              );
+                            })()}
                           </TableCell>
                           <TableCell>
                             {user.whatsapp_number ? (
@@ -1322,33 +1418,69 @@ export default function UserManagement() {
                             )}
                           </TableCell>
                           <TableCell>
-                            <div className="flex flex-wrap gap-1">
-                              {(user.roles?.length ?? 0) > 0 ? (
-                                user.roles.map((role) => (
-                                  <Badge 
-                                    key={role} 
-                                    variant="outline" 
-                                    className={`text-xs ${ROLE_COLORS[role]}`}
-                                  >
-                                    {ROLE_LABELS[role]}
-                                    {isSuperAdmin && (user.roles?.length ?? 0) > 1 && (
-                                      <button
-                                        className="ml-1 hover:text-destructive"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setRemoveRoleConfirm({ user, role });
-                                        }}
+                            <div className="flex flex-wrap gap-1 items-center">
+                              {(() => {
+                                const memberships = divMembershipMap?.get(user.id) || [];
+                                const globalRoles = (user.roles || []).filter(r => GLOBAL_ROLES.includes(r));
+
+                                // When a division is in scope, show only that division's roles + any global roles.
+                                if (effectiveDivisionId) {
+                                  const inScope = memberships.find(m => m.divisionId === effectiveDivisionId);
+                                  const rolesInDiv = inScope?.roles || [];
+                                  const pills: React.ReactNode[] = [];
+                                  rolesInDiv.forEach(role => {
+                                    pills.push(
+                                      <Badge key={`r-${role}`} variant="outline" className={`text-xs ${ROLE_COLORS[role as AppRole] || ''}`}>
+                                        {formatRoleLabel(role)}
+                                      </Badge>
+                                    );
+                                  });
+                                  globalRoles.forEach(role => {
+                                    pills.push(
+                                      <Badge key={`g-${role}`} variant="outline" className={`text-xs ${ROLE_COLORS[role]}`}>
+                                        {ROLE_LABELS[role]}
+                                      </Badge>
+                                    );
+                                  });
+                                  if (pills.length === 0) {
+                                    return <Badge variant="outline" className="text-xs text-muted-foreground">No role here</Badge>;
+                                  }
+                                  return pills;
+                                }
+
+                                // No division filter — show grouped pills "Div · Role" for each membership,
+                                // plus standalone global roles.
+                                const pills: React.ReactNode[] = [];
+                                memberships.forEach(m => {
+                                  const short = getDivisionShortName(m.divisionName);
+                                  const cls = getDivisionBadgeClass(m.modelType);
+                                  m.roles.forEach(role => {
+                                    pills.push(
+                                      <Badge
+                                        key={`${m.divisionId}-${role}`}
+                                        variant="outline"
+                                        className={`text-xs ${cls}`}
+                                        title={`${m.divisionName} · ${formatRoleLabel(role)}`}
                                       >
-                                        <X className="h-3 w-3" />
-                                      </button>
-                                    )}
-                                  </Badge>
-                                ))
-                              ) : (
-                                <Badge variant="outline" className="text-xs text-muted-foreground">
-                                  No role
-                                </Badge>
-                              )}
+                                        <span className="font-semibold">{short}</span>
+                                        <span className="opacity-70 mx-1">·</span>
+                                        <span>{formatRoleLabel(role)}</span>
+                                      </Badge>
+                                    );
+                                  });
+                                });
+                                globalRoles.forEach(role => {
+                                  pills.push(
+                                    <Badge key={`g-${role}`} variant="outline" className={`text-xs ${ROLE_COLORS[role]}`}>
+                                      {ROLE_LABELS[role]}
+                                    </Badge>
+                                  );
+                                });
+                                if (pills.length === 0) {
+                                  return <Badge variant="outline" className="text-xs text-muted-foreground">No role</Badge>;
+                                }
+                                return pills;
+                              })()}
                               {isSuperAdmin && getAvailableRoles(user).length > 0 && (
                                 <Button
                                   variant="ghost"
@@ -1388,21 +1520,6 @@ export default function UserManagement() {
                             ) : (
                               <span className="text-muted-foreground text-sm">—</span>
                             )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-wrap gap-1">
-                              {(() => {
-                                const memberships = divMembershipMap?.get(user.id) || [];
-                                if (memberships.length === 0) {
-                                  return <Badge variant="outline" className="text-[10px] text-muted-foreground">Unassigned</Badge>;
-                                }
-                                return memberships.map(m => (
-                                  <Badge key={m.divisionId} variant="outline" className={`text-[10px] ${getDivisionBadgeClass(m.modelType)}`}>
-                                    {getDivisionShortName(m.divisionName)}
-                                  </Badge>
-                                ));
-                              })()}
-                            </div>
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1">
@@ -1459,6 +1576,47 @@ export default function UserManagement() {
                           </TableCell>
                         </TableRow>
                       ))}
+                      {effectiveDivisionId && unassignedUsers.length > 0 && (
+                        <>
+                          <TableRow className="bg-amber-500/5 hover:bg-amber-500/10 cursor-pointer" onClick={() => setShowUnassigned(s => !s)}>
+                            <TableCell colSpan={isSuperAdmin ? 9 : 8} className="text-amber-700 dark:text-amber-400 text-sm font-medium py-2">
+                              <div className="flex items-center gap-2">
+                                {showUnassigned ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                <AlertTriangle className="h-4 w-4" />
+                                {unassignedUsers.length} user{unassignedUsers.length === 1 ? '' : 's'} not assigned to any division
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                          {showUnassigned && unassignedUsers.map((user) => (
+                            <TableRow key={`u-${user.id}`} className="bg-amber-500/5">
+                              {isSuperAdmin && <TableCell />}
+                              <TableCell className="text-amber-600"><AlertTriangle className="h-3 w-3" /></TableCell>
+                              <TableCell className="font-medium">{user.full_name}</TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="text-xs font-mono">{personNumberMap.get(user.id) || '—'}</Badge>
+                              </TableCell>
+                              <TableCell><span className="text-sm">{user.whatsapp_number || '—'}</span></TableCell>
+                              <TableCell colSpan={3}>
+                                <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-700 border-amber-200">⚠ Unassigned</Badge>
+                              </TableCell>
+                              <TableCell><span className="text-sm">{[user.city, user.country].filter(Boolean).join(', ') || '—'}</span></TableCell>
+                              <TableCell className="text-right">
+                                {isSuperAdmin && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 text-xs"
+                                    disabled={assignDivisionMutation.isPending}
+                                    onClick={() => assignDivisionMutation.mutate({ userId: user.id, divisionId: effectiveDivisionId })}
+                                  >
+                                    Assign here
+                                  </Button>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </>
+                      )}
                     </TableBody>
                   </Table>
                 )}
@@ -1759,6 +1917,30 @@ export default function UserManagement() {
                             <Badge variant="outline" className="text-xs">No role</Badge>
                           )}
                         </div>
+                      </div>
+                    </div>
+                    {/* Universal ID + per-division URN breakdown */}
+                    <div className="p-3 bg-muted/30 rounded-lg border">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Identity</p>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Universal ID</span>
+                          <Badge variant="outline" className="font-mono">{personNumberMap.get(viewingUser.id) || '—'}</Badge>
+                        </div>
+                        {viewingUser.registration_id && (
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">URN</span>
+                            <Badge variant="outline" className="font-mono text-xs">{viewingUser.registration_id}</Badge>
+                          </div>
+                        )}
+                        {(divMembershipMap?.get(viewingUser.id) || []).map(m => (
+                          <div key={m.divisionId} className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">{m.divisionName}</span>
+                            <Badge variant="outline" className={`text-xs ${getDivisionBadgeClass(m.modelType)}`}>
+                              {m.roles.map(formatRoleLabel).join(', ')}
+                            </Badge>
+                          </div>
+                        ))}
                       </div>
                     </div>
                     <div className="grid gap-3">
