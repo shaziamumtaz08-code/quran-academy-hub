@@ -1548,61 +1548,40 @@ export default function UserManagement() {
                                 const memberships = divMembershipMap?.get(user.id) || [];
                                 const globalRoles = (user.roles || []).filter(r => GLOBAL_ROLES.includes(r));
 
-                                // When a division is in scope, show only that division's roles + any global roles.
                                 if (effectiveDivisionId) {
                                   const inScope = memberships.find(m => m.divisionId === effectiveDivisionId);
                                   const rolesInDiv = inScope?.roles || [];
                                   const pills: React.ReactNode[] = [];
                                   rolesInDiv.forEach(role => {
-                                    pills.push(
-                                      <Badge key={`r-${role}`} variant="outline" className={`text-xs ${ROLE_COLORS[role as AppRole] || ''}`}>
-                                        {formatRoleLabel(role)}
-                                      </Badge>
-                                    );
+                                    pills.push(<RolePill key={`r-${role}`} role={role as AppRole} />);
                                   });
                                   globalRoles.forEach(role => {
-                                    pills.push(
-                                      <Badge key={`g-${role}`} variant="outline" className={`text-xs ${ROLE_COLORS[role]}`}>
-                                        {ROLE_LABELS[role]}
-                                      </Badge>
-                                    );
+                                    pills.push(<RolePill key={`g-${role}`} role={role} />);
                                   });
                                   if (pills.length === 0) {
-                                    return <Badge variant="outline" className="text-xs text-muted-foreground">No role here</Badge>;
+                                    return <span className="text-xs text-muted-foreground italic">No role here</span>;
                                   }
                                   return pills;
                                 }
 
-                                // No division filter — show grouped pills "Div · Role" for each membership,
-                                // plus standalone global roles.
                                 const pills: React.ReactNode[] = [];
                                 memberships.forEach(m => {
                                   const short = getDivisionShortName(m.divisionName);
-                                  const cls = getDivisionBadgeClass(m.modelType);
                                   m.roles.forEach(role => {
                                     pills.push(
-                                      <Badge
+                                      <RolePill
                                         key={`${m.divisionId}-${role}`}
-                                        variant="outline"
-                                        className={`text-xs ${cls}`}
-                                        title={`${m.divisionName} · ${formatRoleLabel(role)}`}
-                                      >
-                                        <span className="font-semibold">{short}</span>
-                                        <span className="opacity-70 mx-1">·</span>
-                                        <span>{formatRoleLabel(role)}</span>
-                                      </Badge>
+                                        role={role as AppRole}
+                                        prefix={short}
+                                      />
                                     );
                                   });
                                 });
                                 globalRoles.forEach(role => {
-                                  pills.push(
-                                    <Badge key={`g-${role}`} variant="outline" className={`text-xs ${ROLE_COLORS[role]}`}>
-                                      {ROLE_LABELS[role]}
-                                    </Badge>
-                                  );
+                                  pills.push(<RolePill key={`g-${role}`} role={role} />);
                                 });
                                 if (pills.length === 0) {
-                                  return <Badge variant="outline" className="text-xs text-muted-foreground">No role</Badge>;
+                                  return <span className="text-xs text-muted-foreground italic">No role</span>;
                                 }
                                 return pills;
                               })()}
@@ -1610,7 +1589,7 @@ export default function UserManagement() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-6 w-6 p-0"
+                                  className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                                   onClick={() => {
                                     setViewingUser(user);
                                     setAddRoleSelection(getAvailableRoles(user)[0]);
@@ -1623,9 +1602,9 @@ export default function UserManagement() {
                               )}
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-3">
                             {user.city || user.country ? (
-                              <span className="text-sm">
+                              <span className="text-sm text-muted-foreground">
                                 {[user.city, user.country].filter(Boolean).join(', ')}
                               </span>
                             ) : (
