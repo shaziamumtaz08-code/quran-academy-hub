@@ -743,29 +743,35 @@ export default function UserManagement() {
   // Roles that are considered "global" (org-wide, not tied to any specific division)
   const GLOBAL_ROLES: AppRole[] = ['super_admin', 'admin', 'admin_admissions', 'admin_fees', 'admin_academic'];
 
-  const filteredUsers = users
+  // Effective division being filtered: explicit dropdown wins, else auto from activeDivision.
+  const effectiveDivisionId = filterDivision || activeDivision?.id || '';
+
+  const filteredAll = users
     ?.filter(user => {
       const matchesArchive = showArchived ? !!user.archived_at : !user.archived_at;
-      const matchesSearch = !searchTerm || 
+      const matchesSearch = !searchTerm ||
         user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.email?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCountry = !filterCountry || user.country === filterCountry;
       const matchesCity = !filterCity || user.city === filterCity;
-      const matchesRole = !filterRole || user.roles?.includes(filterRole as AppRole);
-      const userMemberships = divMembershipMap?.get(user.id) || [];
-      const matchesDivision = !filterDivision || userMemberships.some(d => d.divisionId === filterDivision);
-      // Staff mode: exclude users whose ONLY roles are teaching roles (teacher/student/parent).
-      // Keep users that have at least one non-teaching role (admin, super_admin, examiner, moderator, etc.).
       const matchesStaffMode = !staffMode || (user.roles && user.roles.some(r => !TEACHING_ROLES.includes(r)));
 
-      // Auto-filter by ACTIVE division so counts/listings match the division switcher.
-      // Users with global roles (super_admin/admin/etc.) and no division membership stay visible.
-      const hasGlobalRole = (user.roles || []).some(r => GLOBAL_ROLES.includes(r));
-      const inActiveDivision = !activeDivision
-        || userMemberships.some(d => d.divisionId === activeDivision.id)
-        || (hasGlobalRole && userMemberships.length === 0);
+      // Role filter is division-aware:
+      // - If a division is in scope, the user must hold that role inside that division.
+      // - Otherwise, fall back to global role list.
+      const userMemberships = divMembershipMap?.get(user.id) || [];
+      let matchesRole = true;
+      if (filterRole) {
+        if (effectiveDivisionId) {
+          matchesRole = userMemberships.some(
+            d => d.divisionId === effectiveDivisionId && d.roles.includes(filterRole),
+          );
+        } else {
+          matchesRole = !!user.roles?.includes(filterRole as AppRole);
+        }
+      }
 
-      return matchesArchive && matchesSearch && matchesCountry && matchesCity && matchesRole && matchesDivision && matchesStaffMode && inActiveDivision;
+      return matchesArchive && matchesSearch && matchesCountry && matchesCity && matchesRole && matchesStaffMode;
     })
     ?.sort((a, b) => {
       let comparison = 0;
@@ -793,6 +799,25 @@ export default function UserManagement() {
       }
       return sortDirection === 'asc' ? comparison : -comparison;
     });
+
+  // Split into matched (in scope division) vs unassigned (no memberships at all).
+  // Global-role users (admin/super_admin/etc.) are always matched.
+  const filteredUsers = (filteredAll || []).filter(user => {
+    if (!effectiveDivisionId) return true;
+    const memberships = divMembershipMap?.get(user.id) || [];
+    if (memberships.some(d => d.divisionId === effectiveDivisionId)) return true;
+    const hasGlobalRole = (user.roles || []).some(r => GLOBAL_ROLES.includes(r));
+    if (hasGlobalRole && memberships.length === 0) return true;
+    return false;
+  });
+
+  const unassignedUsers = (filteredAll || []).filter(user => {
+    if (!effectiveDivisionId) return false;
+    const memberships = divMembershipMap?.get(user.id) || [];
+    if (memberships.length > 0) return false;
+    const hasGlobalRole = (user.roles || []).some(r => GLOBAL_ROLES.includes(r));
+    return !hasGlobalRole; // global-role users without context already counted as matched
+  });
 
   const hasActiveFilters = !!filterCountry || !!filterCity || !!filterRole || !!filterDivision || showArchived;
 
