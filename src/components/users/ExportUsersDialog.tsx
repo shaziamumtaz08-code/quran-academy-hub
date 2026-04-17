@@ -88,12 +88,17 @@ export function ExportUsersDialog({
         throw new Error('Authentication required');
       }
 
+      const idsForExport =
+        exportType === 'selected' ? selectedUserIds :
+        exportType === 'filtered' ? filteredUserIds :
+        undefined;
+
       const response = await supabase.functions.invoke('export-users', {
         headers: { Authorization: `Bearer ${session.access_token}` },
         body: {
-          userIds: exportType === 'selected' ? selectedUserIds : undefined,
+          userIds: idsForExport,
           searchTerm: exportType === 'filtered' ? searchTerm : undefined,
-          exportType,
+          exportType: exportType === 'filtered' ? 'selected' : exportType,
           format,
           fields: selectedFields,
           includePasswords,
