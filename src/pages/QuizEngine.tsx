@@ -847,6 +847,35 @@ export default function QuizEngine() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <ExportDialog
+          open={exportOpen}
+          onOpenChange={setExportOpen}
+          title="Quiz Results"
+          filename="quiz-results"
+          fields={[
+            { key: 'name', label: 'Name' },
+            { key: 'email', label: 'Email' },
+            { key: 'quiz', label: 'Quiz' },
+            { key: 'score', label: 'Score' },
+            { key: 'max_score', label: 'Max Score' },
+            { key: 'percentage', label: 'Percentage' },
+            { key: 'time_taken', label: 'Time Taken' },
+            { key: 'status', label: 'Status' },
+            { key: 'submitted_at', label: 'Submitted At' },
+          ]}
+          data={attempts.map((a: any) => ({
+            name: a.guest_name || a.student?.full_name || '',
+            email: a.guest_email || a.student?.email || '',
+            quiz: a.session?.title || '',
+            score: a.score,
+            max_score: a.max_score,
+            percentage: `${a.percentage}%`,
+            time_taken: a.time_taken_seconds ? `${Math.floor(a.time_taken_seconds / 60)}m ${a.time_taken_seconds % 60}s` : '',
+            status: a.percentage >= (a.passing_percentage || 50) ? 'Pass' : 'Fail',
+            submitted_at: format(new Date(a.created_at), 'yyyy-MM-dd HH:mm'),
+          }))}
+        />
       </div>
     </DashboardLayout>
   );
