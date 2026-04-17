@@ -2040,7 +2040,9 @@ export default function UserManagement() {
             onOpenChange={setIsExportDialogOpen}
             selectedUserIds={selectedUserIds}
             searchTerm={searchTerm}
-            totalUsers={filteredUsers?.length || 0}
+            filteredUserIds={filteredUsers?.map(u => u.id) || []}
+            totalUsers={users?.length || 0}
+            filteredCount={filteredUsers?.length || 0}
           />
         )}
       </div>
