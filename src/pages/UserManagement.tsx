@@ -1576,6 +1576,47 @@ export default function UserManagement() {
                           </TableCell>
                         </TableRow>
                       ))}
+                      {effectiveDivisionId && unassignedUsers.length > 0 && (
+                        <>
+                          <TableRow className="bg-amber-500/5 hover:bg-amber-500/10 cursor-pointer" onClick={() => setShowUnassigned(s => !s)}>
+                            <TableCell colSpan={isSuperAdmin ? 9 : 8} className="text-amber-700 dark:text-amber-400 text-sm font-medium py-2">
+                              <div className="flex items-center gap-2">
+                                {showUnassigned ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                <AlertTriangle className="h-4 w-4" />
+                                {unassignedUsers.length} user{unassignedUsers.length === 1 ? '' : 's'} not assigned to any division
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                          {showUnassigned && unassignedUsers.map((user) => (
+                            <TableRow key={`u-${user.id}`} className="bg-amber-500/5">
+                              {isSuperAdmin && <TableCell />}
+                              <TableCell className="text-amber-600"><AlertTriangle className="h-3 w-3" /></TableCell>
+                              <TableCell className="font-medium">{user.full_name}</TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="text-xs font-mono">{personNumberMap.get(user.id) || '—'}</Badge>
+                              </TableCell>
+                              <TableCell><span className="text-sm">{user.whatsapp_number || '—'}</span></TableCell>
+                              <TableCell colSpan={3}>
+                                <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-700 border-amber-200">⚠ Unassigned</Badge>
+                              </TableCell>
+                              <TableCell><span className="text-sm">{[user.city, user.country].filter(Boolean).join(', ') || '—'}</span></TableCell>
+                              <TableCell className="text-right">
+                                {isSuperAdmin && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 text-xs"
+                                    disabled={assignDivisionMutation.isPending}
+                                    onClick={() => assignDivisionMutation.mutate({ userId: user.id, divisionId: effectiveDivisionId })}
+                                  >
+                                    Assign here
+                                  </Button>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </>
+                      )}
                     </TableBody>
                   </Table>
                 )}
