@@ -1282,7 +1282,7 @@ export default function UserManagement() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredUsers.map((user) => (
+                      {filteredUsers.map((user, idx) => (
                         <TableRow key={user.id}>
                           {isSuperAdmin && (
                             <TableCell>
@@ -1298,6 +1298,7 @@ export default function UserManagement() {
                               />
                             </TableCell>
                           )}
+                          <TableCell className="text-muted-foreground text-sm tabular-nums">{idx + 1}</TableCell>
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-2">
                               {user.full_name}
