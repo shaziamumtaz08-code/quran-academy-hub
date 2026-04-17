@@ -1376,11 +1376,39 @@ export default function UserManagement() {
                           </div>
                           </TableCell>
                           <TableCell>
-                            {user.registration_id ? (
-                              <Badge variant="outline" className="text-xs font-mono">{user.registration_id}</Badge>
-                            ) : (
-                              <span className="text-muted-foreground text-xs">—</span>
-                            )}
+                            {(() => {
+                              const personNo = personNumberMap.get(user.id);
+                              const fullUrn = user.registration_id;
+                              if (!personNo) {
+                                return <span className="text-muted-foreground text-xs">—</span>;
+                              }
+                              return (
+                                <TooltipProvider delayDuration={150}>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <button
+                                        type="button"
+                                        className="inline-flex items-center gap-1 group"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          navigator.clipboard.writeText(fullUrn || personNo);
+                                          toast({ title: 'Copied', description: fullUrn || personNo });
+                                        }}
+                                        title="Click to copy"
+                                      >
+                                        <Badge variant="outline" className="text-xs font-mono">{personNo}</Badge>
+                                        <Copy className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                      </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right" className="text-xs">
+                                      <div className="font-medium">Universal ID: {personNo}</div>
+                                      {fullUrn && <div className="text-muted-foreground mt-1">URN: {fullUrn}</div>}
+                                      <div className="text-muted-foreground mt-1 italic">Click to copy</div>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              );
+                            })()}
                           </TableCell>
                           <TableCell>
                             {user.whatsapp_number ? (
@@ -1390,33 +1418,69 @@ export default function UserManagement() {
                             )}
                           </TableCell>
                           <TableCell>
-                            <div className="flex flex-wrap gap-1">
-                              {(user.roles?.length ?? 0) > 0 ? (
-                                user.roles.map((role) => (
-                                  <Badge 
-                                    key={role} 
-                                    variant="outline" 
-                                    className={`text-xs ${ROLE_COLORS[role]}`}
-                                  >
-                                    {ROLE_LABELS[role]}
-                                    {isSuperAdmin && (user.roles?.length ?? 0) > 1 && (
-                                      <button
-                                        className="ml-1 hover:text-destructive"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setRemoveRoleConfirm({ user, role });
-                                        }}
+                            <div className="flex flex-wrap gap-1 items-center">
+                              {(() => {
+                                const memberships = divMembershipMap?.get(user.id) || [];
+                                const globalRoles = (user.roles || []).filter(r => GLOBAL_ROLES.includes(r));
+
+                                // When a division is in scope, show only that division's roles + any global roles.
+                                if (effectiveDivisionId) {
+                                  const inScope = memberships.find(m => m.divisionId === effectiveDivisionId);
+                                  const rolesInDiv = inScope?.roles || [];
+                                  const pills: React.ReactNode[] = [];
+                                  rolesInDiv.forEach(role => {
+                                    pills.push(
+                                      <Badge key={`r-${role}`} variant="outline" className={`text-xs ${ROLE_COLORS[role as AppRole] || ''}`}>
+                                        {formatRoleLabel(role)}
+                                      </Badge>
+                                    );
+                                  });
+                                  globalRoles.forEach(role => {
+                                    pills.push(
+                                      <Badge key={`g-${role}`} variant="outline" className={`text-xs ${ROLE_COLORS[role]}`}>
+                                        {ROLE_LABELS[role]}
+                                      </Badge>
+                                    );
+                                  });
+                                  if (pills.length === 0) {
+                                    return <Badge variant="outline" className="text-xs text-muted-foreground">No role here</Badge>;
+                                  }
+                                  return pills;
+                                }
+
+                                // No division filter — show grouped pills "Div · Role" for each membership,
+                                // plus standalone global roles.
+                                const pills: React.ReactNode[] = [];
+                                memberships.forEach(m => {
+                                  const short = getDivisionShortName(m.divisionName);
+                                  const cls = getDivisionBadgeClass(m.modelType);
+                                  m.roles.forEach(role => {
+                                    pills.push(
+                                      <Badge
+                                        key={`${m.divisionId}-${role}`}
+                                        variant="outline"
+                                        className={`text-xs ${cls}`}
+                                        title={`${m.divisionName} · ${formatRoleLabel(role)}`}
                                       >
-                                        <X className="h-3 w-3" />
-                                      </button>
-                                    )}
-                                  </Badge>
-                                ))
-                              ) : (
-                                <Badge variant="outline" className="text-xs text-muted-foreground">
-                                  No role
-                                </Badge>
-                              )}
+                                        <span className="font-semibold">{short}</span>
+                                        <span className="opacity-70 mx-1">·</span>
+                                        <span>{formatRoleLabel(role)}</span>
+                                      </Badge>
+                                    );
+                                  });
+                                });
+                                globalRoles.forEach(role => {
+                                  pills.push(
+                                    <Badge key={`g-${role}`} variant="outline" className={`text-xs ${ROLE_COLORS[role]}`}>
+                                      {ROLE_LABELS[role]}
+                                    </Badge>
+                                  );
+                                });
+                                if (pills.length === 0) {
+                                  return <Badge variant="outline" className="text-xs text-muted-foreground">No role</Badge>;
+                                }
+                                return pills;
+                              })()}
                               {isSuperAdmin && getAvailableRoles(user).length > 0 && (
                                 <Button
                                   variant="ghost"
@@ -1456,21 +1520,6 @@ export default function UserManagement() {
                             ) : (
                               <span className="text-muted-foreground text-sm">—</span>
                             )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-wrap gap-1">
-                              {(() => {
-                                const memberships = divMembershipMap?.get(user.id) || [];
-                                if (memberships.length === 0) {
-                                  return <Badge variant="outline" className="text-[10px] text-muted-foreground">Unassigned</Badge>;
-                                }
-                                return memberships.map(m => (
-                                  <Badge key={m.divisionId} variant="outline" className={`text-[10px] ${getDivisionBadgeClass(m.modelType)}`}>
-                                    {getDivisionShortName(m.divisionName)}
-                                  </Badge>
-                                ));
-                              })()}
-                            </div>
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1">
