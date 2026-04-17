@@ -668,7 +668,7 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
         <Card>
           <div className="w-full overflow-x-auto overflow-y-visible">
             <div className="min-w-[900px]">
-            <Table>
+            <Table wrapperClassName="overflow-visible max-h-none">
               <TableHeader className="sticky top-0 z-10 bg-background">
                 <TableRow>
                   <TableHead className="w-10 px-3">
