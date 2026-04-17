@@ -1919,6 +1919,30 @@ export default function UserManagement() {
                         </div>
                       </div>
                     </div>
+                    {/* Universal ID + per-division URN breakdown */}
+                    <div className="p-3 bg-muted/30 rounded-lg border">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Identity</p>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Universal ID</span>
+                          <Badge variant="outline" className="font-mono">{personNumberMap.get(viewingUser.id) || '—'}</Badge>
+                        </div>
+                        {viewingUser.registration_id && (
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">URN</span>
+                            <Badge variant="outline" className="font-mono text-xs">{viewingUser.registration_id}</Badge>
+                          </div>
+                        )}
+                        {(divMembershipMap?.get(viewingUser.id) || []).map(m => (
+                          <div key={m.divisionId} className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">{m.divisionName}</span>
+                            <Badge variant="outline" className={`text-xs ${getDivisionBadgeClass(m.modelType)}`}>
+                              {m.roles.map(formatRoleLabel).join(', ')}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                     <div className="grid gap-3">
                       <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                         <Mail className="h-4 w-4 text-muted-foreground" />
