@@ -760,6 +760,25 @@ export default function UserManagement() {
   // Collapsible "Unassigned" section state (only relevant when a division filter is active)
   const [showUnassigned, setShowUnassigned] = useState(false);
 
+  // Cycling placeholder for the search input — premium polish
+  const SEARCH_PLACEHOLDERS = ['Search by name…', 'Search by email…', 'Search by ID…', 'Search by phone…'];
+  const [placeholderIdx, setPlaceholderIdx] = useState(0);
+  useEffect(() => {
+    if (searchTerm) return; // Pause cycling while user is typing
+    const t = setInterval(() => setPlaceholderIdx(i => (i + 1) % SEARCH_PLACEHOLDERS.length), 2800);
+    return () => clearInterval(t);
+  }, [searchTerm]);
+
+  // Quick-category filter pills — maps to existing filterRole
+  type CategoryPill = 'all' | 'student' | 'teacher' | 'staff';
+  const activeCategory: CategoryPill = useMemo(() => {
+    if (!filterRole) return 'all';
+    if (filterRole === 'student') return 'student';
+    if (filterRole === 'teacher') return 'teacher';
+    if (['admin', 'super_admin', 'admin_admissions', 'admin_fees', 'admin_academic', 'examiner'].includes(filterRole)) return 'staff';
+    return 'all';
+  }, [filterRole]);
+
   // One-click "Assign to current filtered division" mutation
   const assignDivisionMutation = useMutation({
     mutationFn: async ({ userId, divisionId }: { userId: string; divisionId: string }) => {
