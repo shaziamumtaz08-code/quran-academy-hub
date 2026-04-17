@@ -1265,98 +1265,125 @@ export default function UserManagement() {
 
           {/* Users Tab */}
           <TabsContent value="users" className="space-y-4">
-            {/* Search and Filters */}
-            <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
-              <div className="relative flex-1 min-w-[200px] max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by name or email..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              
-              {/* Role Filter */}
-              <Select value={filterRole || "all"} onValueChange={(v) => setFilterRole(v === "all" ? "" : v)}>
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="All Roles" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Roles</SelectItem>
-                  {Object.entries(ROLE_LABELS).map(([role, label]) => (
-                    <SelectItem key={role} value={role}>{label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              {/* Archive Toggle */}
-              <Button
-                variant={showArchived ? "default" : "outline"}
-                size="sm"
-                onClick={() => setShowArchived(!showArchived)}
-                className={showArchived ? "bg-amber-600 hover:bg-amber-700 text-white" : ""}
-              >
-                <Archive className="h-4 w-4 mr-1" />
-                {showArchived ? "Showing Archived" : "Archived"}
-              </Button>
-              
-              {/* Country Filter */}
-              <Select 
-                value={filterCountry || "all"} 
-                onValueChange={(v) => {
-                  setFilterCountry(v === "all" ? "" : v);
-                  setFilterCity(''); // Reset city when country changes
-                }}
-              >
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="All Countries" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Countries</SelectItem>
-                  {availableCountries.map((country) => (
-                    <SelectItem key={country} value={country}>{country}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              {/* City Filter (cascading - only shows cities for selected country) */}
-              <Select 
-                value={filterCity || "all"} 
-                onValueChange={(v) => setFilterCity(v === "all" ? "" : v)}
-                disabled={!filterCountry}
-              >
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder={filterCountry ? "All Cities" : "Select Country First"} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Cities</SelectItem>
-                  {availableCities.map((city) => (
-                    <SelectItem key={city} value={city}>{city}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              {/* Division Filter */}
-              <Select value={filterDivision || "all"} onValueChange={(v) => setFilterDivision(v === "all" ? "" : v)}>
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="All Divisions" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Divisions</SelectItem>
-                  {allDivisions.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {/* Search and Filters — premium redesign */}
+            <div className="space-y-3">
+              {/* Top row: prominent search + category pills */}
+              <div className="flex flex-col lg:flex-row gap-3 items-start lg:items-center">
+                <div className="relative flex-1 w-full lg:max-w-md">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder={SEARCH_PLACEHOLDERS[placeholderIdx]}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 h-10 rounded-lg bg-card border-border/60 shadow-sm transition-all focus-visible:shadow-md"
+                  />
+                  {searchTerm && (
+                    <button
+                      onClick={() => setSearchTerm('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      aria-label="Clear search"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
 
-              {/* Reset Filters Button */}
-              {hasActiveFilters && (
-                <Button variant="outline" size="sm" onClick={resetFilters} className="h-10">
-                  <X className="h-4 w-4 mr-1" />
-                  Reset
+                {/* Category pills replacing the role dropdown */}
+                <div className="inline-flex items-center gap-1 p-1 rounded-lg bg-muted/50 border border-border/60">
+                  {([
+                    { key: 'all', label: 'All', dot: 'bg-muted-foreground' },
+                    { key: 'student', label: 'Students', dot: 'bg-teal-500' },
+                    { key: 'teacher', label: 'Teachers', dot: 'bg-violet-500' },
+                    { key: 'staff', label: 'Staff', dot: 'bg-purple-500' },
+                  ] as const).map((p) => {
+                    const active = activeCategory === p.key;
+                    return (
+                      <button
+                        key={p.key}
+                        onClick={() => {
+                          if (p.key === 'all') setFilterRole('');
+                          else if (p.key === 'staff') setFilterRole('admin');
+                          else setFilterRole(p.key);
+                        }}
+                        className={`inline-flex items-center gap-1.5 px-3 h-8 rounded-md text-xs font-medium transition-all ${
+                          active
+                            ? 'bg-card text-foreground shadow-sm border border-border/60'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-card/50'
+                        }`}
+                      >
+                        <span className={`h-1.5 w-1.5 rounded-full ${p.dot}`} />
+                        {p.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Secondary row: contextual filters */}
+              <div className="flex flex-wrap gap-2 items-center">
+                <Select value={filterDivision || "all"} onValueChange={(v) => setFilterDivision(v === "all" ? "" : v)}>
+                  <SelectTrigger className="w-[170px] h-9 rounded-lg bg-card text-sm">
+                    <SelectValue placeholder="All Divisions" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Divisions</SelectItem>
+                    {allDivisions.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={filterCountry || "all"}
+                  onValueChange={(v) => {
+                    setFilterCountry(v === "all" ? "" : v);
+                    setFilterCity('');
+                  }}
+                >
+                  <SelectTrigger className="w-[160px] h-9 rounded-lg bg-card text-sm">
+                    <SelectValue placeholder="All Countries" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Countries</SelectItem>
+                    {availableCountries.map((country) => (
+                      <SelectItem key={country} value={country}>{country}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={filterCity || "all"}
+                  onValueChange={(v) => setFilterCity(v === "all" ? "" : v)}
+                  disabled={!filterCountry}
+                >
+                  <SelectTrigger className="w-[160px] h-9 rounded-lg bg-card text-sm">
+                    <SelectValue placeholder={filterCountry ? "All Cities" : "Select Country"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Cities</SelectItem>
+                    {availableCities.map((city) => (
+                      <SelectItem key={city} value={city}>{city}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Button
+                  variant={showArchived ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowArchived(!showArchived)}
+                  className={`h-9 rounded-lg ${showArchived ? "bg-amber-600 hover:bg-amber-700 text-white" : ""}`}
+                >
+                  <Archive className="h-3.5 w-3.5 mr-1.5" />
+                  {showArchived ? "Showing Archived" : "Archived"}
                 </Button>
-              )}
+
+                {hasActiveFilters && (
+                  <Button variant="ghost" size="sm" onClick={resetFilters} className="h-9 rounded-lg text-muted-foreground hover:text-foreground">
+                    <X className="h-3.5 w-3.5 mr-1" />
+                    Reset filters
+                  </Button>
+                )}
+              </div>
             </div>
 
             {/* Users Table */}
