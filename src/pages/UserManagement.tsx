@@ -1660,7 +1660,7 @@ export default function UserManagement() {
                       {effectiveDivisionId && unassignedUsers.length > 0 && (
                         <>
                           <TableRow className="bg-amber-500/5 hover:bg-amber-500/10 cursor-pointer" onClick={() => setShowUnassigned(s => !s)}>
-                            <TableCell colSpan={isSuperAdmin ? 9 : 8} className="text-amber-700 dark:text-amber-400 text-sm font-medium py-2">
+                            <TableCell colSpan={isSuperAdmin ? 8 : 7} className="text-amber-700 dark:text-amber-400 text-sm font-medium py-2">
                               <div className="flex items-center gap-2">
                                 {showUnassigned ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                                 <AlertTriangle className="h-4 w-4" />
