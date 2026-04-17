@@ -188,6 +188,8 @@ const dialCodeToFlag = (phone: string | null | undefined): string => {
   for (const c of codes) if (p.startsWith(c)) return map[c];
   return '🌐';
 };
+
+interface UserWithRoles {
   id: string;
   full_name: string;
   email: string | null;
