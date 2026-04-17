@@ -171,7 +171,7 @@ export function ExportUsersDialog({
       case 'selected':
         return selectedUserIds.length;
       case 'filtered':
-        return totalUsers;
+        return filteredCount ?? filteredUserIds.length;
       case 'all':
         return totalUsers;
       default:
