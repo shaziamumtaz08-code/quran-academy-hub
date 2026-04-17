@@ -679,6 +679,48 @@ export default function UserManagement() {
   const allUserIds = useMemo(() => (users || []).map(u => u.id), [users]);
   const { data: divMembershipMap } = useDivisionMembership(allUserIds, !!users && users.length > 0);
 
+  // Permanent person number: AQT-NNNNNN derived from profiles ordered by created_at ASC.
+  // Stable per person — survives role changes, division moves, re-enrollments.
+  const personNumberMap = useMemo(() => {
+    const m = new Map<string, string>();
+    if (!users) return m;
+    const sorted = [...users].sort((a, b) =>
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    sorted.forEach((u, i) => {
+      m.set(u.id, `AQT-${String(i + 1).padStart(6, '0')}`);
+    });
+    return m;
+  }, [users]);
+
+  // Collapsible "Unassigned" section state (only relevant when a division filter is active)
+  const [showUnassigned, setShowUnassigned] = useState(false);
+
+  // One-click "Assign to current filtered division" mutation
+  const assignDivisionMutation = useMutation({
+    mutationFn: async ({ userId, divisionId }: { userId: string; divisionId: string }) => {
+      const { data: divFull } = await supabase
+        .from('divisions')
+        .select('branch_id')
+        .eq('id', divisionId)
+        .maybeSingle();
+      const branchId = (divFull as any)?.branch_id;
+      if (!branchId) throw new Error('Division has no branch');
+      const { error } = await supabase
+        .from('user_context')
+        .insert({ user_id: userId, division_id: divisionId, branch_id: branchId, is_default: false });
+      if (error && !String(error.message).toLowerCase().includes('duplicate')) throw error;
+      return { userId, divisionId };
+    },
+    onSuccess: () => {
+      toast({ title: 'Assigned', description: 'User added to this division.' });
+      queryClient.invalidateQueries({ queryKey: ['division-membership'] });
+    },
+    onError: (e: any) => {
+      toast({ title: 'Failed to assign', description: e?.message || 'Unknown error', variant: 'destructive' });
+    },
+  });
+
   const availableCountries = useMemo(() => {
     const countries = new Set<string>();
     users?.forEach(u => {
