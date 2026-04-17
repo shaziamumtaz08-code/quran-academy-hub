@@ -41,6 +41,8 @@ interface ExportUsersDialogProps {
   onOpenChange: (open: boolean) => void;
   selectedUserIds: string[];
   searchTerm: string;
+  filteredUserIds?: string[];
+  filteredCount?: number;
   totalUsers: number;
 }
 
@@ -64,10 +66,13 @@ export function ExportUsersDialog({
   onOpenChange,
   selectedUserIds,
   searchTerm,
+  filteredUserIds = [],
+  filteredCount,
   totalUsers,
 }: ExportUsersDialogProps) {
   const { user, session } = useAuth();
   const { toast } = useToast();
+  const hasFilter = filteredUserIds.length > 0 && filteredUserIds.length !== totalUsers;
   
   const [exportType, setExportType] = useState<'selected' | 'filtered' | 'all'>('all');
   const [format, setFormat] = useState<'csv' | 'xlsx'>('csv');
@@ -83,12 +88,17 @@ export function ExportUsersDialog({
         throw new Error('Authentication required');
       }
 
+      const idsForExport =
+        exportType === 'selected' ? selectedUserIds :
+        exportType === 'filtered' ? filteredUserIds :
+        undefined;
+
       const response = await supabase.functions.invoke('export-users', {
         headers: { Authorization: `Bearer ${session.access_token}` },
         body: {
-          userIds: exportType === 'selected' ? selectedUserIds : undefined,
+          userIds: idsForExport,
           searchTerm: exportType === 'filtered' ? searchTerm : undefined,
-          exportType,
+          exportType: exportType === 'filtered' ? 'selected' : exportType,
           format,
           fields: selectedFields,
           includePasswords,
@@ -161,7 +171,7 @@ export function ExportUsersDialog({
       case 'selected':
         return selectedUserIds.length;
       case 'filtered':
-        return totalUsers;
+        return filteredCount ?? filteredUserIds.length;
       case 'all':
         return totalUsers;
       default:
@@ -207,13 +217,13 @@ export function ExportUsersDialog({
                   <RadioGroupItem 
                     value="filtered" 
                     id="filtered"
-                    disabled={!searchTerm}
+                    disabled={!hasFilter}
                   />
                   <Label htmlFor="filtered" className="flex items-center gap-2">
                     Filtered Users
-                    {searchTerm && (
+                    {hasFilter && (
                       <Badge variant="outline" className="text-xs">
-                        "{searchTerm}"
+                        {filteredCount ?? filteredUserIds.length}
                       </Badge>
                     )}
                   </Label>
