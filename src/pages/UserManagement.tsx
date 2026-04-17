@@ -1316,18 +1316,18 @@ export default function UserManagement() {
                             {getSortIcon('name')}
                           </div>
                         </TableHead>
-                        <TableHead>Reg ID</TableHead>
-                        <TableHead>WhatsApp</TableHead>
-                        <TableHead 
+                        <TableHead>ID</TableHead>
+                        <TableHead>Phone</TableHead>
+                        <TableHead
                           className="cursor-pointer select-none hover:bg-muted/50"
                           onClick={() => handleSort('role')}
                         >
                           <div className="flex items-center">
-                            Role
+                            {effectiveDivisionId ? 'Role' : 'Division · Role'}
                             {getSortIcon('role')}
                           </div>
                         </TableHead>
-                        <TableHead 
+                        <TableHead
                           className="cursor-pointer select-none hover:bg-muted/50"
                           onClick={() => handleSort('gender')}
                         >
@@ -1336,7 +1336,7 @@ export default function UserManagement() {
                             {getSortIcon('gender')}
                           </div>
                         </TableHead>
-                        <TableHead 
+                        <TableHead
                           className="cursor-pointer select-none hover:bg-muted/50"
                           onClick={() => handleSort('age')}
                         >
@@ -1346,7 +1346,6 @@ export default function UserManagement() {
                           </div>
                         </TableHead>
                         <TableHead>Location</TableHead>
-                        <TableHead>Division(s)</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
