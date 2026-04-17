@@ -1497,7 +1497,7 @@ export default function UserManagement() {
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-3">
                             {(() => {
                               const personNo = personNumberMap.get(user.id);
                               const fullUrn = user.registration_id;
@@ -1510,7 +1510,7 @@ export default function UserManagement() {
                                     <TooltipTrigger asChild>
                                       <button
                                         type="button"
-                                        className="inline-flex items-center gap-1 group"
+                                        className="inline-flex items-center gap-1.5 group/id"
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           navigator.clipboard.writeText(fullUrn || personNo);
@@ -1518,8 +1518,8 @@ export default function UserManagement() {
                                         }}
                                         title="Click to copy"
                                       >
-                                        <Badge variant="outline" className="text-xs font-mono">{personNo}</Badge>
-                                        <Copy className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        <span className="font-mono text-xs bg-muted border border-border rounded-md px-2 py-0.5 text-foreground/80">{personNo}</span>
+                                        <Copy className="h-3 w-3 text-muted-foreground opacity-0 group-hover/id:opacity-100 transition-opacity" />
                                       </button>
                                     </TooltipTrigger>
                                     <TooltipContent side="right" className="text-xs">
@@ -1532,15 +1532,18 @@ export default function UserManagement() {
                               );
                             })()}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="py-3">
                             {user.whatsapp_number ? (
-                              <span className="text-sm">{user.whatsapp_number}</span>
+                              <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground tabular-nums">
+                                <span className="text-base leading-none">{dialCodeToFlag(user.whatsapp_number) || '🌐'}</span>
+                                {user.whatsapp_number}
+                              </span>
                             ) : (
                               <span className="text-muted-foreground text-sm">—</span>
                             )}
                           </TableCell>
-                          <TableCell>
-                            <div className="flex flex-wrap gap-1 items-center">
+                          <TableCell className="py-3">
+                            <div className="flex flex-wrap gap-1.5 items-center">
                               {(() => {
                                 const memberships = divMembershipMap?.get(user.id) || [];
                                 const globalRoles = (user.roles || []).filter(r => GLOBAL_ROLES.includes(r));
