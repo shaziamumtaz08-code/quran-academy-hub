@@ -1,9 +1,11 @@
 import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { LandingPageShell, LandingCard } from '@/components/layout/LandingPageShell';
-import { Settings, FolderOpen, ShieldCheck } from 'lucide-react';
+import { Settings, FolderOpen, ShieldCheck, Database } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 
 const OrganizationSettings = lazy(() => import('./OrganizationSettings'));
 const Resources = lazy(() => import('./Resources'));
@@ -13,6 +15,7 @@ const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2x
 
 export default function SettingsLanding() {
   const { isSuperAdmin } = useAuth();
+  const navigate = useNavigate();
   // Multi-auth panel is hidden by default. A super_admin can flip the
   // `auth_methods_panel_enabled` flag in app_settings to reveal it.
   const [authPanelEnabled, setAuthPanelEnabled] = useState(false);
@@ -40,8 +43,11 @@ export default function SettingsLanding() {
     if (showAuthCard) {
       base.splice(1, 0, { id: 'auth', title: 'Authentication', subtitle: 'Login methods per org', count: '🔐', countLoading: false, icon: <ShieldCheck className="h-5 w-5" />, color: 'bg-indigo-500' });
     }
+    if (isSuperAdmin) {
+      base.push({ id: 'schema', title: 'Schema Explorer', subtitle: 'Database structure visualizer', count: '🗂️', countLoading: false, icon: <Database className="h-5 w-5" />, color: 'bg-violet-500' });
+    }
     return base;
-  }, [showAuthCard]);
+  }, [showAuthCard, isSuperAdmin]);
 
   const contentMap = useMemo(() => {
     const map: Record<string, React.ReactNode> = {
@@ -51,8 +57,20 @@ export default function SettingsLanding() {
     if (showAuthCard) {
       map['auth'] = <Suspense fallback={<Loading />}><AuthenticationSettings /></Suspense>;
     }
+    if (isSuperAdmin) {
+      map['schema'] = (
+        <div className="p-6 border border-border rounded-2xl bg-card text-center space-y-4">
+          <Database className="w-10 h-10 text-primary mx-auto" />
+          <div>
+            <h3 className="font-bold text-lg">Database Schema Explorer</h3>
+            <p className="text-sm text-muted-foreground">Visualize tables, columns, and foreign-key relationships in a pannable canvas.</p>
+          </div>
+          <Button onClick={() => navigate('/admin/schema-explorer')}>Open full-screen explorer</Button>
+        </div>
+      );
+    }
     return map;
-  }, [showAuthCard]);
+  }, [showAuthCard, isSuperAdmin, navigate]);
 
   return (
     <LandingPageShell
