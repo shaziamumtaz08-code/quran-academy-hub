@@ -9,6 +9,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import Login from "./pages/Login";
+import TenantLoginPage from "./pages/TenantLogin";
 import Dashboard from "./pages/Dashboard";
 import Teachers from "./pages/Teachers";
 import Students from "./pages/Students";
@@ -266,6 +267,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginRedirect />} />
+      <Route path="/login/:slug" element={<TenantLoginPage />} />
       <Route path="/" element={<Navigate to={getDefaultRoute()} replace />} />
       <Route path="/select-division" element={
         <ProtectedRoute>

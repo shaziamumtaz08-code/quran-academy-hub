@@ -4514,6 +4514,54 @@ export type Database = {
           },
         ]
       }
+      org_auth_config: {
+        Row: {
+          enabled: boolean
+          id: string
+          is_default: boolean
+          is_supported: boolean
+          method: string
+          org_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          enabled?: boolean
+          id?: string
+          is_default?: boolean
+          is_supported?: boolean
+          method: string
+          org_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          enabled?: boolean
+          id?: string
+          is_default?: boolean
+          is_supported?: boolean
+          method?: string
+          org_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_auth_config_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_auth_config_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           code: string | null
