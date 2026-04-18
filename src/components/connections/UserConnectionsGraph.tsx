@@ -263,11 +263,13 @@ async function fetchUnifiedConnections(userId: string, hintedRole?: ConnUserType
   const { data: rolesRes } = await supabase.from('user_roles').select('role').eq('user_id', userId);
   const allRoles: string[] = (rolesRes || []).map((r: any) => r.role);
   const roleSet = new Set<string>(allRoles);
-  if (roleSet.size === 0 && hintedRole) roleSet.add(hintedRole);
+  // NOTE: Do NOT infer roles from any other table (e.g. student_parent_links).
+  // user_roles is the single source of truth for the role pills on the center node.
+  // hintedRole is only used to decide which related-data fetches to run, never added to allRoles.
 
-  const isTeacher = roleSet.has('teacher');
-  const isStudent = roleSet.has('student');
-  const isParent  = roleSet.has('parent');
+  const isTeacher = roleSet.has('teacher') || hintedRole === 'teacher';
+  const isStudent = roleSet.has('student') || hintedRole === 'student';
+  const isParent  = roleSet.has('parent')  || hintedRole === 'parent';
 
   const [profileRes, teacherData, studentData, parentData, siblings, parentsOfStudent] = await Promise.all([
     supabase.from('profiles').select('id, full_name').eq('id', userId).maybeSingle(),
