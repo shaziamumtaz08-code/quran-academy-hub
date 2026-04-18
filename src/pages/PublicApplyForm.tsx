@@ -516,6 +516,91 @@ export default function PublicApplyForm() {
                 </CardContent>
               </Card>
             ))}
+
+            {/* Identity Verification — fixed section, optional */}
+            <Card className="shadow-sm border-border/60 overflow-hidden">
+              <div className="px-6 py-3 bg-muted/30 border-b border-border/50">
+                <div className="flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center">
+                    <BadgeCheck className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                  <h3 className="font-semibold text-sm">Identity Verification</h3>
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 ml-auto">Optional</Badge>
+                </div>
+              </div>
+              <CardContent className="space-y-5 p-6">
+                <p className="text-xs text-muted-foreground -mt-1">
+                  Providing a government ID helps us prevent duplicate accounts and speeds up verification.
+                  All submissions are flagged as <span className="font-medium text-foreground">pending</span> until reviewed by an admin.
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">ID Type</Label>
+                    <select
+                      className={cn(
+                        'w-full h-11 rounded-lg border px-3 text-sm bg-background transition-all focus:outline-none focus:ring-2 focus:ring-primary/20',
+                        errors.__gov_id_type ? 'border-destructive' : 'border-input'
+                      )}
+                      value={formData.__gov_id_type || ''}
+                      onChange={e => updateField('__gov_id_type', e.target.value)}
+                    >
+                      <option value="">Select type…</option>
+                      {GOV_ID_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                    {errors.__gov_id_type && (
+                      <p className="text-xs text-destructive flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />{errors.__gov_id_type}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">ID Number</Label>
+                    <Input
+                      type="text"
+                      placeholder="e.g. 35202-1234567-8"
+                      value={formData.__gov_id_number || ''}
+                      onChange={e => updateField('__gov_id_number', e.target.value)}
+                      className="h-11 rounded-lg"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Upload Document <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                  {formData.__gov_id_doc_path ? (
+                    <div className="flex items-center gap-3 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                      <div className="h-8 w-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-emerald-800">Document uploaded</p>
+                        <p className="text-xs text-emerald-600">Pending admin verification</p>
+                      </div>
+                      <Button variant="ghost" size="sm" className="text-xs h-7"
+                        onClick={() => updateField('__gov_id_doc_path', null)}>Change</Button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center gap-2 p-6 rounded-lg border-2 border-dashed border-muted-foreground/20 cursor-pointer transition-all hover:border-primary/40 hover:bg-primary/5">
+                      <Upload className="h-6 w-6 text-muted-foreground/50" />
+                      <span className="text-sm text-muted-foreground">Click to upload ID document</span>
+                      <span className="text-xs text-muted-foreground/60">PDF, JPG, PNG · Max 10MB</span>
+                      <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        className="hidden"
+                        onChange={handleIdDocUpload}
+                        disabled={uploadingFile === '__gov_id_doc'}
+                      />
+                      {uploadingFile === '__gov_id_doc' && (
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      )}
+                    </label>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Error banner */}
