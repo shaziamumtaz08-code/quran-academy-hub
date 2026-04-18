@@ -76,6 +76,7 @@ import PublicQuiz from "./pages/PublicQuiz";
 import StudentQuizView from "./pages/StudentQuizView";
 import VirtualClassroom from "./pages/VirtualClassroom";
 import SchemaExplorer from "./pages/SchemaExplorer";
+import UserConnections from "./pages/UserConnections";
 
 // Landing pages
 import TeachingLanding from "./pages/TeachingLanding";
@@ -416,6 +417,7 @@ function AppRoutes() {
           })()}
         </ProtectedRoute>
       } />
+      <Route path="/connections/:userType/:userId" element={<ProtectedRoute><UserConnections /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
