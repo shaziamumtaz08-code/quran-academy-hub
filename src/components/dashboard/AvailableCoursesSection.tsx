@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import CourseThumbnailCard from '@/components/courses/CourseThumbnailCard';
 
 interface AvailableCoursesSectionProps {
   activeDivision: string;
@@ -22,7 +23,7 @@ export default function AvailableCoursesSection({ activeDivision }: AvailableCou
     queryKey: ['dash-available-courses', user?.id, activeDivision],
     queryFn: async () => {
       let query = supabase.from('courses')
-        .select('id, name, level, description, division_id, divisions:divisions(name), auto_enroll_enabled')
+        .select('id, name, level, description, division_id, hero_image_url, thumbnail_url, max_students, divisions:divisions(name), subject:subjects!courses_subject_id_fkey(name), auto_enroll_enabled')
         .eq('status', 'published');
 
       if (activeDivision !== 'all') {
@@ -193,70 +194,43 @@ export default function AvailableCoursesSection({ activeDivision }: AvailableCou
         <Badge variant="secondary" className="text-xs">{availableCourses.length}</Badge>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {availableCourses.map(course => {
           const elig = eligibilityMap[course.id];
           const isEligible = elig?.eligible !== false;
           const isApplying = applyingCourseId === course.id;
 
           return (
-            <Card key={course.id} className="p-4">
-              <div className="flex justify-between items-start mb-2">
-                <div>
-                  <p className="font-medium text-sm">{course.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {(course.divisions as any)?.name}
-                    {course.level && ` · ${course.level}`}
-                  </p>
-                </div>
-                {isEligible ? (
-                  <Badge variant="outline" className="text-emerald-600 border-emerald-200 bg-emerald-50 text-[10px]">
-                    Eligible
-                  </Badge>
-                ) : (
-                  <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50 text-[10px]">
-                    Requirements
-                  </Badge>
-                )}
-              </div>
-
-              {course.description && (
-                <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
-                  {course.description}
-                </p>
-              )}
-
+            <div key={course.id} className="space-y-2">
+              <CourseThumbnailCard
+                course={{
+                  id: course.id,
+                  name: course.name,
+                  thumbnail_url: (course as any).thumbnail_url,
+                  hero_image_url: (course as any).hero_image_url,
+                  subject_name: (course as any).subject?.name || (course.divisions as any)?.name,
+                  level: course.level,
+                  max_seats: (course as any).max_students,
+                  status: isEligible ? 'open' : 'coming_soon',
+                }}
+                ctaLabel={isApplying ? 'Applying...' : isEligible ? 'Apply now' : 'Not eligible'}
+                onClick={() => isEligible && !isApplying && handleQuickApply(course.id)}
+              />
               {elig?.reasons?.length ? (
-                <div className="mb-3 space-y-1">
+                <div className="px-2 space-y-1">
                   {elig.reasons.map((r, i) => (
-                    <p key={i} className="text-xs flex items-center gap-1.5">
+                    <p key={i} className="text-[11px] flex items-center gap-1.5">
                       {isEligible ? (
                         <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
                       ) : (
                         <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />
                       )}
-                      {r}
+                      <span className="text-muted-foreground">{r}</span>
                     </p>
                   ))}
                 </div>
               ) : null}
-
-              <Button
-                size="sm"
-                className="w-full"
-                variant={isEligible ? 'default' : 'outline'}
-                disabled={!isEligible || isApplying}
-                onClick={() => handleQuickApply(course.id)}
-              >
-                {isApplying ? (
-                  <><Loader2 className="h-3 w-3 animate-spin mr-1" /> Applying...</>
-                ) : isEligible ? (
-                  'Apply now'
-                ) : (
-                  'Not eligible yet'
-                )}
-              </Button>
-            </Card>
+            </div>
           );
         })}
       </div>
