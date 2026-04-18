@@ -3,12 +3,15 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Calendar, Clock, User, BookOpen, Target, CheckSquare, Loader2, FileText, MapPin, ArrowRightLeft } from 'lucide-react';
+import { Calendar, Clock, User, BookOpen, Target, CheckSquare, Loader2, FileText, MapPin, ArrowRightLeft, Network, ExternalLink } from 'lucide-react';
 import { TransferAssignmentDialog } from './TransferAssignmentDialog';
 import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
+import { UserConnectionsGraph } from '@/components/connections/UserConnectionsGraph';
+import { Link } from 'react-router-dom';
 
 const DAYS_OF_WEEK = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const DAYS_LABELS: Record<string, string> = {
@@ -238,9 +241,14 @@ export function StudentDetailDrawer({
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : (
-          <div className="space-y-6">
-            {/* Quick Info */}
-            <div className="grid grid-cols-2 gap-3">
+          <Tabs defaultValue="overview" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="connections" className="gap-1.5"><Network className="h-3.5 w-3.5" />Connections</TabsTrigger>
+            </TabsList>
+            <TabsContent value="overview" className="space-y-6 mt-0">
+              {/* Quick Info */}
+              <div className="grid grid-cols-2 gap-3">
               <div className="bg-muted/50 rounded-lg p-3">
                 <p className="text-xs text-muted-foreground mb-1">Age</p>
                 <p className="font-medium">{profile?.age || '-'}</p>
@@ -384,7 +392,22 @@ export function StudentDetailDrawer({
               </>
             )}
 
-          </div>
+            </TabsContent>
+
+            <TabsContent value="connections" className="mt-0 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">Teachers, parents, courses & siblings.</p>
+                {student && (
+                  <Button asChild variant="ghost" size="sm" className="h-7 text-xs gap-1">
+                    <Link to={`/connections/student/${student.id}`}>
+                      Full view <ExternalLink className="h-3 w-3" />
+                    </Link>
+                  </Button>
+                )}
+              </div>
+              {student && <UserConnectionsGraph userId={student.id} userType="student" compact />}
+            </TabsContent>
+          </Tabs>
         )}
       </SheetContent>
 
