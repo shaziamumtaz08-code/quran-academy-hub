@@ -128,6 +128,24 @@ export default function PublicApplyForm() {
     updateField(fieldKey, urlData.publicUrl);
   };
 
+  const handleIdDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: 'File too large', description: 'Max 10MB', variant: 'destructive' });
+      return;
+    }
+    setUploadingFile('__gov_id_doc');
+    const path = `public/${slug}/${Date.now()}_${file.name}`;
+    const { error } = await supabase.storage.from('identity-documents').upload(path, file);
+    setUploadingFile(null);
+    if (error) {
+      toast({ title: 'Upload failed', description: error.message, variant: 'destructive' });
+      return;
+    }
+    updateField('__gov_id_doc_path', path);
+  };
+
   const submitForm = useMutation({
     mutationFn: async () => {
       if (!formInfo?.form) throw new Error('Form not found');
@@ -149,15 +167,32 @@ export default function PublicApplyForm() {
         }
       });
 
+      // If gov_id_number provided, type is required
+      if (formData.__gov_id_number && !formData.__gov_id_type) {
+        newErrors.__gov_id_type = 'Select an ID type';
+      }
+
       if (Object.keys(newErrors).length > 0) {
         setErrors(newErrors);
         throw new Error('Please fill in all required fields');
       }
 
+      const submissionData = { ...formData };
+      // Strip internal keys; pack identity into a nested object stored in submission.data
+      const identity = {
+        gov_id_type: formData.__gov_id_type || null,
+        gov_id_number: formData.__gov_id_number?.trim() || null,
+        gov_id_doc_path: formData.__gov_id_doc_path || null,
+      };
+      delete submissionData.__gov_id_type;
+      delete submissionData.__gov_id_number;
+      delete submissionData.__gov_id_doc_path;
+      if (identity.gov_id_number) submissionData.identity = identity;
+
       const { error } = await supabase.from('registration_submissions').insert({
         form_id: formInfo.form.id,
         course_id: formInfo.form.course_id,
-        data: formData,
+        data: submissionData,
         source_tag: 'website',
       });
       if (error) throw error;
