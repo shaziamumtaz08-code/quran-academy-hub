@@ -3,12 +3,15 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Calendar, Clock, User, BookOpen, Target, CheckSquare, Loader2, FileText, MapPin, ArrowRightLeft } from 'lucide-react';
+import { Calendar, Clock, User, BookOpen, Target, CheckSquare, Loader2, FileText, MapPin, ArrowRightLeft, Network, ExternalLink } from 'lucide-react';
 import { TransferAssignmentDialog } from './TransferAssignmentDialog';
 import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
+import { UserConnectionsGraph } from '@/components/connections/UserConnectionsGraph';
+import { Link } from 'react-router-dom';
 
 const DAYS_OF_WEEK = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const DAYS_LABELS: Record<string, string> = {
