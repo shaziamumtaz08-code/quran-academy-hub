@@ -9,6 +9,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import Login from "./pages/Login";
+import TenantLoginPage from "./pages/TenantLogin";
 import Dashboard from "./pages/Dashboard";
 import Teachers from "./pages/Teachers";
 import Students from "./pages/Students";
