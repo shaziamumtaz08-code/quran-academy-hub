@@ -11,7 +11,7 @@ import { format, isToday, isBefore, addDays, isPast } from 'date-fns';
 import {
   BookOpen, Clock, Calendar, CalendarOff, Bell, MessagesSquare, FolderOpen,
   ChevronRight, Flame, AlertTriangle, MessageSquare, Pin, Megaphone,
-  Video, ExternalLink, FileText, ClipboardList, Radio,
+  Video, ExternalLink, FileText, ClipboardList, Radio, Network,
 } from 'lucide-react';
 import { StudentAttendanceSection } from './StudentAttendanceSection';
 import { AiInsightsWidget } from './AiInsightsWidget';
@@ -833,6 +833,7 @@ export function StudentDashboard() {
           { icon: CalendarOff, label: 'Request Leave', path: '/work-hub?category=leave_request', color: 'text-purple-600 bg-purple-100 dark:bg-purple-900/30' },
           { icon: MessagesSquare, label: 'Group Chat', path: '/chat', color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30' },
           { icon: FolderOpen, label: 'Resources', path: '/resources?tab=assigned', color: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30' },
+          { icon: Network, label: 'My Network', path: `/connections/student/${user?.id}`, color: 'text-rose-600 bg-rose-100 dark:bg-rose-900/30' },
         ].map((link) => (
           <button
             key={link.label}
