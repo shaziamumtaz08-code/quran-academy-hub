@@ -392,7 +392,22 @@ export function StudentDetailDrawer({
               </>
             )}
 
-          </div>
+            </TabsContent>
+
+            <TabsContent value="connections" className="mt-0 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">Teachers, parents, courses & siblings.</p>
+                {student && (
+                  <Button asChild variant="ghost" size="sm" className="h-7 text-xs gap-1">
+                    <Link to={`/connections/student/${student.id}`}>
+                      Full view <ExternalLink className="h-3 w-3" />
+                    </Link>
+                  </Button>
+                )}
+              </div>
+              {student && <UserConnectionsGraph userId={student.id} userType="student" compact />}
+            </TabsContent>
+          </Tabs>
         )}
       </SheetContent>
 
