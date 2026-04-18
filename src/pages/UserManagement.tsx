@@ -1640,7 +1640,7 @@ export default function UserManagement() {
                               <span className="text-muted-foreground text-sm">—</span>
                             )}
                           </TableCell>
-                          <TableCell className="py-3 text-right">
+                          <TableCell className="py-3 text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                               <Button
                                 variant="ghost"
