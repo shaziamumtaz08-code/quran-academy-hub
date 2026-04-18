@@ -101,6 +101,14 @@ export function TeacherQuickActions() {
       border: 'border-gold/15',
       onClick: () => navigate('/reports'),
     },
+    {
+      icon: '🌐',
+      label: 'My Network',
+      bg: 'bg-primary/10',
+      textColor: 'text-primary',
+      border: 'border-primary/15',
+      onClick: () => navigate(`/connections/teacher/${user?.id}`),
+    },
   ];
 
   return (

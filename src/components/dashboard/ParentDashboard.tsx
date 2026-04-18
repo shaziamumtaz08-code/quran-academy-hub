@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
+import { Network } from 'lucide-react';
 
 import { DashboardShell } from './shared/DashboardShell';
 import { QuickActionsGrid } from './shared/QuickActionsGrid';
@@ -365,6 +366,21 @@ export function ParentDashboard() {
           { value: `${child.attendanceRate}%`, label: 'Rate', sub: 'Attendance', color: 'text-gold' },
         ]}
       />
+
+      {/* Family Map — full connections view */}
+      <button
+        onClick={() => navigate(`/connections/parent/${user?.id}`)}
+        className="w-full bg-gradient-to-br from-primary/10 to-accent/10 rounded-2xl border border-primary/20 p-3.5 shadow-card flex items-center gap-3 hover:opacity-90 transition-opacity text-left"
+      >
+        <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center text-primary shrink-0">
+          <Network className="h-5 w-5" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-extrabold text-foreground">🌐 Family Map</p>
+          <p className="text-[11px] text-muted-foreground truncate">See all children, teachers & courses at a glance</p>
+        </div>
+        <span className="text-primary font-bold text-lg">→</span>
+      </button>
 
       {/* Family Management */}
       <FamilyManagement />
