@@ -370,16 +370,16 @@ export function ParentDashboard() {
       {/* Family Map — full connections view */}
       <button
         onClick={() => navigate(`/connections/parent/${user?.id}`)}
-        className="w-full bg-gradient-to-br from-rose-500/10 to-primary/10 rounded-2xl border border-rose-500/20 p-3.5 shadow-card flex items-center gap-3 hover:opacity-90 transition-opacity text-left"
+        className="w-full bg-gradient-to-br from-primary/10 to-accent/10 rounded-2xl border border-primary/20 p-3.5 shadow-card flex items-center gap-3 hover:opacity-90 transition-opacity text-left"
       >
-        <div className="w-10 h-10 rounded-xl bg-rose-500/15 flex items-center justify-center text-rose-600 shrink-0">
+        <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center text-primary shrink-0">
           <Network className="h-5 w-5" />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-extrabold text-foreground">🌐 Family Map</p>
           <p className="text-[11px] text-muted-foreground truncate">See all children, teachers & courses at a glance</p>
         </div>
-        <span className="text-rose-600 font-bold text-lg">→</span>
+        <span className="text-primary font-bold text-lg">→</span>
       </button>
 
       {/* Family Management */}
