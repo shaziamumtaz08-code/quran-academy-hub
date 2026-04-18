@@ -2527,6 +2527,7 @@ export type Database = {
           syllabus_text: string | null
           tags: string[] | null
           teacher_id: string
+          thumbnail_url: string | null
           updated_at: string
           webhook_secret: string | null
           website_enabled: boolean | null
@@ -2561,6 +2562,7 @@ export type Database = {
           syllabus_text?: string | null
           tags?: string[] | null
           teacher_id: string
+          thumbnail_url?: string | null
           updated_at?: string
           webhook_secret?: string | null
           website_enabled?: boolean | null
@@ -2595,6 +2597,7 @@ export type Database = {
           syllabus_text?: string | null
           tags?: string[] | null
           teacher_id?: string
+          thumbnail_url?: string | null
           updated_at?: string
           webhook_secret?: string | null
           website_enabled?: boolean | null
@@ -9053,6 +9056,7 @@ export type Database = {
         Args: { _parent_id: string }
         Returns: string[]
       }
+      get_schema_overview: { Args: never; Returns: Json }
       get_teacher_student_ids: {
         Args: { _teacher_id: string }
         Returns: string[]
