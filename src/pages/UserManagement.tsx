@@ -577,7 +577,29 @@ export default function UserManagement() {
       const { data, error } = await supabase.functions.invoke('admin-create-user', {
         body: { email, password, fullName, role, whatsapp, gender, age, country, city, forceNewProfile, branch_id, parent_id },
       });
-      if (error) throw new Error(error.message || 'Failed to create user');
+      if (error) {
+        // Non-2xx from edge function. Read the JSON body for the real message.
+        let serverMsg = error.message || 'Failed to create user';
+        let requiresForceNew = false;
+        try {
+          const ctx: any = (error as any).context;
+          if (ctx && typeof ctx.json === 'function') {
+            const body = await ctx.json();
+            if (body?.error) serverMsg = body.error;
+            if (body?.requiresForceNew) requiresForceNew = true;
+          } else if (ctx && typeof ctx.text === 'function') {
+            const txt = await ctx.text();
+            try {
+              const body = JSON.parse(txt);
+              if (body?.error) serverMsg = body.error;
+              if (body?.requiresForceNew) requiresForceNew = true;
+            } catch { if (txt) serverMsg = txt; }
+          }
+        } catch { /* keep error.message */ }
+        const err = new Error(serverMsg) as any;
+        err.requiresForceNew = requiresForceNew;
+        throw err;
+      }
       if (data?.error) {
         const err = new Error(data.error) as any;
         err.requiresForceNew = data.requiresForceNew === true;
