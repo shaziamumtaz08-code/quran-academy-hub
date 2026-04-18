@@ -1641,6 +1641,19 @@ export default function UserManagement() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => {
+                                  const r = user.roles || [];
+                                  const ut = r.includes('teacher') ? 'teacher' : r.includes('student') ? 'student' : r.includes('parent') ? 'parent' : 'student';
+                                  navigate(`/connections/${ut}/${user.id}`);
+                                }}
+                                title="View connections graph"
+                                className="text-primary hover:text-primary"
+                              >
+                                <Network className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
                                   setViewingUser(user);
                                   setIsViewDialogOpen(true);
                                 }}
