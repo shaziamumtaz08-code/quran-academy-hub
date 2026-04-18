@@ -78,6 +78,7 @@ import {
   ArchiveRestore,
   MapPin,
   MessageCircle,
+  Network,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { BulkUserImportDialog } from '@/components/users/BulkUserImportDialog';
