@@ -387,17 +387,19 @@ serve(async (req) => {
           });
 
           if (authErr) {
-            if (authErr.message?.includes("already been registered")) {
-              // Auth already exists — sync profile ID if needed
-              const { data: existingAuthData } = await adminClient.auth.admin.getUserByEmail(email);
-              if (existingAuthData?.user && existingAuthData.user.id !== existingUserId) {
-                console.log(`Syncing profile ${existingUserId} → auth uid ${existingAuthData.user.id}`);
-                await adminClient.from("course_enrollments").update({ student_id: existingAuthData.user.id } as any).eq("student_id", existingUserId);
-                await adminClient.from("course_class_students").update({ student_id: existingAuthData.user.id } as any).eq("student_id", existingUserId);
-                await adminClient.from("user_roles").update({ user_id: existingAuthData.user.id } as any).eq("user_id", existingUserId);
-                await adminClient.from("chat_members").update({ user_id: existingAuthData.user.id } as any).eq("user_id", existingUserId);
-                await adminClient.from("attendance").update({ student_id: existingAuthData.user.id } as any).eq("student_id", existingUserId);
-                await adminClient.from("profiles").update({ id: existingAuthData.user.id } as any).eq("id", existingUserId);
+            if (authErr.message?.includes("already been registered") || authErr.message?.includes("already exists")) {
+              // Auth already exists — find via listUsers (getUserByEmail not available in this SDK version)
+              const { data: list } = await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 });
+              const existingAuth = list?.users?.find((u: any) => (u.email || "").toLowerCase() === email.toLowerCase());
+              if (existingAuth && existingAuth.id !== existingUserId) {
+                const newAuthId = existingAuth.id;
+                console.log(`Syncing profile ${existingUserId} → auth uid ${newAuthId}`);
+                await adminClient.from("course_enrollments").update({ student_id: newAuthId } as any).eq("student_id", existingUserId);
+                await adminClient.from("course_class_students").update({ student_id: newAuthId } as any).eq("student_id", existingUserId);
+                await adminClient.from("user_roles").update({ user_id: newAuthId } as any).eq("user_id", existingUserId);
+                await adminClient.from("chat_members").update({ user_id: newAuthId } as any).eq("user_id", existingUserId);
+                await adminClient.from("attendance").update({ student_id: newAuthId } as any).eq("student_id", existingUserId);
+                await adminClient.from("profiles").update({ id: newAuthId } as any).eq("id", existingUserId);
               }
               console.log(`Auth already exists for ${email}`);
             } else {
