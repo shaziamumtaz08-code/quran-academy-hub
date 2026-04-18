@@ -26,6 +26,7 @@ import { format } from 'date-fns';
 import { useDivision } from '@/contexts/DivisionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
+import CourseThumbnailCard from '@/components/courses/CourseThumbnailCard';
 
 // ─── Types ─────────────────────────────────────────────
 interface Course {
@@ -99,6 +100,7 @@ export default function Courses() {
   const [webContactEmail, setWebContactEmail] = useState('');
   const [webWhatsapp, setWebWhatsapp] = useState('');
   const [webHeroImage, setWebHeroImage] = useState('');
+  const [webThumbnail, setWebThumbnail] = useState('');
 
   // ─── Queries ──────────────────────────────────────────
   const { data: courses = [], isLoading } = useQuery({
@@ -226,6 +228,7 @@ export default function Courses() {
         division_id: divisionId,
         // Website fields
         hero_image_url: formWebsiteEnabled ? (webHeroImage || null) : null,
+        thumbnail_url: webThumbnail || null,
         syllabus_text: formWebsiteEnabled ? (webSyllabus || null) : null,
         outcomes: formWebsiteEnabled ? outcomes : null,
         faqs: formWebsiteEnabled ? faqs : null,
@@ -250,7 +253,7 @@ export default function Courses() {
     setFormLevel('All Levels'); setFormMaxStudents('30'); setFormTags([]);
     setFormWebsiteEnabled(false);
     setWebDescription(''); setWebOutcomes(''); setWebSyllabus('');
-    setWebFaqs(''); setWebContactEmail(''); setWebWhatsapp(''); setWebHeroImage('');
+    setWebFaqs(''); setWebContactEmail(''); setWebWhatsapp(''); setWebHeroImage(''); setWebThumbnail('');
   };
 
   // ─── Tag toggle ───────────────────────────────────────
@@ -498,65 +501,47 @@ export default function Courses() {
             <p className="text-muted-foreground">No courses found. Create your first course to get started.</p>
           </CardContent></Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filtered.map(course => (
-              <Card key={course.id}
-                className="group cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.01] overflow-hidden border-border/60 relative"
-                onClick={() => navigate(`/courses/${course.id}`)}>
-                {/* Hero strip */}
-                <div className="h-2 bg-gradient-to-r from-primary via-accent to-primary/60" />
-                <CardContent className="p-5 space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-base truncate">{course.name}</h3>
-                      <p className="text-sm text-muted-foreground truncate mt-0.5">
-                        {course.level || 'All Levels'}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <div className="flex flex-col gap-1 items-end">
-                        <Badge variant={course.status === 'active' ? 'default' : 'secondary'} className="text-xs">
-                          {course.status}
-                        </Badge>
-                        {course.website_enabled && (
-                          <Badge variant="outline" className="text-xs text-accent border-accent/30">
-                            <Globe className="h-3 w-3 mr-1" /> Live
-                          </Badge>
-                        )}
-                      </div>
-                      {canManage && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
-                            <DropdownMenuItem onClick={() => { setDupName(`Copy of ${course.name}`); setDupOptions({ modules: true, classes: true, assignments: false, feePlans: false, marketing: false }); setDuplicateTarget(course); }}>
-                              <Copy className="h-4 w-4 mr-2" /> Duplicate
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive" onClick={() => setDeleteTarget(course)}>
-                              <Trash2 className="h-4 w-4 mr-2" /> Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                    </div>
+              <div key={course.id} className="relative">
+                <CourseThumbnailCard
+                  course={{
+                    id: course.id,
+                    name: course.name,
+                    thumbnail_url: (course as any).thumbnail_url,
+                    hero_image_url: course.hero_image_url,
+                    subject_name: (course as any).subject?.name,
+                    level: course.level,
+                    enrolled_count: course.enrollment_count,
+                    max_seats: course.max_students,
+                    status: course.status === 'active' ? 'open' : course.status,
+                    seo_slug: course.seo_slug,
+                  }}
+                  onClick={() => navigate(`/courses/${course.id}`)}
+                  onEdit={canManage ? () => navigate(`/courses/${course.id}`) : undefined}
+                  showEditOverlay={canManage}
+                  ctaLabel={canManage ? 'Manage' : 'View'}
+                />
+                {canManage && (
+                  <div className="absolute top-2 right-10 z-10">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
+                        <Button variant="secondary" size="icon" className="h-7 w-7 bg-background/90 backdrop-blur-sm border border-border opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
+                        <DropdownMenuItem onClick={() => { setDupName(`Copy of ${course.name}`); setDupOptions({ modules: true, classes: true, assignments: false, feePlans: false, marketing: false }); setDuplicateTarget(course); }}>
+                          <Copy className="h-4 w-4 mr-2" /> Duplicate
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive" onClick={() => setDeleteTarget(course)}>
+                          <Trash2 className="h-4 w-4 mr-2" /> Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-
-                  {course.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-2">{course.description}</p>
-                  )}
-
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1 border-t border-border/40">
-                    <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {course.enrollment_count}/{course.max_students}</span>
-                    <span>{(course as any).subject?.name || 'General'}</span>
-                    <Badge variant="outline" className="text-xs">{course.level}</Badge>
-                    <span className="ml-auto">{format(new Date(course.start_date), 'MMM yyyy')}</span>
-                  </div>
-
-                </CardContent>
-              </Card>
+                )}
+              </div>
             ))}
           </div>
         )}
@@ -703,14 +688,24 @@ export default function Courses() {
                     </div>
                   </div>
 
-                  <FileUploadField
-                    label="Hero Image"
-                    bucket="course-materials"
-                    value={webHeroImage}
-                    onChange={setWebHeroImage}
-                    accept="image/jpeg,image/png,image/webp"
-                    hint="Recommended: 1200×630px, JPEG or PNG"
-                  />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <FileUploadField
+                      label="Hero Banner"
+                      bucket="course-materials"
+                      value={webHeroImage}
+                      onChange={setWebHeroImage}
+                      accept="image/jpeg,image/png,image/webp"
+                      hint="1200×630px banner"
+                    />
+                    <FileUploadField
+                      label="Card Thumbnail"
+                      bucket="course-materials"
+                      value={webThumbnail}
+                      onChange={setWebThumbnail}
+                      accept="image/jpeg,image/png,image/webp"
+                      hint="Square 600×600px"
+                    />
+                  </div>
                 </div>
               )}
             </div>

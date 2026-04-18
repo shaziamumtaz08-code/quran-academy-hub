@@ -3,11 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BookOpen, Search, Users, GraduationCap, ArrowRight, Filter } from 'lucide-react';
-import { format } from 'date-fns';
+import { BookOpen, Search } from 'lucide-react';
+import CourseThumbnailCard from '@/components/courses/CourseThumbnailCard';
 
 export default function CourseCatalog() {
   const navigate = useNavigate();
@@ -19,7 +18,7 @@ export default function CourseCatalog() {
     queryFn: async () => {
       const { data } = await supabase
         .from('courses')
-        .select('id, name, description, level, start_date, max_students, seo_slug, hero_image_url, pricing, tags, teacher:profiles!courses_teacher_id_fkey(full_name), subject:subjects!courses_subject_id_fkey(name)')
+        .select('id, name, description, level, start_date, max_students, seo_slug, hero_image_url, thumbnail_url, pricing, tags, status, teacher:profiles!courses_teacher_id_fkey(full_name), subject:subjects!courses_subject_id_fkey(name)')
         .eq('website_enabled', true)
         .eq('status', 'active')
         .order('created_at', { ascending: false });
@@ -105,60 +104,29 @@ export default function CourseCatalog() {
             <p className="text-sm text-muted-foreground mt-1">Try adjusting your search or filters</p>
           </div>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {filtered.map((course) => {
-              const pricing = (course.pricing || {}) as any;
               const enrolled = enrollCounts?.get(course.id) || 0;
-              const teacher = (course as any).teacher?.full_name || 'Instructor';
-              const subject = (course as any).subject?.name;
-
               return (
-                <div
+                <CourseThumbnailCard
                   key={course.id}
+                  course={{
+                    id: course.id,
+                    name: course.name,
+                    thumbnail_url: (course as any).thumbnail_url,
+                    hero_image_url: course.hero_image_url,
+                    subject_name: (course as any).subject?.name,
+                    teacher_name: (course as any).teacher?.full_name || 'Instructor',
+                    level: course.level,
+                    enrolled_count: enrolled,
+                    max_seats: course.max_students,
+                    status: course.status === 'active' ? 'open' : (course.status as any),
+                    pricing: course.pricing as any,
+                    seo_slug: course.seo_slug,
+                  }}
                   onClick={() => navigate(`/course/${course.seo_slug || course.id}`)}
-                  className="group bg-card rounded-2xl border border-border overflow-hidden hover:shadow-xl hover:border-primary/30 transition-all duration-300 cursor-pointer"
-                >
-                  {/* Color bar */}
-                  <div className="h-1.5 bg-gradient-to-r from-primary to-accent" />
-
-                  {/* Hero image placeholder */}
-                  {course.hero_image_url ? (
-                    <div className="h-40 bg-cover bg-center" style={{ backgroundImage: `url(${course.hero_image_url})` }} />
-                  ) : (
-                    <div className="h-40 bg-gradient-to-br from-primary/5 to-accent/5 flex items-center justify-center">
-                      <BookOpen className="w-10 h-10 text-primary/20" />
-                    </div>
-                  )}
-
-                  <div className="p-4 space-y-3">
-                    <div className="flex gap-2 flex-wrap">
-                      {course.level && <Badge variant="outline" className="text-[10px]">{course.level}</Badge>}
-                      {subject && <Badge className="bg-primary/10 text-primary border-0 text-[10px]">{subject}</Badge>}
-                    </div>
-
-                    <h3 className="font-bold text-base text-foreground group-hover:text-primary transition-colors line-clamp-2">
-                      {course.name}
-                    </h3>
-
-                    {course.description && (
-                      <p className="text-xs text-muted-foreground line-clamp-2">{course.description}</p>
-                    )}
-
-                    <div className="flex items-center justify-between pt-2 border-t border-border">
-                      <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-                        <span className="flex items-center gap-1"><GraduationCap className="w-3 h-3" /> {teacher}</span>
-                        <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {enrolled}</span>
-                      </div>
-                      {pricing.amount ? (
-                        <span className="text-sm font-black text-primary">
-                          {pricing.currency || '$'}{pricing.amount}<span className="text-[10px] font-normal text-muted-foreground">/{pricing.period || 'mo'}</span>
-                        </span>
-                      ) : (
-                        <span className="text-[11px] font-bold text-muted-foreground">Free</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                  ctaLabel="View Course"
+                />
               );
             })}
           </div>
