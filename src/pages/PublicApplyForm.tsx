@@ -13,8 +13,10 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import {
   BookOpen, CheckCircle2, Loader2, Upload, AlertCircle, Shield,
-  Star, Users, Clock, GraduationCap, ArrowRight, Sparkles
+  Star, Users, Clock, GraduationCap, ArrowRight, Sparkles, BadgeCheck
 } from 'lucide-react';
+
+const GOV_ID_TYPES = ['CNIC', 'Passport', 'Iqama', 'NID', 'Other'] as const;
 
 interface FormField {
   id: string;
