@@ -5175,6 +5175,12 @@ export type Database = {
           email: string | null
           full_name: string
           gender: string | null
+          gov_id_doc_url: string | null
+          gov_id_number: string | null
+          gov_id_type: string | null
+          gov_id_verified: boolean
+          gov_id_verified_at: string | null
+          gov_id_verified_by: string | null
           id: string
           meeting_link: string | null
           mushaf_type: string
@@ -5204,6 +5210,12 @@ export type Database = {
           email?: string | null
           full_name: string
           gender?: string | null
+          gov_id_doc_url?: string | null
+          gov_id_number?: string | null
+          gov_id_type?: string | null
+          gov_id_verified?: boolean
+          gov_id_verified_at?: string | null
+          gov_id_verified_by?: string | null
           id?: string
           meeting_link?: string | null
           mushaf_type?: string
@@ -5233,6 +5245,12 @@ export type Database = {
           email?: string | null
           full_name?: string
           gender?: string | null
+          gov_id_doc_url?: string | null
+          gov_id_number?: string | null
+          gov_id_type?: string | null
+          gov_id_verified?: boolean
+          gov_id_verified_at?: string | null
+          gov_id_verified_by?: string | null
           id?: string
           meeting_link?: string | null
           mushaf_type?: string
@@ -9009,6 +9027,15 @@ export type Database = {
       can_view_resource_visibility: {
         Args: { _visibility: string; _visible_to_roles: string[] }
         Returns: boolean
+      }
+      find_profile_by_gov_id: {
+        Args: { _gov_id: string }
+        Returns: {
+          email: string
+          full_name: string
+          gov_id_verified: boolean
+          id: string
+        }[]
       }
       generate_registration_id: {
         Args: { _branch_code: string; _org_code: string; _role_code: string }
