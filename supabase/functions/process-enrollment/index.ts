@@ -52,6 +52,13 @@ Deno.serve(async (req) => {
     const rawGender = (d.gender || "").toLowerCase().trim();
     const gender = rawGender === "male" || rawGender === "female" ? rawGender : null;
 
+    // ── Identity (gov_id) — permanent identity anchor ──
+    const identity = (d.identity || {}) as Record<string, any>;
+    const govIdType = identity.gov_id_type || null;
+    const govIdNumberRaw = (identity.gov_id_number || "").trim();
+    const govIdNumber = govIdNumberRaw || null;
+    const govIdDocPath = identity.gov_id_doc_path || null;
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email || !emailRegex.test(email)) {
       return json(400, { error: "A valid email address is required before enrollment." });
@@ -61,6 +68,41 @@ Deno.serve(async (req) => {
     loginEmail = email;
     const firstName = (fullName.split(/\s+/)[0] || "User");
     tempPassword = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase() + "1234";
+
+    // ── PRE-CHECK: gov_id duplicate detection (before any writes) ──
+    // gov_id is the permanent identity anchor. If a profile already owns this
+    // gov_id and the email differs, halt and flag for admin review.
+    if (govIdNumber) {
+      const { data: govMatches } = await supabaseAdmin
+        .from("profiles")
+        .select("id, full_name, email, gov_id_verified")
+        .ilike("gov_id_number", govIdNumber)
+        .limit(2);
+
+      const govMatch = govMatches?.[0];
+      if (govMatch && (govMatch.email || "").toLowerCase() !== email) {
+        // Flag the submission for admin review — do NOT auto-merge.
+        await supabaseAdmin.from("registration_submissions").update({
+          status: "needs_review",
+          match_status: "duplicate_gov_id",
+          matched_profile_id: govMatch.id,
+          reviewed_at: new Date().toISOString(),
+        }).eq("id", submission_id);
+
+        return json(409, {
+          error: "duplicate_gov_id",
+          message: "A profile with this government ID already exists. Admin review required to link or reject this submission.",
+          requires_admin_review: true,
+          existing_profile: {
+            id: govMatch.id,
+            full_name: govMatch.full_name,
+            email: govMatch.email,
+            verified: govMatch.gov_id_verified,
+          },
+          submitted_email: email,
+        });
+      }
+    }
 
     // ── STEP 1: Create / Find Profile ──
     try {
@@ -72,6 +114,19 @@ Deno.serve(async (req) => {
 
       if (existing?.length) {
         profileId = existing[0].id;
+        // Backfill gov_id on existing profile if provided and not yet set
+        if (govIdNumber) {
+          const { data: ep } = await supabaseAdmin
+            .from("profiles").select("gov_id_number").eq("id", profileId).single();
+          if (!ep?.gov_id_number) {
+            await supabaseAdmin.from("profiles").update({
+              gov_id_type: govIdType,
+              gov_id_number: govIdNumber,
+              gov_id_doc_url: govIdDocPath,
+              gov_id_verified: false,
+            }).eq("id", profileId);
+          }
+        }
       } else {
         const newId = crypto.randomUUID();
         const { error: insErr } = await supabaseAdmin.from("profiles").insert({
@@ -82,6 +137,10 @@ Deno.serve(async (req) => {
           city,
           country,
           gender,
+          gov_id_type: govIdType,
+          gov_id_number: govIdNumber,
+          gov_id_doc_url: govIdDocPath,
+          gov_id_verified: false,
         });
         if (insErr) throw insErr;
         profileId = newId;
