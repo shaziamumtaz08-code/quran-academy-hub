@@ -241,9 +241,14 @@ export function StudentDetailDrawer({
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : (
-          <div className="space-y-6">
-            {/* Quick Info */}
-            <div className="grid grid-cols-2 gap-3">
+          <Tabs defaultValue="overview" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="connections" className="gap-1.5"><Network className="h-3.5 w-3.5" />Connections</TabsTrigger>
+            </TabsList>
+            <TabsContent value="overview" className="space-y-6 mt-0">
+              {/* Quick Info */}
+              <div className="grid grid-cols-2 gap-3">
               <div className="bg-muted/50 rounded-lg p-3">
                 <p className="text-xs text-muted-foreground mb-1">Age</p>
                 <p className="font-medium">{profile?.age || '-'}</p>
