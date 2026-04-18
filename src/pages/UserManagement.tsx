@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FunctionsFetchError, FunctionsHttpError, FunctionsRelayError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -78,6 +78,7 @@ import {
   ArchiveRestore,
   MapPin,
   MessageCircle,
+  Network,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { BulkUserImportDialog } from '@/components/users/BulkUserImportDialog';
@@ -222,6 +223,7 @@ export default function UserManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const location = useLocation();
+  const navigate = useNavigate();
   const staffMode = new URLSearchParams(location.search).get('mode') === 'staff';
   const TEACHING_ROLES: AppRole[] = ['teacher', 'student', 'parent'];
   const [searchTerm, setSearchTerm] = useState('');
@@ -1635,6 +1637,19 @@ export default function UserManagement() {
                           </TableCell>
                           <TableCell className="py-3 text-right">
                             <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  const r = user.roles || [];
+                                  const ut = r.includes('teacher') ? 'teacher' : r.includes('student') ? 'student' : r.includes('parent') ? 'parent' : 'student';
+                                  navigate(`/connections/${ut}/${user.id}`);
+                                }}
+                                title="View connections graph"
+                                className="text-primary hover:text-primary"
+                              >
+                                <Network className="h-4 w-4" />
+                              </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"
