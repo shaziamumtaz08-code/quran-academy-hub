@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { UserConnectionsGraph, type ConnUserType } from '@/components/connections/UserConnectionsGraph';
+import { UserConnectionsGraph, type ConnUserType, type RoleFilter } from '@/components/connections/UserConnectionsGraph';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Network } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,6 +14,7 @@ const VALID_TYPES: ConnUserType[] = ['student', 'teacher', 'parent'];
 export default function UserConnections() {
   const { userType, userId } = useParams<{ userType: string; userId: string }>();
   const navigate = useNavigate();
+  const [filter, setFilter] = useState<RoleFilter>('all');
 
   if (!userType || !userId || !VALID_TYPES.includes(userType as ConnUserType)) {
     return <Navigate to="/dashboard" replace />;
@@ -25,6 +27,17 @@ export default function UserConnections() {
       return data;
     },
   });
+
+  const { data: roles } = useQuery({
+    queryKey: ['conn-roles', userId],
+    queryFn: async () => {
+      const { data } = await supabase.from('user_roles').select('role').eq('user_id', userId);
+      return (data || []).map((r: any) => r.role as string);
+    },
+  });
+
+  const has = (r: string) => (roles || []).includes(r);
+  const showTabs = (roles?.length || 0) > 1;
 
   return (
     <DashboardLayout>
@@ -40,15 +53,26 @@ export default function UserConnections() {
                 {profile?.full_name || 'User'} — Connections
               </h1>
               <p className="text-sm text-muted-foreground capitalize">
-                {userType} relationships
+                {(roles || []).join(' · ') || userType} relationships
                 {profile?.registration_id ? ` · ${profile.registration_id}` : ''}
               </p>
             </div>
           </div>
         </div>
 
+        {showTabs && (
+          <Tabs value={filter} onValueChange={(v) => setFilter(v as RoleFilter)}>
+            <TabsList>
+              <TabsTrigger value="all">All</TabsTrigger>
+              {has('teacher') && <TabsTrigger value="teacher">As Teacher</TabsTrigger>}
+              {has('student') && <TabsTrigger value="student">As Student</TabsTrigger>}
+              {has('parent') && <TabsTrigger value="parent">As Parent</TabsTrigger>}
+            </TabsList>
+          </Tabs>
+        )}
+
         <Card className="p-3">
-          <UserConnectionsGraph userId={userId} userType={userType as ConnUserType} />
+          <UserConnectionsGraph userId={userId} userType={userType as ConnUserType} roleFilter={filter} />
         </Card>
 
         <p className="text-xs text-muted-foreground text-center">
