@@ -100,6 +100,7 @@ export default function Courses() {
   const [webContactEmail, setWebContactEmail] = useState('');
   const [webWhatsapp, setWebWhatsapp] = useState('');
   const [webHeroImage, setWebHeroImage] = useState('');
+  const [webThumbnail, setWebThumbnail] = useState('');
 
   // ─── Queries ──────────────────────────────────────────
   const { data: courses = [], isLoading } = useQuery({
@@ -227,6 +228,7 @@ export default function Courses() {
         division_id: divisionId,
         // Website fields
         hero_image_url: formWebsiteEnabled ? (webHeroImage || null) : null,
+        thumbnail_url: webThumbnail || null,
         syllabus_text: formWebsiteEnabled ? (webSyllabus || null) : null,
         outcomes: formWebsiteEnabled ? outcomes : null,
         faqs: formWebsiteEnabled ? faqs : null,
@@ -251,7 +253,7 @@ export default function Courses() {
     setFormLevel('All Levels'); setFormMaxStudents('30'); setFormTags([]);
     setFormWebsiteEnabled(false);
     setWebDescription(''); setWebOutcomes(''); setWebSyllabus('');
-    setWebFaqs(''); setWebContactEmail(''); setWebWhatsapp(''); setWebHeroImage('');
+    setWebFaqs(''); setWebContactEmail(''); setWebWhatsapp(''); setWebHeroImage(''); setWebThumbnail('');
   };
 
   // ─── Tag toggle ───────────────────────────────────────
@@ -686,14 +688,24 @@ export default function Courses() {
                     </div>
                   </div>
 
-                  <FileUploadField
-                    label="Hero Image"
-                    bucket="course-materials"
-                    value={webHeroImage}
-                    onChange={setWebHeroImage}
-                    accept="image/jpeg,image/png,image/webp"
-                    hint="Recommended: 1200×630px, JPEG or PNG"
-                  />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <FileUploadField
+                      label="Hero Banner"
+                      bucket="course-materials"
+                      value={webHeroImage}
+                      onChange={setWebHeroImage}
+                      accept="image/jpeg,image/png,image/webp"
+                      hint="1200×630px banner"
+                    />
+                    <FileUploadField
+                      label="Card Thumbnail"
+                      bucket="course-materials"
+                      value={webThumbnail}
+                      onChange={setWebThumbnail}
+                      accept="image/jpeg,image/png,image/webp"
+                      hint="Square 600×600px"
+                    />
+                  </div>
                 </div>
               )}
             </div>
