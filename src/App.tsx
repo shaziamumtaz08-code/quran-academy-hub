@@ -75,6 +75,7 @@ import QuizEngine from "./pages/QuizEngine";
 import PublicQuiz from "./pages/PublicQuiz";
 import StudentQuizView from "./pages/StudentQuizView";
 import VirtualClassroom from "./pages/VirtualClassroom";
+import SchemaExplorer from "./pages/SchemaExplorer";
 
 // Landing pages
 import TeachingLanding from "./pages/TeachingLanding";
@@ -401,6 +402,20 @@ function AppRoutes() {
       <Route path="/quiz/:token" element={<PublicQuiz />} />
       {/* Virtual Classroom */}
       <Route path="/classroom/:sessionId" element={<ProtectedRoute><VirtualClassroom /></ProtectedRoute>} />
+      {/* Schema Explorer - super_admin only */}
+      <Route path="/admin/schema-explorer" element={
+        <ProtectedRoute>
+          {(() => {
+            const Guard = () => {
+              const { activeRole, isLoading } = useAuth();
+              if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-background"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div></div>;
+              if (activeRole !== 'super_admin') return <Navigate to="/dashboard" replace />;
+              return <SchemaExplorer />;
+            };
+            return <Guard />;
+          })()}
+        </ProtectedRoute>
+      } />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
