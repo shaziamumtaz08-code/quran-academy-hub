@@ -1,7 +1,8 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ReactFlow, {
   Background,
+  BackgroundVariant,
   Controls,
   Handle,
   Position,
@@ -9,12 +10,18 @@ import ReactFlow, {
   type Node,
   type NodeProps,
   MarkerType,
+  Panel,
+  useReactFlow,
+  ReactFlowProvider,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, User, GraduationCap, Users, BookOpen, Heart, Baby, Shield, UserCog } from 'lucide-react';
+import { Loader2, GraduationCap, Users, BookOpen, Heart, Baby, Download, Maximize2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import dagre from 'dagre';
+import { toPng } from 'html-to-image';
 
 export type ConnUserType = 'student' | 'teacher' | 'parent';
 export type RoleFilter = 'all' | 'teacher' | 'student' | 'parent';
@@ -27,187 +34,166 @@ interface Props {
   className?: string;
 }
 
-/* ---------- Role pill colors (center node badges) ---------- */
-const ROLE_PILL: Record<string, string> = {
-  super_admin: 'bg-red-500 text-white',
-  admin:       'bg-orange-500 text-white',
-  teacher:     'bg-emerald-500 text-white',
-  student:     'bg-sky-500 text-white',
-  parent:      'bg-amber-500 text-white',
-  examiner:    'bg-violet-500 text-white',
-};
-const ROLE_LABEL: Record<string, string> = {
-  super_admin: 'Super Admin',
-  admin: 'Admin',
-  teacher: 'Teacher',
-  student: 'Student',
-  parent: 'Parent',
-  examiner: 'Examiner',
+/* ---------- Role pill colors (center node) ---------- */
+const ROLE_PILL: Record<string, { bg: string; label: string }> = {
+  super_admin:      { bg: 'bg-red-500',     label: 'Super Admin' },
+  admin:            { bg: 'bg-blue-500',    label: 'Admin' },
+  admin_admissions: { bg: 'bg-blue-500',    label: 'Admissions' },
+  admin_fees:       { bg: 'bg-blue-500',    label: 'Fees Admin' },
+  admin_academic:   { bg: 'bg-blue-500',    label: 'Academic Admin' },
+  teacher:          { bg: 'bg-emerald-500', label: 'Teacher' },
+  student:          { bg: 'bg-violet-500',  label: 'Student' },
+  parent:           { bg: 'bg-amber-500',   label: 'Parent' },
+  examiner:         { bg: 'bg-fuchsia-500', label: 'Examiner' },
 };
 
-/* ---------- Node styling ---------- */
-type NodeKind = 'self' | 'teacher' | 'student' | 'parent' | 'sibling' | 'course' | 'class' | 'coteacher';
+const ROLE_PRIORITY = ['super_admin', 'admin', 'admin_academic', 'admin_admissions', 'admin_fees', 'teacher', 'examiner', 'student', 'parent'];
 
-const NODE_STYLES: Record<NodeKind, { bg: string; border: string; text: string; icon: React.ComponentType<any> }> = {
-  self:      { bg: '', border: '', text: '', icon: User },
-  teacher:   { bg: 'bg-blue-500/10',    border: 'border-blue-500/50',    text: 'text-blue-700 dark:text-blue-300',       icon: GraduationCap },
-  student:   { bg: 'bg-emerald-500/10', border: 'border-emerald-500/50', text: 'text-emerald-700 dark:text-emerald-300', icon: Users },
-  parent:    { bg: 'bg-amber-500/10',   border: 'border-amber-500/50',   text: 'text-amber-700 dark:text-amber-300',     icon: Heart },
-  sibling:   { bg: 'bg-violet-500/10',  border: 'border-violet-500/50',  text: 'text-violet-700 dark:text-violet-300',   icon: Baby },
-  course:    { bg: 'bg-purple-500/10',  border: 'border-purple-500/50',  text: 'text-purple-700 dark:text-purple-300',   icon: BookOpen },
-  class:     { bg: 'bg-purple-500/10',  border: 'border-purple-500/50',  text: 'text-purple-700 dark:text-purple-300',   icon: BookOpen },
-  coteacher: { bg: 'bg-indigo-500/10',  border: 'border-indigo-500/50',  text: 'text-indigo-700 dark:text-indigo-300',   icon: GraduationCap },
+/* ---------- Relationship type → card colors ---------- */
+type RelKind = 'self' | 'teacher' | 'student' | 'parent' | 'sibling' | 'course';
+
+const REL_STYLE: Record<Exclude<RelKind, 'self'>, {
+  bgClass: string; borderClass: string; headerClass: string; header: string; icon: React.ComponentType<any>;
+}> = {
+  teacher: { bgClass: 'bg-blue-50 dark:bg-blue-950/30',     borderClass: 'border-l-blue-500',   headerClass: 'text-blue-600 dark:text-blue-400',     header: 'Teaching Me',     icon: GraduationCap },
+  student: { bgClass: 'bg-green-50 dark:bg-green-950/30',   borderClass: 'border-l-green-500',  headerClass: 'text-green-600 dark:text-green-400',   header: 'My Student',      icon: Users },
+  parent:  { bgClass: 'bg-amber-50 dark:bg-amber-950/30',   borderClass: 'border-l-amber-500',  headerClass: 'text-amber-600 dark:text-amber-400',   header: 'Guardian',        icon: Heart },
+  sibling: { bgClass: 'bg-purple-50 dark:bg-purple-950/30', borderClass: 'border-l-purple-500', headerClass: 'text-purple-600 dark:text-purple-400', header: 'Sibling',         icon: Baby },
+  course:  { bgClass: 'bg-orange-50 dark:bg-orange-950/30', borderClass: 'border-l-orange-500', headerClass: 'text-orange-600 dark:text-orange-400', header: 'Enrolled Course', icon: BookOpen },
 };
 
-const STATUS_BADGE: Record<string, string> = {
-  active:    'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
-  completed: 'bg-blue-500/15 text-blue-700 dark:text-blue-300',
-  paused:    'bg-amber-500/15 text-amber-700 dark:text-amber-300',
-  ended:     'bg-muted text-muted-foreground',
-  cancelled: 'bg-muted text-muted-foreground',
-  withdrawn: 'bg-muted text-muted-foreground',
+const STATUS_DOT: Record<string, string> = {
+  active: 'bg-green-500',
+  completed: 'bg-blue-500',
+  paused: 'bg-gray-400',
+  ended: 'bg-red-400',
+  cancelled: 'bg-red-400',
+  withdrawn: 'bg-red-400',
 };
 
-/* ---------- Edge colors by relationship type ---------- */
-const EDGE_COLORS = {
-  teacher: 'hsl(217 91% 60%)',  // blue
-  student: 'hsl(160 84% 39%)',  // green
-  parent:  'hsl(38 92% 50%)',   // amber
-  course:  'hsl(271 81% 56%)',  // purple
-  sibling: 'hsl(262 83% 58%)',  // violet
+/* ---------- Edge colors per relationship ---------- */
+const EDGE_STYLE: Record<Exclude<RelKind, 'self'>, { color: string; dashed: boolean }> = {
+  teacher: { color: '#3b82f6', dashed: true  }, // blue dashed
+  student: { color: '#22c55e', dashed: false }, // green solid
+  parent:  { color: '#f59e0b', dashed: false }, // amber solid
+  sibling: { color: '#a855f7', dashed: false }, // purple solid
+  course:  { color: '#f97316', dashed: true  }, // orange dashed
 };
 
-interface PersonNodeData {
-  kind: NodeKind;
+interface NodeData {
+  kind: RelKind;
   title: string;
   subtitle?: string;
-  badge?: string;
+  meta?: string;
   status?: string;
   roles?: string[];
+  primaryRoleLabel?: string;
   navUserId?: string;
   navUserType?: ConnUserType;
-  sectionLabel?: string;
-  sectionColor?: string;
 }
 
-function PersonNode({ data }: NodeProps<PersonNodeData>) {
-  const isSelf = data.kind === 'self';
-  const style = NODE_STYLES[data.kind];
-  const Icon = style.icon;
-
-  if (isSelf) {
-    return (
-      <div className="rounded-2xl px-5 py-4 min-w-[240px] max-w-[300px] shadow-2xl ring-4 ring-primary/30 bg-gradient-to-br from-primary via-primary to-primary/80 relative">
-        <Handle type="target" position={Position.Top} className="!opacity-0" />
-        <Handle type="target" position={Position.Left} className="!opacity-0" />
-        <Handle type="target" position={Position.Right} className="!opacity-0" />
-        <Handle type="source" position={Position.Top} className="!opacity-0" />
-        <Handle type="source" position={Position.Bottom} className="!opacity-0" />
-        <Handle type="source" position={Position.Left} className="!opacity-0" />
-        <Handle type="source" position={Position.Right} className="!opacity-0" />
-        <div className="flex items-start gap-3">
-          <div className="rounded-lg p-2 shrink-0 bg-white/25">
-            <User className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="font-bold leading-tight text-base text-primary-foreground truncate">{data.title}</p>
-            {data.subtitle && <p className="text-[11px] mt-0.5 opacity-80 text-primary-foreground truncate">{data.subtitle}</p>}
-            {data.roles && data.roles.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2">
-                {data.roles.map((r) => (
-                  <span key={r} className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm', ROLE_PILL[r] || 'bg-white/25 text-primary-foreground')}>
-                    {ROLE_LABEL[r] || r}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+/* ---------- Center node ---------- */
+function CenterNode({ data }: NodeProps<NodeData>) {
+  const initials = (data.title || 'U').split(' ').map((s) => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+  const sortedRoles = (data.roles || []).slice().sort((a, b) => {
+    const ai = ROLE_PRIORITY.indexOf(a); const bi = ROLE_PRIORITY.indexOf(b);
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  });
   return (
-    <div className={cn('rounded-xl border-2 shadow-md hover:shadow-lg hover:scale-[1.03] transition-all cursor-pointer px-3 py-2 min-w-[170px] max-w-[220px]', style.bg, style.border)}>
-      {data.sectionLabel && (
-        <div className="absolute -top-7 left-0 right-0 text-center">
-          <span className={cn('text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md', style.bg, style.text)}>
-            {data.sectionLabel}
-          </span>
-        </div>
-      )}
-      <Handle type="target" position={Position.Top} className="!bg-muted-foreground/40 !w-2 !h-2" />
-      <Handle type="target" position={Position.Left} className="!bg-muted-foreground/40 !w-2 !h-2" />
-      <Handle type="target" position={Position.Right} className="!bg-muted-foreground/40 !w-2 !h-2" />
-      <div className="flex items-start gap-2">
-        <div className="rounded-md p-1.5 shrink-0 bg-background/80">
-          <Icon className={cn('h-3.5 w-3.5', style.text)} />
+    <div className="rounded-2xl shadow-2xl ring-2 ring-slate-700/50 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-5 py-4 min-w-[280px] max-w-[340px]">
+      <Handle type="target" position={Position.Top}    className="!opacity-0" />
+      <Handle type="target" position={Position.Bottom} className="!opacity-0" />
+      <Handle type="target" position={Position.Left}   className="!opacity-0" />
+      <Handle type="target" position={Position.Right}  className="!opacity-0" />
+      <Handle type="source" position={Position.Top}    className="!opacity-0" />
+      <Handle type="source" position={Position.Bottom} className="!opacity-0" />
+      <Handle type="source" position={Position.Left}   className="!opacity-0" />
+      <Handle type="source" position={Position.Right}  className="!opacity-0" />
+      <div className="flex items-center gap-3">
+        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-slate-600 to-slate-700 ring-2 ring-white/20 flex items-center justify-center shrink-0">
+          <span className="text-white font-bold text-base">{initials}</span>
         </div>
         <div className="min-w-0 flex-1">
-          <p className={cn('font-semibold leading-tight truncate text-xs', style.text)}>{data.title}</p>
-          {data.subtitle && <p className={cn('text-[10px] mt-0.5 leading-tight truncate opacity-80', style.text)}>{data.subtitle}</p>}
-          <div className="flex flex-wrap items-center gap-1 mt-1">
-            {data.badge && <span className={cn('text-[9px] font-medium px-1.5 py-0.5 rounded bg-background/70', style.text)}>{data.badge}</span>}
-            {data.status && <span className={cn('text-[9px] font-bold px-1.5 py-0.5 rounded capitalize', STATUS_BADGE[data.status] || 'bg-muted text-muted-foreground')}>{data.status}</span>}
-          </div>
+          <p className="font-bold text-white text-base leading-tight truncate">{data.title}</p>
+          {data.primaryRoleLabel && <p className="text-[11px] text-slate-300 mt-0.5 truncate">{data.primaryRoleLabel}</p>}
         </div>
       </div>
-      <Handle type="source" position={Position.Bottom} className="!bg-muted-foreground/40 !w-2 !h-2" />
-      <Handle type="source" position={Position.Left} className="!bg-muted-foreground/40 !w-2 !h-2" />
-      <Handle type="source" position={Position.Right} className="!bg-muted-foreground/40 !w-2 !h-2" />
+      {sortedRoles.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-white/10">
+          {sortedRoles.map((r) => {
+            const meta = ROLE_PILL[r];
+            if (!meta) return null;
+            return (
+              <span key={r} className={cn('text-[10px] font-bold text-white px-2 py-0.5 rounded-full shadow-sm', meta.bg)}>
+                {meta.label}
+              </span>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
 
-const nodeTypes = { person: PersonNode };
+/* ---------- Connected card ---------- */
+function ConnectedNode({ data }: NodeProps<NodeData>) {
+  if (data.kind === 'self') return null;
+  const style = REL_STYLE[data.kind];
+  const Icon = style.icon;
+  const dot = data.status ? STATUS_DOT[data.status] || 'bg-gray-300' : null;
+  return (
+    <div
+      className={cn(
+        'rounded-lg shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer',
+        'border border-border/40 border-l-4 px-3 py-2.5 min-w-[200px] max-w-[240px]',
+        style.bgClass, style.borderClass,
+      )}
+    >
+      <Handle type="target" position={Position.Top}    className="!opacity-0" />
+      <Handle type="target" position={Position.Bottom} className="!opacity-0" />
+      <Handle type="target" position={Position.Left}   className="!opacity-0" />
+      <Handle type="target" position={Position.Right}  className="!opacity-0" />
+      <Handle type="source" position={Position.Top}    className="!opacity-0" />
+      <Handle type="source" position={Position.Bottom} className="!opacity-0" />
+      <Handle type="source" position={Position.Left}   className="!opacity-0" />
+      <Handle type="source" position={Position.Right}  className="!opacity-0" />
+      <div className="flex items-center gap-1.5">
+        <Icon className={cn('h-3 w-3', style.headerClass)} />
+        <span className={cn('text-[9px] font-bold uppercase tracking-wider', style.headerClass)}>{style.header}</span>
+      </div>
+      <p className="font-semibold text-sm text-foreground mt-1 leading-tight truncate">{data.title}</p>
+      {data.subtitle && <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{data.subtitle}</p>}
+      <div className="flex items-center gap-2 mt-1.5">
+        {dot && <span className={cn('w-1.5 h-1.5 rounded-full', dot)} />}
+        {data.status && <span className="text-[10px] text-muted-foreground capitalize">{data.status}</span>}
+        {data.meta && <span className="text-[10px] text-muted-foreground ml-auto truncate">{data.meta}</span>}
+      </div>
+    </div>
+  );
+}
+
+const nodeTypes = { center: CenterNode, connected: ConnectedNode };
 
 /* ---------- Test data filter ---------- */
 function isTestProfile(p: { full_name?: string | null; email?: string | null } | null | undefined): boolean {
   if (!p) return false;
   const name = (p.full_name || '').toLowerCase();
   const email = (p.email || '').toLowerCase();
-  if (/\b(test|demo|sample)\b/.test(name)) return true;
-  if (/^student\s*\d+$/i.test((p.full_name || '').trim())) return true;
-  if (/^teacher\s*\d+$/i.test((p.full_name || '').trim())) return true;
-  if (email.includes('test') || email.includes('demo')) return true;
+  if (name.includes('student') || name.includes('test')) return true;
+  if (email.includes('test')) return true;
   return false;
 }
 
 /* ---------- Data fetchers ---------- */
 async function fetchAsTeacher(teacherId: string) {
-  const [assignmentsRes, classesRes] = await Promise.all([
-    supabase
-      .from('student_teacher_assignments')
-      .select('id, status, student:profiles!student_teacher_assignments_student_id_fkey(id, full_name, email), subject:subjects(name)')
-      .eq('teacher_id', teacherId),
-    supabase
-      .from('course_class_staff')
-      .select('class:course_classes(id, name, status, course:courses(name))')
-      .eq('user_id', teacherId),
-  ]);
-
-  const classIds = (classesRes.data || []).map((c: any) => c.class?.id).filter(Boolean);
-  let coteachers: Array<{ id: string; full_name: string; email?: string }> = [];
-  if (classIds.length) {
-    const { data: peers } = await supabase
-      .from('course_class_staff')
-      .select('user:profiles!course_class_staff_user_id_fkey(id, full_name, email)')
-      .in('class_id', classIds)
-      .neq('user_id', teacherId);
-    const seen = new Set<string>();
-    coteachers = (peers || [])
-      .map((p: any) => p.user)
-      .filter((u: any) => u && !isTestProfile(u) && !seen.has(u.id) && seen.add(u.id));
-  }
-
+  const { data: assignments } = await supabase
+    .from('student_teacher_assignments')
+    .select('id, status, student:profiles!student_teacher_assignments_student_id_fkey(id, full_name, email), subject:subjects(name)')
+    .eq('teacher_id', teacherId);
   return {
-    students: (assignmentsRes.data || [])
+    students: (assignments || [])
       .filter((a: any) => a.student && !isTestProfile(a.student))
       .map((a: any) => ({ id: a.student.id, name: a.student.full_name || 'Unknown', subject: a.subject?.name || null, status: a.status })),
-    classes: (classesRes.data || [])
-      .map((c: any) => ({ id: c.class?.id, name: c.class?.name, course: c.class?.course?.name, status: c.class?.status }))
-      .filter((c: any) => c.id),
-    coteachers,
   };
 }
 
@@ -220,16 +206,15 @@ async function fetchAsStudent(studentId: string) {
     supabase.from('course_enrollments').select('status, course:courses(id, name)').eq('student_id', studentId),
     supabase.from('course_class_students').select('status, class:course_classes(id, name, course:courses(id, name))').eq('student_id', studentId),
   ]);
-
   return {
     teachers: (assignmentsRes.data || [])
       .filter((a: any) => a.teacher && !isTestProfile(a.teacher))
       .map((a: any) => ({ id: a.teacher.id, name: a.teacher.full_name || 'Unknown', subject: a.subject?.name || null, status: a.status })),
     courses: (enrollmentsRes.data || [])
-      .map((e: any) => ({ id: e.course?.id, name: e.course?.name, status: e.status }))
+      .map((e: any) => ({ id: e.course?.id, name: e.course?.name, klass: null as string | null, status: e.status }))
       .filter((c: any) => c.id),
     classMemberships: (classMembershipsRes.data || [])
-      .map((m: any) => ({ id: m.class?.id, name: m.class?.name, course: m.class?.course?.name, status: m.status }))
+      .map((m: any) => ({ id: m.class?.id, name: m.class?.course?.name || m.class?.name, klass: m.class?.name || null, status: m.status }))
       .filter((c: any) => c.id),
   };
 }
@@ -239,32 +224,18 @@ async function fetchAsParent(parentId: string) {
     .from('student_parent_links')
     .select('student:profiles!student_parent_links_student_id_fkey(id, full_name, email)')
     .eq('parent_id', parentId);
-
-  const children = (links || []).map((c: any) => c.student).filter((s: any) => s && !isTestProfile(s));
-
-  const childData = await Promise.all(
-    children.map(async (child: any) => {
-      const { data: assignments } = await supabase
-        .from('student_teacher_assignments')
-        .select('status, teacher:profiles!student_teacher_assignments_teacher_id_fkey(id, full_name, email), subject:subjects(name)')
-        .eq('student_id', child.id);
-      return {
-        id: child.id,
-        name: child.full_name,
-        teachers: (assignments || [])
-          .filter((a: any) => a.teacher && !isTestProfile(a.teacher))
-          .map((a: any) => ({ id: a.teacher.id, name: a.teacher.full_name || 'Unknown', subject: a.subject?.name || null, status: a.status })),
-      };
-    }),
-  );
-
-  return { children: childData };
+  return {
+    children: (links || [])
+      .map((l: any) => l.student)
+      .filter((s: any) => s && !isTestProfile(s))
+      .map((s: any) => ({ id: s.id, name: s.full_name })),
+  };
 }
 
 async function fetchSiblings(studentId: string) {
   const { data: parentLinks } = await supabase.from('student_parent_links').select('parent_id').eq('student_id', studentId);
   const parentIds = (parentLinks || []).map((p: any) => p.parent_id).filter(Boolean);
-  if (!parentIds.length) return [];
+  if (!parentIds.length) return [] as Array<{ id: string; full_name: string }>;
   const { data: sibLinks } = await supabase
     .from('student_parent_links')
     .select('student:profiles!student_parent_links_student_id_fkey(id, full_name, email)')
@@ -276,54 +247,67 @@ async function fetchSiblings(studentId: string) {
     .filter((s: any) => s && !isTestProfile(s) && !seen.has(s.id) && seen.add(s.id));
 }
 
-async function fetchUnifiedConnections(userId: string, hintedRole?: ConnUserType) {
-  const { data: rolesRes } = await supabase.from('user_roles').select('role').eq('user_id', userId);
+async function fetchParentsOfStudent(studentId: string) {
+  const { data: links } = await supabase
+    .from('student_parent_links')
+    .select('parent:profiles!student_parent_links_parent_id_fkey(id, full_name, whatsapp_number)')
+    .eq('student_id', studentId);
+  return (links || [])
+    .map((l: any) => l.parent)
+    .filter((p: any) => p && !isTestProfile(p))
+    .map((p: any) => ({ id: p.id, name: p.full_name, phone: p.whatsapp_number }));
+}
 
-  // FIX #4: Pull ALL roles, do not stop at first
+async function fetchUnifiedConnections(userId: string, hintedRole?: ConnUserType) {
+  // CRITICAL: Pull ALL roles, no LIMIT, no early-return
+  const { data: rolesRes } = await supabase.from('user_roles').select('role').eq('user_id', userId);
   const allRoles: string[] = (rolesRes || []).map((r: any) => r.role);
   const roleSet = new Set<string>(allRoles);
-  if (hintedRole && !roleSet.has(hintedRole)) {
-    // hint is fallback only — never override real roles
-  }
   if (roleSet.size === 0 && hintedRole) roleSet.add(hintedRole);
 
   const isTeacher = roleSet.has('teacher');
   const isStudent = roleSet.has('student');
-  const isParent = roleSet.has('parent');
+  const isParent  = roleSet.has('parent');
 
-  const [profileRes, teacherData, studentData, parentData, siblings] = await Promise.all([
+  const [profileRes, teacherData, studentData, parentData, siblings, parentsOfStudent] = await Promise.all([
     supabase.from('profiles').select('id, full_name').eq('id', userId).maybeSingle(),
     isTeacher ? fetchAsTeacher(userId) : Promise.resolve(null),
     isStudent ? fetchAsStudent(userId) : Promise.resolve(null),
-    isParent ? fetchAsParent(userId) : Promise.resolve(null),
-    isStudent ? fetchSiblings(userId) : Promise.resolve([] as any[]),
+    isParent  ? fetchAsParent(userId)  : Promise.resolve(null),
+    isStudent ? fetchSiblings(userId)  : Promise.resolve([] as any[]),
+    isStudent ? fetchParentsOfStudent(userId) : Promise.resolve([] as any[]),
   ]);
 
   return {
     self: profileRes.data,
-    allRoles: Array.from(roleSet), // every role from DB
-    teacherData,
-    studentData,
-    parentData,
-    siblings,
+    allRoles: Array.from(roleSet),
+    teacherData, studentData, parentData, siblings, parentsOfStudent,
   };
 }
 
-/* ---------- Hub-and-spoke layout ---------- */
-const NODE_W = 200;
-const NODE_H = 90;
-const COL_GAP = 60;
-const ROW_GAP = 30;
+/* ---------- Layout (dagre per quadrant) ---------- */
+const NODE_W = 220;
+const NODE_H = 86;
+const CENTER_W = 320;
+const CENTER_H = 130;
 
-interface Spoke {
-  node: Node;
-  edgeColor: string;
-  edgeId: string;
-  navUserType?: ConnUserType;
-  navUserId?: string;
+interface Spoke { id: string; data: NodeData; rel: Exclude<RelKind, 'self'>; }
+
+function layoutQuadrant(spokes: Spoke[], rankdir: 'TB' | 'BT' | 'LR' | 'RL') {
+  if (!spokes.length) return [] as Array<Spoke & { x: number; y: number }>;
+  const g = new dagre.graphlib.Graph();
+  g.setGraph({ rankdir, nodesep: 80, ranksep: 60, marginx: 0, marginy: 0 });
+  g.setDefaultEdgeLabel(() => ({}));
+  spokes.forEach((s) => g.setNode(s.id, { width: NODE_W, height: NODE_H }));
+  for (let i = 0; i < spokes.length - 1; i++) g.setEdge(spokes[i].id, spokes[i + 1].id);
+  dagre.layout(g);
+  return spokes.map((s) => {
+    const n = g.node(s.id);
+    return { ...s, x: n.x, y: n.y };
+  });
 }
 
-function buildHubAndSpoke(
+function buildGraph(
   data: Awaited<ReturnType<typeof fetchUnifiedConnections>>,
   filter: RoleFilter,
 ) {
@@ -331,190 +315,145 @@ function buildHubAndSpoke(
   const edges: Edge[] = [];
   const selfId = data.self?.id || 'self';
 
-  // Buckets: column position relative to center
-  // Left: parents (-2), Children (parent's kids) (-1), Center (0), Students (+1), Co-teachers (+2)
-  // Above: classes/courses & teachers
-  // Below: courses/classes (student) & siblings
-  const above: Spoke[] = [];   // teachers (above center)
-  const below: Spoke[] = [];   // courses (below center)
-  const left: Spoke[] = [];    // parents/children
-  const right: Spoke[] = [];   // students
+  const above: Spoke[] = []; // Teachers
+  const below: Spoke[] = []; // Courses
+  const left: Spoke[]  = []; // Parents/guardians
+  const right: Spoke[] = []; // Students + children + siblings
 
-  const showTeacher = (filter === 'all' || filter === 'teacher') && data.teacherData;
-  const showStudent = (filter === 'all' || filter === 'student') && data.studentData;
-  const showParent  = (filter === 'all' || filter === 'parent')  && data.parentData;
+  const showT = (filter === 'all' || filter === 'teacher') && data.teacherData;
+  const showS = (filter === 'all' || filter === 'student') && data.studentData;
+  const showP = (filter === 'all' || filter === 'parent')  && data.parentData;
 
-  if (showTeacher) {
-    const td = data.teacherData!;
-    td.students.forEach((s, i) => {
-      const id = `t-st-${s.id}`;
-      right.push({
-        node: { id, type: 'person', position: { x: 0, y: 0 }, data: { kind: 'student', title: s.name, subtitle: s.subject || undefined, badge: i === 0 ? 'Student' : undefined, status: s.status, navUserId: s.id, navUserType: 'student' } as PersonNodeData },
-        edgeColor: EDGE_COLORS.student, edgeId: `e-${id}`, navUserId: s.id, navUserType: 'student',
-      });
-    });
-    td.classes.forEach((c) => {
-      const id = `t-cl-${c.id}`;
-      below.push({
-        node: { id, type: 'person', position: { x: 0, y: 0 }, data: { kind: 'class', title: c.name || 'Class', subtitle: c.course || undefined, badge: 'Teaching', status: c.status } as PersonNodeData },
-        edgeColor: EDGE_COLORS.course, edgeId: `e-${id}`,
-      });
-    });
-    td.coteachers.forEach((t) => {
-      const id = `t-co-${t.id}`;
-      above.push({
-        node: { id, type: 'person', position: { x: 0, y: 0 }, data: { kind: 'coteacher', title: t.full_name, badge: 'Co-teacher', navUserId: t.id, navUserType: 'teacher' } as PersonNodeData },
-        edgeColor: EDGE_COLORS.teacher, edgeId: `e-${id}`, navUserId: t.id, navUserType: 'teacher',
-      });
+  if (showT) {
+    data.teacherData!.students.forEach((s) => {
+      right.push({ id: `t-st-${s.id}`, rel: 'student', data: { kind: 'student', title: s.name, subtitle: s.subject || undefined, status: s.status, navUserId: s.id, navUserType: 'student' } });
     });
   }
 
-  if (showStudent) {
-    const sd = data.studentData!;
-    sd.teachers.forEach((t) => {
-      const id = `s-t-${t.id}`;
-      above.push({
-        node: { id, type: 'person', position: { x: 0, y: 0 }, data: { kind: 'teacher', title: t.name, subtitle: t.subject || undefined, badge: 'My Teacher', status: t.status, navUserId: t.id, navUserType: 'teacher' } as PersonNodeData },
-        edgeColor: EDGE_COLORS.teacher, edgeId: `e-${id}`, navUserId: t.id, navUserType: 'teacher',
-      });
+  if (showS) {
+    data.studentData!.teachers.forEach((t) => {
+      above.push({ id: `s-t-${t.id}`, rel: 'teacher', data: { kind: 'teacher', title: t.name, subtitle: t.subject || undefined, status: t.status, navUserId: t.id, navUserType: 'teacher' } });
     });
-    sd.courses.forEach((c) => {
-      const id = `s-c-${c.id}`;
-      below.push({
-        node: { id, type: 'person', position: { x: 0, y: 0 }, data: { kind: 'course', title: c.name, badge: 'Course', status: c.status } as PersonNodeData },
-        edgeColor: EDGE_COLORS.course, edgeId: `e-${id}`,
-      });
+    data.studentData!.courses.forEach((c) => {
+      below.push({ id: `s-c-${c.id}`, rel: 'course', data: { kind: 'course', title: c.name, subtitle: c.klass || undefined, status: c.status } });
     });
-    sd.classMemberships.forEach((m) => {
-      const id = `s-cm-${m.id}`;
-      below.push({
-        node: { id, type: 'person', position: { x: 0, y: 0 }, data: { kind: 'class', title: m.name || 'Class', subtitle: m.course || undefined, badge: 'Group Class', status: m.status } as PersonNodeData },
-        edgeColor: EDGE_COLORS.course, edgeId: `e-${id}`,
-      });
+    data.studentData!.classMemberships.forEach((m) => {
+      below.push({ id: `s-cm-${m.id}`, rel: 'course', data: { kind: 'course', title: m.name || 'Class', subtitle: m.klass || undefined, status: m.status } });
     });
     (data.siblings || []).forEach((s: any) => {
-      const id = `s-sib-${s.id}`;
-      left.push({
-        node: { id, type: 'person', position: { x: 0, y: 0 }, data: { kind: 'sibling', title: s.full_name, badge: 'Sibling', navUserId: s.id, navUserType: 'student' } as PersonNodeData },
-        edgeColor: EDGE_COLORS.sibling, edgeId: `e-${id}`, navUserId: s.id, navUserType: 'student',
-      });
+      right.push({ id: `s-sib-${s.id}`, rel: 'sibling', data: { kind: 'sibling', title: s.full_name, navUserId: s.id, navUserType: 'student' } });
+    });
+    (data.parentsOfStudent || []).forEach((p: any) => {
+      left.push({ id: `s-p-${p.id}`, rel: 'parent', data: { kind: 'parent', title: p.name, subtitle: p.phone || undefined, navUserId: p.id, navUserType: 'parent' } });
     });
   }
 
-  if (showParent) {
-    const pd = data.parentData!;
-    pd.children.forEach((c) => {
-      const id = `p-ch-${c.id}`;
-      left.push({
-        node: { id, type: 'person', position: { x: 0, y: 0 }, data: { kind: 'student', title: c.name, badge: 'My Child', navUserId: c.id, navUserType: 'student' } as PersonNodeData },
-        edgeColor: EDGE_COLORS.parent, edgeId: `e-${id}`, navUserId: c.id, navUserType: 'student',
-      });
-      // child's teachers branch further left (above)
-      c.teachers.forEach((t) => {
-        const tId = `p-t-${c.id}-${t.id}`;
-        above.push({
-          node: { id: tId, type: 'person', position: { x: 0, y: 0 }, data: { kind: 'teacher', title: t.name, subtitle: t.subject || undefined, badge: `Teacher of ${c.name.split(' ')[0]}`, status: t.status, navUserId: t.id, navUserType: 'teacher' } as PersonNodeData },
-          edgeColor: EDGE_COLORS.teacher, edgeId: `e-${tId}`, navUserId: t.id, navUserType: 'teacher',
-        });
-      });
+  if (showP) {
+    data.parentData!.children.forEach((c) => {
+      right.push({ id: `p-ch-${c.id}`, rel: 'student', data: { kind: 'student', title: c.name, subtitle: 'My Child', navUserId: c.id, navUserType: 'student' } });
     });
   }
 
-  // Center node
-  nodes.push({
-    id: selfId,
-    type: 'person',
-    position: { x: 0, y: 0 },
-    data: {
-      kind: 'self',
-      title: data.self?.full_name || 'User',
-      subtitle: data.allRoles.map((r) => ROLE_LABEL[r] || r).join(' · ') || 'User',
-      roles: data.allRoles,
-    } as PersonNodeData,
+  const aboveLaid = layoutQuadrant(above, 'LR');
+  const belowLaid = layoutQuadrant(below, 'LR');
+  const leftLaid  = layoutQuadrant(left,  'TB');
+  const rightLaid = layoutQuadrant(right, 'TB');
+
+  const VERT_GAP = 200;
+  const HORZ_GAP = 260;
+
+  const aboveWidth = aboveLaid.length ? Math.max(...aboveLaid.map((n) => n.x)) : 0;
+  aboveLaid.forEach((n) => {
+    nodes.push({ id: n.id, type: 'connected', position: { x: n.x - aboveWidth / 2 - NODE_W / 2, y: -VERT_GAP - NODE_H }, data: n.data });
+  });
+  const belowWidth = belowLaid.length ? Math.max(...belowLaid.map((n) => n.x)) : 0;
+  belowLaid.forEach((n) => {
+    nodes.push({ id: n.id, type: 'connected', position: { x: n.x - belowWidth / 2 - NODE_W / 2, y: VERT_GAP }, data: n.data });
+  });
+  const leftHeight = leftLaid.length ? Math.max(...leftLaid.map((n) => n.y)) : 0;
+  leftLaid.forEach((n) => {
+    nodes.push({ id: n.id, type: 'connected', position: { x: -HORZ_GAP - NODE_W, y: n.y - leftHeight / 2 - NODE_H / 2 }, data: n.data });
+  });
+  const rightHeight = rightLaid.length ? Math.max(...rightLaid.map((n) => n.y)) : 0;
+  rightLaid.forEach((n) => {
+    nodes.push({ id: n.id, type: 'connected', position: { x: HORZ_GAP, y: n.y - rightHeight / 2 - NODE_H / 2 }, data: n.data });
   });
 
-  // Position spokes radially around center
-  const placeColumn = (spokes: Spoke[], baseX: number, baseY: number, vertical: boolean) => {
-    const total = spokes.length;
-    if (!total) return;
-    if (vertical) {
-      const startY = baseY - ((total - 1) * (NODE_H + ROW_GAP)) / 2;
-      spokes.forEach((s, i) => {
-        s.node.position = { x: baseX, y: startY + i * (NODE_H + ROW_GAP) };
-        nodes.push(s.node);
-      });
-    } else {
-      // horizontal row
-      const startX = baseX - ((total - 1) * (NODE_W + COL_GAP)) / 2;
-      spokes.forEach((s, i) => {
-        s.node.position = { x: startX + i * (NODE_W + COL_GAP), y: baseY };
-        nodes.push(s.node);
-      });
-    }
-  };
+  const primaryRole = (data.allRoles || []).slice().sort((a, b) => {
+    const ai = ROLE_PRIORITY.indexOf(a); const bi = ROLE_PRIORITY.indexOf(b);
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  })[0];
+  const primaryLabel = primaryRole ? ROLE_PILL[primaryRole]?.label : undefined;
+  nodes.push({
+    id: selfId,
+    type: 'center',
+    position: { x: -CENTER_W / 2, y: -CENTER_H / 2 },
+    data: { kind: 'self', title: data.self?.full_name || 'User', primaryRoleLabel: primaryLabel, roles: data.allRoles } as NodeData,
+    draggable: false,
+  });
 
-  // Center at 0,0; place sections around
-  placeColumn(left,  -(NODE_W + COL_GAP * 2), 0, true);
-  placeColumn(right,  (NODE_W + COL_GAP * 2), 0, true);
-  placeColumn(above,  0, -(NODE_H + 140), false);
-  placeColumn(below,  0,  (NODE_H + 140), false);
-
-  // Build edges with proper handles + colors + animation
-  const edgeFor = (target: Spoke, side: 'top' | 'bottom' | 'left' | 'right'): Edge => {
-    const sourceHandle = side; // self handle position
-    const targetHandle = side === 'top' ? 'bottom' : side === 'bottom' ? 'top' : side === 'left' ? 'right' : 'left';
-    return {
-      id: target.edgeId,
+  const allSpokes = [...aboveLaid, ...belowLaid, ...leftLaid, ...rightLaid];
+  allSpokes.forEach((s) => {
+    const style = EDGE_STYLE[s.rel];
+    edges.push({
+      id: `e-${s.id}`,
       source: selfId,
-      target: target.node.id,
-      sourceHandle: undefined, // multiple unmapped handles render fine without explicit IDs in RF v11
-      targetHandle: undefined,
+      target: s.id,
       type: 'smoothstep',
       animated: true,
-      style: { stroke: target.edgeColor, strokeWidth: 2 },
-      markerEnd: { type: MarkerType.ArrowClosed, color: target.edgeColor, width: 18, height: 18 },
-    };
-  };
+      style: {
+        stroke: style.color,
+        strokeWidth: 2,
+        strokeDasharray: style.dashed ? '6 4' : undefined,
+      },
+      markerEnd: { type: MarkerType.ArrowClosed, color: style.color, width: 18, height: 18 },
+    });
+  });
 
-  left.forEach((s) => edges.push(edgeFor(s, 'left')));
-  right.forEach((s) => edges.push(edgeFor(s, 'right')));
-  above.forEach((s) => edges.push(edgeFor(s, 'top')));
-  below.forEach((s) => edges.push(edgeFor(s, 'bottom')));
-
-  // Center self position (offset so it sits at 0,0 visually centered)
-  const selfNode = nodes.find((n) => n.id === selfId);
-  if (selfNode) selfNode.position = { x: -120, y: -45 };
-
-  return { nodes, edges, sectionLabels: { left: left.length, right: right.length, above: above.length, below: below.length } };
+  return { nodes, edges, counts: { above: above.length, below: below.length, left: left.length, right: right.length } };
 }
 
-/* ---------- Main component ---------- */
-export function UserConnectionsGraph({ userId, userType, roleFilter = 'all', compact = false, className }: Props) {
+/* ---------- Inner ---------- */
+function GraphInner({ userId, userType, roleFilter = 'all', compact = false, className }: Props) {
   const navigate = useNavigate();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { fitView } = useReactFlow();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['user-connections-unified', userId, userType],
+    queryKey: ['user-connections-unified-v2', userId, userType],
     queryFn: () => fetchUnifiedConnections(userId, userType),
     enabled: !!userId,
     staleTime: 60_000,
   });
 
-  const { nodes, edges, sectionLabels } = useMemo(() => {
-    if (!data) return { nodes: [], edges: [], sectionLabels: { left: 0, right: 0, above: 0, below: 0 } };
-    return buildHubAndSpoke(data, roleFilter);
+  const { nodes, edges, counts } = useMemo(() => {
+    if (!data) return { nodes: [], edges: [], counts: { above: 0, below: 0, left: 0, right: 0 } };
+    return buildGraph(data, roleFilter);
   }, [data, roleFilter]);
 
-  // FIX #6: Click navigation
   const onNodeClick = useCallback((_: any, node: Node) => {
-    const d = node.data as PersonNodeData;
+    const d = node.data as NodeData;
     if (d.navUserId && d.navUserType) {
       navigate(`/connections/${d.navUserType}/${d.navUserId}`);
     }
   }, [navigate]);
 
+  const exportPng = useCallback(async () => {
+    if (!containerRef.current) return;
+    const viewport = containerRef.current.querySelector('.react-flow__viewport') as HTMLElement | null;
+    const target = viewport || containerRef.current;
+    try {
+      const dataUrl = await toPng(target, { backgroundColor: '#ffffff', cacheBust: true, pixelRatio: 2 });
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `connections-${data?.self?.full_name || 'user'}.png`;
+      a.click();
+    } catch (e) { console.error('Export failed', e); }
+  }, [data]);
+
   if (isLoading) {
     return (
-      <div className={cn('flex items-center justify-center', compact ? 'h-[320px]' : 'h-[600px]', className)}>
+      <div className={cn('flex items-center justify-center', compact ? 'h-[320px]' : 'h-[680px]', className)}>
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
       </div>
     );
@@ -522,41 +461,79 @@ export function UserConnectionsGraph({ userId, userType, roleFilter = 'all', com
 
   if (!nodes.length) {
     return (
-      <div className={cn('flex items-center justify-center text-sm text-muted-foreground', compact ? 'h-[320px]' : 'h-[600px]', className)}>
+      <div className={cn('flex items-center justify-center text-sm text-muted-foreground', compact ? 'h-[320px]' : 'h-[680px]', className)}>
         No connections found.
       </div>
     );
   }
 
   return (
-    <div className={cn('w-full rounded-lg border bg-card relative', compact ? 'h-[400px]' : 'h-[680px]', className)}>
-      {/* Section headers overlay */}
+    <div ref={containerRef} className={cn('w-full rounded-lg border bg-white dark:bg-card relative overflow-hidden', compact ? 'h-[420px]' : 'h-[720px]', className)}>
       {!compact && (
-        <div className="absolute inset-x-0 top-2 z-10 pointer-events-none flex justify-center gap-6 text-[10px] font-bold uppercase tracking-wider">
-          {sectionLabels.above > 0 && <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-700 dark:text-blue-300">↑ Teachers ({sectionLabels.above})</span>}
-          {sectionLabels.left > 0 &&  <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-300">← Family ({sectionLabels.left})</span>}
-          {sectionLabels.right > 0 && <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">Students → ({sectionLabels.right})</span>}
-          {sectionLabels.below > 0 && <span className="px-2 py-0.5 rounded bg-purple-500/10 text-purple-700 dark:text-purple-300">↓ Courses ({sectionLabels.below})</span>}
-        </div>
+        <>
+          {counts.above > 0 && (
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-gray-400">Teachers</span>
+            </div>
+          )}
+          {counts.below > 0 && (
+            <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-gray-400">Courses</span>
+            </div>
+          )}
+          {counts.left > 0 && (
+            <div className="absolute top-1/2 left-3 -translate-y-1/2 -rotate-90 origin-left z-10 pointer-events-none">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-gray-400">Guardians</span>
+            </div>
+          )}
+          {counts.right > 0 && (
+            <div className="absolute top-1/2 right-3 -translate-y-1/2 rotate-90 origin-right z-10 pointer-events-none">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-gray-400">Students</span>
+            </div>
+          )}
+        </>
       )}
+
       <ReactFlow
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
         onNodeClick={onNodeClick}
         fitView
-        fitViewOptions={{ padding: 0.25 }}
+        fitViewOptions={{ padding: 0.2 }}
         proOptions={{ hideAttribution: true }}
         nodesDraggable={!compact}
         nodesConnectable={false}
         elementsSelectable
         zoomOnScroll
         panOnDrag
-        defaultEdgeOptions={{ type: 'smoothstep', animated: true }}
+        minZoom={0.2}
+        maxZoom={2}
       >
-        <Background gap={20} size={1} className="opacity-40" />
-        <Controls showInteractive={false} className="!shadow-md" />
+        <Background variant={BackgroundVariant.Dots} gap={18} size={1.2} color="#e5e7eb" />
+        <Controls position="bottom-left" showInteractive={false} className="!shadow-md" />
+        {!compact && (
+          <Panel position="top-right" className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => fitView({ padding: 0.2, duration: 400 })} className="h-8 gap-1.5 bg-white">
+              <Maximize2 className="h-3.5 w-3.5" />
+              <span className="text-xs">Fit</span>
+            </Button>
+            <Button size="sm" variant="outline" onClick={exportPng} className="h-8 gap-1.5 bg-white">
+              <Download className="h-3.5 w-3.5" />
+              <span className="text-xs">Export PNG</span>
+            </Button>
+          </Panel>
+        )}
       </ReactFlow>
     </div>
+  );
+}
+
+/* ---------- Main ---------- */
+export function UserConnectionsGraph(props: Props) {
+  return (
+    <ReactFlowProvider>
+      <GraphInner {...props} />
+    </ReactFlowProvider>
   );
 }
