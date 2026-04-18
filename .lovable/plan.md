@@ -1,53 +1,59 @@
 
 
-# Fix: "Add Staff" Not Working in Classes Tab
+# Unified Connections — Multi-Role + Complete Course View
 
-## Root Cause
+## Problem (jo aap ne bola)
+1. Abida teacher hai PAR woh khud bhi student ho sakti hai (Tafseer Quran enrolled) — sirf teacher view dikh raha hai.
+2. Nida = parent + student + maybe teacher — abhi sirf ek role ka graph load hota hai.
+3. Courses sirf "active" filter ho rahe hain — completed/past courses miss ho rahe hain.
+4. Group academy + one-to-one dono ka data ek saath nahi dikh raha.
+5. Click kar ke quick view nahi milta apne dashboard se.
 
-The `course_class_staff` and `course_class_students` tables were created **without foreign key references** to the `profiles` table. PostgREST requires FK relationships to perform embedded joins like `profile:user_id(id, full_name, email)`.
+## Fix — 3 cheezein
 
-Every time the Classes tab loads staff or students, the query returns a **400 error**:
-> "Could not find a relationship between 'course_class_staff' and 'user_id' in the schema cache"
+### 1. Multi-role graph (root cause)
+`UserConnectionsGraph` ko refactor karo. `userType` prop optional banao. Component khud detect kare us profile ki **saari roles** (`user_roles` table se) aur har role ka data parallel fetch kare, phir ek hi unified graph mein dikhaye:
 
-Staff inserts (POST) succeed (status 201), but the subsequent GET to refresh the list fails, so the UI never shows the added staff.
+- **Center node**: person ka naam + saari roles ke chips (e.g. "Teacher · Student · Parent")
+- **Branches grouped by role**:
+  - As Teacher → students (with subject), classes, co-teachers
+  - As Student → teachers, courses enrolled, siblings
+  - As Parent → children → unke teachers
+- **Color-coded section headers** (faint group nodes) so visually clear ho ke "ye uske teacher-life ka hai, ye student-life ka"
 
-## Fix
+### 2. Complete course history (active + completed + past)
+- Hatao `.eq('status', 'active')` filter from `course_enrollments` and `student_teacher_assignments`.
+- Status badge har course/assignment node pe: green=Active, blue=Completed, grey=Paused/Ended.
+- Bhi add: courses **completed long ago** (with completion date subtitle).
 
-### Step 1: Database Migration — Add Foreign Keys
+### 3. User-facing "My Connections" entry points
+Aap ne ye bhi mention kiya — student/teacher/parent apne dashboard se ek click pe apna full graph dekh sake:
+- **StudentDashboard**: ek "My Network" card → opens `/connections/student/{myId}`
+- **TeacherDashboard**: same → `/connections/teacher/{myId}`
+- **ParentDashboard**: "Family Map" tile → `/connections/parent/{myId}`
 
-Add FK constraints from:
-- `course_class_staff.user_id` → `profiles.id`
-- `course_class_students.student_id` → `profiles.id`
+Plus: full-page header pe **role tabs** (e.g. `[All] [As Teacher] [As Student] [As Parent]`) — user filter kar sake jab graph bara ho.
 
-```sql
-ALTER TABLE public.course_class_staff
-  ADD CONSTRAINT course_class_staff_user_id_fkey
-  FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+## Visual upgrade (aesthetics)
+- Center node bigger, gradient bg, role chips ke neeche
+- Role-group "lane" backgrounds (subtle tinted rectangles dagre-rendered behind related nodes) so 3 worlds visually separate
+- Edge labels mein subject + status (e.g. "Hifz · Completed")
+- Hover pe node — show mini popover with: role, subject/course, dates, "Open profile →" link
 
-ALTER TABLE public.course_class_students
-  ADD CONSTRAINT course_class_students_student_id_fkey
-  FOREIGN KEY (student_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
-```
+## Files to touch
+1. `src/components/connections/UserConnectionsGraph.tsx` — refactor to multi-role aggregator
+2. `src/pages/UserConnections.tsx` — add role filter tabs
+3. `src/components/dashboard/StudentDashboard.tsx` — add "My Network" entry card
+4. `src/components/dashboard/teacher/TeacherQuickActions.tsx` — add "My Network" tile
+5. `src/components/dashboard/ParentDashboard.tsx` — add "Family Map" tile
 
-### Step 2: Fix Query Syntax in CourseRoster.tsx
+## What stays the same
+- `/admin/schema-explorer` (database view) — untouched
+- Existing drawer Connections tabs — automatically benefit from the refactor (no breaking change)
+- React Flow + dagre stack — same
 
-The Roster component uses `profiles:profiles!inner(...)` syntax which also won't work without a FK. After the migration, update to use the correct FK hint:
-- `staff:course_class_staff(id, user_id, staff_role, profile:user_id(id, full_name, email))`
-- `students:course_class_students(id, student_id, status, profile:student_id(id, full_name, email))`
-
-### Step 3: Fix TeacherPayouts.tsx Query
-
-Same FK-based join fix for the payout queries that reference `profile:user_id(...)`.
-
-### Files Changed
-- **Migration SQL** (new) — add 2 foreign keys
-- `src/components/courses/CourseClassesTab.tsx` — queries already use correct syntax, will work once FK exists
-- `src/components/courses/CourseRoster.tsx` — fix join syntax to use FK hint
-- `src/pages/TeacherPayouts.tsx` — fix join syntax to use FK hint
-
-### What This Fixes
-- Staff list loads after adding a teacher/moderator
-- Student list loads in class detail
-- Roster view shows names instead of errors
-- Teacher payouts page resolves staff profiles
+## Out of scope (confirm if you want these too)
+- Editing relationships from the graph (currently read-only)
+- Export graph as PNG/PDF
+- Showing financial/attendance stats inside connection cards
 
