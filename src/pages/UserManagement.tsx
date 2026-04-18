@@ -223,6 +223,7 @@ export default function UserManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const location = useLocation();
+  const navigate = useNavigate();
   const staffMode = new URLSearchParams(location.search).get('mode') === 'staff';
   const TEACHING_ROLES: AppRole[] = ['teacher', 'student', 'parent'];
   const [searchTerm, setSearchTerm] = useState('');
