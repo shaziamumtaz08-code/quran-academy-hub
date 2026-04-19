@@ -22,6 +22,7 @@ import {
   MessageSquare, ClipboardList, Megaphone, StickyNote, ExternalLink
 } from 'lucide-react';
 import { format } from 'date-fns';
+import DOMPurify from 'dompurify';
 
 // ─── Types ─────────────────────────────────────────────
 interface LibraryAsset {
@@ -334,7 +335,7 @@ export default function CourseAssetLibrary() {
                 )}
                 {detailAsset.content_html && (
                   <div><Label className="text-xs text-muted-foreground">Content</Label>
-                    <div className="text-sm border rounded-lg p-3 max-h-40 overflow-y-auto bg-muted/30" dangerouslySetInnerHTML={{ __html: detailAsset.content_html }} />
+                    <div className="text-sm border rounded-lg p-3 max-h-40 overflow-y-auto bg-muted/30" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(detailAsset.content_html) }} />
                   </div>
                 )}
                 {detailAsset.tags?.length > 0 && (
