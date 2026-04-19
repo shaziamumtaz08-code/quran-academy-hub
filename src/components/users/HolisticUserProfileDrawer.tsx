@@ -17,8 +17,9 @@ import { useToast } from '@/hooks/use-toast';
 import {
   User, Mail, Shield, Users as UsersIcon, GraduationCap, FileText,
   Activity, KeyRound, Loader2, Upload, Download, CheckCircle2, XCircle,
-  AlertTriangle, Calendar, Save, RefreshCw,
+  AlertTriangle, Calendar, Save, RefreshCw, Link2, Unlink,
 } from 'lucide-react';
+import { LinkGuardianDialog } from './LinkGuardianDialog';
 
 interface Props {
   open: boolean;
@@ -52,6 +53,7 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
   const [tab, setTab] = useState('personal');
   const [form, setForm] = useState<Record<string, any>>({});
   const [uploading, setUploading] = useState<'avatar' | 'gov_id' | null>(null);
+  const [guardianDialogOpen, setGuardianDialogOpen] = useState(false);
 
   // Profile
   const { data: profile, isLoading } = useQuery({
