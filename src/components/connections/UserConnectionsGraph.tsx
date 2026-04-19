@@ -336,11 +336,37 @@ function buildGraph(
     data.studentData!.teachers.forEach((t) => {
       above.push({ id: `s-t-${t.id}`, rel: 'teacher', data: { kind: 'teacher', title: t.name, subtitle: t.subject || undefined, status: t.status, navUserId: t.id, navUserType: 'teacher' } });
     });
-    data.studentData!.courses.forEach((c) => {
-      below.push({ id: `s-c-${c.id}`, rel: 'course', data: { kind: 'course', title: c.name, subtitle: c.klass || undefined, status: c.status } });
+    // Deduplicate by course: group all class memberships under one node per course,
+    // and skip course_enrollments entries already covered by a class membership.
+    const courseMap = new Map<string, { name: string; classes: string[]; status: string }>();
+    data.studentData!.classMemberships.forEach((m: any) => {
+      const courseKey = m.id; // m.id was set to class.course.id? No — it's class.id. We need course id.
+      // m.name holds course name; we need a stable course key. Fall back to name when id absent.
+      const key = (m.courseId as string) || m.name || m.id;
+      const existing = courseMap.get(key);
+      if (existing) {
+        if (m.klass && !existing.classes.includes(m.klass)) existing.classes.push(m.klass);
+      } else {
+        courseMap.set(key, { name: m.name || 'Class', classes: m.klass ? [m.klass] : [], status: m.status });
+      }
     });
-    data.studentData!.classMemberships.forEach((m) => {
-      below.push({ id: `s-cm-${m.id}`, rel: 'course', data: { kind: 'course', title: m.name || 'Class', subtitle: m.klass || undefined, status: m.status } });
+    data.studentData!.courses.forEach((c: any) => {
+      const key = c.id || c.name;
+      if (!courseMap.has(key)) {
+        courseMap.set(key, { name: c.name, classes: [], status: c.status });
+      }
+    });
+    Array.from(courseMap.entries()).forEach(([key, v]) => {
+      below.push({
+        id: `s-course-${key}`,
+        rel: 'course',
+        data: {
+          kind: 'course',
+          title: v.name,
+          subtitle: v.classes.length ? v.classes.join(' · ') : undefined,
+          status: v.status,
+        },
+      });
     });
     (data.siblings || []).forEach((s: any) => {
       right.push({ id: `s-sib-${s.id}`, rel: 'sibling', data: { kind: 'sibling', title: s.full_name, navUserId: s.id, navUserType: 'student' } });
