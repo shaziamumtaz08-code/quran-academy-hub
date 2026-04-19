@@ -1327,23 +1327,21 @@ export default function UserManagement() {
                   )}
                 </div>
 
-                {/* Category pills replacing the role dropdown */}
-                <div className="inline-flex items-center gap-1 p-1 rounded-lg bg-muted/50 border border-border/60">
+                {/* Category pills — role filter */}
+                <div className="inline-flex flex-wrap items-center gap-1 p-1 rounded-lg bg-muted/50 border border-border/60">
                   {([
-                    { key: 'all', label: 'All', dot: 'bg-muted-foreground' },
-                    { key: 'student', label: 'Students', dot: 'bg-teal-500' },
-                    { key: 'teacher', label: 'Teachers', dot: 'bg-violet-500' },
-                    { key: 'staff', label: 'Staff', dot: 'bg-purple-500' },
+                    { key: 'all', label: 'All', dot: 'bg-muted-foreground', role: '' },
+                    { key: 'student', label: 'Students', dot: 'bg-teal-500', role: 'student' },
+                    { key: 'teacher', label: 'Teachers', dot: 'bg-violet-500', role: 'teacher' },
+                    { key: 'parent', label: 'Parents', dot: 'bg-amber-500', role: 'parent' },
+                    { key: 'admin', label: 'Admins', dot: 'bg-rose-500', role: 'admin' },
+                    { key: 'examiner', label: 'Examiners', dot: 'bg-sky-500', role: 'examiner' },
                   ] as const).map((p) => {
-                    const active = activeCategory === p.key;
+                    const active = (filterRole || '') === p.role;
                     return (
                       <button
                         key={p.key}
-                        onClick={() => {
-                          if (p.key === 'all') setFilterRole('');
-                          else if (p.key === 'staff') setFilterRole('admin');
-                          else setFilterRole(p.key);
-                        }}
+                        onClick={() => setFilterRole(p.role)}
                         className={`inline-flex items-center gap-1.5 px-3 h-8 rounded-md text-xs font-medium transition-all ${
                           active
                             ? 'bg-card text-foreground shadow-sm border border-border/60'
