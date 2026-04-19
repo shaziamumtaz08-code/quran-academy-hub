@@ -4,6 +4,9 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 
+// Bump this whenever SW behavior changes — forces clients to drop old caches.
+const SW_VERSION = `v${Date.now()}`;
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
@@ -19,8 +22,20 @@ export default defineConfig(({ mode }) => ({
       devOptions: { enabled: false },
       manifest: false, // using public/manifest.webmanifest
       workbox: {
+        // IMPORTANT: do NOT use navigateFallback as the primary nav strategy.
+        // We register an explicit NetworkFirst handler for navigations below
+        // so the offline page is only served when the network truly fails.
         navigateFallback: "/offline.html",
-        navigateFallbackDenylist: [/^\/~oauth/, /^\/api/, /\/functions\//],
+        navigateFallbackDenylist: [
+          /^\/~oauth/,
+          /^\/api/,
+          /\/functions\//,
+          /\/auth\//,
+        ],
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
+        cacheId: `aqt-${SW_VERSION}`,
         globPatterns: ["**/*.{css,html,ico,png,svg,webp,woff2}"],
         maximumFileSizeToCacheInBytes: 20 * 1024 * 1024,
         runtimeCaching: [
@@ -34,10 +49,22 @@ export default defineConfig(({ mode }) => ({
             handler: "NetworkOnly",
           },
           {
+            // Navigation requests (HTML pages) — network first, fallback to
+            // offline.html ONLY when the network genuinely fails.
+            urlPattern: ({ request }) => request.mode === "navigate",
+            handler: "NetworkFirst",
+            options: {
+              cacheName: `pages-${SW_VERSION}`,
+              networkTimeoutSeconds: 5,
+              expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 },
+              precacheFallback: { fallbackURL: "/offline.html" },
+            },
+          },
+          {
             urlPattern: ({ request }) => request.destination === "image",
             handler: "CacheFirst",
             options: {
-              cacheName: "img-cache",
+              cacheName: `img-${SW_VERSION}`,
               expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 30 },
             },
           },
