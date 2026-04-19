@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
 import { LandingPageShell, LandingCard } from '@/components/layout/LandingPageShell';
-import { GraduationCap, Users, UserCheck, UserPlus, AlertTriangle } from 'lucide-react';
+import { GraduationCap, Users, UserCheck, UserPlus, AlertTriangle, Heart } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useNavigate } from 'react-router-dom';
 
@@ -11,6 +11,7 @@ const Teachers = lazy(() => import('./Teachers'));
 const Students = lazy(() => import('./Students'));
 const UserManagement = lazy(() => import('./UserManagement'));
 const LeadsPipeline = lazy(() => import('./LeadsPipeline'));
+const Parents = lazy(() => import('./Parents'));
 
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
 
@@ -115,11 +116,17 @@ export default function PeopleLanding() {
         .eq('division_id', divisionId!)
         .neq('status', 'closed');
 
+      // Parent count (global, not division-scoped)
+      const { data: parentRoles } = await supabase
+        .from('user_roles').select('user_id').eq('role', 'parent');
+      const parentsCount = new Set((parentRoles || []).map(r => r.user_id)).size;
+
       return {
         teachers: teacherCount,
         students: studentCount,
         users: usersCount,
         leads: leadsCount || 0,
+        parents: parentsCount,
       };
     },
   });
@@ -127,6 +134,7 @@ export default function PeopleLanding() {
   const cards: LandingCard[] = [
     { id: 'teachers', title: 'Teachers', subtitle: 'Active teachers', count: counts?.teachers, countLoading: isLoading, icon: <Users className="h-5 w-5" />, color: 'bg-primary' },
     { id: 'students', title: 'Students', subtitle: 'Enrolled students', count: counts?.students, countLoading: isLoading, icon: <GraduationCap className="h-5 w-5" />, color: 'bg-emerald-500' },
+    { id: 'parents', title: 'Parents', subtitle: 'Login activation', count: counts?.parents, countLoading: isLoading, icon: <Heart className="h-5 w-5" />, color: 'bg-pink-500' },
     { id: 'users', title: 'All Users', subtitle: 'Total accounts', count: counts?.users, countLoading: isLoading, icon: <UserCheck className="h-5 w-5" />, color: 'bg-blue-500' },
     ...(isOneToOne ? [{ id: 'leads', title: 'Leads Pipeline', subtitle: 'Open leads', count: counts?.leads, countLoading: isLoading, icon: <UserPlus className="h-5 w-5" />, color: 'bg-amber-500' }] : []),
   ];
@@ -134,6 +142,7 @@ export default function PeopleLanding() {
   const contentMap = useMemo(() => ({
     'teachers': <Suspense fallback={<Loading />}><Teachers /></Suspense>,
     'students': <Suspense fallback={<Loading />}><Students /></Suspense>,
+    'parents': <Suspense fallback={<Loading />}><Parents /></Suspense>,
     'users': <Suspense fallback={<Loading />}><UserManagement /></Suspense>,
     'leads': <Suspense fallback={<Loading />}><LeadsPipeline /></Suspense>,
   }), []);
