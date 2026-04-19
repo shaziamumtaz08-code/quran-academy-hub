@@ -58,6 +58,7 @@ interface TeacherStudent {
   homework: string | null;
   age: number | null;
   gender: string | null;
+  guardian_type?: 'none' | 'parent' | 'guardian' | 'emergency_contact' | null;
 }
 
 type SortField = 'name' | 'email' | 'teacher' | 'country' | 'city' | 'gender' | 'age';
@@ -104,7 +105,7 @@ export default function Students() {
           student_id,
           status,
           student:profiles!student_teacher_assignments_student_id_fkey(
-            id, full_name, email, daily_target_lines, preferred_unit, age, gender
+            id, full_name, email, daily_target_lines, preferred_unit, age, gender, guardian_type
           ),
           subject:subjects(name)
         `)
@@ -158,6 +159,7 @@ export default function Students() {
         homework: latestAttendance.get(a.student_id)?.homework || null,
         age: a.student?.age ?? null,
         gender: a.student?.gender ?? null,
+        guardian_type: a.student?.guardian_type ?? null,
       })) as TeacherStudent[];
     },
     enabled: !!user?.id && isTeacher,

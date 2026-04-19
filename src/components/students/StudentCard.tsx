@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { BookOpen, Target, User, Calendar, Clock, BookMarked, AlertTriangle, Pause, PenLine } from 'lucide-react';
+import { BookOpen, Target, User, Calendar, Clock, BookMarked, AlertTriangle, Pause, PenLine, Users as UsersIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { UnifiedAttendanceForm, type StudentInfo } from '@/components/attendance/UnifiedAttendanceForm';
@@ -32,6 +32,7 @@ interface StudentCardProps {
     gender: string | null;
     timezone?: string;
     registration_id?: string | null;
+    guardian_type?: 'none' | 'parent' | 'guardian' | 'emergency_contact' | null;
   };
   onViewHistory: () => void;
   onViewSchedule: () => void;
@@ -85,6 +86,41 @@ export function StudentCard({ student, onViewHistory, onViewSchedule }: StudentC
                   {STATUS_CONFIG[status].label}
                 </Badge>
               )}
+              {/* Guardian status icon */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex items-center">
+                      {(() => {
+                        const isMinor = (student.age ?? 99) < 17;
+                        const gt = student.guardian_type;
+                        if (gt === 'parent' || gt === 'guardian') {
+                          return <UsersIcon className="h-4 w-4 text-emerald-600" aria-label="Has guardian" />;
+                        }
+                        if (gt === 'none' && !isMinor) {
+                          return <User className="h-4 w-4 text-muted-foreground" aria-label="Self learner" />;
+                        }
+                        if (isMinor && !gt) {
+                          return <AlertTriangle className="h-4 w-4 text-destructive" aria-label="Minor without guardian" />;
+                        }
+                        return null;
+                      })()}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {(() => {
+                      const isMinor = (student.age ?? 99) < 17;
+                      const gt = student.guardian_type;
+                      if (gt === 'parent') return 'Has linked parent account';
+                      if (gt === 'guardian') return 'Has guardian';
+                      if (gt === 'emergency_contact') return 'Emergency contact only';
+                      if (gt === 'none' && !isMinor) return 'Adult self-learner';
+                      if (isMinor) return 'Minor — no guardian linked (needs action)';
+                      return 'Guardian status unknown';
+                    })()}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
             {student.subject_name && (
               <Badge className="text-xs font-normal gap-1 mt-1.5 bg-sky/10 text-sky-dark dark:bg-sky/20 dark:text-sky-light border-0">
