@@ -6632,6 +6632,56 @@ export type Database = {
           },
         ]
       }
+      session_reschedules: {
+        Row: {
+          attendance_id: string | null
+          id: string
+          new_date: string
+          new_time: string | null
+          original_date: string
+          original_time: string | null
+          reason: string | null
+          rescheduled_at: string
+          rescheduled_by: string
+          student_id: string
+          teacher_id: string
+        }
+        Insert: {
+          attendance_id?: string | null
+          id?: string
+          new_date: string
+          new_time?: string | null
+          original_date: string
+          original_time?: string | null
+          reason?: string | null
+          rescheduled_at?: string
+          rescheduled_by: string
+          student_id: string
+          teacher_id: string
+        }
+        Update: {
+          attendance_id?: string | null
+          id?: string
+          new_date?: string
+          new_time?: string | null
+          original_date?: string
+          original_time?: string | null
+          reason?: string | null
+          rescheduled_at?: string
+          rescheduled_by?: string
+          student_id?: string
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_reschedules_attendance_id_fkey"
+            columns: ["attendance_id"]
+            isOneToOne: false
+            referencedRelation: "attendance"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       slides: {
         Row: {
           activity_instruction: string | null
