@@ -1488,11 +1488,7 @@ export default function UserManagement() {
                       {filteredUsers.map((user, idx) => (
                         <TableRow
                           key={user.id}
-                          onClick={() => {
-                            const r = user.roles || [];
-                            const ut = r.includes('teacher') ? 'teacher' : r.includes('student') ? 'student' : r.includes('parent') ? 'parent' : 'student';
-                            navigate(`/connections/${ut}/${user.id}`);
-                          }}
+                          onClick={() => setHolisticUserId(user.id)}
                           className={`group min-h-[64px] border-l-2 border-transparent transition-colors hover:bg-muted/30 hover:border-l-primary cursor-pointer ${idx % 2 === 0 ? 'bg-transparent' : 'bg-muted/20'}`}
                         >
                           {isSuperAdmin && (
