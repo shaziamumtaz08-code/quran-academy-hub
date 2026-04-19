@@ -22,10 +22,10 @@ export function MobileTopBar({ title = 'Al-Quran Time', onMenuClick, onLogout }:
           <button
             type="button"
             onClick={onMenuClick}
-            className="text-white/70 hover:text-white transition-colors"
+            className="text-white hover:bg-white/10 active:bg-white/20 transition-colors p-1.5 rounded-md"
             aria-label="Open menu"
           >
-            <Menu className="h-[18px] w-[18px]" strokeWidth={1.8} />
+            <Menu className="h-5 w-5" strokeWidth={2.2} />
           </button>
         </div>
 
