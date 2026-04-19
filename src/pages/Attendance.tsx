@@ -1584,7 +1584,7 @@ export default function Attendance() {
               {/* Reschedule Fields */}
               {requiresReschedule(selectedStatus) && (
                 <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
-                  <p className="text-sm font-medium text-foreground">Reschedule Details</p>
+                  <p className="text-sm font-medium text-foreground">Select new session date</p>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>New Date <span className="text-destructive">*</span></Label>
@@ -1593,7 +1593,9 @@ export default function Attendance() {
                         value={rescheduleDate} 
                         onChange={(e) => setRescheduleDate(e.target.value)}
                         min={format(new Date(), 'yyyy-MM-dd')}
+                        max={format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')}
                       />
+                      <p className="text-[10px] text-muted-foreground">Any day allowed (incl. Sat/Sun) — up to 30 days ahead.</p>
                     </div>
                     <div className="space-y-2">
                       <Label>New Time <span className="text-destructive">*</span></Label>
