@@ -2372,6 +2372,13 @@ export default function UserManagement() {
             filteredCount={filteredUsers?.length || 0}
           />
         )}
+
+        {/* Holistic User Profile Drawer */}
+        <HolisticUserProfileDrawer
+          open={!!holisticUserId}
+          onOpenChange={(o) => !o && setHolisticUserId(null)}
+          userId={holisticUserId}
+        />
       </div>
     </DashboardLayout>
   );
