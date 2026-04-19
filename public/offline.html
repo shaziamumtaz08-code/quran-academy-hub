@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Offline · AQT Academy</title>
+<style>
+  html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;background:#0a192f;color:#fff;}
+  .wrap{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;}
+  .badge{width:84px;height:84px;border-radius:20px;background:#00a8e8;color:#0a192f;font-weight:800;font-size:28px;display:flex;align-items:center;justify-content:center;margin-bottom:24px;letter-spacing:1px;}
+  h1{font-size:22px;margin:0 0 8px;font-weight:600;}
+  p{opacity:.75;font-size:14px;max-width:320px;line-height:1.5;margin:0 0 24px;}
+  button{background:#00a8e8;color:#0a192f;border:0;border-radius:10px;padding:12px 22px;font-weight:600;font-size:14px;cursor:pointer;}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="badge">AQT</div>
+    <h1>You are offline</h1>
+    <p>Check your internet connection and try again. Cached pages remain available.</p>
+    <button onclick="location.reload()">Retry</button>
+  </div>
+</body>
+</html>
