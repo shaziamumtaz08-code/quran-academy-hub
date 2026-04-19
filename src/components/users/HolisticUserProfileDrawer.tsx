@@ -83,8 +83,10 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
       if (!userId) return null;
       const { data } = await supabase
         .from('student_parent_links')
-        .select('parent_id, relationship, profile:parent_id(full_name, email, whatsapp_number)')
+        .select('id, parent_id, relationship, profile:profiles!student_parent_links_parent_id_fkey(id, full_name, email, whatsapp_number)')
         .eq('student_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
       return data as any;
     },
