@@ -21,7 +21,8 @@ export default defineConfig(({ mode }) => ({
       workbox: {
         navigateFallback: "/offline.html",
         navigateFallbackDenylist: [/^\/~oauth/, /^\/api/, /\/functions\//],
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,webp,woff2}"],
+        globPatterns: ["**/*.{css,html,ico,png,svg,webp,woff2}"],
+        maximumFileSizeToCacheInBytes: 20 * 1024 * 1024,
         runtimeCaching: [
           {
             // Never cache Supabase or any API calls
