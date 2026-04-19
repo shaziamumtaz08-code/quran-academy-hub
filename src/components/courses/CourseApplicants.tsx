@@ -339,6 +339,22 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
     setBatchLoading(false);
   }
 
+  async function handleBulkDelete() {
+    setBatchLoading(true);
+    const ids = Array.from(selectedIds);
+    const { error } = await supabase.from('registration_submissions').delete().in('id', ids);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success(`${ids.length} applicant${ids.length > 1 ? 's' : ''} deleted`);
+      setSelectedIds(new Set());
+      setBulkDeleteOpen(false);
+      if (selectedSubmission && ids.includes(selectedSubmission.id)) setSelectedSubmission(null);
+      queryClient.invalidateQueries({ queryKey: ['registration-submissions', courseId] });
+    }
+    setBatchLoading(false);
+  }
+
   // Manual add
   async function handleManualAdd() {
     if (!manualEmail.trim()) return;
