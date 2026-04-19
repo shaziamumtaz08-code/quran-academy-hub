@@ -725,11 +725,20 @@ export default function UserManagement() {
         sess = { session: refreshed.session } as any;
       }
 
-      const { data, error } = await supabase.functions.invoke('admin-update-user', {
-        body: { userId, fullName, email, whatsapp, gender, age, country, city, password },
-        headers: { Authorization: `Bearer ${sess.session!.access_token}` },
-      });
-      if (error) throw new Error(error.message || 'Failed to update user');
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-update-user`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${sess.session!.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ userId, fullName, email, whatsapp, gender, age, country, city, password }),
+        }
+      );
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(data?.error || `Failed to update user (${resp.status})`);
       if (data?.error) throw new Error(data.error);
       return data;
     },
