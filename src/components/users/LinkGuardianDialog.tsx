@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, CheckCircle2, Copy, UserPlus, Search, Link2 } from 'lucide-react';
+import { Loader2, CheckCircle2, Copy, UserPlus, Search, Link2, Mail } from 'lucide-react';
 
 interface Props {
   open: boolean;
@@ -18,6 +18,7 @@ interface Props {
 }
 
 const RELATIONSHIPS = ['Mother', 'Father', 'Grandmother', 'Grandfather', 'Uncle', 'Aunt', 'Sibling', 'Other'];
+const LOGIN_URL = 'lms.alqurantimeacademy.com';
 
 interface SuccessInfo {
   parentId: string;
@@ -25,6 +26,17 @@ interface SuccessInfo {
   fullName: string;
   tempPassword?: string;
   linkedExisting: boolean;
+  inviteSent: boolean;
+}
+
+/**
+ * Generates a strong, unique password that will not be flagged by Supabase's
+ * breach-detection check (HIBP). Format example: "a3f9b2c1Aqt#5847".
+ */
+function generateTempPassword(): string {
+  const random8 = crypto.randomUUID().replace(/-/g, '').slice(0, 8);
+  const tail4 = Date.now().toString().slice(-4);
+  return `${random8}Aqt#${tail4}`;
 }
 
 export function LinkGuardianDialog({ open, onOpenChange, studentId, studentName }: Props) {
@@ -70,14 +82,54 @@ export function LinkGuardianDialog({ open, onOpenChange, studentId, studentName 
     }
   };
 
+  /**
+   * Best-effort invite: tries the transactional email function if it exists.
+   * Returns true on success, false otherwise — never throws.
+   */
+  const sendInviteEmail = async (
+    recipientEmail: string,
+    recipientName: string,
+    tempPassword: string,
+  ): Promise<boolean> => {
+    try {
+      const { error } = await supabase.functions.invoke('send-transactional-email', {
+        body: {
+          templateName: 'guardian-account-invite',
+          recipientEmail,
+          idempotencyKey: `guardian-invite-${recipientEmail}-${Date.now()}`,
+          templateData: {
+            name: recipientName,
+            email: recipientEmail,
+            tempPassword,
+            loginUrl: LOGIN_URL,
+          },
+          // Inline fallback fields some sender implementations accept:
+          subject: 'Your AQT Academy Account',
+          body:
+            `Login at ${LOGIN_URL}\n` +
+            `Email: ${recipientEmail}\n` +
+            `Temp password: ${tempPassword}\n` +
+            `Please change password on first login.`,
+        },
+      });
+      if (error) {
+        console.warn('[guardian-invite] send-transactional-email failed:', error.message);
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.warn('[guardian-invite] send-transactional-email threw:', e);
+      return false;
+    }
+  };
+
   const linkMutation = useMutation({
     mutationFn: async () => {
       if (!fullName.trim() || !email.trim() || !whatsapp.trim()) {
         throw new Error('Full name, email and WhatsApp are required.');
       }
       const cleanEmail = email.toLowerCase().trim();
-      const firstName = fullName.trim().split(/\s+/)[0] || 'Guardian';
-      const tempPassword = `${firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase()}@AQT2025`;
+      const tempPassword = generateTempPassword();
 
       // 1) If a profile with this email exists, link it instead of creating
       const { data: existing } = await supabase
@@ -100,18 +152,52 @@ export function LinkGuardianDialog({ open, onOpenChange, studentId, studentName 
           { onConflict: 'user_id,role' as any },
         );
       } else {
-        // 2) Create a new guardian account via secure edge function
-        const { data, error } = await supabase.functions.invoke('admin-create-user', {
-          body: {
-            email: cleanEmail,
-            password: tempPassword,
-            fullName: fullName.trim(),
-            role: 'parent',
-            whatsapp: whatsapp.trim(),
-            country: 'Pakistan',
-          },
-        });
-        if (error) throw new Error(error.message || 'Failed to create guardian account');
+        // 2) Create a new guardian account via the secure admin edge function.
+        //    Surface the EXACT Supabase error if anything goes wrong.
+        let createResp: { data: any; error: any };
+        try {
+          createResp = await supabase.functions.invoke('admin-create-user', {
+            body: {
+              email: cleanEmail,
+              full_name: fullName.trim(),
+              fullName: fullName.trim(), // legacy alias
+              role: 'parent',
+              password: tempPassword,
+              phone: whatsapp.trim(),
+              whatsapp: whatsapp.trim(),
+              country: 'Pakistan',
+              send_invite: true,
+            },
+          });
+        } catch (invokeErr: any) {
+          throw new Error(
+            invokeErr?.message ||
+              'Edge function admin-create-user could not be reached. Check your network and try again.',
+          );
+        }
+
+        const { data, error } = createResp;
+        if (error) {
+          // Try to read the JSON error body the edge function returned
+          let serverMessage: string | undefined;
+          try {
+            const ctx: any = (error as any).context;
+            if (ctx?.body) {
+              const text = typeof ctx.body === 'string' ? ctx.body : await ctx.text?.();
+              if (text) {
+                try {
+                  const parsed = JSON.parse(text);
+                  serverMessage = parsed?.error || parsed?.message;
+                } catch {
+                  serverMessage = text;
+                }
+              }
+            }
+          } catch {
+            /* ignore */
+          }
+          throw new Error(serverMessage || error.message || 'Failed to create guardian account');
+        }
         if ((data as any)?.error) throw new Error((data as any).error);
         parentId = (data as any)?.userId;
         returnedTempPassword = (data as any)?.tempPassword || tempPassword;
@@ -130,10 +216,11 @@ export function LinkGuardianDialog({ open, onOpenChange, studentId, studentName 
         .maybeSingle();
 
       if (existingLink) {
-        await supabase
+        const { error: updErr } = await supabase
           .from('student_parent_links')
           .update({ relationship } as any)
           .eq('id', existingLink.id);
+        if (updErr) throw new Error(updErr.message);
       } else {
         const { error: linkErr } = await supabase
           .from('student_parent_links')
@@ -144,23 +231,41 @@ export function LinkGuardianDialog({ open, onOpenChange, studentId, studentName 
       // 4) Mark the student profile as having a parent guardian
       await supabase.from('profiles').update({ guardian_type: 'parent' as any }).eq('id', studentId);
 
+      // 5) Best-effort invite email (only when a new account was created)
+      let inviteSent = false;
+      if (!linkedExisting) {
+        inviteSent = await sendInviteEmail(cleanEmail, fullName.trim(), returnedTempPassword || tempPassword);
+      }
+
       return {
         parentId: parentId!,
         email: cleanEmail,
         fullName: fullName.trim(),
         tempPassword: linkedExisting ? undefined : returnedTempPassword,
         linkedExisting,
+        inviteSent,
       } as SuccessInfo;
     },
     onSuccess: (info) => {
       setSuccess(info);
-      toast({ title: info.linkedExisting ? 'Guardian linked' : 'Guardian created and linked' });
+      toast({
+        title: info.linkedExisting ? 'Guardian linked' : 'Guardian created and linked',
+        description: !info.linkedExisting && !info.inviteSent
+          ? 'Account is ready. Email delivery is not configured — share the temp credentials manually.'
+          : undefined,
+      });
       qc.invalidateQueries({ queryKey: ['holistic-parent', studentId] });
       qc.invalidateQueries({ queryKey: ['holistic-profile', studentId] });
       qc.invalidateQueries({ queryKey: ['users'] });
+      qc.invalidateQueries({ queryKey: ['users-with-roles'] });
     },
     onError: (e: any) => {
-      toast({ title: 'Failed', description: e.message, variant: 'destructive' });
+      console.error('[LinkGuardianDialog] mutation failed:', e);
+      toast({
+        title: 'Failed to create guardian account',
+        description: e?.message || 'Unknown error from server.',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -172,6 +277,29 @@ export function LinkGuardianDialog({ open, onOpenChange, studentId, studentName 
   const copy = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({ title: 'Copied' });
+  };
+
+  const copyCredentials = () => {
+    if (!success) return;
+    const text =
+      `Login at ${LOGIN_URL}\n` +
+      `Email: ${success.email}\n` +
+      (success.tempPassword ? `Temp password: ${success.tempPassword}\n` : '') +
+      `Please change password on first login.`;
+    navigator.clipboard.writeText(text);
+    toast({ title: 'Credentials copied' });
+  };
+
+  const openMailto = () => {
+    if (!success || !success.tempPassword) return;
+    const subject = encodeURIComponent('Your AQT Academy Account');
+    const body = encodeURIComponent(
+      `Login at ${LOGIN_URL}\n` +
+        `Email: ${success.email}\n` +
+        `Temp password: ${success.tempPassword}\n` +
+        `Please change password on first login.`,
+    );
+    window.open(`mailto:${success.email}?subject=${subject}&body=${body}`, '_blank');
   };
 
   return (
@@ -192,11 +320,21 @@ export function LinkGuardianDialog({ open, onOpenChange, studentId, studentName 
             <div className="rounded-lg border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 p-4 space-y-2">
               <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
                 <CheckCircle2 className="h-5 w-5" />
-                <p className="font-medium">{success.linkedExisting ? 'Existing guardian linked' : 'Guardian account created'}</p>
+                <p className="font-medium">
+                  {success.linkedExisting ? 'Existing guardian linked' : 'Guardian account created'}
+                </p>
+                <Badge className="ml-auto bg-emerald-600 hover:bg-emerald-600 text-white">Guardian Linked</Badge>
               </div>
               <p className="text-sm">
                 <span className="font-medium">{success.fullName}</span> is now linked as guardian for {studentName}.
               </p>
+              {!success.linkedExisting && (
+                <p className="text-xs text-emerald-700/80 dark:text-emerald-400/80">
+                  {success.inviteSent
+                    ? 'An invite email has been queued for delivery.'
+                    : 'Email delivery is not configured — use the buttons below to share credentials.'}
+                </p>
+              )}
             </div>
             <div className="rounded-lg border p-3 space-y-2 text-sm">
               <div className="flex items-center justify-between">
@@ -217,6 +355,16 @@ export function LinkGuardianDialog({ open, onOpenChange, studentId, studentName 
                       <Copy className="h-3.5 w-3.5" />
                     </Button>
                   </div>
+                </div>
+              )}
+              {success.tempPassword && (
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <Button size="sm" variant="outline" onClick={copyCredentials} className="gap-1">
+                    <Copy className="h-3.5 w-3.5" /> Copy credentials
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={openMailto} className="gap-1">
+                    <Mail className="h-3.5 w-3.5" /> Email guardian
+                  </Button>
                 </div>
               )}
               {success.tempPassword && (
@@ -275,9 +423,8 @@ export function LinkGuardianDialog({ open, onOpenChange, studentId, studentName 
             </div>
 
             {!existingMatch && email && (
-              <div className="rounded-md border bg-muted/40 p-2 text-xs flex items-center gap-2">
-                <Badge variant="outline">Temp password</Badge>
-                <span className="font-mono">{(fullName.trim().split(/\s+/)[0] || 'Guardian').replace(/^./, c => c.toUpperCase())}@AQT2025</span>
+              <div className="rounded-md border bg-muted/40 p-2 text-xs text-muted-foreground">
+                A strong unique temp password will be generated automatically and shown after creation.
               </div>
             )}
 
