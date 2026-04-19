@@ -211,7 +211,7 @@ export function AppSidebar({ className }: AppSidebarProps) {
     queryKey: ['sidebar-course-name', courseId],
     queryFn: async () => {
       if (!courseId) return null;
-      const { data } = await supabase.from('courses').select('name, code').eq('id', courseId).maybeSingle();
+      const { data } = await supabase.from('courses').select('name').eq('id', courseId).maybeSingle();
       return data;
     },
     enabled: !!courseId && isCourseDetail,
@@ -223,7 +223,7 @@ export function AppSidebar({ className }: AppSidebarProps) {
     : getSidebarForRoute(location.pathname, isOneToOne, activeRole);
 
   const sidebar = isCourseDetail && courseInfo
-    ? { ...baseSidebar, title: courseInfo.name || 'Course', subtitle: courseInfo.code || '' }
+    ? { ...baseSidebar, title: courseInfo.name || 'Course', subtitle: 'Course workspace' }
     : baseSidebar;
 
   const isItemActive = (item: SidebarNavItem) => {
