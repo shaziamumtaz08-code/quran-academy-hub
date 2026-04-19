@@ -22,10 +22,8 @@ export default defineConfig(({ mode }) => ({
       devOptions: { enabled: false },
       manifest: false, // using public/manifest.webmanifest
       workbox: {
-        // IMPORTANT: do NOT use navigateFallback as the primary nav strategy.
-        // We register an explicit NetworkFirst handler for navigations below
-        // so the offline page is only served when the network truly fails.
-        navigateFallback: "/offline.html",
+        // navigateFallback REMOVED — was causing offline.html to be served
+        // even when the network was working.
         navigateFallbackDenylist: [
           /^\/~oauth/,
           /^\/api/,
