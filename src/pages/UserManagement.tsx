@@ -1618,7 +1618,7 @@ export default function UserManagement() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  className="h-6 w-6 p-0"
                                   onClick={() => {
                                     setViewingUser(user);
                                     setAddRoleSelection(getAvailableRoles(user)[0]);
@@ -1641,7 +1641,7 @@ export default function UserManagement() {
                             )}
                           </TableCell>
                           <TableCell className="py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="flex justify-end gap-1">
                               <Button
                                 variant="ghost"
                                 size="sm"
