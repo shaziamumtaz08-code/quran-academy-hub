@@ -944,6 +944,10 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
               onClick={() => setRejectDialogOpen(true)} disabled={batchLoading}>
               <XCircle className="h-4 w-4 mr-1" /> Reject
             </Button>
+            <Button size="sm" variant="outline" className="text-destructive border-destructive/30"
+              onClick={() => setBulkDeleteOpen(true)} disabled={batchLoading}>
+              <Trash2 className="h-4 w-4 mr-1" /> Delete
+            </Button>
             <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white"
               onClick={handleBulkEnroll} disabled={batchLoading}>
               {batchLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}
