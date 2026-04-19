@@ -7382,6 +7382,7 @@ export type Database = {
           id: string
           oversight_level: string
           parent_id: string
+          relationship: string | null
           student_id: string
         }
         Insert: {
@@ -7389,6 +7390,7 @@ export type Database = {
           id?: string
           oversight_level?: string
           parent_id: string
+          relationship?: string | null
           student_id: string
         }
         Update: {
@@ -7396,6 +7398,7 @@ export type Database = {
           id?: string
           oversight_level?: string
           parent_id?: string
+          relationship?: string | null
           student_id?: string
         }
         Relationships: [

@@ -17,8 +17,9 @@ import { useToast } from '@/hooks/use-toast';
 import {
   User, Mail, Shield, Users as UsersIcon, GraduationCap, FileText,
   Activity, KeyRound, Loader2, Upload, Download, CheckCircle2, XCircle,
-  AlertTriangle, Calendar, Save, RefreshCw,
+  AlertTriangle, Calendar, Save, RefreshCw, Link2, Unlink,
 } from 'lucide-react';
+import { LinkGuardianDialog } from './LinkGuardianDialog';
 
 interface Props {
   open: boolean;
@@ -52,6 +53,7 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
   const [tab, setTab] = useState('personal');
   const [form, setForm] = useState<Record<string, any>>({});
   const [uploading, setUploading] = useState<'avatar' | 'gov_id' | null>(null);
+  const [guardianDialogOpen, setGuardianDialogOpen] = useState(false);
 
   // Profile
   const { data: profile, isLoading } = useQuery({
@@ -83,8 +85,10 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
       if (!userId) return null;
       const { data } = await supabase
         .from('student_parent_links')
-        .select('parent_id, relationship, profile:parent_id(full_name, email, whatsapp_number)')
+        .select('id, parent_id, relationship, profile:profiles!student_parent_links_parent_id_fkey(id, full_name, email, whatsapp_number)')
         .eq('student_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
       return data as any;
     },
@@ -267,6 +271,18 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
     } catch (e: any) {
       toast({ title: 'Failed', description: e.message, variant: 'destructive' });
     }
+  };
+
+  const removeGuardianLink = async () => {
+    if (!parentLink?.id) return;
+    if (!confirm('Remove this guardian link? The guardian account itself will not be deleted.')) return;
+    const { error } = await supabase.from('student_parent_links').delete().eq('id', parentLink.id);
+    if (error) {
+      toast({ title: 'Failed', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Guardian link removed' });
+    qc.invalidateQueries({ queryKey: ['holistic-parent', userId] });
   };
 
   if (!userId) return null;
@@ -465,18 +481,35 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
               ) : (
                 <>
                   {parentLink ? (
-                    <div className="rounded-lg border p-4 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">{parentLink.profile?.full_name}</p>
-                          <p className="text-xs text-muted-foreground">{parentLink.profile?.email} · {parentLink.profile?.whatsapp_number}</p>
-                          <Badge variant="outline" className="mt-1 text-xs">{parentLink.relationship || 'Guardian'}</Badge>
+                    <div className="rounded-lg border p-4 space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-medium truncate">{parentLink.profile?.full_name || 'Guardian'}</p>
+                            <Badge variant="outline" className="gap-1 border-emerald-300 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
+                              <Link2 className="h-3 w-3" /> Linked
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                            {parentLink.profile?.email || '—'}
+                            {parentLink.profile?.whatsapp_number ? ` · ${parentLink.profile.whatsapp_number}` : ''}
+                          </p>
+                          <Badge variant="secondary" className="mt-2 text-xs">
+                            {parentLink.relationship || 'Guardian'}
+                          </Badge>
                         </div>
-                        <Button size="sm" variant="outline">Change Guardian</Button>
+                        <div className="flex flex-col gap-2 shrink-0">
+                          <Button size="sm" variant="outline" onClick={() => setGuardianDialogOpen(true)}>
+                            Change Guardian
+                          </Button>
+                          <Button size="sm" variant="ghost" className="text-destructive gap-1" onClick={removeGuardianLink}>
+                            <Unlink className="h-3.5 w-3.5" /> Remove Link
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 flex items-center justify-between">
+                    <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
                         <AlertTriangle className="h-5 w-5 text-destructive" />
                         <div>
@@ -484,7 +517,7 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
                           <p className="text-xs text-muted-foreground">Minor or shared-email student requires a guardian.</p>
                         </div>
                       </div>
-                      <Button size="sm">Create Guardian Account</Button>
+                      <Button size="sm" onClick={() => setGuardianDialogOpen(true)}>Create Guardian Account</Button>
                     </div>
                   )}
                 </>
@@ -623,6 +656,14 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
           </Tabs>
         )}
       </SheetContent>
+      {userId && (
+        <LinkGuardianDialog
+          open={guardianDialogOpen}
+          onOpenChange={setGuardianDialogOpen}
+          studentId={userId}
+          studentName={form.full_name || profile?.full_name || 'Student'}
+        />
+      )}
     </Sheet>
   );
 }
