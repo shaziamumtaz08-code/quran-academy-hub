@@ -220,7 +220,13 @@ serve(async (req) => {
         });
         if (passwordErr) {
           console.error("Password update error:", passwordErr.message);
-          return json(500, { error: "Failed to update password" }, requestOrigin);
+          const msg = passwordErr.message || "";
+          const isWeak = /weak|pwned|known|easy to guess|breached/i.test(msg);
+          return json(isWeak ? 400 : 500, {
+            error: isWeak
+              ? "This password is too common or has appeared in a data breach. Please choose a stronger password."
+              : "Failed to update password",
+          }, requestOrigin);
         }
       }
     }
