@@ -83,6 +83,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { BulkUserImportDialog } from '@/components/users/BulkUserImportDialog';
 import { ExportUsersDialog } from '@/components/users/ExportUsersDialog';
+import { HolisticUserProfileDrawer } from '@/components/users/HolisticUserProfileDrawer';
 import { AuthAuditTab } from '@/components/admin/AuthAuditTab';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Country, State, City, ICountry, IState, ICity } from 'country-state-city';
@@ -233,6 +234,7 @@ export default function UserManagement() {
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [holisticUserId, setHolisticUserId] = useState<string | null>(null);
   const [isAddRoleDialogOpen, setIsAddRoleDialogOpen] = useState(false);
   const [viewingUser, setViewingUser] = useState<UserWithRoles | null>(null);
   const [deleteConfirmUser, setDeleteConfirmUser] = useState<UserWithRoles | null>(null);
@@ -1666,6 +1668,15 @@ export default function UserManagement() {
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setHolisticUserId(user.id)}
+                                title="Open full profile"
+                              >
+                                <User className="h-4 w-4" />
+                                <span className="hidden md:inline ml-1.5 text-xs">Profile</span>
+                              </Button>
                               {isSuperAdmin && (
                                 <>
                                   <Button
@@ -2361,6 +2372,13 @@ export default function UserManagement() {
             filteredCount={filteredUsers?.length || 0}
           />
         )}
+
+        {/* Holistic User Profile Drawer */}
+        <HolisticUserProfileDrawer
+          open={!!holisticUserId}
+          onOpenChange={(o) => !o && setHolisticUserId(null)}
+          userId={holisticUserId}
+        />
       </div>
     </DashboardLayout>
   );
