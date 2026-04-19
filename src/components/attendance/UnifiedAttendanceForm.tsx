@@ -13,6 +13,7 @@ import { VoiceNoteRecorder } from './VoiceNoteRecorder';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDivision } from '@/contexts/DivisionContext';
 import { format, parseISO, getDay, isAfter } from 'date-fns';
 import { getSubjectType, type SubjectType } from '@/lib/subjectUtils';
 import { QaidaProgressInput } from './QaidaProgressInput';
@@ -195,13 +196,19 @@ export function UnifiedAttendanceForm({
     return scheduleData.map(s => s.day_of_week.toLowerCase());
   }, [scheduleData]);
 
-  // Check if selected date is a scheduled day
+  const { activeModelType } = useDivision();
+  const isOneToOne = activeModelType === 'one_to_one';
+
+  // Check if selected date is a scheduled day.
+  // One-to-one division: weekends/off-days are NEVER frozen — teachers can mark any day
+  // (covers ad-hoc lessons + reschedules to Sat/Sun).
   const isScheduledDay = useMemo(() => {
+    if (isOneToOne) return true;
     if (!classDate || scheduledDays.length === 0) return true;
     const dayIndex = getDay(parseISO(classDate));
     const dayName = DAY_NAMES[dayIndex];
     return scheduledDays.includes(dayName);
-  }, [classDate, scheduledDays]);
+  }, [classDate, scheduledDays, isOneToOne]);
 
   // Get scheduled time for the selected day
   const getScheduledInfoForDay = (date: string) => {
@@ -327,6 +334,25 @@ export function UnifiedAttendanceForm({
 
       if (error) throw error;
 
+      // Log reschedule history (best-effort; never blocks the attendance save)
+      if (requiresReschedule(selectedStatus) && rescheduleDate && user?.id) {
+        try {
+          await supabase.from('session_reschedules' as any).insert({
+            attendance_id: data?.id,
+            student_id: student.id,
+            teacher_id: effectiveTeacherId,
+            original_date: classDate,
+            original_time: classTime,
+            new_date: rescheduleDate,
+            new_time: rescheduleTime || null,
+            reason: remarks || null,
+            rescheduled_by: user.id,
+          });
+        } catch (e) {
+          console.warn('[reschedule-history] insert failed', e);
+        }
+      }
+
       // Track activity
       await trackActivity({
         action: 'attendance_marked',
@@ -337,6 +363,7 @@ export function UnifiedAttendanceForm({
           subject: student.subject_name,
           status: selectedStatus,
           class_date: classDate,
+          rescheduled_to: requiresReschedule(selectedStatus) ? rescheduleDate : null,
         }
       });
 
