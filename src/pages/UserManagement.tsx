@@ -713,17 +713,21 @@ export default function UserManagement() {
       city?: string | null;
       password?: string;
     }) => {
-      // Ensure we have a fresh, valid session before invoking the admin function
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session) {
+      // Always force-refresh the session so the edge function receives a valid JWT
+      let { data: sess } = await supabase.auth.getSession();
+      const expiresAt = sess.session?.expires_at ? sess.session.expires_at * 1000 : 0;
+      const isExpiringSoon = !expiresAt || expiresAt - Date.now() < 60_000;
+      if (!sess.session || isExpiringSoon) {
         const { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession();
         if (refreshErr || !refreshed.session) {
           throw new Error('Your session has expired. Please sign in again.');
         }
+        sess = { session: refreshed.session } as any;
       }
 
       const { data, error } = await supabase.functions.invoke('admin-update-user', {
         body: { userId, fullName, email, whatsapp, gender, age, country, city, password },
+        headers: { Authorization: `Bearer ${sess.session!.access_token}` },
       });
       if (error) throw new Error(error.message || 'Failed to update user');
       if (data?.error) throw new Error(data.error);
