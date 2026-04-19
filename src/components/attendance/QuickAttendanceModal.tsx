@@ -13,6 +13,7 @@ import { VoiceNoteRecorder } from './VoiceNoteRecorder';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDivision } from '@/contexts/DivisionContext';
 import { format, parseISO, getDay, isAfter } from 'date-fns';
 import { getSubjectType, type SubjectType } from '@/lib/subjectUtils';
 import { QaidaProgressInput } from './QaidaProgressInput';
@@ -152,13 +153,17 @@ export function QuickAttendanceModal({ open, onOpenChange, student }: QuickAtten
     return scheduleData.map(s => s.day_of_week.toLowerCase());
   }, [scheduleData]);
 
-  // Check if selected date is a scheduled day
+  const { activeModelType } = useDivision();
+  const isOneToOne = activeModelType === 'one_to_one';
+
+  // One-to-one division: weekends/off-days are NEVER frozen.
   const isScheduledDay = useMemo(() => {
+    if (isOneToOne) return true;
     if (!classDate || scheduledDays.length === 0) return true; // Default allow if no schedule
     const dayIndex = getDay(parseISO(classDate));
     const dayName = DAY_NAMES[dayIndex];
     return scheduledDays.includes(dayName);
-  }, [classDate, scheduledDays]);
+  }, [classDate, scheduledDays, isOneToOne]);
 
   // Get scheduled time for the selected day
   const getScheduledTimeForDay = (date: string) => {
@@ -277,6 +282,25 @@ export function QuickAttendanceModal({ open, onOpenChange, student }: QuickAtten
 
       if (error) throw error;
 
+      // Log reschedule history (best-effort)
+      if (requiresReschedule(selectedStatus) && rescheduleDate && user?.id) {
+        try {
+          await supabase.from('session_reschedules' as any).insert({
+            attendance_id: data?.id,
+            student_id: student.id,
+            teacher_id: user.id,
+            original_date: classDate,
+            original_time: classTime,
+            new_date: rescheduleDate,
+            new_time: rescheduleTime || null,
+            reason: null,
+            rescheduled_by: user.id,
+          });
+        } catch (e) {
+          console.warn('[reschedule-history] insert failed', e);
+        }
+      }
+
       // Track activity
       await trackActivity({
         action: 'attendance_marked',
@@ -287,6 +311,7 @@ export function QuickAttendanceModal({ open, onOpenChange, student }: QuickAtten
           subject: student.subject_name,
           status: selectedStatus,
           class_date: classDate,
+          rescheduled_to: requiresReschedule(selectedStatus) ? rescheduleDate : null,
         }
       });
     },
@@ -481,24 +506,30 @@ export function QuickAttendanceModal({ open, onOpenChange, student }: QuickAtten
 
           {/* Reschedule fields */}
           {requiresReschedule(selectedStatus) && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-sky-100">Reschedule Date <span className="text-red-400">*</span></Label>
-                <Input 
-                  type="date" 
-                  value={rescheduleDate} 
-                  onChange={(e) => setRescheduleDate(e.target.value)}
-                  className="bg-white text-[#1e3a5f] border-0"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sky-100">Reschedule Time <span className="text-red-400">*</span></Label>
-                <Input 
-                  type="time" 
-                  value={rescheduleTime} 
-                  onChange={(e) => setRescheduleTime(e.target.value)}
-                  className="bg-white text-[#1e3a5f] border-0"
-                />
+            <div className="space-y-2">
+              <Label className="text-sky-100">Select new session date</Label>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-sky-100 text-xs">New Date <span className="text-red-400">*</span></Label>
+                  <Input 
+                    type="date" 
+                    value={rescheduleDate} 
+                    min={format(new Date(), 'yyyy-MM-dd')}
+                    max={format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')}
+                    onChange={(e) => setRescheduleDate(e.target.value)}
+                    className="bg-white text-[#1e3a5f] border-0"
+                  />
+                  <p className="text-[10px] text-sky-200/70">Any day allowed (Sat/Sun OK) — up to 30 days ahead.</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-sky-100 text-xs">New Time <span className="text-red-400">*</span></Label>
+                  <Input 
+                    type="time" 
+                    value={rescheduleTime} 
+                    onChange={(e) => setRescheduleTime(e.target.value)}
+                    className="bg-white text-[#1e3a5f] border-0"
+                  />
+                </div>
               </div>
             </div>
           )}
