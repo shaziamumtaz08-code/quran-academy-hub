@@ -18,7 +18,41 @@
     <div class="badge">AQT</div>
     <h1>You are offline</h1>
     <p>Check your internet connection and try again. Cached pages remain available.</p>
-    <button onclick="location.reload()">Retry</button>
+    <button id="retry">Retry</button>
   </div>
+  <script>
+    // Auto-recover: if we're actually online, clear SW + caches and bounce home.
+    (async function autoRecover() {
+      try {
+        if (navigator.onLine) {
+          if ('serviceWorker' in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map(function (r) { return r.unregister(); }));
+          }
+          if ('caches' in window) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map(function (k) { return caches.delete(k); }));
+          }
+          location.replace('/');
+          return;
+        }
+      } catch (e) {}
+    })();
+
+    window.addEventListener('online', function () { location.replace('/'); });
+    document.getElementById('retry').addEventListener('click', async function () {
+      try {
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(function (r) { return r.unregister(); }));
+        }
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(function (k) { return caches.delete(k); }));
+        }
+      } catch (e) {}
+      location.replace('/');
+    });
+  </script>
 </body>
 </html>
