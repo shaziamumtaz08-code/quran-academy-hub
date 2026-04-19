@@ -17,6 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Plus, Award, FileText, Users, Trash2, Send, Sparkles, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { triggerNotification } from '@/lib/notifications';
+import DOMPurify from 'dompurify';
 
 interface CourseCertificatesTabProps {
   courseId: string;
@@ -342,7 +343,7 @@ export function CourseCertificatesTab({ courseId }: CourseCertificatesTabProps) 
                       </div>
                       <div className="mt-3 p-3 bg-muted/30 rounded-lg border border-border">
                         <p className="text-xs text-muted-foreground mb-1">Template Preview</p>
-                        <div className="text-xs" dangerouslySetInnerHTML={{ __html: tpl.template_html?.slice(0, 300) + '...' || '' }} />
+                        <div className="text-xs" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize((tpl.template_html?.slice(0, 300) || '') + '...') }} />
                       </div>
                     </CardContent>
                   </Card>
