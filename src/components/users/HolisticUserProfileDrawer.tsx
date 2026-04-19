@@ -656,6 +656,14 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
           </Tabs>
         )}
       </SheetContent>
+      {userId && (
+        <LinkGuardianDialog
+          open={guardianDialogOpen}
+          onOpenChange={setGuardianDialogOpen}
+          studentId={userId}
+          studentName={form.full_name || profile?.full_name || 'Student'}
+        />
+      )}
     </Sheet>
   );
 }
