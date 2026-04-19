@@ -81,6 +81,7 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
   const [enrollingId, setEnrollingId] = useState<string | null>(null);
   const [batchLoading, setBatchLoading] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [deleteDialogId, setDeleteDialogId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [deduplicating, setDeduplicating] = useState(false);
@@ -335,6 +336,22 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
     setSelectedIds(new Set());
     setRejectDialogOpen(false);
     queryClient.invalidateQueries({ queryKey: ['registration-submissions', courseId] });
+    setBatchLoading(false);
+  }
+
+  async function handleBulkDelete() {
+    setBatchLoading(true);
+    const ids = Array.from(selectedIds);
+    const { error } = await supabase.from('registration_submissions').delete().in('id', ids);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success(`${ids.length} applicant${ids.length > 1 ? 's' : ''} deleted`);
+      setSelectedIds(new Set());
+      setBulkDeleteOpen(false);
+      if (selectedSubmission && ids.includes(selectedSubmission.id)) setSelectedSubmission(null);
+      queryClient.invalidateQueries({ queryKey: ['registration-submissions', courseId] });
+    }
     setBatchLoading(false);
   }
 
@@ -927,6 +944,10 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
               onClick={() => setRejectDialogOpen(true)} disabled={batchLoading}>
               <XCircle className="h-4 w-4 mr-1" /> Reject
             </Button>
+            <Button size="sm" variant="outline" className="text-destructive border-destructive/30"
+              onClick={() => setBulkDeleteOpen(true)} disabled={batchLoading}>
+              <Trash2 className="h-4 w-4 mr-1" /> Delete
+            </Button>
             <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white"
               onClick={handleBulkEnroll} disabled={batchLoading}>
               {batchLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}
@@ -1095,7 +1116,22 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Delete Dialog */}
+      {/* Bulk Delete Dialog */}
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedIds.size} applicant{selectedIds.size > 1 ? 's' : ''}?</AlertDialogTitle>
+            <AlertDialogDescription>This permanently removes the selected submission records. This action cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={batchLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDelete} disabled={batchLoading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {batchLoading && <Loader2 className="h-4 w-4 animate-spin mr-1" />} Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog open={!!deleteDialogId} onOpenChange={() => setDeleteDialogId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
