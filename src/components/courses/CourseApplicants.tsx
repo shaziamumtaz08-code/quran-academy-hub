@@ -81,6 +81,7 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
   const [enrollingId, setEnrollingId] = useState<string | null>(null);
   const [batchLoading, setBatchLoading] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [deleteDialogId, setDeleteDialogId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [deduplicating, setDeduplicating] = useState(false);
