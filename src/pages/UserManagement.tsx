@@ -713,6 +713,15 @@ export default function UserManagement() {
       city?: string | null;
       password?: string;
     }) => {
+      // Ensure we have a fresh, valid session before invoking the admin function
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        const { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession();
+        if (refreshErr || !refreshed.session) {
+          throw new Error('Your session has expired. Please sign in again.');
+        }
+      }
+
       const { data, error } = await supabase.functions.invoke('admin-update-user', {
         body: { userId, fullName, email, whatsapp, gender, age, country, city, password },
       });
