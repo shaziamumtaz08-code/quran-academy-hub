@@ -1116,7 +1116,22 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Delete Dialog */}
+      {/* Bulk Delete Dialog */}
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedIds.size} applicant{selectedIds.size > 1 ? 's' : ''}?</AlertDialogTitle>
+            <AlertDialogDescription>This permanently removes the selected submission records. This action cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={batchLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDelete} disabled={batchLoading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {batchLoading && <Loader2 className="h-4 w-4 animate-spin mr-1" />} Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog open={!!deleteDialogId} onOpenChange={() => setDeleteDialogId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
