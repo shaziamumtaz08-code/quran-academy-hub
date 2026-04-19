@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDivision } from '@/contexts/DivisionContext';
@@ -202,9 +204,27 @@ export function AppSidebar({ className }: AppSidebarProps) {
 
   const isOneToOne = activeDivision?.model_type === 'one_to_one';
   const isCourseDetail = isCourseDetailRoute(location.pathname);
-  const sidebar = isCourseDetail
+  const courseIdMatch = location.pathname.match(/\/courses\/([^/]+)$/);
+  const courseId = courseIdMatch?.[1];
+
+  const { data: courseInfo } = useQuery({
+    queryKey: ['sidebar-course-name', courseId],
+    queryFn: async () => {
+      if (!courseId) return null;
+      const { data } = await supabase.from('courses').select('name').eq('id', courseId).maybeSingle();
+      return data;
+    },
+    enabled: !!courseId && isCourseDetail,
+    staleTime: 60_000,
+  });
+
+  const baseSidebar = isCourseDetail
     ? getCourseDetailSidebar(location.pathname)
     : getSidebarForRoute(location.pathname, isOneToOne, activeRole);
+
+  const sidebar = isCourseDetail && courseInfo
+    ? { ...baseSidebar, title: courseInfo.name || 'Course', subtitle: 'Course workspace' }
+    : baseSidebar;
 
   const isItemActive = (item: SidebarNavItem) => {
     if (!item.href) return false;
