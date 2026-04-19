@@ -273,6 +273,18 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
     }
   };
 
+  const removeGuardianLink = async () => {
+    if (!parentLink?.id) return;
+    if (!confirm('Remove this guardian link? The guardian account itself will not be deleted.')) return;
+    const { error } = await supabase.from('student_parent_links').delete().eq('id', parentLink.id);
+    if (error) {
+      toast({ title: 'Failed', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Guardian link removed' });
+    qc.invalidateQueries({ queryKey: ['holistic-parent', userId] });
+  };
+
   if (!userId) return null;
 
   const initials = (form.full_name || 'U').split(' ').map((s: string) => s[0]).slice(0, 2).join('').toUpperCase();
