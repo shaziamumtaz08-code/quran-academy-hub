@@ -5162,7 +5162,9 @@ export type Database = {
       }
       profiles: {
         Row: {
+          account_status: string | null
           age: number | null
+          arabic_level: string | null
           archived_at: string | null
           bank_account_number: string | null
           bank_account_title: string | null
@@ -5174,8 +5176,14 @@ export type Database = {
           created_at: string
           daily_target_amount: number
           daily_target_lines: number
+          date_of_birth: string | null
           default_payout_rate: number | null
+          display_name: string | null
           email: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          first_language: string | null
+          force_password_reset: boolean | null
           full_name: string
           gender: string | null
           gov_id_doc_url: string | null
@@ -5184,20 +5192,30 @@ export type Database = {
           gov_id_verified: boolean
           gov_id_verified_at: string | null
           gov_id_verified_by: string | null
+          guardian_type:
+            | Database["public"]["Enums"]["guardian_type_enum"]
+            | null
+          hear_about_us: string | null
           id: string
+          learning_goals: string | null
           meeting_link: string | null
           mushaf_type: string
+          nationality: string | null
+          preferred_contact_method: string | null
           preferred_language: string | null
           preferred_unit: string
           region: string | null
           registration_id: string | null
+          special_needs: string | null
           teaching_os_language: string
           timezone: string | null
           updated_at: string
           whatsapp_number: string | null
         }
         Insert: {
+          account_status?: string | null
           age?: number | null
+          arabic_level?: string | null
           archived_at?: string | null
           bank_account_number?: string | null
           bank_account_title?: string | null
@@ -5209,8 +5227,14 @@ export type Database = {
           created_at?: string
           daily_target_amount?: number
           daily_target_lines?: number
+          date_of_birth?: string | null
           default_payout_rate?: number | null
+          display_name?: string | null
           email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          first_language?: string | null
+          force_password_reset?: boolean | null
           full_name: string
           gender?: string | null
           gov_id_doc_url?: string | null
@@ -5219,20 +5243,30 @@ export type Database = {
           gov_id_verified?: boolean
           gov_id_verified_at?: string | null
           gov_id_verified_by?: string | null
+          guardian_type?:
+            | Database["public"]["Enums"]["guardian_type_enum"]
+            | null
+          hear_about_us?: string | null
           id?: string
+          learning_goals?: string | null
           meeting_link?: string | null
           mushaf_type?: string
+          nationality?: string | null
+          preferred_contact_method?: string | null
           preferred_language?: string | null
           preferred_unit?: string
           region?: string | null
           registration_id?: string | null
+          special_needs?: string | null
           teaching_os_language?: string
           timezone?: string | null
           updated_at?: string
           whatsapp_number?: string | null
         }
         Update: {
+          account_status?: string | null
           age?: number | null
+          arabic_level?: string | null
           archived_at?: string | null
           bank_account_number?: string | null
           bank_account_title?: string | null
@@ -5244,8 +5278,14 @@ export type Database = {
           created_at?: string
           daily_target_amount?: number
           daily_target_lines?: number
+          date_of_birth?: string | null
           default_payout_rate?: number | null
+          display_name?: string | null
           email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          first_language?: string | null
+          force_password_reset?: boolean | null
           full_name?: string
           gender?: string | null
           gov_id_doc_url?: string | null
@@ -5254,13 +5294,21 @@ export type Database = {
           gov_id_verified?: boolean
           gov_id_verified_at?: string | null
           gov_id_verified_by?: string | null
+          guardian_type?:
+            | Database["public"]["Enums"]["guardian_type_enum"]
+            | null
+          hear_about_us?: string | null
           id?: string
+          learning_goals?: string | null
           meeting_link?: string | null
           mushaf_type?: string
+          nationality?: string | null
+          preferred_contact_method?: string | null
           preferred_language?: string | null
           preferred_unit?: string
           region?: string | null
           registration_id?: string | null
+          special_needs?: string | null
           teaching_os_language?: string
           timezone?: string | null
           updated_at?: string
@@ -9145,6 +9193,7 @@ export type Database = {
         | "must_pass_exam"
       exam_tenure: "weekly" | "monthly" | "quarterly" | "yearly"
       grading_style: "numeric" | "rubric"
+      guardian_type_enum: "none" | "parent" | "guardian" | "emergency_contact"
       invoice_status:
         | "pending"
         | "paid"
@@ -9345,6 +9394,7 @@ export const Constants = {
       ],
       exam_tenure: ["weekly", "monthly", "quarterly", "yearly"],
       grading_style: ["numeric", "rubric"],
+      guardian_type_enum: ["none", "parent", "guardian", "emergency_contact"],
       invoice_status: [
         "pending",
         "paid",
