@@ -105,50 +105,54 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           {mobileDrawerOpen && (
             <>
               <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => setMobileDrawerOpen(false)} />
-              <div className="fixed top-0 left-0 z-[61] h-full w-64 bg-white flex flex-col animate-in slide-in-from-left duration-200 shadow-xl">
-                {/* Header with logo */}
-                <div className="px-4 py-3 border-b border-lms-border flex items-center gap-2.5">
-                  <img src={logoDark} alt="Al-Quran Time" className="h-7 w-7 object-contain rounded" />
-                  <div>
-                    <p className="text-[12px] font-semibold text-lms-navy leading-tight">Al-Quran Time</p>
-                    <p className="text-[9px] text-lms-text-3">{activeRole ? ROLE_LABELS[activeRole] : 'User'}</p>
+              <div className="fixed top-0 left-0 z-[61] h-full w-[88vw] max-w-[360px] bg-white flex animate-in slide-in-from-left duration-200 shadow-xl">
+                {/* Rail column (icons) */}
+                <div className="w-14 shrink-0 bg-lms-navy flex flex-col">
+                  <div className="h-12 flex items-center justify-center border-b border-white/10">
+                    <img src={logoDark} alt="Al-Quran Time" className="h-7 w-7 object-contain rounded" />
                   </div>
-                </div>
-
-                {/* Division Switcher */}
-                <div className="px-3 py-2 border-b border-lms-border">
-                  <DivisionSwitcher />
-                </div>
-
-                {/* Nav items */}
-                <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5">
-                  {railItems.map((item) => {
-                    const active = location.pathname === item.href || (item.href !== '/dashboard' && location.pathname.startsWith(item.href));
-                    return (
-                      <Link
-                        key={item.href + item.label}
-                        to={item.href}
-                        onClick={() => setMobileDrawerOpen(false)}
-                        className={cn(
-                          'flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] transition-colors',
-                          active ? 'bg-lms-navy/10 text-lms-navy font-medium' : 'text-lms-text-2 hover:bg-lms-surface hover:text-lms-navy'
-                        )}
-                      >
-                        <item.icon className={cn('h-[18px] w-[18px]', active ? 'text-lms-navy' : 'text-lms-text-3')} strokeWidth={1.8} />
-                        {item.label}
-                      </Link>
-                    );
-                  })}
-                </nav>
-                {/* Sign out */}
-                <div className="px-3 py-3 border-t border-lms-border">
+                  <nav className="flex-1 overflow-y-auto py-2 space-y-1">
+                    {railItems.map((item) => {
+                      const active = location.pathname === item.href || (item.href !== '/dashboard' && location.pathname.startsWith(item.href));
+                      return (
+                        <Link
+                          key={item.href + item.label}
+                          to={item.href}
+                          onClick={() => setMobileDrawerOpen(false)}
+                          className={cn(
+                            'flex flex-col items-center gap-0.5 mx-1 px-1 py-2 rounded-md transition-colors',
+                            active ? 'bg-white/15 text-white' : 'text-white/70 hover:bg-white/10 hover:text-white'
+                          )}
+                        >
+                          <item.icon className="h-[18px] w-[18px]" strokeWidth={1.8} />
+                          <span className="text-[8.5px] leading-tight text-center">{item.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </nav>
                   <button
                     onClick={() => { setMobileDrawerOpen(false); handleLogout(); }}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] text-red-500 hover:bg-red-50 w-full transition-colors"
+                    className="h-12 flex items-center justify-center text-red-300 hover:text-red-200 border-t border-white/10"
+                    aria-label="Sign out"
                   >
                     <LogOut className="h-[18px] w-[18px]" strokeWidth={1.8} />
-                    Sign Out
                   </button>
+                </div>
+
+                {/* White sub-menu (AppSidebar) */}
+                <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+                  <div className="px-3 py-2 border-b border-lms-border">
+                    <DivisionSwitcher />
+                  </div>
+                  <div
+                    className="flex-1 overflow-y-auto"
+                    onClick={(e) => {
+                      const target = e.target as HTMLElement;
+                      if (target.closest('a')) setMobileDrawerOpen(false);
+                    }}
+                  >
+                    <AppSidebar />
+                  </div>
                 </div>
               </div>
             </>
