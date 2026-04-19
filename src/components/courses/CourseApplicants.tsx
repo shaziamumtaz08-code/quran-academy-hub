@@ -30,6 +30,8 @@ import { format } from 'date-fns';
 import { CourseApplicantImport } from './CourseApplicantImport';
 import { UserRelationshipPanel } from './UserRelationshipPanel';
 import { ActivateApplicantDialog } from './ActivateApplicantDialog';
+import { EnrollStudentDialog } from './EnrollStudentDialog';
+import { MissingEmailsDialog } from './MissingEmailsDialog';
 import { useNavigate } from 'react-router-dom';
 interface Submission {
   id: string;
@@ -101,6 +103,7 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
   const [aiFilterLoading, setAiFilterLoading] = useState(false);
   const [enrollmentSummaries, setEnrollmentSummaries] = useState<Record<string, EnrollmentResult>>({});
   const [activateApplicant, setActivateApplicant] = useState<{ id: string; full_name: string; email: string } | null>(null);
+  const [missingEmailsOpen, setMissingEmailsOpen] = useState(false);
   const headerCheckboxRef = useRef<HTMLButtonElement>(null);
 
   const { data: submissions = [], isLoading } = useQuery({
@@ -569,9 +572,11 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
             return (
               <>
                 {missingEmailCount > 0 && (
-                  <p className="text-[11px] text-destructive mt-3 flex items-center gap-1">
-                    ⚠ {missingEmailCount} applicant{missingEmailCount !== 1 ? 's' : ''} missing email — cannot be enrolled until email is added.
-                  </p>
+                  <button
+                    onClick={() => setMissingEmailsOpen(true)}
+                    className="text-[11px] text-destructive mt-3 flex items-center gap-1 hover:underline cursor-pointer">
+                    ⚠ {missingEmailCount} applicant{missingEmailCount !== 1 ? 's' : ''} missing email — click to add or mark as walk-in →
+                  </button>
                 )}
                 {statusCounts.enrolled > 0 && rosteredCount < statusCounts.enrolled && (
                   <p className="text-[11px] text-emerald-600 mt-2 flex items-center gap-1">
@@ -1048,31 +1053,26 @@ export function CourseApplicants({ courseId }: { courseId: string }) {
         </SheetContent>
       </Sheet>
 
-      {/* Manual Add Dialog */}
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Add Student</DialogTitle>
-            <DialogDescription>Enroll directly without a form submission</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Full Name</Label>
-              <Input value={manualName} onChange={e => setManualName(e.target.value)} placeholder="Ahmed Ali" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Email *</Label>
-              <Input type="email" value={manualEmail} onChange={e => setManualEmail(e.target.value)} placeholder="email@example.com" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
-            <Button onClick={handleManualAdd} disabled={!manualEmail.trim() || manualEnrolling}>
-              {manualEnrolling ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Enrolling…</> : 'Enroll'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Enroll Student Dialog (2-step: Search Existing or Create New) */}
+      <EnrollStudentDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        courseId={courseId}
+        onEnrolled={() => {
+          queryClient.invalidateQueries({ queryKey: ['registration-submissions', courseId] });
+          queryClient.invalidateQueries({ queryKey: ['course-rostered-count', courseId] });
+        }}
+      />
+
+      {/* Missing Emails Dialog */}
+      <MissingEmailsDialog
+        open={missingEmailsOpen}
+        onOpenChange={setMissingEmailsOpen}
+        courseId={courseId}
+        applicants={submissions
+          .filter(s => s.status !== 'enrolled' && s.status !== 'rejected' && !s.data?.email?.trim())
+          .map(s => ({ id: s.id, data: s.data || {} }))}
+      />
 
       {/* Import */}
       <CourseApplicantImport open={importOpen} onOpenChange={setImportOpen} courseId={courseId}
