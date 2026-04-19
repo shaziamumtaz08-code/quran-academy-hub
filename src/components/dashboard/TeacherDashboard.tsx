@@ -13,6 +13,7 @@ import { TeacherQuickActions } from "./teacher/TeacherQuickActions";
 import { TeacherStatsRow } from "./teacher/TeacherStatsRow";
 import { TeacherNotificationsSection } from "./teacher/TeacherNotificationsSection";
 import { TeacherAttendanceComments } from "./teacher/TeacherAttendanceComments";
+import { RescheduledTodayBanner } from "./teacher/RescheduledTodayBanner";
 import { AiInsightsWidget } from "./AiInsightsWidget";
 
 export function TeacherDashboard() {
@@ -60,6 +61,9 @@ export function TeacherDashboard() {
 
         {/* Next Class — single block with Start inside */}
         <NextClassCountdown />
+
+        {/* Rescheduled sessions landing today */}
+        <RescheduledTodayBanner />
 
         {/* Quick Actions */}
         <TeacherQuickActions />
