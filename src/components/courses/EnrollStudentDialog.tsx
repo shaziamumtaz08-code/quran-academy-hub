@@ -208,8 +208,47 @@ export function EnrollStudentDialog({ open, onOpenChange, courseId, courseName, 
             } : undefined,
           };
 
+      // Resolve a registration form for this course (form_id is NOT NULL + FK)
+      let { data: form } = await supabase
+        .from('registration_forms')
+        .select('id')
+        .eq('course_id', courseId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (!form) {
+        // Fallback: any form for this course (active or not)
+        const { data: anyForm } = await supabase
+          .from('registration_forms')
+          .select('id')
+          .eq('course_id', courseId)
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        form = anyForm;
+      }
+
+      if (!form) {
+        // Auto-create a default internal form so manual enrollment never breaks
+        const slug = `manual-${courseId.slice(0, 8)}-${Date.now()}`;
+        const { data: created, error: formErr } = await supabase
+          .from('registration_forms')
+          .insert({
+            course_id: courseId,
+            slug,
+            title: 'Manual Enrollment (Internal)',
+            is_active: true,
+          })
+          .select('id')
+          .single();
+        if (formErr || !created) throw formErr || new Error('Failed to prepare enrollment form');
+        form = created;
+      }
+
       const { data: sub, error } = await supabase.from('registration_submissions').insert({
-        form_id: courseId,
+        form_id: form.id,
         course_id: courseId,
         data: data as any,
         source_tag: 'manual_admin',
