@@ -214,7 +214,7 @@ async function fetchAsStudent(studentId: string) {
       .map((e: any) => ({ id: e.course?.id, name: e.course?.name, klass: null as string | null, status: e.status }))
       .filter((c: any) => c.id),
     classMemberships: (classMembershipsRes.data || [])
-      .map((m: any) => ({ id: m.class?.id, name: m.class?.course?.name || m.class?.name, klass: m.class?.name || null, status: m.status }))
+      .map((m: any) => ({ id: m.class?.id, courseId: m.class?.course?.id, name: m.class?.course?.name || m.class?.name, klass: m.class?.name || null, status: m.status }))
       .filter((c: any) => c.id),
   };
 }
