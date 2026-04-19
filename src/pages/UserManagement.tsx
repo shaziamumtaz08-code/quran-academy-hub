@@ -713,10 +713,10 @@ export default function UserManagement() {
       city?: string | null;
       password?: string;
     }) => {
-      // Always force-refresh the session so the edge function receives a valid JWT
       let { data: sess } = await supabase.auth.getSession();
       const expiresAt = sess.session?.expires_at ? sess.session.expires_at * 1000 : 0;
       const isExpiringSoon = !expiresAt || expiresAt - Date.now() < 60_000;
+
       if (!sess.session || isExpiringSoon) {
         const { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession();
         if (refreshErr || !refreshed.session) {
@@ -737,12 +737,33 @@ export default function UserManagement() {
           body: JSON.stringify({ userId, fullName, email, whatsapp, gender, age, country, city, password }),
         }
       );
+
       const data = await resp.json().catch(() => ({}));
-      if (!resp.ok) throw new Error(data?.error || `Failed to update user (${resp.status})`);
-      if (data?.error) throw new Error(data.error);
-      return data;
+      const message = data?.error || `Failed to update user (${resp.status})`;
+
+      if (!resp.ok) {
+        if (resp.status === 400) {
+          return { success: false as const, validationError: message };
+        }
+        throw new Error(message);
+      }
+
+      if (data?.error) {
+        return { success: false as const, validationError: data.error as string };
+      }
+
+      return { success: true as const };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (!result.success) {
+        toast({
+          title: 'Password rejected',
+          description: result.validationError,
+          variant: 'destructive',
+        });
+        return;
+      }
+
       queryClient.invalidateQueries({ queryKey: ['users-with-roles'] });
       toast({
         title: 'User updated',
