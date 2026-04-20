@@ -105,13 +105,21 @@ export function DivisionProvider({ children }: { children: ReactNode }) {
             ...ctx,
             branch: brs.find(b => b.id === ctx.branch_id),
             division: divs.find(d => d.id === ctx.division_id),
-          }));
+          })).filter(ctx => ctx.branch && ctx.division);
         }
 
         setUserContexts(enriched);
 
-        // Set default active division if none stored
-        if (!activeDivisionId || !divs.some(d => d.id === activeDivisionId)) {
+        // Never keep a stale division from localStorage if this user cannot access it
+        if (enriched.length === 0) {
+          setActiveDivisionIdState(null);
+          localStorage.removeItem(DIVISION_STORAGE_KEY);
+          return;
+        }
+
+        const hasAuthorizedStoredDivision = !!activeDivisionId && enriched.some(ctx => ctx.division_id === activeDivisionId);
+
+        if (!hasAuthorizedStoredDivision) {
           const defaultCtx = enriched.find(c => c.is_default) || enriched[0];
           if (defaultCtx) {
             setActiveDivisionIdState(defaultCtx.division_id);
@@ -126,7 +134,7 @@ export function DivisionProvider({ children }: { children: ReactNode }) {
     };
 
     fetchContextData();
-  }, [user?.id, authLoading]);
+  }, [user?.id, authLoading, isSuperAdmin, activeDivisionId]);
 
   const setActiveDivisionId = (divisionId: string) => {
     setActiveDivisionIdState(divisionId);

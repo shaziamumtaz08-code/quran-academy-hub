@@ -31,7 +31,21 @@ export function RecentAttendanceCards({ role, limit = 3 }: Props) {
       if (!user?.id) return [];
       let query = supabase
         .from('attendance')
-        .select('id, status, class_date, class_time, lesson_notes, homework, lesson_covered, surah_name, ayah_from, teacher_id, student_id')
+        .select(`
+          id,
+          status,
+          class_date,
+          class_time,
+          lesson_notes,
+          homework,
+          lesson_covered,
+          surah_name,
+          ayah_from,
+          teacher_id,
+          student_id,
+          student:profiles!attendance_student_id_fkey(full_name),
+          teacher:profiles!attendance_teacher_id_fkey(full_name)
+        `)
         .order('class_date', { ascending: false })
         .limit(limit);
 
@@ -44,14 +58,11 @@ export function RecentAttendanceCards({ role, limit = 3 }: Props) {
       const { data, error } = await query;
       if (error) throw error;
 
-      // Enrich with profile names
-      const ids = [...new Set((data || []).map(r => role === 'student' ? r.teacher_id : r.student_id))];
-      const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', ids);
-      const nameMap = Object.fromEntries((profiles || []).map(p => [p.id, p.full_name]));
-
-      return (data || []).map(r => ({
+      return (data || []).map((r: any) => ({
         ...r,
-        otherName: nameMap[role === 'student' ? r.teacher_id : r.student_id] || 'Unknown',
+        otherName: role === 'student'
+          ? r.teacher?.full_name || 'Teacher'
+          : r.student?.full_name || 'Student',
       }));
     },
     enabled: !!user?.id,

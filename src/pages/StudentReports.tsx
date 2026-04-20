@@ -74,7 +74,7 @@ export default function StudentReports() {
   const [subjectFilter, setSubjectFilter] = useState('');
   const [tenureFilter, setTenureFilter] = useState('');
   const [monthFilter, setMonthFilter] = useState('');
-  const [yearFilter, setYearFilter] = useState(new Date().getFullYear().toString());
+  const [yearFilter, setYearFilter] = useState('');
 
   const isAdminOrExaminer = activeRole === 'admin' || activeRole === 'examiner' || 
     activeRole === 'super_admin' || activeRole?.startsWith('admin_');
@@ -360,7 +360,7 @@ export default function StudentReports() {
     setSubjectFilter('');
     setTenureFilter('');
     setMonthFilter('');
-    setYearFilter(new Date().getFullYear().toString());
+    setYearFilter('');
     setSortField('date');
     setSortOrder('desc');
   };
@@ -549,17 +549,18 @@ export default function StudentReports() {
 
               <div className="space-y-2">
                 <Label className="text-sm text-muted-foreground">Year</Label>
-                <Select value={yearFilter} onValueChange={setYearFilter}>
+                <Select value={yearFilter || 'all'} onValueChange={(val) => setYearFilter(val === 'all' ? '' : val)}>
                   <SelectTrigger className="border-gray-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
-                    <SelectValue placeholder="Select year" />
+                    <SelectValue placeholder="All years" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="all">All years</SelectItem>
                     {years.map((y) => (
                       <SelectItem key={y.value} value={y.value}>{y.label}</SelectItem>
                     ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                  </SelectContent>
+                </Select>
+              </div>
               </div>
 
               {/* Reset + Bulk Delete */}

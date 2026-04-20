@@ -99,7 +99,7 @@ export function TeacherQuickActions() {
       bg: 'bg-gold/10',
       textColor: 'text-gold',
       border: 'border-gold/15',
-      onClick: () => navigate('/reports'),
+      onClick: () => navigate('/student-reports'),
     },
     {
       icon: '🌐',
