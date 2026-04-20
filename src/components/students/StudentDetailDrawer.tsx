@@ -12,6 +12,9 @@ import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserConnectionsGraph } from '@/components/connections/UserConnectionsGraph';
 import { Link } from 'react-router-dom';
+import { RoleBadge } from '@/components/shared/RoleBadge';
+import { DivisionBadgeStack } from '@/components/shared/DivisionBadge';
+import { StatusDot } from '@/components/shared/StatusDot';
 
 const DAYS_OF_WEEK = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const DAYS_LABELS: Record<string, string> = {
