@@ -92,6 +92,7 @@ import { useDivisionMembership, getDivisionShortName, getDivisionBadgeClass, for
 import { useDivision } from '@/contexts/DivisionContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Copy, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
+import { DivisionBadge, DivisionBadgeStack, resolveDivisionKind } from '@/components/shared/DivisionBadge';
 
 const ALL_PERMISSIONS = [
   { group: 'Users', permissions: ['users.view', 'users.create', 'users.edit', 'users.delete', 'users.assign_roles'] },
