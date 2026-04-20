@@ -1572,17 +1572,35 @@ export default function UserManagement() {
                     ))}
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Roles</span>
+                    <span className="font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Roles (icon)</span>
                     {(['super_admin','admin','teacher','student','parent','examiner'] as AppRole[]).map(r => {
                       const meta = ROLE_ICON_META[r];
                       const RIcon = meta.Icon;
                       return (
                         <span key={r} className="inline-flex items-center gap-1">
-                          <RIcon className={`h-3.5 w-3.5 ${meta.color}`} />
+                          <RIcon className="h-3.5 w-3.5 text-foreground/70" />
                           <span className="text-foreground/80">{meta.label}</span>
                         </span>
                       );
                     })}
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Color = Division</span>
+                    {(['one_to_one','group','recorded','multi'] as DivisionKind[]).map(k => (
+                      <span key={k} className="inline-flex items-center gap-1.5">
+                        <GraduationCap className={`h-3.5 w-3.5 ${DIVISION_ICON_COLOR[k]}`} />
+                        <span className="text-foreground/80">{DIVISION_DOT_META[k].label}</span>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Status</span>
+                    {(['active','paused','left','completed'] as StatusKind[]).map(s => (
+                      <span key={s} className="inline-flex items-center gap-1.5">
+                        <span className={`inline-block h-2 w-2 rounded-full ${STATUS_DOT_META[s].color}`} />
+                        <span className="text-foreground/80">{STATUS_DOT_META[s].label}</span>
+                      </span>
+                    ))}
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Status</span>
