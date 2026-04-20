@@ -391,10 +391,10 @@ function AppRoutes() {
       <Route path="/enroll/:token" element={<EnrollmentForm />} />
       {/* Public Inquiry Form - no auth */}
       <Route path="/inquiry" element={<PublicInquiryForm />} />
-      {/* Public Course Catalog - no auth */}
-      <Route path="/courses-catalog" element={<CourseCatalog />} />
-      {/* Recorded Courses Storefront - no auth */}
-      <Route path="/recorded-courses" element={<RecordedCourses />} />
+      {/* Public Course Catalog - shows sidebar when authenticated */}
+      <Route path="/courses-catalog" element={<ConditionalDashboardLayout><CourseCatalog /></ConditionalDashboardLayout>} />
+      {/* Recorded Courses Storefront - shows sidebar when authenticated */}
+      <Route path="/recorded-courses" element={<ConditionalDashboardLayout><RecordedCourses /></ConditionalDashboardLayout>} />
       {/* Public Registration Form - no auth */}
       <Route path="/apply/:slug" element={<PublicApplyForm />} />
       {/* Quiz Engine */}
