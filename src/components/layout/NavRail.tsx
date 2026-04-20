@@ -47,6 +47,7 @@ export function buildRailNav(role: AppRole | null): RailItem[] {
     return [
       { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
       { label: 'My Courses', href: '/courses-catalog', icon: BookOpen },
+      { label: 'Calendar', href: '/schedules', icon: CalendarDays },
       { label: 'Communication', href: '/communication', icon: MessageSquare },
     ];
   }

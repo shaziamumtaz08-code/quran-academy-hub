@@ -52,24 +52,9 @@ export function TaskDetailDialog({ open, onOpenChange, task }: TaskDetailDialogP
   });
 
   const { data: users = [] } = useQuery({
-    queryKey: ['task-admin-assignees'],
+    queryKey: ['all-users-for-assign'],
     queryFn: async () => {
-      const { data: adminRoles } = await supabase
-        .from('user_roles')
-        .select('user_id, role')
-        .in('role', ['admin', 'super_admin']);
-
-      const adminIds = [...new Set((adminRoles || []).map((role) => role.user_id))];
-      if (!adminIds.length) return [];
-
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .in('id', adminIds)
-        .is('archived_at', null)
-        .order('full_name')
-        .limit(200);
-
+      const { data } = await supabase.from('profiles').select('id, full_name').is('archived_at', null).order('full_name').limit(200);
       return data || [];
     },
     enabled: open,

@@ -99,24 +99,14 @@ export function CreateTicketDialog({
     enabled: open,
   });
 
-  // Fetch ONLY admin / super_admin users for assignee picker (WorkHub items route to admins)
+  // Fetch users with roles for assignee picker
   const { data: users = [] } = useQuery({
-    queryKey: ['hub-admin-assignees'],
+    queryKey: ['hub-users-with-roles'],
     queryFn: async () => {
-      const { data: adminRoles } = await supabase
-        .from('user_roles')
-        .select('user_id, role')
-        .in('role', ['admin', 'super_admin']);
-      const adminIds = [...new Set((adminRoles || []).map((r: any) => r.user_id))];
-      if (adminIds.length === 0) return [];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, full_name, email')
-        .in('id', adminIds)
-        .is('archived_at', null)
-        .order('full_name');
+      const { data: profiles } = await supabase.from('profiles').select('id, full_name, email').is('archived_at', null).order('full_name');
+      const { data: allRoles } = await supabase.from('user_roles').select('user_id, role');
       const roleMap: Record<string, string[]> = {};
-      (adminRoles || []).forEach((r: any) => {
+      (allRoles || []).forEach((r: any) => {
         if (!roleMap[r.user_id]) roleMap[r.user_id] = [];
         roleMap[r.user_id].push(r.role);
       });
