@@ -92,6 +92,7 @@ import { useDivisionMembership, getDivisionShortName, getDivisionBadgeClass, for
 import { useDivision } from '@/contexts/DivisionContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Copy, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
+import { DivisionBadge, DivisionBadgeStack, resolveDivisionKind } from '@/components/shared/DivisionBadge';
 
 const ALL_PERMISSIONS = [
   { group: 'Users', permissions: ['users.view', 'users.create', 'users.edit', 'users.delete', 'users.assign_roles'] },
@@ -1615,11 +1616,36 @@ export default function UserManagement() {
                               {(() => {
                                 const memberships = divMembershipMap?.get(user.id) || [];
                                 const globalRoles = (user.roles || []).filter(r => GLOBAL_ROLES.includes(r));
+                                const pills: React.ReactNode[] = [];
+
+                                // Identity: Division badge (collapses to "Multi" when ≥2 distinct kinds)
+                                if (memberships.length > 0) {
+                                  if (effectiveDivisionId) {
+                                    const inScope = memberships.find(m => m.divisionId === effectiveDivisionId);
+                                    if (inScope) {
+                                      pills.push(
+                                        <DivisionBadge
+                                          key="div-scope"
+                                          modelType={inScope.modelType}
+                                          name={inScope.divisionName}
+                                          size="xs"
+                                        />
+                                      );
+                                    }
+                                  } else {
+                                    pills.push(
+                                      <DivisionBadgeStack
+                                        key="div-stack"
+                                        memberships={memberships}
+                                        size="xs"
+                                      />
+                                    );
+                                  }
+                                }
 
                                 if (effectiveDivisionId) {
                                   const inScope = memberships.find(m => m.divisionId === effectiveDivisionId);
                                   const rolesInDiv = inScope?.roles || [];
-                                  const pills: React.ReactNode[] = [];
                                   rolesInDiv.forEach(role => {
                                     pills.push(<RolePill key={`r-${role}`} role={role as AppRole} />);
                                   });
@@ -1632,7 +1658,6 @@ export default function UserManagement() {
                                   return pills;
                                 }
 
-                                const pills: React.ReactNode[] = [];
                                 memberships.forEach(m => {
                                   const short = getDivisionShortName(m.divisionName);
                                   m.roles.forEach(role => {
