@@ -92,8 +92,41 @@ import { useDivisionMembership, getDivisionShortName, getDivisionBadgeClass, for
 import { useDivision } from '@/contexts/DivisionContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Copy, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
-import { DivisionBadge, DivisionBadgeStack, resolveDivisionKind } from '@/components/shared/DivisionBadge';
+import { DivisionBadge, DivisionBadgeStack, resolveDivisionKind, type DivisionKind } from '@/components/shared/DivisionBadge';
 import { StatusDot, resolveStatusKind, type StatusKind } from '@/components/shared/StatusDot';
+import { Crown, GraduationCap, Heart, ClipboardList, HelpCircle } from 'lucide-react';
+
+// Identity icons — single colored glyph per role for the new compact identity cell
+const ROLE_ICON_META: Record<AppRole, { Icon: React.ComponentType<{ className?: string }>; color: string; label: string }> = {
+  super_admin:      { Icon: Crown,         color: 'text-red-500',     label: 'Super Admin' },
+  admin:            { Icon: Shield,        color: 'text-red-500',     label: 'Admin' },
+  admin_admissions: { Icon: Shield,        color: 'text-red-500',     label: 'Admissions Admin' },
+  admin_fees:       { Icon: Shield,        color: 'text-red-500',     label: 'Fees Admin' },
+  admin_academic:   { Icon: Shield,        color: 'text-red-500',     label: 'Academic Admin' },
+  teacher:          { Icon: GraduationCap, color: 'text-blue-500',    label: 'Teacher' },
+  student:          { Icon: User,          color: 'text-emerald-500', label: 'Student' },
+  parent:           { Icon: Heart,         color: 'text-amber-500',   label: 'Parent' },
+  examiner:         { Icon: ClipboardList, color: 'text-violet-500',  label: 'Examiner' },
+};
+
+const DIVISION_DOT_META: Record<DivisionKind, { color: string; label: string }> = {
+  group:      { color: 'bg-emerald-500', label: 'Group Academy' },
+  one_to_one: { color: 'bg-blue-500',    label: '1:1 Mentorship' },
+  recorded:   { color: 'bg-amber-500',   label: 'Recorded' },
+  multi:      { color: 'bg-purple-500',  label: 'Multi (multiple divisions)' },
+};
+
+const STATUS_DOT_META: Record<StatusKind, { color: string; label: string }> = {
+  active:    { color: 'bg-emerald-500', label: 'Active' },
+  paused:    { color: 'bg-amber-500',   label: 'Paused' },
+  left:      { color: 'bg-red-500',     label: 'Left' },
+  completed: { color: 'bg-indigo-500',  label: 'Completed' },
+  assigned:  { color: 'bg-blue-500',    label: 'Assigned' },
+  scheduled: { color: 'bg-purple-500',  label: 'Scheduled' },
+  pending:   { color: 'bg-orange-500',  label: 'Pending' },
+  no_show:   { color: 'bg-red-700',     label: 'No Show' },
+  inactive:  { color: 'bg-red-500',     label: 'Inactive' },
+};
 
 const ALL_PERMISSIONS = [
   { group: 'Users', permissions: ['users.view', 'users.create', 'users.edit', 'users.delete', 'users.assign_roles'] },
@@ -277,6 +310,7 @@ export default function UserManagement() {
   const [filterDivision, setFilterDivision] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<'' | StatusKind>('');
   const [showArchived, setShowArchived] = useState(false);
+  const [showIdentityLegend, setShowIdentityLegend] = useState(false);
   // Sorting state
   type SortField = 'name' | 'role' | 'gender' | 'age' | 'country' | 'city';
   type SortDirection = 'asc' | 'desc';
@@ -1503,6 +1537,56 @@ export default function UserManagement() {
               </div>
             </div>
 
+            {/* Identity Legend — collapsible */}
+            <div className="flex items-center justify-end mb-2">
+              <button
+                type="button"
+                onClick={() => setShowIdentityLegend(s => !s)}
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                title="Identity legend"
+              >
+                <HelpCircle className="h-3.5 w-3.5" />
+                {showIdentityLegend ? 'Hide legend' : 'Identity legend'}
+              </button>
+            </div>
+            {showIdentityLegend && (
+              <Card className="mb-3 border-border/60 bg-muted/20">
+                <CardContent className="py-3 px-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Divisions</span>
+                    {(['one_to_one','group','recorded','multi'] as DivisionKind[]).map(k => (
+                      <span key={k} className="inline-flex items-center gap-1.5">
+                        <span className={`inline-block h-2 w-2 rounded-full ${DIVISION_DOT_META[k].color}`} />
+                        <span className="text-foreground/80">{DIVISION_DOT_META[k].label}</span>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Roles</span>
+                    {(['super_admin','admin','teacher','student','parent','examiner'] as AppRole[]).map(r => {
+                      const meta = ROLE_ICON_META[r];
+                      const RIcon = meta.Icon;
+                      return (
+                        <span key={r} className="inline-flex items-center gap-1">
+                          <RIcon className={`h-3.5 w-3.5 ${meta.color}`} />
+                          <span className="text-foreground/80">{meta.label}</span>
+                        </span>
+                      );
+                    })}
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Status</span>
+                    {(['active','paused','left','completed'] as StatusKind[]).map(s => (
+                      <span key={s} className="inline-flex items-center gap-1.5">
+                        <span className={`inline-block h-2 w-2 rounded-full ${STATUS_DOT_META[s].color}`} />
+                        <span className="text-foreground/80">{STATUS_DOT_META[s].label}</span>
+                      </span>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Users Table — premium redesign */}
             <Card className="overflow-hidden border-border/60 shadow-sm">
               <CardContent className="p-0">
@@ -1541,7 +1625,7 @@ export default function UserManagement() {
                             />
                           </TableHead>
                         )}
-                        <TableHead className="w-12 h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">#</TableHead>
+                        <TableHead className="w-6 h-11 px-2" title="Account status" />
                         <TableHead
                           className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors"
                           onClick={() => handleSort('name')}
@@ -1554,7 +1638,7 @@ export default function UserManagement() {
                           className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors"
                           onClick={() => handleSort('role')}
                         >
-                          <div className="flex items-center">{effectiveDivisionId ? 'Role' : 'Division · Role'}{getSortIcon('role')}</div>
+                          <div className="flex items-center">Identity{getSortIcon('role')}</div>
                         </TableHead>
                         <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Location</TableHead>
                         <TableHead className="h-11 text-right text-[10px] uppercase tracking-wider font-semibold text-muted-foreground pr-4">Actions</TableHead>
@@ -1582,7 +1666,21 @@ export default function UserManagement() {
                               />
                             </TableCell>
                           )}
-                          <TableCell className="py-3 text-muted-foreground text-sm tabular-nums">{idx + 1}</TableCell>
+                          <TableCell className="py-3 pl-2 pr-1 w-6">
+                            <TooltipProvider delayDuration={150}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span
+                                    className={`inline-block h-2 w-2 rounded-full ${STATUS_DOT_META[resolveStatusKind(user.account_status)].color}`}
+                                    aria-label={STATUS_DOT_META[resolveStatusKind(user.account_status)].label}
+                                  />
+                                </TooltipTrigger>
+                                <TooltipContent side="right" className="text-xs">
+                                  {STATUS_DOT_META[resolveStatusKind(user.account_status)].label}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </TableCell>
                           <TableCell className="py-3 font-medium">
                             <div className="flex items-center gap-3">
                               <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white ${AVATAR_COLORS[getPrimaryRole(user.roles as AppRole[])] || AVATAR_COLORS.default}`}>
@@ -1647,89 +1745,85 @@ export default function UserManagement() {
                             )}
                           </TableCell>
                           <TableCell className="py-3">
-                            <div className="flex flex-wrap gap-1.5 items-center">
-                              <StatusDot status={user.account_status} size="xs" showLabel={false} />
-                              {(() => {
-                                const memberships = divMembershipMap?.get(user.id) || [];
-                                const globalRoles = (user.roles || []).filter(r => GLOBAL_ROLES.includes(r));
-                                const pills: React.ReactNode[] = [];
+                            {(() => {
+                              const memberships = divMembershipMap?.get(user.id) || [];
+                              const allRoles = (user.roles || []) as AppRole[];
 
-                                // Identity: Division badge (collapses to "Multi" when ≥2 distinct kinds)
-                                if (memberships.length > 0) {
-                                  if (effectiveDivisionId) {
-                                    const inScope = memberships.find(m => m.divisionId === effectiveDivisionId);
-                                    if (inScope) {
-                                      pills.push(
-                                        <DivisionBadge
-                                          key="div-scope"
-                                          modelType={inScope.modelType}
-                                          name={inScope.divisionName}
-                                          size="xs"
-                                        />
+                              // Determine division kind for THIS user (overall, not per-role)
+                              const distinctKinds = Array.from(
+                                new Set(memberships.map(m => resolveDivisionKind(m.modelType, m.divisionName))),
+                              );
+                              let userDivKind: DivisionKind | null = null;
+                              let userDivLabel = '';
+                              if (effectiveDivisionId) {
+                                const inScope = memberships.find(m => m.divisionId === effectiveDivisionId);
+                                if (inScope) {
+                                  userDivKind = resolveDivisionKind(inScope.modelType, inScope.divisionName);
+                                  userDivLabel = inScope.divisionName;
+                                }
+                              } else if (distinctKinds.length >= 2) {
+                                userDivKind = 'multi';
+                                userDivLabel = 'Multiple divisions';
+                              } else if (distinctKinds.length === 1) {
+                                userDivKind = distinctKinds[0];
+                                userDivLabel = memberships[0]?.divisionName || DIVISION_DOT_META[distinctKinds[0]].label;
+                              }
+
+                              if (allRoles.length === 0) {
+                                return <span className="text-xs text-muted-foreground italic">No role</span>;
+                              }
+
+                              return (
+                                <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-1.5 group/identity">
+                                    {allRoles.map(role => {
+                                      const meta = ROLE_ICON_META[role];
+                                      if (!meta) return null;
+                                      const RIcon = meta.Icon;
+                                      const tooltipText = userDivKind
+                                        ? `${meta.label} — ${userDivLabel || DIVISION_DOT_META[userDivKind].label}`
+                                        : meta.label;
+                                      return (
+                                        <TooltipProvider key={role} delayDuration={150}>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <span className="inline-flex items-center gap-1">
+                                                {userDivKind && (
+                                                  <span
+                                                    className={`inline-block h-1.5 w-1.5 rounded-full ${DIVISION_DOT_META[userDivKind].color}`}
+                                                    aria-hidden
+                                                  />
+                                                )}
+                                                <RIcon className={`h-4 w-4 ${meta.color}`} />
+                                              </span>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="top" className="text-xs">
+                                              {tooltipText}
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
                                       );
-                                    }
-                                  } else {
-                                    pills.push(
-                                      <DivisionBadgeStack
-                                        key="div-stack"
-                                        memberships={memberships}
-                                        size="xs"
-                                      />
-                                    );
-                                  }
-                                }
-
-                                if (effectiveDivisionId) {
-                                  const inScope = memberships.find(m => m.divisionId === effectiveDivisionId);
-                                  const rolesInDiv = inScope?.roles || [];
-                                  rolesInDiv.forEach(role => {
-                                    pills.push(<RolePill key={`r-${role}`} role={role as AppRole} />);
-                                  });
-                                  globalRoles.forEach(role => {
-                                    pills.push(<RolePill key={`g-${role}`} role={role} />);
-                                  });
-                                  if (pills.length === 0) {
-                                    return <span className="text-xs text-muted-foreground italic">No role here</span>;
-                                  }
-                                  return pills;
-                                }
-
-                                memberships.forEach(m => {
-                                  const short = getDivisionShortName(m.divisionName);
-                                  m.roles.forEach(role => {
-                                    pills.push(
-                                      <RolePill
-                                        key={`${m.divisionId}-${role}`}
-                                        role={role as AppRole}
-                                        prefix={short}
-                                      />
-                                    );
-                                  });
-                                });
-                                globalRoles.forEach(role => {
-                                  pills.push(<RolePill key={`g-${role}`} role={role} />);
-                                });
-                                if (pills.length === 0) {
-                                  return <span className="text-xs text-muted-foreground italic">No role</span>;
-                                }
-                                return pills;
-                              })()}
-                              {isSuperAdmin && getAvailableRoles(user).length > 0 && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 w-6 p-0"
-                                  onClick={() => {
-                                    setViewingUser(user);
-                                    setAddRoleSelection(getAvailableRoles(user)[0]);
-                                    setIsAddRoleDialogOpen(true);
-                                  }}
-                                  title="Add role"
-                                >
-                                  <Plus className="h-3 w-3" />
-                                </Button>
-                              )}
-                            </div>
+                                    })}
+                                  </div>
+                                  {isSuperAdmin && getAvailableRoles(user).length > 0 && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setViewingUser(user);
+                                        setAddRoleSelection(getAvailableRoles(user)[0]);
+                                        setIsAddRoleDialogOpen(true);
+                                      }}
+                                      title="Add role"
+                                    >
+                                      <Plus className="h-3 w-3" />
+                                    </Button>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </TableCell>
                           <TableCell className="py-3">
                             {user.city || user.country ? (
