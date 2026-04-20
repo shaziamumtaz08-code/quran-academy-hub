@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { DivisionBadge, resolveDivisionKind } from '@/components/shared/DivisionBadge';
 
 const MODEL_ICONS: Record<string, string> = {
   one_to_one: '👤',
