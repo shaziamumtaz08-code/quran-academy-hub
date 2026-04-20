@@ -12,6 +12,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EntityLink } from '@/components/shared/EntityLink';
 import { UserConnectionsGraph } from '@/components/connections/UserConnectionsGraph';
 import { Link } from 'react-router-dom';
+import { RoleBadge } from '@/components/shared/RoleBadge';
+import { DivisionBadgeStack } from '@/components/shared/DivisionBadge';
+import { StatusDot } from '@/components/shared/StatusDot';
+import { useDivisionMembership } from '@/hooks/useDivisionMembership';
 
 const DAYS_LABELS: Record<string, string> = {
   monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu',
@@ -45,7 +49,7 @@ export function TeacherDetailDrawer({ open, onOpenChange, teacher }: TeacherDeta
       // Profile
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id, full_name, email, country, city')
+        .select('id, full_name, email, country, city, account_status')
         .eq('id', teacher.id)
         .maybeSingle();
 
@@ -91,6 +95,12 @@ export function TeacherDetailDrawer({ open, onOpenChange, teacher }: TeacherDeta
     },
     enabled: open && !!teacher?.id,
   });
+
+  const { data: membershipMap } = useDivisionMembership(teacher?.id ? [teacher.id] : [], open && !!teacher?.id);
+  const teacherMemberships = (membershipMap?.get(teacher?.id || '') || []).map(m => ({
+    modelType: m.modelType,
+    divisionName: m.divisionName,
+  }));
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
