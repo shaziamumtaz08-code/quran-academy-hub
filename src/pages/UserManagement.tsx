@@ -1574,7 +1574,7 @@ export default function UserManagement() {
                             />
                           </TableHead>
                         )}
-                        <TableHead className="w-12 h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">#</TableHead>
+                        <TableHead className="w-6 h-11 px-2" title="Account status" />
                         <TableHead
                           className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors"
                           onClick={() => handleSort('name')}
@@ -1587,7 +1587,7 @@ export default function UserManagement() {
                           className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors"
                           onClick={() => handleSort('role')}
                         >
-                          <div className="flex items-center">{effectiveDivisionId ? 'Role' : 'Division · Role'}{getSortIcon('role')}</div>
+                          <div className="flex items-center">Identity{getSortIcon('role')}</div>
                         </TableHead>
                         <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Location</TableHead>
                         <TableHead className="h-11 text-right text-[10px] uppercase tracking-wider font-semibold text-muted-foreground pr-4">Actions</TableHead>
