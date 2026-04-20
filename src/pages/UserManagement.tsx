@@ -1410,6 +1410,33 @@ export default function UserManagement() {
 
               {/* Secondary row: contextual filters */}
               <div className="flex flex-wrap gap-2 items-center">
+                {/* Status filter pills (Identity System) */}
+                <div className="inline-flex items-center gap-1 p-1 rounded-lg bg-muted/50 border border-border/60">
+                  {([
+                    { key: '', label: 'All' },
+                    { key: 'active', label: 'Active' },
+                    { key: 'paused', label: 'Paused' },
+                    { key: 'left', label: 'Left' },
+                    { key: 'completed', label: 'Completed' },
+                  ] as const).map((p) => {
+                    const active = filterStatus === p.key;
+                    return (
+                      <button
+                        key={p.key || 'all'}
+                        onClick={() => setFilterStatus(p.key as any)}
+                        className={`inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs font-medium transition-all ${
+                          active
+                            ? 'bg-card text-foreground shadow-sm border border-border/60'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-card/50'
+                        }`}
+                      >
+                        {p.key ? <StatusDot kind={p.key as StatusKind} size="xs" showLabel={false} /> : <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />}
+                        {p.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
                 <Select value={filterDivision || "context"} onValueChange={(v) => setFilterDivision(v === "context" ? "" : v)}>
                   <SelectTrigger className="w-[200px] h-9 rounded-lg bg-card text-sm">
                     <SelectValue placeholder="Division filter" />
@@ -1621,6 +1648,7 @@ export default function UserManagement() {
                           </TableCell>
                           <TableCell className="py-3">
                             <div className="flex flex-wrap gap-1.5 items-center">
+                              <StatusDot status={user.account_status} size="xs" showLabel={false} />
                               {(() => {
                                 const memberships = divMembershipMap?.get(user.id) || [];
                                 const globalRoles = (user.roles || []).filter(r => GLOBAL_ROLES.includes(r));
