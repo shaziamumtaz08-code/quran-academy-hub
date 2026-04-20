@@ -310,6 +310,7 @@ export default function UserManagement() {
   const [filterDivision, setFilterDivision] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<'' | StatusKind>('');
   const [showArchived, setShowArchived] = useState(false);
+  const [showIdentityLegend, setShowIdentityLegend] = useState(false);
   // Sorting state
   type SortField = 'name' | 'role' | 'gender' | 'age' | 'country' | 'city';
   type SortDirection = 'asc' | 'desc';
