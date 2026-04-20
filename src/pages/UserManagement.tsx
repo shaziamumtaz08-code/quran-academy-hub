@@ -1615,7 +1615,21 @@ export default function UserManagement() {
                               />
                             </TableCell>
                           )}
-                          <TableCell className="py-3 text-muted-foreground text-sm tabular-nums">{idx + 1}</TableCell>
+                          <TableCell className="py-3 pl-2 pr-1 w-6">
+                            <TooltipProvider delayDuration={150}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span
+                                    className={`inline-block h-2 w-2 rounded-full ${STATUS_DOT_META[resolveStatusKind(user.account_status)].color}`}
+                                    aria-label={STATUS_DOT_META[resolveStatusKind(user.account_status)].label}
+                                  />
+                                </TooltipTrigger>
+                                <TooltipContent side="right" className="text-xs">
+                                  {STATUS_DOT_META[resolveStatusKind(user.account_status)].label}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </TableCell>
                           <TableCell className="py-3 font-medium">
                             <div className="flex items-center gap-3">
                               <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white ${AVATAR_COLORS[getPrimaryRole(user.roles as AppRole[])] || AVATAR_COLORS.default}`}>
