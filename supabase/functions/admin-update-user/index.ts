@@ -15,7 +15,7 @@ function isValidEmail(email: string): boolean {
 }
 
 function isValidPassword(password: string): boolean {
-  return password.length >= 6 && password.length <= 100;
+  return password.length >= 8 && password.length <= 100;
 }
 
 function isValidFullName(name: string): boolean {
@@ -162,7 +162,7 @@ serve(async (req) => {
     }
 
     if (password !== undefined && !isValidPassword(password)) {
-      validationErrors.push("Password must be 6-100 characters");
+      validationErrors.push("Password must be 8-100 characters");
     }
 
     if (validationErrors.length > 0) {
@@ -220,8 +220,12 @@ serve(async (req) => {
         });
         if (passwordErr) {
           console.error("Password update error:", passwordErr.message);
-          return json(500, {
-            error: passwordErr.message || "Failed to update password",
+          const msg = passwordErr.message || "";
+          const isWeak = /weak|pwned|known|easy to guess|breached/i.test(msg);
+          return json(isWeak ? 400 : 500, {
+            error: isWeak
+              ? "This password is too common or has appeared in a data breach. Please choose a stronger password."
+              : "Failed to update password",
           }, requestOrigin);
         }
       }

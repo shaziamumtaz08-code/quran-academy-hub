@@ -12,7 +12,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
-import { DivisionBadge, resolveDivisionKind } from '@/components/shared/DivisionBadge';
 
 const MODEL_ICONS: Record<string, string> = {
   one_to_one: '👤',
@@ -39,11 +38,6 @@ export function DivisionSwitcher() {
     : 'Select Workspace';
 
   const currentModelIcon = activeDivision ? MODEL_ICONS[activeDivision.model_type] || '🏢' : '🏢';
-  const activeKind = activeDivision ? resolveDivisionKind(activeDivision.model_type, activeDivision.name) : null;
-  const accentVar = activeKind === 'one_to_one' ? '--division-one-to-one'
-    : activeKind === 'group' ? '--division-group'
-    : activeKind === 'recorded' ? '--division-recorded'
-    : '--division-both';
 
   // Group options by branch
   const groupedOptions = switcherOptions.reduce((acc, option) => {
@@ -58,22 +52,10 @@ export function DivisionSwitcher() {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="w-full sm:w-auto justify-start sm:justify-center gap-2 bg-[hsl(216,70%,18%)] hover:bg-[hsl(197,100%,45%)] text-white font-medium px-3 h-9 text-xs transition-colors duration-200 border shadow-sm"
-          style={activeKind ? {
-            borderColor: `hsl(var(${accentVar}) / 0.55)`,
-            boxShadow: `0 0 0 1px hsl(var(${accentVar}) / 0.25), inset 0 0 0 9999px hsl(var(${accentVar}) / 0.08)`,
-          } : undefined}
+          className="w-full sm:w-auto justify-start sm:justify-center gap-2 bg-[hsl(216,70%,18%)] hover:bg-[hsl(197,100%,45%)] text-white font-medium px-3 h-9 text-xs transition-colors duration-200 border border-[hsl(216,60%,28%)] hover:border-[hsl(197,100%,50%)] shadow-sm"
         >
-          <span aria-hidden>{currentModelIcon}</span>
+          <span>{currentModelIcon}</span>
           <span className="flex-1 sm:flex-none max-w-[180px] truncate text-left">{currentLabel}</span>
-          {activeDivision && (
-            <DivisionBadge
-              modelType={activeDivision.model_type}
-              name={activeDivision.name}
-              size="xs"
-              className="ml-1 hidden sm:inline-flex !bg-white/10 !border-white/20 !text-white"
-            />
-          )}
           <ChevronDown className="h-3.5 w-3.5 ml-auto sm:ml-0 flex-shrink-0" />
         </Button>
       </DropdownMenuTrigger>

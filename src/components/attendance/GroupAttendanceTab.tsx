@@ -10,7 +10,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle, XCircle, Users, Clock, Save, CheckCheck, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { StatusDot } from '@/components/shared/StatusDot';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -280,12 +279,7 @@ export function GroupAttendanceTab() {
                     const alreadyDone = alreadyMarkedIds.has(s.student_id);
                     return (
                       <TableRow key={s.student_id} className={alreadyDone ? 'opacity-50' : ''}>
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            <StatusDot kind="active" size="xs" showLabel={false} />
-                            <span>{s.full_name}</span>
-                          </div>
-                        </TableCell>
+                        <TableCell className="font-medium">{s.full_name}</TableCell>
                         <TableCell className="text-center">
                           {alreadyDone ? (
                             <span className="text-xs text-muted-foreground italic">Already marked</span>

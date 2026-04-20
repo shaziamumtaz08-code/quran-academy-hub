@@ -12,10 +12,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EntityLink } from '@/components/shared/EntityLink';
 import { UserConnectionsGraph } from '@/components/connections/UserConnectionsGraph';
 import { Link } from 'react-router-dom';
-import { RoleBadge } from '@/components/shared/RoleBadge';
-import { DivisionBadgeStack } from '@/components/shared/DivisionBadge';
-import { StatusDot } from '@/components/shared/StatusDot';
-import { useDivisionMembership } from '@/hooks/useDivisionMembership';
 
 const DAYS_LABELS: Record<string, string> = {
   monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu',
@@ -49,7 +45,7 @@ export function TeacherDetailDrawer({ open, onOpenChange, teacher }: TeacherDeta
       // Profile
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id, full_name, email, country, city, account_status')
+        .select('id, full_name, email, country, city')
         .eq('id', teacher.id)
         .maybeSingle();
 
@@ -96,12 +92,6 @@ export function TeacherDetailDrawer({ open, onOpenChange, teacher }: TeacherDeta
     enabled: open && !!teacher?.id,
   });
 
-  const { data: membershipMap } = useDivisionMembership(teacher?.id ? [teacher.id] : [], open && !!teacher?.id);
-  const teacherMemberships = (membershipMap?.get(teacher?.id || '') || []).map(m => ({
-    modelType: m.modelType,
-    divisionName: m.divisionName,
-  }));
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-md overflow-y-auto">
@@ -132,16 +122,8 @@ export function TeacherDetailDrawer({ open, onOpenChange, teacher }: TeacherDeta
                 </div>
                 <div className="min-w-0">
                   <h3 className="font-bold text-lg text-foreground">{data.profile?.full_name || teacher?.full_name}</h3>
-                  {/* Identity row */}
-                  <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                    <RoleBadge role="teacher" size="xs" />
-                    {teacherMemberships.length > 0 && (
-                      <DivisionBadgeStack memberships={teacherMemberships} size="xs" />
-                    )}
-                    <StatusDot status={(data.profile as any)?.account_status} size="xs" />
-                  </div>
                   {data.profile?.email && (
-                    <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                    <p className="text-sm text-muted-foreground flex items-center gap-1">
                       <Mail className="h-3 w-3" /> {data.profile.email}
                     </p>
                   )}

@@ -1,5 +1,4 @@
 import { RefreshCw, ChevronDown } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth, AppRole } from '@/contexts/AuthContext';
 import {
   DropdownMenu,
@@ -8,18 +7,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-
-const ROLE_HOME: Record<AppRole, string> = {
-  super_admin: '/dashboard',
-  admin: '/dashboard',
-  admin_admissions: '/dashboard',
-  admin_fees: '/dashboard',
-  admin_academic: '/dashboard',
-  teacher: '/dashboard',
-  examiner: '/dashboard',
-  student: '/dashboard',
-  parent: '/parent',
-};
 
 const ROLE_LABELS: Record<AppRole, string> = {
   super_admin: 'Super Admin',
@@ -35,19 +22,13 @@ const ROLE_LABELS: Record<AppRole, string> = {
 
 export function RoleSwitcher() {
   const { profile, activeRole, setActiveRole } = useAuth();
-  const navigate = useNavigate();
 
+  // Only show if user has multiple roles
   if (!profile?.roles || profile.roles.length <= 1) {
     return null;
   }
 
   const currentLabel = activeRole ? ROLE_LABELS[activeRole] : 'Select Role';
-
-  const handleSelect = (role: AppRole) => {
-    setActiveRole(role);
-    const home = ROLE_HOME[role] || '/dashboard';
-    navigate(home, { replace: true });
-  };
 
   return (
     <DropdownMenu>
@@ -65,7 +46,7 @@ export function RoleSwitcher() {
         {profile.roles.map((role) => (
           <DropdownMenuItem
             key={role}
-            onClick={() => handleSelect(role)}
+            onClick={() => setActiveRole(role)}
             className={activeRole === role ? 'bg-accent' : ''}
           >
             {ROLE_LABELS[role] || role.replace('_', ' ')}

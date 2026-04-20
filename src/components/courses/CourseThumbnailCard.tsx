@@ -1,8 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { BookOpen, Users, GraduationCap, Calendar, Clock, Star, Pencil, Moon, PenTool, Mic, Languages, Sparkles } from 'lucide-react';
-import { DivisionBadge, type DivisionKind } from '@/components/shared/DivisionBadge';
-import { StatusDot } from '@/components/shared/StatusDot';
 
 export interface CourseCardData {
   id: string;
@@ -19,12 +17,6 @@ export interface CourseCardData {
   status?: 'open' | 'full' | 'coming_soon' | 'closed' | string;
   pricing?: { amount?: number; currency?: string; period?: string } | null;
   seo_slug?: string | null;
-  /** Identity: division kind (resolved from course's division.model_type by caller) */
-  division_kind?: DivisionKind;
-  division_model_type?: string | null;
-  division_name?: string | null;
-  /** Identity: enrollment status for the viewing student (active/paused/completed/left) */
-  enrollment_status?: string | null;
 }
 
 interface Props {
@@ -104,21 +96,10 @@ export default function CourseThumbnailCard({
             <div className="absolute top-2 left-2 text-3xl opacity-30">{visual.emoji}</div>
           </div>
         )}
-        {/* Status badge (top-right) */}
-        <div className="absolute top-2 right-2">
+        {/* Status badge */}
+        <div className="absolute top-2 left-2">
           <Badge variant="outline" className={`text-[10px] ${statusBadge.cls}`}>{statusBadge.label}</Badge>
         </div>
-        {/* Identity: Division badge (top-left) */}
-        {(course.division_kind || course.division_model_type || course.division_name) && (
-          <div className="absolute top-2 left-2">
-            <DivisionBadge
-              kind={course.division_kind}
-              modelType={course.division_model_type}
-              name={course.division_name}
-              size="xs"
-            />
-          </div>
-        )}
       </div>
 
       {/* Body */}
@@ -150,14 +131,11 @@ export default function CourseThumbnailCard({
 
         {/* Footer */}
         <div className="flex items-center justify-between pt-2 mt-auto border-t border-border">
-          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
             <Users className="w-3 h-3" />
             <span>{course.enrolled_count ?? 0}{course.max_seats ? `/${course.max_seats}` : ''}</span>
             {seatsLeft !== null && seatsLeft > 0 && seatsLeft <= 5 && (
               <span className="ml-1 text-amber-600 font-medium">· {seatsLeft} left</span>
-            )}
-            {course.enrollment_status && (
-              <span className="ml-1.5 inline-flex"><StatusDot status={course.enrollment_status} size="xs" /></span>
             )}
           </div>
           {course.pricing?.amount ? (

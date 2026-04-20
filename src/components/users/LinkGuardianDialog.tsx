@@ -30,7 +30,8 @@ interface SuccessInfo {
 }
 
 /**
- * Generates a strong, unique temporary password for guardian accounts.
+ * Generates a strong, unique password that will not be flagged by Supabase's
+ * breach-detection check (HIBP). Format example: "a3f9b2c1Aqt#5847".
  */
 function generateTempPassword(): string {
   const random8 = crypto.randomUUID().replace(/-/g, '').slice(0, 8);

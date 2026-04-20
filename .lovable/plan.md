@@ -1,52 +1,59 @@
 
 
-## Audit findings + `/my-dashboard` cleanup
+# Unified Connections — Multi-Role + Complete Course View
 
-### Audit of the referenced WorkHub message
+## Problem (jo aap ne bola)
+1. Abida teacher hai PAR woh khud bhi student ho sakti hai (Tafseer Quran enrolled) — sirf teacher view dikh raha hai.
+2. Nida = parent + student + maybe teacher — abhi sirf ek role ka graph load hota hai.
+3. Courses sirf "active" filter ho rahe hain — completed/past courses miss ho rahe hain.
+4. Group academy + one-to-one dono ka data ek saath nahi dikh raha.
+5. Click kar ke quick view nahi milta apne dashboard se.
 
-You're right — I didn't actually deliver the WorkHub redesign in that earlier turn. The summary I wrote claimed dashboard-wide identity wiring (`RoleBadge` + `StatusDot` in connections graph, attendance rows, holistic profile drawer), but in this current session I cannot verify those edits ever shipped to the WorkHub dashboards specifically. The only thing that visibly changed in your account was the **task assignment dropdown for students** (likely a side-effect of role-aware assignment work). The WorkHub dashboards (Inbox, Sent, Tasks & Polls, ticket cards, role filters) were not touched.
+## Fix — 3 cheezein
 
-I will not re-attempt that WorkHub work in this turn — you've asked for a single-file cleanup, and that is what I'll do. We can plan a proper WorkHub redesign separately once this is shipped.
+### 1. Multi-role graph (root cause)
+`UserConnectionsGraph` ko refactor karo. `userType` prop optional banao. Component khud detect kare us profile ki **saari roles** (`user_roles` table se) aur har role ka data parallel fetch kare, phir ek hi unified graph mein dikhaye:
 
-### Is the `/my-dashboard` removal a better approach? Yes.
+- **Center node**: person ka naam + saari roles ke chips (e.g. "Teacher · Student · Parent")
+- **Branches grouped by role**:
+  - As Teacher → students (with subject), classes, co-teachers
+  - As Student → teachers, courses enrolled, siblings
+  - As Parent → children → unke teachers
+- **Color-coded section headers** (faint group nodes) so visually clear ho ke "ye uske teacher-life ka hai, ye student-life ka"
 
-Confirmed by inspection:
-- `/my-dashboard` renders `UnifiedDashboard.tsx` (817 lines) — courses, schedule, performance, divisions
-- `/dashboard` renders role-specific dashboards (`StudentDashboard`, `TeacherDashboard`, etc.) which already cover the same ground for the active role
-- Having both creates a duplicate "Home" surface and the sidebar literally lists "Dashboard" and "My Dashboard" back-to-back — confusing
-- `NavRail` already aliases `/my-dashboard` as active when on `/dashboard`, proof they're treated as the same destination
+### 2. Complete course history (active + completed + past)
+- Hatao `.eq('status', 'active')` filter from `course_enrollments` and `student_teacher_assignments`.
+- Status badge har course/assignment node pe: green=Active, blue=Completed, grey=Paused/Ended.
+- Bhi add: courses **completed long ago** (with completion date subtitle).
 
-Removing the duplicate is the correct call.
+### 3. User-facing "My Connections" entry points
+Aap ne ye bhi mention kiya — student/teacher/parent apne dashboard se ek click pe apna full graph dekh sake:
+- **StudentDashboard**: ek "My Network" card → opens `/connections/student/{myId}`
+- **TeacherDashboard**: same → `/connections/teacher/{myId}`
+- **ParentDashboard**: "Family Map" tile → `/connections/parent/{myId}`
 
-### Scope — strictly minimal
+Plus: full-page header pe **role tabs** (e.g. `[All] [As Teacher] [As Student] [As Parent]`) — user filter kar sake jab graph bara ho.
 
-**One behavior**: delete the `/my-dashboard` surface and redirect it permanently to `/dashboard`. Remove every sidebar/nav reference to it.
+## Visual upgrade (aesthetics)
+- Center node bigger, gradient bg, role chips ke neeche
+- Role-group "lane" backgrounds (subtle tinted rectangles dagre-rendered behind related nodes) so 3 worlds visually separate
+- Edge labels mein subject + status (e.g. "Hifz · Completed")
+- Hover pe node — show mini popover with: role, subject/course, dates, "Open profile →" link
 
-### Files touched (4, all nav/route wiring — no business logic)
+## Files to touch
+1. `src/components/connections/UserConnectionsGraph.tsx` — refactor to multi-role aggregator
+2. `src/pages/UserConnections.tsx` — add role filter tabs
+3. `src/components/dashboard/StudentDashboard.tsx` — add "My Network" entry card
+4. `src/components/dashboard/teacher/TeacherQuickActions.tsx` — add "My Network" tile
+5. `src/components/dashboard/ParentDashboard.tsx` — add "Family Map" tile
 
-1. **`src/App.tsx`** (line 319)
-   - Replace `<Route path="/my-dashboard" element={...UnifiedDashboard...} />` with `<Route path="/my-dashboard" element={<Navigate to="/dashboard" replace />} />`
-   - Keeps any old bookmarks/links working.
+## What stays the same
+- `/admin/schema-explorer` (database view) — untouched
+- Existing drawer Connections tabs — automatically benefit from the refactor (no breaking change)
+- React Flow + dagre stack — same
 
-2. **`src/components/layout/AppSidebar.tsx`** (line 34)
-   - Remove the `{ label: 'My Dashboard', href: '/my-dashboard' }` item from `getHomeSidebar`.
-
-3. **`src/components/layout/MobileBottomNav.tsx`** (line 37)
-   - Change the "Calendar" tab `href` from `/my-dashboard` to `/schedules` (the real calendar page) so the icon doesn't dead-end into a redirect.
-
-4. **`src/components/layout/NavRail.tsx`** (lines 50, 91)
-   - Same swap: Calendar → `/schedules`.
-   - Remove the `|| location.pathname === '/my-dashboard'` alias from `isActive` (no longer needed since the route just redirects).
-
-### What is NOT touched
-
-- `src/pages/UnifiedDashboard.tsx` — the file stays on disk (no imports break) but is no longer routed. Safer than deleting in case any deep link or future role wants to reuse it. If you want it deleted entirely, say the word and I'll remove the file too.
-- All role dashboards, WorkHub, identity pills, drawers — untouched.
-
-### Acceptance
-
-- Visiting `/my-dashboard` immediately lands on `/dashboard` with no flash of the old UI
-- "My Dashboard" no longer appears in the desktop sidebar
-- Mobile bottom nav and desktop NavRail "Calendar" tab routes to `/schedules` (live calendar) instead of the dead duplicate
-- No build errors, no other pages affected
+## Out of scope (confirm if you want these too)
+- Editing relationships from the graph (currently read-only)
+- Export graph as PNG/PDF
+- Showing financial/attendance stats inside connection cards
 

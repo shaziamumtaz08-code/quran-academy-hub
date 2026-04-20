@@ -92,51 +92,6 @@ import { useDivisionMembership, getDivisionShortName, getDivisionBadgeClass, for
 import { useDivision } from '@/contexts/DivisionContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Copy, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
-import { DivisionBadge, DivisionBadgeStack, resolveDivisionKind, type DivisionKind } from '@/components/shared/DivisionBadge';
-import { StatusDot, resolveStatusKind, type StatusKind } from '@/components/shared/StatusDot';
-import { Crown, GraduationCap, Heart, ClipboardList, HelpCircle, Briefcase } from 'lucide-react';
-
-// Identity icons — ICON = ROLE, COLOR = DIVISION
-// Each role has a distinct glyph; division provides the color (applied at render time).
-const ROLE_ICON_META: Record<AppRole, { Icon: React.ComponentType<{ className?: string }>; label: string }> = {
-  super_admin:      { Icon: Crown,         label: 'Super Admin' },
-  admin:            { Icon: Shield,        label: 'Admin' },
-  admin_admissions: { Icon: Shield,        label: 'Admissions Admin' },
-  admin_fees:       { Icon: Shield,        label: 'Fees Admin' },
-  admin_academic:   { Icon: Shield,        label: 'Academic Admin' },
-  teacher:          { Icon: Briefcase,     label: 'Teacher' },
-  student:          { Icon: GraduationCap, label: 'Student' },
-  parent:           { Icon: Heart,         label: 'Parent' },
-  examiner:         { Icon: ClipboardList, label: 'Examiner' },
-};
-
-// Division → text color class for role icons
-const DIVISION_ICON_COLOR: Record<DivisionKind, string> = {
-  group:      'text-emerald-500',
-  one_to_one: 'text-blue-500',
-  recorded:   'text-amber-500',
-  multi:      'text-purple-500',
-};
-const DIVISION_NEUTRAL_COLOR = 'text-slate-400';
-
-const DIVISION_DOT_META: Record<DivisionKind, { color: string; label: string }> = {
-  group:      { color: 'bg-emerald-500', label: 'Group Academy' },
-  one_to_one: { color: 'bg-blue-500',    label: '1:1 Mentorship' },
-  recorded:   { color: 'bg-amber-500',   label: 'Recorded' },
-  multi:      { color: 'bg-purple-500',  label: 'Multi (multiple divisions)' },
-};
-
-const STATUS_DOT_META: Record<StatusKind, { color: string; label: string }> = {
-  active:    { color: 'bg-emerald-500', label: 'Active' },
-  paused:    { color: 'bg-amber-500',   label: 'Paused' },
-  left:      { color: 'bg-red-500',     label: 'Left' },
-  completed: { color: 'bg-indigo-500',  label: 'Completed' },
-  assigned:  { color: 'bg-blue-500',    label: 'Assigned' },
-  scheduled: { color: 'bg-purple-500',  label: 'Scheduled' },
-  pending:   { color: 'bg-orange-500',  label: 'Pending' },
-  no_show:   { color: 'bg-red-700',     label: 'No Show' },
-  inactive:  { color: 'bg-red-500',     label: 'Inactive' },
-};
 
 const ALL_PERMISSIONS = [
   { group: 'Users', permissions: ['users.view', 'users.create', 'users.edit', 'users.delete', 'users.assign_roles'] },
@@ -259,7 +214,6 @@ interface UserWithRoles {
   created_at: string;
   archived_at: string | null;
   registration_id: string | null;
-  account_status: string | null;
   roles: AppRole[];
   exceptions: Array<{ permission: string; is_granted: boolean }>;
 }
@@ -318,9 +272,7 @@ export default function UserManagement() {
   const [filterCity, setFilterCity] = useState<string>('');
   const [filterRole, setFilterRole] = useState<string>('');
   const [filterDivision, setFilterDivision] = useState<string>('');
-  const [filterStatus, setFilterStatus] = useState<'' | StatusKind>('');
   const [showArchived, setShowArchived] = useState(false);
-  const [showIdentityLegend, setShowIdentityLegend] = useState(false);
   // Sorting state
   type SortField = 'name' | 'role' | 'gender' | 'age' | 'country' | 'city';
   type SortDirection = 'asc' | 'desc';
@@ -382,7 +334,6 @@ export default function UserManagement() {
             created_at: profile.created_at,
             archived_at: profile.archived_at,
             registration_id: (profile as any).registration_id ?? null,
-            account_status: (profile as any).account_status ?? 'active',
             roles: (rolesData || []).map(r => r.role as AppRole),
             exceptions: exceptions || [],
           };
@@ -806,7 +757,7 @@ export default function UserManagement() {
     onSuccess: (result) => {
       if (!result.success) {
         toast({
-          title: 'Update blocked',
+          title: 'Password rejected',
           description: result.validationError,
           variant: 'destructive',
         });
@@ -985,10 +936,7 @@ export default function UserManagement() {
         }
       }
 
-      // Status filter
-      const matchesStatus = !filterStatus || resolveStatusKind(user.account_status) === filterStatus;
-
-      return matchesArchive && matchesSearch && matchesCountry && matchesCity && matchesRole && matchesStaffMode && matchesStatus;
+      return matchesArchive && matchesSearch && matchesCountry && matchesCity && matchesRole && matchesStaffMode;
     })
     ?.sort((a, b) => {
       let comparison = 0;
@@ -1036,14 +984,13 @@ export default function UserManagement() {
     return !hasGlobalRole; // global-role users without context already counted as matched
   });
 
-  const hasActiveFilters = !!filterCountry || !!filterCity || !!filterRole || !!filterDivision || !!filterStatus || showArchived;
+  const hasActiveFilters = !!filterCountry || !!filterCity || !!filterRole || !!filterDivision || showArchived;
 
   const resetFilters = () => {
     setFilterCountry('');
     setFilterCity('');
     setFilterRole('');
     setFilterDivision('');
-    setFilterStatus('');
     setSearchTerm('');
     setShowArchived(false);
   };
@@ -1150,14 +1097,14 @@ export default function UserManagement() {
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label htmlFor="password" className="text-xs">Password (min 6 chars)</Label>
+                        <Label htmlFor="password" className="text-xs">Password (min 8 chars)</Label>
                         <div className="relative">
                           <Input
                             id="password"
                             type={showNewUserPassword ? "text" : "password"}
                             value={newUserPassword}
                             onChange={(e) => setNewUserPassword(e.target.value)}
-                            placeholder="Min 6 characters"
+                            placeholder="Min 8 characters"
                             className="h-9 pr-9"
                           />
                           <Button
@@ -1454,33 +1401,6 @@ export default function UserManagement() {
 
               {/* Secondary row: contextual filters */}
               <div className="flex flex-wrap gap-2 items-center">
-                {/* Status filter pills (Identity System) */}
-                <div className="inline-flex items-center gap-1 p-1 rounded-lg bg-muted/50 border border-border/60">
-                  {([
-                    { key: '', label: 'All' },
-                    { key: 'active', label: 'Active' },
-                    { key: 'paused', label: 'Paused' },
-                    { key: 'left', label: 'Left' },
-                    { key: 'completed', label: 'Completed' },
-                  ] as const).map((p) => {
-                    const active = filterStatus === p.key;
-                    return (
-                      <button
-                        key={p.key || 'all'}
-                        onClick={() => setFilterStatus(p.key as any)}
-                        className={`inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs font-medium transition-all ${
-                          active
-                            ? 'bg-card text-foreground shadow-sm border border-border/60'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-card/50'
-                        }`}
-                      >
-                        {p.key ? <StatusDot kind={p.key as StatusKind} size="xs" showLabel={false} /> : <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />}
-                        {p.label}
-                      </button>
-                    );
-                  })}
-                </div>
-
                 <Select value={filterDivision || "context"} onValueChange={(v) => setFilterDivision(v === "context" ? "" : v)}>
                   <SelectTrigger className="w-[200px] h-9 rounded-lg bg-card text-sm">
                     <SelectValue placeholder="Division filter" />
@@ -1547,65 +1467,6 @@ export default function UserManagement() {
               </div>
             </div>
 
-            {/* Identity Legend — collapsible */}
-            <div className="flex items-center justify-end mb-2">
-              <button
-                type="button"
-                onClick={() => setShowIdentityLegend(s => !s)}
-                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                title="Identity legend"
-              >
-                <HelpCircle className="h-3.5 w-3.5" />
-                {showIdentityLegend ? 'Hide legend' : 'Identity legend'}
-              </button>
-            </div>
-            {showIdentityLegend && (
-              <Card className="mb-3 border-border/60 bg-muted/20">
-                <CardContent className="py-3 px-4 flex flex-col gap-2.5 text-xs">
-                  {/* Divisions — colored swatches with name */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-muted-foreground uppercase tracking-wider text-[10px] w-20 shrink-0">Division</span>
-                    {(['one_to_one','group','recorded'] as DivisionKind[]).map(k => (
-                      <span key={k} className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-background border border-border/60">
-                        <span className={`inline-block h-3 w-3 rounded-sm ${DIVISION_DOT_META[k].color} shadow-sm`} />
-                        <span className="text-foreground/80 font-medium">{DIVISION_DOT_META[k].label}</span>
-                      </span>
-                    ))}
-                  </div>
-
-                  {/* Roles — neutral icons with name */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-muted-foreground uppercase tracking-wider text-[10px] w-20 shrink-0">Role</span>
-                    {(['super_admin','admin','teacher','student','parent','examiner'] as AppRole[]).map(r => {
-                      const meta = ROLE_ICON_META[r];
-                      const RIcon = meta.Icon;
-                      return (
-                        <span key={r} className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-background border border-border/60">
-                          <RIcon className="h-3.5 w-3.5 text-foreground" />
-                          <span className="text-foreground/80 font-medium">{meta.label}</span>
-                        </span>
-                      );
-                    })}
-                  </div>
-
-                  {/* Status */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-muted-foreground uppercase tracking-wider text-[10px] w-20 shrink-0">Status</span>
-                    {(['active','paused','left','completed'] as StatusKind[]).map(s => (
-                      <span key={s} className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-background border border-border/60">
-                        <span className={`inline-block h-2 w-2 rounded-full ${STATUS_DOT_META[s].color}`} />
-                        <span className="text-foreground/80 font-medium">{STATUS_DOT_META[s].label}</span>
-                      </span>
-                    ))}
-                  </div>
-
-                  <p className="text-[10px] text-muted-foreground/80 italic mt-1">
-                    Tip: A user in two divisions shows two icons — one in each division's color.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-
             {/* Users Table — premium redesign */}
             <Card className="overflow-hidden border-border/60 shadow-sm">
               <CardContent className="p-0">
@@ -1644,20 +1505,21 @@ export default function UserManagement() {
                             />
                           </TableHead>
                         )}
-                        <TableHead className="w-6 h-11 px-2" title="Account status" />
+                        <TableHead className="w-12 h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">#</TableHead>
                         <TableHead
                           className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors"
                           onClick={() => handleSort('name')}
                         >
                           <div className="flex items-center">User{getSortIcon('name')}</div>
                         </TableHead>
+                        <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">ID</TableHead>
+                        <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Phone</TableHead>
                         <TableHead
                           className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors"
                           onClick={() => handleSort('role')}
                         >
-                          <div className="flex items-center">ID · Identity{getSortIcon('role')}</div>
+                          <div className="flex items-center">{effectiveDivisionId ? 'Role' : 'Division · Role'}{getSortIcon('role')}</div>
                         </TableHead>
-                        <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Phone</TableHead>
                         <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Location</TableHead>
                         <TableHead className="h-11 text-right text-[10px] uppercase tracking-wider font-semibold text-muted-foreground pr-4">Actions</TableHead>
                       </TableRow>
@@ -1684,21 +1546,7 @@ export default function UserManagement() {
                               />
                             </TableCell>
                           )}
-                          <TableCell className="py-3 pl-2 pr-1 w-6">
-                            <TooltipProvider delayDuration={150}>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span
-                                    className={`inline-block h-2 w-2 rounded-full ${STATUS_DOT_META[resolveStatusKind(user.account_status)].color}`}
-                                    aria-label={STATUS_DOT_META[resolveStatusKind(user.account_status)].label}
-                                  />
-                                </TooltipTrigger>
-                                <TooltipContent side="right" className="text-xs">
-                                  {STATUS_DOT_META[resolveStatusKind(user.account_status)].label}
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          </TableCell>
+                          <TableCell className="py-3 text-muted-foreground text-sm tabular-nums">{idx + 1}</TableCell>
                           <TableCell className="py-3 font-medium">
                             <div className="flex items-center gap-3">
                               <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white ${AVATAR_COLORS[getPrimaryRole(user.roles as AppRole[])] || AVATAR_COLORS.default}`}>
@@ -1721,123 +1569,34 @@ export default function UserManagement() {
                             {(() => {
                               const personNo = personNumberMap.get(user.id);
                               const fullUrn = user.registration_id;
-                              const memberships = divMembershipMap?.get(user.id) || [];
-                              const allRoles = (user.roles || []) as AppRole[];
-
-                              // Build (role × divisionKind) pairs deduped.
-                              // Roles tied to memberships get the division color; admin-only roles get neutral slate.
-                              const ROLE_DIV_ROLES = new Set<AppRole>(['student','teacher','parent']);
-                              type Pair = { role: AppRole; kind: DivisionKind | null; divLabel: string };
-                              const pairsMap = new Map<string, Pair>();
-
-                              allRoles.forEach(role => {
-                                if (ROLE_DIV_ROLES.has(role) && memberships.length > 0) {
-                                  // emit one pair per division this user belongs to (filtered by role match if available)
-                                  const relevant = memberships.filter(m =>
-                                    m.roles?.length ? m.roles.includes(role) : true
-                                  );
-                                  const pool = relevant.length > 0 ? relevant : memberships;
-                                  const seen = new Set<DivisionKind>();
-                                  pool.forEach(m => {
-                                    const k = resolveDivisionKind(m.modelType, m.divisionName);
-                                    if (seen.has(k)) return;
-                                    seen.add(k);
-                                    pairsMap.set(`${role}|${k}`, { role, kind: k, divLabel: m.divisionName });
-                                  });
-                                } else {
-                                  // admin/super_admin/examiner — no division
-                                  pairsMap.set(`${role}|none`, { role, kind: null, divLabel: '' });
-                                }
-                              });
-
-                              const pairs = [...pairsMap.values()];
-                              const visiblePairs = pairs.slice(0, 8);
-                              const overflow = pairs.length - visiblePairs.length;
-
-                              const idLabel = personNo || '—';
-
+                              if (!personNo) {
+                                return <span className="text-muted-foreground text-xs">—</span>;
+                              }
                               return (
-                                <div
-                                  className="inline-flex items-center gap-2 bg-background border border-border/60 shadow-sm rounded-md pl-2 pr-2 py-1 min-w-[220px] max-w-[260px]"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  {/* ID portion (12-13 chars worth) */}
-                                  <TooltipProvider delayDuration={150}>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <button
-                                          type="button"
-                                          className="font-mono text-[11px] tracking-tight text-foreground/80 hover:text-foreground truncate w-[100px] text-left"
-                                          onClick={() => {
-                                            if (!personNo) return;
-                                            navigator.clipboard.writeText(fullUrn || personNo);
-                                            toast({ title: 'Copied', description: fullUrn || personNo });
-                                          }}
-                                          title="Click to copy"
-                                        >
-                                          {idLabel}
-                                        </button>
-                                      </TooltipTrigger>
-                                      <TooltipContent side="right" className="text-xs">
-                                        <div className="font-medium">Universal ID: {idLabel}</div>
-                                        {fullUrn && <div className="text-muted-foreground mt-1">URN: {fullUrn}</div>}
-                                        {personNo && <div className="text-muted-foreground mt-1 italic">Click to copy</div>}
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-
-                                  <span className="h-3.5 w-px bg-border/70 shrink-0" aria-hidden />
-
-                                  {/* Role icons (color = division) */}
-                                  <div className="flex items-center gap-1 flex-1 min-w-0">
-                                    {pairs.length === 0 ? (
-                                      <span className="text-[10px] text-muted-foreground italic">no role</span>
-                                    ) : (
-                                      <>
-                                        {visiblePairs.map((p, i) => {
-                                          const meta = ROLE_ICON_META[p.role];
-                                          if (!meta) return null;
-                                          const RIcon = meta.Icon;
-                                          const colorCls = p.kind ? DIVISION_ICON_COLOR[p.kind] : DIVISION_NEUTRAL_COLOR;
-                                          const tip = p.kind
-                                            ? `${meta.label} — ${p.divLabel || DIVISION_DOT_META[p.kind].label}`
-                                            : meta.label;
-                                          return (
-                                            <TooltipProvider key={`${p.role}-${p.kind}-${i}`} delayDuration={150}>
-                                              <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                  <span className="inline-flex">
-                                                    <RIcon className={`h-3.5 w-3.5 ${colorCls}`} />
-                                                  </span>
-                                                </TooltipTrigger>
-                                                <TooltipContent side="top" className="text-xs">{tip}</TooltipContent>
-                                              </Tooltip>
-                                            </TooltipProvider>
-                                          );
-                                        })}
-                                        {overflow > 0 && (
-                                          <span className="text-[10px] font-medium text-muted-foreground ml-0.5">+{overflow}</span>
-                                        )}
-                                      </>
-                                    )}
-                                    {isSuperAdmin && getAvailableRoles(user).length > 0 && (
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-5 w-5 p-0 ml-auto opacity-0 group-hover:opacity-100 transition-opacity"
+                                <TooltipProvider delayDuration={150}>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <button
+                                        type="button"
+                                        className="inline-flex items-center gap-1.5 group/id"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          setViewingUser(user);
-                                          setAddRoleSelection(getAvailableRoles(user)[0]);
-                                          setIsAddRoleDialogOpen(true);
+                                          navigator.clipboard.writeText(fullUrn || personNo);
+                                          toast({ title: 'Copied', description: fullUrn || personNo });
                                         }}
-                                        title="Add role"
+                                        title="Click to copy"
                                       >
-                                        <Plus className="h-3 w-3" />
-                                      </Button>
-                                    )}
-                                  </div>
-                                </div>
+                                        <span className="font-mono text-xs bg-muted border border-border rounded-md px-2 py-0.5 text-foreground/80">{personNo}</span>
+                                        <Copy className="h-3 w-3 text-muted-foreground opacity-0 group-hover/id:opacity-100 transition-opacity" />
+                                      </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right" className="text-xs">
+                                      <div className="font-medium">Universal ID: {personNo}</div>
+                                      {fullUrn && <div className="text-muted-foreground mt-1">URN: {fullUrn}</div>}
+                                      <div className="text-muted-foreground mt-1 italic">Click to copy</div>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
                               );
                             })()}
                           </TableCell>
@@ -1850,6 +1609,66 @@ export default function UserManagement() {
                             ) : (
                               <span className="text-muted-foreground text-sm">—</span>
                             )}
+                          </TableCell>
+                          <TableCell className="py-3">
+                            <div className="flex flex-wrap gap-1.5 items-center">
+                              {(() => {
+                                const memberships = divMembershipMap?.get(user.id) || [];
+                                const globalRoles = (user.roles || []).filter(r => GLOBAL_ROLES.includes(r));
+
+                                if (effectiveDivisionId) {
+                                  const inScope = memberships.find(m => m.divisionId === effectiveDivisionId);
+                                  const rolesInDiv = inScope?.roles || [];
+                                  const pills: React.ReactNode[] = [];
+                                  rolesInDiv.forEach(role => {
+                                    pills.push(<RolePill key={`r-${role}`} role={role as AppRole} />);
+                                  });
+                                  globalRoles.forEach(role => {
+                                    pills.push(<RolePill key={`g-${role}`} role={role} />);
+                                  });
+                                  if (pills.length === 0) {
+                                    return <span className="text-xs text-muted-foreground italic">No role here</span>;
+                                  }
+                                  return pills;
+                                }
+
+                                const pills: React.ReactNode[] = [];
+                                memberships.forEach(m => {
+                                  const short = getDivisionShortName(m.divisionName);
+                                  m.roles.forEach(role => {
+                                    pills.push(
+                                      <RolePill
+                                        key={`${m.divisionId}-${role}`}
+                                        role={role as AppRole}
+                                        prefix={short}
+                                      />
+                                    );
+                                  });
+                                });
+                                globalRoles.forEach(role => {
+                                  pills.push(<RolePill key={`g-${role}`} role={role} />);
+                                });
+                                if (pills.length === 0) {
+                                  return <span className="text-xs text-muted-foreground italic">No role</span>;
+                                }
+                                return pills;
+                              })()}
+                              {isSuperAdmin && getAvailableRoles(user).length > 0 && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                  onClick={() => {
+                                    setViewingUser(user);
+                                    setAddRoleSelection(getAvailableRoles(user)[0]);
+                                    setIsAddRoleDialogOpen(true);
+                                  }}
+                                  title="Add role"
+                                >
+                                  <Plus className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell className="py-3">
                             {user.city || user.country ? (

@@ -22,8 +22,6 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import dagre from 'dagre';
 import { toPng } from 'html-to-image';
-import { RoleBadge } from '@/components/shared/RoleBadge';
-import { StatusDot } from '@/components/shared/StatusDot';
 
 export type ConnUserType = 'student' | 'teacher' | 'parent';
 export type RoleFilter = 'all' | 'teacher' | 'student' | 'parent';
@@ -142,13 +140,7 @@ function ConnectedNode({ data }: NodeProps<NodeData>) {
   if (data.kind === 'self') return null;
   const style = REL_STYLE[data.kind];
   const Icon = style.icon;
-  // Map relationship kind → role for RoleBadge in card header.
-  const roleForBadge: string | null =
-    data.kind === 'teacher' ? 'teacher'
-    : data.kind === 'student' ? 'student'
-    : data.kind === 'sibling' ? 'student'
-    : data.kind === 'parent' ? 'parent'
-    : null; // course → no role badge
+  const dot = data.status ? STATUS_DOT[data.status] || 'bg-gray-300' : null;
   return (
     <div
       className={cn(
@@ -165,17 +157,15 @@ function ConnectedNode({ data }: NodeProps<NodeData>) {
       <Handle type="source" position={Position.Bottom} className="!opacity-0" />
       <Handle type="source" position={Position.Left}   className="!opacity-0" />
       <Handle type="source" position={Position.Right}  className="!opacity-0" />
-      <div className="flex items-center gap-1.5 flex-wrap">
+      <div className="flex items-center gap-1.5">
         <Icon className={cn('h-3 w-3', style.headerClass)} />
         <span className={cn('text-[9px] font-bold uppercase tracking-wider', style.headerClass)}>{style.header}</span>
-        {roleForBadge && <RoleBadge role={roleForBadge as any} size="xs" />}
       </div>
       <p className="font-semibold text-sm text-foreground mt-1 leading-tight truncate">{data.title}</p>
       {data.subtitle && <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{data.subtitle}</p>}
       <div className="flex items-center gap-2 mt-1.5">
-        {data.status
-          ? <StatusDot status={data.status} size="xs" />
-          : <StatusDot kind="assigned" size="xs" label="Linked" />}
+        {dot && <span className={cn('w-1.5 h-1.5 rounded-full', dot)} />}
+        {data.status && <span className="text-[10px] text-muted-foreground capitalize">{data.status}</span>}
         {data.meta && <span className="text-[10px] text-muted-foreground ml-auto truncate">{data.meta}</span>}
       </div>
     </div>
