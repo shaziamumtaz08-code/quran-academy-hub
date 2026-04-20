@@ -253,8 +253,8 @@ function DashboardWrapper() {
 
 /** Wraps a public page in DashboardLayout only when the visitor is authenticated. */
 function PublicWithOptionalChrome({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-  if (loading) return <>{children}</>;
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <>{children}</>;
   if (user) return <DashboardLayout>{children}</DashboardLayout>;
   return <>{children}</>;
 }
