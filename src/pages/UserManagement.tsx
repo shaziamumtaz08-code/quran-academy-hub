@@ -941,7 +941,10 @@ export default function UserManagement() {
         }
       }
 
-      return matchesArchive && matchesSearch && matchesCountry && matchesCity && matchesRole && matchesStaffMode;
+      // Status filter
+      const matchesStatus = !filterStatus || resolveStatusKind(user.account_status) === filterStatus;
+
+      return matchesArchive && matchesSearch && matchesCountry && matchesCity && matchesRole && matchesStaffMode && matchesStatus;
     })
     ?.sort((a, b) => {
       let comparison = 0;
@@ -989,13 +992,14 @@ export default function UserManagement() {
     return !hasGlobalRole; // global-role users without context already counted as matched
   });
 
-  const hasActiveFilters = !!filterCountry || !!filterCity || !!filterRole || !!filterDivision || showArchived;
+  const hasActiveFilters = !!filterCountry || !!filterCity || !!filterRole || !!filterDivision || !!filterStatus || showArchived;
 
   const resetFilters = () => {
     setFilterCountry('');
     setFilterCity('');
     setFilterRole('');
     setFilterDivision('');
+    setFilterStatus('');
     setSearchTerm('');
     setShowArchived(false);
   };
