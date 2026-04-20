@@ -1,55 +1,24 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
+import React, { useState, useEffect, useContext, ReactNode, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import {
+  DivisionContext,
+  DIVISION_STORAGE_KEY,
+  type Branch,
+  type Division,
+  type DivisionContextEntry,
+} from './DivisionContextObject';
 
-export type DivisionModelType = 'one_to_one' | 'group';
-export type BranchType = 'online' | 'onsite';
+export type { DivisionModelType, BranchType, Division, Branch, DivisionContextEntry } from './DivisionContextObject';
 
-export interface Division {
-  id: string;
-  name: string;
-  model_type: DivisionModelType;
-  branch_id: string;
-  is_active: boolean;
+// eslint-disable-next-line react-refresh/only-export-components
+export function useDivision() {
+  const context = useContext(DivisionContext);
+  if (context === undefined) {
+    throw new Error('useDivision must be used within a DivisionProvider');
+  }
+  return context;
 }
-
-export interface Branch {
-  id: string;
-  name: string;
-  type: BranchType;
-  org_id: string;
-  timezone: string | null;
-}
-
-export interface DivisionContextEntry {
-  id: string;
-  branch_id: string;
-  division_id: string;
-  is_default: boolean;
-  branch?: Branch;
-  division?: Division;
-}
-
-interface DivisionContextType {
-  /** All contexts the user has access to */
-  userContexts: DivisionContextEntry[];
-  /** The currently active division */
-  activeDivision: Division | null;
-  /** The currently active branch */
-  activeBranch: Branch | null;
-  /** Set the active division by its ID */
-  setActiveDivisionId: (divisionId: string) => void;
-  /** The active division's model type shortcut */
-  activeModelType: DivisionModelType | null;
-  /** Whether division data is still loading */
-  isLoading: boolean;
-  /** Formatted switcher options */
-  switcherOptions: { id: string; label: string; divisionId: string; branchId: string; modelType: DivisionModelType }[];
-}
-
-const DivisionContext = createContext<DivisionContextType | undefined>(undefined);
-
-const DIVISION_STORAGE_KEY = 'lms_active_division_id';
 
 export function DivisionProvider({ children }: { children: ReactNode }) {
   const { user, isLoading: authLoading, isSuperAdmin } = useAuth();
@@ -65,7 +34,6 @@ export function DivisionProvider({ children }: { children: ReactNode }) {
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch user contexts, branches, and divisions
   useEffect(() => {
     if (!user?.id || authLoading) {
       setIsLoading(false);
@@ -75,7 +43,6 @@ export function DivisionProvider({ children }: { children: ReactNode }) {
     const fetchContextData = async () => {
       setIsLoading(true);
       try {
-        // Fetch all in parallel
         const [contextsRes, branchesRes, divisionsRes] = await Promise.all([
           supabase.from('user_context').select('*').eq('user_id', user.id),
           supabase.from('branches').select('*').eq('is_active', true),
@@ -89,7 +56,6 @@ export function DivisionProvider({ children }: { children: ReactNode }) {
         setBranches(brs);
         setDivisions(divs);
 
-        // Super admins get access to ALL divisions, not just their user_context entries
         let enriched: DivisionContextEntry[];
         if (isSuperAdmin) {
           enriched = divs.map(d => ({
@@ -110,7 +76,6 @@ export function DivisionProvider({ children }: { children: ReactNode }) {
 
         setUserContexts(enriched);
 
-        // Never keep a stale division from localStorage if this user cannot access it
         if (enriched.length === 0) {
           setActiveDivisionIdState(null);
           localStorage.removeItem(DIVISION_STORAGE_KEY);
@@ -156,9 +121,7 @@ export function DivisionProvider({ children }: { children: ReactNode }) {
 
   const activeModelType = activeDivision?.model_type || null;
 
-  // Build switcher options from user's authorized contexts
   const switcherOptions = useMemo(() => {
-    // Deduplicate by division_id
     const seen = new Set<string>();
     return userContexts
       .filter(ctx => ctx.division && ctx.branch)
@@ -189,12 +152,4 @@ export function DivisionProvider({ children }: { children: ReactNode }) {
       {children}
     </DivisionContext.Provider>
   );
-}
-
-export function useDivision() {
-  const context = useContext(DivisionContext);
-  if (context === undefined) {
-    throw new Error('useDivision must be used within a DivisionProvider');
-  }
-  return context;
 }
