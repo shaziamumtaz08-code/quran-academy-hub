@@ -132,8 +132,16 @@ export function TeacherDetailDrawer({ open, onOpenChange, teacher }: TeacherDeta
                 </div>
                 <div className="min-w-0">
                   <h3 className="font-bold text-lg text-foreground">{data.profile?.full_name || teacher?.full_name}</h3>
+                  {/* Identity row */}
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                    <RoleBadge role="teacher" size="xs" />
+                    {teacherMemberships.length > 0 && (
+                      <DivisionBadgeStack memberships={teacherMemberships} size="xs" />
+                    )}
+                    <StatusDot status={(data.profile as any)?.account_status} size="xs" />
+                  </div>
                   {data.profile?.email && (
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                    <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                       <Mail className="h-3 w-3" /> {data.profile.email}
                     </p>
                   )}
