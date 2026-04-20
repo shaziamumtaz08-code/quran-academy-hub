@@ -94,20 +94,30 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Copy, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
 import { DivisionBadge, DivisionBadgeStack, resolveDivisionKind, type DivisionKind } from '@/components/shared/DivisionBadge';
 import { StatusDot, resolveStatusKind, type StatusKind } from '@/components/shared/StatusDot';
-import { Crown, GraduationCap, Heart, ClipboardList, HelpCircle } from 'lucide-react';
+import { Crown, GraduationCap, Heart, ClipboardList, HelpCircle, Briefcase } from 'lucide-react';
 
-// Identity icons — single colored glyph per role for the new compact identity cell
-const ROLE_ICON_META: Record<AppRole, { Icon: React.ComponentType<{ className?: string }>; color: string; label: string }> = {
-  super_admin:      { Icon: Crown,         color: 'text-red-500',     label: 'Super Admin' },
-  admin:            { Icon: Shield,        color: 'text-red-500',     label: 'Admin' },
-  admin_admissions: { Icon: Shield,        color: 'text-red-500',     label: 'Admissions Admin' },
-  admin_fees:       { Icon: Shield,        color: 'text-red-500',     label: 'Fees Admin' },
-  admin_academic:   { Icon: Shield,        color: 'text-red-500',     label: 'Academic Admin' },
-  teacher:          { Icon: GraduationCap, color: 'text-blue-500',    label: 'Teacher' },
-  student:          { Icon: User,          color: 'text-emerald-500', label: 'Student' },
-  parent:           { Icon: Heart,         color: 'text-amber-500',   label: 'Parent' },
-  examiner:         { Icon: ClipboardList, color: 'text-violet-500',  label: 'Examiner' },
+// Identity icons — ICON = ROLE, COLOR = DIVISION
+// Each role has a distinct glyph; division provides the color (applied at render time).
+const ROLE_ICON_META: Record<AppRole, { Icon: React.ComponentType<{ className?: string }>; label: string }> = {
+  super_admin:      { Icon: Crown,         label: 'Super Admin' },
+  admin:            { Icon: Shield,        label: 'Admin' },
+  admin_admissions: { Icon: Shield,        label: 'Admissions Admin' },
+  admin_fees:       { Icon: Shield,        label: 'Fees Admin' },
+  admin_academic:   { Icon: Shield,        label: 'Academic Admin' },
+  teacher:          { Icon: Briefcase,     label: 'Teacher' },
+  student:          { Icon: GraduationCap, label: 'Student' },
+  parent:           { Icon: Heart,         label: 'Parent' },
+  examiner:         { Icon: ClipboardList, label: 'Examiner' },
 };
+
+// Division → text color class for role icons
+const DIVISION_ICON_COLOR: Record<DivisionKind, string> = {
+  group:      'text-emerald-500',
+  one_to_one: 'text-blue-500',
+  recorded:   'text-amber-500',
+  multi:      'text-purple-500',
+};
+const DIVISION_NEUTRAL_COLOR = 'text-slate-400';
 
 const DIVISION_DOT_META: Record<DivisionKind, { color: string; label: string }> = {
   group:      { color: 'bg-emerald-500', label: 'Group Academy' },
