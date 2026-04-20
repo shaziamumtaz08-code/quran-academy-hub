@@ -93,6 +93,7 @@ import { useDivision } from '@/contexts/DivisionContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Copy, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
 import { DivisionBadge, DivisionBadgeStack, resolveDivisionKind } from '@/components/shared/DivisionBadge';
+import { StatusDot, resolveStatusKind, type StatusKind } from '@/components/shared/StatusDot';
 
 const ALL_PERMISSIONS = [
   { group: 'Users', permissions: ['users.view', 'users.create', 'users.edit', 'users.delete', 'users.assign_roles'] },
@@ -215,6 +216,7 @@ interface UserWithRoles {
   created_at: string;
   archived_at: string | null;
   registration_id: string | null;
+  account_status: string | null;
   roles: AppRole[];
   exceptions: Array<{ permission: string; is_granted: boolean }>;
 }
@@ -273,6 +275,7 @@ export default function UserManagement() {
   const [filterCity, setFilterCity] = useState<string>('');
   const [filterRole, setFilterRole] = useState<string>('');
   const [filterDivision, setFilterDivision] = useState<string>('');
+  const [filterStatus, setFilterStatus] = useState<'' | StatusKind>('');
   const [showArchived, setShowArchived] = useState(false);
   // Sorting state
   type SortField = 'name' | 'role' | 'gender' | 'age' | 'country' | 'city';
@@ -335,6 +338,7 @@ export default function UserManagement() {
             created_at: profile.created_at,
             archived_at: profile.archived_at,
             registration_id: (profile as any).registration_id ?? null,
+            account_status: (profile as any).account_status ?? 'active',
             roles: (rolesData || []).map(r => r.role as AppRole),
             exceptions: exceptions || [],
           };
@@ -937,7 +941,10 @@ export default function UserManagement() {
         }
       }
 
-      return matchesArchive && matchesSearch && matchesCountry && matchesCity && matchesRole && matchesStaffMode;
+      // Status filter
+      const matchesStatus = !filterStatus || resolveStatusKind(user.account_status) === filterStatus;
+
+      return matchesArchive && matchesSearch && matchesCountry && matchesCity && matchesRole && matchesStaffMode && matchesStatus;
     })
     ?.sort((a, b) => {
       let comparison = 0;
@@ -985,13 +992,14 @@ export default function UserManagement() {
     return !hasGlobalRole; // global-role users without context already counted as matched
   });
 
-  const hasActiveFilters = !!filterCountry || !!filterCity || !!filterRole || !!filterDivision || showArchived;
+  const hasActiveFilters = !!filterCountry || !!filterCity || !!filterRole || !!filterDivision || !!filterStatus || showArchived;
 
   const resetFilters = () => {
     setFilterCountry('');
     setFilterCity('');
     setFilterRole('');
     setFilterDivision('');
+    setFilterStatus('');
     setSearchTerm('');
     setShowArchived(false);
   };
@@ -1402,6 +1410,33 @@ export default function UserManagement() {
 
               {/* Secondary row: contextual filters */}
               <div className="flex flex-wrap gap-2 items-center">
+                {/* Status filter pills (Identity System) */}
+                <div className="inline-flex items-center gap-1 p-1 rounded-lg bg-muted/50 border border-border/60">
+                  {([
+                    { key: '', label: 'All' },
+                    { key: 'active', label: 'Active' },
+                    { key: 'paused', label: 'Paused' },
+                    { key: 'left', label: 'Left' },
+                    { key: 'completed', label: 'Completed' },
+                  ] as const).map((p) => {
+                    const active = filterStatus === p.key;
+                    return (
+                      <button
+                        key={p.key || 'all'}
+                        onClick={() => setFilterStatus(p.key as any)}
+                        className={`inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md text-xs font-medium transition-all ${
+                          active
+                            ? 'bg-card text-foreground shadow-sm border border-border/60'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-card/50'
+                        }`}
+                      >
+                        {p.key ? <StatusDot kind={p.key as StatusKind} size="xs" showLabel={false} /> : <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />}
+                        {p.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
                 <Select value={filterDivision || "context"} onValueChange={(v) => setFilterDivision(v === "context" ? "" : v)}>
                   <SelectTrigger className="w-[200px] h-9 rounded-lg bg-card text-sm">
                     <SelectValue placeholder="Division filter" />
@@ -1613,6 +1648,7 @@ export default function UserManagement() {
                           </TableCell>
                           <TableCell className="py-3">
                             <div className="flex flex-wrap gap-1.5 items-center">
+                              <StatusDot status={user.account_status} size="xs" showLabel={false} />
                               {(() => {
                                 const memberships = divMembershipMap?.get(user.id) || [];
                                 const globalRoles = (user.roles || []).filter(r => GLOBAL_ROLES.includes(r));
