@@ -159,6 +159,26 @@ const RolePill = ({ role, prefix }: { role: AppRole; prefix?: string }) => {
   );
 };
 
+// ─── Identity Icons ──────────────────────────────────────────────────────
+// Inline icons that appear inside the URN pill: divisions a user belongs to,
+// plus a crown for global admin/super_admin roles. Mirrors the legend.
+type IdentityIconKind = 'division-1to1' | 'division-group' | 'division-recorded' | 'admin-crown';
+
+const IDENTITY_ICON_META: Record<IdentityIconKind, { Icon: React.ComponentType<{ className?: string }>; color: string; label: string }> = {
+  'division-1to1':     { Icon: GraduationCap, color: 'text-blue-600 dark:text-blue-400',       label: '1:1 Mentorship' },
+  'division-group':    { Icon: Users,         color: 'text-emerald-600 dark:text-emerald-400', label: 'Group Academy' },
+  'division-recorded': { Icon: Briefcase,     color: 'text-amber-600 dark:text-amber-400',     label: 'Recorded' },
+  'admin-crown':       { Icon: Crown,         color: 'text-rose-600 dark:text-rose-400',       label: 'Admin / Super Admin' },
+};
+
+const divisionIconKind = (modelType: string, divisionName: string): IdentityIconKind => {
+  const m = (modelType || '').toLowerCase();
+  const n = (divisionName || '').toLowerCase();
+  if (m === 'one_to_one' || n.includes('1:1') || n.includes('1-to-1') || n.includes('mentorship')) return 'division-1to1';
+  if (n.includes('recorded')) return 'division-recorded';
+  return 'division-group';
+};
+
 // Avatar background colors per primary role
 const AVATAR_COLORS: Record<string, string> = {
   super_admin: 'bg-red-600',
