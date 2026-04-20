@@ -93,6 +93,7 @@ import { useDivision } from '@/contexts/DivisionContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Copy, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
 import { DivisionBadge, DivisionBadgeStack, resolveDivisionKind } from '@/components/shared/DivisionBadge';
+import { StatusDot, resolveStatusKind, type StatusKind } from '@/components/shared/StatusDot';
 
 const ALL_PERMISSIONS = [
   { group: 'Users', permissions: ['users.view', 'users.create', 'users.edit', 'users.delete', 'users.assign_roles'] },
@@ -215,6 +216,7 @@ interface UserWithRoles {
   created_at: string;
   archived_at: string | null;
   registration_id: string | null;
+  account_status: string | null;
   roles: AppRole[];
   exceptions: Array<{ permission: string; is_granted: boolean }>;
 }
@@ -273,6 +275,7 @@ export default function UserManagement() {
   const [filterCity, setFilterCity] = useState<string>('');
   const [filterRole, setFilterRole] = useState<string>('');
   const [filterDivision, setFilterDivision] = useState<string>('');
+  const [filterStatus, setFilterStatus] = useState<'' | StatusKind>('');
   const [showArchived, setShowArchived] = useState(false);
   // Sorting state
   type SortField = 'name' | 'role' | 'gender' | 'age' | 'country' | 'city';
@@ -335,6 +338,7 @@ export default function UserManagement() {
             created_at: profile.created_at,
             archived_at: profile.archived_at,
             registration_id: (profile as any).registration_id ?? null,
+            account_status: (profile as any).account_status ?? 'active',
             roles: (rolesData || []).map(r => r.role as AppRole),
             exceptions: exceptions || [],
           };
