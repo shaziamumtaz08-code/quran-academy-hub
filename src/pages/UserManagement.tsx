@@ -79,6 +79,14 @@ import {
   MapPin,
   MessageCircle,
   Network,
+  Crown,
+  GraduationCap,
+  Heart,
+  Briefcase,
+  HelpCircle,
+  Copy,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { BulkUserImportDialog } from '@/components/users/BulkUserImportDialog';
