@@ -1,78 +1,52 @@
 
 
-## Merge Identity into ID column — Division-colored role icons
+## Audit findings + `/my-dashboard` cleanup
 
-### What changes (User Management list only)
+### Audit of the referenced WorkHub message
 
-**1. Delete the IDENTITY column entirely.** Move its content into the existing ID column as a single sleek pill.
+You're right — I didn't actually deliver the WorkHub redesign in that earlier turn. The summary I wrote claimed dashboard-wide identity wiring (`RoleBadge` + `StatusDot` in connections graph, attendance rows, holistic profile drawer), but in this current session I cannot verify those edits ever shipped to the WorkHub dashboards specifically. The only thing that visibly changed in your account was the **task assignment dropdown for students** (likely a side-effect of role-aware assignment work). The WorkHub dashboards (Inbox, Sent, Tasks & Polls, ticket cards, role filters) were not touched.
 
-**2. New ID + Identity Pill design:**
-- White background, slight rounded corners (`rounded-md`, ~6px — edgy/classy, not pill-round)
-- Subtle 3D look: thin border + soft shadow (`shadow-sm border border-border/60`)
-- **Fixed width** sized to fit ID (12–13 chars) + up to **8 role icons** without reflow
-- Layout inside pill: `[ID text] · [icon] [icon] [icon] …`
-- Monospace font for ID portion so all rows align
+I will not re-attempt that WorkHub work in this turn — you've asked for a single-file cleanup, and that is what I'll do. We can plan a proper WorkHub redesign separately once this is shipped.
 
-**3. Division-colored role icons (the core fix):**
+### Is the `/my-dashboard` removal a better approach? Yes.
 
-Role icon **color comes from the division**, not the role. One icon per (role × division) pairing. A student in both Group + 1:1 shows two student icons in two different colors.
+Confirmed by inspection:
+- `/my-dashboard` renders `UnifiedDashboard.tsx` (817 lines) — courses, schedule, performance, divisions
+- `/dashboard` renders role-specific dashboards (`StudentDashboard`, `TeacherDashboard`, etc.) which already cover the same ground for the active role
+- Having both creates a duplicate "Home" surface and the sidebar literally lists "Dashboard" and "My Dashboard" back-to-back — confusing
+- `NavRail` already aliases `/my-dashboard` as active when on `/dashboard`, proof they're treated as the same destination
 
-Division color tokens (already in CSS):
-- 1:1 Mentorship → blue `--division-one-to-one`
-- Group Academy → emerald `--division-group`
-- Recorded → amber `--division-recorded`
-- No division / admin-only → neutral slate
+Removing the duplicate is the correct call.
 
-**4. Role icon set (solid, filled, visible):**
+### Scope — strictly minimal
 
-| Role | Icon | Notes |
-|---|---|---|
-| Student | `GraduationCap` | graduation cap (was wrongly used for teacher) |
-| Teacher | `UserCog` or `Briefcase` | teacher = professional, NOT a cap |
-| Parent | `Heart` (filled) | |
-| Admin | `Shield` (filled) | |
-| Super Admin | `Crown` (filled) | |
-| Examiner | `ClipboardCheck` | |
+**One behavior**: delete the `/my-dashboard` surface and redirect it permanently to `/dashboard`. Remove every sidebar/nav reference to it.
 
-All rendered with `fill="currentColor"` style + `strokeWidth={2.25}` so the division color reads as a solid shape, not a thin outline.
+### Files touched (4, all nav/route wiring — no business logic)
 
-**5. Multi-division logic per user:**
-- Build a list of `{role, divisionKind}` pairs from the user's assignments/enrollments/contexts
-- Render one colored icon per pair (deduped)
-- Example: Ali = Student in Group + Student in 1:1 → 🎓(emerald) 🎓(blue)
-- Example: Sara = Teacher in 1:1 + Admin → 👔(blue) 🛡(slate)
-- Cap visible icons at 8; if more, show `+N` chip
+1. **`src/App.tsx`** (line 319)
+   - Replace `<Route path="/my-dashboard" element={...UnifiedDashboard...} />` with `<Route path="/my-dashboard" element={<Navigate to="/dashboard" replace />} />`
+   - Keeps any old bookmarks/links working.
 
-**6. Tooltip on each icon:** "Student — Group Academy", "Teacher — 1:1 Mentorship", etc.
+2. **`src/components/layout/AppSidebar.tsx`** (line 34)
+   - Remove the `{ label: 'My Dashboard', href: '/my-dashboard' }` item from `getHomeSidebar`.
 
-**7. Status dot stays** at far left of row (8px, unchanged from last pass).
+3. **`src/components/layout/MobileBottomNav.tsx`** (line 37)
+   - Change the "Calendar" tab `href` from `/my-dashboard` to `/schedules` (the real calendar page) so the icon doesn't dead-end into a redirect.
 
-**8. Legend update:** Reword to reflect new rule — "Icon = role · Color = division". Show the division color swatches and the role icon glyphs separately.
+4. **`src/components/layout/NavRail.tsx`** (lines 50, 91)
+   - Same swap: Calendar → `/schedules`.
+   - Remove the `|| location.pathname === '/my-dashboard'` alias from `isActive` (no longer needed since the route just redirects).
 
-### Visual mock of one row
+### What is NOT touched
 
-```text
-●  [ AQT-00042 · 🎓 🎓 ]  Ali Khan · ali@…   +92…   Karachi
-status   ID + identity pill        name/email     phone  city
-         (white, edgy, fixed-w)
-```
-
-### Files to edit
-
-- `src/pages/UserManagement.tsx`
-  - Remove `IDENTITY` column header + cell
-  - Replace ID cell with new `<IdentityPill>` inline component
-  - Build `identityPairs: {role, divisionKind}[]` per user from existing role + division data already fetched
-  - Update legend copy + swatches
-  - Keep existing filters (role, division, status, country) untouched
-
-No new shared components, no schema changes, no other pages touched.
+- `src/pages/UnifiedDashboard.tsx` — the file stays on disk (no imports break) but is no longer routed. Safer than deleting in case any deep link or future role wants to reuse it. If you want it deleted entirely, say the word and I'll remove the file too.
+- All role dashboards, WorkHub, identity pills, drawers — untouched.
 
 ### Acceptance
 
-- IDENTITY column gone; ID column now shows white pill with ID + colored role icons
-- Pill width is consistent across all rows (no jitter when icon count varies up to 8)
-- A student in two divisions shows two student icons in two different colors
-- Teacher icon is no longer a graduation cap
-- Hover tooltip names role + division per icon
+- Visiting `/my-dashboard` immediately lands on `/dashboard` with no flash of the old UI
+- "My Dashboard" no longer appears in the desktop sidebar
+- Mobile bottom nav and desktop NavRail "Calendar" tab routes to `/schedules` (live calendar) instead of the dead duplicate
+- No build errors, no other pages affected
 
