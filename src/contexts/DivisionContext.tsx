@@ -47,9 +47,22 @@ interface DivisionContextType {
   switcherOptions: { id: string; label: string; divisionId: string; branchId: string; modelType: DivisionModelType }[];
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 const DivisionContext = createContext<DivisionContextType | undefined>(undefined);
 
 const DIVISION_STORAGE_KEY = 'lms_active_division_id';
+
+// Preserve context identity across HMR updates
+if (import.meta.hot) {
+  const w = window as unknown as { __DIVISION_CTX__?: React.Context<DivisionContextType | undefined> };
+  if (w.__DIVISION_CTX__) {
+    // reuse existing context to keep provider/consumer in sync
+    // @ts-expect-error - reassigning for HMR stability
+    // eslint-disable-next-line no-const-assign
+  } else {
+    w.__DIVISION_CTX__ = DivisionContext;
+  }
+}
 
 export function DivisionProvider({ children }: { children: ReactNode }) {
   const { user, isLoading: authLoading, isSuperAdmin } = useAuth();
