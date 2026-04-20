@@ -1,59 +1,78 @@
 
 
-# Unified Connections — Multi-Role + Complete Course View
+## Merge Identity into ID column — Division-colored role icons
 
-## Problem (jo aap ne bola)
-1. Abida teacher hai PAR woh khud bhi student ho sakti hai (Tafseer Quran enrolled) — sirf teacher view dikh raha hai.
-2. Nida = parent + student + maybe teacher — abhi sirf ek role ka graph load hota hai.
-3. Courses sirf "active" filter ho rahe hain — completed/past courses miss ho rahe hain.
-4. Group academy + one-to-one dono ka data ek saath nahi dikh raha.
-5. Click kar ke quick view nahi milta apne dashboard se.
+### What changes (User Management list only)
 
-## Fix — 3 cheezein
+**1. Delete the IDENTITY column entirely.** Move its content into the existing ID column as a single sleek pill.
 
-### 1. Multi-role graph (root cause)
-`UserConnectionsGraph` ko refactor karo. `userType` prop optional banao. Component khud detect kare us profile ki **saari roles** (`user_roles` table se) aur har role ka data parallel fetch kare, phir ek hi unified graph mein dikhaye:
+**2. New ID + Identity Pill design:**
+- White background, slight rounded corners (`rounded-md`, ~6px — edgy/classy, not pill-round)
+- Subtle 3D look: thin border + soft shadow (`shadow-sm border border-border/60`)
+- **Fixed width** sized to fit ID (12–13 chars) + up to **8 role icons** without reflow
+- Layout inside pill: `[ID text] · [icon] [icon] [icon] …`
+- Monospace font for ID portion so all rows align
 
-- **Center node**: person ka naam + saari roles ke chips (e.g. "Teacher · Student · Parent")
-- **Branches grouped by role**:
-  - As Teacher → students (with subject), classes, co-teachers
-  - As Student → teachers, courses enrolled, siblings
-  - As Parent → children → unke teachers
-- **Color-coded section headers** (faint group nodes) so visually clear ho ke "ye uske teacher-life ka hai, ye student-life ka"
+**3. Division-colored role icons (the core fix):**
 
-### 2. Complete course history (active + completed + past)
-- Hatao `.eq('status', 'active')` filter from `course_enrollments` and `student_teacher_assignments`.
-- Status badge har course/assignment node pe: green=Active, blue=Completed, grey=Paused/Ended.
-- Bhi add: courses **completed long ago** (with completion date subtitle).
+Role icon **color comes from the division**, not the role. One icon per (role × division) pairing. A student in both Group + 1:1 shows two student icons in two different colors.
 
-### 3. User-facing "My Connections" entry points
-Aap ne ye bhi mention kiya — student/teacher/parent apne dashboard se ek click pe apna full graph dekh sake:
-- **StudentDashboard**: ek "My Network" card → opens `/connections/student/{myId}`
-- **TeacherDashboard**: same → `/connections/teacher/{myId}`
-- **ParentDashboard**: "Family Map" tile → `/connections/parent/{myId}`
+Division color tokens (already in CSS):
+- 1:1 Mentorship → blue `--division-one-to-one`
+- Group Academy → emerald `--division-group`
+- Recorded → amber `--division-recorded`
+- No division / admin-only → neutral slate
 
-Plus: full-page header pe **role tabs** (e.g. `[All] [As Teacher] [As Student] [As Parent]`) — user filter kar sake jab graph bara ho.
+**4. Role icon set (solid, filled, visible):**
 
-## Visual upgrade (aesthetics)
-- Center node bigger, gradient bg, role chips ke neeche
-- Role-group "lane" backgrounds (subtle tinted rectangles dagre-rendered behind related nodes) so 3 worlds visually separate
-- Edge labels mein subject + status (e.g. "Hifz · Completed")
-- Hover pe node — show mini popover with: role, subject/course, dates, "Open profile →" link
+| Role | Icon | Notes |
+|---|---|---|
+| Student | `GraduationCap` | graduation cap (was wrongly used for teacher) |
+| Teacher | `UserCog` or `Briefcase` | teacher = professional, NOT a cap |
+| Parent | `Heart` (filled) | |
+| Admin | `Shield` (filled) | |
+| Super Admin | `Crown` (filled) | |
+| Examiner | `ClipboardCheck` | |
 
-## Files to touch
-1. `src/components/connections/UserConnectionsGraph.tsx` — refactor to multi-role aggregator
-2. `src/pages/UserConnections.tsx` — add role filter tabs
-3. `src/components/dashboard/StudentDashboard.tsx` — add "My Network" entry card
-4. `src/components/dashboard/teacher/TeacherQuickActions.tsx` — add "My Network" tile
-5. `src/components/dashboard/ParentDashboard.tsx` — add "Family Map" tile
+All rendered with `fill="currentColor"` style + `strokeWidth={2.25}` so the division color reads as a solid shape, not a thin outline.
 
-## What stays the same
-- `/admin/schema-explorer` (database view) — untouched
-- Existing drawer Connections tabs — automatically benefit from the refactor (no breaking change)
-- React Flow + dagre stack — same
+**5. Multi-division logic per user:**
+- Build a list of `{role, divisionKind}` pairs from the user's assignments/enrollments/contexts
+- Render one colored icon per pair (deduped)
+- Example: Ali = Student in Group + Student in 1:1 → 🎓(emerald) 🎓(blue)
+- Example: Sara = Teacher in 1:1 + Admin → 👔(blue) 🛡(slate)
+- Cap visible icons at 8; if more, show `+N` chip
 
-## Out of scope (confirm if you want these too)
-- Editing relationships from the graph (currently read-only)
-- Export graph as PNG/PDF
-- Showing financial/attendance stats inside connection cards
+**6. Tooltip on each icon:** "Student — Group Academy", "Teacher — 1:1 Mentorship", etc.
+
+**7. Status dot stays** at far left of row (8px, unchanged from last pass).
+
+**8. Legend update:** Reword to reflect new rule — "Icon = role · Color = division". Show the division color swatches and the role icon glyphs separately.
+
+### Visual mock of one row
+
+```text
+●  [ AQT-00042 · 🎓 🎓 ]  Ali Khan · ali@…   +92…   Karachi
+status   ID + identity pill        name/email     phone  city
+         (white, edgy, fixed-w)
+```
+
+### Files to edit
+
+- `src/pages/UserManagement.tsx`
+  - Remove `IDENTITY` column header + cell
+  - Replace ID cell with new `<IdentityPill>` inline component
+  - Build `identityPairs: {role, divisionKind}[]` per user from existing role + division data already fetched
+  - Update legend copy + swatches
+  - Keep existing filters (role, division, status, country) untouched
+
+No new shared components, no schema changes, no other pages touched.
+
+### Acceptance
+
+- IDENTITY column gone; ID column now shows white pill with ID + colored role icons
+- Pill width is consistent across all rows (no jitter when icon count varies up to 8)
+- A student in two divisions shows two student icons in two different colors
+- Teacher icon is no longer a graduation cap
+- Hover tooltip names role + division per icon
 
