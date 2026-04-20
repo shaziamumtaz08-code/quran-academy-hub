@@ -15,6 +15,7 @@ import { Link } from 'react-router-dom';
 import { RoleBadge } from '@/components/shared/RoleBadge';
 import { DivisionBadgeStack } from '@/components/shared/DivisionBadge';
 import { StatusDot } from '@/components/shared/StatusDot';
+import { useDivisionMembership } from '@/hooks/useDivisionMembership';
 
 const DAYS_OF_WEEK = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const DAYS_LABELS: Record<string, string> = {
@@ -116,21 +117,11 @@ export function StudentDetailDrawer({
   });
 
   // Fetch student's division memberships (for identity badges)
-  const { data: studentMemberships = [] } = useQuery({
-    queryKey: ['student-division-memberships', student?.id],
-    queryFn: async () => {
-      if (!student?.id) return [];
-      const { data } = await supabase
-        .from('division_memberships')
-        .select('division:divisions(id, name, model_type)')
-        .eq('user_id', student.id);
-      return (data || [])
-        .map((m: any) => m.division)
-        .filter(Boolean)
-        .map((d: any) => ({ modelType: d.model_type, divisionName: d.name }));
-    },
-    enabled: !!student?.id && open,
-  });
+  const { data: membershipMap } = useDivisionMembership(student?.id ? [student.id] : [], !!student?.id && open);
+  const studentMemberships = (membershipMap?.get(student?.id || '') || []).map(m => ({
+    modelType: m.modelType,
+    divisionName: m.divisionName,
+  }));
 
   // Fetch teacher's profile for country code
   const { data: teacherProfile } = useQuery({
