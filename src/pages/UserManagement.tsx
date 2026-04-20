@@ -1694,89 +1694,85 @@ export default function UserManagement() {
                             )}
                           </TableCell>
                           <TableCell className="py-3">
-                            <div className="flex flex-wrap gap-1.5 items-center">
-                              <StatusDot status={user.account_status} size="xs" showLabel={false} />
-                              {(() => {
-                                const memberships = divMembershipMap?.get(user.id) || [];
-                                const globalRoles = (user.roles || []).filter(r => GLOBAL_ROLES.includes(r));
-                                const pills: React.ReactNode[] = [];
+                            {(() => {
+                              const memberships = divMembershipMap?.get(user.id) || [];
+                              const allRoles = (user.roles || []) as AppRole[];
 
-                                // Identity: Division badge (collapses to "Multi" when ≥2 distinct kinds)
-                                if (memberships.length > 0) {
-                                  if (effectiveDivisionId) {
-                                    const inScope = memberships.find(m => m.divisionId === effectiveDivisionId);
-                                    if (inScope) {
-                                      pills.push(
-                                        <DivisionBadge
-                                          key="div-scope"
-                                          modelType={inScope.modelType}
-                                          name={inScope.divisionName}
-                                          size="xs"
-                                        />
+                              // Determine division kind for THIS user (overall, not per-role)
+                              const distinctKinds = Array.from(
+                                new Set(memberships.map(m => resolveDivisionKind(m.modelType, m.divisionName))),
+                              );
+                              let userDivKind: DivisionKind | null = null;
+                              let userDivLabel = '';
+                              if (effectiveDivisionId) {
+                                const inScope = memberships.find(m => m.divisionId === effectiveDivisionId);
+                                if (inScope) {
+                                  userDivKind = resolveDivisionKind(inScope.modelType, inScope.divisionName);
+                                  userDivLabel = inScope.divisionName;
+                                }
+                              } else if (distinctKinds.length >= 2) {
+                                userDivKind = 'multi';
+                                userDivLabel = 'Multiple divisions';
+                              } else if (distinctKinds.length === 1) {
+                                userDivKind = distinctKinds[0];
+                                userDivLabel = memberships[0]?.divisionName || DIVISION_DOT_META[distinctKinds[0]].label;
+                              }
+
+                              if (allRoles.length === 0) {
+                                return <span className="text-xs text-muted-foreground italic">No role</span>;
+                              }
+
+                              return (
+                                <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-1.5 group/identity">
+                                    {allRoles.map(role => {
+                                      const meta = ROLE_ICON_META[role];
+                                      if (!meta) return null;
+                                      const RIcon = meta.Icon;
+                                      const tooltipText = userDivKind
+                                        ? `${meta.label} — ${userDivLabel || DIVISION_DOT_META[userDivKind].label}`
+                                        : meta.label;
+                                      return (
+                                        <TooltipProvider key={role} delayDuration={150}>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <span className="inline-flex items-center gap-1">
+                                                {userDivKind && (
+                                                  <span
+                                                    className={`inline-block h-1.5 w-1.5 rounded-full ${DIVISION_DOT_META[userDivKind].color}`}
+                                                    aria-hidden
+                                                  />
+                                                )}
+                                                <RIcon className={`h-4 w-4 ${meta.color}`} />
+                                              </span>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="top" className="text-xs">
+                                              {tooltipText}
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
                                       );
-                                    }
-                                  } else {
-                                    pills.push(
-                                      <DivisionBadgeStack
-                                        key="div-stack"
-                                        memberships={memberships}
-                                        size="xs"
-                                      />
-                                    );
-                                  }
-                                }
-
-                                if (effectiveDivisionId) {
-                                  const inScope = memberships.find(m => m.divisionId === effectiveDivisionId);
-                                  const rolesInDiv = inScope?.roles || [];
-                                  rolesInDiv.forEach(role => {
-                                    pills.push(<RolePill key={`r-${role}`} role={role as AppRole} />);
-                                  });
-                                  globalRoles.forEach(role => {
-                                    pills.push(<RolePill key={`g-${role}`} role={role} />);
-                                  });
-                                  if (pills.length === 0) {
-                                    return <span className="text-xs text-muted-foreground italic">No role here</span>;
-                                  }
-                                  return pills;
-                                }
-
-                                memberships.forEach(m => {
-                                  const short = getDivisionShortName(m.divisionName);
-                                  m.roles.forEach(role => {
-                                    pills.push(
-                                      <RolePill
-                                        key={`${m.divisionId}-${role}`}
-                                        role={role as AppRole}
-                                        prefix={short}
-                                      />
-                                    );
-                                  });
-                                });
-                                globalRoles.forEach(role => {
-                                  pills.push(<RolePill key={`g-${role}`} role={role} />);
-                                });
-                                if (pills.length === 0) {
-                                  return <span className="text-xs text-muted-foreground italic">No role</span>;
-                                }
-                                return pills;
-                              })()}
-                              {isSuperAdmin && getAvailableRoles(user).length > 0 && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 w-6 p-0"
-                                  onClick={() => {
-                                    setViewingUser(user);
-                                    setAddRoleSelection(getAvailableRoles(user)[0]);
-                                    setIsAddRoleDialogOpen(true);
-                                  }}
-                                  title="Add role"
-                                >
-                                  <Plus className="h-3 w-3" />
-                                </Button>
-                              )}
-                            </div>
+                                    })}
+                                  </div>
+                                  {isSuperAdmin && getAvailableRoles(user).length > 0 && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setViewingUser(user);
+                                        setAddRoleSelection(getAvailableRoles(user)[0]);
+                                        setIsAddRoleDialogOpen(true);
+                                      }}
+                                      title="Add role"
+                                    >
+                                      <Plus className="h-3 w-3" />
+                                    </Button>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </TableCell>
                           <TableCell className="py-3">
                             {user.city || user.country ? (
