@@ -31,7 +31,6 @@ function getHomeSidebar(isOneToOne?: boolean, role?: string | null): { title: st
     subtitle: 'Dashboard',
     items: [
       { label: 'Dashboard', href: '/dashboard' },
-      { label: 'My Dashboard', href: '/my-dashboard' },
       ...(!isStudent ? [{ label: 'Divisions', group: 'DIVISIONS' }] : []),
       ...(!isOneToOne && !isStudent ? [{ label: 'Group Academy', href: '/teaching?section=courses' }] : []),
       ...(!isStudent ? [{ label: '1-to-1', href: '/teaching?section=assignments' }] : []),
