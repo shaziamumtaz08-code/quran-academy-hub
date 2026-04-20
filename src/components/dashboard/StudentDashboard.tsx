@@ -127,7 +127,7 @@ export function StudentDashboard() {
       // ── Group course enrollments ──
       const { data: courseEnrollments } = await supabase
         .from('course_enrollments')
-        .select('id, course_id, course:courses(id, name, description)')
+        .select('id, course_id, course:courses(id, name, description, thumbnail_url, hero_image_url)')
         .eq('student_id', user.id)
         .eq('status', 'active');
 
@@ -251,7 +251,7 @@ export function StudentDashboard() {
         return {
           id: course.id,
           name: course.name,
-          coverImage: null, // courses table has no cover_image_url yet
+          coverImage: course.thumbnail_url || course.hero_image_url || null,
           description: course.description,
           gradient: GRADIENTS[idx % GRADIENTS.length],
           nextClass: nextClassInfo,
