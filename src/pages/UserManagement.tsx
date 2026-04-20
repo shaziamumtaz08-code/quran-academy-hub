@@ -1713,34 +1713,123 @@ export default function UserManagement() {
                             {(() => {
                               const personNo = personNumberMap.get(user.id);
                               const fullUrn = user.registration_id;
-                              if (!personNo) {
-                                return <span className="text-muted-foreground text-xs">—</span>;
-                              }
+                              const memberships = divMembershipMap?.get(user.id) || [];
+                              const allRoles = (user.roles || []) as AppRole[];
+
+                              // Build (role × divisionKind) pairs deduped.
+                              // Roles tied to memberships get the division color; admin-only roles get neutral slate.
+                              const ROLE_DIV_ROLES = new Set<AppRole>(['student','teacher','parent']);
+                              type Pair = { role: AppRole; kind: DivisionKind | null; divLabel: string };
+                              const pairsMap = new Map<string, Pair>();
+
+                              allRoles.forEach(role => {
+                                if (ROLE_DIV_ROLES.has(role) && memberships.length > 0) {
+                                  // emit one pair per division this user belongs to (filtered by role match if available)
+                                  const relevant = memberships.filter(m =>
+                                    m.roles?.length ? m.roles.includes(role) : true
+                                  );
+                                  const pool = relevant.length > 0 ? relevant : memberships;
+                                  const seen = new Set<DivisionKind>();
+                                  pool.forEach(m => {
+                                    const k = resolveDivisionKind(m.modelType, m.divisionName);
+                                    if (seen.has(k)) return;
+                                    seen.add(k);
+                                    pairsMap.set(`${role}|${k}`, { role, kind: k, divLabel: m.divisionName });
+                                  });
+                                } else {
+                                  // admin/super_admin/examiner — no division
+                                  pairsMap.set(`${role}|none`, { role, kind: null, divLabel: '' });
+                                }
+                              });
+
+                              const pairs = [...pairsMap.values()];
+                              const visiblePairs = pairs.slice(0, 8);
+                              const overflow = pairs.length - visiblePairs.length;
+
+                              const idLabel = personNo || '—';
+
                               return (
-                                <TooltipProvider delayDuration={150}>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <button
-                                        type="button"
-                                        className="inline-flex items-center gap-1.5 group/id"
+                                <div
+                                  className="inline-flex items-center gap-2 bg-background border border-border/60 shadow-sm rounded-md pl-2 pr-2 py-1 min-w-[220px] max-w-[260px]"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {/* ID portion (12-13 chars worth) */}
+                                  <TooltipProvider delayDuration={150}>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <button
+                                          type="button"
+                                          className="font-mono text-[11px] tracking-tight text-foreground/80 hover:text-foreground truncate w-[100px] text-left"
+                                          onClick={() => {
+                                            if (!personNo) return;
+                                            navigator.clipboard.writeText(fullUrn || personNo);
+                                            toast({ title: 'Copied', description: fullUrn || personNo });
+                                          }}
+                                          title="Click to copy"
+                                        >
+                                          {idLabel}
+                                        </button>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="right" className="text-xs">
+                                        <div className="font-medium">Universal ID: {idLabel}</div>
+                                        {fullUrn && <div className="text-muted-foreground mt-1">URN: {fullUrn}</div>}
+                                        {personNo && <div className="text-muted-foreground mt-1 italic">Click to copy</div>}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+
+                                  <span className="h-3.5 w-px bg-border/70 shrink-0" aria-hidden />
+
+                                  {/* Role icons (color = division) */}
+                                  <div className="flex items-center gap-1 flex-1 min-w-0">
+                                    {pairs.length === 0 ? (
+                                      <span className="text-[10px] text-muted-foreground italic">no role</span>
+                                    ) : (
+                                      <>
+                                        {visiblePairs.map((p, i) => {
+                                          const meta = ROLE_ICON_META[p.role];
+                                          if (!meta) return null;
+                                          const RIcon = meta.Icon;
+                                          const colorCls = p.kind ? DIVISION_ICON_COLOR[p.kind] : DIVISION_NEUTRAL_COLOR;
+                                          const tip = p.kind
+                                            ? `${meta.label} — ${p.divLabel || DIVISION_DOT_META[p.kind].label}`
+                                            : meta.label;
+                                          return (
+                                            <TooltipProvider key={`${p.role}-${p.kind}-${i}`} delayDuration={150}>
+                                              <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                  <span className="inline-flex">
+                                                    <RIcon className={`h-3.5 w-3.5 ${colorCls}`} />
+                                                  </span>
+                                                </TooltipTrigger>
+                                                <TooltipContent side="top" className="text-xs">{tip}</TooltipContent>
+                                              </Tooltip>
+                                            </TooltipProvider>
+                                          );
+                                        })}
+                                        {overflow > 0 && (
+                                          <span className="text-[10px] font-medium text-muted-foreground ml-0.5">+{overflow}</span>
+                                        )}
+                                      </>
+                                    )}
+                                    {isSuperAdmin && getAvailableRoles(user).length > 0 && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-5 w-5 p-0 ml-auto opacity-0 group-hover:opacity-100 transition-opacity"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          navigator.clipboard.writeText(fullUrn || personNo);
-                                          toast({ title: 'Copied', description: fullUrn || personNo });
+                                          setViewingUser(user);
+                                          setAddRoleSelection(getAvailableRoles(user)[0]);
+                                          setIsAddRoleDialogOpen(true);
                                         }}
-                                        title="Click to copy"
+                                        title="Add role"
                                       >
-                                        <span className="font-mono text-xs bg-muted border border-border rounded-md px-2 py-0.5 text-foreground/80">{personNo}</span>
-                                        <Copy className="h-3 w-3 text-muted-foreground opacity-0 group-hover/id:opacity-100 transition-opacity" />
-                                      </button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="right" className="text-xs">
-                                      <div className="font-medium">Universal ID: {personNo}</div>
-                                      {fullUrn && <div className="text-muted-foreground mt-1">URN: {fullUrn}</div>}
-                                      <div className="text-muted-foreground mt-1 italic">Click to copy</div>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
+                                        <Plus className="h-3 w-3" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
                               );
                             })()}
                           </TableCell>
