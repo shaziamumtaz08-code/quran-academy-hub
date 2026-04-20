@@ -251,6 +251,14 @@ function DashboardWrapper() {
   );
 }
 
+/** Wraps a public page in DashboardLayout only when the visitor is authenticated. */
+function PublicWithOptionalChrome({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) return <>{children}</>;
+  if (user) return <DashboardLayout>{children}</DashboardLayout>;
+  return <>{children}</>;
+}
+
 function AppRoutes() {
   const { isAuthenticated, activeRole } = useAuth();
   
@@ -392,9 +400,9 @@ function AppRoutes() {
       {/* Public Inquiry Form - no auth */}
       <Route path="/inquiry" element={<PublicInquiryForm />} />
       {/* Public Course Catalog - shows sidebar when authenticated */}
-      <Route path="/courses-catalog" element={<ConditionalDashboardLayout><CourseCatalog /></ConditionalDashboardLayout>} />
+      <Route path="/courses-catalog" element={<PublicWithOptionalChrome><CourseCatalog /></PublicWithOptionalChrome>} />
       {/* Recorded Courses Storefront - shows sidebar when authenticated */}
-      <Route path="/recorded-courses" element={<ConditionalDashboardLayout><RecordedCourses /></ConditionalDashboardLayout>} />
+      <Route path="/recorded-courses" element={<PublicWithOptionalChrome><RecordedCourses /></PublicWithOptionalChrome>} />
       {/* Public Registration Form - no auth */}
       <Route path="/apply/:slug" element={<PublicApplyForm />} />
       {/* Quiz Engine */}
