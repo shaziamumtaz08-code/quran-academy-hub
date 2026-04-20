@@ -757,7 +757,7 @@ export default function UserManagement() {
     onSuccess: (result) => {
       if (!result.success) {
         toast({
-          title: 'Password rejected',
+          title: 'Update blocked',
           description: result.validationError,
           variant: 'destructive',
         });
@@ -1097,14 +1097,14 @@ export default function UserManagement() {
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label htmlFor="password" className="text-xs">Password (min 8 chars)</Label>
+                        <Label htmlFor="password" className="text-xs">Password (min 6 chars)</Label>
                         <div className="relative">
                           <Input
                             id="password"
                             type={showNewUserPassword ? "text" : "password"}
                             value={newUserPassword}
                             onChange={(e) => setNewUserPassword(e.target.value)}
-                            placeholder="Min 8 characters"
+                            placeholder="Min 6 characters"
                             className="h-9 pr-9"
                           />
                           <Button
