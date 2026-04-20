@@ -79,6 +79,11 @@ import {
   MapPin,
   MessageCircle,
   Network,
+  Crown,
+  GraduationCap,
+  Heart,
+  Briefcase,
+  HelpCircle,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { BulkUserImportDialog } from '@/components/users/BulkUserImportDialog';
@@ -91,7 +96,7 @@ import { SearchableCitySelect } from '@/components/ui/searchable-city-select';
 import { useDivisionMembership, getDivisionShortName, getDivisionBadgeClass, formatRoleLabel } from '@/hooks/useDivisionMembership';
 import { useDivision } from '@/contexts/DivisionContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Copy, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Copy, ChevronDown, ChevronRight, ChevronUp, AlertTriangle } from 'lucide-react';
 
 const ALL_PERMISSIONS = [
   { group: 'Users', permissions: ['users.view', 'users.create', 'users.edit', 'users.delete', 'users.assign_roles'] },
@@ -152,6 +157,26 @@ const RolePill = ({ role, prefix }: { role: AppRole; prefix?: string }) => {
       <span>{formatRoleLabel(role)}</span>
     </span>
   );
+};
+
+// ─── Identity Icons ──────────────────────────────────────────────────────
+// Inline icons that appear inside the URN pill: divisions a user belongs to,
+// plus a crown for global admin/super_admin roles. Mirrors the legend.
+type IdentityIconKind = 'division-1to1' | 'division-group' | 'division-recorded' | 'admin-crown';
+
+const IDENTITY_ICON_META: Record<IdentityIconKind, { Icon: React.ComponentType<{ className?: string }>; color: string; label: string }> = {
+  'division-1to1':     { Icon: GraduationCap, color: 'text-blue-600 dark:text-blue-400',       label: '1:1 Mentorship' },
+  'division-group':    { Icon: Users,         color: 'text-emerald-600 dark:text-emerald-400', label: 'Group Academy' },
+  'division-recorded': { Icon: Briefcase,     color: 'text-amber-600 dark:text-amber-400',     label: 'Recorded' },
+  'admin-crown':       { Icon: Crown,         color: 'text-rose-600 dark:text-rose-400',       label: 'Admin / Super Admin' },
+};
+
+const divisionIconKind = (modelType: string, divisionName: string): IdentityIconKind => {
+  const m = (modelType || '').toLowerCase();
+  const n = (divisionName || '').toLowerCase();
+  if (m === 'one_to_one' || n.includes('1:1') || n.includes('1-to-1') || n.includes('mentorship')) return 'division-1to1';
+  if (n.includes('recorded')) return 'division-recorded';
+  return 'division-group';
 };
 
 // Avatar background colors per primary role
@@ -273,6 +298,7 @@ export default function UserManagement() {
   const [filterRole, setFilterRole] = useState<string>('');
   const [filterDivision, setFilterDivision] = useState<string>('');
   const [showArchived, setShowArchived] = useState(false);
+  const [showLegend, setShowLegend] = useState(true);
   // Sorting state
   type SortField = 'name' | 'role' | 'gender' | 'age' | 'country' | 'city';
   type SortDirection = 'asc' | 'desc';
@@ -1467,6 +1493,65 @@ export default function UserManagement() {
               </div>
             </div>
 
+            {/* Identity Legend — explains icons inside the ID · IDENTITY pill */}
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowLegend(s => !s)}
+                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors rounded-md border border-border/60 bg-card px-2.5 py-1"
+                title={showLegend ? 'Hide identity legend' : 'Show identity legend'}
+              >
+                <HelpCircle className="h-3.5 w-3.5" />
+                {showLegend ? 'Hide legend' : 'Show legend'}
+                {showLegend ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              </button>
+            </div>
+
+            {showLegend && (
+              <Card className="border-border/60 shadow-sm">
+                <CardContent className="p-3 space-y-2">
+                  <div className="grid grid-cols-[88px_1fr] gap-x-3 gap-y-2 items-center text-xs">
+                    {/* DIVISION row */}
+                    <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Division</div>
+                    <div className="flex flex-wrap gap-3 items-center">
+                      {(['division-1to1','division-group','division-recorded'] as IdentityIconKind[]).map(k => {
+                        const meta = IDENTITY_ICON_META[k];
+                        return (
+                          <span key={k} className="inline-flex items-center gap-1.5">
+                            <meta.Icon className={`h-3.5 w-3.5 ${meta.color}`} />
+                            <span className="text-foreground/80">{meta.label}</span>
+                          </span>
+                        );
+                      })}
+                    </div>
+
+                    {/* ROLE row */}
+                    <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Role</div>
+                    <div className="flex flex-wrap gap-3 items-center">
+                      <span className="inline-flex items-center gap-1.5"><Crown className="h-3.5 w-3.5 text-rose-600" /><span className="text-foreground/80">Super Admin</span></span>
+                      <span className="inline-flex items-center gap-1.5"><Shield className="h-3.5 w-3.5 text-slate-600" /><span className="text-foreground/80">Admin</span></span>
+                      <span className="inline-flex items-center gap-1.5"><GraduationCap className="h-3.5 w-3.5 text-violet-600" /><span className="text-foreground/80">Teacher</span></span>
+                      <span className="inline-flex items-center gap-1.5"><User className="h-3.5 w-3.5 text-teal-600" /><span className="text-foreground/80">Student</span></span>
+                      <span className="inline-flex items-center gap-1.5"><Heart className="h-3.5 w-3.5 text-pink-600" /><span className="text-foreground/80">Parent</span></span>
+                      <span className="inline-flex items-center gap-1.5"><Briefcase className="h-3.5 w-3.5 text-indigo-600" /><span className="text-foreground/80">Examiner</span></span>
+                    </div>
+
+                    {/* STATUS row */}
+                    <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Status</div>
+                    <div className="flex flex-wrap gap-3 items-center">
+                      <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /><span className="text-foreground/80">Active</span></span>
+                      <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" /><span className="text-foreground/80">Paused</span></span>
+                      <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-rose-500" /><span className="text-foreground/80">Left</span></span>
+                      <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-sky-500" /><span className="text-foreground/80">Completed</span></span>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground italic pt-1 border-t border-border/40">
+                    Tip: A user in two divisions shows two icons — one in each division's color.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Users Table — premium redesign */}
             <Card className="overflow-hidden border-border/60 shadow-sm">
               <CardContent className="p-0">
@@ -1512,7 +1597,9 @@ export default function UserManagement() {
                         >
                           <div className="flex items-center">User{getSortIcon('name')}</div>
                         </TableHead>
-                        <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">ID</TableHead>
+                        <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+                          <span className="inline-flex items-center gap-1">ID <span className="opacity-50">·</span> IDENTITY</span>
+                        </TableHead>
                         <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Phone</TableHead>
                         <TableHead
                           className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors"
@@ -1586,7 +1673,29 @@ export default function UserManagement() {
                                         }}
                                         title="Click to copy"
                                       >
-                                        <span className="font-mono text-xs bg-muted border border-border rounded-md px-2 py-0.5 text-foreground/80">{personNo}</span>
+                                        <span className="font-mono text-xs bg-muted border border-border rounded-md pl-2 pr-1.5 py-0.5 text-foreground/80 inline-flex items-center gap-1.5">
+                                          <span className="tabular-nums w-[88px] truncate text-left">{personNo}</span>
+                                          {(() => {
+                                            const memberships = divMembershipMap?.get(user.id) || [];
+                                            const seen = new Set<IdentityIconKind>();
+                                            const kinds: IdentityIconKind[] = [];
+                                            memberships.forEach(m => {
+                                              const k = divisionIconKind(m.modelType, m.divisionName);
+                                              if (!seen.has(k)) { seen.add(k); kinds.push(k); }
+                                            });
+                                            const isAdminish = (user.roles || []).some(r => r === 'super_admin' || r === 'admin' || r === 'admin_admissions' || r === 'admin_fees' || r === 'admin_academic');
+                                            if (isAdminish && !seen.has('admin-crown')) kinds.push('admin-crown');
+                                            if (kinds.length === 0) return null;
+                                            return (
+                                              <span className="inline-flex items-center gap-0.5 border-l border-border/60 pl-1.5">
+                                                {kinds.slice(0, 3).map(k => {
+                                                  const meta = IDENTITY_ICON_META[k];
+                                                  return <meta.Icon key={k} className={`h-3 w-3 ${meta.color}`} />;
+                                                })}
+                                              </span>
+                                            );
+                                          })()}
+                                        </span>
                                         <Copy className="h-3 w-3 text-muted-foreground opacity-0 group-hover/id:opacity-100 transition-opacity" />
                                       </button>
                                     </TooltipTrigger>
