@@ -1,6 +1,8 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { BookOpen, Users, GraduationCap, Calendar, Clock, Star, Pencil, Moon, PenTool, Mic, Languages, Sparkles } from 'lucide-react';
+import { DivisionBadge, type DivisionKind } from '@/components/shared/DivisionBadge';
+import { StatusDot } from '@/components/shared/StatusDot';
 
 export interface CourseCardData {
   id: string;
@@ -17,6 +19,12 @@ export interface CourseCardData {
   status?: 'open' | 'full' | 'coming_soon' | 'closed' | string;
   pricing?: { amount?: number; currency?: string; period?: string } | null;
   seo_slug?: string | null;
+  /** Identity: division kind (resolved from course's division.model_type by caller) */
+  division_kind?: DivisionKind;
+  division_model_type?: string | null;
+  division_name?: string | null;
+  /** Identity: enrollment status for the viewing student (active/paused/completed/left) */
+  enrollment_status?: string | null;
 }
 
 interface Props {
@@ -96,10 +104,21 @@ export default function CourseThumbnailCard({
             <div className="absolute top-2 left-2 text-3xl opacity-30">{visual.emoji}</div>
           </div>
         )}
-        {/* Status badge */}
-        <div className="absolute top-2 left-2">
+        {/* Status badge (top-right) */}
+        <div className="absolute top-2 right-2">
           <Badge variant="outline" className={`text-[10px] ${statusBadge.cls}`}>{statusBadge.label}</Badge>
         </div>
+        {/* Identity: Division badge (top-left) */}
+        {(course.division_kind || course.division_model_type || course.division_name) && (
+          <div className="absolute top-2 left-2">
+            <DivisionBadge
+              kind={course.division_kind}
+              modelType={course.division_model_type}
+              name={course.division_name}
+              size="xs"
+            />
+          </div>
+        )}
       </div>
 
       {/* Body */}
