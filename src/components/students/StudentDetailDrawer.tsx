@@ -77,6 +77,7 @@ interface StudentProfile {
   country: string | null;
   city: string | null;
   registration_id: string | null;
+  account_status: string | null;
 }
 
 interface MonthlyPlan {
@@ -97,19 +98,36 @@ export function StudentDetailDrawer({
   const [transferOpen, setTransferOpen] = useState(false);
   const isAdmin = activeRole === 'super_admin' || activeRole === 'admin';
   
-  // Fetch student's full profile (age, gender, country, city)
+  // Fetch student's full profile (age, gender, country, city, status)
   const { data: profile, isLoading: loadingProfile } = useQuery({
     queryKey: ['student-profile-detail', student?.id],
     queryFn: async () => {
       if (!student?.id) return null;
       const { data, error } = await supabase
         .from('profiles')
-        .select('age, gender, country, city, registration_id')
+        .select('age, gender, country, city, registration_id, account_status')
         .eq('id', student.id)
         .single();
-      
+
       if (error) throw error;
       return data as StudentProfile;
+    },
+    enabled: !!student?.id && open,
+  });
+
+  // Fetch student's division memberships (for identity badges)
+  const { data: studentMemberships = [] } = useQuery({
+    queryKey: ['student-division-memberships', student?.id],
+    queryFn: async () => {
+      if (!student?.id) return [];
+      const { data } = await supabase
+        .from('division_memberships')
+        .select('division:divisions(id, name, model_type)')
+        .eq('user_id', student.id);
+      return (data || [])
+        .map((m: any) => m.division)
+        .filter(Boolean)
+        .map((d: any) => ({ modelType: d.model_type, divisionName: d.name }));
     },
     enabled: !!student?.id && open,
   });
@@ -232,6 +250,14 @@ export function StudentDetailDrawer({
             <User className="h-5 w-5 text-primary" />
             {student.full_name}
           </SheetTitle>
+          {/* Identity row: role + division(s) + status */}
+          <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+            <RoleBadge role="student" size="xs" />
+            {studentMemberships.length > 0 && (
+              <DivisionBadgeStack memberships={studentMemberships} size="xs" />
+            )}
+            <StatusDot status={profile?.account_status} size="xs" />
+          </div>
           {profile?.registration_id && (
             <Badge variant="outline" className="w-fit text-xs font-mono mt-1">
               {profile.registration_id}
