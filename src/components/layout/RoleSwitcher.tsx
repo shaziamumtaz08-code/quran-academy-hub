@@ -35,13 +35,19 @@ const ROLE_LABELS: Record<AppRole, string> = {
 
 export function RoleSwitcher() {
   const { profile, activeRole, setActiveRole } = useAuth();
+  const navigate = useNavigate();
 
-  // Only show if user has multiple roles
   if (!profile?.roles || profile.roles.length <= 1) {
     return null;
   }
 
   const currentLabel = activeRole ? ROLE_LABELS[activeRole] : 'Select Role';
+
+  const handleSelect = (role: AppRole) => {
+    setActiveRole(role);
+    const home = ROLE_HOME[role] || '/dashboard';
+    navigate(home, { replace: true });
+  };
 
   return (
     <DropdownMenu>
@@ -59,7 +65,7 @@ export function RoleSwitcher() {
         {profile.roles.map((role) => (
           <DropdownMenuItem
             key={role}
-            onClick={() => setActiveRole(role)}
+            onClick={() => handleSelect(role)}
             className={activeRole === role ? 'bg-accent' : ''}
           >
             {ROLE_LABELS[role] || role.replace('_', ' ')}
