@@ -1,4 +1,4 @@
-import React, { useState, useEffect, ReactNode, useMemo } from 'react';
+import React, { useState, useEffect, useContext, ReactNode, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -10,6 +10,15 @@ import {
 } from './DivisionContextObject';
 
 export type { DivisionModelType, BranchType, Division, Branch, DivisionContextEntry } from './DivisionContextObject';
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function useDivision() {
+  const context = useContext(DivisionContext);
+  if (context === undefined) {
+    throw new Error('useDivision must be used within a DivisionProvider');
+  }
+  return context;
+}
 
 export function DivisionProvider({ children }: { children: ReactNode }) {
   const { user, isLoading: authLoading, isSuperAdmin } = useAuth();
