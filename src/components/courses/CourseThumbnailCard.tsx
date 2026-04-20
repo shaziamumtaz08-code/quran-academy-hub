@@ -150,11 +150,14 @@ export default function CourseThumbnailCard({
 
         {/* Footer */}
         <div className="flex items-center justify-between pt-2 mt-auto border-t border-border">
-          <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
             <Users className="w-3 h-3" />
             <span>{course.enrolled_count ?? 0}{course.max_seats ? `/${course.max_seats}` : ''}</span>
             {seatsLeft !== null && seatsLeft > 0 && seatsLeft <= 5 && (
               <span className="ml-1 text-amber-600 font-medium">· {seatsLeft} left</span>
+            )}
+            {course.enrollment_status && (
+              <span className="ml-1.5 inline-flex"><StatusDot status={course.enrollment_status} size="xs" /></span>
             )}
           </div>
           {course.pricing?.amount ? (
