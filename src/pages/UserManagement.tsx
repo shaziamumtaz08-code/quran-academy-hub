@@ -298,6 +298,7 @@ export default function UserManagement() {
   const [filterRole, setFilterRole] = useState<string>('');
   const [filterDivision, setFilterDivision] = useState<string>('');
   const [showArchived, setShowArchived] = useState(false);
+  const [showLegend, setShowLegend] = useState(true);
   // Sorting state
   type SortField = 'name' | 'role' | 'gender' | 'age' | 'country' | 'city';
   type SortDirection = 'asc' | 'desc';
@@ -1491,6 +1492,65 @@ export default function UserManagement() {
                 )}
               </div>
             </div>
+
+            {/* Identity Legend — explains icons inside the ID · IDENTITY pill */}
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowLegend(s => !s)}
+                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors rounded-md border border-border/60 bg-card px-2.5 py-1"
+                title={showLegend ? 'Hide identity legend' : 'Show identity legend'}
+              >
+                <HelpCircle className="h-3.5 w-3.5" />
+                {showLegend ? 'Hide legend' : 'Show legend'}
+                {showLegend ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              </button>
+            </div>
+
+            {showLegend && (
+              <Card className="border-border/60 shadow-sm">
+                <CardContent className="p-3 space-y-2">
+                  <div className="grid grid-cols-[88px_1fr] gap-x-3 gap-y-2 items-center text-xs">
+                    {/* DIVISION row */}
+                    <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Division</div>
+                    <div className="flex flex-wrap gap-3 items-center">
+                      {(['division-1to1','division-group','division-recorded'] as IdentityIconKind[]).map(k => {
+                        const meta = IDENTITY_ICON_META[k];
+                        return (
+                          <span key={k} className="inline-flex items-center gap-1.5">
+                            <meta.Icon className={`h-3.5 w-3.5 ${meta.color}`} />
+                            <span className="text-foreground/80">{meta.label}</span>
+                          </span>
+                        );
+                      })}
+                    </div>
+
+                    {/* ROLE row */}
+                    <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Role</div>
+                    <div className="flex flex-wrap gap-3 items-center">
+                      <span className="inline-flex items-center gap-1.5"><Crown className="h-3.5 w-3.5 text-rose-600" /><span className="text-foreground/80">Super Admin</span></span>
+                      <span className="inline-flex items-center gap-1.5"><Shield className="h-3.5 w-3.5 text-slate-600" /><span className="text-foreground/80">Admin</span></span>
+                      <span className="inline-flex items-center gap-1.5"><GraduationCap className="h-3.5 w-3.5 text-violet-600" /><span className="text-foreground/80">Teacher</span></span>
+                      <span className="inline-flex items-center gap-1.5"><User className="h-3.5 w-3.5 text-teal-600" /><span className="text-foreground/80">Student</span></span>
+                      <span className="inline-flex items-center gap-1.5"><Heart className="h-3.5 w-3.5 text-pink-600" /><span className="text-foreground/80">Parent</span></span>
+                      <span className="inline-flex items-center gap-1.5"><Briefcase className="h-3.5 w-3.5 text-indigo-600" /><span className="text-foreground/80">Examiner</span></span>
+                    </div>
+
+                    {/* STATUS row */}
+                    <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Status</div>
+                    <div className="flex flex-wrap gap-3 items-center">
+                      <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /><span className="text-foreground/80">Active</span></span>
+                      <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" /><span className="text-foreground/80">Paused</span></span>
+                      <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-rose-500" /><span className="text-foreground/80">Left</span></span>
+                      <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-sky-500" /><span className="text-foreground/80">Completed</span></span>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground italic pt-1 border-t border-border/40">
+                    Tip: A user in two divisions shows two icons — one in each division's color.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Users Table — premium redesign */}
             <Card className="overflow-hidden border-border/60 shadow-sm">
