@@ -111,6 +111,22 @@
     --font-urdu: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Urdu Nastaleeq', serif;
     --font-arabic: 'Noto Naskh Arabic', 'Traditional Arabic', 'Amiri', serif;
     --font-en: 'Inter', sans-serif;
+
+    /* ── Identity System: Division tokens (HSL) ── */
+    --division-group: 160 84% 39%;        /* emerald  #10B981 */
+    --division-one-to-one: 217 91% 60%;   /* royal blue #3B82F6 */
+    --division-recorded: 38 92% 50%;      /* amber #F59E0B */
+    --division-both: 258 90% 66%;         /* purple #8B5CF6 */
+
+    /* ── Identity System: Status tokens (HSL) ── */
+    --status-active: 160 84% 39%;
+    --status-paused: 38 92% 50%;
+    --status-left: 0 84% 60%;
+    --status-completed: 239 84% 67%;
+    --status-assigned: 217 91% 60%;
+    --status-scheduled: 258 90% 66%;
+    --status-pending: 25 95% 53%;
+    --status-no-show: 0 74% 42%;
   }
 
   .dark {
