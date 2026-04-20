@@ -92,8 +92,41 @@ import { useDivisionMembership, getDivisionShortName, getDivisionBadgeClass, for
 import { useDivision } from '@/contexts/DivisionContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Copy, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
-import { DivisionBadge, DivisionBadgeStack, resolveDivisionKind } from '@/components/shared/DivisionBadge';
+import { DivisionBadge, DivisionBadgeStack, resolveDivisionKind, type DivisionKind } from '@/components/shared/DivisionBadge';
 import { StatusDot, resolveStatusKind, type StatusKind } from '@/components/shared/StatusDot';
+import { Crown, GraduationCap, Heart, ClipboardList, HelpCircle } from 'lucide-react';
+
+// Identity icons — single colored glyph per role for the new compact identity cell
+const ROLE_ICON_META: Record<AppRole, { Icon: React.ComponentType<{ className?: string }>; color: string; label: string }> = {
+  super_admin:      { Icon: Crown,         color: 'text-red-500',     label: 'Super Admin' },
+  admin:            { Icon: Shield,        color: 'text-red-500',     label: 'Admin' },
+  admin_admissions: { Icon: Shield,        color: 'text-red-500',     label: 'Admissions Admin' },
+  admin_fees:       { Icon: Shield,        color: 'text-red-500',     label: 'Fees Admin' },
+  admin_academic:   { Icon: Shield,        color: 'text-red-500',     label: 'Academic Admin' },
+  teacher:          { Icon: GraduationCap, color: 'text-blue-500',    label: 'Teacher' },
+  student:          { Icon: User,          color: 'text-emerald-500', label: 'Student' },
+  parent:           { Icon: Heart,         color: 'text-amber-500',   label: 'Parent' },
+  examiner:         { Icon: ClipboardList, color: 'text-violet-500',  label: 'Examiner' },
+};
+
+const DIVISION_DOT_META: Record<DivisionKind, { color: string; label: string }> = {
+  group:      { color: 'bg-emerald-500', label: 'Group Academy' },
+  one_to_one: { color: 'bg-blue-500',    label: '1:1 Mentorship' },
+  recorded:   { color: 'bg-amber-500',   label: 'Recorded' },
+  multi:      { color: 'bg-purple-500',  label: 'Multi (multiple divisions)' },
+};
+
+const STATUS_DOT_META: Record<StatusKind, { color: string; label: string }> = {
+  active:    { color: 'bg-emerald-500', label: 'Active' },
+  paused:    { color: 'bg-amber-500',   label: 'Paused' },
+  left:      { color: 'bg-red-500',     label: 'Left' },
+  completed: { color: 'bg-indigo-500',  label: 'Completed' },
+  assigned:  { color: 'bg-blue-500',    label: 'Assigned' },
+  scheduled: { color: 'bg-purple-500',  label: 'Scheduled' },
+  pending:   { color: 'bg-orange-500',  label: 'Pending' },
+  no_show:   { color: 'bg-red-700',     label: 'No Show' },
+  inactive:  { color: 'bg-red-500',     label: 'Inactive' },
+};
 
 const ALL_PERMISSIONS = [
   { group: 'Users', permissions: ['users.view', 'users.create', 'users.edit', 'users.delete', 'users.assign_roles'] },
