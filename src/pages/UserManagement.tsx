@@ -1597,7 +1597,9 @@ export default function UserManagement() {
                         >
                           <div className="flex items-center">User{getSortIcon('name')}</div>
                         </TableHead>
-                        <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">ID</TableHead>
+                        <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+                          <span className="inline-flex items-center gap-1">ID <span className="opacity-50">·</span> IDENTITY</span>
+                        </TableHead>
                         <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Phone</TableHead>
                         <TableHead
                           className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors"
@@ -1671,7 +1673,29 @@ export default function UserManagement() {
                                         }}
                                         title="Click to copy"
                                       >
-                                        <span className="font-mono text-xs bg-muted border border-border rounded-md px-2 py-0.5 text-foreground/80">{personNo}</span>
+                                        <span className="font-mono text-xs bg-muted border border-border rounded-md pl-2 pr-1.5 py-0.5 text-foreground/80 inline-flex items-center gap-1.5">
+                                          <span className="tabular-nums w-[88px] truncate text-left">{personNo}</span>
+                                          {(() => {
+                                            const memberships = divMembershipMap?.get(user.id) || [];
+                                            const seen = new Set<IdentityIconKind>();
+                                            const kinds: IdentityIconKind[] = [];
+                                            memberships.forEach(m => {
+                                              const k = divisionIconKind(m.modelType, m.divisionName);
+                                              if (!seen.has(k)) { seen.add(k); kinds.push(k); }
+                                            });
+                                            const isAdminish = (user.roles || []).some(r => r === 'super_admin' || r === 'admin' || r === 'admin_admissions' || r === 'admin_fees' || r === 'admin_academic');
+                                            if (isAdminish && !seen.has('admin-crown')) kinds.push('admin-crown');
+                                            if (kinds.length === 0) return null;
+                                            return (
+                                              <span className="inline-flex items-center gap-0.5 border-l border-border/60 pl-1.5">
+                                                {kinds.slice(0, 3).map(k => {
+                                                  const meta = IDENTITY_ICON_META[k];
+                                                  return <meta.Icon key={k} className={`h-3 w-3 ${meta.color}`} />;
+                                                })}
+                                              </span>
+                                            );
+                                          })()}
+                                        </span>
                                         <Copy className="h-3 w-3 text-muted-foreground opacity-0 group-hover/id:opacity-100 transition-opacity" />
                                       </button>
                                     </TooltipTrigger>
