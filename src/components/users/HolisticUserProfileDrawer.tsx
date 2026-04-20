@@ -261,9 +261,13 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
 
   const setNewPassword = async () => {
     if (!userId || !form.new_password) return;
+    if (form.new_password.length < 6) {
+      toast({ title: 'Failed', description: 'Password must be at least 6 characters', variant: 'destructive' });
+      return;
+    }
     try {
       const { error } = await supabase.functions.invoke('reset-single-password', {
-        body: { userId, newPassword: form.new_password },
+        body: { userId, password: form.new_password },
       });
       if (error) throw error;
       toast({ title: 'Password updated' });
@@ -639,7 +643,7 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
               {isSuperAdmin && (
                 <div className="rounded-lg border p-4 space-y-3">
                   <p className="text-sm font-medium">Set New Password (Admin)</p>
-                  <Input type="password" placeholder="New password" value={form.new_password || ''} onChange={(e) => setForm({ ...form, new_password: e.target.value })} />
+                  <Input type="password" placeholder="New password (min 6 characters)" value={form.new_password || ''} onChange={(e) => setForm({ ...form, new_password: e.target.value })} />
                   <Button onClick={setNewPassword} disabled={!form.new_password} className="gap-2">
                     <KeyRound className="h-4 w-4" />Update Password
                   </Button>

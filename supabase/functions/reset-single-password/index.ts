@@ -10,15 +10,22 @@ Deno.serve(async (req) => {
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const admin = createClient(supabaseUrl, serviceKey);
 
-  const { userId, password } = await req.json();
+  const { userId, password, newPassword } = await req.json();
+  const nextPassword = typeof password === 'string' && password ? password : newPassword;
 
-  if (!userId || !password) {
+  if (!userId || !nextPassword) {
     return new Response(JSON.stringify({ error: "Missing userId or password" }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
   }
 
-  const { error } = await admin.auth.admin.updateUserById(userId, { password });
+  if (nextPassword.length < 6) {
+    return new Response(JSON.stringify({ error: "Password must be at least 6 characters" }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
+    });
+  }
+
+  const { error } = await admin.auth.admin.updateUserById(userId, { password: nextPassword });
 
   if (error) {
     return new Response(JSON.stringify({ error: error.message }), {
