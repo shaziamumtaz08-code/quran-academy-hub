@@ -20,6 +20,8 @@ import {
   AlertTriangle, Calendar, Save, RefreshCw, Link2, Unlink,
 } from 'lucide-react';
 import { LinkGuardianDialog } from './LinkGuardianDialog';
+import { RoleBadge, ROLE_META } from '@/components/shared/RoleBadge';
+import { StatusDot } from '@/components/shared/StatusDot';
 
 interface Props {
   open: boolean;
@@ -307,7 +309,12 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
               <div className="flex-1 min-w-0">
                 <SheetTitle className="text-xl truncate">{form.full_name || 'User Profile'}</SheetTitle>
                 <SheetDescription className="flex items-center gap-2 flex-wrap">
-                  {roles.map((r: string) => <Badge key={r} variant="secondary">{r}</Badge>)}
+                  {roles.map((r: string) => (
+                    ROLE_META[r]
+                      ? <RoleBadge key={r} role={r as any} size="xs" />
+                      : <Badge key={r} variant="secondary">{r}</Badge>
+                  ))}
+                  <StatusDot status={form.account_status || profile?.account_status || 'active'} size="xs" />
                   {profile?.registration_id && <span className="text-xs font-mono">{profile.registration_id}</span>}
                   <Badge variant="outline" className="text-xs">{completion}% complete</Badge>
                 </SheetDescription>
