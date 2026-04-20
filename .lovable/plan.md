@@ -1,59 +1,60 @@
 
 
-# Unified Connections — Multi-Role + Complete Course View
+## What you already have for parents
 
-## Problem (jo aap ne bola)
-1. Abida teacher hai PAR woh khud bhi student ho sakti hai (Tafseer Quran enrolled) — sirf teacher view dikh raha hai.
-2. Nida = parent + student + maybe teacher — abhi sirf ek role ka graph load hota hai.
-3. Courses sirf "active" filter ho rahe hain — completed/past courses miss ho rahe hain.
-4. Group academy + one-to-one dono ka data ek saath nahi dikh raha.
-5. Click kar ke quick view nahi milta apne dashboard se.
+You have a **fully built Parent Portal** at `/parent` (`src/pages/ParentDashboard.tsx`, 814 lines). It is mobile-friendly, multilingual (English / Urdu / Arabic), and includes 6 sections accessed via `?section=` URL params:
 
-## Fix — 3 cheezein
+1. **Overview** — child cards, attendance %, speaking score, latest assessment, next session, AI note
+2. **AI Progress Report** — auto-generated parent report (PDF export)
+3. **Sessions & Attendance** — attended / missed / late / excused log
+4. **Materials & Resources** — videos, drills, vocab progress
+5. **Fees & Payments** — monthly fee, paid-to-date, overdue months, family bulk pay
+6. **Message Teacher** — DM thread with AI draft assist
 
-### 1. Multi-role graph (root cause)
-`UserConnectionsGraph` ko refactor karo. `userType` prop optional banao. Component khud detect kare us profile ki **saari roles** (`user_roles` table se) aur har role ka data parallel fetch kare, phir ek hi unified graph mein dikhaye:
+There is also `FamilyManagement.tsx` for parents to manage linked children, PINs, and oversight levels.
 
-- **Center node**: person ka naam + saari roles ke chips (e.g. "Teacher · Student · Parent")
-- **Branches grouped by role**:
-  - As Teacher → students (with subject), classes, co-teachers
-  - As Student → teachers, courses enrolled, siblings
-  - As Parent → children → unke teachers
-- **Color-coded section headers** (faint group nodes) so visually clear ho ke "ye uske teacher-life ka hai, ye student-life ka"
+**Linking model already in DB:** the `student_parent_links` table joins a parent profile to one or more student profiles. A parent can have many children; a child can have multiple guardians.
 
-### 2. Complete course history (active + completed + past)
-- Hatao `.eq('status', 'active')` filter from `course_enrollments` and `student_teacher_assignments`.
-- Status badge har course/assignment node pe: green=Active, blue=Completed, grey=Paused/Ended.
-- Bhi add: courses **completed long ago** (with completion date subtitle).
+## Why "Create Guardian Account" is failing
 
-### 3. User-facing "My Connections" entry points
-Aap ne ye bhi mention kiya — student/teacher/parent apne dashboard se ek click pe apna full graph dekh sake:
-- **StudentDashboard**: ek "My Network" card → opens `/connections/student/{myId}`
-- **TeacherDashboard**: same → `/connections/teacher/{myId}`
-- **ParentDashboard**: "Family Map" tile → `/connections/parent/{myId}`
+The current button on the student's Guardian tab calls `LinkGuardianDialog` which tries to **provision a fresh auth user with a temp password in one shot**. That flow is the one currently breaking (HIBP / password rules / edge function permissions).
 
-Plus: full-page header pe **role tabs** (e.g. `[All] [As Teacher] [As Student] [As Parent]`) — user filter kar sake jab graph bara ho.
+## Proposed fix — switch to "Find or Create User, then Link"
 
-## Visual upgrade (aesthetics)
-- Center node bigger, gradient bg, role chips ke neeche
-- Role-group "lane" backgrounds (subtle tinted rectangles dagre-rendered behind related nodes) so 3 worlds visually separate
-- Edge labels mein subject + status (e.g. "Hifz · Completed")
-- Hover pe node — show mini popover with: role, subject/course, dates, "Open profile →" link
+Replace the all-in-one provisioning with the same **two-step flow you already use elsewhere**:
 
-## Files to touch
-1. `src/components/connections/UserConnectionsGraph.tsx` — refactor to multi-role aggregator
-2. `src/pages/UserConnections.tsx` — add role filter tabs
-3. `src/components/dashboard/StudentDashboard.tsx` — add "My Network" entry card
-4. `src/components/dashboard/teacher/TeacherQuickActions.tsx` — add "My Network" tile
-5. `src/components/dashboard/ParentDashboard.tsx` — add "Family Map" tile
+**Step 1 — Pick or create the person (no auth yet)**
+- Search existing users by email / phone / name
+- If found → show match, click "Link as Guardian"
+- If not found → create a *plain profile* (no auth account) with name, email, phone, relationship, country
+- Insert row into `student_parent_links` with relationship + oversight level
 
-## What stays the same
-- `/admin/schema-explorer` (database view) — untouched
-- Existing drawer Connections tabs — automatically benefit from the refactor (no breaking change)
-- React Flow + dagre stack — same
+**Step 2 — Activate login later (optional, on demand)**
+- The new guardian appears on the **Parents & Guardians** page (`/parents`) with an "Activate Login" button (this flow already exists and works — uses `activate-parent-login` edge function)
+- Admin clicks it when ready → parent gets credentials → can sign in to `/parent` portal
 
-## Out of scope (confirm if you want these too)
-- Editing relationships from the graph (currently read-only)
-- Export graph as PNG/PDF
-- Showing financial/attendance stats inside connection cards
+This matches how students are currently handled (profile first, login activated separately) and removes the failing single-shot provisioning.
+
+## Changes required
+
+**1. `src/components/users/LinkGuardianDialog.tsx`**
+- Remove the `generateTempPassword` + `admin-create-user` invocation
+- Add a search box (name / email / phone) that queries `profiles` 
+- Show results; "Link Existing" button → only inserts into `student_parent_links`
+- "Create New Guardian Profile" button → inserts into `profiles` (no auth) + `user_roles` (`parent`) + `student_parent_links`
+- Success state: shows the linked guardian card with a "Activate login from Parents page →" hint
+
+**2. Student profile drawer — Guardian tab**
+- After linking, replace the empty "No Guardian Linked" state with a list of linked guardians (name, relationship, login status, unlink button)
+
+**3. No DB migration needed** — `student_parent_links`, `profiles`, `user_roles` already support this.
+
+**4. Parents page (`/parents`) already handles activation** — no changes needed; new guardians will appear in the "Need Login" tab automatically.
+
+## Result
+
+- Linking a guardian becomes a 5-second action (no password generation, no email failures)
+- Parent profile can be linked to multiple children (siblings)
+- Admin activates login on demand from the Parents page → guardian then has full access to the existing `/parent` dashboard
+- Existing parent users (already in system) can be linked instead of duplicated
 
