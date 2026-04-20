@@ -96,7 +96,7 @@ import { SearchableCitySelect } from '@/components/ui/searchable-city-select';
 import { useDivisionMembership, getDivisionShortName, getDivisionBadgeClass, formatRoleLabel } from '@/hooks/useDivisionMembership';
 import { useDivision } from '@/contexts/DivisionContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Copy, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Copy, ChevronDown, ChevronRight, ChevronUp, AlertTriangle } from 'lucide-react';
 
 const ALL_PERMISSIONS = [
   { group: 'Users', permissions: ['users.view', 'users.create', 'users.edit', 'users.delete', 'users.assign_roles'] },
