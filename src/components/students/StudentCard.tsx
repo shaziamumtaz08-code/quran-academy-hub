@@ -83,6 +83,20 @@ export function StudentCard({ student, onViewHistory, onViewSchedule }: StudentC
                   {student.registration_id}
                 </Badge>
               )}
+              {student.enrollment_source && (
+                <Badge
+                  variant="outline"
+                  title={student.group_context || undefined}
+                  className={cn(
+                    "text-[10px] h-5",
+                    student.enrollment_source === '1:1'
+                      ? "bg-sky/10 text-sky-dark border-sky/30 dark:text-sky-light"
+                      : "bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:text-emerald-400"
+                  )}
+                >
+                  {student.enrollment_source}
+                </Badge>
+              )}
               {status !== 'active' && (
                 <Badge variant="outline" className={cn("text-[10px] h-5", STATUS_CONFIG[status].badgeClass)}>
                   {STATUS_CONFIG[status].label}
