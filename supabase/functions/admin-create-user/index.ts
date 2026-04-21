@@ -73,6 +73,38 @@ function sanitizeString(str: string): string {
   return str.replace(/[<>]/g, '');
 }
 
+/** Insert/refresh a user_context row. Non-fatal: warns and returns on any failure. */
+async function ensureUserContext(
+  admin: ReturnType<typeof createClient>,
+  userId: string,
+  branchId: string | null,
+  divisionId: string | null,
+  primaryRole: string | null,
+) {
+  try {
+    const { data: org } = await admin
+      .from("organizations")
+      .select("id")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (!org?.id) {
+      console.warn("[ensure_user_context] no organization row found; skip");
+      return;
+    }
+    const { error } = await admin.rpc("ensure_user_context", {
+      p_user_id: userId,
+      p_organization_id: org.id,
+      p_branch_id: branchId,
+      p_division_id: divisionId,
+      p_primary_role: primaryRole,
+    });
+    if (error) console.warn("[ensure_user_context] failed:", error.message);
+  } catch (e: any) {
+    console.warn("[ensure_user_context] threw:", e?.message);
+  }
+}
+
 function json(status: number, body: unknown, requestOrigin?: string | null) {
   const headers = requestOrigin ? getCorsHeaders(requestOrigin) : corsHeaders;
   return new Response(JSON.stringify(body), {
@@ -452,6 +484,8 @@ serve(async (req) => {
         await linkStudentToParent(adminClient, existingUserId, parentId, email, false);
       }
 
+      await ensureUserContext(adminClient, existingUserId, branchId, body?.division_id ?? null, role);
+
       console.log(`Added role ${role} to existing user ${email}`);
       return json(200, {
         userId: existingUserId,
@@ -509,6 +543,8 @@ serve(async (req) => {
         if (role === "student") {
           await linkStudentToParent(adminClient, newProfileId, parentId, email, true);
         }
+
+        await ensureUserContext(adminClient, newProfileId, branchId, body?.division_id ?? null, role);
 
         console.log(`Created sibling profile for ${fullName} (${email}) with role ${role}, profile ID: ${newProfileId}`);
 
@@ -615,6 +651,8 @@ serve(async (req) => {
             await linkStudentToParent(adminClient, authUser.id, parentId, email, false);
           }
 
+          await ensureUserContext(adminClient, authUser.id, branchId, body?.division_id ?? null, role);
+
           console.log(`Added role ${role} to existing auth user ${email}`);
           return json(200, {
             userId: authUser.id,
@@ -671,6 +709,8 @@ serve(async (req) => {
     if (role === "student") {
       await linkStudentToParent(adminClient, newUserId, parentId, email, forceNewProfile);
     }
+
+    await ensureUserContext(adminClient, newUserId, branchId, body?.division_id ?? null, role);
 
     console.log(`Created new user ${email} with role ${role}, reg ID: ${registrationId}`);
 

@@ -8559,27 +8559,36 @@ export type Database = {
       }
       user_context: {
         Row: {
-          branch_id: string
+          branch_id: string | null
           created_at: string
-          division_id: string
+          division_id: string | null
           id: string
           is_default: boolean
+          organization_id: string | null
+          primary_role: string | null
+          updated_at: string
           user_id: string
         }
         Insert: {
-          branch_id: string
+          branch_id?: string | null
           created_at?: string
-          division_id: string
+          division_id?: string | null
           id?: string
           is_default?: boolean
+          organization_id?: string | null
+          primary_role?: string | null
+          updated_at?: string
           user_id: string
         }
         Update: {
-          branch_id?: string
+          branch_id?: string | null
           created_at?: string
-          division_id?: string
+          division_id?: string | null
           id?: string
           is_default?: boolean
+          organization_id?: string | null
+          primary_role?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
@@ -8595,6 +8604,13 @@ export type Database = {
             columns: ["division_id"]
             isOneToOne: false
             referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_context_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
@@ -9158,6 +9174,16 @@ export type Database = {
       can_view_resource_visibility: {
         Args: { _visibility: string; _visible_to_roles: string[] }
         Returns: boolean
+      }
+      ensure_user_context: {
+        Args: {
+          p_branch_id?: string
+          p_division_id?: string
+          p_organization_id: string
+          p_primary_role?: string
+          p_user_id: string
+        }
+        Returns: string
       }
       find_profile_by_gov_id: {
         Args: { _gov_id: string }
