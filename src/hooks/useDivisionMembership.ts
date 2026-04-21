@@ -44,6 +44,11 @@ export function useDivisionMembership(userIds: string[], enabled = true) {
         .from('course_class_staff')
         .select('user_id, staff_role, class:course_classes!inner(courses:courses!inner(division_id))');
 
+      // Parent memberships: parents inherit divisions from their linked children
+      const { data: parentLinks } = await supabase
+        .from('student_parent_links')
+        .select('parent_id, student_id');
+
       // Map<userId, Map<divisionId, Set<role>>>
       const membershipMap = new Map<string, Map<string, Set<string>>>();
       const userIdSet = new Set(userIds);
@@ -73,6 +78,35 @@ export function useDivisionMembership(userIds: string[], enabled = true) {
       (staffData || []).forEach((row: any) => {
         const divId = row.class?.courses?.division_id;
         if (divId) addMembership(row.user_id, divId, row.staff_role || 'teacher');
+      });
+
+      // Parent memberships: each parent inherits division membership from each linked child.
+      // Skip self-links (defensive — these exist as data corruption).
+      const childDivisions = new Map<string, Set<string>>(); // studentId → Set<divisionId>
+      membershipMap.forEach((divs, uid) => {
+        // Only collect for users present as students anywhere (1:1 or group)
+        const studentDivs = new Set<string>();
+        divs.forEach((roleSet, divId) => {
+          if (roleSet.has('student')) studentDivs.add(divId);
+        });
+        if (studentDivs.size > 0) childDivisions.set(uid, studentDivs);
+      });
+      // Also need to consider students NOT in userIds (membershipMap is filtered).
+      // Re-derive from raw data so parents in userIds get full coverage:
+      const allStudentDivs = new Map<string, Set<string>>();
+      const addStudentDiv = (sid: string, did: string) => {
+        if (!sid || !did) return;
+        if (!allStudentDivs.has(sid)) allStudentDivs.set(sid, new Set());
+        allStudentDivs.get(sid)!.add(did);
+      };
+      (staData || []).forEach(a => addStudentDiv(a.student_id, a.division_id));
+      (ccsData || []).forEach((row: any) => addStudentDiv(row.student_id, row.class?.courses?.division_id));
+
+      (parentLinks || []).forEach(link => {
+        if (!link.parent_id || link.parent_id === link.student_id) return;
+        const divs = allStudentDivs.get(link.student_id);
+        if (!divs) return;
+        divs.forEach(divId => addMembership(link.parent_id, divId, 'parent'));
       });
 
       const result = new Map<string, DivisionMembership[]>();
