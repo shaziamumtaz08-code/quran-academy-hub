@@ -14,8 +14,8 @@ type AppRole =
   | "admin_fees"
   | "admin_academic";
 
-// Roles assignable via the UI (super_admin intentionally excluded — DB-level only)
-const ALLOWED_ROLES: AppRole[] = [
+// super_admin removal is NOT permitted via UI — DB-level only
+const REMOVABLE_ROLES: AppRole[] = [
   "admin",
   "admin_admissions",
   "admin_fees",
@@ -25,12 +25,6 @@ const ALLOWED_ROLES: AppRole[] = [
   "student",
   "parent",
 ];
-
-const ADMIN_ROLES: AppRole[] = ["admin", "admin_admissions", "admin_fees", "admin_academic", "super_admin"];
-const TEACHING_ROLES: AppRole[] = ["teacher", "student", "parent"];
-
-function isAdminRole(r: AppRole) { return ADMIN_ROLES.includes(r); }
-function isTeachingRole(r: AppRole) { return TEACHING_ROLES.includes(r); }
 
 function isValidUUID(str: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
@@ -82,47 +76,35 @@ serve(async (req) => {
 
     const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Only super_admin may assign roles
+    // Only super_admin may remove roles
     const { data: callerRoleRow, error: callerRoleErr } = await adminClient
       .from("user_roles")
       .select("role")
       .eq("user_id", caller.id)
       .eq("role", "super_admin")
       .maybeSingle();
-
-    if (callerRoleErr) {
-      return json(500, { error: "Authorization check failed" }, requestOrigin);
-    }
-    if (!callerRoleRow) {
-      return json(403, { error: "Forbidden - super_admin role required" }, requestOrigin);
-    }
+    if (callerRoleErr) return json(500, { error: "Authorization check failed" }, requestOrigin);
+    if (!callerRoleRow) return json(403, { error: "Forbidden - super_admin role required" }, requestOrigin);
 
     const body = await req.json().catch(() => null);
-    if (!body) {
-      return json(400, { error: "Invalid request body" }, requestOrigin);
-    }
+    if (!body) return json(400, { error: "Invalid request body" }, requestOrigin);
 
     const userId = String(body?.userId ?? "").trim();
     const role = String(body?.role ?? "") as AppRole;
-    const replaceConflicting = Boolean(body?.replaceConflicting);
 
     if (!userId || !isValidUUID(userId)) {
       return json(400, { error: "Invalid user ID" }, requestOrigin);
     }
-    if (!role || !ALLOWED_ROLES.includes(role)) {
-      return json(400, { error: `Invalid role. Allowed: ${ALLOWED_ROLES.join(", ")}` }, requestOrigin);
+
+    // Block super_admin removal via UI
+    if (role === "super_admin") {
+      return json(403, { error: "Super admin role can only be removed at the database level" }, requestOrigin);
+    }
+    if (!role || !REMOVABLE_ROLES.includes(role)) {
+      return json(400, { error: `Invalid role. Removable: ${REMOVABLE_ROLES.join(", ")}` }, requestOrigin);
     }
 
-    // Verify user exists
-    const { data: profile, error: profileErr } = await adminClient
-      .from("profiles")
-      .select("id, full_name")
-      .eq("id", userId)
-      .maybeSingle();
-    if (profileErr) return json(500, { error: "Failed to verify user" }, requestOrigin);
-    if (!profile) return json(404, { error: "User not found" }, requestOrigin);
-
-    // Fetch current roles
+    // Fetch current roles for last-role guard
     const { data: currentRolesRows, error: currentRolesErr } = await adminClient
       .from("user_roles")
       .select("role")
@@ -131,70 +113,37 @@ serve(async (req) => {
 
     const currentRoles = (currentRolesRows || []).map(r => r.role as AppRole);
 
-    // Idempotent
-    if (currentRoles.includes(role)) {
-      return json(200, { success: true, alreadyExists: true, userId, role, message: `User already has the '${role}' role` }, requestOrigin);
+    if (!currentRoles.includes(role)) {
+      return json(404, { error: "User does not have this role" }, requestOrigin);
     }
 
-    // Mutual exclusivity check (super_admin is preserved — never auto-removed)
-    const conflicting: AppRole[] = isAdminRole(role)
-      ? currentRoles.filter(r => isTeachingRole(r))
-      : isTeachingRole(role)
-        ? currentRoles.filter(r => isAdminRole(r) && r !== "super_admin")
-        : [];
-
-    if (conflicting.length > 0 && !replaceConflicting) {
-      return json(409, {
-        error: "ROLE_CONFLICT",
-        conflictingRoles: conflicting,
-        message: "Adding this role would violate mutual exclusivity. Confirm REPLACE to proceed.",
-      }, requestOrigin);
+    if (currentRoles.length <= 1) {
+      return json(409, { error: "Cannot remove the user's only remaining role" }, requestOrigin);
     }
 
-    // Remove conflicting roles if requested
-    if (conflicting.length > 0 && replaceConflicting) {
-      const { error: delErr } = await adminClient
-        .from("user_roles")
-        .delete()
-        .eq("user_id", userId)
-        .in("role", conflicting);
-      if (delErr) {
-        return json(500, { error: "Failed to remove conflicting roles: " + delErr.message }, requestOrigin);
-      }
-
-      // Audit each removal
-      for (const removed of conflicting) {
-        await adminClient.from("user_activity_log").insert({
-          user_id: userId,
-          actor_id: caller.id,
-          action: "role_removed",
-          metadata: { role: removed, reason: "replaced_by_" + role, replaced_by: role },
-        });
-      }
-    }
-
-    // Insert the new role
-    const { error: insertErr } = await adminClient
+    // Delete the role
+    const { error: delErr } = await adminClient
       .from("user_roles")
-      .insert({ user_id: userId, role });
-    if (insertErr) {
-      return json(500, { error: "Failed to assign role: " + insertErr.message }, requestOrigin);
+      .delete()
+      .eq("user_id", userId)
+      .eq("role", role);
+    if (delErr) {
+      return json(500, { error: "Failed to remove role: " + delErr.message }, requestOrigin);
     }
 
-    // Audit add
+    // Audit
     await adminClient.from("user_activity_log").insert({
       user_id: userId,
       actor_id: caller.id,
-      action: "role_assigned",
-      metadata: { role, replaced: conflicting.length > 0 ? conflicting : undefined },
+      action: "role_removed",
+      metadata: { role, reason: "manual_removal" },
     });
 
     return json(200, {
       success: true,
       userId,
       role,
-      replacedRoles: conflicting,
-      message: `Role '${role}' assigned successfully${conflicting.length > 0 ? ` (replaced: ${conflicting.join(", ")})` : ""}`,
+      message: `Role '${role}' removed successfully`,
     }, requestOrigin);
 
   } catch (e) {
