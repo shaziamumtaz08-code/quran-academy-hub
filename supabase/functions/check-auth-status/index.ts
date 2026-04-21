@@ -30,18 +30,15 @@ serve(async (req) => {
   // Authenticate caller
   const authHeader = req.headers.get("Authorization") ?? "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-  if (!token) return json(401, { error: "Unauthorized" }, origin);
+  if (!token) return json(200, {}, origin); // non-blocking: empty result
 
   const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-  // Verify caller using anon client with the user's token in headers
-  const authedClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
-  const { data: userData, error: userErr } = await authedClient.auth.getUser();
+  // Verify caller by passing the JWT directly to admin.getUser (no session needed)
+  const { data: userData, error: userErr } = await adminClient.auth.getUser(token);
   if (userErr || !userData?.user?.id) {
-    console.error("getUser failed:", userErr);
-    return json(401, { error: "Invalid session" }, origin);
+    console.error("getUser failed:", userErr?.message);
+    return json(200, {}, origin); // non-blocking: empty result
   }
   const callerId = userData.user.id;
 

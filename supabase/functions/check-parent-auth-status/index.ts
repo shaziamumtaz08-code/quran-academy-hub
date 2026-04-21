@@ -25,14 +25,11 @@ serve(async (req) => {
 
   const authHeader = req.headers.get("Authorization") ?? "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-  if (!token) return json(401, { error: "Unauthorized" }, origin);
+  if (!token) return json(200, {}, origin);
 
   const admin = createClient(SUPABASE_URL, SERVICE_KEY);
-  const authed = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
-  const { data: userData, error: uErr } = await authed.auth.getUser();
-  if (uErr || !userData?.user?.id) return json(401, { error: "Invalid session" }, origin);
+  const { data: userData, error: uErr } = await admin.auth.getUser(token);
+  if (uErr || !userData?.user?.id) return json(200, {}, origin);
 
   const { data: roles } = await admin
     .from("user_roles").select("role").eq("user_id", userData.user.id)
