@@ -167,8 +167,8 @@ type IdentityIconKind = 'division-1to1' | 'division-group' | 'division-recorded'
 // Division color palette — also applied to role icons (Teacher/Student) per division.
 const DIVISION_COLOR: Record<'1to1' | 'group' | 'recorded', string> = {
   '1to1':     'text-blue-600 dark:text-blue-400',
-  'group':    'text-emerald-600 dark:text-emerald-400',
-  'recorded': 'text-amber-600 dark:text-amber-400',
+  'group':    'text-orange-700 dark:text-orange-500',
+  'recorded': 'text-yellow-500 dark:text-yellow-400',
 };
 
 const IDENTITY_ICON_META: Record<IdentityIconKind, { Icon: React.ComponentType<{ className?: string }>; color: string; label: string }> = {
