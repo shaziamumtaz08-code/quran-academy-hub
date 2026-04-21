@@ -173,6 +173,35 @@ Deno.serve(async (req) => {
               enrollment_id: enrollment.id,
             }).eq("id", submission.id);
             autoEnrolled++;
+
+            // Ensure user_context for the auto-enrolled student (course-derived branch/division)
+            try {
+              const { data: courseRow } = await supabaseAdmin
+                .from("courses")
+                .select("branch_id, division_id")
+                .eq("id", courseId)
+                .maybeSingle();
+              const { data: org } = await supabaseAdmin
+                .from("organizations")
+                .select("id")
+                .order("created_at", { ascending: true })
+                .limit(1)
+                .maybeSingle();
+              if (org?.id) {
+                const { error: ctxErr } = await supabaseAdmin.rpc("ensure_user_context", {
+                  p_user_id: existingProfile.id,
+                  p_organization_id: org.id,
+                  p_branch_id: courseRow?.branch_id ?? null,
+                  p_division_id: courseRow?.division_id ?? null,
+                  p_primary_role: "student",
+                });
+                if (ctxErr) console.warn("[ensure_user_context] failed:", ctxErr.message);
+              } else {
+                console.warn("[ensure_user_context] no organization row; skip");
+              }
+            } catch (e: any) {
+              console.warn("[ensure_user_context] threw:", e?.message);
+            }
           }
         }
       }

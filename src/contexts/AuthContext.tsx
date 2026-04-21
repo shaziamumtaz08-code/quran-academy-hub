@@ -280,6 +280,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (roleError) {
           console.error("Error assigning role:", roleError);
         }
+
+        // Resolve default tenant context and ensure user_context row (non-fatal)
+        try {
+          const { data: ctxSetting } = await supabase
+            .from("app_settings")
+            .select("setting_value")
+            .eq("setting_key", "default_signup_context")
+            .maybeSingle();
+          const v = ctxSetting?.setting_value as
+            | { organization_id?: string; branch_id?: string; division_id?: string }
+            | undefined;
+          if (v?.organization_id) {
+            const { error: ctxErr } = await supabase.rpc("ensure_user_context", {
+              p_user_id: data.user.id,
+              p_organization_id: v.organization_id,
+              p_branch_id: v.branch_id ?? null,
+              p_division_id: v.division_id ?? null,
+              p_primary_role: "student",
+            });
+            if (ctxErr) console.warn("user_context insert failed:", ctxErr.message);
+          } else {
+            console.warn("default_signup_context missing in app_settings; skipping user_context");
+          }
+        } catch (e: any) {
+          console.warn("user_context resolution threw:", e?.message);
+        }
       }
 
       return { error: null };

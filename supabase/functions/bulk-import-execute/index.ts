@@ -22,6 +22,38 @@ interface ImportResult {
   userName: string | null; // Added for detailed error messages
 }
 
+// Insert/refresh a user_context row. Non-fatal.
+async function ensureUserContext(
+  supabase: any,
+  userId: string,
+  branchId: string | null,
+  divisionId: string | null,
+  primaryRole: string | null,
+) {
+  try {
+    const { data: org } = await supabase
+      .from("organizations")
+      .select("id")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (!org?.id) {
+      console.warn("[ensure_user_context] no organization row; skip");
+      return;
+    }
+    const { error } = await supabase.rpc("ensure_user_context", {
+      p_user_id: userId,
+      p_organization_id: org.id,
+      p_branch_id: branchId,
+      p_division_id: divisionId,
+      p_primary_role: primaryRole,
+    });
+    if (error) console.warn("[ensure_user_context] failed:", error.message);
+  } catch (e: any) {
+    console.warn("[ensure_user_context] threw:", e?.message);
+  }
+}
+
 // Look up an existing auth user id by email (auth enforces unique emails)
 async function findAuthUserIdByEmail(supabase: any, email: string): Promise<string | null> {
   const target = (email || "").trim().toLowerCase();
@@ -153,6 +185,7 @@ serve(async (req) => {
               if (roleErr) {
                 console.error(`[bulk-import-execute] Role assignment failed for ${userName}:`, roleErr);
               }
+              await ensureUserContext(supabase, row.existingId, row.data.branch_id ?? null, row.data.division_id ?? null, normalizedRole);
             }
 
             console.log(`[bulk-import-execute] Updated user: ${userName} (${row.existingId})`);
@@ -211,6 +244,7 @@ serve(async (req) => {
                 if (roleErr) {
                   console.error(`[bulk-import-execute] Role assignment failed for ${userName}:`, roleErr);
                 }
+                await ensureUserContext(supabase, existingProfile.id, row.data.branch_id ?? null, row.data.division_id ?? null, row.data.role ?? null);
 
                 console.log(`[bulk-import-execute] Updated user (matched by name+email): ${userName} (${existingProfile.id})`);
 
@@ -307,6 +341,8 @@ serve(async (req) => {
             if (roleError && !roleError.message.includes("duplicate")) {
               console.error(`[bulk-import-execute] Role assignment failed for ${userName}:`, roleError);
             }
+
+            await ensureUserContext(supabase, userId!, row.data.branch_id ?? null, row.data.division_id ?? null, row.data.role ?? null);
 
             const action: ImportResult["action"] = isNewAuthUser ? "created" : "created"; // Both are creates for profile
             console.log(
