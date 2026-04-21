@@ -59,6 +59,8 @@ interface TeacherStudent {
   age: number | null;
   gender: string | null;
   guardian_type?: 'none' | 'parent' | 'guardian' | 'emergency_contact' | null;
+  enrollment_source?: '1:1' | 'Group';
+  group_context?: string | null;
 }
 
 type SortField = 'name' | 'email' | 'teacher' | 'country' | 'city' | 'gender' | 'age';
