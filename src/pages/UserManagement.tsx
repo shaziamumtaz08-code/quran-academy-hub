@@ -1523,13 +1523,14 @@ export default function UserManagement() {
                     <div className="flex flex-wrap gap-3 items-center">
                       {(['division-1to1','division-group','division-recorded'] as IdentityIconKind[]).map(k => {
                         const meta = IDENTITY_ICON_META[k];
-                        // Extract bg color from text color class (e.g. text-blue-600 → bg-blue-600)
-                        const bgClass = meta.color
-                          .replace(/text-/g, 'bg-')
-                          .replace(/dark:bg-/g, 'dark:bg-');
+                        const bgMap: Record<string, string> = {
+                          'division-1to1': 'bg-blue-600 dark:bg-blue-400',
+                          'division-group': 'bg-orange-700 dark:bg-orange-500',
+                          'division-recorded': 'bg-yellow-500 dark:bg-yellow-400',
+                        };
                         return (
                           <span key={k} className="inline-flex items-center gap-1.5">
-                            <span className={`h-3 w-3 rounded-none ring-1 ring-border/50 ${bgClass}`} style={{ borderRadius: 0 }} aria-hidden />
+                            <span className={`h-3 w-3 rounded-none ring-1 ring-border/50 ${bgMap[k]}`} style={{ borderRadius: 0 }} aria-hidden />
                             <span className="text-foreground/80">{meta.label}</span>
                           </span>
                         );
