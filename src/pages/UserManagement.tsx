@@ -272,6 +272,8 @@ export default function UserManagement() {
   const [deleteConfirmUser, setDeleteConfirmUser] = useState<UserWithRoles | null>(null);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [removeRoleConfirm, setRemoveRoleConfirm] = useState<{ user: UserWithRoles; role: AppRole } | null>(null);
+  const [replaceConflictState, setReplaceConflictState] = useState<{ user: UserWithRoles; newRole: AppRole; conflictingRoles: AppRole[] } | null>(null);
+  const [replaceConfirmText, setReplaceConfirmText] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserName, setNewUserName] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
@@ -462,19 +464,25 @@ export default function UserManagement() {
 
   // Add role to user mutation
   const addRoleMutation = useMutation({
-    mutationFn: async ({ userId, role }: { userId: string; role: AppRole }) => {
+    mutationFn: async ({ userId, role, replaceConflicting }: { userId: string; role: AppRole; replaceConflicting?: boolean }) => {
       if (!session?.access_token) {
         throw new Error('Authentication required. Please log in again.');
       }
 
       const { data, error } = await supabase.functions.invoke('assign-role', {
         headers: { Authorization: `Bearer ${session.access_token}` },
-        body: { userId, role },
+        body: { userId, role, replaceConflicting: !!replaceConflicting },
       });
 
       if (error) {
         if (error instanceof FunctionsHttpError) {
           const errBody = await error.context.json().catch(() => null);
+          if (errBody && errBody.error === 'ROLE_CONFLICT') {
+            const conflictErr: any = new Error(errBody.message || 'Role conflict');
+            conflictErr.code = 'ROLE_CONFLICT';
+            conflictErr.conflictingRoles = errBody.conflictingRoles || [];
+            throw conflictErr;
+          }
           throw new Error(
             (errBody && typeof errBody.error === 'string' && errBody.error) ||
               error.message ||
@@ -497,8 +505,19 @@ export default function UserManagement() {
         description: data?.message || 'Role has been added successfully.',
       });
       setIsAddRoleDialogOpen(false);
+      setReplaceConflictState(null);
+      setReplaceConfirmText('');
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      if (error?.code === 'ROLE_CONFLICT' && viewingUser) {
+        setReplaceConflictState({
+          user: viewingUser,
+          newRole: addRoleSelection,
+          conflictingRoles: error.conflictingRoles || [],
+        });
+        setReplaceConfirmText('');
+        return;
+      }
       toast({
         title: 'Failed to add role',
         description: error instanceof Error ? error.message : 'Please try again.',
@@ -507,16 +526,25 @@ export default function UserManagement() {
     },
   });
 
-  // Remove role mutation
+  // Remove role mutation (via edge function: super_admin gated, audited, last-role guarded)
   const removeRoleMutation = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: AppRole }) => {
-      const { error } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', userId)
-        .eq('role', role);
-
-      if (error) throw error;
+      if (!session?.access_token) {
+        throw new Error('Authentication required. Please log in again.');
+      }
+      const { data, error } = await supabase.functions.invoke('remove-role', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: { userId, role },
+      });
+      if (error) {
+        if (error instanceof FunctionsHttpError) {
+          const errBody = await error.context.json().catch(() => null);
+          throw new Error((errBody && errBody.error) || error.message || 'Failed to remove role');
+        }
+        throw new Error(error.message || 'Failed to remove role');
+      }
+      if (data?.error) throw new Error(data.error);
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users-with-roles'] });
@@ -1050,7 +1078,8 @@ export default function UserManagement() {
   const getAvailableRoles = (user: UserWithRoles): AppRole[] => {
     const allRoles = Object.keys(ROLE_LABELS) as AppRole[];
     const userRoles = user.roles || [];
-    return allRoles.filter(role => !userRoles.includes(role));
+    // Exclude super_admin from UI-assignable roles (DB-level only)
+    return allRoles.filter(role => !userRoles.includes(role) && role !== 'super_admin');
   };
 
   // Access denied - render after all hooks are called
@@ -2039,6 +2068,77 @@ export default function UserManagement() {
                   </>
                 ) : (
                   'Remove'
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* REPLACE Confirmation Modal — mutual exclusivity hard block */}
+        <AlertDialog
+          open={!!replaceConflictState}
+          onOpenChange={(open) => {
+            if (!open) {
+              setReplaceConflictState(null);
+              setReplaceConfirmText('');
+            }
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                Role Conflict — Replace Required
+              </AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="space-y-3 pt-2">
+                  <p>
+                    Adding <strong>{replaceConflictState?.newRole ? ROLE_LABELS[replaceConflictState.newRole] : ''}</strong>{' '}
+                    to <strong>{replaceConflictState?.user.full_name}</strong> will{' '}
+                    <strong className="text-destructive">REMOVE</strong> the following existing role
+                    {replaceConflictState && replaceConflictState.conflictingRoles.length > 1 ? 's' : ''}:
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {replaceConflictState?.conflictingRoles.map((r) => (
+                      <Badge key={r} variant="outline" className={ROLE_COLORS[r]}>
+                        {ROLE_LABELS[r]}
+                      </Badge>
+                    ))}
+                  </div>
+                  <p className="text-sm">
+                    Type <strong>REPLACE</strong> to confirm.
+                  </p>
+                  <Input
+                    value={replaceConfirmText}
+                    onChange={(e) => setReplaceConfirmText(e.target.value)}
+                    placeholder="Type REPLACE"
+                    autoFocus
+                  />
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={replaceConfirmText !== 'REPLACE' || addRoleMutation.isPending}
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (replaceConflictState && replaceConfirmText === 'REPLACE') {
+                    addRoleMutation.mutate({
+                      userId: replaceConflictState.user.id,
+                      role: replaceConflictState.newRole,
+                      replaceConflicting: true,
+                    });
+                  }
+                }}
+              >
+                {addRoleMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Replacing...
+                  </>
+                ) : (
+                  'Confirm Replace'
                 )}
               </AlertDialogAction>
             </AlertDialogFooter>
