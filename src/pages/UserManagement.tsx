@@ -1050,7 +1050,8 @@ export default function UserManagement() {
   const getAvailableRoles = (user: UserWithRoles): AppRole[] => {
     const allRoles = Object.keys(ROLE_LABELS) as AppRole[];
     const userRoles = user.roles || [];
-    return allRoles.filter(role => !userRoles.includes(role));
+    // Exclude super_admin from UI-assignable roles (DB-level only)
+    return allRoles.filter(role => !userRoles.includes(role) && role !== 'super_admin');
   };
 
   // Access denied - render after all hooks are called
