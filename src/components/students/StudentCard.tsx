@@ -33,6 +33,8 @@ interface StudentCardProps {
     timezone?: string;
     registration_id?: string | null;
     guardian_type?: 'none' | 'parent' | 'guardian' | 'emergency_contact' | null;
+    enrollment_source?: '1:1' | 'Group';
+    group_context?: string | null;
   };
   onViewHistory: () => void;
   onViewSchedule: () => void;
@@ -79,6 +81,20 @@ export function StudentCard({ student, onViewHistory, onViewSchedule }: StudentC
               {student.registration_id && (
                 <Badge variant="outline" className="text-[10px] h-5 font-mono">
                   {student.registration_id}
+                </Badge>
+              )}
+              {student.enrollment_source && (
+                <Badge
+                  variant="outline"
+                  title={student.group_context || undefined}
+                  className={cn(
+                    "text-[10px] h-5",
+                    student.enrollment_source === '1:1'
+                      ? "bg-sky/10 text-sky-dark border-sky/30 dark:text-sky-light"
+                      : "bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:text-emerald-400"
+                  )}
+                >
+                  {student.enrollment_source}
                 </Badge>
               )}
               {status !== 'active' && (
