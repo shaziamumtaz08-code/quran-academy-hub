@@ -95,12 +95,14 @@ export default function Students() {
   const isParent = activeRole === 'parent';
 
   // Fetch students for teacher with full details (subject, schedule, targets)
+  // Source A: 1:1 assignments (student_teacher_assignments)
+  // Source B: Group rosters (course_class_staff -> course_classes -> course_class_students)
   const { data: teacherStudents = [], isLoading: isLoadingTeacher } = useQuery({
     queryKey: ['teacher-students-detailed', user?.id, activeRole],
     queryFn: async () => {
       if (!user?.id) return [];
 
-      // Get assignments with student profile and subject
+      // ---------- Source A: 1:1 assignments ----------
       const { data: assignments, error: assignError } = await supabase
         .from('student_teacher_assignments')
         .select(`
@@ -115,11 +117,61 @@ export default function Students() {
         .eq('status', 'active');
 
       if (assignError) throw assignError;
-      if (!assignments || assignments.length === 0) return [];
 
-      const studentIds = assignments.map(a => a.student_id);
+      // ---------- Source B: Group rosters via course_class_staff ----------
+      const { data: staffRows, error: staffError } = await supabase
+        .from('course_class_staff')
+        .select(`
+          class_id,
+          staff_role,
+          class:course_classes(
+            id, name,
+            course:courses(id, name)
+          )
+        `)
+        .eq('user_id', user.id)
+        .in('staff_role', ['teacher', 'moderator', 'supervisor']);
 
-      // Get latest attendance record per student (for last lesson + homework)
+      if (staffError) throw staffError;
+
+      const classIds = (staffRows || []).map((r: any) => r.class_id).filter(Boolean);
+      const classCtxMap = new Map<string, string>();
+      (staffRows || []).forEach((r: any) => {
+        const courseName = r.class?.course?.name || '';
+        const className = r.class?.name || '';
+        classCtxMap.set(r.class_id, [courseName, className].filter(Boolean).join(' · '));
+      });
+
+      let groupRosters: any[] = [];
+      if (classIds.length > 0) {
+        const { data: rosterRows, error: rosterError } = await supabase
+          .from('course_class_students')
+          .select(`
+            class_id,
+            student_id,
+            status,
+            student:profiles!course_class_students_student_id_fkey(
+              id, full_name, email, daily_target_lines, preferred_unit, age, gender, guardian_type
+            )
+          `)
+          .in('class_id', classIds)
+          .eq('status', 'active');
+        if (rosterError) throw rosterError;
+        groupRosters = rosterRows || [];
+      }
+
+      // Collect all student ids (dedupe across sources, keep 1:1 priority for subject)
+      const oneOnOneIds = new Set((assignments || []).map(a => a.student_id));
+      const groupOnlyIds = new Set(
+        groupRosters
+          .map(r => r.student_id)
+          .filter(id => !oneOnOneIds.has(id))
+      );
+      const studentIds = [...oneOnOneIds, ...groupOnlyIds];
+
+      if (studentIds.length === 0) return [];
+
+      // Latest attendance for last lesson + homework (only meaningful for 1:1)
       const { data: attendanceData } = await supabase
         .from('attendance')
         .select('student_id, lesson_covered, surah_name, ayah_from, ayah_to, homework, class_date')
@@ -128,7 +180,6 @@ export default function Students() {
         .eq('status', 'present')
         .order('class_date', { ascending: false });
 
-      // Build a map of latest attendance per student
       const latestAttendance = new Map<string, { lesson: string | null; homework: string | null }>();
       (attendanceData || []).forEach(record => {
         if (!latestAttendance.has(record.student_id)) {
@@ -149,7 +200,8 @@ export default function Students() {
         }
       });
 
-      return assignments.map((a: any) => ({
+      // Build 1:1 entries
+      const oneOnOneEntries: TeacherStudent[] = (assignments || []).map((a: any) => ({
         id: a.student?.id || a.student_id,
         full_name: a.student?.full_name || 'Unknown',
         email: a.student?.email || null,
@@ -162,7 +214,36 @@ export default function Students() {
         age: a.student?.age ?? null,
         gender: a.student?.gender ?? null,
         guardian_type: a.student?.guardian_type ?? null,
-      })) as TeacherStudent[];
+        enrollment_source: '1:1',
+        group_context: null,
+      }));
+
+      // Build Group entries (skip those already present as 1:1)
+      const seen = new Set(oneOnOneEntries.map(e => e.id));
+      const groupEntries: TeacherStudent[] = [];
+      for (const r of groupRosters) {
+        const sid = r.student?.id || r.student_id;
+        if (seen.has(sid)) continue;
+        seen.add(sid);
+        groupEntries.push({
+          id: sid,
+          full_name: r.student?.full_name || 'Unknown',
+          email: r.student?.email || null,
+          subject_name: null,
+          assignment_status: (r.status || 'active') as AssignmentStatus,
+          daily_target_lines: r.student?.daily_target_lines || 0,
+          preferred_unit: r.student?.preferred_unit || 'lines',
+          last_lesson: latestAttendance.get(sid)?.lesson || null,
+          homework: latestAttendance.get(sid)?.homework || null,
+          age: r.student?.age ?? null,
+          gender: r.student?.gender ?? null,
+          guardian_type: r.student?.guardian_type ?? null,
+          enrollment_source: 'Group',
+          group_context: classCtxMap.get(r.class_id) || null,
+        });
+      }
+
+      return [...oneOnOneEntries, ...groupEntries];
     },
     enabled: !!user?.id && isTeacher,
   });
