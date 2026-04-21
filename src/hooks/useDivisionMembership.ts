@@ -47,8 +47,7 @@ export function useDivisionMembership(userIds: string[], enabled = true) {
       // Parent memberships: parents inherit divisions from their linked children
       const { data: parentLinks } = await supabase
         .from('student_parent_links')
-        .select('parent_id, student_id')
-        .neq('parent_id', 'student_id'); // guard against self-links (defensive)
+        .select('parent_id, student_id');
 
       // Map<userId, Map<divisionId, Set<role>>>
       const membershipMap = new Map<string, Map<string, Set<string>>>();
