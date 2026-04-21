@@ -272,6 +272,8 @@ export default function UserManagement() {
   const [deleteConfirmUser, setDeleteConfirmUser] = useState<UserWithRoles | null>(null);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [removeRoleConfirm, setRemoveRoleConfirm] = useState<{ user: UserWithRoles; role: AppRole } | null>(null);
+  const [replaceConflictState, setReplaceConflictState] = useState<{ user: UserWithRoles; newRole: AppRole; conflictingRoles: AppRole[] } | null>(null);
+  const [replaceConfirmText, setReplaceConfirmText] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserName, setNewUserName] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
