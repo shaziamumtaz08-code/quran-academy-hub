@@ -33,6 +33,8 @@ interface StudentCardProps {
     timezone?: string;
     registration_id?: string | null;
     guardian_type?: 'none' | 'parent' | 'guardian' | 'emergency_contact' | null;
+    enrollment_source?: '1:1' | 'Group';
+    group_context?: string | null;
   };
   onViewHistory: () => void;
   onViewSchedule: () => void;
