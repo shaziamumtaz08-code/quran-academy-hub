@@ -1532,15 +1532,25 @@ export default function UserManagement() {
                       })}
                     </div>
 
-                    {/* ROLE row */}
+                    {/* ROLE row — Teacher/Student colored per division */}
                     <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Role</div>
-                    <div className="flex flex-wrap gap-3 items-center">
+                    <div className="flex flex-wrap gap-x-4 gap-y-2 items-center">
                       <span className="inline-flex items-center gap-1.5"><Crown className="h-3.5 w-3.5 text-rose-600" /><span className="text-foreground/80">Super Admin</span></span>
                       <span className="inline-flex items-center gap-1.5"><Shield className="h-3.5 w-3.5 text-slate-600" /><span className="text-foreground/80">Admin</span></span>
-                      <span className="inline-flex items-center gap-1.5"><GraduationCap className="h-3.5 w-3.5 text-violet-600" /><span className="text-foreground/80">Teacher</span></span>
-                      <span className="inline-flex items-center gap-1.5"><User className="h-3.5 w-3.5 text-teal-600" /><span className="text-foreground/80">Student</span></span>
+                      <span className="inline-flex items-center gap-1.5"><ClipboardCheck className="h-3.5 w-3.5 text-indigo-600" /><span className="text-foreground/80">Examiner</span></span>
                       <span className="inline-flex items-center gap-1.5"><Heart className="h-3.5 w-3.5 text-pink-600" /><span className="text-foreground/80">Parent</span></span>
-                      <span className="inline-flex items-center gap-1.5"><Briefcase className="h-3.5 w-3.5 text-indigo-600" /><span className="text-foreground/80">Examiner</span></span>
+                      <span className="inline-flex items-center gap-2 pl-2 border-l border-border/60">
+                        <span className="text-foreground/80">Teacher</span>
+                        <Presentation className={`h-3.5 w-3.5 ${DIVISION_COLOR['1to1']}`} />
+                        <Presentation className={`h-3.5 w-3.5 ${DIVISION_COLOR['group']}`} />
+                        <Presentation className={`h-3.5 w-3.5 ${DIVISION_COLOR['recorded']}`} />
+                      </span>
+                      <span className="inline-flex items-center gap-2">
+                        <span className="text-foreground/80">Student</span>
+                        <GraduationCap className={`h-3.5 w-3.5 ${DIVISION_COLOR['1to1']}`} />
+                        <GraduationCap className={`h-3.5 w-3.5 ${DIVISION_COLOR['group']}`} />
+                        <GraduationCap className={`h-3.5 w-3.5 ${DIVISION_COLOR['recorded']}`} />
+                      </span>
                     </div>
 
                     {/* STATUS row */}
