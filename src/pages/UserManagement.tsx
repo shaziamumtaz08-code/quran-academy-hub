@@ -1529,7 +1529,7 @@ export default function UserManagement() {
                           .replace(/dark:bg-/g, 'dark:bg-');
                         return (
                           <span key={k} className="inline-flex items-center gap-1.5">
-                            <span className={`h-3 w-3 rounded-sm ring-1 ring-border/50 ${bgClass}`} aria-hidden />
+                            <span className={`h-3 w-3 rounded-none ring-1 ring-border/50 ${bgClass}`} style={{ borderRadius: 0 }} aria-hidden />
                             <span className="text-foreground/80">{meta.label}</span>
                           </span>
                         );
