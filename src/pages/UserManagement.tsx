@@ -1610,15 +1610,9 @@ export default function UserManagement() {
                           <div className="flex items-center">User{getSortIcon('name')}</div>
                         </TableHead>
                         <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
-                          <span className="inline-flex items-center gap-1">ID <span className="opacity-50">·</span> IDENTITY</span>
+                          <span className="inline-flex items-center gap-1">ID <span className="opacity-50">&amp;</span> ROLES</span>
                         </TableHead>
                         <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Phone</TableHead>
-                        <TableHead
-                          className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors"
-                          onClick={() => handleSort('role')}
-                        >
-                          <div className="flex items-center">{effectiveDivisionId ? 'Role' : 'Division · Role'}{getSortIcon('role')}</div>
-                        </TableHead>
                         <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Location</TableHead>
                         <TableHead className="h-11 text-right text-[10px] uppercase tracking-wider font-semibold text-muted-foreground pr-4">Actions</TableHead>
                       </TableRow>
@@ -1737,66 +1731,7 @@ export default function UserManagement() {
                               <span className="text-muted-foreground text-sm">—</span>
                             )}
                           </TableCell>
-                          <TableCell className="py-3">
-                            <div className="flex flex-wrap gap-1.5 items-center">
-                              {(() => {
-                                const memberships = divMembershipMap?.get(user.id) || [];
-                                const globalRoles = (user.roles || []).filter(r => GLOBAL_ROLES.includes(r));
-
-                                if (effectiveDivisionId) {
-                                  const inScope = memberships.find(m => m.divisionId === effectiveDivisionId);
-                                  const rolesInDiv = inScope?.roles || [];
-                                  const pills: React.ReactNode[] = [];
-                                  rolesInDiv.forEach(role => {
-                                    pills.push(<RolePill key={`r-${role}`} role={role as AppRole} />);
-                                  });
-                                  globalRoles.forEach(role => {
-                                    pills.push(<RolePill key={`g-${role}`} role={role} />);
-                                  });
-                                  if (pills.length === 0) {
-                                    return <span className="text-xs text-muted-foreground italic">No role here</span>;
-                                  }
-                                  return pills;
-                                }
-
-                                const pills: React.ReactNode[] = [];
-                                memberships.forEach(m => {
-                                  const short = getDivisionShortName(m.divisionName);
-                                  m.roles.forEach(role => {
-                                    pills.push(
-                                      <RolePill
-                                        key={`${m.divisionId}-${role}`}
-                                        role={role as AppRole}
-                                        prefix={short}
-                                      />
-                                    );
-                                  });
-                                });
-                                globalRoles.forEach(role => {
-                                  pills.push(<RolePill key={`g-${role}`} role={role} />);
-                                });
-                                if (pills.length === 0) {
-                                  return <span className="text-xs text-muted-foreground italic">No role</span>;
-                                }
-                                return pills;
-                              })()}
-                              {isSuperAdmin && getAvailableRoles(user).length > 0 && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 w-6 p-0"
-                                  onClick={() => {
-                                    setViewingUser(user);
-                                    setAddRoleSelection(getAvailableRoles(user)[0]);
-                                    setIsAddRoleDialogOpen(true);
-                                  }}
-                                  title="Add role"
-                                >
-                                  <Plus className="h-3 w-3" />
-                                </Button>
-                              )}
-                            </div>
-                          </TableCell>
+                          {/* Role column removed — roles are now visualized as icons inside the ID pill (see ID & ROLES column). */}
                           <TableCell className="py-3">
                             {user.city || user.country ? (
                               <span className="text-sm text-muted-foreground">
