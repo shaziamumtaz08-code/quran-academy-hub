@@ -2074,6 +2074,77 @@ export default function UserManagement() {
           </AlertDialogContent>
         </AlertDialog>
 
+        {/* REPLACE Confirmation Modal — mutual exclusivity hard block */}
+        <AlertDialog
+          open={!!replaceConflictState}
+          onOpenChange={(open) => {
+            if (!open) {
+              setReplaceConflictState(null);
+              setReplaceConfirmText('');
+            }
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                Role Conflict — Replace Required
+              </AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="space-y-3 pt-2">
+                  <p>
+                    Adding <strong>{replaceConflictState?.newRole ? ROLE_LABELS[replaceConflictState.newRole] : ''}</strong>{' '}
+                    to <strong>{replaceConflictState?.user.full_name}</strong> will{' '}
+                    <strong className="text-destructive">REMOVE</strong> the following existing role
+                    {replaceConflictState && replaceConflictState.conflictingRoles.length > 1 ? 's' : ''}:
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {replaceConflictState?.conflictingRoles.map((r) => (
+                      <Badge key={r} variant="outline" className={ROLE_COLORS[r]}>
+                        {ROLE_LABELS[r]}
+                      </Badge>
+                    ))}
+                  </div>
+                  <p className="text-sm">
+                    Type <strong>REPLACE</strong> to confirm.
+                  </p>
+                  <Input
+                    value={replaceConfirmText}
+                    onChange={(e) => setReplaceConfirmText(e.target.value)}
+                    placeholder="Type REPLACE"
+                    autoFocus
+                  />
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={replaceConfirmText !== 'REPLACE' || addRoleMutation.isPending}
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (replaceConflictState && replaceConfirmText === 'REPLACE') {
+                    addRoleMutation.mutate({
+                      userId: replaceConflictState.user.id,
+                      role: replaceConflictState.newRole,
+                      replaceConflicting: true,
+                    });
+                  }
+                }}
+              >
+                {addRoleMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Replacing...
+                  </>
+                ) : (
+                  'Confirm Replace'
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         {/* Edit User Permissions Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
