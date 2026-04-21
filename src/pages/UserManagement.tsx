@@ -1687,21 +1687,59 @@ export default function UserManagement() {
                                         >
                                           <span className="tabular-nums truncate text-left" style={{ width: '12ch' }}>{personNo}</span>
                                           {(() => {
+                                            // Render ROLE icons colored by DIVISION.
+                                            // For each division the user belongs to (parents inherit from their kids),
+                                            // emit one icon per role-in-that-division. Same role across multiple
+                                            // divisions = multiple icons in different colors.
                                             const memberships = divMembershipMap?.get(user.id) || [];
-                                            const seen = new Set<IdentityIconKind>();
-                                            const kinds: IdentityIconKind[] = [];
+                                            const userRoles = user.roles || [];
+                                            const isExaminer = userRoles.includes('examiner' as AppRole);
+                                            const isSuperAdmin = userRoles.includes('super_admin' as AppRole);
+                                            const isAdmin = userRoles.some(r => r === 'admin' || r === 'admin_admissions' || r === 'admin_fees' || r === 'admin_academic');
+
+                                            type RoleIconKind = 'student' | 'teacher' | 'parent' | 'examiner' | 'admin' | 'super_admin';
+                                            const ROLE_ICON: Record<RoleIconKind, React.ComponentType<{ className?: string }>> = {
+                                              student: GraduationCap,
+                                              teacher: Presentation,
+                                              parent: Heart,
+                                              examiner: ClipboardCheck,
+                                              admin: Shield,
+                                              super_admin: Crown,
+                                            };
+
+                                            const items: { Icon: React.ComponentType<{ className?: string }>; color: string; title: string }[] = [];
+                                            const pushed = new Set<string>();
+                                            const push = (kind: RoleIconKind, color: string, divLabel: string) => {
+                                              const key = `${kind}|${color}`;
+                                              if (pushed.has(key)) return;
+                                              pushed.add(key);
+                                              items.push({ Icon: ROLE_ICON[kind], color, title: `${kind.replace('_', ' ')} · ${divLabel}` });
+                                            };
+
+                                            // Per-division role icons
                                             memberships.forEach(m => {
-                                              const k = divisionIconKind(m.modelType, m.divisionName);
-                                              if (!seen.has(k)) { seen.add(k); kinds.push(k); }
+                                              const dKind = divisionIconKind(m.modelType, m.divisionName);
+                                              const colorKey = dKind === 'division-1to1' ? '1to1' : dKind === 'division-recorded' ? 'recorded' : 'group';
+                                              const color = DIVISION_COLOR[colorKey];
+                                              (m.roles || []).forEach(r => {
+                                                if (r === 'student') push('student', color, m.divisionName);
+                                                else if (r === 'teacher' || r === 'moderator' || r === 'supervisor') push('teacher', color, m.divisionName);
+                                                else if (r === 'parent') push('parent', color, m.divisionName);
+                                              });
                                             });
-                                            const isAdminish = (user.roles || []).some(r => r === 'super_admin' || r === 'admin' || r === 'admin_admissions' || r === 'admin_fees' || r === 'admin_academic');
-                                            if (isAdminish && !seen.has('admin-crown')) kinds.push('admin-crown');
-                                            const slots = Array.from({ length: 8 }, (_, i) => kinds[i]);
+
+                                            // Global roles (no division coloring)
+                                            const neutral = 'text-slate-700 dark:text-slate-300';
+                                            if (isExaminer) push('examiner', neutral, 'Global');
+                                            if (isAdmin) push('admin', 'text-slate-700 dark:text-slate-300', 'Global');
+                                            if (isSuperAdmin) push('super_admin', 'text-rose-600 dark:text-rose-400', 'Global');
+
+                                            const slots = Array.from({ length: 8 }, (_, i) => items[i]);
                                             return (
                                               <span className="inline-flex items-center gap-1 border-l border-slate-200 pl-2" style={{ width: 'calc(8 * 14px + 7 * 4px)' }}>
-                                                {slots.map((k, i) => (
-                                                  <span key={i} className="inline-flex items-center justify-center" style={{ width: 14, height: 14 }}>
-                                                    {k ? (() => { const meta = IDENTITY_ICON_META[k]; return <meta.Icon className={`h-3.5 w-3.5 ${meta.color}`} />; })() : null}
+                                                {slots.map((it, i) => (
+                                                  <span key={i} className="inline-flex items-center justify-center" style={{ width: 14, height: 14 }} title={it?.title}>
+                                                    {it ? <it.Icon className={`h-3.5 w-3.5 ${it.color}`} /> : null}
                                                   </span>
                                                 ))}
                                               </span>
