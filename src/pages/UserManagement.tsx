@@ -462,19 +462,25 @@ export default function UserManagement() {
 
   // Add role to user mutation
   const addRoleMutation = useMutation({
-    mutationFn: async ({ userId, role }: { userId: string; role: AppRole }) => {
+    mutationFn: async ({ userId, role, replaceConflicting }: { userId: string; role: AppRole; replaceConflicting?: boolean }) => {
       if (!session?.access_token) {
         throw new Error('Authentication required. Please log in again.');
       }
 
       const { data, error } = await supabase.functions.invoke('assign-role', {
         headers: { Authorization: `Bearer ${session.access_token}` },
-        body: { userId, role },
+        body: { userId, role, replaceConflicting: !!replaceConflicting },
       });
 
       if (error) {
         if (error instanceof FunctionsHttpError) {
           const errBody = await error.context.json().catch(() => null);
+          if (errBody && errBody.error === 'ROLE_CONFLICT') {
+            const conflictErr: any = new Error(errBody.message || 'Role conflict');
+            conflictErr.code = 'ROLE_CONFLICT';
+            conflictErr.conflictingRoles = errBody.conflictingRoles || [];
+            throw conflictErr;
+          }
           throw new Error(
             (errBody && typeof errBody.error === 'string' && errBody.error) ||
               error.message ||
@@ -497,8 +503,19 @@ export default function UserManagement() {
         description: data?.message || 'Role has been added successfully.',
       });
       setIsAddRoleDialogOpen(false);
+      setReplaceConflictState(null);
+      setReplaceConfirmText('');
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      if (error?.code === 'ROLE_CONFLICT' && viewingUser) {
+        setReplaceConflictState({
+          user: viewingUser,
+          newRole: addRoleSelection,
+          conflictingRoles: error.conflictingRoles || [],
+        });
+        setReplaceConfirmText('');
+        return;
+      }
       toast({
         title: 'Failed to add role',
         description: error instanceof Error ? error.message : 'Please try again.',
@@ -507,16 +524,25 @@ export default function UserManagement() {
     },
   });
 
-  // Remove role mutation
+  // Remove role mutation (via edge function: super_admin gated, audited, last-role guarded)
   const removeRoleMutation = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: AppRole }) => {
-      const { error } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', userId)
-        .eq('role', role);
-
-      if (error) throw error;
+      if (!session?.access_token) {
+        throw new Error('Authentication required. Please log in again.');
+      }
+      const { data, error } = await supabase.functions.invoke('remove-role', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: { userId, role },
+      });
+      if (error) {
+        if (error instanceof FunctionsHttpError) {
+          const errBody = await error.context.json().catch(() => null);
+          throw new Error((errBody && errBody.error) || error.message || 'Failed to remove role');
+        }
+        throw new Error(error.message || 'Failed to remove role');
+      }
+      if (data?.error) throw new Error(data.error);
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users-with-roles'] });
