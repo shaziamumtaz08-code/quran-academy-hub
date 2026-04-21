@@ -1680,8 +1680,13 @@ export default function UserManagement() {
                                         }}
                                         title="Click to copy"
                                       >
-                                        <span className="font-mono text-xs bg-muted border border-border rounded-md pl-2 pr-1.5 py-0.5 text-foreground/80 inline-flex items-center gap-1.5">
-                                          <span className="tabular-nums w-[88px] truncate text-left">{personNo}</span>
+                                        <span
+                                          className="font-mono text-xs bg-white text-slate-800 border border-slate-300 px-2 py-1 inline-flex items-center gap-2"
+                                          style={{
+                                            boxShadow: '0 1px 0 rgba(255,255,255,0.6) inset, 0 1px 2px rgba(15,23,42,0.12), 0 2px 4px rgba(15,23,42,0.08)',
+                                          }}
+                                        >
+                                          <span className="tabular-nums truncate text-left" style={{ width: '12ch' }}>{personNo}</span>
                                           {(() => {
                                             const memberships = divMembershipMap?.get(user.id) || [];
                                             const seen = new Set<IdentityIconKind>();
@@ -1692,13 +1697,14 @@ export default function UserManagement() {
                                             });
                                             const isAdminish = (user.roles || []).some(r => r === 'super_admin' || r === 'admin' || r === 'admin_admissions' || r === 'admin_fees' || r === 'admin_academic');
                                             if (isAdminish && !seen.has('admin-crown')) kinds.push('admin-crown');
-                                            if (kinds.length === 0) return null;
+                                            const slots = Array.from({ length: 8 }, (_, i) => kinds[i]);
                                             return (
-                                              <span className="inline-flex items-center gap-0.5 border-l border-border/60 pl-1.5">
-                                                {kinds.slice(0, 3).map(k => {
-                                                  const meta = IDENTITY_ICON_META[k];
-                                                  return <meta.Icon key={k} className={`h-3 w-3 ${meta.color}`} />;
-                                                })}
+                                              <span className="inline-flex items-center gap-1 border-l border-slate-200 pl-2" style={{ width: 'calc(8 * 14px + 7 * 4px)' }}>
+                                                {slots.map((k, i) => (
+                                                  <span key={i} className="inline-flex items-center justify-center" style={{ width: 14, height: 14 }}>
+                                                    {k ? (() => { const meta = IDENTITY_ICON_META[k]; return <meta.Icon className={`h-3.5 w-3.5 ${meta.color}`} />; })() : null}
+                                                  </span>
+                                                ))}
                                               </span>
                                             );
                                           })()}
