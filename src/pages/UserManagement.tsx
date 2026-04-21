@@ -1523,9 +1523,13 @@ export default function UserManagement() {
                     <div className="flex flex-wrap gap-3 items-center">
                       {(['division-1to1','division-group','division-recorded'] as IdentityIconKind[]).map(k => {
                         const meta = IDENTITY_ICON_META[k];
+                        // Extract bg color from text color class (e.g. text-blue-600 → bg-blue-600)
+                        const bgClass = meta.color
+                          .replace(/text-/g, 'bg-')
+                          .replace(/dark:bg-/g, 'dark:bg-');
                         return (
                           <span key={k} className="inline-flex items-center gap-1.5">
-                            <meta.Icon className={`h-3.5 w-3.5 ${meta.color}`} />
+                            <span className={`h-3 w-3 rounded-sm ring-1 ring-border/50 ${bgClass}`} aria-hidden />
                             <span className="text-foreground/80">{meta.label}</span>
                           </span>
                         );
