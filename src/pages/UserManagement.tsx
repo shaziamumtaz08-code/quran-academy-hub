@@ -96,7 +96,7 @@ import { SearchableCitySelect } from '@/components/ui/searchable-city-select';
 import { useDivisionMembership, getDivisionShortName, getDivisionBadgeClass, formatRoleLabel } from '@/hooks/useDivisionMembership';
 import { useDivision } from '@/contexts/DivisionContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Copy, ChevronDown, ChevronRight, ChevronUp, AlertTriangle } from 'lucide-react';
+import { Copy, ChevronDown, ChevronRight, ChevronUp, AlertTriangle, Video, Presentation, ClipboardCheck, UserCircle2 } from 'lucide-react';
 
 const ALL_PERMISSIONS = [
   { group: 'Users', permissions: ['users.view', 'users.create', 'users.edit', 'users.delete', 'users.assign_roles'] },
@@ -164,11 +164,18 @@ const RolePill = ({ role, prefix }: { role: AppRole; prefix?: string }) => {
 // plus a crown for global admin/super_admin roles. Mirrors the legend.
 type IdentityIconKind = 'division-1to1' | 'division-group' | 'division-recorded' | 'admin-crown';
 
+// Division color palette — also applied to role icons (Teacher/Student) per division.
+const DIVISION_COLOR: Record<'1to1' | 'group' | 'recorded', string> = {
+  '1to1':     'text-blue-600 dark:text-blue-400',
+  'group':    'text-emerald-600 dark:text-emerald-400',
+  'recorded': 'text-amber-600 dark:text-amber-400',
+};
+
 const IDENTITY_ICON_META: Record<IdentityIconKind, { Icon: React.ComponentType<{ className?: string }>; color: string; label: string }> = {
-  'division-1to1':     { Icon: GraduationCap, color: 'text-blue-600 dark:text-blue-400',       label: '1:1 Mentorship' },
-  'division-group':    { Icon: Users,         color: 'text-emerald-600 dark:text-emerald-400', label: 'Group Academy' },
-  'division-recorded': { Icon: Briefcase,     color: 'text-amber-600 dark:text-amber-400',     label: 'Recorded' },
-  'admin-crown':       { Icon: Crown,         color: 'text-rose-600 dark:text-rose-400',       label: 'Admin / Super Admin' },
+  'division-1to1':     { Icon: UserCircle2, color: DIVISION_COLOR['1to1'],     label: '1:1 Mentorship' },
+  'division-group':    { Icon: Users,       color: DIVISION_COLOR['group'],    label: 'Group Academy' },
+  'division-recorded': { Icon: Video,       color: DIVISION_COLOR['recorded'], label: 'Recorded' },
+  'admin-crown':       { Icon: Crown,       color: 'text-rose-600 dark:text-rose-400', label: 'Admin / Super Admin' },
 };
 
 const divisionIconKind = (modelType: string, divisionName: string): IdentityIconKind => {
