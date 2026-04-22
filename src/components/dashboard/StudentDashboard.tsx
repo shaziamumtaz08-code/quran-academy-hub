@@ -777,10 +777,10 @@ export function StudentDashboard() {
       <div className="grid grid-cols-2 gap-2">
         {[
           { icon: BookOpen, label: 'My Courses', path: '/my-courses', color: 'text-primary bg-primary/10' },
-          { icon: Clock, label: 'My Learning', path: '/my-dashboard', color: 'text-sky bg-sky/10' },
+          { icon: Clock, label: 'My Learning', path: '/my-courses', color: 'text-sky bg-sky/10' },
           { icon: MessagesSquare, label: 'Communication', path: '/communication', color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30' },
           { icon: FolderOpen, label: 'Resources', path: '/resources', color: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30' },
-          { icon: Calendar, label: 'Results & Fees', path: '/my-dashboard', color: 'text-teal bg-teal/10' },
+          { icon: Calendar, label: 'Results & Fees', path: '/student-reports', color: 'text-teal bg-teal/10' },
           { icon: Network, label: 'My Network', path: `/connections/student/${user?.id}`, color: 'text-rose-600 bg-rose-100 dark:bg-rose-900/30' },
         ].map((link) => (
           <button

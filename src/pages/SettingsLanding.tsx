@@ -1,84 +1,49 @@
-import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
-import { LandingPageShell, LandingCard } from '@/components/layout/LandingPageShell';
-import { Settings, FolderOpen, ShieldCheck, Database } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
+import React, { Suspense, lazy, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
+import { HubPageShell } from '@/components/layout/HubPageShell';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const OrganizationSettings = lazy(() => import('./OrganizationSettings'));
 const Resources = lazy(() => import('./Resources'));
-const AuthenticationSettings = lazy(() => import('./AuthenticationSettings'));
+const SchemaExplorer = lazy(() => import('./SchemaExplorer'));
+const FinanceSetup = lazy(() => import('./FinanceSetup'));
+const ZoomManagement = lazy(() => import('./ZoomManagement'));
+const IntegrityAudit = lazy(() => import('./IntegrityAudit'));
 
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
 
 export default function SettingsLanding() {
   const { isSuperAdmin } = useAuth();
-  const navigate = useNavigate();
-  // Multi-auth panel is hidden by default. A super_admin can flip the
-  // `auth_methods_panel_enabled` flag in app_settings to reveal it.
-  const [authPanelEnabled, setAuthPanelEnabled] = useState(false);
 
-  useEffect(() => {
-    if (!isSuperAdmin) return;
-    (async () => {
-      const { data } = await supabase
-        .from('app_settings')
-        .select('setting_value')
-        .eq('setting_key', 'auth_methods_panel_enabled')
-        .maybeSingle();
-      const val = data?.setting_value;
-      setAuthPanelEnabled(val === true || val === 'true');
-    })();
-  }, [isSuperAdmin]);
-
-  const showAuthCard = isSuperAdmin && authPanelEnabled;
-
-  const cards: LandingCard[] = useMemo(() => {
-    const base: LandingCard[] = [
-      { id: 'system', title: 'System Control', subtitle: 'Organization settings', count: '⚙️', countLoading: false, icon: <Settings className="h-5 w-5" />, color: 'bg-primary' },
-      { id: 'resources', title: 'Resources Manager', subtitle: 'Files & uploads', count: '📁', countLoading: false, icon: <FolderOpen className="h-5 w-5" />, color: 'bg-emerald-500' },
-    ];
-    if (showAuthCard) {
-      base.splice(1, 0, { id: 'auth', title: 'Authentication', subtitle: 'Login methods per org', count: '🔐', countLoading: false, icon: <ShieldCheck className="h-5 w-5" />, color: 'bg-indigo-500' });
-    }
-    if (isSuperAdmin) {
-      base.push({ id: 'schema', title: 'Schema Explorer', subtitle: 'Database structure visualizer', count: '🗂️', countLoading: false, icon: <Database className="h-5 w-5" />, color: 'bg-violet-500' });
-    }
-    return base;
-  }, [showAuthCard, isSuperAdmin]);
-
-  const contentMap = useMemo(() => {
-    const map: Record<string, React.ReactNode> = {
-      'system': <Suspense fallback={<Loading />}><OrganizationSettings /></Suspense>,
-      'resources': <Suspense fallback={<Loading />}><Resources /></Suspense>,
-    };
-    if (showAuthCard) {
-      map['auth'] = <Suspense fallback={<Loading />}><AuthenticationSettings /></Suspense>;
-    }
-    if (isSuperAdmin) {
-      map['schema'] = (
-        <div className="p-6 border border-border rounded-2xl bg-card text-center space-y-4">
-          <Database className="w-10 h-10 text-primary mx-auto" />
-          <div>
-            <h3 className="font-bold text-lg">Database Schema Explorer</h3>
-            <p className="text-sm text-muted-foreground">Visualize tables, columns, and foreign-key relationships in a pannable canvas.</p>
-          </div>
-          <Button onClick={() => navigate('/admin/schema-explorer')}>Open full-screen explorer</Button>
-        </div>
-      );
-    }
-    return map;
-  }, [showAuthCard, isSuperAdmin, navigate]);
+  const contentMap: Record<string, React.ReactNode> = useMemo(() => ({
+    'system-control': <Suspense fallback={<Loading />}><OrganizationSettings /></Suspense>,
+    resources: <Suspense fallback={<Loading />}><Resources /></Suspense>,
+    'schema-explorer': isSuperAdmin ? (
+      <Suspense fallback={<Loading />}><SchemaExplorer /></Suspense>
+    ) : (
+      <div className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
+        Schema Explorer is available to super administrators only.
+      </div>
+    ),
+    'finance-setup': <Suspense fallback={<Loading />}><FinanceSetup /></Suspense>,
+    'teaching-config': <Suspense fallback={<Loading />}><ZoomManagement /></Suspense>,
+    'integrity-audit': <Suspense fallback={<Loading />}><IntegrityAudit /></Suspense>,
+  }), [isSuperAdmin]);
 
   return (
-    <LandingPageShell
+    <HubPageShell
       title="Settings"
-      subtitle="System configuration and resources"
-      cards={cards}
-      contentMap={contentMap}
-      defaultCard="system"
+      subtitle="System configuration, resources, finance controls, and integrity tools"
+      tabs={[
+        { label: 'System Control', value: 'system-control' },
+        { label: 'Resources', value: 'resources' },
+        { label: 'Schema Explorer', value: 'schema-explorer' },
+        { label: 'Finance Setup', value: 'finance-setup' },
+        { label: 'Teaching', value: 'teaching-config' },
+        { label: 'Integrity Audit', value: 'integrity-audit' },
+      ]}
+      defaultTab="system-control"
+      content={contentMap}
     />
   );
 }
