@@ -13,27 +13,37 @@ const IntegrityAudit = lazy(() => import('./IntegrityAudit'));
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
 
 const views = [
-  { label: 'System Control', value: 'system-control' },
-  { label: 'Resources', value: 'resources' },
-  { label: 'Schema Explorer', value: 'schema-explorer' },
-  { label: 'Finance Setup', value: 'finance-setup' },
-  { label: 'Teaching Config', value: 'teaching-config' },
-  { label: 'Integrity Audit', value: 'integrity-audit' },
+  'organization',
+  'branches',
+  'divisions',
+  'holidays',
+  'payouts-config',
+  'classroom',
+  'resources',
+  'schema',
+  'finance-setup',
+  'teaching-config',
+  'integrity',
 ] as const;
 
 export default function SettingsLanding() {
   const { isSuperAdmin } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const requested = searchParams.get('view');
-  const activeView = views.some((item) => item.value === requested) ? requested! : null;
+  const activeView = views.includes((requested || '') as (typeof views)[number]) ? requested! : null;
 
   const contentMap: Record<string, React.ReactNode> = useMemo(() => ({
-    'system-control': <Suspense fallback={<Loading />}><OrganizationSettings /></Suspense>,
+    organization: <Suspense fallback={<Loading />}><OrganizationSettings /></Suspense>,
+    branches: <Suspense fallback={<Loading />}><OrganizationSettings /></Suspense>,
+    divisions: <Suspense fallback={<Loading />}><OrganizationSettings /></Suspense>,
+    holidays: <Suspense fallback={<Loading />}><OrganizationSettings /></Suspense>,
+    'payouts-config': <Suspense fallback={<Loading />}><OrganizationSettings /></Suspense>,
+    classroom: <Suspense fallback={<Loading />}><OrganizationSettings /></Suspense>,
     resources: <Suspense fallback={<Loading />}><Resources /></Suspense>,
-    'schema-explorer': isSuperAdmin ? <Suspense fallback={<Loading />}><SchemaExplorer /></Suspense> : <div className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">Schema Explorer is available to super administrators only.</div>,
+    schema: isSuperAdmin ? <Suspense fallback={<Loading />}><SchemaExplorer /></Suspense> : <div className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">Schema Explorer is available to super administrators only.</div>,
     'finance-setup': <Suspense fallback={<Loading />}><FinanceSetup /></Suspense>,
     'teaching-config': <Suspense fallback={<Loading />}><ZoomManagement /></Suspense>,
-    'integrity-audit': <Suspense fallback={<Loading />}><IntegrityAudit /></Suspense>,
+    integrity: <Suspense fallback={<Loading />}><IntegrityAudit /></Suspense>,
   }), [isSuperAdmin]);
 
   if (!activeView) return <Navigate to="/settings?view=organization" replace />;
