@@ -295,7 +295,6 @@ function AppRoutes() {
       <Route path="/communication" element={<ProtectedRoute><DashboardLayout><CommunicationLanding /></DashboardLayout></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><AdminRoute><DashboardLayout><SettingsLanding /></DashboardLayout></AdminRoute></ProtectedRoute>} />
 
-      <Route path="/my-dashboard" element={<Navigate to="/dashboard" replace />} />
       <Route path="/dashboard" element={<ProtectedRoute><DashboardWrapper /></ProtectedRoute>} />
       <Route path="/my-courses" element={<ProtectedRoute><DashboardLayout><MyCourses /></DashboardLayout></ProtectedRoute>} />
       <Route path="/my-courses/:courseId" element={<ProtectedRoute><DashboardLayout><StudentCourseView /></DashboardLayout></ProtectedRoute>} />

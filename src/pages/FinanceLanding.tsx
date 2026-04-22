@@ -1,11 +1,9 @@
 import React, { Suspense, lazy, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
-import { ViewPillBar } from '@/components/layout/ViewPillBar';
-import { InlineStatTiles } from '@/components/layout/InlineStatTiles';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const Payments = lazy(() => import('./Payments'));
@@ -34,7 +32,7 @@ export default function FinanceLanding() {
   const divisionId = activeDivision?.id || null;
   const currentMonth = format(new Date(), 'yyyy-MM');
   const requested = searchParams.get('view');
-  const activeView = views.some((item) => item.value === requested) ? requested! : 'invoices';
+  const activeView = views.some((item) => item.value === requested) ? requested! : null;
 
   const { data: counts, isLoading } = useQuery({
     queryKey: ['finance-landing-kpis', divisionId, currentMonth],
@@ -66,11 +64,7 @@ export default function FinanceLanding() {
     setup: <Suspense fallback={<Loading />}><FinanceSetup /></Suspense>,
   }), []);
 
-  const setView = (value: string) => {
-    const next = new URLSearchParams(searchParams);
-    next.set('view', value);
-    setSearchParams(next, { replace: true });
-  };
+  if (!activeView) return <Navigate to="/finance?view=invoices" replace />;
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -78,18 +72,6 @@ export default function FinanceLanding() {
         <h1 className="text-2xl font-serif font-bold text-foreground">Finance</h1>
         <p className="mt-1 text-sm text-muted-foreground">Revenue, invoices, payouts, and finance operations.</p>
       </header>
-
-      <InlineStatTiles
-        items={[
-          { label: 'Revenue (month)', value: formatCurrency(counts?.revenue), loading: isLoading, tone: 'success' },
-          { label: 'Outstanding', value: formatCurrency(counts?.outstanding), loading: isLoading, tone: Number(counts?.outstanding || 0) > 0 ? 'warning' : 'default' },
-          { label: 'Invoices Paid', value: counts?.paid, loading: isLoading },
-          { label: 'Invoices Overdue', value: counts?.overdue, loading: isLoading, tone: 'danger' },
-        ]}
-      />
-
-      <ViewPillBar items={[...views]} activeValue={activeView} onChange={setView} />
-
       <div className="min-h-[420px]">{contentMap[activeView]}</div>
     </div>
   );

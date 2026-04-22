@@ -1,10 +1,8 @@
 import React, { Suspense, lazy, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { ViewPillBar } from '@/components/layout/ViewPillBar';
-import { InlineStatTiles } from '@/components/layout/InlineStatTiles';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CommThemeProvider, colorFromName, formatCommTime, initialsFromName, useCommTheme } from '@/components/comm/CommThemeProvider';
 
@@ -93,7 +91,7 @@ function CommunicationLandingInner() {
   const { user, activeRole } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const requested = searchParams.get('view');
-  const activeView = views.some((item) => item.value === requested) ? requested! : 'academy-chat';
+  const activeView = views.some((item) => item.value === requested) ? requested! : (requested === 'chat' ? 'academy-chat' : null);
   const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_');
 
   const { data: counts, isLoading } = useQuery({
@@ -117,11 +115,7 @@ function CommunicationLandingInner() {
     zoom: <Suspense fallback={<Loading />}><ZoomManagement /></Suspense>,
   }), []);
 
-  const setView = (value: string) => {
-    const next = new URLSearchParams(searchParams);
-    next.set('view', value);
-    setSearchParams(next, { replace: true });
-  };
+  if (!activeView) return <Navigate to="/communication?view=chat" replace />;
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -129,16 +123,6 @@ function CommunicationLandingInner() {
         <h1 className="text-2xl font-serif font-bold text-foreground">Communication</h1>
         <p className="mt-1 text-sm text-muted-foreground">Chat, WhatsApp, notifications, and Zoom operations.</p>
       </header>
-
-      <InlineStatTiles
-        items={[
-          { label: 'Unread Chats', value: counts?.chat, loading: isLoading },
-          { label: 'WhatsApp Pending', value: counts?.whatsapp, loading: isLoading, tone: 'warning' },
-          { label: 'Open Tickets', value: counts?.tickets, loading: isLoading, tone: 'danger' },
-        ]}
-      />
-
-      <ViewPillBar items={[...views]} activeValue={activeView} onChange={setView} />
       <div className="min-h-[420px]">{contentMap[activeView]}</div>
     </div>
   );

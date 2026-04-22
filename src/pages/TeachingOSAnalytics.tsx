@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { parseArabicTags } from '@/lib/languageUtils';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { PhaseStepperCompact, NextPhaseButton } from '@/components/teaching/PhaseNavBar';
