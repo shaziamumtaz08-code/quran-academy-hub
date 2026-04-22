@@ -22,7 +22,7 @@ import { NextClassBanner } from './shared/NextClassBanner';
 
 const STUDENT_TABS = [
   { id: 'dashboard', icon: '🏠', label: 'Dashboard', path: '/dashboard' },
-  { id: 'courses', icon: '📚', label: 'My Courses', path: '/courses-catalog' },
+  { id: 'courses', icon: '📚', label: 'My Courses', path: '/my-courses' },
   { id: 'resources', icon: '📁', label: 'Resources', path: '/resources' },
   { id: 'communication', icon: '💬', label: 'Communication', path: '/communication' },
 ];
@@ -776,7 +776,7 @@ export function StudentDashboard() {
       {/* ═══ QUICK LINKS ═══ */}
       <div className="grid grid-cols-2 gap-2">
         {[
-          { icon: BookOpen, label: 'My Courses', path: '/courses-catalog', color: 'text-primary bg-primary/10' },
+          { icon: BookOpen, label: 'My Courses', path: '/my-courses', color: 'text-primary bg-primary/10' },
           { icon: Clock, label: 'My Learning', path: '/my-dashboard', color: 'text-sky bg-sky/10' },
           { icon: MessagesSquare, label: 'Communication', path: '/communication', color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30' },
           { icon: FolderOpen, label: 'Resources', path: '/resources', color: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30' },
