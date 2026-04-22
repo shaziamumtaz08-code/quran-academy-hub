@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, useMemo } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
+import { PageShell } from '@/components/layout/PageShell';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const Payments = lazy(() => import('./Payments'));
@@ -41,12 +42,8 @@ export default function FinanceLanding() {
   if (!activeView) return <Navigate to="/finance?view=invoices" replace />;
 
   return (
-    <div className="space-y-5 animate-fade-in">
-      <header>
-        <h1 className="text-2xl font-serif font-bold text-foreground">Finance</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Revenue, invoices, payouts, and finance operations.</p>
-      </header>
-      <div className="min-h-[420px]">{contentMap[activeView]}</div>
-    </div>
+    <PageShell title="Finance" description="Revenue, invoices, payouts, and finance operations.">
+      <div className="min-h-[420px] animate-fade-in">{contentMap[activeView]}</div>
+    </PageShell>
   );
 }
