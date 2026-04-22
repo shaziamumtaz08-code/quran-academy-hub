@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   LayoutDashboard, BookOpen, Users, DollarSign, BarChart3,
   MessageSquare, Cog, ClipboardCheck, Target,
-  Award, FileText, CalendarDays, LogOut,
+  Award, FileText, FolderOpen, LogOut,
 } from 'lucide-react';
 import logoDark from '@/assets/logo-dark.jpg';
 
@@ -45,9 +45,9 @@ export function buildRailNav(role: AppRole | null): RailItem[] {
   }
   if (role === 'student') {
     return [
-      { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
+      { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { label: 'My Courses', href: '/courses-catalog', icon: BookOpen },
-      { label: 'Calendar', href: '/my-dashboard', icon: CalendarDays },
+      { label: 'Resources', href: '/resources', icon: FolderOpen },
       { label: 'Communication', href: '/communication', icon: MessageSquare },
     ];
   }
@@ -85,6 +85,7 @@ export function NavRail({ items, orgInitials = 'AQ' }: NavRailProps) {
     '/reports-hub': ['/reports-hub', '/reports', '/student-reports', '/kpi'],
     '/communication': ['/communication', '/group-chat', '/whatsapp-inbox', '/notifications', '/work-hub'],
     '/settings': ['/settings', '/organization-settings', '/zoom-management', '/report-card-templates'],
+    '/resources': ['/resources', '/my-resources'],
   };
 
   const isActive = (href: string) => {
