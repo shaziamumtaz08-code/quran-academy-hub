@@ -244,6 +244,10 @@ export function AppSidebar({ className }: AppSidebarProps) {
     ? { ...baseSidebar, title: courseInfo.name || 'Course', subtitle: isStudentCourseDetail ? 'Student course workspace' : 'Course workspace' }
     : baseSidebar;
 
+  if (activeRole === 'student' && !isCourseDetail) {
+    return null;
+  }
+
   const isItemActive = (item: SidebarNavItem) => {
     if (!item.href) return false;
     const [path, query] = item.href.split('?');
