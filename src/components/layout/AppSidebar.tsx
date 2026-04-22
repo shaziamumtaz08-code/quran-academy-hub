@@ -35,7 +35,7 @@ function getHomeSidebar(isOneToOne?: boolean, role?: string | null, activeModelT
         { label: 'Dashboard', href: '/dashboard' },
         { label: 'My Courses', href: '/my-courses' },
         { label: 'Resources', href: '/resources' },
-        { label: 'Communication', href: '/communication' },
+        { label: 'Communication', href: '/chat' },
       ],
     };
   }
@@ -160,7 +160,7 @@ function getSidebarForRoute(pathname: string, isOneToOne?: boolean, role?: strin
   if (pathname.startsWith('/finance') || pathname.startsWith('/payments') || pathname.startsWith('/salary') || pathname.startsWith('/expenses') || pathname.startsWith('/cash-advances') || pathname.startsWith('/staff-salaries')) {
     return getFinanceSidebar(isOneToOne);
   }
-  if (pathname.startsWith('/communication') || pathname.startsWith('/chat') || pathname.startsWith('/whatsapp') || pathname.startsWith('/notifications') || pathname.startsWith('/zoom') || pathname.startsWith('/hub')) {
+  if (!isStudent && (pathname.startsWith('/communication') || pathname.startsWith('/chat') || pathname.startsWith('/whatsapp') || pathname.startsWith('/notifications') || pathname.startsWith('/zoom') || pathname.startsWith('/hub'))) {
     return getCommunicationSidebar(role);
   }
   if (pathname.startsWith('/settings') || pathname.startsWith('/organization') || pathname.startsWith('/finance-setup') || pathname.startsWith('/identity') || pathname.startsWith('/integrity')) {
@@ -486,7 +486,7 @@ export function AppSidebar({ className }: AppSidebarProps) {
           // Non-course-detail: original rendering
           (() => {
             let currentGroup: string | undefined;
-            return sidebar.items.map((item) => {
+            return visibleSidebar.items.map((item) => {
               const showGroup = item.group && item.group !== currentGroup;
               if (showGroup) currentGroup = item.group;
               const groupLabel = showGroup ? (
@@ -506,7 +506,7 @@ export function AppSidebar({ className }: AppSidebarProps) {
       </nav>
 
       {/* New Course button */}
-      {'showNewCourse' in sidebar && sidebar.showNewCourse && (
+      {'showNewCourse' in visibleSidebar && visibleSidebar.showNewCourse && (
         <div className="px-3 pb-3 pt-1 border-t border-lms-border">
           <Link
             to="/courses"
