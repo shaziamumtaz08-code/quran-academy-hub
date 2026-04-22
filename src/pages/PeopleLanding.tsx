@@ -1,17 +1,16 @@
 import React, { Suspense, lazy, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
-import { ViewPillBar } from '@/components/layout/ViewPillBar';
-import { InlineStatTiles } from '@/components/layout/InlineStatTiles';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const Teachers = lazy(() => import('./Teachers'));
 const Students = lazy(() => import('./Students'));
 const UserManagement = lazy(() => import('./UserManagement'));
 const LeadsPipeline = lazy(() => import('./LeadsPipeline'));
+const Parents = lazy(() => import('./Parents'));
 
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
 
@@ -28,7 +27,8 @@ export default function PeopleLanding() {
   const [searchParams, setSearchParams] = useSearchParams();
   const divisionId = activeDivision?.id;
   const requested = searchParams.get('view');
-  const activeView = views.some((item) => item.value === requested) ? requested! : 'students';
+  const allowedViews = [...views.map((item) => item.value), 'parents'];
+  const activeView = allowedViews.includes(requested || '') ? requested! : null;
 
   const { data: dupCount } = useQuery({
     queryKey: ['duplicate-profile-count'],
@@ -114,13 +114,10 @@ export default function PeopleLanding() {
     students: <Suspense fallback={<Loading />}><Students /></Suspense>,
     staff: <Suspense fallback={<Loading />}><UserManagement /></Suspense>,
     leads: <Suspense fallback={<Loading />}><LeadsPipeline /></Suspense>,
+    parents: <Suspense fallback={<Loading />}><Parents /></Suspense>,
   }), []);
 
-  const setView = (value: string) => {
-    const next = new URLSearchParams(searchParams);
-    next.set('view', value);
-    setSearchParams(next, { replace: true });
-  };
+  if (!activeView) return <Navigate to="/people?view=students" replace />;
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -139,19 +136,6 @@ export default function PeopleLanding() {
           <button type="button" onClick={() => navigate('/identity')} className="text-xs font-bold text-foreground underline underline-offset-2">Review</button>
         </div>
       ) : null}
-
-      <InlineStatTiles
-        items={[
-          { label: 'Total Teachers', value: counts?.teachers, loading: isLoading },
-          { label: 'Total Students', value: counts?.students, loading: isLoading },
-          { label: 'Parents', value: counts?.parents, loading: isLoading },
-          { label: 'All Users', value: counts?.users, loading: isLoading },
-          { label: 'Open Leads', value: counts?.leads, loading: isLoading, tone: 'warning' },
-        ]}
-      />
-
-      <ViewPillBar items={[...views]} activeValue={activeView} onChange={setView} />
-
       <div className="min-h-[420px]">{contentMap[activeView]}</div>
     </div>
   );

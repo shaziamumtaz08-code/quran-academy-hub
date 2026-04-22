@@ -1,11 +1,9 @@
 import React, { Suspense, lazy, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
-import { useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
-import { ViewPillBar } from '@/components/layout/ViewPillBar';
-import { InlineStatTiles } from '@/components/layout/InlineStatTiles';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const Attendance = lazy(() => import('./Attendance'));
@@ -33,7 +31,7 @@ export default function TeachingLanding() {
   const [searchParams, setSearchParams] = useSearchParams();
   const divisionId = activeDivision?.id;
   const requested = searchParams.get('view');
-  const activeView = views.some((item) => item.value === requested) ? requested! : 'assignments';
+  const activeView = views.some((item) => item.value === requested) ? requested! : null;
 
   const { data: counts, isLoading } = useQuery({
     queryKey: ['teaching-landing-counts', divisionId],
@@ -74,11 +72,7 @@ export default function TeachingLanding() {
     'one-to-one': <Suspense fallback={<Loading />}><TeacherStudentsView /></Suspense>,
   }), []);
 
-  const setView = (value: string) => {
-    const next = new URLSearchParams(searchParams);
-    next.set('view', value);
-    setSearchParams(next, { replace: true });
-  };
+  if (!activeView) return <Navigate to="/teaching?view=assignments" replace />;
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -86,18 +80,6 @@ export default function TeachingLanding() {
         <h1 className="text-2xl font-serif font-bold text-foreground">Teaching</h1>
         <p className="mt-1 text-sm text-muted-foreground">Schedules, attendance, planning, and daily teaching workflows.</p>
       </header>
-
-      <InlineStatTiles
-        items={[
-          { label: 'Live Classes Now', value: counts?.live, loading: isLoading },
-          { label: 'Active Assignments', value: counts?.assignments, loading: isLoading },
-          { label: 'Weekly Slots', value: counts?.schedules, loading: isLoading },
-          { label: 'Attendance %', value: `${counts?.attRate ?? 0}%`, loading: isLoading, tone: 'success' },
-        ]}
-      />
-
-      <ViewPillBar items={[...views]} activeValue={activeView} onChange={setView} />
-
       <div className="min-h-[420px]">{contentMap[activeView]}</div>
     </div>
   );
