@@ -174,24 +174,7 @@ function getSidebarForRoute(pathname: string, isOneToOne?: boolean, role?: strin
 
 /* ─── Course Detail sidebar ─── */
 function isCourseDetailRoute(pathname: string) {
-  return /^\/(courses|academics\/courses|my-courses)\/[^/]+$/.test(pathname);
-}
-
-function getStudentCourseSidebar(pathname: string): { title: string; subtitle: string; items: SidebarNavItem[]; isCourseDetail: true } {
-  const base = pathname;
-  return {
-    title: 'My Course',
-    subtitle: 'Course workspace',
-    isCourseDetail: true,
-    items: [
-      { label: 'Today', href: `${base}?tab=today` },
-      { label: 'Lessons', href: `${base}?tab=lessons` },
-      { label: 'Assignments', href: `${base}?tab=assignments` },
-      { label: 'Announcements', href: `${base}?tab=announcements` },
-      { label: 'Class Chat', href: `${base}?tab=class-chat` },
-      { label: 'Progress & Certificates', href: `${base}?tab=progress` },
-    ],
-  };
+  return /^\/(courses|academics\/courses)\/[^/]+$/.test(pathname);
 }
 
 function getCourseDetailSidebar(pathname: string): { title: string; subtitle: string; items: SidebarNavItem[]; isCourseDetail: true } {
@@ -254,7 +237,7 @@ export function AppSidebar({ className }: AppSidebarProps) {
   });
 
   const baseSidebar = isCourseDetail
-    ? (isStudentCourseDetail ? getStudentCourseSidebar(location.pathname) : getCourseDetailSidebar(location.pathname))
+    ? getCourseDetailSidebar(location.pathname)
     : getSidebarForRoute(location.pathname, isOneToOne, activeRole, activeDivision?.model_type ?? null);
 
   const sidebar = isCourseDetail && courseInfo
@@ -264,6 +247,9 @@ export function AppSidebar({ className }: AppSidebarProps) {
   const isItemActive = (item: SidebarNavItem) => {
     if (!item.href) return false;
     const [path, query] = item.href.split('?');
+    if (item.href === '/my-courses') {
+      return location.pathname === '/my-courses' || location.pathname.startsWith('/my-courses/');
+    }
     if (query) {
       return location.pathname === path && location.search.includes(query);
     }
