@@ -89,12 +89,12 @@ function RecentActivityStrip() {
 
 function CommunicationLandingInner() {
   const { user, activeRole } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const requested = searchParams.get('view');
   const activeView = views.some((item) => item.value === requested) ? requested! : (requested === 'chat' ? 'academy-chat' : null);
   const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_');
 
-  const { data: counts, isLoading } = useQuery({
+  useQuery({
     queryKey: ['comm-landing-counts-v3', user?.id, isAdmin],
     queryFn: async () => {
       const [chatRes, waRes, ticketsRes] = await Promise.all([
@@ -115,7 +115,7 @@ function CommunicationLandingInner() {
     zoom: <Suspense fallback={<Loading />}><ZoomManagement /></Suspense>,
   }), []);
 
-  if (!activeView) return <Navigate to="/communication?view=chat" replace />;
+  if (!activeView) return <Navigate to="/communication?view=academy-chat" replace />;
 
   return (
     <div className="space-y-5 animate-fade-in">

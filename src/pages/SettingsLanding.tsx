@@ -28,7 +28,7 @@ const views = [
 
 export default function SettingsLanding() {
   const { isSuperAdmin } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const requested = searchParams.get('view');
   const activeView = views.includes((requested || '') as (typeof views)[number]) ? requested! : null;
 

@@ -14,21 +14,15 @@ const Parents = lazy(() => import('./Parents'));
 
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
 
-const views = [
-  { label: 'Students', value: 'students' },
-  { label: 'Teachers', value: 'teachers' },
-  { label: 'Staff', value: 'staff' },
-  { label: 'Leads', value: 'leads' },
-] as const;
+const views = ['students', 'teachers', 'staff', 'parents', 'leads'] as const;
 
 export default function PeopleLanding() {
   const { activeDivision } = useDivision();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const divisionId = activeDivision?.id;
   const requested = searchParams.get('view');
-  const allowedViews = [...views.map((item) => item.value), 'parents'];
-  const activeView = allowedViews.includes(requested || '') ? requested! : null;
+  const activeView = views.includes((requested || '') as (typeof views)[number]) ? requested! : null;
 
   const { data: dupCount } = useQuery({
     queryKey: ['duplicate-profile-count'],
@@ -48,7 +42,7 @@ export default function PeopleLanding() {
     },
   });
 
-  const { data: counts, isLoading } = useQuery({
+  useQuery({
     queryKey: ['people-landing-counts', divisionId],
     enabled: !!divisionId,
     queryFn: async () => {
