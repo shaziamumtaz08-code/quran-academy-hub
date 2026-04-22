@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ConditionalDashboardLayout as DashboardLayout } from '@/components/layout/ConditionalDashboardLayout';
+import { PageShell } from '@/components/layout/PageShell';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -66,11 +67,12 @@ export default function WorkHub() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-4 p-4 lg:p-6 bg-background">
+      <PageShell title="Work Hub" description="Tickets, tasks, leave requests, and feedback in one place.">
+        <div className="space-y-4 bg-background">
         <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-foreground">Work Hub</h1>
+              <h2 className="text-xl font-semibold text-foreground">Operations Inbox</h2>
               <p className="mt-0.5 text-sm text-muted-foreground">Tickets, tasks, leave requests & feedback — all in one place</p>
               <div className="flex items-center gap-2 mt-2">
                 {(tabCounts?.overdue || 0) > 0 && (
@@ -163,6 +165,7 @@ export default function WorkHub() {
         {/* Tasks & Polls Section */}
         <TasksAndPolls />
       </div>
+      </PageShell>
 
       <CreateTicketDialog open={createOpen} onOpenChange={(v) => { setCreateOpen(v); if (!v) setDefaultCategory(undefined); }} defaultCategory={defaultCategory} onCreated={() => setActiveTab('sent')} />
       <SubcategoryManager open={manageSubcatsOpen} onOpenChange={setManageSubcatsOpen} />

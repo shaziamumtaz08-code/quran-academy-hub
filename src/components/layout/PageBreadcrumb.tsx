@@ -84,10 +84,6 @@ export function PageBreadcrumb() {
   const params = new URLSearchParams(location.search);
   const view = params.get('view') || params.get('section');
 
-  if (pathname === '/dashboard') {
-    return null;
-  }
-
   const moduleLabel = MODULE_LABELS[pathname] || pathname.replace('/', '').replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
   const moduleHref = MODULE_DEFAULTS[pathname] || pathname;
   const currentLabel = pathname === '/work-hub'
@@ -101,40 +97,48 @@ export function PageBreadcrumb() {
       <Breadcrumb>
         <BreadcrumbList className="flex-wrap">
           <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Link to="/dashboard" className="font-medium text-muted-foreground transition-colors hover:text-foreground">Home</Link>
-            </BreadcrumbLink>
+            {pathname === '/dashboard' ? (
+              <BreadcrumbPage className="font-medium text-foreground">Home</BreadcrumbPage>
+            ) : (
+              <BreadcrumbLink asChild>
+                <Link to="/dashboard" className="font-medium text-muted-foreground transition-colors hover:text-foreground">Home</Link>
+              </BreadcrumbLink>
+            )}
           </BreadcrumbItem>
 
-          <BreadcrumbSeparator>
-            <ChevronRight className="h-4 w-4 text-slate-400" />
-          </BreadcrumbSeparator>
-
-          {pathname !== '/work-hub' ? (
+          {pathname !== '/dashboard' ? (
             <>
-              <BreadcrumbItem>
-                <BreadcrumbLink asChild>
-                  <Link to={moduleHref} className="font-medium text-muted-foreground transition-colors hover:text-foreground">
-                    {moduleLabel}
-                  </Link>
-                </BreadcrumbLink>
-              </BreadcrumbItem>
+              <BreadcrumbSeparator>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </BreadcrumbSeparator>
 
-              {view ? (
+              {pathname !== '/work-hub' ? (
                 <>
-                  <BreadcrumbSeparator>
-                    <ChevronRight className="h-4 w-4 text-slate-400" />
-                  </BreadcrumbSeparator>
                   <BreadcrumbItem>
-                    <BreadcrumbPage className="font-medium text-foreground">{currentLabel}</BreadcrumbPage>
+                    <BreadcrumbLink asChild>
+                      <Link to={moduleHref} className="font-medium text-muted-foreground transition-colors hover:text-foreground">
+                        {moduleLabel}
+                      </Link>
+                    </BreadcrumbLink>
                   </BreadcrumbItem>
+
+                  {view ? (
+                    <>
+                      <BreadcrumbSeparator>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      </BreadcrumbSeparator>
+                      <BreadcrumbItem>
+                        <BreadcrumbPage className="font-medium text-foreground">{currentLabel}</BreadcrumbPage>
+                      </BreadcrumbItem>
+                    </>
+                  ) : null}
                 </>
-              ) : null}
+              ) : (
+                <BreadcrumbItem>
+                  <BreadcrumbPage className="font-medium text-foreground">Work Hub</BreadcrumbPage>
+                </BreadcrumbItem>
+              )}
             </>
-          ) : (
-            <BreadcrumbItem>
-              <BreadcrumbPage className="font-medium text-foreground">Work Hub</BreadcrumbPage>
-            </BreadcrumbItem>
           )}
         </BreadcrumbList>
       </Breadcrumb>
