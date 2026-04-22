@@ -313,7 +313,7 @@ export function AppSidebar({ className }: AppSidebarProps) {
     const groups: { group: string | null; items: SidebarNavItem[] }[] = [];
     let current: { group: string | null; items: SidebarNavItem[] } | null = null;
 
-    for (const item of sidebar.items) {
+    for (const item of visibleSidebar.items) {
       if (item.group && (!current || current.group !== item.group)) {
         // New named group starts
         current = { group: item.group, items: [item] };
