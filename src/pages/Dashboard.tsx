@@ -8,11 +8,14 @@ import { FeesAdminDashboard } from "@/components/dashboard/FeesAdminDashboard";
 import { AdmissionsAdminDashboard } from "@/components/dashboard/AdmissionsAdminDashboard";
 import { AcademicAdminDashboard } from "@/components/dashboard/AcademicAdminDashboard";
 import { ExaminerDashboard } from "@/components/dashboard/ExaminerDashboard";
+import { useDivision } from "@/contexts/DivisionContext";
+import UnifiedDashboard from "./UnifiedDashboard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle } from "lucide-react";
 
 export default function Dashboard() {
   const { profile, isLoading, activeRole } = useAuth();
+  const { activeDivision } = useDivision();
 
   if (isLoading) {
     return (
@@ -62,7 +65,7 @@ export default function Dashboard() {
       return <TeacherDashboard />;
     
     case 'student':
-      return <StudentDashboard />;
+      return activeDivision?.model_type === 'group' ? <UnifiedDashboard /> : <StudentDashboard />;
     
     case 'parent':
       return <ParentDashboard />;
