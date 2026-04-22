@@ -457,7 +457,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                                   setOpen(false);
                                 }}
                               >
-                                Switch to {role.replaceAll("_", " ")}
+                                Switch to {role.replace(/_/g, " ")}
                               </DropdownMenuItem>
                             ))
                           : null}
@@ -507,7 +507,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                             }
                           }}
                         >
-                          Switch to {role.replaceAll("_", " ")}
+                          Switch to {role.replace(/_/g, " ")}
                         </DropdownMenuItem>
                       ))
                     : null}
