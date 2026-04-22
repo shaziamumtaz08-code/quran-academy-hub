@@ -4,6 +4,7 @@ import { format, startOfWeek, endOfWeek } from 'date-fns';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
+import { PageShell } from '@/components/layout/PageShell';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const Attendance = lazy(() => import('./Attendance'));
@@ -75,12 +76,8 @@ export default function TeachingLanding() {
   if (!activeView) return <Navigate to="/teaching?view=assignments" replace />;
 
   return (
-    <div className="space-y-5 animate-fade-in">
-      <header>
-        <h1 className="text-2xl font-serif font-bold text-foreground">Teaching</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Schedules, attendance, planning, and daily teaching workflows.</p>
-      </header>
-      <div className="min-h-[420px]">{contentMap[activeView]}</div>
-    </div>
+    <PageShell title="Teaching" description="Schedules, attendance, planning, and daily teaching workflows.">
+      <div className="min-h-[420px] animate-fade-in">{contentMap[activeView]}</div>
+    </PageShell>
   );
 }
