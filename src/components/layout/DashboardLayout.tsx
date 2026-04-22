@@ -5,7 +5,6 @@ import { Menu, ChevronRight, ChevronDown, LayoutDashboard, BookOpen, Users, Doll
 import { useAuth, type AppRole } from "@/contexts/AuthContext";
 import { DivisionSwitcher } from "@/components/layout/DivisionSwitcher";
 import { NotificationBell } from "@/components/layout/NotificationBell";
-import { RoleSwitcher } from "@/components/layout/RoleSwitcher";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -268,7 +267,7 @@ function filterSectionsForRole(sections: DrawerSection[], role: AppRole | null) 
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
-  const { profile, isLoading, logout, activeRole } = useAuth();
+  const { profile, isLoading, logout, activeRole, setActiveRole } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
@@ -451,6 +450,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                                 key={role}
                                 onClick={() => {
                                   if (role !== activeRole) {
+                                    setActiveRole(role);
                                     const home = role === "parent" ? "/parent" : "/dashboard";
                                     navigate(home, { replace: true });
                                   }
@@ -502,6 +502,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                           key={role}
                           onClick={() => {
                             if (role !== activeRole) {
+                              setActiveRole(role);
                               const home = role === "parent" ? "/parent" : "/dashboard";
                               navigate(home, { replace: true });
                             }

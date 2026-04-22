@@ -67,30 +67,28 @@ export default function WorkHub() {
   return (
     <DashboardLayout>
       <div className="p-4 lg:p-6 space-y-4">
-        {/* Hero Header */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[hsl(var(--navy))] to-[hsl(var(--accent))] p-5 sm:p-6 text-white">
-          <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl font-bold">Work Hub</h1>
-              <p className="text-sm opacity-80 mt-0.5">Tickets, tasks, leave requests & feedback — all in one place</p>
+              <h1 className="text-2xl font-bold text-foreground">Work Hub</h1>
+              <p className="mt-0.5 text-sm text-muted-foreground">Tickets, tasks, leave requests & feedback — all in one place</p>
               <div className="flex items-center gap-2 mt-2">
                 {(tabCounts?.overdue || 0) > 0 && (
                   <Badge className="bg-destructive/90 text-destructive-foreground text-xs">{tabCounts?.overdue} overdue</Badge>
                 )}
                 {(tabCounts?.inbox || 0) > 0 && (
-                  <Badge className="bg-white/10 text-white border-white/20 text-xs">{tabCounts?.inbox} pending action</Badge>
+                  <Badge variant="outline" className="text-xs">{tabCounts?.inbox} pending action</Badge>
                 )}
               </div>
             </div>
             <div className="flex items-center gap-2">
               {isAdmin && (
-                <Button variant="outline" size="sm" className="bg-white/10 border-white/20 text-white hover:bg-white/20" onClick={() => setManageSubcatsOpen(true)}>
+                <Button variant="outline" size="sm" onClick={() => setManageSubcatsOpen(true)}>
                   <Settings2 className="h-4 w-4 mr-1" />
                   Manage
                 </Button>
               )}
-              <Button size="sm" className="bg-white text-[hsl(var(--navy))] font-bold hover:bg-white/90" onClick={() => { setDefaultCategory(undefined); setCreateOpen(true); }}>
+              <Button size="sm" onClick={() => { setDefaultCategory(undefined); setCreateOpen(true); }}>
                 <Plus className="h-4 w-4 mr-1" />
                 New Ticket
               </Button>
