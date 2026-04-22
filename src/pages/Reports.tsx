@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Navigate, useSearchParams } from "react-router-dom";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { PageShell } from "@/components/layout/PageShell";
 import { useAuth } from "@/contexts/AuthContext";
 import ExecutiveDashboard from "@/components/reports/ExecutiveDashboard";
 import AttendanceReports from "@/components/reports/AttendanceReports";
@@ -69,12 +70,10 @@ export default function Reports() {
   };
 
   return (
-    <div className="space-y-5 animate-fade-in">
-      <header>
-        <h1 className="text-2xl font-serif font-bold text-foreground">Reports</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{descriptions[activeView]}</p>
-      </header>
-      <ErrorBoundary>{renderSection()}</ErrorBoundary>
-    </div>
+    <PageShell title="Reports" description={descriptions[activeView]}>
+      <div className="animate-fade-in">
+        <ErrorBoundary>{renderSection()}</ErrorBoundary>
+      </div>
+    </PageShell>
   );
 }

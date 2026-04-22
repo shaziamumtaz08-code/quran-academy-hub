@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { PageShell } from '@/components/layout/PageShell';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CommThemeProvider, colorFromName, formatCommTime, initialsFromName, useCommTheme } from '@/components/comm/CommThemeProvider';
 
@@ -118,13 +119,9 @@ function CommunicationLandingInner() {
   if (!activeView) return <Navigate to="/communication?view=academy-chat" replace />;
 
   return (
-    <div className="space-y-5 animate-fade-in">
-      <header>
-        <h1 className="text-2xl font-serif font-bold text-foreground">Communication</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Chat, WhatsApp, notifications, and Zoom operations.</p>
-      </header>
-      <div className="min-h-[420px]">{contentMap[activeView]}</div>
-    </div>
+    <PageShell title="Communication" description="Chat, WhatsApp, notifications, and Zoom operations.">
+      <div className="min-h-[420px] animate-fade-in">{contentMap[activeView]}</div>
+    </PageShell>
   );
 }
 

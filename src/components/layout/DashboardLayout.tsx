@@ -1,7 +1,25 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, ChevronRight, ChevronDown, LayoutDashboard, BookOpen, Users, DollarSign, BarChart3, MessageSquare, Cog, Briefcase, FolderOpen, FileText, GraduationCap, Wallet, Landmark, Award } from "lucide-react";
+import {
+  Award,
+  BarChart3,
+  BookOpen,
+  Briefcase,
+  ChevronDown,
+  ChevronRight,
+  Cog,
+  DollarSign,
+  FileText,
+  FolderOpen,
+  GraduationCap,
+  Landmark,
+  LayoutDashboard,
+  Menu,
+  MessageSquare,
+  Users,
+  Wallet,
+} from "lucide-react";
 import { useAuth, type AppRole } from "@/contexts/AuthContext";
 import { DivisionSwitcher } from "@/components/layout/DivisionSwitcher";
 import { NotificationBell } from "@/components/layout/NotificationBell";
@@ -15,7 +33,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import logoDark from "@/assets/logo-dark.jpg";
 
@@ -47,7 +66,8 @@ interface DrawerSection {
 
 const adminRoles = ["super_admin", "admin", "admin_admissions", "admin_fees", "admin_academic"];
 
-const storageKeyForUser = (userId: string | undefined) => `aqt:drawer-expanded:${userId ?? "guest"}`;
+const expandedKeyForUser = (userId: string | undefined) => `aqt:drawer-expanded:${userId ?? "guest"}`;
+const collapsedKeyForUser = (userId: string | undefined) => `aqt:drawer-collapsed:${userId ?? "guest"}`;
 
 function isAdminRole(role: AppRole | null) {
   return !!role && (adminRoles.includes(role) || role.startsWith("admin_"));
@@ -111,10 +131,10 @@ function buildDrawerSections(role: AppRole | null): DrawerSection[] {
               { label: "Attendance Reports", href: "/reports?view=attendance" },
               { label: "Fee & Financial", href: "/reports?view=fees" },
               { label: "Student Engagement", href: "/reports?view=engagement" },
-               { label: "Teacher Performance", href: "/reports?view=teachers" },
+              { label: "Teacher Performance", href: "/reports?view=teachers" },
               { label: "Accountability", href: "/reports?view=accountability" },
-               { label: "Course / Batch", href: "/reports?view=course-batch" },
-               { label: "Activity Logs", href: "/reports?view=activity-logs" },
+              { label: "Course / Batch", href: "/reports?view=course-batch" },
+              { label: "Activity Logs", href: "/reports?view=activity-logs" },
               { label: "Alerts & Automation", href: "/reports?view=alerts" },
               { label: "Custom Report Builder", href: "/reports?view=custom" },
             ],
@@ -128,7 +148,7 @@ function buildDrawerSections(role: AppRole | null): DrawerSection[] {
             label: "Communication",
             icon: MessageSquare,
             children: [
-               { label: "Academy Chat", href: "/communication?view=academy-chat" },
+              { label: "Academy Chat", href: "/communication?view=academy-chat" },
               { label: "WhatsApp Inbox", href: "/communication?view=whatsapp" },
               { label: "Notifications", href: "/communication?view=notifications" },
               { label: "Zoom", href: "/communication?view=zoom" },
@@ -148,8 +168,8 @@ function buildDrawerSections(role: AppRole | null): DrawerSection[] {
               { label: "Finance Setup", href: "/settings?view=finance-setup" },
               { label: "Teaching Config", href: "/settings?view=teaching-config" },
               { label: "Resources Manager", href: "/settings?view=resources" },
-               { label: "Integrity Audit", href: "/settings?view=integrity" },
-               { label: "Schema Explorer", href: "/settings?view=schema", superAdminOnly: true },
+              { label: "Integrity Audit", href: "/settings?view=integrity" },
+              { label: "Schema Explorer", href: "/settings?view=schema", superAdminOnly: true },
             ],
           },
         ],
@@ -184,7 +204,7 @@ function buildDrawerSections(role: AppRole | null): DrawerSection[] {
             label: "Communication",
             icon: MessageSquare,
             children: [
-               { label: "Academy Chat", href: "/communication?view=academy-chat" },
+              { label: "Academy Chat", href: "/communication?view=academy-chat" },
               { label: "WhatsApp", href: "/communication?view=whatsapp" },
               { label: "Notifications", href: "/communication?view=notifications" },
             ],
@@ -238,12 +258,8 @@ function buildDrawerSections(role: AppRole | null): DrawerSection[] {
   return [{ label: "MENU", items: [{ label: "Dashboard", href: "/dashboard", icon: LayoutDashboard }] }];
 }
 
-function getRouteSignature(pathname: string, search: string) {
-  return `${pathname}${search}`;
-}
-
 function matchesHref(pathname: string, search: string, href: string) {
-  return getRouteSignature(pathname, search) === href;
+  return `${pathname}${search}` === href;
 }
 
 function getParentKey(item: DrawerItem) {
@@ -270,52 +286,115 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { profile, isLoading, logout, activeRole, setActiveRole } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [open, setOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const [desktopCollapsed, setDesktopCollapsed] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
 
   const sections = useMemo(() => filterSectionsForRole(buildDrawerSections(activeRole), activeRole), [activeRole]);
-  const storageKey = storageKeyForUser(profile?.id);
+  const expandedStorageKey = expandedKeyForUser(profile?.id);
+  const collapsedStorageKey = collapsedKeyForUser(profile?.id);
 
   useEffect(() => {
-    const stored = typeof window !== "undefined" ? window.localStorage.getItem(storageKey) : null;
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(min-width: 1024px)");
+    const update = () => setIsDesktop(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = window.localStorage.getItem(expandedStorageKey);
     if (stored) {
       setExpandedKey(stored);
       return;
     }
-
     const activeParent = sections
       .flatMap((section) => section.items)
       .find((item) => item.children?.some((child) => matchesHref(location.pathname, location.search, child.href)));
     setExpandedKey(activeParent ? getParentKey(activeParent) : null);
-  }, [location.pathname, location.search, sections, storageKey]);
+  }, [expandedStorageKey, location.pathname, location.search, sections]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = window.localStorage.getItem(collapsedStorageKey);
+    setDesktopCollapsed(stored === "true");
+  }, [collapsedStorageKey]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (!isDesktop && mobileOpen) {
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = "";
+      };
+    }
+    document.body.style.overflow = "";
+    return undefined;
+  }, [isDesktop, mobileOpen]);
 
   const handleExpandedChange = (key: string | null) => {
     setExpandedKey(key);
     if (typeof window !== "undefined") {
-      if (key) window.localStorage.setItem(storageKey, key);
-      else window.localStorage.removeItem(storageKey);
+      if (key) window.localStorage.setItem(expandedStorageKey, key);
+      else window.localStorage.removeItem(expandedStorageKey);
     }
   };
 
+  const handleDesktopCollapsedChange = (next: boolean) => {
+    setDesktopCollapsed(next);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(collapsedStorageKey, String(next));
+    }
+  };
+
+  const closeMobileDrawer = () => {
+    if (!isDesktop) setMobileOpen(false);
+  };
+
   const handleLogout = async () => {
-    setOpen(false);
+    closeMobileDrawer();
     await logout();
     navigate("/login");
   };
 
   if (isLoading) return <div className="min-h-screen bg-background" />;
 
-  const initials = profile?.full_name
-    ?.split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("") || "AQ";
+  const initials =
+    profile?.full_name
+      ?.split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "AQ";
 
   const profileName = profile?.full_name || "Al-Quran Time User";
   const profileEmail = profile?.email || "";
   const orgName = "Al-Quran Time Academy";
   const orgEmail = profileEmail || "info@alqurantimeacademy.com";
+  const collapsed = isDesktop && desktopCollapsed;
+  const drawerWidthClass = collapsed ? "lg:w-16" : "lg:w-[260px]";
+
+  const handleParentClick = (item: DrawerItem) => {
+    const key = getParentKey(item);
+    const hasChildren = !!item.children?.length;
+
+    if (!hasChildren && item.href) {
+      navigate(item.href);
+      closeMobileDrawer();
+      return;
+    }
+
+    if (collapsed && isDesktop) {
+      handleDesktopCollapsedChange(false);
+      handleExpandedChange(key);
+      return;
+    }
+
+    handleExpandedChange(expandedKey === key ? null : key);
+  };
 
   const renderNavItem = (item: DrawerItem) => {
     const key = getParentKey(item);
@@ -324,44 +403,36 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     const parentActive = !!activeChild || (!!item.href && matchesHref(location.pathname, location.search, item.href));
     const expanded = expandedKey === key;
 
-    if (!hasChildren && item.href) {
-      return (
-        <button
-          key={key}
-          type="button"
-          onClick={() => {
-            navigate(item.href!);
-            if (typeof window !== "undefined" && window.innerWidth <= 1024) {
-              setOpen(false);
-            }
-          }}
-          className={cn(
-            "flex h-10 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
-            parentActive && "bg-primary/10 font-semibold text-primary",
-          )}
-        >
-          <item.icon className="h-4 w-4 shrink-0" />
-          <span className="flex-1 text-left">{item.label}</span>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        </button>
-      );
-    }
+    const parentButton = (
+      <button
+        type="button"
+        onClick={() => handleParentClick(item)}
+        className={cn(
+          "flex h-10 w-full items-center gap-3 rounded-lg border-l-2 border-transparent px-3 text-sm font-medium text-white transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+          parentActive && "font-semibold",
+          collapsed && "justify-center px-0",
+        )}
+      >
+        <item.icon className="h-4 w-4 shrink-0" />
+        {!collapsed ? <span className="flex-1 text-left">{item.label}</span> : null}
+        {!collapsed && hasChildren ? (
+          <ChevronRight className={cn("h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200", expanded && "rotate-90")} />
+        ) : null}
+      </button>
+    );
 
     return (
       <div key={key} className="space-y-1">
-        <button
-          type="button"
-          onClick={() => handleExpandedChange(expanded ? null : key)}
-          className={cn(
-            "flex h-10 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
-            parentActive && "font-semibold text-foreground",
-          )}
-        >
-          <item.icon className="h-4 w-4 shrink-0" />
-          <span className="flex-1 text-left">{item.label}</span>
-          <ChevronRight className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", expanded && "rotate-90")} />
-        </button>
-        {expanded ? (
+        {collapsed ? (
+          <Tooltip>
+            <TooltipTrigger asChild>{parentButton}</TooltipTrigger>
+            <TooltipContent side="right">{item.label}</TooltipContent>
+          </Tooltip>
+        ) : (
+          parentButton
+        )}
+
+        {!collapsed && hasChildren && expanded ? (
           <div className="space-y-1 pl-10">
             {item.children?.map((child) => {
               const childActive = matchesHref(location.pathname, location.search, child.href);
@@ -371,13 +442,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   type="button"
                   onClick={() => {
                     navigate(child.href);
-                    if (typeof window !== "undefined" && window.innerWidth <= 1024) {
-                      setOpen(false);
-                    }
+                    closeMobileDrawer();
                   }}
                   className={cn(
-                    "flex h-10 w-full items-center rounded-lg border-l-2 border-transparent px-3 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
-                    childActive && "border-primary bg-primary/10 text-primary",
+                    "flex h-10 w-full items-center rounded-lg border-l-2 border-transparent bg-slate-800/50 px-3 text-left text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+                    childActive && "border-primary bg-primary/20 text-primary-foreground",
                   )}
                 >
                   {child.label}
@@ -390,94 +459,120 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     );
   };
 
+  const drawerInner = (
+    <div className="flex h-full flex-col bg-slate-900 text-white">
+      <div className="border-b border-slate-800 bg-slate-900 px-4 pb-4 pt-6">
+        <div className={cn("flex items-center gap-3", collapsed && "justify-center") }>
+          <img src={logoDark} alt={orgName} className="h-10 w-10 rounded-lg object-cover" />
+          {!collapsed ? (
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-white">{orgName}</p>
+              <p className="truncate text-xs text-slate-400">{orgEmail}</p>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-3 py-3 scrollbar-thin scrollbar-thumb-slate-700">
+        {sections.map((section) => (
+          <div key={section.label} className="mt-4 first:mt-0">
+            {!collapsed ? <p className="px-4 py-2 text-xs uppercase tracking-wider text-slate-500">{section.label}</p> : null}
+            <div className="space-y-1">{section.items.map(renderNavItem)}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="border-t border-slate-800 bg-slate-900 px-3 py-3">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className={cn(
+                "flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+                collapsed && "justify-center px-0",
+              )}
+            >
+              <Avatar className="h-9 w-9 border border-slate-700">
+                <AvatarFallback className="bg-slate-800 text-xs font-semibold text-white">{initials}</AvatarFallback>
+              </Avatar>
+              {!collapsed ? (
+                <>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-white">{profileName}</p>
+                    <p className="truncate text-xs text-slate-400">{profileEmail}</p>
+                  </div>
+                  <ChevronDown className="h-4 w-4 text-slate-400" />
+                </>
+              ) : null}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" side={collapsed ? "right" : "top"} className="w-56">
+            <DropdownMenuLabel>{profileName}</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => { navigate("/dashboard"); closeMobileDrawer(); }}>Profile</DropdownMenuItem>
+            {profile?.roles && profile.roles.length > 1
+              ? profile.roles.map((role) => (
+                  <DropdownMenuItem
+                    key={role}
+                    onClick={() => {
+                      if (role !== activeRole) {
+                        setActiveRole(role);
+                        navigate(role === "parent" ? "/parent" : "/dashboard", { replace: true });
+                      }
+                      closeMobileDrawer();
+                    }}
+                  >
+                    Switch to {role.replace(/_/g, " ")}
+                  </DropdownMenuItem>
+                ))
+              : null}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleLogout}>Sign Out</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
+  );
+
   return (
     <DashboardLayoutContext.Provider value={true}>
-      <div className="min-h-screen bg-background text-foreground">
-        <header className="sticky top-0 z-40 h-14 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/90">
-          <div className="mx-auto flex h-full w-full max-w-[1600px] items-center gap-3 px-4 md:px-6 lg:px-8">
-            <Sheet open={open} onOpenChange={setOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Open navigation menu" className="shrink-0">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent
-                side="left"
-                className="w-[calc(100vw-60px)] max-w-sm p-0 sm:w-[280px] sm:max-w-[280px] [&>button]:top-4 [&>button]:right-4"
-              >
-                <div className="flex h-full flex-col bg-background text-foreground">
-                  <div className="border-b border-border px-4 pb-4 pt-6">
-                    <div className="flex items-center gap-3">
-                      <img src={logoDark} alt={orgName} className="h-10 w-10 rounded-lg object-cover" />
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-foreground">{orgName}</p>
-                        <p className="truncate text-xs text-muted-foreground">{orgEmail}</p>
-                      </div>
-                    </div>
-                  </div>
+      <div className="flex h-screen bg-background text-foreground">
+        <aside
+          className={cn(
+            "hidden border-r border-slate-800 bg-slate-900 transition-[width] duration-200 lg:flex lg:h-screen lg:flex-col lg:flex-shrink-0",
+            drawerWidthClass,
+          )}
+        >
+          {drawerInner}
+        </aside>
 
-                  <div className="flex-1 overflow-y-auto px-4 py-3">
-                    {sections.map((section) => (
-                      <div key={section.label} className="mt-4 first:mt-0">
-                        <p className="px-4 py-2 text-xs uppercase tracking-wider text-muted-foreground">{section.label}</p>
-                        <div className="space-y-1">{section.items.map(renderNavItem)}</div>
-                      </div>
-                    ))}
-                  </div>
+        <Sheet open={!isDesktop && mobileOpen} onOpenChange={setMobileOpen}>
+          <SheetContent
+            side="left"
+            className="w-[260px] max-w-[80vw] border-slate-800 bg-slate-900 p-0 text-white [&>button]:right-4 [&>button]:top-4 [&>button]:text-slate-300"
+          >
+            {drawerInner}
+          </SheetContent>
+        </Sheet>
 
-                  <div className="sticky bottom-0 border-t border-border bg-background px-4 py-3">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          type="button"
-                          className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                        >
-                          <Avatar className="h-9 w-9 border border-border">
-                            <AvatarFallback className="bg-secondary text-secondary-foreground text-xs font-semibold">{initials}</AvatarFallback>
-                          </Avatar>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium">{profileName}</p>
-                            <p className="truncate text-xs text-muted-foreground">{profileEmail}</p>
-                          </div>
-                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" side="top" className="w-64">
-                        <DropdownMenuLabel>{profileName}</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => { navigate("/dashboard"); setOpen(false); }}>Profile</DropdownMenuItem>
-                        {profile?.roles && profile.roles.length > 1
-                          ? profile.roles.map((role) => (
-                              <DropdownMenuItem
-                                key={role}
-                                onClick={() => {
-                                  if (role !== activeRole) {
-                                    setActiveRole(role);
-                                    const home = role === "parent" ? "/parent" : "/dashboard";
-                                    navigate(home, { replace: true });
-                                  }
-                                  setOpen(false);
-                                }}
-                              >
-                                Switch to {role.replace(/_/g, " ")}
-                              </DropdownMenuItem>
-                            ))
-                          : null}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={handleLogout}>Sign Out</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
-              </SheetContent>
-            </Sheet>
-
-            <Link to="/dashboard" className="flex min-w-0 items-center gap-2">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background">
+          <header className="sticky top-0 z-40 flex h-14 flex-shrink-0 items-center gap-3 border-b border-border bg-background px-4 md:px-6">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={isDesktop ? "Collapse navigation drawer" : "Open navigation drawer"}
+              className="shrink-0"
+              onClick={() => {
+                if (isDesktop) handleDesktopCollapsedChange(!desktopCollapsed);
+                else setMobileOpen(true);
+              }}
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            <Link to="/dashboard" className="hidden shrink-0 lg:block">
               <img src={logoDark} alt="Al-Quran Time" className="h-8 w-8 rounded-md object-cover" />
-              <span className="font-serif text-base font-bold max-[399px]:hidden">Al-Quran Time</span>
             </Link>
-
-            <div className="ml-auto flex items-center gap-2 md:gap-3">
+            <div className="ml-auto flex min-w-0 items-center gap-2 md:gap-3">
               <div className="max-w-[190px] min-w-0">
                 <DivisionSwitcher />
               </div>
@@ -490,7 +585,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                     aria-label="Open profile menu"
                   >
                     <Avatar className="h-9 w-9 border border-border">
-                      <AvatarFallback className="bg-secondary text-secondary-foreground text-xs font-semibold">{initials}</AvatarFallback>
+                      <AvatarFallback className="bg-secondary text-xs font-semibold text-secondary-foreground">{initials}</AvatarFallback>
                     </Avatar>
                   </button>
                 </DropdownMenuTrigger>
@@ -505,8 +600,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                           onClick={() => {
                             if (role !== activeRole) {
                               setActiveRole(role);
-                              const home = role === "parent" ? "/parent" : "/dashboard";
-                              navigate(home, { replace: true });
+                              navigate(role === "parent" ? "/parent" : "/dashboard", { replace: true });
                             }
                           }}
                         >
@@ -519,10 +613,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-          </div>
-        </header>
+          </header>
 
-        <main className="mx-auto w-full max-w-[1600px] bg-background px-4 py-4 md:px-6 md:py-6 lg:px-8">{children}</main>
+          <main className="flex-1 overflow-y-auto overflow-x-hidden bg-background">{children}</main>
+        </div>
       </div>
     </DashboardLayoutContext.Provider>
   );

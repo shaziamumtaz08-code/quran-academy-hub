@@ -4,6 +4,7 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
+import { PageShell } from '@/components/layout/PageShell';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const Teachers = lazy(() => import('./Teachers'));
@@ -114,12 +115,7 @@ export default function PeopleLanding() {
   if (!activeView) return <Navigate to="/people?view=students" replace />;
 
   return (
-    <div className="space-y-5 animate-fade-in">
-      <header>
-        <h1 className="text-2xl font-serif font-bold text-foreground">People</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Manage teachers, students, staff access, and leads.</p>
-      </header>
-
+    <PageShell title="People" description="Manage teachers, students, staff access, and leads.">
       {!!dupCount && dupCount > 0 ? (
         <div className="flex items-center gap-3 rounded-lg border border-[hsl(var(--warning))]/20 bg-[hsl(var(--warning))]/10 px-4 py-3">
           <AlertTriangle className="h-5 w-5 shrink-0 text-[hsl(var(--warning))]" />
@@ -130,7 +126,7 @@ export default function PeopleLanding() {
           <button type="button" onClick={() => navigate('/identity')} className="text-xs font-bold text-foreground underline underline-offset-2">Review</button>
         </div>
       ) : null}
-      <div className="min-h-[420px]">{contentMap[activeView]}</div>
-    </div>
+      <div className="min-h-[420px] animate-fade-in">{contentMap[activeView]}</div>
+    </PageShell>
   );
 }

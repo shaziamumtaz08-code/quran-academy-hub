@@ -11,6 +11,7 @@ import { FeesAdminDashboard } from '@/components/dashboard/FeesAdminDashboard';
 import { AdmissionsAdminDashboard } from '@/components/dashboard/AdmissionsAdminDashboard';
 import { AcademicAdminDashboard } from '@/components/dashboard/AcademicAdminDashboard';
 import { ExaminerDashboard } from '@/components/dashboard/ExaminerDashboard';
+import { PageShell } from '@/components/layout/PageShell';
 import UnifiedDashboard from './UnifiedDashboard';
 
 export default function Dashboard() {
@@ -19,6 +20,7 @@ export default function Dashboard() {
 
   if (isLoading) {
     return (
+      <PageShell title="Dashboard" description="Overview of academy operations and your current workload.">
       <div className="space-y-8 animate-fade-in">
         <div>
           <Skeleton className="mt-2 h-9 w-64" />
@@ -30,16 +32,19 @@ export default function Dashboard() {
           ))}
         </div>
       </div>
+      </PageShell>
     );
   }
 
   if (!profile) {
     return (
+      <PageShell title="Dashboard" description="Overview of academy operations and your current workload.">
       <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
         <AlertCircle className="mb-4 h-16 w-16 text-muted-foreground" />
         <h1 className="text-2xl font-serif font-bold text-foreground">No Profile Found</h1>
         <p className="mt-2 text-muted-foreground">Please sign in to view your dashboard.</p>
       </div>
+      </PageShell>
     );
   }
 
@@ -66,6 +71,7 @@ export default function Dashboard() {
       return <ExaminerDashboard />;
     default:
       return (
+        <PageShell title="Dashboard" description="Overview of academy operations and your current workload.">
         <div className="space-y-8 animate-fade-in">
           <div>
             <h1 className="font-serif text-3xl font-bold text-foreground">Welcome, {profile.full_name}</h1>
@@ -83,6 +89,7 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+        </PageShell>
       );
   }
 }

@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -9,81 +9,137 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 
-// Route to label mapping
-const ROUTE_LABELS: Record<string, string> = {
-  '/dashboard': 'Dashboard',
-  '/user-management': 'User Management',
-  '/teachers': 'Teachers',
-  '/students': 'Students',
-  '/schedules': 'Schedules',
-  '/attendance': 'Attendance',
-  '/report-card-templates': 'Exam Report Template',
-  '/generate-report-card': 'Generate Exam Report',
-  '/student-reports': 'Student Exam Reports',
+const MODULE_DEFAULTS: Record<string, string> = {
+  '/dashboard': '/dashboard',
+  '/teaching': '/teaching?view=assignments',
+  '/people': '/people?view=students',
+  '/finance': '/finance?view=invoices',
+  '/reports': '/reports?view=executive',
+  '/communication': '/communication?view=academy-chat',
+  '/settings': '/settings?view=organization',
+  '/work-hub': '/work-hub',
+};
+
+const MODULE_LABELS: Record<string, string> = {
+  '/dashboard': 'Home',
+  '/teaching': 'Teaching',
+  '/people': 'People',
+  '/finance': 'Finance',
   '/reports': 'Reports',
-  '/payments': 'Payments',
-  '/kpi': 'KPI',
-  '/resources': 'Resources',
-  '/lessons': 'Lessons',
-  '/monthly-planning': 'Monthly Planning',
-  '/assignments': 'Assignments',
-  '/subjects': 'Subjects',
+  '/communication': 'Communication',
+  '/settings': 'Settings',
+  '/work-hub': 'Work Hub',
+};
+
+const VIEW_LABELS: Record<string, string> = {
+  'live-classes': 'Live Classes',
+  assignments: 'Assignments',
+  schedules: 'Schedules',
+  attendance: 'Attendance',
+  planning: 'Planning',
+  subjects: 'Subjects',
+  'one-to-one': '1-to-1 Assignments',
+  students: 'Students',
+  teachers: 'Teachers',
+  staff: 'Staff',
+  parents: 'Parents',
+  leads: 'Leads',
+  invoices: 'Invoices',
+  payments: 'Payments',
+  'fee-plans': 'Fee Plans',
+  salaries: 'Salaries',
+  expenses: 'Expenses',
+  'cash-advances': 'Cash Advances',
+  payouts: 'Payouts',
+  setup: 'Setup',
+  executive: 'Executive Dashboard',
+  fees: 'Fee & Financial',
+  engagement: 'Student Engagement',
+  accountability: 'Accountability',
+  'course-batch': 'Course / Batch',
+  'activity-logs': 'Activity Logs',
+  alerts: 'Alerts & Automation',
+  custom: 'Custom Report Builder',
+  'academy-chat': 'Academy Chat',
+  chat: 'Academy Chat',
+  whatsapp: 'WhatsApp Inbox',
+  notifications: 'Notifications',
+  zoom: 'Zoom',
+  organization: 'Organization',
+  branches: 'Branches',
+  divisions: 'Divisions',
+  holidays: 'Holidays',
+  'payouts-config': 'Payouts Config',
+  classroom: 'Classroom',
+  'finance-setup': 'Finance Setup',
+  'teaching-config': 'Teaching Config',
+  resources: 'Resources Manager',
+  integrity: 'Integrity Audit',
+  schema: 'Schema Explorer',
 };
 
 export function PageBreadcrumb() {
   const location = useLocation();
-  
   const pathname = location.pathname;
-  const pageLabel = ROUTE_LABELS[pathname] || pathname.replace('/', '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  
-  const isHome = pathname === '/dashboard';
-  const isResources = pathname === '/resources';
-  const isCourseDetail = /^\/courses\/[^/]+$/.test(pathname) || /^\/academics\/courses\/[^/]+$/.test(pathname);
+  const params = new URLSearchParams(location.search);
+  const view = params.get('view') || params.get('section');
 
-  // Resources has its own Drive-style breadcrumb, don't show duplicate
-  // Dashboard home is redundant — each role dashboard has its own header
-  // Course detail uses sidebar nav — breadcrumb would show raw UUID
-  if (isResources || isHome || isCourseDetail) {
-    return null;
-  }
+  const moduleLabel = MODULE_LABELS[pathname] || pathname.replace('/', '').replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+  const moduleHref = MODULE_DEFAULTS[pathname] || pathname;
+  const currentLabel = pathname === '/work-hub'
+    ? 'Work Hub'
+    : view
+      ? VIEW_LABELS[view] || view.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
+      : moduleLabel;
 
   return (
-    <div className="mb-6 flex items-center gap-3 sticky top-0 z-10 bg-[hsl(var(--lms-surface,220_14%_96%))] py-2 -mt-2">
-      {/* Back to Home Button */}
-      <Link 
-        to="/dashboard"
-        className="flex items-center justify-center h-9 w-9 rounded-lg bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
-        title="Go to Home"
-      >
-        <Home className="h-4 w-4" />
-      </Link>
-
-      {/* Breadcrumb Trail */}
-      <Breadcrumb className="flex-1">
+    <div className="mb-4">
+      <Breadcrumb>
         <BreadcrumbList className="flex-wrap">
-          {/* Home */}
           <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Link 
-                to="/dashboard" 
-                className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors font-medium"
-              >
-                Home
-              </Link>
-            </BreadcrumbLink>
+            {pathname === '/dashboard' ? (
+              <BreadcrumbPage className="font-medium text-foreground">Home</BreadcrumbPage>
+            ) : (
+              <BreadcrumbLink asChild>
+                <Link to="/dashboard" className="font-medium text-muted-foreground transition-colors hover:text-foreground">Home</Link>
+              </BreadcrumbLink>
+            )}
           </BreadcrumbItem>
 
-          {/* Current page (if not home) */}
-          {!isHome && (
+          {pathname !== '/dashboard' ? (
             <>
               <BreadcrumbSeparator>
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </BreadcrumbSeparator>
-              <BreadcrumbItem>
-                <BreadcrumbPage className="font-semibold text-foreground">{pageLabel}</BreadcrumbPage>
-              </BreadcrumbItem>
+
+              {pathname !== '/work-hub' ? (
+                <>
+                  <BreadcrumbItem>
+                    <BreadcrumbLink asChild>
+                      <Link to={moduleHref} className="font-medium text-muted-foreground transition-colors hover:text-foreground">
+                        {moduleLabel}
+                      </Link>
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+
+                  {view ? (
+                    <>
+                      <BreadcrumbSeparator>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      </BreadcrumbSeparator>
+                      <BreadcrumbItem>
+                        <BreadcrumbPage className="font-medium text-foreground">{currentLabel}</BreadcrumbPage>
+                      </BreadcrumbItem>
+                    </>
+                  ) : null}
+                </>
+              ) : (
+                <BreadcrumbItem>
+                  <BreadcrumbPage className="font-medium text-foreground">Work Hub</BreadcrumbPage>
+                </BreadcrumbItem>
+              )}
             </>
-          )}
+          ) : null}
         </BreadcrumbList>
       </Breadcrumb>
     </div>
