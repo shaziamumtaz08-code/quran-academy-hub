@@ -243,10 +243,7 @@ export function AppSidebar({ className }: AppSidebarProps) {
   const sidebar = isCourseDetail && courseInfo
     ? { ...baseSidebar, title: courseInfo.name || 'Course', subtitle: isStudentCourseDetail ? 'Student course workspace' : 'Course workspace' }
     : baseSidebar;
-
-  if (activeRole === 'student' && !isCourseDetail) {
-    return null;
-  }
+  const hideStudentSidebar = activeRole === 'student' && !isCourseDetail;
 
   const isItemActive = (item: SidebarNavItem) => {
     if (!item.href) return false;
@@ -361,7 +358,7 @@ export function AppSidebar({ className }: AppSidebarProps) {
     );
   };
 
-  if (!isCourseDetail && sidebar.items.length === 0) {
+  if (hideStudentSidebar || (!isCourseDetail && sidebar.items.length === 0)) {
     return null;
   }
 
