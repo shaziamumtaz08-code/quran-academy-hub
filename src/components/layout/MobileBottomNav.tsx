@@ -56,7 +56,7 @@ function getMoreItems(role: AppRole | null): MobileTabItem[] {
   if (role && (adminRoles.includes(role) || role?.startsWith('admin_'))) {
     return [
       { label: 'Finance', href: '/finance', icon: DollarSign },
-      { label: 'Reports', href: '/reports-hub', icon: BarChart3 },
+      { label: 'Reports', href: '/reports', icon: BarChart3 },
       { label: 'Zoom', href: '/zoom-management', icon: Video },
       { label: 'Work Hub', href: '/hub', icon: Briefcase },
       { label: 'Settings', href: '/settings', icon: Cog },

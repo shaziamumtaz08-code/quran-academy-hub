@@ -44,8 +44,6 @@ function getHomeSidebar(isOneToOne?: boolean, role?: string | null, activeModelT
     subtitle: 'Dashboard',
     items: [
       { label: 'Dashboard', href: '/dashboard' },
-      { label: 'My Dashboard', href: '/my-dashboard' },
-      ...(!isStudent ? [{ label: 'Divisions', group: 'DIVISIONS' }] : []),
       ...(!isOneToOne && !isStudent ? [{ label: 'Group Academy', href: '/teaching?section=courses' }] : []),
       ...(!isStudent ? [{ label: '1-to-1', href: '/teaching?section=assignments' }] : []),
       ...(!isOneToOne && !isStudent ? [{ label: 'Recorded', href: '/teaching?section=recorded' }] : []),
@@ -139,9 +137,22 @@ function getSettingsSidebar(): { title: string; subtitle: string; items: Sidebar
 }
 
 function getReportsSidebar(): { title: string; subtitle: string; items: SidebarNavItem[] } {
-  // Outer secondary sidebar removed for Reports — the Reports Hub overview
-  // and the inner Reports.tsx sidebar are the only nav surfaces needed.
-  return { title: 'Reports', subtitle: '', items: [] };
+  return {
+    title: 'Reports',
+    subtitle: '',
+    items: [
+      { label: 'Executive Dashboard', href: '/reports?section=executive', group: 'OVERVIEW' },
+      { label: 'Attendance Reports', href: '/reports?section=attendance', group: 'ANALYTICS' },
+      { label: 'Fee & Financial', href: '/reports?section=fees' },
+      { label: 'Student Engagement', href: '/reports?section=engagement' },
+      { label: 'Teacher Performance', href: '/reports?section=teacher' },
+      { label: 'Accountability', href: '/reports?section=accountability' },
+      { label: 'Course / Batch', href: '/reports?section=courses' },
+      { label: 'Activity Logs', href: '/reports?section=logs', group: 'TOOLS' },
+      { label: 'Alerts & Automation', href: '/reports?section=alerts' },
+      { label: 'Custom Report Builder', href: '/reports?section=custom' },
+    ],
+  };
 }
 
 /* ─── Route to section mapping ─── */
@@ -244,6 +255,11 @@ export function AppSidebar({ className }: AppSidebarProps) {
     ? { ...baseSidebar, title: courseInfo.name || 'Course', subtitle: isStudentCourseDetail ? 'Student course workspace' : 'Course workspace' }
     : baseSidebar;
   const isStudentDashboardHome = activeRole === 'student' && location.pathname === '/dashboard';
+  const reportsOnlySecondarySidebar =
+    location.pathname.startsWith('/reports') ||
+    location.pathname.startsWith('/student-reports') ||
+    location.pathname.startsWith('/kpi') ||
+    location.pathname.startsWith('/report-card');
   const visibleSidebar = isStudentDashboardHome
     ? {
         ...sidebar,
@@ -363,6 +379,10 @@ export function AppSidebar({ className }: AppSidebarProps) {
       </Link>
     );
   };
+
+  if (!isCourseDetail && !reportsOnlySecondarySidebar) {
+    return null;
+  }
 
   if (!isCourseDetail && visibleSidebar.items.length === 0) {
     return null;
