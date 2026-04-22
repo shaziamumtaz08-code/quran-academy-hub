@@ -24,12 +24,13 @@ interface SidebarNavItem {
   group?: string;
 }
 
-function getHomeSidebar(isOneToOne?: boolean, role?: string | null): { title: string; subtitle: string; items: SidebarNavItem[] } {
+function getHomeSidebar(isOneToOne?: boolean, role?: string | null, activeModelType?: string | null): { title: string; subtitle: string; items: SidebarNavItem[] } {
   const isStudent = role === 'student';
   if (isStudent) {
+    const isGroupStudent = activeModelType === 'group';
     return {
-      title: 'Student Portal',
-      subtitle: 'Learning workspace',
+      title: isGroupStudent ? 'Group Academy Student' : 'Student Portal',
+      subtitle: isGroupStudent ? 'Course learning workspace' : 'Learning workspace',
       items: [
         { label: 'Dashboard', href: '/dashboard' },
         { label: 'My Courses', href: '/courses-catalog' },
@@ -144,10 +145,10 @@ function getReportsSidebar(): { title: string; subtitle: string; items: SidebarN
 }
 
 /* ─── Route to section mapping ─── */
-function getSidebarForRoute(pathname: string, isOneToOne?: boolean, role?: string | null) {
+function getSidebarForRoute(pathname: string, isOneToOne?: boolean, role?: string | null, activeModelType?: string | null) {
   const isStudent = role === 'student';
   if (isStudent && pathname.startsWith('/resources')) {
-    return getHomeSidebar(isOneToOne, role);
+    return getHomeSidebar(isOneToOne, role, activeModelType);
   }
   // Students should never see Teaching sidebar
   if (!isStudent && (pathname.startsWith('/teaching') || pathname.startsWith('/courses') || pathname.startsWith('/assignments') || pathname.startsWith('/subjects') || pathname.startsWith('/attendance') || pathname.startsWith('/schedules') || pathname.startsWith('/monthly-planning'))) {
@@ -168,7 +169,7 @@ function getSidebarForRoute(pathname: string, isOneToOne?: boolean, role?: strin
   if (pathname.startsWith('/reports') || pathname.startsWith('/student-reports') || pathname.startsWith('/kpi') || pathname.startsWith('/report-card')) {
     return getReportsSidebar();
   }
-  return getHomeSidebar(isOneToOne, role);
+  return getHomeSidebar(isOneToOne, role, activeModelType);
 }
 
 /* ─── Course Detail sidebar ─── */
@@ -236,7 +237,7 @@ export function AppSidebar({ className }: AppSidebarProps) {
 
   const baseSidebar = isCourseDetail
     ? getCourseDetailSidebar(location.pathname)
-    : getSidebarForRoute(location.pathname, isOneToOne, activeRole);
+    : getSidebarForRoute(location.pathname, isOneToOne, activeRole, activeDivision?.model_type ?? null);
 
   const sidebar = isCourseDetail && courseInfo
     ? { ...baseSidebar, title: courseInfo.name || 'Course', subtitle: 'Course workspace' }
