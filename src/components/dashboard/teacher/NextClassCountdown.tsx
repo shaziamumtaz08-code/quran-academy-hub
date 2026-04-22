@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Video, Loader2 } from 'lucide-react';
+import { Video } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StartClassButton } from '@/components/zoom/StartClassButton';
 import { Button } from '@/components/ui/button';
@@ -203,7 +203,7 @@ export function NextClassCountdown() {
           Rejoin
         </Button>
       ) : (
-        <StartClassButton />
+        <StartClassButton className="dashboard-next-class-banner__join-button" />
       )}
     />
   );
