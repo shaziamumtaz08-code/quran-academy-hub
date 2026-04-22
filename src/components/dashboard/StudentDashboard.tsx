@@ -21,10 +21,10 @@ import { DashboardShell } from './shared/DashboardShell';
 import { NextClassBanner } from './shared/NextClassBanner';
 
 const STUDENT_TABS = [
-  { id: 'home', icon: '🏠', label: 'Home', path: '/dashboard' },
-  { id: 'lessons', icon: '📖', label: 'Lessons', path: '/attendance' },
-  { id: 'progress', icon: '📊', label: 'Progress', path: '/student-reports' },
-  { id: 'schedule', icon: '📅', label: 'Schedule', path: '/schedules' },
+  { id: 'dashboard', icon: '🏠', label: 'Dashboard', path: '/dashboard' },
+  { id: 'courses', icon: '📚', label: 'My Courses', path: '/courses-catalog' },
+  { id: 'resources', icon: '📁', label: 'Resources', path: '/resources' },
+  { id: 'communication', icon: '💬', label: 'Communication', path: '/communication' },
 ];
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -776,12 +776,11 @@ export function StudentDashboard() {
       {/* ═══ QUICK LINKS ═══ */}
       <div className="grid grid-cols-2 gap-2">
         {[
-          { icon: Calendar, label: 'My Schedule', path: '/schedules', color: 'text-primary bg-primary/10' },
-          { icon: BookOpen, label: 'My Lessons', path: '/attendance', color: 'text-teal bg-teal/10' },
-          { icon: Clock, label: 'My Progress', path: '/student-reports', color: 'text-sky bg-sky/10' },
-          { icon: CalendarOff, label: 'Request Leave', path: '/work-hub?category=leave_request', color: 'text-purple-600 bg-purple-100 dark:bg-purple-900/30' },
-          { icon: MessagesSquare, label: 'Group Chat', path: '/chat', color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30' },
-          { icon: FolderOpen, label: 'Resources', path: '/resources?tab=assigned', color: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30' },
+          { icon: BookOpen, label: 'My Courses', path: '/courses-catalog', color: 'text-primary bg-primary/10' },
+          { icon: Clock, label: 'My Learning', path: '/my-dashboard', color: 'text-sky bg-sky/10' },
+          { icon: MessagesSquare, label: 'Communication', path: '/communication', color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30' },
+          { icon: FolderOpen, label: 'Resources', path: '/resources', color: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30' },
+          { icon: Calendar, label: 'Results & Fees', path: '/my-dashboard', color: 'text-teal bg-teal/10' },
           { icon: Network, label: 'My Network', path: `/connections/student/${user?.id}`, color: 'text-rose-600 bg-rose-100 dark:bg-rose-900/30' },
         ].map((link) => (
           <button

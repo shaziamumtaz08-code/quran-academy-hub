@@ -26,6 +26,18 @@ interface SidebarNavItem {
 
 function getHomeSidebar(isOneToOne?: boolean, role?: string | null): { title: string; subtitle: string; items: SidebarNavItem[] } {
   const isStudent = role === 'student';
+  if (isStudent) {
+    return {
+      title: 'Student Portal',
+      subtitle: 'Learning workspace',
+      items: [
+        { label: 'Dashboard', href: '/dashboard' },
+        { label: 'My Courses', href: '/courses-catalog' },
+        { label: 'Resources', href: '/resources' },
+        { label: 'Communication', href: '/communication' },
+      ],
+    };
+  }
   return {
     title: 'Academy',
     subtitle: 'Dashboard',
@@ -134,6 +146,9 @@ function getReportsSidebar(): { title: string; subtitle: string; items: SidebarN
 /* ─── Route to section mapping ─── */
 function getSidebarForRoute(pathname: string, isOneToOne?: boolean, role?: string | null) {
   const isStudent = role === 'student';
+  if (isStudent && pathname.startsWith('/resources')) {
+    return getHomeSidebar(isOneToOne, role);
+  }
   // Students should never see Teaching sidebar
   if (!isStudent && (pathname.startsWith('/teaching') || pathname.startsWith('/courses') || pathname.startsWith('/assignments') || pathname.startsWith('/subjects') || pathname.startsWith('/attendance') || pathname.startsWith('/schedules') || pathname.startsWith('/monthly-planning'))) {
     return getTeachingSidebar(0, isOneToOne);
