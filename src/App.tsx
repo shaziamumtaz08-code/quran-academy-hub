@@ -292,6 +292,7 @@ function AppRoutes() {
       <Route path="/people" element={<ProtectedRoute><AdminRoute><DashboardLayout><PeopleLanding /></DashboardLayout></AdminRoute></ProtectedRoute>} />
       <Route path="/finance" element={<ProtectedRoute><DashboardLayout><FinanceLanding /></DashboardLayout></ProtectedRoute>} />
       <Route path="/reports-hub" element={<Navigate to="/reports?view=executive" replace />} />
+      <Route path="/my-dashboard" element={<Navigate to="/dashboard" replace />} />
       <Route path="/communication" element={<ProtectedRoute><DashboardLayout><CommunicationLanding /></DashboardLayout></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><AdminRoute><DashboardLayout><SettingsLanding /></DashboardLayout></AdminRoute></ProtectedRoute>} />
 
@@ -306,7 +307,7 @@ function AppRoutes() {
       <Route path="/students" element={<ProtectedRoute><Students /></ProtectedRoute>} />
       <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
       <Route path="/lessons" element={<ProtectedRoute><Lessons /></ProtectedRoute>} />
-      <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+      <Route path="/reports" element={<ProtectedRoute><DashboardLayout><Reports /></DashboardLayout></ProtectedRoute>} />
       <Route path="/payments" element={<Navigate to="/finance?view=payments" replace />} />
       <Route path="/kpi" element={<ProtectedRoute><KPI /></ProtectedRoute>} />
       <Route path="/schedules" element={<ProtectedRoute><AdminRoute><Schedules /></AdminRoute></ProtectedRoute>} />

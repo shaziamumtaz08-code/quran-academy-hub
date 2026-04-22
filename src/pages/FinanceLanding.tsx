@@ -1,7 +1,5 @@
 import React, { Suspense, lazy, useMemo } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { useDivision } from '@/contexts/DivisionContext';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const Payments = lazy(() => import('./Payments'));
@@ -25,7 +23,6 @@ const views = [
 ] as const;
 
 export default function FinanceLanding() {
-  const { activeDivision } = useDivision();
   const [searchParams] = useSearchParams();
   const requested = searchParams.get('view');
   const activeView = views.some((item) => item.value === requested) ? requested! : null;

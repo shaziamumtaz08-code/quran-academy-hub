@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { Navigate, useSearchParams } from "react-router-dom";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useAuth } from "@/contexts/AuthContext";
 import ExecutiveDashboard from "@/components/reports/ExecutiveDashboard";
@@ -42,10 +41,10 @@ const descriptions: Record<string, string> = {
 
 export default function Reports() {
   const { activeRole } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_');
   const availableViews = useMemo(
-    () => allViews.filter((view) => isAdmin || !['logs', 'alerts', 'custom', 'teacher', 'accountability'].includes(view.value)),
+    () => allViews.filter((view) => isAdmin || !['activity-logs', 'alerts', 'custom', 'teachers', 'accountability'].includes(view.value)),
     [isAdmin],
   );
 
@@ -59,10 +58,10 @@ export default function Reports() {
       case 'attendance': return <AttendanceReports />;
       case 'fees': return <FeeReports />;
       case 'engagement': return <StudentEngagement />;
-      case 'teacher': return <TeacherPerformance />;
+      case 'teachers': return <TeacherPerformance />;
       case 'accountability': return <AccountabilityReport />;
-      case 'courses': return <CourseReports />;
-      case 'logs': return <ActivityLogs />;
+      case 'course-batch': return <CourseReports />;
+      case 'activity-logs': return <ActivityLogs />;
       case 'alerts': return <AlertsAutomation />;
       case 'custom': return <CustomReportBuilder />;
       default: return <ExecutiveDashboard />;
@@ -70,14 +69,12 @@ export default function Reports() {
   };
 
   return (
-    <DashboardLayout>
-      <div className="space-y-5 animate-fade-in">
-        <header>
-          <h1 className="text-2xl font-serif font-bold text-foreground">Reports</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{descriptions[activeView]}</p>
-        </header>
-        <ErrorBoundary>{renderSection()}</ErrorBoundary>
-      </div>
-    </DashboardLayout>
+    <div className="space-y-5 animate-fade-in">
+      <header>
+        <h1 className="text-2xl font-serif font-bold text-foreground">Reports</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{descriptions[activeView]}</p>
+      </header>
+      <ErrorBoundary>{renderSection()}</ErrorBoundary>
+    </div>
   );
 }
