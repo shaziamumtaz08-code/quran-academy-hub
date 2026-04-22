@@ -33,7 +33,6 @@ import Subjects from "./pages/Subjects";
 import ZoomManagement from "./pages/ZoomManagement";
 import IntegrityAudit from "./pages/IntegrityAudit";
 import Courses from "./pages/Courses";
-// CourseAssetLibrary moved inside per-course Marketing tab
 import CourseBuilder from "./pages/CourseBuilder";
 import PublicCoursePage from "./pages/PublicCoursePage";
 import OrganizationSettings from "./pages/OrganizationSettings";
@@ -72,15 +71,12 @@ import TeachingOSVideo from "./pages/TeachingOSVideo";
 import TeachingOSSpeakingTutor from "./pages/TeachingOSSpeakingTutor";
 import TeachingOSAnalytics from "./pages/TeachingOSAnalytics";
 import ParentDashboard from "./pages/ParentDashboard";
-import UnifiedDashboard from "./pages/UnifiedDashboard";
 import QuizEngine from "./pages/QuizEngine";
 import PublicQuiz from "./pages/PublicQuiz";
 import StudentQuizView from "./pages/StudentQuizView";
 import VirtualClassroom from "./pages/VirtualClassroom";
 import SchemaExplorer from "./pages/SchemaExplorer";
 import UserConnections from "./pages/UserConnections";
-
-// Landing pages
 import TeachingLanding from "./pages/TeachingLanding";
 import PeopleLanding from "./pages/PeopleLanding";
 import FinanceLanding from "./pages/FinanceLanding";
@@ -93,7 +89,7 @@ const queryClient = new QueryClient();
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
-  
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -104,19 +100,17 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
-  
+
   return <>{children}</>;
 }
 
-// Admin only route - uses activeRole for proper role switching
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { activeRole, isLoading, profile } = useAuth();
-  
-  // Wait until both auth loading is done AND activeRole has been resolved
+
   if (isLoading || (profile && !activeRole)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -124,20 +118,19 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  
+
   const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_');
-  
+
   if (!isAdmin) {
     return <Navigate to="/dashboard" replace />;
   }
-  
+
   return <>{children}</>;
 }
 
-// Admin or Examiner route (for exam templates and submission)
 function AdminOrExaminerRoute({ children }: { children: React.ReactNode }) {
   const { activeRole, isLoading, profile } = useAuth();
-  
+
   if (isLoading || (profile && !activeRole)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -145,21 +138,19 @@ function AdminOrExaminerRoute({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  
-  const allowed = activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_') || 
-    activeRole === 'examiner';
-  
+
+  const allowed = activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_') || activeRole === 'examiner';
+
   if (!allowed) {
     return <Navigate to="/dashboard" replace />;
   }
-  
+
   return <>{children}</>;
 }
 
-// Admin, Examiner, or Teacher route (for exam results - teachers can view their students' exams)
 function AdminOrExaminerOrTeacherRoute({ children }: { children: React.ReactNode }) {
   const { activeRole, isLoading, profile } = useAuth();
-  
+
   if (isLoading || (profile && !activeRole)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -167,18 +158,16 @@ function AdminOrExaminerOrTeacherRoute({ children }: { children: React.ReactNode
       </div>
     );
   }
-  
-  const allowed = activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_') || 
-    activeRole === 'examiner' || activeRole === 'teacher';
-  
+
+  const allowed = activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_') || activeRole === 'examiner' || activeRole === 'teacher';
+
   if (!allowed) {
     return <Navigate to="/dashboard" replace />;
   }
-  
+
   return <>{children}</>;
 }
 
-// Admin or Teacher route (for monthly planning)
 function AdminOrTeacherRoute({ children }: { children: React.ReactNode }) {
   const { activeRole, isLoading, profile } = useAuth();
 
@@ -203,10 +192,9 @@ function AdminOrTeacherRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// Teacher only route - uses activeRole
 function TeacherRoute({ children }: { children: React.ReactNode }) {
   const { activeRole, isLoading, profile } = useAuth();
-  
+
   if (isLoading || (profile && !activeRole)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -214,13 +202,13 @@ function TeacherRoute({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  
+
   const isTeacher = activeRole === 'teacher' || activeRole === 'examiner';
-  
+
   if (!isTeacher) {
     return <Navigate to="/dashboard" replace />;
   }
-  
+
   return <>{children}</>;
 }
 
@@ -228,7 +216,7 @@ function LoginRedirect() {
   const { isAuthenticated, activeRole } = useAuth();
   const location = useLocation();
   const from = (location.state as any)?.from;
-  
+
   const getDefaultRoute = () => {
     if (!activeRole) return '/dashboard';
     if (activeRole === 'super_admin') return '/select-division';
@@ -243,7 +231,6 @@ function LoginRedirect() {
   return <Login />;
 }
 
-/** Wraps Dashboard in DashboardLayout for all roles so sidebar is accessible on desktop */
 function DashboardWrapper() {
   return (
     <DashboardLayout>
@@ -253,9 +240,8 @@ function DashboardWrapper() {
 }
 
 function AppRoutes() {
-  const { isAuthenticated, activeRole } = useAuth();
-  
-  // Role-based redirect on login - uses activeRole
+  const { activeRole } = useAuth();
+
   const getDefaultRoute = () => {
     if (!activeRole) return '/dashboard';
     if (activeRole === 'super_admin') return '/select-division';
@@ -267,7 +253,7 @@ function AppRoutes() {
     }
     return '/dashboard';
   };
-  
+
   return (
     <Routes>
       <Route path="/login" element={<LoginRedirect />} />
@@ -286,14 +272,10 @@ function AppRoutes() {
           })()}
         </ProtectedRoute>
       } />
-      
-      {/* Admin Routes */}
+
       <Route path="/admin" element={<ProtectedRoute><AdminRoute><AdminCommandCenter /></AdminRoute></ProtectedRoute>} />
-      
-      {/* Teacher Routes */}
       <Route path="/teacher" element={<ProtectedRoute><TeacherRoute><TeacherNazraDashboard /></TeacherRoute></ProtectedRoute>} />
-      
-      {/* Landing Pages */}
+
       <Route path="/teaching" element={<ProtectedRoute><DashboardLayout><TeachingLanding /></DashboardLayout></ProtectedRoute>} />
       <Route path="/teaching-os" element={<ProtectedRoute><LanguageProvider><TeachingOS /></LanguageProvider></ProtectedRoute>} />
       <Route path="/teaching-os/outline" element={<ProtectedRoute><LanguageProvider><TeachingOSOutline /></LanguageProvider></ProtectedRoute>} />
@@ -306,7 +288,6 @@ function AppRoutes() {
       <Route path="/teaching-os/video" element={<ProtectedRoute><LanguageProvider><TeachingOSVideo /></LanguageProvider></ProtectedRoute>} />
       <Route path="/teaching-os/speaking-tutor" element={<ProtectedRoute><LanguageProvider><TeachingOSSpeakingTutor /></LanguageProvider></ProtectedRoute>} />
       <Route path="/teaching-os/analytics" element={<ProtectedRoute><LanguageProvider><TeachingOSAnalytics /></LanguageProvider></ProtectedRoute>} />
-      {/* Parent Portal */}
       <Route path="/parent" element={<ProtectedRoute><ParentDashboard /></ProtectedRoute>} />
       <Route path="/parent/child/:studentId" element={<ProtectedRoute><ParentDashboard /></ProtectedRoute>} />
       <Route path="/people" element={<ProtectedRoute><AdminRoute><DashboardLayout><PeopleLanding /></DashboardLayout></AdminRoute></ProtectedRoute>} />
@@ -315,9 +296,7 @@ function AppRoutes() {
       <Route path="/communication" element={<ProtectedRoute><DashboardLayout><CommunicationLanding /></DashboardLayout></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><AdminRoute><DashboardLayout><SettingsLanding /></DashboardLayout></AdminRoute></ProtectedRoute>} />
 
-      {/* General Protected Routes — old direct URLs still work */}
       <Route path="/dashboard" element={<ProtectedRoute><DashboardWrapper /></ProtectedRoute>} />
-      <Route path="/my-dashboard" element={<ProtectedRoute><DashboardLayout><UnifiedDashboard /></DashboardLayout></ProtectedRoute>} />
       <Route path="/my-courses" element={<ProtectedRoute><DashboardLayout><MyCourses /></DashboardLayout></ProtectedRoute>} />
       <Route path="/my-courses/:courseId" element={<ProtectedRoute><DashboardLayout><StudentCourseView /></DashboardLayout></ProtectedRoute>} />
       <Route path="/my-teaching/:courseId" element={<ProtectedRoute><DashboardLayout><TeacherCourseView /></DashboardLayout></ProtectedRoute>} />
@@ -331,12 +310,10 @@ function AppRoutes() {
       <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
       <Route path="/payments" element={<Navigate to="/finance?section=payments" replace />} />
       <Route path="/kpi" element={<ProtectedRoute><KPI /></ProtectedRoute>} />
-      {/* Admin-only routes */}
       <Route path="/schedules" element={<ProtectedRoute><AdminRoute><Schedules /></AdminRoute></ProtectedRoute>} />
       <Route path="/zoom-management" element={<ProtectedRoute><AdminRoute><ZoomManagement /></AdminRoute></ProtectedRoute>} />
       <Route path="/integrity-audit" element={<ProtectedRoute><AdminRoute><IntegrityAudit /></AdminRoute></ProtectedRoute>} />
       <Route path="/courses" element={<ProtectedRoute><AdminRoute><Courses /></AdminRoute></ProtectedRoute>} />
-      {/* Asset Library now lives inside each course's Marketing tab */}
       <Route path="/courses/:id" element={<ProtectedRoute><AdminRoute><DashboardLayout><CourseBuilder /></DashboardLayout></AdminRoute></ProtectedRoute>} />
       <Route path="/academics/courses/:id" element={<ProtectedRoute><AdminRoute><DashboardLayout><CourseBuilder /></DashboardLayout></AdminRoute></ProtectedRoute>} />
       <Route path="/organization-settings" element={<ProtectedRoute><AdminRoute><OrganizationSettings /></AdminRoute></ProtectedRoute>} />
@@ -346,11 +323,9 @@ function AppRoutes() {
       <Route path="/expenses" element={<ProtectedRoute><AdminRoute><Expenses /></AdminRoute></ProtectedRoute>} />
       <Route path="/cash-advances" element={<ProtectedRoute><AdminRoute><CashAdvances /></AdminRoute></ProtectedRoute>} />
       <Route path="/monthly-planning" element={<ProtectedRoute><AdminOrTeacherRoute><MonthlyPlanning /></AdminOrTeacherRoute></ProtectedRoute>} />
-      {/* Report Card pages (renamed from Exam) */}
       <Route path="/report-card-templates" element={<ProtectedRoute><AdminOrExaminerRoute><ReportCardTemplates /></AdminOrExaminerRoute></ProtectedRoute>} />
       <Route path="/generate-report-card" element={<ProtectedRoute><AdminOrExaminerRoute><GenerateReportCard /></AdminOrExaminerRoute></ProtectedRoute>} />
       <Route path="/student-reports" element={<ProtectedRoute><StudentReports /></ProtectedRoute>} />
-      {/* Legacy routes redirect */}
       <Route path="/exam-templates" element={<Navigate to="/report-card-templates" replace />} />
       <Route path="/exam-submission" element={<Navigate to="/generate-report-card" replace />} />
       <Route path="/exam-results" element={<Navigate to="/student-reports" replace />} />
@@ -367,46 +342,28 @@ function AppRoutes() {
           })()}
         </ProtectedRoute>
       } />
-      {/* Leads Pipeline - admin only */}
       <Route path="/leads" element={<ProtectedRoute><AdminRoute><LeadsPipeline /></AdminRoute></ProtectedRoute>} />
-      {/* Identity Resolution - admin only */}
       <Route path="/identity" element={<ProtectedRoute><AdminRoute><IdentityResolution /></AdminRoute></ProtectedRoute>} />
-      {/* Notification Center - admin only */}
       <Route path="/notifications" element={<ProtectedRoute><AdminRoute><NotificationCenter /></AdminRoute></ProtectedRoute>} />
-      {/* Work Hub - accessible by all authenticated users */}
       <Route path="/hub" element={<ProtectedRoute><WorkHub /></ProtectedRoute>} />
       <Route path="/workhub" element={<Navigate to="/hub" replace />} />
       <Route path="/work-hub" element={<Navigate to="/hub" replace />} />
-      {/* Group Chat - all authenticated users */}
       <Route path="/chat" element={<ProtectedRoute><GroupChat /></ProtectedRoute>} />
-      {/* WhatsApp Inbox - admin only */}
       <Route path="/whatsapp" element={<ProtectedRoute><AdminRoute><WhatsAppInbox /></AdminRoute></ProtectedRoute>} />
-      {/* My Resources - redirect to unified Resources page */}
       <Route path="/my-resources" element={<Navigate to="/resources?tab=assigned" replace />} />
-      {/* Printable Routes - standalone, no layout */}
       <Route path="/reports/print/:reportId" element={<ProtectedRoute><PrintReport /></ProtectedRoute>} />
       <Route path="/finance/print/invoice/:invoiceId" element={<ProtectedRoute><PrintInvoice /></ProtectedRoute>} />
       <Route path="/finance/print/salary/:payoutId" element={<ProtectedRoute><PrintSalary /></ProtectedRoute>} />
-      {/* Public Course Page - no auth required */}
       <Route path="/course/:slug" element={<PublicCoursePage />} />
-      {/* Public Enrollment Form - token-based, no auth */}
       <Route path="/enroll/:token" element={<EnrollmentForm />} />
-      {/* Public Inquiry Form - no auth */}
       <Route path="/inquiry" element={<PublicInquiryForm />} />
-      {/* Public Course Catalog - no auth */}
       <Route path="/courses-catalog" element={<CourseCatalog />} />
-      {/* Recorded Courses Storefront - no auth */}
       <Route path="/recorded-courses" element={<RecordedCourses />} />
-      {/* Public Registration Form - no auth */}
       <Route path="/apply/:slug" element={<PublicApplyForm />} />
-      {/* Quiz Engine */}
       <Route path="/quiz-engine" element={<ProtectedRoute><AdminOrTeacherRoute><QuizEngine /></AdminOrTeacherRoute></ProtectedRoute>} />
       <Route path="/my-quizzes" element={<ProtectedRoute><StudentQuizView /></ProtectedRoute>} />
-      {/* Public Quiz - no auth */}
       <Route path="/quiz/:token" element={<PublicQuiz />} />
-      {/* Virtual Classroom */}
       <Route path="/classroom/:sessionId" element={<ProtectedRoute><VirtualClassroom /></ProtectedRoute>} />
-      {/* Schema Explorer - super_admin only */}
       <Route path="/admin/schema-explorer" element={
         <ProtectedRoute>
           {(() => {
