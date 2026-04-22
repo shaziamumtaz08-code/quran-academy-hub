@@ -428,7 +428,7 @@ export default function UnifiedDashboard() {
     { icon: Award, label: 'My certificates', path: '/student-reports' },
     { icon: Receipt, label: 'Fee history', path: '/payments' },
     { icon: User, label: 'My profile', path: '/organization-settings' },
-    { icon: Search, label: 'Browse courses', path: '/courses-catalog' },
+    { icon: Search, label: 'My courses', path: '/my-courses' },
   ];
 
   // ─── Smart navigation ───
@@ -548,7 +548,7 @@ export default function UnifiedDashboard() {
             My courses
             <Badge variant="secondary" className="text-xs">{myEnrollments.length}</Badge>
           </h2>
-          <Button variant="link" className="text-xs p-0 h-auto" onClick={() => navigate('/courses-catalog')}>View all</Button>
+          <Button variant="link" className="text-xs p-0 h-auto" onClick={() => navigate('/my-courses')}>View all</Button>
         </div>
 
         {loadingEnroll ? (
