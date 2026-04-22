@@ -139,7 +139,7 @@ export function PageBreadcrumb() {
                 </BreadcrumbItem>
               )}
             </>
-          )}
+          ) : null}
         </BreadcrumbList>
       </Breadcrumb>
     </div>
