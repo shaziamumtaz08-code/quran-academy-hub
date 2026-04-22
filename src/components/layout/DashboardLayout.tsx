@@ -128,7 +128,7 @@ function buildDrawerSections(role: AppRole | null): DrawerSection[] {
             label: "Communication",
             icon: MessageSquare,
             children: [
-              { label: "Academy Chat", href: "/communication?view=chat" },
+               { label: "Academy Chat", href: "/communication?view=academy-chat" },
               { label: "WhatsApp Inbox", href: "/communication?view=whatsapp" },
               { label: "Notifications", href: "/communication?view=notifications" },
               { label: "Zoom", href: "/communication?view=zoom" },
@@ -184,7 +184,7 @@ function buildDrawerSections(role: AppRole | null): DrawerSection[] {
             label: "Communication",
             icon: MessageSquare,
             children: [
-              { label: "Academy Chat", href: "/communication?view=chat" },
+               { label: "Academy Chat", href: "/communication?view=academy-chat" },
               { label: "WhatsApp", href: "/communication?view=whatsapp" },
               { label: "Notifications", href: "/communication?view=notifications" },
             ],
