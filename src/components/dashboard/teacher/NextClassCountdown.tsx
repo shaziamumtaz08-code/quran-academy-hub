@@ -6,6 +6,7 @@ import { Video, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StartClassButton } from '@/components/zoom/StartClassButton';
 import { Button } from '@/components/ui/button';
+import { NextClassBanner } from '@/components/dashboard/shared/NextClassBanner';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -181,43 +182,29 @@ export function NextClassCountdown() {
 
   const shortDay = SHORT_DAYS[nextClass.dayOfWeek] || nextClass.dayOfWeek;
 
-  return (
-    <div className="bg-gradient-to-br from-primary to-[hsl(var(--navy-light))] rounded-2xl px-3 py-2.5 text-primary-foreground shadow-card">
-      {/* Row 1: Label + Name + Start */}
-      <div className="flex items-center gap-2">
-        <p className="text-[10px] opacity-80 font-extrabold tracking-wide uppercase flex items-center gap-1 shrink-0">
-          <span aria-hidden="true">⏰</span>
-          Next
-        </p>
-        <p className="text-[15px] leading-tight font-extrabold truncate flex-1 min-w-0">{nextClass.studentName}</p>
-        {activeSession ? (
-          <Button
-            size="sm"
-            className="h-7 px-2.5 text-[11px] font-bold bg-emerald-500 hover:bg-emerald-600 text-white gap-1"
-            onClick={() => {
-              const link = (activeSession.license as any)?.meeting_link;
-              if (link) window.open(link, '_blank');
-            }}
-          >
-            <Video className="h-3 w-3" />
-            Rejoin
-          </Button>
-        ) : (
-          <StartClassButton />
-        )}
-      </div>
+  const countdownLabel = t.days > 0
+    ? `${t.days}d ${t.hours}h ${String(t.mins).padStart(2, '0')}m remaining`
+    : `${t.hours}h ${String(t.mins).padStart(2, '0')}m remaining`;
 
-      {/* Row 2: Details + Countdown pills */}
-      <div className="flex items-center justify-between mt-1.5">
-        <p className="text-[11px] text-primary-foreground/75 font-semibold truncate">
-          {nextClass.subjectName} · {shortDay.toLowerCase()} · {timeDisplay}
-        </p>
-        <div className="flex items-center gap-1 shrink-0">
-          <span className="bg-primary-foreground/15 rounded-md px-2 py-0.5 text-[11px] font-bold">{t.days}d</span>
-          <span className="bg-primary-foreground/15 rounded-md px-2 py-0.5 text-[11px] font-bold">{t.hours}h</span>
-          <span className="bg-primary-foreground/15 rounded-md px-2 py-0.5 text-[11px] font-bold">{String(t.mins).padStart(2, '0')}m</span>
-        </div>
-      </div>
-    </div>
+  return (
+    <NextClassBanner
+      title={nextClass.subjectName}
+      scheduleLabel={`${nextClass.studentName} · ${shortDay} · ${timeDisplay}`}
+      countdownLabel={countdownLabel}
+      action={activeSession ? (
+        <Button
+          className="dashboard-next-class-banner__join-button gap-2"
+          onClick={() => {
+            const link = (activeSession.license as any)?.meeting_link;
+            if (link) window.open(link, '_blank');
+          }}
+        >
+          <Video className="h-4 w-4" />
+          Rejoin
+        </Button>
+      ) : (
+        <StartClassButton />
+      )}
+    />
   );
 }

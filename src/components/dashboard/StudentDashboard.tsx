@@ -435,7 +435,6 @@ export function StudentDashboard() {
     shortDay = SHORT_DAYS[nc.dayOfWeek?.charAt(0).toUpperCase() + nc.dayOfWeek?.slice(1).toLowerCase()] || nc.dayOfWeek;
   }
   const minutesUntil = nc ? (nc.dateTime.getTime() - Date.now()) / 60000 : Infinity;
-  const isJoinable = minutesUntil <= 30 && minutesUntil > -90;
 
   const countdownLabel = !nc
     ? ''
