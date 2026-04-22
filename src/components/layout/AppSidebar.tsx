@@ -33,7 +33,7 @@ function getHomeSidebar(isOneToOne?: boolean, role?: string | null, activeModelT
       subtitle: isGroupStudent ? 'Course learning workspace' : 'Learning workspace',
       items: [
         { label: 'Dashboard', href: '/dashboard' },
-        { label: 'My Courses', href: '/courses-catalog' },
+        { label: 'My Courses', href: '/my-courses' },
         { label: 'Resources', href: '/resources' },
         { label: 'Communication', href: '/communication' },
       ],

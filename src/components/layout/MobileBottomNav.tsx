@@ -33,7 +33,7 @@ function getMobileTabs(role: AppRole | null): MobileTabItem[] {
   if (role === 'student') {
     return [
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-      { label: 'My Courses', href: '/courses-catalog', icon: BookOpen },
+      { label: 'My Courses', href: '/my-courses', icon: BookOpen },
       { label: 'Resources', href: '/resources', icon: FolderOpen },
       { label: 'Comms', href: '/communication', icon: MessageSquare },
     ];

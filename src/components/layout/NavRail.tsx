@@ -46,7 +46,7 @@ export function buildRailNav(role: AppRole | null): RailItem[] {
   if (role === 'student') {
     return [
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-      { label: 'My Courses', href: '/courses-catalog', icon: BookOpen },
+      { label: 'My Courses', href: '/my-courses', icon: BookOpen },
       { label: 'Resources', href: '/resources', icon: FolderOpen },
       { label: 'Communication', href: '/communication', icon: MessageSquare },
     ];
