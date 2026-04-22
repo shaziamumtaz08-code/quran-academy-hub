@@ -486,7 +486,7 @@ export function AppSidebar({ className }: AppSidebarProps) {
           // Non-course-detail: original rendering
           (() => {
             let currentGroup: string | undefined;
-            return sidebar.items.map((item) => {
+            return visibleSidebar.items.map((item) => {
               const showGroup = item.group && item.group !== currentGroup;
               if (showGroup) currentGroup = item.group;
               const groupLabel = showGroup ? (
@@ -506,7 +506,7 @@ export function AppSidebar({ className }: AppSidebarProps) {
       </nav>
 
       {/* New Course button */}
-      {'showNewCourse' in sidebar && sidebar.showNewCourse && (
+      {'showNewCourse' in visibleSidebar && visibleSidebar.showNewCourse && (
         <div className="px-3 pb-3 pt-1 border-t border-lms-border">
           <Link
             to="/courses"
