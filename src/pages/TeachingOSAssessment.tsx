@@ -2,8 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useTeachingSession } from '@/hooks/useTeachingSession';
 import { supabase } from '@/integrations/supabase/client';
-import { NavRail, buildRailNav } from '@/components/layout/NavRail';
-import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -509,12 +507,8 @@ const TeachingOSAssessment: React.FC = () => {
     return { index: i + 1, type: q.type, correctPct, points: q.points };
   });
 
-  const { activeRole } = useAuth();
-  const railItems = buildRailNav(activeRole);
-
   return (
-    <div className="flex h-screen bg-[#f4f5f7] overflow-hidden pl-14">
-      <NavRail items={railItems} />
+    <div className="flex h-screen bg-[#f4f5f7] overflow-hidden">
 
       {/* Section Sidebar */}
       <div className="w-[210px] bg-white border-r border-[#e8e9eb] flex flex-col flex-shrink-0">

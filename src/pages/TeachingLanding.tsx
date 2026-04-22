@@ -1,9 +1,11 @@
 import React, { Suspense, lazy, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { format, startOfWeek, endOfWeek } from 'date-fns';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
-import { HubPageShell } from '@/components/layout/HubPageShell';
-import { format, startOfWeek, endOfWeek } from 'date-fns';
+import { ViewPillBar } from '@/components/layout/ViewPillBar';
+import { InlineStatTiles } from '@/components/layout/InlineStatTiles';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const Attendance = lazy(() => import('./Attendance'));
@@ -16,10 +18,22 @@ const TeacherStudentsView = lazy(() => import('@/components/teacher/TeacherStude
 
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
 
+const views = [
+  { label: 'Live Classes', value: 'live-classes' },
+  { label: 'Assignments', value: 'assignments' },
+  { label: 'Schedules', value: 'schedules' },
+  { label: 'Attendance', value: 'attendance' },
+  { label: 'Planning', value: 'planning' },
+  { label: 'Subjects', value: 'subjects' },
+  { label: '1-to-1', value: 'one-to-one' },
+] as const;
+
 export default function TeachingLanding() {
   const { activeDivision } = useDivision();
+  const [searchParams, setSearchParams] = useSearchParams();
   const divisionId = activeDivision?.id;
-  const isOneToOne = activeDivision?.model_type === 'one_to_one';
+  const requested = searchParams.get('view');
+  const activeView = views.some((item) => item.value === requested) ? requested! : 'assignments';
 
   const { data: counts, isLoading } = useQuery({
     queryKey: ['teaching-landing-counts', divisionId],
@@ -29,13 +43,11 @@ export default function TeachingLanding() {
       const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
       const weekEnd = format(endOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
 
-      const [liveRes, assignRes, attRes, planRes, subRes, todayRes] = await Promise.all([
+      const [liveRes, assignRes, attRes, scheduleRes] = await Promise.all([
         supabase.from('live_sessions').select('id', { count: 'exact', head: true }).eq('status', 'live'),
         supabase.from('student_teacher_assignments').select('id', { count: 'exact', head: true }).eq('status', 'active').eq('division_id', divisionId),
         (supabase as any).from('attendance').select('status').eq('division_id', divisionId).gte('class_date', weekStart).lte('class_date', weekEnd),
         supabase.from('schedules').select('id', { count: 'exact', head: true }).eq('division_id', divisionId).eq('is_active', true),
-        supabase.from('subjects').select('id', { count: 'exact', head: true }).eq('is_active', true),
-        (supabase as any).from('attendance').select('id', { count: 'exact', head: true }).eq('division_id', divisionId).eq('class_date', today),
       ]);
 
       const attData = attRes.data || [];
@@ -45,47 +57,48 @@ export default function TeachingLanding() {
       return {
         live: liveRes.count || 0,
         assignments: assignRes.count || 0,
-        schedules: planRes.count || 0,
+        schedules: scheduleRes.count || 0,
         attRate,
-        plans: todayRes.count || 0,
-        subjects: subRes.count || 0,
-        todayClasses: todayRes.count || 0,
+        todayClasses: (await (supabase as any).from('attendance').select('id', { count: 'exact', head: true }).eq('division_id', divisionId).eq('class_date', today)).count || 0,
       };
     },
   });
 
   const contentMap: Record<string, React.ReactNode> = useMemo(() => ({
     'live-classes': <Suspense fallback={<Loading />}><ZoomManagement /></Suspense>,
-    'assignments': <Suspense fallback={<Loading />}><Assignments /></Suspense>,
-    'schedules': <Suspense fallback={<Loading />}><Schedules /></Suspense>,
-    'attendance': <Suspense fallback={<Loading />}><Attendance /></Suspense>,
-    'planning': <Suspense fallback={<Loading />}><MonthlyPlanning /></Suspense>,
-    'subjects': <Suspense fallback={<Loading />}><Subjects /></Suspense>,
-    'one-to-one-assignments': <Suspense fallback={<Loading />}><TeacherStudentsView /></Suspense>,
+    assignments: <Suspense fallback={<Loading />}><Assignments /></Suspense>,
+    schedules: <Suspense fallback={<Loading />}><Schedules /></Suspense>,
+    attendance: <Suspense fallback={<Loading />}><Attendance /></Suspense>,
+    planning: <Suspense fallback={<Loading />}><MonthlyPlanning /></Suspense>,
+    subjects: <Suspense fallback={<Loading />}><Subjects /></Suspense>,
+    'one-to-one': <Suspense fallback={<Loading />}><TeacherStudentsView /></Suspense>,
   }), []);
 
+  const setView = (value: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('view', value);
+    setSearchParams(next, { replace: true });
+  };
+
   return (
-    <HubPageShell
-      title="Teaching"
-      subtitle={isOneToOne ? 'Schedules, attendance, planning, and one-to-one operations' : 'Schedules, attendance, planning, and teaching operations'}
-      kpis={[
-        { label: 'Live Classes Now', value: counts?.live, loading: isLoading },
-        { label: 'Active Assignments', value: counts?.assignments, loading: isLoading },
-        { label: 'Weekly Slots', value: counts?.schedules, loading: isLoading },
-        { label: 'Attendance % (this week)', value: `${counts?.attRate ?? 0}%`, tone: 'success', loading: isLoading },
-        { label: 'Active Subjects', value: counts?.subjects, loading: isLoading },
-      ]}
-      tabs={[
-        { label: 'Live Classes', value: 'live-classes' },
-        { label: 'Assignments', value: 'assignments' },
-        { label: 'Schedules', value: 'schedules' },
-        { label: 'Attendance', value: 'attendance' },
-        { label: 'Planning', value: 'planning' },
-        { label: 'Subjects', value: 'subjects' },
-        { label: '1-to-1 Assignments', value: 'one-to-one-assignments' },
-      ]}
-      defaultTab="live-classes"
-      content={contentMap}
-    />
+    <div className="space-y-5 animate-fade-in">
+      <header>
+        <h1 className="text-2xl font-serif font-bold text-foreground">Teaching</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Schedules, attendance, planning, and daily teaching workflows.</p>
+      </header>
+
+      <InlineStatTiles
+        items={[
+          { label: 'Live Classes Now', value: counts?.live, loading: isLoading },
+          { label: 'Active Assignments', value: counts?.assignments, loading: isLoading },
+          { label: 'Weekly Slots', value: counts?.schedules, loading: isLoading },
+          { label: 'Attendance %', value: `${counts?.attRate ?? 0}%`, loading: isLoading, tone: 'success' },
+        ]}
+      />
+
+      <ViewPillBar items={[...views]} activeValue={activeView} onChange={setView} />
+
+      <div className="min-h-[420px]">{contentMap[activeView]}</div>
+    </div>
   );
 }

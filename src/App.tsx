@@ -80,7 +80,6 @@ import UserConnections from "./pages/UserConnections";
 import TeachingLanding from "./pages/TeachingLanding";
 import PeopleLanding from "./pages/PeopleLanding";
 import FinanceLanding from "./pages/FinanceLanding";
-import ReportsLanding from "./pages/ReportsLanding";
 import CommunicationLanding from "./pages/CommunicationLanding";
 import SettingsLanding from "./pages/SettingsLanding";
 
@@ -292,10 +291,11 @@ function AppRoutes() {
       <Route path="/parent/child/:studentId" element={<ProtectedRoute><ParentDashboard /></ProtectedRoute>} />
       <Route path="/people" element={<ProtectedRoute><AdminRoute><DashboardLayout><PeopleLanding /></DashboardLayout></AdminRoute></ProtectedRoute>} />
       <Route path="/finance" element={<ProtectedRoute><DashboardLayout><FinanceLanding /></DashboardLayout></ProtectedRoute>} />
-      <Route path="/reports-hub" element={<Navigate to="/reports?section=executive" replace />} />
+      <Route path="/reports-hub" element={<Navigate to="/reports?view=executive" replace />} />
       <Route path="/communication" element={<ProtectedRoute><DashboardLayout><CommunicationLanding /></DashboardLayout></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><AdminRoute><DashboardLayout><SettingsLanding /></DashboardLayout></AdminRoute></ProtectedRoute>} />
 
+      <Route path="/my-dashboard" element={<Navigate to="/dashboard" replace />} />
       <Route path="/dashboard" element={<ProtectedRoute><DashboardWrapper /></ProtectedRoute>} />
       <Route path="/my-courses" element={<ProtectedRoute><DashboardLayout><MyCourses /></DashboardLayout></ProtectedRoute>} />
       <Route path="/my-courses/:courseId" element={<ProtectedRoute><DashboardLayout><StudentCourseView /></DashboardLayout></ProtectedRoute>} />
@@ -308,7 +308,7 @@ function AppRoutes() {
       <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
       <Route path="/lessons" element={<ProtectedRoute><Lessons /></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-      <Route path="/payments" element={<Navigate to="/finance?section=payments" replace />} />
+      <Route path="/payments" element={<Navigate to="/finance?view=payments" replace />} />
       <Route path="/kpi" element={<ProtectedRoute><KPI /></ProtectedRoute>} />
       <Route path="/schedules" element={<ProtectedRoute><AdminRoute><Schedules /></AdminRoute></ProtectedRoute>} />
       <Route path="/zoom-management" element={<ProtectedRoute><AdminRoute><ZoomManagement /></AdminRoute></ProtectedRoute>} />
@@ -345,9 +345,9 @@ function AppRoutes() {
       <Route path="/leads" element={<ProtectedRoute><AdminRoute><LeadsPipeline /></AdminRoute></ProtectedRoute>} />
       <Route path="/identity" element={<ProtectedRoute><AdminRoute><IdentityResolution /></AdminRoute></ProtectedRoute>} />
       <Route path="/notifications" element={<ProtectedRoute><AdminRoute><NotificationCenter /></AdminRoute></ProtectedRoute>} />
-      <Route path="/hub" element={<ProtectedRoute><WorkHub /></ProtectedRoute>} />
-      <Route path="/workhub" element={<Navigate to="/hub" replace />} />
-      <Route path="/work-hub" element={<Navigate to="/hub" replace />} />
+      <Route path="/hub" element={<Navigate to="/work-hub" replace />} />
+      <Route path="/workhub" element={<Navigate to="/work-hub" replace />} />
+      <Route path="/work-hub" element={<ProtectedRoute><WorkHub /></ProtectedRoute>} />
       <Route path="/chat" element={<ProtectedRoute><GroupChat /></ProtectedRoute>} />
       <Route path="/whatsapp" element={<ProtectedRoute><AdminRoute><WhatsAppInbox /></AdminRoute></ProtectedRoute>} />
       <Route path="/my-resources" element={<Navigate to="/resources?tab=assigned" replace />} />

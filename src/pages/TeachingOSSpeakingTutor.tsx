@@ -4,8 +4,6 @@ import { parseArabicTags } from '@/lib/languageUtils';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useTeachingSession } from '@/hooks/useTeachingSession';
 import { supabase } from '@/integrations/supabase/client';
-import { NavRail, buildRailNav } from '@/components/layout/NavRail';
-import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -60,8 +58,6 @@ const scoreColor = (s: number) => s >= 85 ? '#1a7340' : s >= 70 ? '#1a56b0' : s 
 const TeachingOSSpeakingTutor: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { activeRole } = useAuth();
-  const railItems = buildRailNav(activeRole);
   const { sessionId } = useTeachingSession();
 
   const [activeSection, setActiveSection] = useState<Section>('drill');
@@ -188,8 +184,7 @@ const TeachingOSSpeakingTutor: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden pl-14" style={{ backgroundColor: '#f4f5f7' }}>
-      <NavRail items={railItems} />
+    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: '#f4f5f7' }}>
 
       {/* Section Sidebar */}
       <div className="w-[220px] bg-white border-r flex flex-col flex-shrink-0" style={{ borderColor: '#e8e9eb' }}>

@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useTeachingSession } from '@/hooks/useTeachingSession';
 import { supabase } from '@/integrations/supabase/client';
-import { NavRail, buildRailNav } from '@/components/layout/NavRail';
-import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -77,8 +75,6 @@ const formatDuration = (sec: number) => {
 const TeachingOSVideo: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { activeRole } = useAuth();
-  const railItems = buildRailNav(activeRole);
   const { sessionId } = useTeachingSession();
 
   const [activeSection, setActiveSection] = useState<Section>('search');
@@ -148,8 +144,7 @@ const TeachingOSVideo: React.FC = () => {
   }[activeSection];
 
   return (
-    <div className="flex h-screen bg-[#f4f5f7] overflow-hidden pl-14">
-      <NavRail items={railItems} />
+    <div className="flex h-screen bg-[#f4f5f7] overflow-hidden">
 
       {/* Section Sidebar */}
       <div className="w-[220px] bg-white border-r border-[#e8e9eb] flex flex-col flex-shrink-0">

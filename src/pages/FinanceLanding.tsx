@@ -1,9 +1,11 @@
 import React, { Suspense, lazy, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
-import { HubPageShell } from '@/components/layout/HubPageShell';
+import { ViewPillBar } from '@/components/layout/ViewPillBar';
+import { InlineStatTiles } from '@/components/layout/InlineStatTiles';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const Payments = lazy(() => import('./Payments'));
@@ -15,34 +17,39 @@ const TeacherPayouts = lazy(() => import('./TeacherPayouts'));
 
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
 
+const views = [
+  { label: 'Invoices', value: 'invoices' },
+  { label: 'Payments', value: 'payments' },
+  { label: 'Fee Plans', value: 'fee-plans' },
+  { label: 'Salaries', value: 'salaries' },
+  { label: 'Expenses', value: 'expenses' },
+  { label: 'Cash Advances', value: 'cash-advances' },
+  { label: 'Payouts', value: 'payouts' },
+  { label: 'Setup', value: 'setup' },
+] as const;
+
 export default function FinanceLanding() {
   const { activeDivision } = useDivision();
+  const [searchParams, setSearchParams] = useSearchParams();
   const divisionId = activeDivision?.id || null;
-  const isOneToOne = activeDivision?.model_type === 'one_to_one';
   const currentMonth = format(new Date(), 'yyyy-MM');
+  const requested = searchParams.get('view');
+  const activeView = views.some((item) => item.value === requested) ? requested! : 'invoices';
 
   const { data: counts, isLoading } = useQuery({
     queryKey: ['finance-landing-kpis', divisionId, currentMonth],
     queryFn: async () => {
       const sb = supabase as any;
-      let invoiceQuery = sb
-        .from('fee_invoices')
-        .select('amount, amount_paid, status, division_id')
-        .eq('billing_month', currentMonth);
-
-      if (divisionId) {
-        invoiceQuery = invoiceQuery.eq('division_id', divisionId);
-      }
-
+      let invoiceQuery = sb.from('fee_invoices').select('amount, amount_paid, status, division_id').eq('billing_month', currentMonth);
+      if (divisionId) invoiceQuery = invoiceQuery.eq('division_id', divisionId);
       const { data: invoices } = await invoiceQuery;
       const rows = invoices || [];
-
-      const revenue = rows.reduce((sum: number, row: any) => sum + Number(row.amount_paid || 0), 0);
-      const outstanding = rows.reduce((sum: number, row: any) => sum + Math.max(0, Number(row.amount || 0) - Number(row.amount_paid || 0)), 0);
-      const paid = rows.filter((row: any) => row.status === 'paid').length;
-      const overdue = rows.filter((row: any) => row.status === 'overdue').length;
-
-      return { revenue, outstanding, paid, overdue };
+      return {
+        revenue: rows.reduce((sum: number, row: any) => sum + Number(row.amount_paid || 0), 0),
+        outstanding: rows.reduce((sum: number, row: any) => sum + Math.max(0, Number(row.amount || 0) - Number(row.amount_paid || 0)), 0),
+        paid: rows.filter((row: any) => row.status === 'paid').length,
+        overdue: rows.filter((row: any) => row.status === 'overdue').length,
+      };
     },
   });
 
@@ -56,33 +63,34 @@ export default function FinanceLanding() {
     expenses: <Suspense fallback={<Loading />}><Expenses /></Suspense>,
     'cash-advances': <Suspense fallback={<Loading />}><CashAdvances /></Suspense>,
     payouts: <Suspense fallback={<Loading />}><TeacherPayouts /></Suspense>,
-    'finance-setup': <Suspense fallback={<Loading />}><FinanceSetup /></Suspense>,
+    setup: <Suspense fallback={<Loading />}><FinanceSetup /></Suspense>,
   }), []);
 
-  const tabs = [
-    { label: 'Invoices', value: 'invoices' },
-    { label: 'Payments', value: 'payments' },
-    { label: 'Fee Plans', value: 'fee-plans' },
-    ...(isOneToOne ? [{ label: 'Salaries', value: 'salaries' }] : []),
-    { label: 'Expenses', value: 'expenses' },
-    ...(isOneToOne ? [{ label: 'Cash Advances', value: 'cash-advances' }] : []),
-    ...(!isOneToOne ? [{ label: 'Payouts', value: 'payouts' }] : []),
-    { label: 'Finance Setup', value: 'finance-setup' },
-  ];
+  const setView = (value: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('view', value);
+    setSearchParams(next, { replace: true });
+  };
 
   return (
-    <HubPageShell
-      title="Finance"
-      subtitle={isOneToOne ? 'Revenue, outstanding invoices, salaries, and finance operations' : 'Revenue, invoices, payouts, and finance operations'}
-      kpis={[
-        { label: 'Revenue (month)', value: formatCurrency(counts?.revenue), tone: 'success', loading: isLoading },
-        { label: 'Outstanding', value: formatCurrency(counts?.outstanding), tone: counts && counts.outstanding > 0 ? 'warning' : 'default', loading: isLoading },
-        { label: 'Invoices Paid', value: counts?.paid, loading: isLoading },
-        { label: 'Invoices Overdue', value: counts?.overdue, tone: 'danger', loading: isLoading },
-      ]}
-      tabs={tabs}
-      defaultTab="invoices"
-      content={contentMap}
-    />
+    <div className="space-y-5 animate-fade-in">
+      <header>
+        <h1 className="text-2xl font-serif font-bold text-foreground">Finance</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Revenue, invoices, payouts, and finance operations.</p>
+      </header>
+
+      <InlineStatTiles
+        items={[
+          { label: 'Revenue (month)', value: formatCurrency(counts?.revenue), loading: isLoading, tone: 'success' },
+          { label: 'Outstanding', value: formatCurrency(counts?.outstanding), loading: isLoading, tone: Number(counts?.outstanding || 0) > 0 ? 'warning' : 'default' },
+          { label: 'Invoices Paid', value: counts?.paid, loading: isLoading },
+          { label: 'Invoices Overdue', value: counts?.overdue, loading: isLoading, tone: 'danger' },
+        ]}
+      />
+
+      <ViewPillBar items={[...views]} activeValue={activeView} onChange={setView} />
+
+      <div className="min-h-[420px]">{contentMap[activeView]}</div>
+    </div>
   );
 }
