@@ -1082,6 +1082,20 @@ export default function UserManagement() {
     return allRoles.filter(role => !userRoles.includes(role) && role !== 'super_admin');
   };
 
+  useEffect(() => {
+    if (!users?.length) return;
+
+    if (viewingUser) {
+      const refreshedViewingUser = users.find(user => user.id === viewingUser.id);
+      if (refreshedViewingUser) setViewingUser(refreshedViewingUser);
+    }
+
+    if (selectedUser) {
+      const refreshedSelectedUser = users.find(user => user.id === selectedUser.id);
+      if (refreshedSelectedUser) setSelectedUser(refreshedSelectedUser);
+    }
+  }, [users, viewingUser, selectedUser]);
+
   // Access denied - render after all hooks are called
   if (!canAccessPage) {
     return (
@@ -2299,6 +2313,56 @@ export default function UserManagement() {
                         </div>
                       </div>
                     </div>
+                    {isSuperAdmin && (
+                      <div className="rounded-lg border bg-card p-4 space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">Role access</p>
+                            <p className="text-xs text-muted-foreground">Add a new role or remove an existing one for this user.</p>
+                          </div>
+                          <Button
+                            size="sm"
+                            disabled={getAvailableRoles(viewingUser).length === 0}
+                            onClick={() => {
+                              const availableRoles = getAvailableRoles(viewingUser);
+                              if (availableRoles.length === 0) return;
+                              setAddRoleSelection(availableRoles[0]);
+                              setIsAddRoleDialogOpen(true);
+                            }}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add role
+                          </Button>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          {viewingUser.roles.map((role) => (
+                            <div key={role} className="inline-flex items-center gap-1.5 rounded-md border bg-background px-2 py-1">
+                              <Badge variant="outline" className={`text-xs ${ROLE_COLORS[role]}`}>
+                                {ROLE_LABELS[role]}
+                              </Badge>
+                              {role !== 'super_admin' && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  title={`Remove ${ROLE_LABELS[role]}`}
+                                  disabled={removeRoleMutation.isPending}
+                                  onClick={() => setRemoveRoleConfirm({ user: viewingUser, role })}
+                                >
+                                  <Minus className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+
+                        {getAvailableRoles(viewingUser).length === 0 && (
+                          <p className="text-xs text-muted-foreground">No additional UI-assignable roles are available for this user.</p>
+                        )}
+                      </div>
+                    )}
                     {/* Universal ID + per-division URN breakdown */}
                     <div className="p-3 bg-muted/30 rounded-lg border">
                       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Identity</p>
