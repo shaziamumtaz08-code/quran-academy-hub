@@ -174,7 +174,24 @@ function getSidebarForRoute(pathname: string, isOneToOne?: boolean, role?: strin
 
 /* ─── Course Detail sidebar ─── */
 function isCourseDetailRoute(pathname: string) {
-  return /^\/courses\/[^/]+$/.test(pathname) || /^\/academics\/courses\/[^/]+$/.test(pathname);
+  return /^\/(courses|academics\/courses|my-courses)\/[^/]+$/.test(pathname);
+}
+
+function getStudentCourseSidebar(pathname: string): { title: string; subtitle: string; items: SidebarNavItem[]; isCourseDetail: true } {
+  const base = pathname;
+  return {
+    title: 'My Course',
+    subtitle: 'Course workspace',
+    isCourseDetail: true,
+    items: [
+      { label: 'Today', href: `${base}?tab=today` },
+      { label: 'Lessons', href: `${base}?tab=lessons` },
+      { label: 'Assignments', href: `${base}?tab=assignments` },
+      { label: 'Announcements', href: `${base}?tab=announcements` },
+      { label: 'Class Chat', href: `${base}?tab=class-chat` },
+      { label: 'Progress & Certificates', href: `${base}?tab=progress` },
+    ],
+  };
 }
 
 function getCourseDetailSidebar(pathname: string): { title: string; subtitle: string; items: SidebarNavItem[]; isCourseDetail: true } {
@@ -221,7 +238,8 @@ export function AppSidebar({ className }: AppSidebarProps) {
 
   const isOneToOne = activeDivision?.model_type === 'one_to_one';
   const isCourseDetail = isCourseDetailRoute(location.pathname);
-  const courseIdMatch = location.pathname.match(/\/courses\/([^/]+)$/);
+  const isStudentCourseDetail = /^\/my-courses\/[^/]+$/.test(location.pathname);
+  const courseIdMatch = location.pathname.match(/\/(?:courses|my-courses)\/([^/]+)$/);
   const courseId = courseIdMatch?.[1];
 
   const { data: courseInfo } = useQuery({
@@ -236,11 +254,11 @@ export function AppSidebar({ className }: AppSidebarProps) {
   });
 
   const baseSidebar = isCourseDetail
-    ? getCourseDetailSidebar(location.pathname)
+    ? (isStudentCourseDetail ? getStudentCourseSidebar(location.pathname) : getCourseDetailSidebar(location.pathname))
     : getSidebarForRoute(location.pathname, isOneToOne, activeRole, activeDivision?.model_type ?? null);
 
   const sidebar = isCourseDetail && courseInfo
-    ? { ...baseSidebar, title: courseInfo.name || 'Course', subtitle: 'Course workspace' }
+    ? { ...baseSidebar, title: courseInfo.name || 'Course', subtitle: isStudentCourseDetail ? 'Student course workspace' : 'Course workspace' }
     : baseSidebar;
 
   const isItemActive = (item: SidebarNavItem) => {
