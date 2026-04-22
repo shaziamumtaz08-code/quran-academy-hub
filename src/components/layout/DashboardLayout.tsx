@@ -1,28 +1,7 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import {
-  Menu,
-  ChevronRight,
-  ChevronDown,
-  LayoutDashboard,
-  BookOpen,
-  Users,
-  DollarSign,
-  BarChart3,
-  MessageSquare,
-  Cog,
-  Briefcase,
-  FolderOpen,
-  FileText,
-  GraduationCap,
-  Wallet,
-  Landmark,
-  CalendarDays,
-  ClipboardCheck,
-  Target,
-  Award,
-} from "lucide-react";
+import { Menu, ChevronRight, ChevronDown, LayoutDashboard, BookOpen, Users, DollarSign, BarChart3, MessageSquare, Cog, Briefcase, FolderOpen, FileText, GraduationCap, Wallet, Landmark, Award } from "lucide-react";
 import { useAuth, type AppRole } from "@/contexts/AuthContext";
 import { DivisionSwitcher } from "@/components/layout/DivisionSwitcher";
 import { NotificationBell } from "@/components/layout/NotificationBell";
@@ -466,12 +445,22 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                         <DropdownMenuLabel>{profileName}</DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => { navigate("/dashboard"); setOpen(false); }}>Profile</DropdownMenuItem>
-                        {profile?.roles && profile.roles.length > 1 ? (
-                          <div className="px-2 py-1.5">
-                            <p className="mb-2 text-xs font-medium text-muted-foreground">Switch Role</p>
-                            <RoleSwitcher />
-                          </div>
-                        ) : null}
+                        {profile?.roles && profile.roles.length > 1
+                          ? profile.roles.map((role) => (
+                              <DropdownMenuItem
+                                key={role}
+                                onClick={() => {
+                                  if (role !== activeRole) {
+                                    const home = role === "parent" ? "/parent" : "/dashboard";
+                                    navigate(home, { replace: true });
+                                  }
+                                  setOpen(false);
+                                }}
+                              >
+                                Switch to {role.replaceAll("_", " ")}
+                              </DropdownMenuItem>
+                            ))
+                          : null}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={handleLogout}>Sign Out</DropdownMenuItem>
                       </DropdownMenuContent>
@@ -507,12 +496,21 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   <DropdownMenuLabel>{profileName}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => navigate("/dashboard")}>Profile</DropdownMenuItem>
-                  {profile?.roles && profile.roles.length > 1 ? (
-                    <div className="px-2 py-1.5">
-                      <p className="mb-2 text-xs font-medium text-muted-foreground">Switch Role</p>
-                      <RoleSwitcher />
-                    </div>
-                  ) : null}
+                  {profile?.roles && profile.roles.length > 1
+                    ? profile.roles.map((role) => (
+                        <DropdownMenuItem
+                          key={role}
+                          onClick={() => {
+                            if (role !== activeRole) {
+                              const home = role === "parent" ? "/parent" : "/dashboard";
+                              navigate(home, { replace: true });
+                            }
+                          }}
+                        >
+                          Switch to {role.replaceAll("_", " ")}
+                        </DropdownMenuItem>
+                      ))
+                    : null}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>Sign Out</DropdownMenuItem>
                 </DropdownMenuContent>
