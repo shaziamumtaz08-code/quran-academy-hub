@@ -1,6 +1,7 @@
 import React, { Suspense, lazy, useMemo } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { PageShell } from '@/components/layout/PageShell';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const OrganizationSettings = lazy(() => import('./OrganizationSettings'));
@@ -49,12 +50,8 @@ export default function SettingsLanding() {
   if (!activeView) return <Navigate to="/settings?view=organization" replace />;
 
   return (
-    <div className="space-y-5 animate-fade-in">
-      <header>
-        <h1 className="text-2xl font-serif font-bold text-foreground">Settings</h1>
-        <p className="mt-1 text-sm text-muted-foreground">System configuration, resources, finance controls, and integrity tools.</p>
-      </header>
-      <div className="min-h-[420px]">{contentMap[activeView]}</div>
-    </div>
+    <PageShell title="Settings" description="System configuration, resources, finance controls, and integrity tools.">
+      <div className="min-h-[420px] animate-fade-in">{contentMap[activeView]}</div>
+    </PageShell>
   );
 }
