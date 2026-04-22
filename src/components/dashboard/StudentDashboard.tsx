@@ -349,19 +349,19 @@ export function StudentDashboard() {
       // ── Notifications (priority inbox) ──
       const { data: notifications } = await supabase
         .from('notification_queue')
-        .select('id, title, body, created_at, status, channel')
+        .select('id, title, message, notification_type, created_at, status')
         .eq('recipient_id', user.id)
         .order('created_at', { ascending: false })
         .limit(5);
 
       const inboxItems = (notifications || []).map((n: any) => {
-        const isPinned = n.channel === 'pinned' || (n.title || '').toLowerCase().includes('important');
-        const isAnnouncement = n.channel === 'announcement' || (n.title || '').toLowerCase().includes('announcement');
+        const isPinned = n.notification_type === 'pinned' || (n.title || '').toLowerCase().includes('important');
+        const isAnnouncement = n.notification_type === 'announcement' || (n.title || '').toLowerCase().includes('announcement');
         return {
           id: n.id,
-          type: isPinned ? 'pinned' : isAnnouncement ? 'announcement' : n.channel === 'system' ? 'system' : 'teacher',
+          type: isPinned ? 'pinned' : isAnnouncement ? 'announcement' : n.notification_type === 'system' ? 'system' : 'teacher',
           title: n.title || 'Notification',
-          body: n.body || '',
+          body: n.message || '',
           timestamp: n.created_at,
           isUnread: n.status === 'pending',
         };
