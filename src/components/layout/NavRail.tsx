@@ -26,7 +26,7 @@ export function buildRailNav(role: AppRole | null): RailItem[] {
       { label: 'Teaching', href: '/teaching', icon: BookOpen },
       { label: 'People', href: '/people', icon: Users },
       { label: 'Finance', href: '/finance', icon: DollarSign },
-      { label: 'Reports', href: '/reports-hub', icon: BarChart3 },
+      { label: 'Reports', href: '/reports', icon: BarChart3 },
       { label: 'Communication', href: '/communication', icon: MessageSquare, divider: true },
       { label: 'Settings', href: '/settings', icon: Cog },
     ];
@@ -82,7 +82,7 @@ export function NavRail({ items, orgInitials = 'AQ' }: NavRailProps) {
     '/people': ['/people', '/students', '/teachers', '/user-management', '/leads', '/identity', '/applicants'],
     '/teaching': ['/teaching', '/teaching-os', '/quiz-engine', '/courses', '/course-builder', '/my-teaching', '/my-courses', '/lessons', '/assignments', '/subjects', '/schedules', '/attendance', '/monthly-planning'],
     '/finance': ['/finance', '/payments', '/expenses', '/cash-advances', '/salary', '/staff-salary', '/teacher-payouts'],
-    '/reports-hub': ['/reports-hub', '/reports', '/student-reports', '/kpi'],
+    '/reports': ['/reports-hub', '/reports', '/student-reports', '/kpi'],
     '/communication': ['/communication', '/group-chat', '/whatsapp-inbox', '/notifications', '/work-hub'],
     '/settings': ['/settings', '/organization-settings', '/zoom-management', '/report-card-templates'],
     '/resources': ['/resources', '/my-resources'],

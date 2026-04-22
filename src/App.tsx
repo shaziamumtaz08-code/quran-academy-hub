@@ -311,7 +311,7 @@ function AppRoutes() {
       <Route path="/parent/child/:studentId" element={<ProtectedRoute><ParentDashboard /></ProtectedRoute>} />
       <Route path="/people" element={<ProtectedRoute><AdminRoute><DashboardLayout><PeopleLanding /></DashboardLayout></AdminRoute></ProtectedRoute>} />
       <Route path="/finance" element={<ProtectedRoute><DashboardLayout><FinanceLanding /></DashboardLayout></ProtectedRoute>} />
-      <Route path="/reports-hub" element={<ProtectedRoute><DashboardLayout><ReportsLanding /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/reports-hub" element={<Navigate to="/reports?section=executive" replace />} />
       <Route path="/communication" element={<ProtectedRoute><DashboardLayout><CommunicationLanding /></DashboardLayout></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><AdminRoute><DashboardLayout><SettingsLanding /></DashboardLayout></AdminRoute></ProtectedRoute>} />
 
