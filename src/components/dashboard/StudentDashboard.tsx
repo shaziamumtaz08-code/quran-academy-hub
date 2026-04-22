@@ -371,22 +371,10 @@ export function StudentDashboard() {
         return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
       });
 
-      // Global next class across 1-on-1
+      // Global next class across Group Academy courses in the active division
       let globalNextClass: { dayOfWeek: string; time: string; dateTime: Date; duration: number } | null = null;
       let globalNextEnrollmentName = '';
       let globalNextTeacherId: string | undefined;
-      (assignments || []).forEach((a: any) => {
-        const scheds = scheduleMap[a.id] || [];
-        scheds.forEach(s => {
-          const dt = buildNextOccurrence(s.day_of_week, s.student_local_time || '00:00', s.duration_minutes, studentTz);
-          if (!globalNextClass || dt < globalNextClass.dateTime) {
-            globalNextClass = { dayOfWeek: s.day_of_week, time: s.student_local_time || '00:00', dateTime: dt, duration: s.duration_minutes };
-            globalNextEnrollmentName = a.subject?.name || 'Quran';
-            globalNextTeacherId = a.teacher_id;
-          }
-        });
-      });
-      // Also check group courses
       courseCards.forEach((cc: any) => {
         if (cc?.nextClass) {
           if (!globalNextClass || cc.nextClass.dateTime < globalNextClass.dateTime) {
