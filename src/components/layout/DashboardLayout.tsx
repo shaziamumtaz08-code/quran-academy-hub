@@ -111,10 +111,10 @@ function buildDrawerSections(role: AppRole | null): DrawerSection[] {
               { label: "Attendance Reports", href: "/reports?view=attendance" },
               { label: "Fee & Financial", href: "/reports?view=fees" },
               { label: "Student Engagement", href: "/reports?view=engagement" },
-              { label: "Teacher Performance", href: "/reports?view=teacher" },
+               { label: "Teacher Performance", href: "/reports?view=teachers" },
               { label: "Accountability", href: "/reports?view=accountability" },
-              { label: "Course / Batch", href: "/reports?view=courses" },
-              { label: "Activity Logs", href: "/reports?view=logs" },
+               { label: "Course / Batch", href: "/reports?view=course-batch" },
+               { label: "Activity Logs", href: "/reports?view=activity-logs" },
               { label: "Alerts & Automation", href: "/reports?view=alerts" },
               { label: "Custom Report Builder", href: "/reports?view=custom" },
             ],
@@ -148,8 +148,8 @@ function buildDrawerSections(role: AppRole | null): DrawerSection[] {
               { label: "Finance Setup", href: "/settings?view=finance-setup" },
               { label: "Teaching Config", href: "/settings?view=teaching-config" },
               { label: "Resources Manager", href: "/settings?view=resources" },
-              { label: "Integrity Audit", href: "/settings?view=integrity" },
-              { label: "Schema Explorer", href: "/settings?view=schema", superAdminOnly: true },
+               { label: "Integrity Audit", href: "/settings?view=integrity" },
+               { label: "Schema Explorer", href: "/settings?view=schema", superAdminOnly: true },
             ],
           },
         ],
@@ -331,7 +331,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           type="button"
           onClick={() => {
             navigate(item.href!);
-            setOpen(false);
+            if (typeof window !== "undefined" && window.innerWidth <= 1024) {
+              setOpen(false);
+            }
           }}
           className={cn(
             "flex h-10 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
