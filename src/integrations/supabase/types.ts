@@ -9171,6 +9171,16 @@ export type Database = {
         }
         Returns: Json
       }
+      can_manage_content_kit: { Args: { _kit_id: string }; Returns: boolean }
+      can_manage_course_content: {
+        Args: { _course_id: string }
+        Returns: boolean
+      }
+      can_view_content_kit: { Args: { _kit_id: string }; Returns: boolean }
+      can_view_course_content: {
+        Args: { _course_id: string }
+        Returns: boolean
+      }
       can_view_resource_visibility: {
         Args: { _visibility: string; _visible_to_roles: string[] }
         Returns: boolean
