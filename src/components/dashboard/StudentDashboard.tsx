@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDivision } from '@/contexts/DivisionContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -107,11 +108,12 @@ const GRADIENTS = [
 
 export function StudentDashboard() {
   const { profile, user } = useAuth();
+  const { activeDivision } = useDivision();
   const navigate = useNavigate();
 
   // ═══ MAIN DATA FETCH ═══
   const { data: dashData, isLoading } = useQuery({
-    queryKey: ['student-dashboard-v2', user?.id],
+    queryKey: ['student-dashboard-v2', user?.id, activeDivision?.id, activeDivision?.model_type],
     queryFn: async () => {
       if (!user?.id) return null;
 
@@ -127,11 +129,22 @@ export function StudentDashboard() {
       // ── Group course enrollments ──
       const { data: courseEnrollments } = await supabase
         .from('course_enrollments')
-        .select('id, course_id, course:courses(id, name, description)')
+        .select('id, course_id, course:courses(id, name, description, division_id, divisions:divisions(id, name, model_type))')
         .eq('student_id', user.id)
         .eq('status', 'active');
 
-      const courseIds = (courseEnrollments || []).map((ce: any) => ce.course_id).filter(Boolean);
+      const isScopedToGroupDivision = !!activeDivision && activeDivision.model_type === 'group';
+      const groupEnrollments = (courseEnrollments || []).filter((ce: any) => {
+        const courseDivisionId = ce.course?.division_id || null;
+        const courseModelType = ce.course?.divisions?.model_type || null;
+
+        if (courseModelType !== 'group') return false;
+        if (activeDivision?.id && courseDivisionId !== activeDivision.id) return false;
+
+        return true;
+      });
+
+      const courseIds = groupEnrollments.map((ce: any) => ce.course_id).filter(Boolean);
 
       // ── Student's class memberships ──
       let classStudentRows: any[] = [];
@@ -208,7 +221,7 @@ export function StudentDashboard() {
       }
 
       // ── Build course cards ──
-      const courseCards = (courseEnrollments || []).map((ce: any, idx: number) => {
+      const courseCards = groupEnrollments.map((ce: any, idx: number) => {
         const course = ce.course;
         if (!course) return null;
         const courseClasses = allClasses.filter(c => c.course_id === course.id);
@@ -272,7 +285,7 @@ export function StudentDashboard() {
         const days: string[] = (cls.schedule_days || []).map((d: string) => d.charAt(0).toUpperCase() + d.slice(1).toLowerCase());
         if (days.includes(todayName)) {
         const courseName = '';
-        const courseObj = (courseEnrollments || []).find((ce: any) => ce.course_id === cls.course_id)?.course as any;
+        const courseObj = groupEnrollments.find((ce: any) => ce.course_id === cls.course_id)?.course as any;
         const resolvedCourseName = courseObj?.name || 'Course';
           todaySchedule.push({
             time: cls.schedule_time || '00:00',
@@ -287,53 +300,15 @@ export function StudentDashboard() {
       });
       todaySchedule.sort((a, b) => a.time.localeCompare(b.time));
 
-      // ── 1-on-1 assignments (existing logic, kept for alerts/stats) ──
-      const { data: assignments } = await supabase
-        .from('student_teacher_assignments')
-        .select('id, teacher_id, subject:subjects(name), teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name)')
-        .eq('student_id', user.id)
-        .eq('status', 'active');
-
-      const assignmentIds = (assignments || []).map(a => a.id);
-      let scheduleMap: Record<string, any[]> = {};
-      if (assignmentIds.length) {
-        const { data: schedules } = await supabase
-          .from('schedules')
-          .select('day_of_week, student_local_time, duration_minutes, assignment_id')
-          .in('assignment_id', assignmentIds)
-          .eq('is_active', true);
-        (schedules || []).forEach(s => {
-          if (!scheduleMap[s.assignment_id!]) scheduleMap[s.assignment_id!] = [];
-          scheduleMap[s.assignment_id!].push(s);
-        });
-
-        // Add 1-on-1 to today schedule
-        (assignments || []).forEach((a: any) => {
-          const scheds = scheduleMap[a.id] || [];
-          scheds.forEach(s => {
-            const dayFormatted = s.day_of_week ? s.day_of_week.charAt(0).toUpperCase() + s.day_of_week.slice(1).toLowerCase() : '';
-            if (dayFormatted === todayName) {
-              todaySchedule.push({
-                time: s.student_local_time || '00:00',
-                courseName: a.subject?.name || 'Quran',
-                className: '1-on-1',
-                teacherName: a.teacher?.full_name || 'Teacher',
-                duration: s.duration_minutes || 30,
-                meetingLink: null,
-                courseId: '',
-              });
-            }
-          });
-        });
-        todaySchedule.sort((a, b) => a.time.localeCompare(b.time));
-      }
-
       // ── Attendance stats ──
-      const { data: attendance } = await supabase
-        .from('attendance')
-        .select('status, class_date, course_id, teacher_id')
-        .eq('student_id', user.id)
-        .order('class_date', { ascending: false });
+      const { data: attendance } = courseIds.length
+        ? await supabase
+            .from('attendance')
+            .select('status, class_date, course_id, teacher_id')
+            .eq('student_id', user.id)
+            .in('course_id', courseIds)
+            .order('class_date', { ascending: false })
+        : { data: [] as any[] };
       const allAtt = attendance || [];
       const totalPresent = allAtt.filter(a => a.status === 'present' || a.status === 'late').length;
       const overallRate = allAtt.length > 0 ? Math.round((totalPresent / allAtt.length) * 100) : 0;
