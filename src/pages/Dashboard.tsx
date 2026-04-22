@@ -1,6 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
-import { format } from 'date-fns';
 import { AlertCircle } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/contexts/AuthContext';
+import { useDivision } from '@/contexts/DivisionContext';
 import { AdminDashboard } from '@/components/dashboard/AdminDashboard';
 import { TeacherDashboard } from '@/components/dashboard/TeacherDashboard';
 import { StudentDashboard } from '@/components/dashboard/StudentDashboard';
@@ -10,11 +11,6 @@ import { FeesAdminDashboard } from '@/components/dashboard/FeesAdminDashboard';
 import { AdmissionsAdminDashboard } from '@/components/dashboard/AdmissionsAdminDashboard';
 import { AcademicAdminDashboard } from '@/components/dashboard/AcademicAdminDashboard';
 import { ExaminerDashboard } from '@/components/dashboard/ExaminerDashboard';
-import { Skeleton } from '@/components/ui/skeleton';
-import { HubPageShell } from '@/components/layout/HubPageShell';
-import { useAuth } from '@/contexts/AuthContext';
-import { useDivision } from '@/contexts/DivisionContext';
-import { supabase } from '@/integrations/supabase/client';
 import UnifiedDashboard from './UnifiedDashboard';
 
 export default function Dashboard() {
@@ -48,119 +44,31 @@ export default function Dashboard() {
   }
 
   const displayRole = activeRole || profile.role;
-  const isAdminShellRole = ['super_admin', 'admin', 'admin_admissions', 'admin_fees', 'admin_academic'].includes(displayRole);
-  const divisionId = activeDivision?.id;
-
-  const { data: kpis, isLoading: kpisLoading } = useQuery({
-    queryKey: ['dashboard-shell-kpis', displayRole, divisionId],
-    enabled: isAdminShellRole,
-    queryFn: async () => {
-      const today = format(new Date(), 'yyyy-MM-dd');
-      const month = format(new Date(), 'yyyy-MM');
-
-      let assignmentsQuery = supabase
-        .from('student_teacher_assignments')
-        .select('student_id, teacher_id')
-        .eq('status', 'active');
-      let attendanceQuery = supabase
-        .from('attendance')
-        .select('status, class_date')
-        .eq('class_date', today);
-      let feesQuery = (supabase as any)
-        .from('fee_invoices')
-        .select('amount, amount_paid, status')
-        .eq('billing_month', month);
-
-      if (divisionId) {
-        assignmentsQuery = assignmentsQuery.eq('division_id', divisionId);
-        attendanceQuery = attendanceQuery.eq('division_id', divisionId);
-        feesQuery = feesQuery.eq('division_id', divisionId);
-      }
-
-      const [assignmentsRes, attendanceRes, feesRes] = await Promise.all([
-        assignmentsQuery,
-        attendanceQuery,
-        feesQuery,
-      ]);
-
-      const assignments = assignmentsRes.data || [];
-      const attendanceRows = attendanceRes.data || [];
-      const fees = feesRes.data || [];
-
-      const totalStudents = new Set(assignments.map((row) => row.student_id)).size;
-      const totalTeachers = new Set(assignments.map((row) => row.teacher_id)).size;
-      const revenue = fees.reduce((sum: number, row: any) => sum + Number(row.amount_paid || 0), 0);
-      const outstanding = fees.reduce((sum: number, row: any) => sum + Math.max(0, Number(row.amount || 0) - Number(row.amount_paid || 0)), 0);
-      const presentCount = attendanceRows.filter((row) => row.status === 'present').length;
-      const attendanceRate = attendanceRows.length > 0 ? Math.round((presentCount / attendanceRows.length) * 100) : 0;
-
-      return {
-        totalStudents,
-        totalTeachers,
-        revenue,
-        outstanding,
-        attendanceRate,
-        classesToday: attendanceRows.length,
-      };
-    },
-  });
-
-  const renderAdminDashboard = () => {
-    switch (displayRole) {
-      case 'super_admin':
-        return <SuperAdminDashboard />;
-      case 'admin':
-        return <AdminDashboard />;
-      case 'admin_admissions':
-        return <AdmissionsAdminDashboard />;
-      case 'admin_fees':
-        return <FeesAdminDashboard />;
-      case 'admin_academic':
-        return <AcademicAdminDashboard />;
-      default:
-        return null;
-    }
-  };
-
-  if (isAdminShellRole) {
-    return (
-      <HubPageShell
-        title="Dashboard"
-        subtitle="Institution-wide snapshot with quick actions, alerts, and live operational context"
-        kpis={[
-          { label: 'Total Students', value: kpis?.totalStudents, loading: kpisLoading },
-          { label: 'Total Teachers', value: kpis?.totalTeachers, loading: kpisLoading },
-          { label: 'Revenue (month)', value: `₨${Number(kpis?.revenue || 0).toLocaleString()}`, tone: 'success', loading: kpisLoading },
-          { label: 'Outstanding', value: `₨${Number(kpis?.outstanding || 0).toLocaleString()}`, tone: Number(kpis?.outstanding || 0) > 0 ? 'warning' : 'default', loading: kpisLoading },
-          { label: `Today's Attendance %`, value: `${kpis?.attendanceRate ?? 0}%`, tone: 'success', loading: kpisLoading },
-          { label: 'Classes Today', value: kpis?.classesToday, loading: kpisLoading },
-        ]}
-        content={{}}
-        singleView={renderAdminDashboard()}
-      />
-    );
-  }
 
   switch (displayRole) {
+    case 'super_admin':
+      return <SuperAdminDashboard />;
+    case 'admin':
+      return <AdminDashboard />;
+    case 'admin_admissions':
+      return <AdmissionsAdminDashboard />;
+    case 'admin_fees':
+      return <FeesAdminDashboard />;
+    case 'admin_academic':
+      return <AcademicAdminDashboard />;
     case 'teacher':
       return <TeacherDashboard />;
-
     case 'student':
       return activeDivision?.model_type === 'group' ? <UnifiedDashboard /> : <StudentDashboard />;
-
     case 'parent':
       return <ParentDashboard />;
-
     case 'examiner':
       return <ExaminerDashboard />;
-
     default:
       return (
         <div className="space-y-8 animate-fade-in">
           <div>
-            <h1 className="font-serif text-3xl font-bold text-foreground">
-              Welcome, {profile.full_name}
-            </h1>
+            <h1 className="font-serif text-3xl font-bold text-foreground">Welcome, {profile.full_name}</h1>
             <p className="mt-1 text-muted-foreground">Your dashboard is being set up</p>
           </div>
           <div className="rounded-xl border border-accent/20 bg-accent/10 p-6">

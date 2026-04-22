@@ -2,9 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import PptxGenJS from "pptxgenjs";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { NavRail, buildRailNav } from "@/components/layout/NavRail";
 import { useTeachingSession } from "@/hooks/useTeachingSession";
-import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -269,8 +267,6 @@ async function fetchAIContent(
 const TeachingOSContentKit: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { activeRole } = useAuth();
-  const railItems = buildRailNav(activeRole);
   const { sessionId } = useTeachingSession();
 
   const [sessionPlan, setSessionPlan] = useState<SessionPlan | null>(null);
@@ -621,8 +617,7 @@ const TeachingOSContentKit: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex h-screen pl-14">
-        <NavRail items={railItems} />
+      <div className="flex h-screen">
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
@@ -633,8 +628,7 @@ const TeachingOSContentKit: React.FC = () => {
   const currentSlide = slides[activeSlideIndex];
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#f4f5f7] pl-14">
-      <NavRail items={railItems} />
+    <div className="flex h-screen overflow-hidden bg-[#f4f5f7]">
 
       {/* Tool Sidebar */}
       <div className="w-[200px] bg-white border-r border-[#e8e9eb] flex flex-col shrink-0">

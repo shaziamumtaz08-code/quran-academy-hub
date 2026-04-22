@@ -3,8 +3,6 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { parseArabicTags } from '@/lib/languageUtils';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { PhaseStepperCompact, NextPhaseButton } from '@/components/teaching/PhaseNavBar';
-import { NavRail, buildRailNav } from '@/components/layout/NavRail';
-import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -706,11 +704,8 @@ export default function TeachingOSAnalytics() {
     outcomes: 'Learning outcomes',
   };
 
-  const railNav = buildRailNav(activeRole);
-
   return (
-    <div className="flex h-screen overflow-hidden pl-14" style={{ backgroundColor: '#f4f5f7' }}>
-      <NavRail items={railNav} />
+    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: '#f4f5f7' }}>
 
       {/* Sidebar */}
       <div className="w-[210px] bg-white flex flex-col shrink-0" style={{ borderRight: '0.5px solid #e8e9eb' }}>
