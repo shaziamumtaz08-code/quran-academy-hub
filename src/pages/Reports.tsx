@@ -1,9 +1,8 @@
 import { useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useAuth } from "@/contexts/AuthContext";
-import { ViewPillBar } from "@/components/layout/ViewPillBar";
 import ExecutiveDashboard from "@/components/reports/ExecutiveDashboard";
 import AttendanceReports from "@/components/reports/AttendanceReports";
 import FeeReports from "@/components/reports/FeeReports";
@@ -51,14 +50,8 @@ export default function Reports() {
   );
 
   const requested = searchParams.get('view') || searchParams.get('section');
-  const activeView = availableViews.some((item) => item.value === requested) ? requested! : 'executive';
-
-  const setView = (value: string) => {
-    const next = new URLSearchParams(searchParams);
-    next.set('view', value);
-    next.delete('section');
-    setSearchParams(next, { replace: true });
-  };
+  const activeView = availableViews.some((item) => item.value === requested) ? requested! : null;
+  if (!activeView) return <Navigate to="/reports?view=executive" replace />;
 
   const renderSection = () => {
     switch (activeView) {
@@ -83,9 +76,6 @@ export default function Reports() {
           <h1 className="text-2xl font-serif font-bold text-foreground">Reports</h1>
           <p className="mt-1 text-sm text-muted-foreground">{descriptions[activeView]}</p>
         </header>
-
-        <ViewPillBar items={availableViews.map((item) => ({ ...item }))} activeValue={activeView} onChange={setView} />
-
         <ErrorBoundary>{renderSection()}</ErrorBoundary>
       </div>
     </DashboardLayout>

@@ -1,7 +1,6 @@
 import React, { Suspense, lazy, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { ViewPillBar } from '@/components/layout/ViewPillBar';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const OrganizationSettings = lazy(() => import('./OrganizationSettings'));
@@ -26,7 +25,7 @@ export default function SettingsLanding() {
   const { isSuperAdmin } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const requested = searchParams.get('view');
-  const activeView = views.some((item) => item.value === requested) ? requested! : 'system-control';
+  const activeView = views.some((item) => item.value === requested) ? requested! : null;
 
   const contentMap: Record<string, React.ReactNode> = useMemo(() => ({
     'system-control': <Suspense fallback={<Loading />}><OrganizationSettings /></Suspense>,
@@ -37,11 +36,7 @@ export default function SettingsLanding() {
     'integrity-audit': <Suspense fallback={<Loading />}><IntegrityAudit /></Suspense>,
   }), [isSuperAdmin]);
 
-  const setView = (value: string) => {
-    const next = new URLSearchParams(searchParams);
-    next.set('view', value);
-    setSearchParams(next, { replace: true });
-  };
+  if (!activeView) return <Navigate to="/settings?view=organization" replace />;
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -49,8 +44,6 @@ export default function SettingsLanding() {
         <h1 className="text-2xl font-serif font-bold text-foreground">Settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">System configuration, resources, finance controls, and integrity tools.</p>
       </header>
-
-      <ViewPillBar items={[...views]} activeValue={activeView} onChange={setView} />
       <div className="min-h-[420px]">{contentMap[activeView]}</div>
     </div>
   );
