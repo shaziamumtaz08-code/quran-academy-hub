@@ -243,6 +243,13 @@ export function AppSidebar({ className }: AppSidebarProps) {
   const sidebar = isCourseDetail && courseInfo
     ? { ...baseSidebar, title: courseInfo.name || 'Course', subtitle: isStudentCourseDetail ? 'Student course workspace' : 'Course workspace' }
     : baseSidebar;
+  const isStudentDashboardHome = activeRole === 'student' && location.pathname === '/dashboard';
+  const visibleSidebar = isStudentDashboardHome
+    ? {
+        ...sidebar,
+        items: sidebar.items.filter((item) => item.label === 'Dashboard'),
+      }
+    : sidebar;
 
   const isItemActive = (item: SidebarNavItem) => {
     if (!item.href) return false;
@@ -283,7 +290,7 @@ export function AppSidebar({ className }: AppSidebarProps) {
     }
     // On mobile, collapse all by default
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      const allGroups = new Set(sidebar.items.map(i => i.group).filter(Boolean) as string[]);
+      const allGroups = new Set(visibleSidebar.items.map(i => i.group).filter(Boolean) as string[]);
       return allGroups;
     }
     return new Set<string>();
@@ -324,7 +331,7 @@ export function AppSidebar({ className }: AppSidebarProps) {
       }
     }
     return groups;
-  }, [sidebar.items]);
+  }, [visibleSidebar.items]);
 
   const renderNavItem = (item: SidebarNavItem) => {
     const active = isItemActive(item);
@@ -357,7 +364,7 @@ export function AppSidebar({ className }: AppSidebarProps) {
     );
   };
 
-  if (!isCourseDetail && sidebar.items.length === 0) {
+  if (!isCourseDetail && visibleSidebar.items.length === 0) {
     return null;
   }
 
@@ -371,14 +378,14 @@ export function AppSidebar({ className }: AppSidebarProps) {
             Back to courses
           </Link>
         )}
-        <h2 className="text-[12.5px] font-medium text-lms-navy truncate">{sidebar.title}</h2>
-        {sidebar.subtitle && (
-          <p className="text-[10px] text-lms-text-3 mt-0.5">{sidebar.subtitle}</p>
+        <h2 className="text-[12.5px] font-medium text-lms-navy truncate">{visibleSidebar.title}</h2>
+        {visibleSidebar.subtitle && (
+          <p className="text-[10px] text-lms-text-3 mt-0.5">{visibleSidebar.subtitle}</p>
         )}
       </div>
 
       {/* Search (People only) */}
-      {'showSearch' in sidebar && sidebar.showSearch && (
+      {'showSearch' in visibleSidebar && visibleSidebar.showSearch && (
         <div className="px-3 pb-2">
           <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-md bg-lms-surface border border-lms-border text-lms-text-3">
             <Search className="h-3 w-3" />
