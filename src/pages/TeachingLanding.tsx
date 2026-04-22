@@ -28,12 +28,12 @@ const views = [
 
 export default function TeachingLanding() {
   const { activeDivision } = useDivision();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const divisionId = activeDivision?.id;
   const requested = searchParams.get('view');
   const activeView = views.some((item) => item.value === requested) ? requested! : null;
 
-  const { data: counts, isLoading } = useQuery({
+  useQuery({
     queryKey: ['teaching-landing-counts', divisionId],
     enabled: !!divisionId,
     queryFn: async () => {

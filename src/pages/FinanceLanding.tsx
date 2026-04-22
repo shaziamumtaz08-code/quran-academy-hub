@@ -1,6 +1,4 @@
 import React, { Suspense, lazy, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { format } from 'date-fns';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
@@ -28,30 +26,9 @@ const views = [
 
 export default function FinanceLanding() {
   const { activeDivision } = useDivision();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const divisionId = activeDivision?.id || null;
-  const currentMonth = format(new Date(), 'yyyy-MM');
+  const [searchParams] = useSearchParams();
   const requested = searchParams.get('view');
   const activeView = views.some((item) => item.value === requested) ? requested! : null;
-
-  const { data: counts, isLoading } = useQuery({
-    queryKey: ['finance-landing-kpis', divisionId, currentMonth],
-    queryFn: async () => {
-      const sb = supabase as any;
-      let invoiceQuery = sb.from('fee_invoices').select('amount, amount_paid, status, division_id').eq('billing_month', currentMonth);
-      if (divisionId) invoiceQuery = invoiceQuery.eq('division_id', divisionId);
-      const { data: invoices } = await invoiceQuery;
-      const rows = invoices || [];
-      return {
-        revenue: rows.reduce((sum: number, row: any) => sum + Number(row.amount_paid || 0), 0),
-        outstanding: rows.reduce((sum: number, row: any) => sum + Math.max(0, Number(row.amount || 0) - Number(row.amount_paid || 0)), 0),
-        paid: rows.filter((row: any) => row.status === 'paid').length,
-        overdue: rows.filter((row: any) => row.status === 'overdue').length,
-      };
-    },
-  });
-
-  const formatCurrency = (value: number | undefined) => `₨${Number(value || 0).toLocaleString()}`;
 
   const contentMap: Record<string, React.ReactNode> = useMemo(() => ({
     invoices: <Suspense fallback={<Loading />}><Payments /></Suspense>,
