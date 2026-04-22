@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import type { AppRole } from '@/contexts/AuthContext';
-import { LayoutDashboard, BookOpen, Users, MessageSquare, MoreHorizontal, DollarSign, BarChart3, Cog, Video, Briefcase, GraduationCap, ClipboardCheck, CalendarDays } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Users, MessageSquare, MoreHorizontal, DollarSign, BarChart3, Cog, Video, Briefcase, GraduationCap, ClipboardCheck, CalendarDays, FolderOpen } from 'lucide-react';
 import { useState } from 'react';
 
 interface MobileTabItem {
@@ -32,9 +32,9 @@ function getMobileTabs(role: AppRole | null): MobileTabItem[] {
   }
   if (role === 'student') {
     return [
-      { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
+      { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { label: 'My Courses', href: '/courses-catalog', icon: BookOpen },
-      { label: 'Calendar', href: '/my-dashboard', icon: CalendarDays },
+      { label: 'Resources', href: '/resources', icon: FolderOpen },
       { label: 'Comms', href: '/communication', icon: MessageSquare },
     ];
   }
