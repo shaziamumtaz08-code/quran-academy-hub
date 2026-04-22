@@ -39,7 +39,7 @@ export function TeacherDashboard() {
 
   return (
     <div className="relative font-sans">
-      <div className="p-4 pb-20 md:pb-6 space-y-2 max-w-[680px] mx-auto">
+      <div className="p-4 pb-20 md:pb-6 space-y-2 max-w-[1100px] mx-auto">
         {/* Greeting */}
         <div className="flex items-center justify-between bg-card border border-border rounded-xl px-3 py-1.5">
           <p className="text-sm font-bold text-foreground truncate">Assalamu Alaikum, {firstName} 👋</p>
@@ -59,7 +59,7 @@ export function TeacherDashboard() {
         {/* Prayer widget */}
         <PrayerTimesWidget islamicDate={islamicDate} timezone={timezone} />
 
-        {/* Next Class — single block with Start inside */}
+        {/* Next Class — full-width block */}
         <NextClassCountdown />
 
         {/* Rescheduled sessions landing today */}

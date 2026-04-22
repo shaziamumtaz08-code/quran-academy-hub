@@ -18,6 +18,7 @@ import { StudentAttendanceSection } from './StudentAttendanceSection';
 import { AiInsightsWidget } from './AiInsightsWidget';
 import { JoinClassButton } from '@/components/zoom/JoinClassButton';
 import { DashboardShell } from './shared/DashboardShell';
+import { NextClassBanner } from './shared/NextClassBanner';
 
 const STUDENT_TABS = [
   { id: 'home', icon: '🏠', label: 'Home', path: '/dashboard' },
@@ -434,45 +435,30 @@ export function StudentDashboard() {
     shortDay = SHORT_DAYS[nc.dayOfWeek?.charAt(0).toUpperCase() + nc.dayOfWeek?.slice(1).toLowerCase()] || nc.dayOfWeek;
   }
   const minutesUntil = nc ? (nc.dateTime.getTime() - Date.now()) / 60000 : Infinity;
-  const isJoinable = minutesUntil <= 30 && minutesUntil > -90;
 
-  const renderJoinArea = () => {
-    return (
-      <div className="flex items-center gap-2 shrink-0">
-        {!isJoinable && (
-          <div className="flex items-center gap-1">
-            {countdown.days > 0 && <span className="bg-primary-foreground/15 rounded-md px-2 py-0.5 text-[11px] font-bold">{countdown.days}d</span>}
-            <span className="bg-primary-foreground/15 rounded-md px-2 py-0.5 text-[11px] font-bold">{countdown.hours}h</span>
-            <span className="bg-primary-foreground/15 rounded-md px-2 py-0.5 text-[11px] font-bold">{String(countdown.mins).padStart(2, '0')}m</span>
-          </div>
-        )}
-        <JoinClassButton teacherId={ncTeacherId} className="h-7 text-xs px-2.5" />
-      </div>
-    );
-  };
+  const countdownLabel = !nc
+    ? ''
+    : countdown.days > 0
+      ? `${countdown.days}d ${countdown.hours}h ${String(countdown.mins).padStart(2, '0')}m remaining`
+      : `${countdown.hours}h ${String(countdown.mins).padStart(2, '0')}m remaining`;
+
+  const topContent = nc && ncName ? (
+    <NextClassBanner
+      title={ncName}
+      scheduleLabel={`${shortDay} · ${timeDisplay}`}
+      countdownLabel={countdownLabel}
+      action={<JoinClassButton teacherId={ncTeacherId} className="dashboard-next-class-banner__join-button" />}
+    />
+  ) : (
+    <div className="bg-card rounded-2xl border border-border px-4 py-4">
+      <p className="text-[10px] text-muted-foreground font-extrabold tracking-widest uppercase mb-1">⏰ Next Class</p>
+      <p className="text-sm font-bold text-foreground">No class scheduled</p>
+      <p className="text-xs text-muted-foreground mt-0.5">Use this time to revise your last lesson 📖</p>
+    </div>
+  );
 
   const leftContent = (
     <>
-      {/* ═══ NEXT CLASS PANEL ═══ */}
-      {nc && ncName ? (
-        <div className="bg-gradient-to-br from-primary to-[hsl(var(--navy-light))] rounded-2xl px-4 py-3.5 text-primary-foreground shadow-card">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-[10px] opacity-70 font-extrabold tracking-widest uppercase">⏰ Next Class</p>
-            {renderJoinArea()}
-          </div>
-          <p className="text-base font-black truncate">{ncName}</p>
-          <p className="text-[11px] text-primary-foreground/70 font-semibold mt-0.5">
-            {shortDay} · {timeDisplay}
-          </p>
-        </div>
-      ) : (
-        <div className="bg-card rounded-2xl border border-border px-4 py-4">
-          <p className="text-[10px] text-muted-foreground font-extrabold tracking-widest uppercase mb-1">⏰ Next Class</p>
-          <p className="text-sm font-bold text-foreground">No class scheduled</p>
-          <p className="text-xs text-muted-foreground mt-0.5">Use this time to revise your last lesson 📖</p>
-        </div>
-      )}
-
       {/* ═══ ALERTS ═══ */}
       {dashData?.alerts && dashData.alerts.length > 0 && (
         <div className="space-y-2">
@@ -816,6 +802,7 @@ export function StudentDashboard() {
   return (
     <DashboardShell
       tabs={STUDENT_TABS}
+      topContent={topContent}
       leftContent={leftContent}
       rightContent={rightContent}
       brandLabel="AQA"

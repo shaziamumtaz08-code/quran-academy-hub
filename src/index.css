@@ -247,6 +247,81 @@
     @apply card-premium cursor-pointer;
   }
 
+  .digital-neon {
+    font-family: var(--font-en);
+    color: hsl(var(--cyan));
+    text-shadow: 0 0 10px hsl(var(--cyan) / 0.45), 0 0 24px hsl(var(--cyan-light) / 0.3);
+  }
+
+  .dashboard-next-class-banner {
+    @apply overflow-hidden border border-border shadow-card;
+    background: hsl(var(--card));
+    border-radius: 8px;
+  }
+
+  .dashboard-next-class-banner__label {
+    @apply flex items-center px-4 py-2.5 md:px-5;
+    background: hsl(var(--secondary-foreground) / 0.16);
+    min-height: 20%;
+  }
+
+  .dashboard-next-class-banner__label span {
+    @apply text-xs font-extrabold tracking-[0.3em];
+  }
+
+  .dashboard-next-class-banner__body {
+    @apply grid gap-3 p-3 md:grid-cols-[2fr_1fr] md:items-stretch md:gap-4 md:p-4;
+    background: hsl(var(--muted));
+    min-height: 80%;
+  }
+
+  .dashboard-next-class-banner__course-block {
+    @apply flex min-h-[132px] items-center rounded-md border border-primary/10 px-4 py-5 md:px-6;
+    background: hsl(var(--secondary));
+  }
+
+  .dashboard-next-class-banner__course-title {
+    @apply text-xl font-black uppercase leading-tight text-foreground md:text-2xl;
+    font-family: var(--font-en);
+  }
+
+  .dashboard-next-class-banner__side {
+    @apply flex min-h-[132px] flex-col justify-between gap-3;
+  }
+
+  .dashboard-next-class-banner__action {
+    @apply flex min-h-[72px] flex-1 items-center justify-center rounded-md border border-accent/20 p-2;
+    background: linear-gradient(180deg, hsl(var(--accent) / 0.88), hsl(var(--cyan-light) / 0.88));
+    box-shadow: inset 0 1px 0 hsl(var(--primary-foreground) / 0.4), 0 12px 28px -16px hsl(var(--accent) / 0.65);
+  }
+
+  .dashboard-next-class-banner__join-button {
+    @apply h-full min-h-[56px] w-full rounded-md border-0 px-4 text-sm font-black uppercase tracking-[0.16em] text-accent-foreground;
+    background: linear-gradient(180deg, hsl(var(--accent) / 0.98), hsl(var(--cyan-dark) / 0.95));
+    box-shadow: inset 0 2px 0 hsl(var(--primary-foreground) / 0.42), inset 0 -6px 10px hsl(var(--cyan-dark) / 0.55), 0 12px 20px -12px hsl(var(--accent) / 0.9);
+  }
+
+  .dashboard-next-class-banner__join-button:hover {
+    filter: brightness(1.05);
+  }
+
+  .dashboard-next-class-banner__join-button:disabled {
+    @apply opacity-100;
+    color: hsl(var(--primary-foreground) / 0.95);
+  }
+
+  .dashboard-next-class-banner__meta {
+    @apply flex flex-col gap-1 rounded-md px-1;
+  }
+
+  .dashboard-next-class-banner__schedule {
+    @apply text-sm font-bold text-foreground;
+  }
+
+  .dashboard-next-class-banner__countdown {
+    @apply text-xs font-semibold text-muted-foreground;
+  }
+
   /* Section header with cyan accent */
   .section-header {
     @apply relative pl-4;

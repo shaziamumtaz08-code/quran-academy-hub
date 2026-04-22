@@ -5,13 +5,15 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { cn } from '@/lib/utils';
 
 interface StartClassButtonProps {
   sessionId?: string;
   onSessionCreated?: (sessionId: string, meetingLink: string) => void;
+  className?: string;
 }
 
-export function StartClassButton({ sessionId, onSessionCreated }: StartClassButtonProps) {
+export function StartClassButton({ sessionId, onSessionCreated, className }: StartClassButtonProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -206,7 +208,7 @@ export function StartClassButton({ sessionId, onSessionCreated }: StartClassButt
 
   if (checkingSession) {
     return (
-      <Button disabled className="gap-2">
+      <Button disabled className={cn("gap-2", className)}>
         <Loader2 className="h-4 w-4 animate-spin" />
         Checking...
       </Button>
@@ -218,7 +220,7 @@ export function StartClassButton({ sessionId, onSessionCreated }: StartClassButt
       <div className="flex items-center gap-3">
         <Button
           variant="outline"
-          className="gap-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50"
+          className={cn("gap-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50", className)}
           onClick={() => {
             const link = (activeSession.license as any)?.meeting_link;
             if (link) window.open(link, '_blank');
@@ -247,7 +249,7 @@ export function StartClassButton({ sessionId, onSessionCreated }: StartClassButt
   return (
     <Button
       variant="default"
-      className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+      className={cn("gap-2 bg-emerald-600 hover:bg-emerald-700", className)}
       onClick={() => startClassMutation.mutate()}
       disabled={startClassMutation.isPending}
     >

@@ -11,6 +11,8 @@ import { PrayerTimesWidget } from '../teacher/PrayerTimesWidget';
 interface DashboardShellProps {
   /** Bottom nav tabs for mobile (no longer used, kept for compat) */
   tabs?: any[];
+  /** Optional full-width content shown above the desktop grid */
+  topContent?: React.ReactNode;
   /** Primary content — left col on desktop */
   leftContent: React.ReactNode;
   /** Secondary content — right col on desktop */
@@ -19,7 +21,7 @@ interface DashboardShellProps {
   brandLabel?: string;
 }
 
-export function DashboardShell({ leftContent, rightContent, brandLabel }: DashboardShellProps) {
+export function DashboardShell({ topContent, leftContent, rightContent, brandLabel }: DashboardShellProps) {
   const { profile, user } = useAuth();
   const [islamicDate, setIslamicDate] = useState<IslamicDateData | null>(null);
   const [timezone, setTimezone] = useState<string>('Asia/Karachi');
@@ -62,6 +64,8 @@ export function DashboardShell({ leftContent, rightContent, brandLabel }: Dashbo
 
         {/* Prayer widget */}
         <PrayerTimesWidget islamicDate={islamicDate} timezone={timezone} />
+
+        {topContent}
 
         {/* 2-col grid */}
         <div className="md:grid md:grid-cols-[55%_45%] md:gap-6">
