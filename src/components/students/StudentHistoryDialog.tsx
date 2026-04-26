@@ -63,9 +63,10 @@ export function StudentHistoryDialog({ open, onOpenChange, studentId, studentNam
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
       present: 'Present',
-      student_absent: 'Absent',
+      student_absent: 'Student Absent',
+      student_leave: 'Student Leave',
       teacher_absent: 'Teacher Absent',
-      teacher_leave: 'Leave',
+      teacher_leave: 'Teacher Leave',
       rescheduled: 'Rescheduled',
       student_rescheduled: 'Student Rescheduled',
       holiday: 'Holiday',
