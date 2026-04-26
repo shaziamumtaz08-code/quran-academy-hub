@@ -39,7 +39,7 @@ import { MissingAttendanceSection, useMissingAttendanceCount } from '@/component
 
 const DAY_NAMES_MAIN = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
-type AttendanceStatus = 'present' | 'student_absent' | 'teacher_absent' | 'teacher_leave' | 'rescheduled' | 'student_rescheduled' | 'holiday';
+type AttendanceStatus = 'present' | 'student_absent' | 'student_leave' | 'teacher_absent' | 'teacher_leave' | 'rescheduled' | 'student_rescheduled' | 'holiday';
 type ReasonCategory = 'sick' | 'personal' | 'emergency' | 'internet_issue' | 'other';
 type VarianceReason = 'slow_pace' | 'lack_of_revision' | 'technical_issues' | 'student_late' | 'short_verses';
 
@@ -103,9 +103,10 @@ interface Profile {
 
 const STATUS_OPTIONS: { value: AttendanceStatus; label: string }[] = [
   { value: 'present', label: 'Present' },
-  { value: 'student_absent', label: 'Absent' },
-  { value: 'teacher_leave', label: 'Leave' },
+  { value: 'student_absent', label: 'Student Absent' },
+  { value: 'student_leave', label: 'Student Leave' },
   { value: 'teacher_absent', label: 'Teacher Absent' },
+  { value: 'teacher_leave', label: 'Teacher Leave' },
   { value: 'rescheduled', label: 'Rescheduled by the Teacher' },
   { value: 'student_rescheduled', label: 'Rescheduled by the Student' },
   { value: 'holiday', label: 'Holiday' },
@@ -218,7 +219,7 @@ export default function Attendance() {
 
   // Statuses that require reason
   const requiresReason = (status: AttendanceStatus) => 
-    ['student_absent', 'teacher_absent', 'teacher_leave'].includes(status);
+    ['student_absent', 'student_leave', 'teacher_absent', 'teacher_leave'].includes(status);
   
   // Status requires reschedule info
   const requiresReschedule = (status: AttendanceStatus) => status === 'rescheduled';
