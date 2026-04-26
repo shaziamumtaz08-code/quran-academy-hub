@@ -238,7 +238,7 @@ export function UnifiedAttendanceForm({
   }, [open, classDate, scheduleData]);
 
   const requiresReason = (status: AttendanceStatus) => 
-    ['student_absent', 'teacher_absent', 'teacher_leave'].includes(status);
+    ['student_absent', 'student_leave', 'teacher_absent', 'teacher_leave'].includes(status);
 
   const requiresReschedule = (status: AttendanceStatus) => 
     ['rescheduled', 'student_rescheduled'].includes(status);
