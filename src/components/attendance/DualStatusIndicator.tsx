@@ -39,7 +39,9 @@ export function DualStatusIndicator({
       case 'present':
         return { icon: CheckCircle, label: 'Present', color: 'text-emerald-600 dark:text-emerald-400' };
       case 'student_absent':
-        return { icon: XCircle, label: 'Absent', color: 'text-destructive' };
+        return { icon: XCircle, label: 'Student Absent', color: 'text-destructive' };
+      case 'student_leave':
+        return { icon: XCircle, label: 'Student Leave', color: 'text-orange-600 dark:text-orange-400' };
       case 'teacher_absent':
       case 'teacher_leave':
         return { icon: XCircle, label: 'Teacher Off', color: 'text-accent' };
