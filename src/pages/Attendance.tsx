@@ -984,8 +984,8 @@ export default function Attendance() {
               )}
               <Button 
                 onClick={() => {
-                  setSelectedStatus('student_leave');
-                  setMarkDialogOpen(true);
+                  setUnifiedInitialStatus('student_leave');
+                  setUnifiedOpen(true);
                 }}
                 variant="outline"
               >
@@ -994,8 +994,8 @@ export default function Attendance() {
               </Button>
               <Button 
                 onClick={() => {
-                  setSelectedStatus('rescheduled');
-                  setMarkDialogOpen(true);
+                  setUnifiedInitialStatus('rescheduled');
+                  setUnifiedOpen(true);
                 }}
                 variant="outline"
               >
@@ -1004,8 +1004,8 @@ export default function Attendance() {
               </Button>
               <Button 
                 onClick={() => {
-                  setSelectedStatus('present');
-                  setMarkDialogOpen(true);
+                  setUnifiedInitialStatus('present');
+                  setUnifiedOpen(true);
                 }}
               >
                 <Plus className="h-4 w-4 mr-2" />
