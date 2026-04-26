@@ -3,7 +3,7 @@ import { CheckCircle, Clock, XCircle, Ban, AlertTriangle, Pause, Tag, CalendarCl
 import { cn } from '@/lib/utils';
 
 type StatusVariant = 'paid' | 'partially_paid' | 'pending' | 'overdue' | 'waived' | 'adjusted' |
-  'present' | 'student_absent' | 'teacher_absent' | 'teacher_leave' | 'rescheduled' | 'student_rescheduled' | 'holiday' |
+  'present' | 'student_absent' | 'student_leave' | 'teacher_absent' | 'teacher_leave' | 'rescheduled' | 'student_rescheduled' | 'holiday' |
   'active' | 'paused' | 'completed' | 'left' | 'inactive' |
   'live' | 'scheduled' | 'cooldown';
 
