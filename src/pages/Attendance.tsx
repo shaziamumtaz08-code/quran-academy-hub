@@ -103,9 +103,10 @@ interface Profile {
 
 const STATUS_OPTIONS: { value: AttendanceStatus; label: string }[] = [
   { value: 'present', label: 'Present' },
-  { value: 'student_absent', label: 'Absent' },
-  { value: 'teacher_leave', label: 'Leave' },
+  { value: 'student_absent', label: 'Student Absent' },
+  { value: 'student_leave', label: 'Student Leave' },
   { value: 'teacher_absent', label: 'Teacher Absent' },
+  { value: 'teacher_leave', label: 'Teacher Leave' },
   { value: 'rescheduled', label: 'Rescheduled by the Teacher' },
   { value: 'student_rescheduled', label: 'Rescheduled by the Student' },
   { value: 'holiday', label: 'Holiday' },
