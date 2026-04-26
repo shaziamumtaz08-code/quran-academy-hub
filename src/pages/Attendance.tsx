@@ -219,7 +219,7 @@ export default function Attendance() {
 
   // Statuses that require reason
   const requiresReason = (status: AttendanceStatus) => 
-    ['student_absent', 'teacher_absent', 'teacher_leave'].includes(status);
+    ['student_absent', 'student_leave', 'teacher_absent', 'teacher_leave'].includes(status);
   
   // Status requires reschedule info
   const requiresReschedule = (status: AttendanceStatus) => status === 'rescheduled';
