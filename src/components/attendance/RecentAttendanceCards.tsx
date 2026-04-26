@@ -14,6 +14,7 @@ const statusConfig: Record<string, { icon: React.ReactNode; label: string; color
   absent: { icon: <XCircle className="h-3.5 w-3.5" />, label: 'Absent', color: 'text-destructive bg-destructive/10 border-destructive/20' },
   student_absent: { icon: <XCircle className="h-3.5 w-3.5" />, label: 'Absent', color: 'text-destructive bg-destructive/10 border-destructive/20' },
   rescheduled: { icon: <Clock className="h-3.5 w-3.5" />, label: 'Rescheduled', color: 'text-sky bg-sky/10 border-sky/20' },
+  student_leave: { icon: <Clock className="h-3.5 w-3.5" />, label: 'Student Leave', color: 'text-orange-600 bg-orange-100/50 border-orange-200' },
   teacher_leave: { icon: <Clock className="h-3.5 w-3.5" />, label: 'Teacher Leave', color: 'text-purple-600 bg-purple-100/50 border-purple-200' },
 };
 
