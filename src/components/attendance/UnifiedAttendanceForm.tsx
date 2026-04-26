@@ -456,24 +456,45 @@ export function UnifiedAttendanceForm({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Student Info Header */}
-        <div className="bg-[#2d4a6f] rounded-xl p-4 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="font-medium text-lg">{student.full_name}</span>
-            {student.subject_name && (
-              <Badge className="bg-sky/20 text-sky-200 border-sky/30">
-                <BookOpen className="h-3 w-3 mr-1" />
-                {student.subject_name}
-              </Badge>
+        {/* Student Picker (when no preset) */}
+        {!presetStudent && students && students.length > 0 && needsStudent && (
+          <div className="bg-[#2d4a6f] rounded-xl p-4 space-y-2">
+            <Label className="text-sky-100">Student <span className="text-red-400">*</span></Label>
+            <Select value={pickedStudentId} onValueChange={setPickedStudentId}>
+              <SelectTrigger className="bg-white text-[#1e3a5f] border-0">
+                <SelectValue placeholder="Select a student" />
+              </SelectTrigger>
+              <SelectContent>
+                {students.map(s => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.full_name}{s.subject_name ? ` — ${s.subject_name}` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {/* Student Info Header (when student is known) */}
+        {student.id && needsStudent && (
+          <div className="bg-[#2d4a6f] rounded-xl p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-lg">{student.full_name}</span>
+              {student.subject_name && (
+                <Badge className="bg-sky/20 text-sky-200 border-sky/30">
+                  <BookOpen className="h-3 w-3 mr-1" />
+                  {student.subject_name}
+                </Badge>
+              )}
+            </div>
+            {student.last_lesson && (
+              <div className="text-sm text-sky-200">
+                <Clock className="h-3 w-3 inline mr-1" />
+                Last: {student.last_lesson}
+              </div>
             )}
           </div>
-          {student.last_lesson && (
-            <div className="text-sm text-sky-200">
-              <Clock className="h-3 w-3 inline mr-1" />
-              Last: {student.last_lesson}
-            </div>
-          )}
-        </div>
+        )}
 
         <div className="space-y-4 py-2">
           {/* Duplicate Attendance Warning */}
