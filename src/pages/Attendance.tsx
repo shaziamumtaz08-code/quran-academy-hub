@@ -136,6 +136,8 @@ export default function Attendance() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [searchQuery, setSearchQuery] = useState('');
   const [markDialogOpen, setMarkDialogOpen] = useState(false);
+  const [unifiedOpen, setUnifiedOpen] = useState(false);
+  const [unifiedInitialStatus, setUnifiedInitialStatus] = useState<AttendanceStatus>('present');
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
   const [selectedRecordIds, setSelectedRecordIds] = useState<Set<string>>(new Set());
