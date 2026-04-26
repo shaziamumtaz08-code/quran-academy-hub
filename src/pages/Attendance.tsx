@@ -1451,7 +1451,23 @@ export default function Attendance() {
           </TabsContent>
         </Tabs>
 
-        {/* Mark Attendance Dialog */}
+        {/* Unified Mark Attendance — same form as Students tab */}
+        <UnifiedAttendanceForm
+          open={unifiedOpen}
+          onOpenChange={setUnifiedOpen}
+          students={(assignedStudents || []).map(s => ({
+            id: s.id,
+            full_name: s.full_name,
+            subject_name: (s as any).subject_name ?? null,
+            subject_id: (s as any).subject_id ?? null,
+            last_lesson: null,
+            daily_target_lines: (s as any).daily_target_lines,
+            preferred_unit: (s as any).preferred_unit,
+          }))}
+          initialStatus={unifiedInitialStatus}
+        />
+
+        {/* Legacy Mark Attendance Dialog (kept for backward compat — no longer opened from buttons) */}
         <Dialog open={markDialogOpen} onOpenChange={setMarkDialogOpen}>
           <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
