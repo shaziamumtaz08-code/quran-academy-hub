@@ -982,13 +982,13 @@ export default function Attendance() {
               )}
               <Button 
                 onClick={() => {
-                  setSelectedStatus('teacher_leave');
+                  setSelectedStatus('student_leave');
                   setMarkDialogOpen(true);
                 }}
                 variant="outline"
               >
                 <UserX className="h-4 w-4 mr-2" />
-                Leave
+                Student Leave
               </Button>
               <Button 
                 onClick={() => {
