@@ -86,7 +86,9 @@ interface UnifiedAttendanceFormProps {
 export function UnifiedAttendanceForm({ 
   open, 
   onOpenChange, 
-  student,
+  student: presetStudent,
+  students,
+  initialStatus,
   teacherId,
   teacherTimezone,
   onSuccess
@@ -94,6 +96,14 @@ export function UnifiedAttendanceForm({
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Internal selection (used when no preset student is passed)
+  const [pickedStudentId, setPickedStudentId] = useState<string>('');
+  const student: StudentInfo = useMemo(() => {
+    if (presetStudent) return presetStudent;
+    const found = students?.find(s => s.id === pickedStudentId);
+    return found || { id: '', full_name: '', subject_name: null, last_lesson: null };
+  }, [presetStudent, students, pickedStudentId]);
 
   const effectiveTeacherId = teacherId || user?.id;
   // Profile timezone not in type yet, use fallback
