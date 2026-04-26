@@ -72,7 +72,12 @@ export interface StudentInfo {
 interface UnifiedAttendanceFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  student: StudentInfo;
+  /** Pre-selected student. If omitted, `students` picker will be shown. */
+  student?: StudentInfo;
+  /** Optional list of selectable students (used when `student` is not preset). */
+  students?: StudentInfo[];
+  /** Initial status to start with (e.g. 'teacher_leave' from a quick-action). */
+  initialStatus?: AttendanceStatus;
   teacherId?: string;
   teacherTimezone?: string;
   onSuccess?: () => void;
@@ -81,7 +86,9 @@ interface UnifiedAttendanceFormProps {
 export function UnifiedAttendanceForm({ 
   open, 
   onOpenChange, 
-  student,
+  student: presetStudent,
+  students,
+  initialStatus,
   teacherId,
   teacherTimezone,
   onSuccess
@@ -89,6 +96,14 @@ export function UnifiedAttendanceForm({
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Internal selection (used when no preset student is passed)
+  const [pickedStudentId, setPickedStudentId] = useState<string>('');
+  const student: StudentInfo = useMemo(() => {
+    if (presetStudent) return presetStudent;
+    const found = students?.find(s => s.id === pickedStudentId);
+    return found || { id: '', full_name: '', subject_name: null, last_lesson: null };
+  }, [presetStudent, students, pickedStudentId]);
 
   const effectiveTeacherId = teacherId || user?.id;
   // Profile timezone not in type yet, use fallback
@@ -243,10 +258,10 @@ export function UnifiedAttendanceForm({
   const requiresReschedule = (status: AttendanceStatus) => 
     ['rescheduled', 'student_rescheduled'].includes(status);
 
-  // Reset form when modal closes
+  // Reset form when modal closes; apply initialStatus when modal opens
   useEffect(() => {
     if (!open) {
-      setSelectedStatus('present');
+      setSelectedStatus(initialStatus || 'present');
       setClassTime('');
       setClassDate(format(new Date(), 'yyyy-MM-dd'));
       setDuration('30');
@@ -270,12 +285,23 @@ export function UnifiedAttendanceForm({
       setAcademicLessonTopic('');
       setAcademicLessonStatus('');
       setAcademicFollowups([]);
+      setPickedStudentId('');
+    } else if (initialStatus) {
+      setSelectedStatus(initialStatus);
     }
-  }, [open]);
+  }, [open, initialStatus]);
 
   const markAttendance = useMutation({
     mutationFn: async () => {
       if (!effectiveTeacherId) throw new Error('Missing teacher');
+
+      // For teacher-only / holiday statuses with no preset student, fall back to first
+      // student in the picker list so the row still records (legacy behaviour).
+      let resolvedStudentId = student.id;
+      if (!resolvedStudentId && isTeacherOnlyStatus && students && students.length > 0) {
+        resolvedStudentId = students[0].id;
+      }
+      if (!resolvedStudentId) throw new Error('Please select a student');
 
       // Build lesson_covered based on subject type
       let lessonCoveredText = '';
@@ -307,7 +333,7 @@ export function UnifiedAttendanceForm({
       }
 
       const { data, error } = await supabase.from('attendance').insert({
-        student_id: student.id,
+        student_id: resolvedStudentId,
         teacher_id: effectiveTeacherId,
         class_date: classDate,
         class_time: classTime,
@@ -341,7 +367,7 @@ export function UnifiedAttendanceForm({
         try {
           await supabase.from('session_reschedules' as any).insert({
             attendance_id: data?.id,
-            student_id: student.id,
+            student_id: resolvedStudentId,
             teacher_id: effectiveTeacherId,
             original_date: classDate,
             original_time: classTime,
@@ -404,9 +430,13 @@ export function UnifiedAttendanceForm({
     return true;
   }, [selectedStatus, currentSubjectType, lessonNumber, ayahFromSurah, ayahFromNumber, academicLessonTopic]);
 
+  const isTeacherOnlyStatus = ['teacher_absent', 'teacher_leave', 'holiday'].includes(selectedStatus);
+  const needsStudent = !isTeacherOnlyStatus;
+
   const isFormValid = useMemo(() => {
     if (!classTime || !classDate) return false;
     if (isFutureDate) return false;
+    if (needsStudent && !student.id) return false;
     if (hasDuplicateAttendance) return false;
     if (!isScheduledDay) return false;
     if (requiresReason(selectedStatus) && !reasonCategory) return false;
@@ -414,7 +444,7 @@ export function UnifiedAttendanceForm({
     if (requiresReschedule(selectedStatus) && (!rescheduleDate || !rescheduleTime)) return false;
     if (selectedStatus === 'present' && !hasLessonDetails) return false;
     return true;
-  }, [selectedStatus, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleTime, hasDuplicateAttendance, isScheduledDay, isFutureDate, hasLessonDetails]);
+  }, [selectedStatus, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleTime, hasDuplicateAttendance, isScheduledDay, isFutureDate, hasLessonDetails, needsStudent, student.id]);
 
   const studentTzAbbr = getTimezoneAbbr(student.timezone);
   const teacherTzAbbr = getTimezoneAbbr(effectiveTeacherTz);
@@ -430,28 +460,49 @@ export function UnifiedAttendanceForm({
             Mark Attendance
           </DialogTitle>
           <DialogDescription className="text-sky-200">
-            Record attendance for {student.full_name}
+            {student.full_name ? `Record attendance for ${student.full_name}` : 'Record attendance for a class'}
           </DialogDescription>
         </DialogHeader>
 
-        {/* Student Info Header */}
-        <div className="bg-[#2d4a6f] rounded-xl p-4 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="font-medium text-lg">{student.full_name}</span>
-            {student.subject_name && (
-              <Badge className="bg-sky/20 text-sky-200 border-sky/30">
-                <BookOpen className="h-3 w-3 mr-1" />
-                {student.subject_name}
-              </Badge>
+        {/* Student Picker (when no preset) */}
+        {!presetStudent && students && students.length > 0 && needsStudent && (
+          <div className="bg-[#2d4a6f] rounded-xl p-4 space-y-2">
+            <Label className="text-sky-100">Student <span className="text-red-400">*</span></Label>
+            <Select value={pickedStudentId} onValueChange={setPickedStudentId}>
+              <SelectTrigger className="bg-white text-[#1e3a5f] border-0">
+                <SelectValue placeholder="Select a student" />
+              </SelectTrigger>
+              <SelectContent>
+                {students.map(s => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.full_name}{s.subject_name ? ` — ${s.subject_name}` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {/* Student Info Header (when student is known) */}
+        {student.id && needsStudent && (
+          <div className="bg-[#2d4a6f] rounded-xl p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-lg">{student.full_name}</span>
+              {student.subject_name && (
+                <Badge className="bg-sky/20 text-sky-200 border-sky/30">
+                  <BookOpen className="h-3 w-3 mr-1" />
+                  {student.subject_name}
+                </Badge>
+              )}
+            </div>
+            {student.last_lesson && (
+              <div className="text-sm text-sky-200">
+                <Clock className="h-3 w-3 inline mr-1" />
+                Last: {student.last_lesson}
+              </div>
             )}
           </div>
-          {student.last_lesson && (
-            <div className="text-sm text-sky-200">
-              <Clock className="h-3 w-3 inline mr-1" />
-              Last: {student.last_lesson}
-            </div>
-          )}
-        </div>
+        )}
 
         <div className="space-y-4 py-2">
           {/* Duplicate Attendance Warning */}

@@ -36,6 +36,7 @@ import { getSubjectType, type SubjectType } from '@/lib/subjectUtils';
 import { isRepeatLesson as checkRepeatLesson, type LessonPosition } from '@/lib/quranValidation';
 import { type MarkerType } from '@/components/attendance/SabaqSection';
 import { MissingAttendanceSection, useMissingAttendanceCount } from '@/components/attendance/MissingAttendanceSection';
+import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
 
 const DAY_NAMES_MAIN = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
@@ -136,6 +137,8 @@ export default function Attendance() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [searchQuery, setSearchQuery] = useState('');
   const [markDialogOpen, setMarkDialogOpen] = useState(false);
+  const [unifiedOpen, setUnifiedOpen] = useState(false);
+  const [unifiedInitialStatus, setUnifiedInitialStatus] = useState<AttendanceStatus>('present');
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<AttendanceRecord | null>(null);
   const [selectedRecordIds, setSelectedRecordIds] = useState<Set<string>>(new Set());
@@ -982,8 +985,8 @@ export default function Attendance() {
               )}
               <Button 
                 onClick={() => {
-                  setSelectedStatus('student_leave');
-                  setMarkDialogOpen(true);
+                  setUnifiedInitialStatus('student_leave');
+                  setUnifiedOpen(true);
                 }}
                 variant="outline"
               >
@@ -992,8 +995,8 @@ export default function Attendance() {
               </Button>
               <Button 
                 onClick={() => {
-                  setSelectedStatus('rescheduled');
-                  setMarkDialogOpen(true);
+                  setUnifiedInitialStatus('rescheduled');
+                  setUnifiedOpen(true);
                 }}
                 variant="outline"
               >
@@ -1002,8 +1005,8 @@ export default function Attendance() {
               </Button>
               <Button 
                 onClick={() => {
-                  setSelectedStatus('present');
-                  setMarkDialogOpen(true);
+                  setUnifiedInitialStatus('present');
+                  setUnifiedOpen(true);
                 }}
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -1448,7 +1451,23 @@ export default function Attendance() {
           </TabsContent>
         </Tabs>
 
-        {/* Mark Attendance Dialog */}
+        {/* Unified Mark Attendance — same form as Students tab */}
+        <UnifiedAttendanceForm
+          open={unifiedOpen}
+          onOpenChange={setUnifiedOpen}
+          students={(assignedStudents || []).map(s => ({
+            id: s.id,
+            full_name: s.full_name,
+            subject_name: (s as any).subject_name ?? null,
+            subject_id: (s as any).subject_id ?? null,
+            last_lesson: null,
+            daily_target_lines: (s as any).daily_target_lines,
+            preferred_unit: (s as any).preferred_unit,
+          }))}
+          initialStatus={unifiedInitialStatus}
+        />
+
+        {/* Legacy Mark Attendance Dialog (kept for backward compat — no longer opened from buttons) */}
         <Dialog open={markDialogOpen} onOpenChange={setMarkDialogOpen}>
           <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
