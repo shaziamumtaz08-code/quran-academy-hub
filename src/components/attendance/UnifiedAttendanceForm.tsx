@@ -333,7 +333,7 @@ export function UnifiedAttendanceForm({
       }
 
       const { data, error } = await supabase.from('attendance').insert({
-        student_id: student.id,
+        student_id: resolvedStudentId,
         teacher_id: effectiveTeacherId,
         class_date: classDate,
         class_time: classTime,
@@ -367,7 +367,7 @@ export function UnifiedAttendanceForm({
         try {
           await supabase.from('session_reschedules' as any).insert({
             attendance_id: data?.id,
-            student_id: student.id,
+            student_id: resolvedStudentId,
             teacher_id: effectiveTeacherId,
             original_date: classDate,
             original_time: classTime,
