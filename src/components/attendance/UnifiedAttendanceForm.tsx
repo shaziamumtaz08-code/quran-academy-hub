@@ -452,7 +452,7 @@ export function UnifiedAttendanceForm({
             Mark Attendance
           </DialogTitle>
           <DialogDescription className="text-sky-200">
-            Record attendance for {student.full_name}
+            {student.full_name ? `Record attendance for ${student.full_name}` : 'Record attendance for a class'}
           </DialogDescription>
         </DialogHeader>
 
