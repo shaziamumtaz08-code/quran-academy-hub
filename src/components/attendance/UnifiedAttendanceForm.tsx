@@ -258,10 +258,10 @@ export function UnifiedAttendanceForm({
   const requiresReschedule = (status: AttendanceStatus) => 
     ['rescheduled', 'student_rescheduled'].includes(status);
 
-  // Reset form when modal closes
+  // Reset form when modal closes; apply initialStatus when modal opens
   useEffect(() => {
     if (!open) {
-      setSelectedStatus('present');
+      setSelectedStatus(initialStatus || 'present');
       setClassTime('');
       setClassDate(format(new Date(), 'yyyy-MM-dd'));
       setDuration('30');
@@ -285,8 +285,11 @@ export function UnifiedAttendanceForm({
       setAcademicLessonTopic('');
       setAcademicLessonStatus('');
       setAcademicFollowups([]);
+      setPickedStudentId('');
+    } else if (initialStatus) {
+      setSelectedStatus(initialStatus);
     }
-  }, [open]);
+  }, [open, initialStatus]);
 
   const markAttendance = useMutation({
     mutationFn: async () => {
