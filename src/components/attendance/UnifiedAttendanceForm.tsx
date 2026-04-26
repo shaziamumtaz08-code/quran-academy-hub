@@ -72,7 +72,12 @@ export interface StudentInfo {
 interface UnifiedAttendanceFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  student: StudentInfo;
+  /** Pre-selected student. If omitted, `students` picker will be shown. */
+  student?: StudentInfo;
+  /** Optional list of selectable students (used when `student` is not preset). */
+  students?: StudentInfo[];
+  /** Initial status to start with (e.g. 'teacher_leave' from a quick-action). */
+  initialStatus?: AttendanceStatus;
   teacherId?: string;
   teacherTimezone?: string;
   onSuccess?: () => void;
