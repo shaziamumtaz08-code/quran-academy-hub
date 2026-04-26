@@ -295,6 +295,14 @@ export function UnifiedAttendanceForm({
     mutationFn: async () => {
       if (!effectiveTeacherId) throw new Error('Missing teacher');
 
+      // For teacher-only / holiday statuses with no preset student, fall back to first
+      // student in the picker list so the row still records (legacy behaviour).
+      let resolvedStudentId = student.id;
+      if (!resolvedStudentId && isTeacherOnlyStatus && students && students.length > 0) {
+        resolvedStudentId = students[0].id;
+      }
+      if (!resolvedStudentId) throw new Error('Please select a student');
+
       // Build lesson_covered based on subject type
       let lessonCoveredText = '';
       if (currentSubjectType === 'qaida') {
