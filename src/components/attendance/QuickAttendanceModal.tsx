@@ -23,7 +23,7 @@ import { AcademicAttendanceFields, type LessonStatus, type FollowupSuggestion } 
 import { type MarkerType } from './SabaqSection';
 import { trackActivity } from '@/lib/activityLogger';
 
-type AttendanceStatus = 'present' | 'student_absent' | 'teacher_absent' | 'teacher_leave' | 'rescheduled' | 'student_rescheduled' | 'holiday';
+type AttendanceStatus = 'present' | 'student_absent' | 'student_leave' | 'teacher_absent' | 'teacher_leave' | 'rescheduled' | 'student_rescheduled' | 'holiday';
 type ReasonCategory = 'sick' | 'personal' | 'emergency' | 'internet_issue' | 'other';
 
 interface QuickAttendanceModalProps {
