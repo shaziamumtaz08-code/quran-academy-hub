@@ -422,9 +422,13 @@ export function UnifiedAttendanceForm({
     return true;
   }, [selectedStatus, currentSubjectType, lessonNumber, ayahFromSurah, ayahFromNumber, academicLessonTopic]);
 
+  const isTeacherOnlyStatus = ['teacher_absent', 'teacher_leave', 'holiday'].includes(selectedStatus);
+  const needsStudent = !isTeacherOnlyStatus;
+
   const isFormValid = useMemo(() => {
     if (!classTime || !classDate) return false;
     if (isFutureDate) return false;
+    if (needsStudent && !student.id) return false;
     if (hasDuplicateAttendance) return false;
     if (!isScheduledDay) return false;
     if (requiresReason(selectedStatus) && !reasonCategory) return false;
@@ -432,7 +436,7 @@ export function UnifiedAttendanceForm({
     if (requiresReschedule(selectedStatus) && (!rescheduleDate || !rescheduleTime)) return false;
     if (selectedStatus === 'present' && !hasLessonDetails) return false;
     return true;
-  }, [selectedStatus, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleTime, hasDuplicateAttendance, isScheduledDay, isFutureDate, hasLessonDetails]);
+  }, [selectedStatus, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleTime, hasDuplicateAttendance, isScheduledDay, isFutureDate, hasLessonDetails, needsStudent, student.id]);
 
   const studentTzAbbr = getTimezoneAbbr(student.timezone);
   const teacherTzAbbr = getTimezoneAbbr(effectiveTeacherTz);
