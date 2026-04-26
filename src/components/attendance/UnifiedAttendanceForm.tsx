@@ -28,6 +28,7 @@ import { getTimezoneAbbr } from '@/lib/timezones';
 export type AttendanceStatus = 
   | 'present' 
   | 'student_absent' 
+  | 'student_leave'
   | 'teacher_absent' 
   | 'teacher_leave' 
   | 'rescheduled' 
@@ -38,9 +39,10 @@ type ReasonCategory = 'sick' | 'personal' | 'emergency' | 'internet_issue' | 'ot
 
 export const STATUS_OPTIONS: { value: AttendanceStatus; label: string }[] = [
   { value: 'present', label: 'Present' },
-  { value: 'student_absent', label: 'Absent' },
-  { value: 'teacher_leave', label: 'Leave' },
+  { value: 'student_absent', label: 'Student Absent' },
+  { value: 'student_leave', label: 'Student Leave' },
   { value: 'teacher_absent', label: 'Teacher Absent' },
+  { value: 'teacher_leave', label: 'Teacher Leave' },
   { value: 'rescheduled', label: 'Rescheduled by Teacher' },
   { value: 'student_rescheduled', label: 'Rescheduled by Student' },
   { value: 'holiday', label: 'Holiday' },
