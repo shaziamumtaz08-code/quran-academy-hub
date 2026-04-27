@@ -423,14 +423,16 @@ export function UnifiedAttendanceForm({
     return isAfter(selected, today);
   }, [classDate]);
 
-  // Check if lesson details are filled for "present" status
+  // Check if lesson details are filled for "present" or rescheduled statuses
+  // (rescheduled = the make-up class actually happened, so lesson coverage required)
+  const lessonRequired = selectedStatus === 'present' || requiresReschedule(selectedStatus);
   const hasLessonDetails = useMemo(() => {
-    if (selectedStatus !== 'present') return true;
+    if (!lessonRequired) return true;
     if (currentSubjectType === 'qaida') return !!lessonNumber;
     if (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') return !!(ayahFromSurah && ayahFromNumber);
     if (currentSubjectType === 'academic') return !!academicLessonTopic?.trim();
     return true;
-  }, [selectedStatus, currentSubjectType, lessonNumber, ayahFromSurah, ayahFromNumber, academicLessonTopic]);
+  }, [lessonRequired, currentSubjectType, lessonNumber, ayahFromSurah, ayahFromNumber, academicLessonTopic]);
 
   const isTeacherOnlyStatus = ['teacher_absent', 'teacher_leave', 'holiday'].includes(selectedStatus);
   const needsStudent = !isTeacherOnlyStatus;
