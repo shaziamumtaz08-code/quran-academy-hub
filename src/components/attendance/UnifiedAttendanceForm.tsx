@@ -650,28 +650,28 @@ export function UnifiedAttendanceForm({
             </div>
           )}
 
-          {/* Reschedule fields */}
+          {/* Reschedule fields — captures the ORIGINAL missed slot this make-up class replaces */}
           {requiresReschedule(selectedStatus) && (
             <div className="space-y-4 p-4 bg-[#2d4a6f] rounded-lg">
               <Label className="text-sky-100 flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                Select new session date
+                Original scheduled date (this lesson replaces)
               </Label>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-sky-100">New Date <span className="text-red-400">*</span></Label>
+                  <Label className="text-sky-100">Original Date <span className="text-red-400">*</span></Label>
                   <Input 
                     type="date" 
                     value={rescheduleDate}
-                    min={format(new Date(), 'yyyy-MM-dd')}
-                    max={format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')}
+                    min={format(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')}
+                    max={format(new Date(), 'yyyy-MM-dd')}
                     onChange={(e) => setRescheduleDate(e.target.value)}
                     className="bg-white text-[#1e3a5f] border-0"
                   />
-                  <p className="text-[10px] text-sky-200/70">Any day allowed (incl. Sat/Sun) — up to 30 days ahead.</p>
+                  <p className="text-[10px] text-sky-200/70">Pick the missed scheduled day this class makes up for.</p>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sky-100">New Time <span className="text-red-400">*</span></Label>
+                  <Label className="text-sky-100">Original Time</Label>
                   <Input 
                     type="time" 
                     value={rescheduleTime}
