@@ -568,14 +568,17 @@ export function UnifiedAttendanceForm({
             </div>
             <div className="space-y-2">
               <Label className="text-sky-100">
-                Scheduled Time ({teacherTzAbbr}) <span className="text-red-400">*</span>
+                {requiresReschedule(selectedStatus) ? 'Class Time' : 'Scheduled Time'} ({teacherTzAbbr}) <span className="text-red-400">*</span>
               </Label>
               <Input 
                 type="time" 
                 value={classTime} 
-                readOnly
-                disabled
-                className="bg-slate-200 text-[#1e3a5f] border-0 cursor-not-allowed"
+                onChange={(e) => setClassTime(e.target.value)}
+                readOnly={!requiresReschedule(selectedStatus)}
+                disabled={!requiresReschedule(selectedStatus)}
+                className={requiresReschedule(selectedStatus)
+                  ? "bg-white text-[#1e3a5f] border-0"
+                  : "bg-slate-200 text-[#1e3a5f] border-0 cursor-not-allowed"}
               />
             </div>
           </div>
@@ -586,9 +589,12 @@ export function UnifiedAttendanceForm({
             <Input 
               type="number" 
               value={duration} 
-              readOnly
-              disabled
-              className="bg-slate-200 text-[#1e3a5f] border-0 cursor-not-allowed"
+              onChange={(e) => setDuration(e.target.value)}
+              readOnly={!requiresReschedule(selectedStatus)}
+              disabled={!requiresReschedule(selectedStatus)}
+              className={requiresReschedule(selectedStatus)
+                ? "bg-white text-[#1e3a5f] border-0"
+                : "bg-slate-200 text-[#1e3a5f] border-0 cursor-not-allowed"}
             />
           </div>
 
