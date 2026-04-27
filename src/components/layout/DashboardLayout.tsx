@@ -408,12 +408,19 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         type="button"
         onClick={() => handleParentClick(item)}
         className={cn(
-          "flex h-10 w-full items-center gap-3 rounded-lg border-l-2 border-transparent px-3 text-sm font-medium text-white transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
-          parentActive && "font-semibold",
+          "relative flex h-10 w-full items-center gap-3 rounded-lg border-l-[3px] border-transparent px-3 text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40",
+          parentActive
+            ? "border-amber-400 bg-white/10 font-semibold text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]"
+            : "font-medium text-white/70 hover:bg-white/5 hover:text-white",
           collapsed && "justify-center px-0",
         )}
       >
-        <item.icon className="h-4 w-4 shrink-0" />
+        <item.icon
+          className={cn(
+            "h-4 w-4 shrink-0 transition-colors",
+            parentActive ? "text-amber-400" : "text-white/60",
+          )}
+        />
         {!collapsed ? <span className="flex-1 text-left">{item.label}</span> : null}
         {!collapsed && hasChildren ? (
           <ChevronRight className={cn("h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200", expanded && "rotate-90")} />
