@@ -1,60 +1,71 @@
+## Context — answer to your first question
 
+**Yes.** The previous unification work made both entry points (Students tab card → form, and Attendance tab → form) render the **same `UnifiedAttendanceForm` component**, which writes to the **same `attendance` table** with the same column set. The only thing that differs between the two entry points now is *how the form is launched* (preset student vs. picker). The data source, fields, validation, voice-note upload path, reschedule-history insert into `session_reschedules`, and activity log are all identical. So back-end storage is fully consolidated — only the UI access points differ.
 
-## What you already have for parents
+---
 
-You have a **fully built Parent Portal** at `/parent` (`src/pages/ParentDashboard.tsx`, 814 lines). It is mobile-friendly, multilingual (English / Urdu / Arabic), and includes 6 sections accessed via `?section=` URL params:
+## What you want to change
 
-1. **Overview** — child cards, attendance %, speaking score, latest assessment, next session, AI note
-2. **AI Progress Report** — auto-generated parent report (PDF export)
-3. **Sessions & Attendance** — attended / missed / late / excused log
-4. **Materials & Resources** — videos, drills, vocab progress
-5. **Fees & Payments** — monthly fee, paid-to-date, overdue months, family bulk pay
-6. **Message Teacher** — DM thread with AI draft assist
+Today, when a 1:1 lesson is rescheduled to (say) Sunday, the teacher cannot mark attendance for Sunday because:
 
-There is also `FamilyManagement.tsx` for parents to manage linked children, PINs, and oversight levels.
+- The form's **Date** picker is *informational* — it auto-loads the **scheduled** time/duration for that weekday from the roster. On a non-roster day it loads nothing.
+- The "Rescheduled by Teacher / Student" status today only captures **where the lesson was moved TO** (`New Date` / `New Time`) — it does **not** record the actual class that was conducted on the rescheduled day.
 
-**Linking model already in DB:** the `student_parent_links` table joins a parent profile to one or more student profiles. A parent can have many children; a child can have multiple guardians.
+You want the opposite flow: **the teacher fills the form on the day the rescheduled class actually happened**, picks the real (off-roster) date, marks the status as Rescheduled by Teacher / Student, records the **original missed date** in the reschedule block, then fills lesson details normally.
 
-## Why "Create Guardian Account" is failing
+Good news: for one-to-one division, the form **already allows any date** (line 222–223: `if (isOneToOne) return true;`). So the date picker isn't blocked. We only need to flip the semantic of the reschedule block and relax one input.
 
-The current button on the student's Guardian tab calls `LinkGuardianDialog` which tries to **provision a fresh auth user with a temp password in one shot**. That flow is the one currently breaking (HIBP / password rules / edge function permissions).
+---
 
-## Proposed fix — switch to "Find or Create User, then Link"
+## Proposed change (minimal — one file)
 
-Replace the all-in-one provisioning with the same **two-step flow you already use elsewhere**:
+**File: `src/components/attendance/UnifiedAttendanceForm.tsx`**
 
-**Step 1 — Pick or create the person (no auth yet)**
-- Search existing users by email / phone / name
-- If found → show match, click "Link as Guardian"
-- If not found → create a *plain profile* (no auth account) with name, email, phone, relationship, country
-- Insert row into `student_parent_links` with relationship + oversight level
+1. **Re-label the reschedule block** (lines 644–674) so it captures the **original date the class was supposed to happen**, not the future date it's moved to:
+   - Change header from "Select new session date" → **"Original scheduled date (this lesson replaces)"**
+   - Change "New Date" label → **"Original Date"**
+   - Change "New Time" label → **"Original Time"**
+   - Change min/max on the date picker from "today → +30 days" to **"past 30 days → today"** (so teachers pick the *missed* date, not a future one).
+   - Update helper text to: *"Pick the missed scheduled day this class makes up for."*
 
-**Step 2 — Activate login later (optional, on demand)**
-- The new guardian appears on the **Parents & Guardians** page (`/parents`) with an "Activate Login" button (this flow already exists and works — uses `activate-parent-login` edge function)
-- Admin clicks it when ready → parent gets credentials → can sign in to `/parent` portal
+2. **Allow lesson details on Rescheduled statuses** (line 677): change `selectedStatus === 'present'` to also include `'rescheduled'` and `'student_rescheduled'`, so Sabaq / Qaida / Hifz / Nazra / Academic fields appear (the class actually happened).
 
-This matches how students are currently handled (profile first, login activated separately) and removes the failing single-shot provisioning.
+3. **Allow `hasLessonDetails` requirement to apply to rescheduled statuses too** (line 426) so Present-style lesson capture is enforced.
 
-## Changes required
+4. **Free up Scheduled Time + Duration** (lines 569–588) when status is Rescheduled — currently both are `readOnly disabled` and only populate from the roster for that weekday. On an off-roster day there's no roster entry, so they'd stay blank. Make them editable when `requiresReschedule(selectedStatus)` is true; keep them readOnly otherwise (preserves existing behaviour for Present/Absent/Leave).
 
-**1. `src/components/users/LinkGuardianDialog.tsx`**
-- Remove the `generateTempPassword` + `admin-create-user` invocation
-- Add a search box (name / email / phone) that queries `profiles` 
-- Show results; "Link Existing" button → only inserts into `student_parent_links`
-- "Create New Guardian Profile" button → inserts into `profiles` (no auth) + `user_roles` (`parent`) + `student_parent_links`
-- Success state: shows the linked guardian card with a "Activate login from Parents page →" hint
+5. **Persistence — no schema change**:
+   - `class_date` already stores the actual day the class happened.
+   - `reschedule_date` / `reschedule_time` columns already exist; we just store the **original** date there instead of the new one.
+   - `session_reschedules` insert (line 366–382) keeps the same shape — we swap the meaning: `original_date` = value from reschedule_date input, `new_date` = `classDate`. One-line swap.
+   - Update the `finalReason` string template (line 332) to read *"Make-up for missed class on {date} at {time}"* for clarity in reports.
 
-**2. Student profile drawer — Guardian tab**
-- After linking, replace the empty "No Guardian Linked" state with a list of linked guardians (name, relationship, login status, unlink button)
+6. **Quick-action button on Attendance page** ("Reschedule" shortcut): no code change needed — it already opens this form with `initialStatus='rescheduled'`.
 
-**3. No DB migration needed** — `student_parent_links`, `profiles`, `user_roles` already support this.
+---
 
-**4. Parents page (`/parents`) already handles activation** — no changes needed; new guardians will appear in the "Need Login" tab automatically.
+## What stays the same
 
-## Result
+- Database schema (no migration).
+- Same component, same insert into `attendance`, same `session_reschedules` audit row.
+- All other statuses (Present / Absent / Leave / Holiday) behave exactly as they do today.
+- Group classes are unaffected (the date-freeze still applies there per `isOneToOne` guard).
+- Both Students-tab and Attendance-tab entry points inherit the change automatically (one component).
 
-- Linking a guardian becomes a 5-second action (no password generation, no email failures)
-- Parent profile can be linked to multiple children (siblings)
-- Admin activates login on demand from the Parents page → guardian then has full access to the existing `/parent` dashboard
-- Existing parent users (already in system) can be linked instead of duplicated
+---
 
+## After the change — teacher's workflow
+
+1. Class was supposed to happen Tue at 6 PM, was moved to Sun.
+2. On Sunday, teacher opens the form (from either tab).
+3. Picks **Date = Sunday** (today).
+4. Picks **Status = Rescheduled by Teacher** (or by Student).
+5. A block appears: enters **Original Date = Tue** + **Original Time = 6 PM** (the missed slot).
+6. Time/duration on the main form are now editable — enters the actual time the rescheduled class ran.
+7. Fills lesson details (Sabaq / Qaida / Academic / Hifz / Nazra) as usual.
+8. Saves.
+9. Result: one `attendance` row dated Sunday with `status=rescheduled`, original slot stored in `reschedule_date/time`, lesson coverage captured, plus a `session_reschedules` audit row showing the swap.
+
+This way: ✅ off-roster day allowed, ✅ make-up tracked, ✅ lesson progress recorded, ✅ teacher KPIs not penalised, ✅ no DB changes, ✅ ~20 lines edited in one file.
+
+Approve and I'll apply.

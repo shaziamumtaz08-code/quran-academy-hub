@@ -328,8 +328,8 @@ export function UnifiedAttendanceForm({
       }
 
       let finalReason = remarks || '';
-      if (requiresReschedule(selectedStatus) && rescheduleDate && rescheduleTime) {
-        finalReason = `Rescheduled to ${rescheduleDate} at ${rescheduleTime}. ${remarks || ''}`.trim();
+      if (requiresReschedule(selectedStatus) && rescheduleDate) {
+        finalReason = `Make-up for missed class on ${rescheduleDate}${rescheduleTime ? ` at ${rescheduleTime}` : ''}. ${remarks || ''}`.trim();
       }
 
       const { data, error } = await supabase.from('attendance').insert({
