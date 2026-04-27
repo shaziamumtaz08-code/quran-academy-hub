@@ -458,10 +458,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                     closeMobileDrawer();
                   }}
                   className={cn(
-                    "relative flex h-10 w-full items-center rounded-lg border-l-[3px] px-3 text-left text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40",
+                    "relative flex h-10 w-full items-center rounded-none border-l-[3px] px-3 text-left text-[13px] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6]/40",
                     childActive
-                      ? "border-amber-400 bg-white/10 font-semibold text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]"
-                      : "border-transparent bg-slate-800/40 font-medium text-slate-300 hover:bg-slate-800 hover:text-white",
+                      ? "border-[#3B82F6] bg-[rgba(59,130,246,0.15)] font-medium text-white"
+                      : "border-transparent font-normal text-white/60 hover:bg-white/5 hover:text-white/90",
                   )}
                 >
                   {child.label}
