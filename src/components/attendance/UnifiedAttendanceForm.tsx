@@ -363,16 +363,18 @@ export function UnifiedAttendanceForm({
       if (error) throw error;
 
       // Log reschedule history (best-effort; never blocks the attendance save)
+      // Semantics: classDate = the actual day the make-up class happened.
+      // rescheduleDate/Time = the original missed slot this lesson replaces.
       if (requiresReschedule(selectedStatus) && rescheduleDate && user?.id) {
         try {
           await supabase.from('session_reschedules' as any).insert({
             attendance_id: data?.id,
             student_id: resolvedStudentId,
             teacher_id: effectiveTeacherId,
-            original_date: classDate,
-            original_time: classTime,
-            new_date: rescheduleDate,
-            new_time: rescheduleTime || null,
+            original_date: rescheduleDate,
+            original_time: rescheduleTime || null,
+            new_date: classDate,
+            new_time: classTime || null,
             reason: remarks || null,
             rescheduled_by: user.id,
           });
