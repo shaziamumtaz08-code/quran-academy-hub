@@ -328,8 +328,8 @@ export function UnifiedAttendanceForm({
       }
 
       let finalReason = remarks || '';
-      if (requiresReschedule(selectedStatus) && rescheduleDate && rescheduleTime) {
-        finalReason = `Rescheduled to ${rescheduleDate} at ${rescheduleTime}. ${remarks || ''}`.trim();
+      if (requiresReschedule(selectedStatus) && rescheduleDate) {
+        finalReason = `Make-up for missed class on ${rescheduleDate}${rescheduleTime ? ` at ${rescheduleTime}` : ''}. ${remarks || ''}`.trim();
       }
 
       const { data, error } = await supabase.from('attendance').insert({
@@ -363,16 +363,18 @@ export function UnifiedAttendanceForm({
       if (error) throw error;
 
       // Log reschedule history (best-effort; never blocks the attendance save)
+      // Semantics: classDate = the actual day the make-up class happened.
+      // rescheduleDate/Time = the original missed slot this lesson replaces.
       if (requiresReschedule(selectedStatus) && rescheduleDate && user?.id) {
         try {
           await supabase.from('session_reschedules' as any).insert({
             attendance_id: data?.id,
             student_id: resolvedStudentId,
             teacher_id: effectiveTeacherId,
-            original_date: classDate,
-            original_time: classTime,
-            new_date: rescheduleDate,
-            new_time: rescheduleTime || null,
+            original_date: rescheduleDate,
+            original_time: rescheduleTime || null,
+            new_date: classDate,
+            new_time: classTime || null,
             reason: remarks || null,
             rescheduled_by: user.id,
           });
@@ -421,14 +423,16 @@ export function UnifiedAttendanceForm({
     return isAfter(selected, today);
   }, [classDate]);
 
-  // Check if lesson details are filled for "present" status
+  // Check if lesson details are filled for "present" or rescheduled statuses
+  // (rescheduled = the make-up class actually happened, so lesson coverage required)
+  const lessonRequired = selectedStatus === 'present' || requiresReschedule(selectedStatus);
   const hasLessonDetails = useMemo(() => {
-    if (selectedStatus !== 'present') return true;
+    if (!lessonRequired) return true;
     if (currentSubjectType === 'qaida') return !!lessonNumber;
     if (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') return !!(ayahFromSurah && ayahFromNumber);
     if (currentSubjectType === 'academic') return !!academicLessonTopic?.trim();
     return true;
-  }, [selectedStatus, currentSubjectType, lessonNumber, ayahFromSurah, ayahFromNumber, academicLessonTopic]);
+  }, [lessonRequired, currentSubjectType, lessonNumber, ayahFromSurah, ayahFromNumber, academicLessonTopic]);
 
   const isTeacherOnlyStatus = ['teacher_absent', 'teacher_leave', 'holiday'].includes(selectedStatus);
   const needsStudent = !isTeacherOnlyStatus;
@@ -441,10 +445,10 @@ export function UnifiedAttendanceForm({
     if (!isScheduledDay) return false;
     if (requiresReason(selectedStatus) && !reasonCategory) return false;
     if (requiresReason(selectedStatus) && reasonCategory === 'other' && !reasonText.trim()) return false;
-    if (requiresReschedule(selectedStatus) && (!rescheduleDate || !rescheduleTime)) return false;
-    if (selectedStatus === 'present' && !hasLessonDetails) return false;
+    if (requiresReschedule(selectedStatus) && !rescheduleDate) return false;
+    if (lessonRequired && !hasLessonDetails) return false;
     return true;
-  }, [selectedStatus, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleTime, hasDuplicateAttendance, isScheduledDay, isFutureDate, hasLessonDetails, needsStudent, student.id]);
+  }, [selectedStatus, classTime, classDate, reasonCategory, reasonText, rescheduleDate, hasDuplicateAttendance, isScheduledDay, isFutureDate, lessonRequired, hasLessonDetails, needsStudent, student.id]);
 
   const studentTzAbbr = getTimezoneAbbr(student.timezone);
   const teacherTzAbbr = getTimezoneAbbr(effectiveTeacherTz);
@@ -564,14 +568,17 @@ export function UnifiedAttendanceForm({
             </div>
             <div className="space-y-2">
               <Label className="text-sky-100">
-                Scheduled Time ({teacherTzAbbr}) <span className="text-red-400">*</span>
+                {requiresReschedule(selectedStatus) ? 'Class Time' : 'Scheduled Time'} ({teacherTzAbbr}) <span className="text-red-400">*</span>
               </Label>
               <Input 
                 type="time" 
                 value={classTime} 
-                readOnly
-                disabled
-                className="bg-slate-200 text-[#1e3a5f] border-0 cursor-not-allowed"
+                onChange={(e) => setClassTime(e.target.value)}
+                readOnly={!requiresReschedule(selectedStatus)}
+                disabled={!requiresReschedule(selectedStatus)}
+                className={requiresReschedule(selectedStatus)
+                  ? "bg-white text-[#1e3a5f] border-0"
+                  : "bg-slate-200 text-[#1e3a5f] border-0 cursor-not-allowed"}
               />
             </div>
           </div>
@@ -582,9 +589,12 @@ export function UnifiedAttendanceForm({
             <Input 
               type="number" 
               value={duration} 
-              readOnly
-              disabled
-              className="bg-slate-200 text-[#1e3a5f] border-0 cursor-not-allowed"
+              onChange={(e) => setDuration(e.target.value)}
+              readOnly={!requiresReschedule(selectedStatus)}
+              disabled={!requiresReschedule(selectedStatus)}
+              className={requiresReschedule(selectedStatus)
+                ? "bg-white text-[#1e3a5f] border-0"
+                : "bg-slate-200 text-[#1e3a5f] border-0 cursor-not-allowed"}
             />
           </div>
 
@@ -640,28 +650,28 @@ export function UnifiedAttendanceForm({
             </div>
           )}
 
-          {/* Reschedule fields */}
+          {/* Reschedule fields — captures the ORIGINAL missed slot this make-up class replaces */}
           {requiresReschedule(selectedStatus) && (
             <div className="space-y-4 p-4 bg-[#2d4a6f] rounded-lg">
               <Label className="text-sky-100 flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                Select new session date
+                Original scheduled date (this lesson replaces)
               </Label>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-sky-100">New Date <span className="text-red-400">*</span></Label>
+                  <Label className="text-sky-100">Original Date <span className="text-red-400">*</span></Label>
                   <Input 
                     type="date" 
                     value={rescheduleDate}
-                    min={format(new Date(), 'yyyy-MM-dd')}
-                    max={format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')}
+                    min={format(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')}
+                    max={format(new Date(), 'yyyy-MM-dd')}
                     onChange={(e) => setRescheduleDate(e.target.value)}
                     className="bg-white text-[#1e3a5f] border-0"
                   />
-                  <p className="text-[10px] text-sky-200/70">Any day allowed (incl. Sat/Sun) — up to 30 days ahead.</p>
+                  <p className="text-[10px] text-sky-200/70">Pick the missed scheduled day this class makes up for.</p>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sky-100">New Time <span className="text-red-400">*</span></Label>
+                  <Label className="text-sky-100">Original Time</Label>
                   <Input 
                     type="time" 
                     value={rescheduleTime}
@@ -673,8 +683,8 @@ export function UnifiedAttendanceForm({
             </div>
           )}
 
-          {/* Subject-specific fields - only show when present */}
-          {selectedStatus === 'present' && (
+          {/* Subject-specific fields — show when class actually happened (present or rescheduled) */}
+          {lessonRequired && (
             <div className="space-y-4">
               {currentSubjectType === 'qaida' && (
                 <QaidaProgressInput
@@ -800,11 +810,11 @@ export function UnifiedAttendanceForm({
         </div>
 
         {/* Lesson details validation warning */}
-        {selectedStatus === 'present' && !hasLessonDetails && (
+        {lessonRequired && !hasLessonDetails && (
           <Alert className="bg-amber-500/20 border-amber-500/50 text-amber-200">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              Lesson details are required when marking attendance as Present.
+              Lesson details are required when the class was conducted.
             </AlertDescription>
           </Alert>
         )}
