@@ -683,8 +683,8 @@ export function UnifiedAttendanceForm({
             </div>
           )}
 
-          {/* Subject-specific fields - only show when present */}
-          {selectedStatus === 'present' && (
+          {/* Subject-specific fields — show when class actually happened (present or rescheduled) */}
+          {lessonRequired && (
             <div className="space-y-4">
               {currentSubjectType === 'qaida' && (
                 <QaidaProgressInput
