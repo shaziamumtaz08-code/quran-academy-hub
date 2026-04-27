@@ -810,11 +810,11 @@ export function UnifiedAttendanceForm({
         </div>
 
         {/* Lesson details validation warning */}
-        {selectedStatus === 'present' && !hasLessonDetails && (
+        {lessonRequired && !hasLessonDetails && (
           <Alert className="bg-amber-500/20 border-amber-500/50 text-amber-200">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              Lesson details are required when marking attendance as Present.
+              Lesson details are required when the class was conducted.
             </AlertDescription>
           </Alert>
         )}
