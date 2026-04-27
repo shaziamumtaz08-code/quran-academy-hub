@@ -445,10 +445,10 @@ export function UnifiedAttendanceForm({
     if (!isScheduledDay) return false;
     if (requiresReason(selectedStatus) && !reasonCategory) return false;
     if (requiresReason(selectedStatus) && reasonCategory === 'other' && !reasonText.trim()) return false;
-    if (requiresReschedule(selectedStatus) && (!rescheduleDate || !rescheduleTime)) return false;
-    if (selectedStatus === 'present' && !hasLessonDetails) return false;
+    if (requiresReschedule(selectedStatus) && !rescheduleDate) return false;
+    if (lessonRequired && !hasLessonDetails) return false;
     return true;
-  }, [selectedStatus, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleTime, hasDuplicateAttendance, isScheduledDay, isFutureDate, hasLessonDetails, needsStudent, student.id]);
+  }, [selectedStatus, classTime, classDate, reasonCategory, reasonText, rescheduleDate, hasDuplicateAttendance, isScheduledDay, isFutureDate, lessonRequired, hasLessonDetails, needsStudent, student.id]);
 
   const studentTzAbbr = getTimezoneAbbr(student.timezone);
   const teacherTzAbbr = getTimezoneAbbr(effectiveTeacherTz);
