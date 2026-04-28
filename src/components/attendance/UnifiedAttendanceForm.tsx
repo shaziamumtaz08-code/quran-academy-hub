@@ -542,7 +542,18 @@ export function UnifiedAttendanceForm({
           {/* Status Selection */}
           <div className="space-y-2">
             <Label className="text-sky-100">Status <span className="text-red-400">*</span></Label>
-            <Select value={selectedStatus} onValueChange={(v) => setSelectedStatus(v as AttendanceStatus)}>
+            <Select
+              value={selectedStatus}
+              onValueChange={(v) => {
+                const next = v as AttendanceStatus;
+                // Silently clear reschedule fields when leaving a reschedule status
+                if (!requiresReschedule(next)) {
+                  setRescheduleDate('');
+                  setRescheduleTime('');
+                }
+                setSelectedStatus(next);
+              }}
+            >
               <SelectTrigger className="bg-white text-[#1e3a5f] border-0">
                 <SelectValue />
               </SelectTrigger>
