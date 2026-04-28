@@ -1,16 +1,24 @@
 {
-  "name": "AQT Academy",
+  "id": "/?source=pwa",
+  "name": "AlQuran Time Academy LMS",
   "short_name": "AQT Academy",
-  "description": "AlQuran Time Academy LMS",
-  "start_url": "/login/aqt",
+  "description": "AlQuran Time Academy — Learning Management System for students, teachers and parents.",
+  "start_url": "/login/aqt?source=pwa",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
+  "lang": "en",
+  "dir": "ltr",
   "theme_color": "#0a192f",
   "background_color": "#0a192f",
+  "categories": ["education", "productivity"],
+  "prefer_related_applications": false,
   "icons": [
     { "src": "/icons/icon-180.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
