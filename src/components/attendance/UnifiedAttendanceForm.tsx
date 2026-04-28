@@ -565,41 +565,112 @@ export function UnifiedAttendanceForm({
             </Select>
           </div>
 
-          {/* Date and Time Row */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="text-sky-100">Date <span className="text-red-400">*</span></Label>
-              <Input 
-                type="date" 
-                value={classDate} 
-                onChange={(e) => setClassDate(e.target.value)} 
-                max={format(new Date(), 'yyyy-MM-dd')}
-                className="bg-white text-[#1e3a5f] border-0"
-              />
+          {/* Adaptive Date Block ---------------------------------------- */}
+          {!requiresReschedule(selectedStatus) ? (
+            // Variant A — non-reschedule statuses: single Date + Scheduled Time row
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sky-100">Class Date <span className="text-red-400">*</span></Label>
+                <Input
+                  type="date"
+                  value={classDate}
+                  onChange={(e) => setClassDate(e.target.value)}
+                  max={format(new Date(), 'yyyy-MM-dd')}
+                  className="bg-white text-[#1e3a5f] border-0 [&::-webkit-calendar-picker-indicator]:opacity-0"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sky-100">
+                  Scheduled Time ({teacherTzAbbr}) <span className="text-red-400">*</span>
+                </Label>
+                <Input
+                  type="time"
+                  value={classTime}
+                  onChange={(e) => setClassTime(e.target.value)}
+                  readOnly
+                  disabled
+                  className="bg-slate-200 text-[#1e3a5f] border-0 cursor-not-allowed [&::-webkit-calendar-picker-indicator]:opacity-0"
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label className="text-sky-100">
-                {requiresReschedule(selectedStatus) ? 'Class Time' : 'Scheduled Time'} ({teacherTzAbbr}) <span className="text-red-400">*</span>
-              </Label>
-              <Input 
-                type="time" 
-                value={classTime} 
-                onChange={(e) => setClassTime(e.target.value)}
-                readOnly={!requiresReschedule(selectedStatus)}
-                disabled={!requiresReschedule(selectedStatus)}
-                className={requiresReschedule(selectedStatus)
-                  ? "bg-white text-[#1e3a5f] border-0"
-                  : "bg-slate-200 text-[#1e3a5f] border-0 cursor-not-allowed"}
-              />
-            </div>
-          </div>
+          ) : (
+            // Variant B — reschedule statuses: contained block, "Originally scheduled" first, "Actually conducted on" second
+            <div className="rounded-lg bg-[#2d4a6f] p-3 sm:p-4 space-y-4">
+              {/* Info banner (blue, not amber — reschedule is routine) */}
+              <div className="flex items-start gap-2 rounded-md bg-sky-500/15 border border-sky-400/30 px-3 py-2">
+                <Info className="h-4 w-4 text-sky-300 mt-0.5 shrink-0" />
+                <div className="text-sm text-sky-100">
+                  <span className="font-medium">Reschedule details</span>
+                  <span className="block text-xs text-sky-200/80">This class is a make-up for a missed slot.</span>
+                </div>
+              </div>
 
-          {/* Duration */}
+              {/* Sub-section 1: Originally scheduled (FIRST) */}
+              <div className="space-y-2">
+                <Label className="text-sky-100 text-sm font-semibold">Originally scheduled</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-sky-100 text-xs">Date <span className="text-red-400">*</span></Label>
+                    <Input
+                      type="date"
+                      value={rescheduleDate}
+                      min={format(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')}
+                      max={format(new Date(), 'yyyy-MM-dd')}
+                      onChange={(e) => setRescheduleDate(e.target.value)}
+                      className="bg-white text-[#1e3a5f] border-0 [&::-webkit-calendar-picker-indicator]:opacity-0"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sky-100 text-xs">Time</Label>
+                    <Input
+                      type="time"
+                      value={rescheduleTime}
+                      onChange={(e) => setRescheduleTime(e.target.value)}
+                      className="bg-white text-[#1e3a5f] border-0 [&::-webkit-calendar-picker-indicator]:opacity-0"
+                    />
+                  </div>
+                </div>
+                <p className="text-[11px] text-sky-200/70">Pick the missed scheduled day this class makes up for.</p>
+              </div>
+
+              {/* Thin divider — no text label */}
+              <div className="h-px bg-sky-200/15" />
+
+              {/* Sub-section 2: Actually conducted on (SECOND) */}
+              <div className="space-y-2">
+                <Label className="text-sky-100 text-sm font-semibold">Actually conducted on</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-sky-100 text-xs">Date <span className="text-red-400">*</span></Label>
+                    <Input
+                      type="date"
+                      value={classDate}
+                      onChange={(e) => setClassDate(e.target.value)}
+                      max={format(new Date(), 'yyyy-MM-dd')}
+                      className="bg-white text-[#1e3a5f] border-0 [&::-webkit-calendar-picker-indicator]:opacity-0"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sky-100 text-xs">Time ({teacherTzAbbr}) <span className="text-red-400">*</span></Label>
+                    <Input
+                      type="time"
+                      value={classTime}
+                      onChange={(e) => setClassTime(e.target.value)}
+                      className="bg-white text-[#1e3a5f] border-0 [&::-webkit-calendar-picker-indicator]:opacity-0"
+                    />
+                  </div>
+                </div>
+                <p className="text-[11px] text-sky-200/70">Can be any day, including weekends.</p>
+              </div>
+            </div>
+          )}
+
+          {/* Duration — fixed position, always visible. Editable when reschedule (off-roster). */}
           <div className="space-y-2">
             <Label className="text-sky-100">Duration (minutes)</Label>
-            <Input 
-              type="number" 
-              value={duration} 
+            <Input
+              type="number"
+              value={duration}
               onChange={(e) => setDuration(e.target.value)}
               readOnly={!requiresReschedule(selectedStatus)}
               disabled={!requiresReschedule(selectedStatus)}
@@ -609,24 +680,24 @@ export function UnifiedAttendanceForm({
             />
           </div>
 
-          {/* Actual Join/Leave Times (Optional) */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Actual Join/Leave Times */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="text-sky-100">Actual Join Time (optional)</Label>
-              <Input 
-                type="time" 
-                value={actualJoinTime} 
-                onChange={(e) => setActualJoinTime(e.target.value)} 
-                className="bg-white text-[#1e3a5f] border-0"
+              <Label className="text-sky-100">Actual Join Time</Label>
+              <Input
+                type="time"
+                value={actualJoinTime}
+                onChange={(e) => setActualJoinTime(e.target.value)}
+                className="bg-white text-[#1e3a5f] border-0 [&::-webkit-calendar-picker-indicator]:opacity-0"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-sky-100">Actual Leave Time (optional)</Label>
-              <Input 
-                type="time" 
-                value={actualLeaveTime} 
-                onChange={(e) => setActualLeaveTime(e.target.value)} 
-                className="bg-white text-[#1e3a5f] border-0"
+              <Label className="text-sky-100">Actual Leave Time</Label>
+              <Input
+                type="time"
+                value={actualLeaveTime}
+                onChange={(e) => setActualLeaveTime(e.target.value)}
+                className="bg-white text-[#1e3a5f] border-0 [&::-webkit-calendar-picker-indicator]:opacity-0"
               />
             </div>
           </div>
@@ -650,7 +721,7 @@ export function UnifiedAttendanceForm({
               {reasonCategory === 'other' && (
                 <div className="space-y-2">
                   <Label className="text-sky-100">Specify Reason <span className="text-red-400">*</span></Label>
-                  <Textarea 
+                  <Textarea
                     value={reasonText}
                     onChange={(e) => setReasonText(e.target.value)}
                     className="bg-white text-[#1e3a5f] border-0"
@@ -658,39 +729,6 @@ export function UnifiedAttendanceForm({
                   />
                 </div>
               )}
-            </div>
-          )}
-
-          {/* Reschedule fields — captures the ORIGINAL missed slot this make-up class replaces */}
-          {requiresReschedule(selectedStatus) && (
-            <div className="space-y-4 p-4 bg-[#2d4a6f] rounded-lg">
-              <Label className="text-sky-100 flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Original scheduled date (this lesson replaces)
-              </Label>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-sky-100">Original Date <span className="text-red-400">*</span></Label>
-                  <Input 
-                    type="date" 
-                    value={rescheduleDate}
-                    min={format(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')}
-                    max={format(new Date(), 'yyyy-MM-dd')}
-                    onChange={(e) => setRescheduleDate(e.target.value)}
-                    className="bg-white text-[#1e3a5f] border-0"
-                  />
-                  <p className="text-[10px] text-sky-200/70">Pick the missed scheduled day this class makes up for.</p>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sky-100">Original Time</Label>
-                  <Input 
-                    type="time" 
-                    value={rescheduleTime}
-                    onChange={(e) => setRescheduleTime(e.target.value)}
-                    className="bg-white text-[#1e3a5f] border-0"
-                  />
-                </div>
-              </div>
             </div>
           )}
 
