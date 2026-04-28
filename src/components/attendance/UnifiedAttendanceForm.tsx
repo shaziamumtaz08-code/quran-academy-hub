@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, BookOpen, Clock, User, AlertTriangle, Ban, Calendar } from 'lucide-react';
+import { Loader2, BookOpen, Clock, User, AlertTriangle, Ban, Info } from 'lucide-react';
 import { VoiceNoteRecorder } from './VoiceNoteRecorder';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
