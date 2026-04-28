@@ -854,9 +854,9 @@ export function UnifiedAttendanceForm({
             uploadPath={`${student.id}/${classDate}`}
           />
 
-          {/* Remarks (optional) */}
+          {/* Remarks */}
           <div className="space-y-2">
-            <Label className="text-sky-100">Remarks (optional)</Label>
+            <Label className="text-sky-100">Remarks</Label>
             <Textarea 
               value={remarks}
               onChange={(e) => setRemarks(e.target.value)}
@@ -865,16 +865,6 @@ export function UnifiedAttendanceForm({
             />
           </div>
         </div>
-
-        {/* Lesson details validation warning */}
-        {lessonRequired && !hasLessonDetails && (
-          <Alert className="bg-amber-500/20 border-amber-500/50 text-amber-200">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              Lesson details are required when the class was conducted.
-            </AlertDescription>
-          </Alert>
-        )}
 
         {/* Actions */}
         <div className="flex justify-end gap-3 pt-4 border-t border-[#2d4a6f]">
