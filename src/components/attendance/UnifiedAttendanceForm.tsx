@@ -126,9 +126,6 @@ export function UnifiedAttendanceForm({
   const [rescheduleDate, setRescheduleDate] = useState('');
   const [rescheduleTime, setRescheduleTime] = useState('');
 
-  // Actual join/leave times (optional)
-  const [actualJoinTime, setActualJoinTime] = useState('');
-  const [actualLeaveTime, setActualLeaveTime] = useState('');
 
   // Subject-specific fields
   const [lessonNumber, setLessonNumber] = useState('');
