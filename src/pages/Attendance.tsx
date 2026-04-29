@@ -35,7 +35,7 @@ import { type LearningUnit, type MushafType, convertToLines, LEARNING_UNITS } fr
 import { getSubjectType, type SubjectType } from '@/lib/subjectUtils';
 import { isRepeatLesson as checkRepeatLesson, type LessonPosition } from '@/lib/quranValidation';
 import { type MarkerType } from '@/components/attendance/SabaqSection';
-import { MissingAttendanceSection, useMissingAttendanceCount } from '@/components/attendance/MissingAttendanceSection';
+import { MissingAttendanceSection, useMissingAttendanceCount, BYPASS_CUTOFF } from '@/components/attendance/MissingAttendanceSection';
 import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
 
 const DAY_NAMES_MAIN = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
