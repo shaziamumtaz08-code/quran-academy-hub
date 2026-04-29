@@ -29,7 +29,7 @@ export function QaidaProgressInput({
 }: QaidaProgressInputProps) {
   if (isPlanning && onLessonNumberToChange && onPageNumberToChange) {
     return (
-      <div className="bg-[#1e3a5f] rounded-xl p-5 border border-[#2d4a6f] shadow-lg space-y-4">
+      <div className="bg-card rounded-xl p-5 border border-border shadow-lg space-y-4">
         {/* Header */}
         <div className="flex items-center gap-2">
           <BookOpen className="h-5 w-5 text-cyan-400" />
@@ -101,7 +101,7 @@ export function QaidaProgressInput({
 
   // Attendance mode - single inputs only (no Surah/Verse fields)
   return (
-    <div className="bg-[#1e3a5f] rounded-xl p-5 border border-[#2d4a6f] shadow-lg space-y-4">
+    <div className="bg-card rounded-xl p-5 border border-border shadow-lg space-y-4">
       {/* Header */}
       <div className="flex items-center gap-2">
         <BookOpen className="h-5 w-5 text-cyan-400" />
