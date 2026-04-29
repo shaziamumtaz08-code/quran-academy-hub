@@ -889,22 +889,24 @@ export default function Attendance() {
 
   const stats = useMemo(() => {
     const records = attendanceRecords || [];
-    const total = records.length;
+    const marked = records.length;
     const present = records.filter(r => r.status === 'present').length;
     const studentAbsent = records.filter(r => r.status === 'student_absent').length;
+    const studentLeave = records.filter(r => r.status === 'student_leave').length;
     const teacherOff = records.filter(r => ['teacher_absent', 'teacher_leave'].includes(r.status)).length;
     const rescheduled = records.filter(r => r.status === 'rescheduled' || r.status === 'student_rescheduled').length;
     const holiday = records.filter(r => r.status === 'holiday').length;
-    const studentLeave = records.filter(r => r.status === 'student_leave').length;
     const accountedFor = present + studentAbsent + studentLeave + teacherOff + rescheduled + holiday;
-    const other = Math.max(0, total - accountedFor);
+    const other = Math.max(0, marked - accountedFor);
     const otherStatuses = Array.from(new Set(
       records
         .filter(r => !KNOWN_STATUSES.includes(r.status as string) || r.status == null)
         .map(r => (r.status ?? 'null') as string)
     ));
-    return { total, present, studentAbsent, teacherOff, rescheduled, holiday, other, otherStatuses };
-  }, [attendanceRecords]);
+    // Total scheduled = records that exist + scheduled slots with no record (missing)
+    const total = marked + (missingCount || 0);
+    return { total, marked, present, studentAbsent, studentLeave, teacherOff, rescheduled, holiday, other, otherStatuses };
+  }, [attendanceRecords, missingCount]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -1050,7 +1052,8 @@ export default function Attendance() {
           <Card className={cn("text-center cursor-pointer transition-all hover:ring-2 hover:ring-primary/30", filter === 'all' && !showMissing && "ring-2 ring-primary")} onClick={() => { setFilter('all'); setShowMissing(false); }}>
             <CardContent className="pt-6">
               <p className="text-2xl font-serif font-bold text-foreground">{stats.total}</p>
-              <p className="text-sm text-muted-foreground">Total Classes</p>
+              <p className="text-sm text-muted-foreground">Scheduled Classes</p>
+              <p className="text-[10px] text-muted-foreground/70 mt-0.5">{stats.marked} marked + {missingCount || 0} missing</p>
             </CardContent>
           </Card>
           <Card className={cn("bg-emerald-light/10 border-emerald-light/20 text-center cursor-pointer transition-all hover:ring-2 hover:ring-emerald-light/30", filter === 'present' && "ring-2 ring-emerald-light")} onClick={() => { setFilter(filter === 'present' ? 'all' : 'present'); setShowMissing(false); }}>
@@ -1065,6 +1068,14 @@ export default function Attendance() {
               <p className="text-sm text-destructive/80">Student Absent</p>
             </CardContent>
           </Card>
+          {stats.studentLeave > 0 && (
+            <Card className={cn("bg-amber-500/10 border-amber-500/20 text-center cursor-pointer transition-all hover:ring-2 hover:ring-amber-500/30", filter === 'student_leave' && "ring-2 ring-amber-500")} onClick={() => { setFilter(filter === 'student_leave' ? 'all' : 'student_leave'); setShowMissing(false); }}>
+              <CardContent className="pt-6">
+                <p className="text-2xl font-serif font-bold text-amber-500">{stats.studentLeave}</p>
+                <p className="text-sm text-amber-500/80">Student Leave</p>
+              </CardContent>
+            </Card>
+          )}
           {isAdmin && (
             <>
               <Card className={cn("bg-accent/10 border-accent/20 text-center cursor-pointer transition-all hover:ring-2 hover:ring-accent/30", (filter === 'teacher_absent' || filter === 'teacher_leave') && "ring-2 ring-accent")} onClick={() => { setFilter(filter === 'teacher_absent' ? 'all' : 'teacher_absent'); setShowMissing(false); }}>
