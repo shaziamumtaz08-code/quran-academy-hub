@@ -69,9 +69,59 @@ export interface StudentInfo {
   timezone?: string;
 }
 
+/** Shape of an attendance row when editing. Extends create payload with id + nullable progress fields. */
+export interface ExistingAttendanceRecord {
+  id: string;
+  student_id: string;
+  teacher_id: string;
+  class_date: string;
+  class_time: string | null;
+  duration_minutes: number;
+  status: AttendanceStatus;
+  reason: string | null;
+  reason_category: string | null;
+  reason_text: string | null;
+  reschedule_date: string | null;
+  reschedule_time: string | null;
+  lesson_covered: string | null;
+  homework: string | null;
+  voice_note_url?: string | null;
+  // Sabaq / progress
+  sabaq_marker_type?: string | null;
+  sabaq_surah_from: string | null;
+  sabaq_surah_to: string | null;
+  sabaq_ayah_from: number | null;
+  sabaq_ayah_to: number | null;
+  sabaq_ruku_from_juz?: number | null;
+  sabaq_ruku_from_number?: number | null;
+  sabaq_ruku_to_juz?: number | null;
+  sabaq_ruku_to_number?: number | null;
+  sabaq_quarter_from_juz?: number | null;
+  sabaq_quarter_from_number?: number | null;
+  sabaq_quarter_to_juz?: number | null;
+  sabaq_quarter_to_number?: number | null;
+  sabqi_done: boolean | null;
+  manzil_done: boolean | null;
+  lesson_number: number | null;
+  page_number: number | null;
+  lines_completed: number | null;
+  variance_reason: string | null;
+  input_unit: string | null;
+  raw_input_amount: number | null;
+  // Legacy
+  surah_name: string | null;
+  ayah_from: number | null;
+  ayah_to: number | null;
+  created_at?: string;
+}
+
 interface UnifiedAttendanceFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** 'create' (default) inserts a new row; 'edit' updates `existingRecord`. */
+  mode?: 'create' | 'edit';
+  /** Required when mode='edit'. Source row to hydrate the form. */
+  existingRecord?: ExistingAttendanceRecord;
   /** Pre-selected student. If omitted, `students` picker will be shown. */
   student?: StudentInfo;
   /** Optional list of selectable students (used when `student` is not preset). */
@@ -80,6 +130,8 @@ interface UnifiedAttendanceFormProps {
   initialStatus?: AttendanceStatus;
   teacherId?: string;
   teacherTimezone?: string;
+  /** When true, Class Time is editable (admins). Defaults to false. */
+  allowTimeEdit?: boolean;
   onSuccess?: () => void;
 }
 
