@@ -889,22 +889,24 @@ export default function Attendance() {
 
   const stats = useMemo(() => {
     const records = attendanceRecords || [];
-    const total = records.length;
+    const marked = records.length;
     const present = records.filter(r => r.status === 'present').length;
     const studentAbsent = records.filter(r => r.status === 'student_absent').length;
+    const studentLeave = records.filter(r => r.status === 'student_leave').length;
     const teacherOff = records.filter(r => ['teacher_absent', 'teacher_leave'].includes(r.status)).length;
     const rescheduled = records.filter(r => r.status === 'rescheduled' || r.status === 'student_rescheduled').length;
     const holiday = records.filter(r => r.status === 'holiday').length;
-    const studentLeave = records.filter(r => r.status === 'student_leave').length;
     const accountedFor = present + studentAbsent + studentLeave + teacherOff + rescheduled + holiday;
-    const other = Math.max(0, total - accountedFor);
+    const other = Math.max(0, marked - accountedFor);
     const otherStatuses = Array.from(new Set(
       records
         .filter(r => !KNOWN_STATUSES.includes(r.status as string) || r.status == null)
         .map(r => (r.status ?? 'null') as string)
     ));
-    return { total, present, studentAbsent, teacherOff, rescheduled, holiday, other, otherStatuses };
-  }, [attendanceRecords]);
+    // Total scheduled = records that exist + scheduled slots with no record (missing)
+    const total = marked + (missingCount || 0);
+    return { total, marked, present, studentAbsent, studentLeave, teacherOff, rescheduled, holiday, other, otherStatuses };
+  }, [attendanceRecords, missingCount]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
