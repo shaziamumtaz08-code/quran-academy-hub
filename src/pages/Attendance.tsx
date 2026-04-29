@@ -1853,208 +1853,31 @@ export default function Attendance() {
           </DialogContent>
         </Dialog>
 
-        {/* Edit Attendance Dialog - Admin and Teacher */}
-        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="font-serif">Edit Attendance</DialogTitle>
-              <DialogDescription>
-                {editingRecord?.student?.full_name && (
-                  <span className="font-medium">Student: {editingRecord.student.full_name}</span>
-                )}
-                {editingRecord?.created_at && (
-                  <span className="block text-xs text-muted-foreground mt-1">
-                    Created: {format(parseISO(editingRecord.created_at), 'dd MMM yyyy h:mm a')} PKT
-                  </span>
-                )}
-              </DialogDescription>
-            </DialogHeader>
-            {editingRecord && (
-              <div className="space-y-4 py-4">
-                {/* Status */}
-                <div className="space-y-2">
-                  <Label>Status</Label>
-                  <Select 
-                    value={editingRecord.status} 
-                    onValueChange={(v) => setEditingRecord({...editingRecord, status: v as AttendanceStatus})}
-                  >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {STATUS_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Date, Time, Duration - Admin can edit time */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="space-y-2">
-                    <Label>Class Date</Label>
-                    <Input 
-                      type="date" 
-                      value={editingRecord.class_date} 
-                      onChange={(e) => setEditingRecord({...editingRecord, class_date: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Class Time {isAdmin && <span className="text-xs text-muted-foreground">(editable)</span>}</Label>
-                    <Input 
-                      type="time" 
-                      value={editingRecord.class_time?.substring(0, 5) || ''} 
-                      onChange={(e) => setEditingRecord({...editingRecord, class_time: e.target.value})}
-                      disabled={!isAdmin}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Duration (min)</Label>
-                    <Input 
-                      type="number" 
-                      value={editingRecord.duration_minutes} 
-                      onChange={(e) => setEditingRecord({...editingRecord, duration_minutes: parseInt(e.target.value) || 30})}
-                    />
-                  </div>
-                </div>
-
-                {/* Sabaq Section - Surah/Ayah Range */}
-                <div className="p-3 bg-muted/50 rounded-lg space-y-3">
-                  <p className="text-sm font-medium">Sabaq (New Lesson)</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label>Surah From</Label>
-                      <Input 
-                        value={editingRecord.sabaq_surah_from || ''} 
-                        onChange={(e) => setEditingRecord({...editingRecord, sabaq_surah_from: e.target.value || null})}
-                        placeholder="e.g., Al-Baqarah"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Ayah From</Label>
-                      <Input 
-                        type="number" 
-                        value={editingRecord.sabaq_ayah_from || ''} 
-                        onChange={(e) => setEditingRecord({...editingRecord, sabaq_ayah_from: parseInt(e.target.value) || null})}
-                        placeholder="e.g., 1"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Surah To</Label>
-                      <Input 
-                        value={editingRecord.sabaq_surah_to || ''} 
-                        onChange={(e) => setEditingRecord({...editingRecord, sabaq_surah_to: e.target.value || null})}
-                        placeholder="e.g., Al-Baqarah"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Ayah To</Label>
-                      <Input 
-                        type="number" 
-                        value={editingRecord.sabaq_ayah_to || ''} 
-                        onChange={(e) => setEditingRecord({...editingRecord, sabaq_ayah_to: parseInt(e.target.value) || null})}
-                        placeholder="e.g., 10"
-                      />
-                    </div>
-                  </div>
-                  
-                  {/* Sabqi and Manzil checkboxes */}
-                  <div className="flex items-center gap-6 pt-2">
-                    <div className="flex items-center gap-2">
-                      <Checkbox 
-                        id="edit-sabqi-done"
-                        checked={editingRecord.sabqi_done || false}
-                        onCheckedChange={(checked) => setEditingRecord({...editingRecord, sabqi_done: checked as boolean})}
-                      />
-                      <Label htmlFor="edit-sabqi-done" className="text-sm font-normal">Sabqi Done</Label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Checkbox 
-                        id="edit-manzil-done"
-                        checked={editingRecord.manzil_done || false}
-                        onCheckedChange={(checked) => setEditingRecord({...editingRecord, manzil_done: checked as boolean})}
-                      />
-                      <Label htmlFor="edit-manzil-done" className="text-sm font-normal">Manzil Done</Label>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Lesson Covered & Homework */}
-                <div className="space-y-2">
-                  <Label>Lesson Covered</Label>
-                  <Input 
-                    value={editingRecord.lesson_covered || ''} 
-                    onChange={(e) => setEditingRecord({...editingRecord, lesson_covered: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Homework</Label>
-                  <Textarea 
-                    value={editingRecord.homework || ''} 
-                    onChange={(e) => setEditingRecord({...editingRecord, homework: e.target.value})}
-                    rows={2}
-                  />
-                </div>
-
-                {/* Lines Completed & Variance */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label>Lines Completed</Label>
-                    <Input 
-                      type="number" 
-                      value={editingRecord.lines_completed || ''} 
-                      onChange={(e) => setEditingRecord({...editingRecord, lines_completed: parseInt(e.target.value) || null})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Variance Reason</Label>
-                    <Select 
-                      value={editingRecord.variance_reason || 'none'} 
-                      onValueChange={(v) => setEditingRecord({...editingRecord, variance_reason: v === 'none' ? null : v})}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Select if needed" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        {VARIANCE_REASONS.map((vr) => (
-                          <SelectItem key={vr.value} value={vr.value}>{vr.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Lesson Number / Page Number for Qaida */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label>Lesson Number</Label>
-                    <Input 
-                      type="number" 
-                      value={editingRecord.lesson_number || ''} 
-                      onChange={(e) => setEditingRecord({...editingRecord, lesson_number: parseInt(e.target.value) || null})}
-                      placeholder="For Qaida"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Page Number</Label>
-                    <Input 
-                      type="number" 
-                      value={editingRecord.page_number || ''} 
-                      onChange={(e) => setEditingRecord({...editingRecord, page_number: parseInt(e.target.value) || null})}
-                      placeholder="For Qaida"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => { setEditDialogOpen(false); setEditingRecord(null); }}>Cancel</Button>
-              <Button 
-                onClick={() => editingRecord && updateAttendance.mutate(editingRecord)} 
-                disabled={updateAttendance.isPending}
-              >
-                {updateAttendance.isPending ? 'Saving...' : 'Update'}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        {/* Edit Attendance Dialog — uses the same component tree as Mark form */}
+        {editingRecord && (
+          <UnifiedAttendanceForm
+            open={editDialogOpen}
+            onOpenChange={(open) => {
+              setEditDialogOpen(open);
+              if (!open) setEditingRecord(null);
+            }}
+            mode="edit"
+            existingRecord={editingRecord as any}
+            student={{
+              id: editingRecord.student_id,
+              full_name: editingRecord.student?.full_name || '',
+              subject_name: editingSubject?.subject?.name || null,
+              subject_id: editingSubject?.subject_id || null,
+              last_lesson: null,
+            }}
+            teacherId={editingRecord.teacher_id}
+            allowTimeEdit={isAdmin}
+            onSuccess={() => {
+              setEditDialogOpen(false);
+              setEditingRecord(null);
+            }}
+          />
+        )}
 
         {/* Holiday Dialog */}
         <Dialog open={holidayDialogOpen} onOpenChange={setHolidayDialogOpen}>
