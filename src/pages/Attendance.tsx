@@ -505,6 +505,10 @@ export default function Attendance() {
         endDate = format(endOfMonth(monthStart), 'yyyy-MM-dd');
       }
 
+      // Apply shared bypass cutoff so all KPI queries use the same effective start
+      if (startDate < BYPASS_CUTOFF) startDate = BYPASS_CUTOFF;
+      if (endDate < startDate) endDate = startDate;
+
       let query = supabase
         .from('attendance')
         .select(`
