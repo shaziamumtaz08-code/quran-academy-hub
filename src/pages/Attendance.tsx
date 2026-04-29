@@ -881,16 +881,25 @@ export default function Attendance() {
     return records;
   }, [attendanceRecords, filter, searchQuery, sortBy, sortOrder]);
 
+  const KNOWN_STATUSES = ['present', 'student_absent', 'student_leave', 'teacher_absent', 'teacher_leave', 'rescheduled', 'student_rescheduled', 'holiday'];
+
   const stats = useMemo(() => {
     const records = attendanceRecords || [];
-    return {
-      total: records.length,
-      present: records.filter(r => r.status === 'present').length,
-      studentAbsent: records.filter(r => r.status === 'student_absent').length,
-      teacherOff: records.filter(r => ['teacher_absent', 'teacher_leave'].includes(r.status)).length,
-      rescheduled: records.filter(r => r.status === 'rescheduled').length,
-      holiday: records.filter(r => r.status === 'holiday').length,
-    };
+    const total = records.length;
+    const present = records.filter(r => r.status === 'present').length;
+    const studentAbsent = records.filter(r => r.status === 'student_absent').length;
+    const teacherOff = records.filter(r => ['teacher_absent', 'teacher_leave'].includes(r.status)).length;
+    const rescheduled = records.filter(r => r.status === 'rescheduled' || r.status === 'student_rescheduled').length;
+    const holiday = records.filter(r => r.status === 'holiday').length;
+    const studentLeave = records.filter(r => r.status === 'student_leave').length;
+    const accountedFor = present + studentAbsent + studentLeave + teacherOff + rescheduled + holiday;
+    const other = Math.max(0, total - accountedFor);
+    const otherStatuses = Array.from(new Set(
+      records
+        .filter(r => !KNOWN_STATUSES.includes(r.status as string) || r.status == null)
+        .map(r => (r.status ?? 'null') as string)
+    ));
+    return { total, present, studentAbsent, teacherOff, rescheduled, holiday, other, otherStatuses };
   }, [attendanceRecords]);
 
   const getStatusIcon = (status: string) => {
