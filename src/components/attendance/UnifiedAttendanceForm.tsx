@@ -1014,7 +1014,7 @@ export function UnifiedAttendanceForm({
             className="bg-emerald-600 hover:bg-emerald-700 text-white"
           >
             {markAttendance.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Mark Attendance
+            {isEdit ? 'Save Changes' : 'Mark Attendance'}
           </Button>
         </div>
       </DialogContent>
