@@ -105,9 +105,9 @@ export function MissingAttendanceSection({
         query = query.eq('student_teacher_assignments.teacher_id', teacherId);
       }
 
-      // Filter by division
+      // Filter by division (standardized: .eq matches the count hook)
       if (divisionId) {
-        query = query.or(`division_id.eq.${divisionId},student_teacher_assignments.division_id.eq.${divisionId}`);
+        query = query.eq('student_teacher_assignments.division_id', divisionId);
       }
 
       const { data, error } = await query;
