@@ -378,7 +378,16 @@ export type Database = {
           sabaq: string | null
           sabaq_ayah_from: number | null
           sabaq_ayah_to: number | null
+          sabaq_marker_type: string | null
           sabaq_pages: string | null
+          sabaq_quarter_from_juz: number | null
+          sabaq_quarter_from_number: number | null
+          sabaq_quarter_to_juz: number | null
+          sabaq_quarter_to_number: number | null
+          sabaq_ruku_from_juz: number | null
+          sabaq_ruku_from_number: number | null
+          sabaq_ruku_to_juz: number | null
+          sabaq_ruku_to_number: number | null
           sabaq_surah_from: string | null
           sabaq_surah_to: string | null
           sabqi_done: boolean | null
@@ -428,7 +437,16 @@ export type Database = {
           sabaq?: string | null
           sabaq_ayah_from?: number | null
           sabaq_ayah_to?: number | null
+          sabaq_marker_type?: string | null
           sabaq_pages?: string | null
+          sabaq_quarter_from_juz?: number | null
+          sabaq_quarter_from_number?: number | null
+          sabaq_quarter_to_juz?: number | null
+          sabaq_quarter_to_number?: number | null
+          sabaq_ruku_from_juz?: number | null
+          sabaq_ruku_from_number?: number | null
+          sabaq_ruku_to_juz?: number | null
+          sabaq_ruku_to_number?: number | null
           sabaq_surah_from?: string | null
           sabaq_surah_to?: string | null
           sabqi_done?: boolean | null
@@ -478,7 +496,16 @@ export type Database = {
           sabaq?: string | null
           sabaq_ayah_from?: number | null
           sabaq_ayah_to?: number | null
+          sabaq_marker_type?: string | null
           sabaq_pages?: string | null
+          sabaq_quarter_from_juz?: number | null
+          sabaq_quarter_from_number?: number | null
+          sabaq_quarter_to_juz?: number | null
+          sabaq_quarter_to_number?: number | null
+          sabaq_ruku_from_juz?: number | null
+          sabaq_ruku_from_number?: number | null
+          sabaq_ruku_to_juz?: number | null
+          sabaq_ruku_to_number?: number | null
           sabaq_surah_from?: string | null
           sabaq_surah_to?: string | null
           sabqi_done?: boolean | null
