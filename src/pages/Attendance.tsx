@@ -577,6 +577,25 @@ export default function Attendance() {
     enabled: !!user?.id && (activeRole !== 'parent' || (childrenIds !== undefined)),
   });
 
+  // Resolve subject for the record being edited (via student_teacher_assignments).
+  // Edit dialog needs subject_name to render the right field tree (Qaida/Hifz/Nazra/Academic).
+  const { data: editingSubject } = useQuery({
+    queryKey: ['attendance-edit-subject', editingRecord?.student_id, editingRecord?.teacher_id],
+    queryFn: async () => {
+      if (!editingRecord?.student_id || !editingRecord?.teacher_id) return null;
+      const { data, error } = await supabase
+        .from('student_teacher_assignments')
+        .select('subject_id, subject:subjects(id, name)')
+        .eq('student_id', editingRecord.student_id)
+        .eq('teacher_id', editingRecord.teacher_id)
+        .limit(1)
+        .maybeSingle();
+      if (error) return null;
+      return data as any;
+    },
+    enabled: editDialogOpen && !!editingRecord?.student_id && !!editingRecord?.teacher_id,
+  });
+
   // Save holiday mutation
   const saveHoliday = useMutation({
     mutationFn: async () => {
