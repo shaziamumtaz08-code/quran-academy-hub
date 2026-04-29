@@ -829,9 +829,9 @@ export function UnifiedAttendanceForm({
               type="number"
               value={duration}
               onChange={(e) => setDuration(e.target.value)}
-              readOnly={!requiresReschedule(selectedStatus)}
-              disabled={!requiresReschedule(selectedStatus)}
-              className={requiresReschedule(selectedStatus)
+              readOnly={!requiresReschedule(selectedStatus) && !isEdit}
+              disabled={!requiresReschedule(selectedStatus) && !isEdit}
+              className={(requiresReschedule(selectedStatus) || isEdit)
                 ? "bg-white text-[#1e3a5f] border-0"
                 : "bg-slate-200 text-[#1e3a5f] border-0 cursor-not-allowed"}
             />
