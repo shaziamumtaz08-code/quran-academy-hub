@@ -1134,6 +1134,23 @@ export default function Attendance() {
                   </CardContent>
                 </Card>
               )}
+              {stats.other > 0 && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Card className="bg-muted/50 border-muted text-center cursor-help">
+                        <CardContent className="pt-6">
+                          <p className="text-2xl font-serif font-bold text-muted-foreground">{stats.other}</p>
+                          <p className="text-sm text-muted-foreground">Other</p>
+                        </CardContent>
+                      </Card>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-xs">Unrecognized statuses: {stats.otherStatuses.join(', ') || 'none'}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </>
           )}
         </div>
