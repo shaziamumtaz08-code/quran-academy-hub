@@ -25,7 +25,7 @@ interface MissingRecord {
 }
 
 // Bypass cutoff: only count missing from April 2026 onwards
-const BYPASS_CUTOFF = '2026-04-01';
+export const BYPASS_CUTOFF = '2026-04-01';
 
 interface MissingAttendanceSectionProps {
   monthFilter: string;
