@@ -628,7 +628,7 @@ export function UnifiedAttendanceForm({
           <div className="bg-muted rounded-xl p-4 space-y-2">
             <Label className="text-foreground">Student <span className="text-destructive">*</span></Label>
             <Select value={pickedStudentId} onValueChange={setPickedStudentId}>
-              <SelectTrigger className="bg-white text-foreground border-0">
+              <SelectTrigger className="">
                 <SelectValue placeholder="Select a student" />
               </SelectTrigger>
               <SelectContent>
@@ -709,7 +709,7 @@ export function UnifiedAttendanceForm({
                 setSelectedStatus(next);
               }}
             >
-              <SelectTrigger className="bg-white text-foreground border-0">
+              <SelectTrigger className="">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -731,7 +731,7 @@ export function UnifiedAttendanceForm({
                   value={classDate}
                   onChange={(e) => setClassDate(e.target.value)}
                   max={format(new Date(), 'yyyy-MM-dd')}
-                  className="bg-white text-foreground border-0 [&::-webkit-calendar-picker-indicator]:opacity-0"
+                  className="[ [&::-webkit-calendar-picker-indicator]:opacity-0::-webkit-calendar-picker-indicator]:opacity-0"
                 />
               </div>
               <div className="space-y-2">
@@ -745,8 +745,8 @@ export function UnifiedAttendanceForm({
                   readOnly={!allowTimeEdit}
                   disabled={!allowTimeEdit}
                   className={allowTimeEdit
-                    ? "bg-white text-foreground border-0 [&::-webkit-calendar-picker-indicator]:opacity-0"
-                    : "bg-muted text-foreground border-0 cursor-not-allowed [&::-webkit-calendar-picker-indicator]:opacity-0"}
+                    ? "[ [&::-webkit-calendar-picker-indicator]:opacity-0::-webkit-calendar-picker-indicator]:opacity-0"
+                    : "bg-muted cursor-not-allowed [&::-webkit-calendar-picker-indicator]:opacity-0"}
                 />
               </div>
             </div>
@@ -774,7 +774,7 @@ export function UnifiedAttendanceForm({
                       min={format(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')}
                       max={format(new Date(), 'yyyy-MM-dd')}
                       onChange={(e) => setRescheduleDate(e.target.value)}
-                      className="bg-white text-foreground border-0 [&::-webkit-calendar-picker-indicator]:opacity-0"
+                      className="[ [&::-webkit-calendar-picker-indicator]:opacity-0::-webkit-calendar-picker-indicator]:opacity-0"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -783,7 +783,7 @@ export function UnifiedAttendanceForm({
                       type="time"
                       value={rescheduleTime}
                       onChange={(e) => setRescheduleTime(e.target.value)}
-                      className="bg-white text-foreground border-0 [&::-webkit-calendar-picker-indicator]:opacity-0"
+                      className="[ [&::-webkit-calendar-picker-indicator]:opacity-0::-webkit-calendar-picker-indicator]:opacity-0"
                     />
                   </div>
                 </div>
@@ -804,7 +804,7 @@ export function UnifiedAttendanceForm({
                       value={classDate}
                       onChange={(e) => setClassDate(e.target.value)}
                       max={format(new Date(), 'yyyy-MM-dd')}
-                      className="bg-white text-foreground border-0 [&::-webkit-calendar-picker-indicator]:opacity-0"
+                      className="[ [&::-webkit-calendar-picker-indicator]:opacity-0::-webkit-calendar-picker-indicator]:opacity-0"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -813,7 +813,7 @@ export function UnifiedAttendanceForm({
                       type="time"
                       value={classTime}
                       onChange={(e) => setClassTime(e.target.value)}
-                      className="bg-white text-foreground border-0 [&::-webkit-calendar-picker-indicator]:opacity-0"
+                      className="[ [&::-webkit-calendar-picker-indicator]:opacity-0::-webkit-calendar-picker-indicator]:opacity-0"
                     />
                   </div>
                 </div>
@@ -832,8 +832,8 @@ export function UnifiedAttendanceForm({
               readOnly={!requiresReschedule(selectedStatus) && !isEdit}
               disabled={!requiresReschedule(selectedStatus) && !isEdit}
               className={(requiresReschedule(selectedStatus) || isEdit)
-                ? "bg-white text-foreground border-0"
-                : "bg-muted text-foreground border-0 cursor-not-allowed"}
+                ? ""
+                : "bg-muted cursor-not-allowed"}
             />
           </div>
 
@@ -843,7 +843,7 @@ export function UnifiedAttendanceForm({
               <div className="space-y-2">
                 <Label className="text-foreground">Reason Category <span className="text-destructive">*</span></Label>
                 <Select value={reasonCategory} onValueChange={(v) => setReasonCategory(v as ReasonCategory)}>
-                  <SelectTrigger className="bg-white text-foreground border-0">
+                  <SelectTrigger className="">
                     <SelectValue placeholder="Select reason" />
                   </SelectTrigger>
                   <SelectContent>
@@ -859,7 +859,7 @@ export function UnifiedAttendanceForm({
                   <Textarea
                     value={reasonText}
                     onChange={(e) => setReasonText(e.target.value)}
-                    className="bg-white text-foreground border-0"
+                    className=""
                     placeholder="Please specify..."
                   />
                 </div>
@@ -976,7 +976,7 @@ export function UnifiedAttendanceForm({
                     value={homework}
                     onChange={(e) => setHomework(e.target.value)}
                     placeholder="Enter homework assignment..."
-                    className="bg-white text-foreground border-0"
+                    className=""
                   />
                 </div>
               )}
@@ -996,7 +996,7 @@ export function UnifiedAttendanceForm({
               value={remarks}
               onChange={(e) => setRemarks(e.target.value)}
               placeholder="Any additional notes..."
-              className="bg-white text-foreground border-0"
+              className=""
             />
           </div>
         </div>

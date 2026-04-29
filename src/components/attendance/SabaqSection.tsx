@@ -153,21 +153,21 @@ export function SabaqSection({
         >
           <ToggleGroupItem 
             value="ruku" 
-            className="bg-white text-foreground data-[state=on]:bg-sky-400 data-[state=on]:text-white rounded-lg px-4 py-2 font-medium"
+            className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground rounded-lg px-4 py-2 font-medium"
           >
             <Grid3X3 className="h-4 w-4 mr-1.5" />
             Ruku
           </ToggleGroupItem>
           <ToggleGroupItem 
             value="ayah" 
-            className="bg-white text-foreground data-[state=on]:bg-sky-400 data-[state=on]:text-white rounded-lg px-4 py-2 font-medium"
+            className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground rounded-lg px-4 py-2 font-medium"
           >
             <Hash className="h-4 w-4 mr-1.5" />
             Ayah
           </ToggleGroupItem>
           <ToggleGroupItem 
             value="quarter" 
-            className="bg-white text-foreground data-[state=on]:bg-sky-400 data-[state=on]:text-white rounded-lg px-4 py-2 font-medium"
+            className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground rounded-lg px-4 py-2 font-medium"
           >
             <Grid3X3 className="h-4 w-4 mr-1.5" />
             Quarter
@@ -183,7 +183,7 @@ export function SabaqSection({
             <Label className="text-muted-foreground text-xs font-medium">From</Label>
             <div className="grid grid-cols-2 gap-3">
               <Select value={rukuFromJuz} onValueChange={onRukuFromJuzChange}>
-                <SelectTrigger className="bg-white text-foreground border-0 rounded-lg">
+                <SelectTrigger className="rounded-lg">
                   <SelectValue placeholder="Select Juz" />
                 </SelectTrigger>
                 <SelectContent className="bg-white z-50">
@@ -195,7 +195,7 @@ export function SabaqSection({
                 </SelectContent>
               </Select>
               <Select value={rukuFromNumber} onValueChange={onRukuFromNumberChange} disabled={!rukuFromJuz}>
-                <SelectTrigger className="bg-white text-foreground border-0 rounded-lg">
+                <SelectTrigger className="rounded-lg">
                   <SelectValue placeholder="Ruku #" />
                 </SelectTrigger>
                 <SelectContent className="bg-white z-50">
@@ -214,7 +214,7 @@ export function SabaqSection({
             <Label className="text-muted-foreground text-xs font-medium">To</Label>
             <div className="grid grid-cols-2 gap-3">
               <Select value={rukuToJuz} onValueChange={onRukuToJuzChange}>
-                <SelectTrigger className="bg-white text-foreground border-0 rounded-lg">
+                <SelectTrigger className="rounded-lg">
                   <SelectValue placeholder="Select Juz" />
                 </SelectTrigger>
                 <SelectContent className="bg-white z-50">
@@ -226,7 +226,7 @@ export function SabaqSection({
                 </SelectContent>
               </Select>
               <Select value={rukuToNumber} onValueChange={onRukuToNumberChange} disabled={!rukuToJuz}>
-                <SelectTrigger className="bg-white text-foreground border-0 rounded-lg">
+                <SelectTrigger className="rounded-lg">
                   <SelectValue placeholder="Ruku #" />
                 </SelectTrigger>
                 <SelectContent className="bg-white z-50">
@@ -250,7 +250,7 @@ export function SabaqSection({
             <Label className="text-muted-foreground text-xs font-medium">From</Label>
             <div className="grid grid-cols-2 gap-3">
               <Select value={ayahFromSurah} onValueChange={onAyahFromSurahChange}>
-                <SelectTrigger className="bg-white text-foreground border-0 rounded-lg">
+                <SelectTrigger className="rounded-lg">
                   <SelectValue placeholder="Select Surah" />
                 </SelectTrigger>
                 <SelectContent className="bg-white z-50 max-h-[300px]">
@@ -262,7 +262,7 @@ export function SabaqSection({
                 </SelectContent>
               </Select>
               <Select value={ayahFromNumber} onValueChange={onAyahFromNumberChange} disabled={!ayahFromSurah}>
-                <SelectTrigger className="bg-white text-foreground border-0 rounded-lg">
+                <SelectTrigger className="rounded-lg">
                   <SelectValue placeholder="Ayah" />
                 </SelectTrigger>
                 <SelectContent className="bg-white z-50 max-h-[300px]">
@@ -281,7 +281,7 @@ export function SabaqSection({
             <Label className="text-muted-foreground text-xs font-medium">To</Label>
             <div className="grid grid-cols-2 gap-3">
               <Select value={ayahToSurah} onValueChange={onAyahToSurahChange}>
-                <SelectTrigger className="bg-white text-foreground border-0 rounded-lg">
+                <SelectTrigger className="rounded-lg">
                   <SelectValue placeholder="Select Surah" />
                 </SelectTrigger>
                 <SelectContent className="bg-white z-50 max-h-[300px]">
@@ -293,7 +293,7 @@ export function SabaqSection({
                 </SelectContent>
               </Select>
               <Select value={ayahToNumber} onValueChange={onAyahToNumberChange} disabled={!ayahToSurah}>
-                <SelectTrigger className="bg-white text-foreground border-0 rounded-lg">
+                <SelectTrigger className="rounded-lg">
                   <SelectValue placeholder="Ayah" />
                 </SelectTrigger>
                 <SelectContent className="bg-white z-50 max-h-[300px]">
@@ -317,7 +317,7 @@ export function SabaqSection({
             <Label className="text-muted-foreground text-xs font-medium">From</Label>
             <div className="grid grid-cols-2 gap-3">
               <Select value={quarterFromJuz} onValueChange={onQuarterFromJuzChange}>
-                <SelectTrigger className="bg-white text-foreground border-0 rounded-lg">
+                <SelectTrigger className="rounded-lg">
                   <SelectValue placeholder="Select Juz" />
                 </SelectTrigger>
                 <SelectContent className="bg-white z-50">
@@ -329,7 +329,7 @@ export function SabaqSection({
                 </SelectContent>
               </Select>
               <Select value={quarterFromNumber} onValueChange={onQuarterFromNumberChange} disabled={!quarterFromJuz}>
-                <SelectTrigger className="bg-white text-foreground border-0 rounded-lg">
+                <SelectTrigger className="rounded-lg">
                   <SelectValue placeholder="Quarter" />
                 </SelectTrigger>
                 <SelectContent className="bg-white z-50">
@@ -347,7 +347,7 @@ export function SabaqSection({
             <Label className="text-muted-foreground text-xs font-medium">To</Label>
             <div className="grid grid-cols-2 gap-3">
               <Select value={quarterToJuz} onValueChange={onQuarterToJuzChange}>
-                <SelectTrigger className="bg-white text-foreground border-0 rounded-lg">
+                <SelectTrigger className="rounded-lg">
                   <SelectValue placeholder="Select Juz" />
                 </SelectTrigger>
                 <SelectContent className="bg-white z-50">
@@ -359,7 +359,7 @@ export function SabaqSection({
                 </SelectContent>
               </Select>
               <Select value={quarterToNumber} onValueChange={onQuarterToNumberChange} disabled={!quarterToJuz}>
-                <SelectTrigger className="bg-white text-foreground border-0 rounded-lg">
+                <SelectTrigger className="rounded-lg">
                   <SelectValue placeholder="Quarter" />
                 </SelectTrigger>
                 <SelectContent className="bg-white z-50">
