@@ -17,6 +17,7 @@ import { Calendar, CheckCircle, XCircle, AlertCircle, User, Plus, Clock, Calenda
 import { GroupAttendanceTab } from '@/components/attendance/GroupAttendanceTab';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDivision } from '@/contexts/DivisionContext';
@@ -35,7 +36,7 @@ import { type LearningUnit, type MushafType, convertToLines, LEARNING_UNITS } fr
 import { getSubjectType, type SubjectType } from '@/lib/subjectUtils';
 import { isRepeatLesson as checkRepeatLesson, type LessonPosition } from '@/lib/quranValidation';
 import { type MarkerType } from '@/components/attendance/SabaqSection';
-import { MissingAttendanceSection, useMissingAttendanceCount } from '@/components/attendance/MissingAttendanceSection';
+import { MissingAttendanceSection, useMissingAttendanceCount, BYPASS_CUTOFF } from '@/components/attendance/MissingAttendanceSection';
 import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
 
 const DAY_NAMES_MAIN = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -434,7 +435,7 @@ export default function Attendance() {
   }, [markDialogOpen, selectedStudent, classDate, markDialogSchedule]);
 
   // Missing attendance count for the stat card - enabled for admin AND teacher
-  const missingCount = useMissingAttendanceCount(monthFilter, dateMode, dateFrom, dateTo, isAdmin || isTeacher, activeDivision?.id);
+  const missingCount = useMissingAttendanceCount(monthFilter, dateMode, dateFrom, dateTo, isAdmin || isTeacher, activeDivision?.id, isTeacher ? user?.id : undefined);
 
   // Validation
   const isFormValid = useMemo(() => {
@@ -503,6 +504,10 @@ export default function Attendance() {
         startDate = format(monthStart, 'yyyy-MM-dd');
         endDate = format(endOfMonth(monthStart), 'yyyy-MM-dd');
       }
+
+      // Apply shared bypass cutoff so all KPI queries use the same effective start
+      if (startDate < BYPASS_CUTOFF) startDate = BYPASS_CUTOFF;
+      if (endDate < startDate) endDate = startDate;
 
       let query = supabase
         .from('attendance')
@@ -880,16 +885,25 @@ export default function Attendance() {
     return records;
   }, [attendanceRecords, filter, searchQuery, sortBy, sortOrder]);
 
+  const KNOWN_STATUSES = ['present', 'student_absent', 'student_leave', 'teacher_absent', 'teacher_leave', 'rescheduled', 'student_rescheduled', 'holiday'];
+
   const stats = useMemo(() => {
     const records = attendanceRecords || [];
-    return {
-      total: records.length,
-      present: records.filter(r => r.status === 'present').length,
-      studentAbsent: records.filter(r => r.status === 'student_absent').length,
-      teacherOff: records.filter(r => ['teacher_absent', 'teacher_leave'].includes(r.status)).length,
-      rescheduled: records.filter(r => r.status === 'rescheduled').length,
-      holiday: records.filter(r => r.status === 'holiday').length,
-    };
+    const total = records.length;
+    const present = records.filter(r => r.status === 'present').length;
+    const studentAbsent = records.filter(r => r.status === 'student_absent').length;
+    const teacherOff = records.filter(r => ['teacher_absent', 'teacher_leave'].includes(r.status)).length;
+    const rescheduled = records.filter(r => r.status === 'rescheduled' || r.status === 'student_rescheduled').length;
+    const holiday = records.filter(r => r.status === 'holiday').length;
+    const studentLeave = records.filter(r => r.status === 'student_leave').length;
+    const accountedFor = present + studentAbsent + studentLeave + teacherOff + rescheduled + holiday;
+    const other = Math.max(0, total - accountedFor);
+    const otherStatuses = Array.from(new Set(
+      records
+        .filter(r => !KNOWN_STATUSES.includes(r.status as string) || r.status == null)
+        .map(r => (r.status ?? 'null') as string)
+    ));
+    return { total, present, studentAbsent, teacherOff, rescheduled, holiday, other, otherStatuses };
   }, [attendanceRecords]);
 
   const getStatusIcon = (status: string) => {
@@ -1083,6 +1097,23 @@ export default function Attendance() {
                   <p className="text-sm text-orange-500/80">Missing</p>
                 </CardContent>
               </Card>
+              {stats.other > 0 && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Card className="bg-muted/50 border-muted text-center cursor-help">
+                        <CardContent className="pt-6">
+                          <p className="text-2xl font-serif font-bold text-muted-foreground">{stats.other}</p>
+                          <p className="text-sm text-muted-foreground">Other</p>
+                        </CardContent>
+                      </Card>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-xs">Unrecognized statuses: {stats.otherStatuses.join(', ') || 'none'}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </>
           )}
           {!isAdmin && (
@@ -1106,6 +1137,23 @@ export default function Attendance() {
                     <p className="text-sm text-orange-500/80">Missing</p>
                   </CardContent>
                 </Card>
+              )}
+              {stats.other > 0 && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Card className="bg-muted/50 border-muted text-center cursor-help">
+                        <CardContent className="pt-6">
+                          <p className="text-2xl font-serif font-bold text-muted-foreground">{stats.other}</p>
+                          <p className="text-sm text-muted-foreground">Other</p>
+                        </CardContent>
+                      </Card>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-xs">Unrecognized statuses: {stats.otherStatuses.join(', ') || 'none'}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               )}
             </>
           )}

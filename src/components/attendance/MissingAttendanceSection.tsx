@@ -25,7 +25,7 @@ interface MissingRecord {
 }
 
 // Bypass cutoff: only count missing from April 2026 onwards
-const BYPASS_CUTOFF = '2026-04-01';
+export const BYPASS_CUTOFF = '2026-04-01';
 
 interface MissingAttendanceSectionProps {
   monthFilter: string;
@@ -105,9 +105,9 @@ export function MissingAttendanceSection({
         query = query.eq('student_teacher_assignments.teacher_id', teacherId);
       }
 
-      // Filter by division
+      // Filter by division (standardized: .eq matches the count hook)
       if (divisionId) {
-        query = query.or(`division_id.eq.${divisionId},student_teacher_assignments.division_id.eq.${divisionId}`);
+        query = query.eq('student_teacher_assignments.division_id', divisionId);
       }
 
       const { data, error } = await query;
@@ -420,6 +420,7 @@ export function useMissingAttendanceCount(
   dateTo: string,
   enabled: boolean,
   divisionId?: string,
+  teacherId?: string,
 ) {
   const { startDate, endDate } = useMemo(() => {
     let sd: string, ed: string;
@@ -437,7 +438,7 @@ export function useMissingAttendanceCount(
   }, [dateMode, dateFrom, dateTo, monthFilter]);
 
   const { data: schedules } = useQuery({
-    queryKey: ['schedules-count-missing', startDate, endDate, divisionId],
+    queryKey: ['schedules-count-missing', startDate, endDate, divisionId, teacherId],
     queryFn: async () => {
       let query = supabase
         .from('schedules')
@@ -445,6 +446,7 @@ export function useMissingAttendanceCount(
           day_of_week,
             student_teacher_assignments!inner (
               student_id,
+              teacher_id,
               status,
               requires_attendance,
               division_id
@@ -454,7 +456,11 @@ export function useMissingAttendanceCount(
           .eq('student_teacher_assignments.status', 'active')
           .eq('student_teacher_assignments.requires_attendance', true);
 
-      // Filter by division
+      if (teacherId) {
+        query = query.eq('student_teacher_assignments.teacher_id', teacherId);
+      }
+
+      // Filter by division (standardized: .eq matches the panel)
       if (divisionId) {
         query = query.eq('student_teacher_assignments.division_id', divisionId);
       }
@@ -467,21 +473,24 @@ export function useMissingAttendanceCount(
   });
 
   const { data: attendanceRecords } = useQuery({
-    queryKey: ['attendance-count-missing', startDate, endDate],
+    queryKey: ['attendance-count-missing', startDate, endDate, teacherId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('attendance')
         .select('student_id, class_date')
         .gte('class_date', startDate)
         .lte('class_date', endDate);
 
+      if (teacherId) {
+        query = query.eq('teacher_id', teacherId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
     enabled,
   });
-
-  // Fetch holidays for exclusion
   const { data: holidays } = useQuery({
     queryKey: ['holidays-count-missing', startDate, endDate],
     queryFn: async () => {
