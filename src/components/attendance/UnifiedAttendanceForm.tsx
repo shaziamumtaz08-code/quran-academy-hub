@@ -269,8 +269,6 @@ export function UnifiedAttendanceForm({
       setReasonText('');
       setRescheduleDate('');
       setRescheduleTime('');
-      setActualJoinTime('');
-      setActualLeaveTime('');
       setLessonNumber('');
       setPageNumber('');
       setAyahFromSurah('');
@@ -675,28 +673,6 @@ export function UnifiedAttendanceForm({
                 ? "bg-white text-[#1e3a5f] border-0"
                 : "bg-slate-200 text-[#1e3a5f] border-0 cursor-not-allowed"}
             />
-          </div>
-
-          {/* Actual Join/Leave Times */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="text-sky-100">Actual Join Time</Label>
-              <Input
-                type="time"
-                value={actualJoinTime}
-                onChange={(e) => setActualJoinTime(e.target.value)}
-                className="bg-white text-[#1e3a5f] border-0 [&::-webkit-calendar-picker-indicator]:opacity-0"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sky-100">Actual Leave Time</Label>
-              <Input
-                type="time"
-                value={actualLeaveTime}
-                onChange={(e) => setActualLeaveTime(e.target.value)}
-                className="bg-white text-[#1e3a5f] border-0 [&::-webkit-calendar-picker-indicator]:opacity-0"
-              />
-            </div>
           </div>
 
           {/* Reason fields for absent status */}
