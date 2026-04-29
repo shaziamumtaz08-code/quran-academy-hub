@@ -742,9 +742,11 @@ export function UnifiedAttendanceForm({
                   type="time"
                   value={classTime}
                   onChange={(e) => setClassTime(e.target.value)}
-                  readOnly
-                  disabled
-                  className="bg-slate-200 text-[#1e3a5f] border-0 cursor-not-allowed [&::-webkit-calendar-picker-indicator]:opacity-0"
+                  readOnly={!allowTimeEdit}
+                  disabled={!allowTimeEdit}
+                  className={allowTimeEdit
+                    ? "bg-white text-[#1e3a5f] border-0 [&::-webkit-calendar-picker-indicator]:opacity-0"
+                    : "bg-slate-200 text-[#1e3a5f] border-0 cursor-not-allowed [&::-webkit-calendar-picker-indicator]:opacity-0"}
                 />
               </div>
             </div>
