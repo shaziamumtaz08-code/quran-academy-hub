@@ -138,13 +138,17 @@ interface UnifiedAttendanceFormProps {
 export function UnifiedAttendanceForm({ 
   open, 
   onOpenChange, 
+  mode = 'create',
+  existingRecord,
   student: presetStudent,
   students,
   initialStatus,
   teacherId,
   teacherTimezone,
+  allowTimeEdit = false,
   onSuccess
 }: UnifiedAttendanceFormProps) {
+  const isEdit = mode === 'edit' && !!existingRecord;
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
