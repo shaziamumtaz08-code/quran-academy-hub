@@ -242,9 +242,9 @@ export function UnifiedAttendanceForm({
     enabled: open && !!effectiveTeacherId,
   });
 
-  // Check for duplicate attendance
+  // Check for duplicate attendance (skipped in edit mode — the row being edited is itself the match)
   const { data: existingAttendance } = useQuery({
-    queryKey: ['attendance-check-unified', student.id, classDate],
+    queryKey: ['attendance-check-unified', student.id, classDate, isEdit],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('attendance')
@@ -255,10 +255,10 @@ export function UnifiedAttendanceForm({
       if (error) throw error;
       return data;
     },
-    enabled: open && !!classDate,
+    enabled: open && !!classDate && !isEdit,
   });
 
-  const hasDuplicateAttendance = existingAttendance && existingAttendance.length > 0;
+  const hasDuplicateAttendance = !isEdit && existingAttendance && existingAttendance.length > 0;
 
   // Get scheduled days array
   const scheduledDays = useMemo(() => {
