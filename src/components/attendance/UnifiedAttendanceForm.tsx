@@ -493,11 +493,13 @@ export function UnifiedAttendanceForm({
         if (error) throw error;
         savedId = existingRecord.id;
       } else {
-        const { data, error } = await supabase.from('attendance').insert({
+        const insertPayload: any = {
           student_id: resolvedStudentId,
           teacher_id: effectiveTeacherId,
           ...basePayload,
-        }).select('id').single();
+          ...phaseAPayload,
+        };
+        const { data, error } = await supabase.from('attendance').insert(insertPayload).select('id').single();
         if (error) throw error;
         savedId = data?.id;
       }
