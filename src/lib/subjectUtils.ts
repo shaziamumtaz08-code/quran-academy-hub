@@ -2,17 +2,44 @@
 
 export type SubjectType = 'qaida' | 'hifz' | 'nazra' | 'academic';
 
+// Keyword tables (lowercased). Each entry is matched against the trimmed,
+// lowercased subject name with String.includes — so multi-word names like
+// "Tahfeez Class" or "حفظ القرآن" are detected.
+const HIFZ_KEYWORDS = ['hifz', 'hifdh', 'memorization', 'حفظ', 'tahfeez', 'tahfiz'];
+const NAZRA_KEYWORDS = ['nazra', 'nazrah', 'reading', 'ناظرہ', 'recitation'];
+const QAIDA_KEYWORDS = ['qaida', 'noorani', 'qaidah', 'noor', 'قاعدہ'];
+
 /**
- * Detect subject type from subject name
+ * Detect subject type from subject name (and optional explicit type column).
+ *
+ * @param subjectName - Free-text subject name to keyword-match against.
+ * @param explicitType - Optional value from a future `subjects.subject_type`
+ *                      column. If it matches a known SubjectType, it wins
+ *                      over keyword detection. Currently the schema has no
+ *                      such column, so this argument is reserved for forward
+ *                      compatibility.
  */
-export function getSubjectType(subjectName: string | null | undefined): SubjectType {
+export function getSubjectType(
+  subjectName: string | null | undefined,
+  explicitType?: string | null
+): SubjectType {
+  // 1. Honour explicit type column if provided and recognised.
+  if (explicitType) {
+    const t = explicitType.toLowerCase().trim();
+    if (t === 'qaida' || t === 'hifz' || t === 'nazra' || t === 'academic') {
+      return t;
+    }
+  }
+
+  // 2. Keyword match (case-insensitive, trimmed).
   if (!subjectName) return 'academic';
   const name = subjectName.toLowerCase().trim();
-  
-  if (name.includes('qaida') || name.includes('noorani')) return 'qaida';
-  if (name.includes('hifz') || name.includes('hifdh') || name.includes('memorization')) return 'hifz';
-  if (name.includes('nazra') || name.includes('nazrah') || name.includes('reading')) return 'nazra';
-  
+  if (!name) return 'academic';
+
+  if (QAIDA_KEYWORDS.some(k => name.includes(k))) return 'qaida';
+  if (HIFZ_KEYWORDS.some(k => name.includes(k))) return 'hifz';
+  if (NAZRA_KEYWORDS.some(k => name.includes(k))) return 'nazra';
+
   return 'academic';
 }
 
