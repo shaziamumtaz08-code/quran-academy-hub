@@ -204,6 +204,12 @@ export function UnifiedAttendanceForm({
   const [sabqiDone, setSabqiDone] = useState(false);
   const [manzilDone, setManzilDone] = useState(false);
 
+  // Edit-only progress fields (Phase A schema). Pre-filled in edit mode, written back on save.
+  const [linesCompleted, setLinesCompleted] = useState<string>('');
+  const [varianceReason, setVarianceReason] = useState<string>('');
+  const [inputUnit, setInputUnit] = useState<string>('');
+  const [rawInputAmount, setRawInputAmount] = useState<string>('');
+
   // Academic fields
   const [academicLessonTopic, setAcademicLessonTopic] = useState('');
   const [academicLessonStatus, setAcademicLessonStatus] = useState<LessonStatus | ''>('');
