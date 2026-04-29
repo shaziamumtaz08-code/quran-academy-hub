@@ -293,8 +293,9 @@ export function UnifiedAttendanceForm({
     } : null;
   };
 
-  // Update time when date changes or modal opens
+  // Update time when date changes or modal opens (create mode only — edit preserves recorded values)
   useEffect(() => {
+    if (isEdit) return;
     if (open && classDate && scheduleData) {
       const scheduleInfo = getScheduledInfoForDay(classDate);
       if (scheduleInfo) {
@@ -303,7 +304,7 @@ export function UnifiedAttendanceForm({
         setDuration(scheduleInfo.duration.toString());
       }
     }
-  }, [open, classDate, scheduleData]);
+  }, [open, classDate, scheduleData, isEdit]);
 
   const requiresReason = (status: AttendanceStatus) => 
     ['student_absent', 'student_leave', 'teacher_absent', 'teacher_leave'].includes(status);
