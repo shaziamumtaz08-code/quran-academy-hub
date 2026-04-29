@@ -29,7 +29,7 @@ export function QaidaProgressInput({
 }: QaidaProgressInputProps) {
   if (isPlanning && onLessonNumberToChange && onPageNumberToChange) {
     return (
-      <div className="bg-[#1e3a5f] rounded-xl p-5 border border-[#2d4a6f] shadow-lg space-y-4">
+      <div className="bg-card rounded-xl p-5 border border-border shadow-lg space-y-4">
         {/* Header */}
         <div className="flex items-center gap-2">
           <BookOpen className="h-5 w-5 text-cyan-400" />
@@ -49,7 +49,7 @@ export function QaidaProgressInput({
                   placeholder="e.g., 1"
                   value={lessonNumber}
                   onChange={(e) => onLessonNumberChange(e.target.value)}
-                  className="bg-white text-navy-900 border-0 placeholder:text-slate-400"
+                  className="placeholder:text-muted-foreground"
                 />
               </div>
               <div>
@@ -60,7 +60,7 @@ export function QaidaProgressInput({
                   placeholder="e.g., 5"
                   value={pageNumber}
                   onChange={(e) => onPageNumberChange(e.target.value)}
-                  className="bg-white text-navy-900 border-0 placeholder:text-slate-400"
+                  className="placeholder:text-muted-foreground"
                 />
               </div>
             </div>
@@ -78,7 +78,7 @@ export function QaidaProgressInput({
                   placeholder="e.g., 5"
                   value={lessonNumberTo}
                   onChange={(e) => onLessonNumberToChange(e.target.value)}
-                  className="bg-white text-navy-900 border-0 placeholder:text-slate-400"
+                  className="placeholder:text-muted-foreground"
                 />
               </div>
               <div>
@@ -89,7 +89,7 @@ export function QaidaProgressInput({
                   placeholder="e.g., 15"
                   value={pageNumberTo}
                   onChange={(e) => onPageNumberToChange(e.target.value)}
-                  className="bg-white text-navy-900 border-0 placeholder:text-slate-400"
+                  className="placeholder:text-muted-foreground"
                 />
               </div>
             </div>
@@ -101,7 +101,7 @@ export function QaidaProgressInput({
 
   // Attendance mode - single inputs only (no Surah/Verse fields)
   return (
-    <div className="bg-[#1e3a5f] rounded-xl p-5 border border-[#2d4a6f] shadow-lg space-y-4">
+    <div className="bg-card rounded-xl p-5 border border-border shadow-lg space-y-4">
       {/* Header */}
       <div className="flex items-center gap-2">
         <BookOpen className="h-5 w-5 text-cyan-400" />
@@ -121,7 +121,7 @@ export function QaidaProgressInput({
             placeholder="e.g., 12"
             value={lessonNumber}
             onChange={(e) => onLessonNumberChange(e.target.value)}
-            className="bg-white text-navy-900 border-0 placeholder:text-slate-400"
+            className="placeholder:text-muted-foreground"
           />
         </div>
         <div className="space-y-2">
@@ -133,7 +133,7 @@ export function QaidaProgressInput({
             placeholder="e.g., 25"
             value={pageNumber}
             onChange={(e) => onPageNumberChange(e.target.value)}
-            className="bg-white text-navy-900 border-0 placeholder:text-slate-400"
+            className="placeholder:text-muted-foreground"
           />
         </div>
       </div>

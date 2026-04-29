@@ -601,20 +601,20 @@ export function UnifiedAttendanceForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-[#1e3a5f] border-[#2d4a6f] text-white">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border text-white">
         <DialogHeader>
           <DialogTitle className="font-serif text-xl text-white flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-sky/20 flex items-center justify-center">
-              <User className="h-5 w-5 text-sky-300" />
+            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <User className="h-5 w-5 text-primary" />
             </div>
             {isEdit ? 'Edit Attendance' : 'Mark Attendance'}
           </DialogTitle>
-          <DialogDescription className="text-sky-200">
+          <DialogDescription className="text-muted-foreground">
             {isEdit
               ? <>
                   {student.full_name ? `Edit attendance for ${student.full_name}` : 'Edit attendance record'}
                   {existingRecord?.created_at && (
-                    <span className="block text-xs text-sky-200/70 mt-1">
+                    <span className="block text-xs text-muted-foreground mt-1">
                       Created: {format(parseISO(existingRecord.created_at), 'dd MMM yyyy h:mm a')}
                     </span>
                   )}
@@ -625,10 +625,10 @@ export function UnifiedAttendanceForm({
 
         {/* Student Picker (when no preset) */}
         {!presetStudent && students && students.length > 0 && needsStudent && (
-          <div className="bg-[#2d4a6f] rounded-xl p-4 space-y-2">
-            <Label className="text-sky-100">Student <span className="text-red-400">*</span></Label>
+          <div className="bg-muted rounded-xl p-4 space-y-2">
+            <Label className="text-foreground">Student <span className="text-destructive">*</span></Label>
             <Select value={pickedStudentId} onValueChange={setPickedStudentId}>
-              <SelectTrigger className="bg-white text-[#1e3a5f] border-0">
+              <SelectTrigger className="">
                 <SelectValue placeholder="Select a student" />
               </SelectTrigger>
               <SelectContent>
@@ -644,18 +644,18 @@ export function UnifiedAttendanceForm({
 
         {/* Student Info Header (when student is known) */}
         {student.id && needsStudent && (
-          <div className="bg-[#2d4a6f] rounded-xl p-4 space-y-2">
+          <div className="bg-muted rounded-xl p-4 space-y-2">
             <div className="flex items-center justify-between">
               <span className="font-medium text-lg">{student.full_name}</span>
               {student.subject_name && (
-                <Badge className="bg-sky/20 text-sky-200 border-sky/30">
+                <Badge className="bg-primary/10 text-muted-foreground border-primary/30">
                   <BookOpen className="h-3 w-3 mr-1" />
                   {student.subject_name}
                 </Badge>
               )}
             </div>
             {student.last_lesson && (
-              <div className="text-sm text-sky-200">
+              <div className="text-sm text-muted-foreground">
                 <Clock className="h-3 w-3 inline mr-1" />
                 Last: {student.last_lesson}
               </div>
@@ -666,7 +666,7 @@ export function UnifiedAttendanceForm({
         <div className="space-y-4 py-2">
           {/* Duplicate Attendance Warning */}
           {hasDuplicateAttendance && (
-            <Alert className="bg-red-500/20 border-red-500/50 text-red-200">
+            <Alert className="bg-destructive/10 border-destructive/30 text-destructive">
               <Ban className="h-4 w-4" />
               <AlertDescription>
                 Attendance already marked for {format(parseISO(classDate), 'dd MMM yyyy')}.
@@ -676,7 +676,7 @@ export function UnifiedAttendanceForm({
 
           {/* Non-Scheduled Day Warning */}
           {!isScheduledDay && !hasDuplicateAttendance && !isFutureDate && (
-            <Alert className="bg-amber-500/20 border-amber-500/50 text-amber-200">
+            <Alert className="bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
                 This is not a scheduled day. Scheduled: {scheduledDays.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ') || 'None'}.
@@ -686,7 +686,7 @@ export function UnifiedAttendanceForm({
 
           {/* Future Date Warning */}
           {isFutureDate && (
-            <Alert className="bg-red-500/20 border-red-500/50 text-red-200">
+            <Alert className="bg-destructive/10 border-destructive/30 text-destructive">
               <Ban className="h-4 w-4" />
               <AlertDescription>
                 Cannot mark attendance for future dates.
@@ -696,7 +696,7 @@ export function UnifiedAttendanceForm({
 
           {/* Status Selection */}
           <div className="space-y-2">
-            <Label className="text-sky-100">Status <span className="text-red-400">*</span></Label>
+            <Label className="text-foreground">Status <span className="text-destructive">*</span></Label>
             <Select
               value={selectedStatus}
               onValueChange={(v) => {
@@ -709,7 +709,7 @@ export function UnifiedAttendanceForm({
                 setSelectedStatus(next);
               }}
             >
-              <SelectTrigger className="bg-white text-[#1e3a5f] border-0">
+              <SelectTrigger className="">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -725,18 +725,18 @@ export function UnifiedAttendanceForm({
             // Variant A — non-reschedule statuses: single Date + Scheduled Time row
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-sky-100">Class Date <span className="text-red-400">*</span></Label>
+                <Label className="text-foreground">Class Date <span className="text-destructive">*</span></Label>
                 <Input
                   type="date"
                   value={classDate}
                   onChange={(e) => setClassDate(e.target.value)}
                   max={format(new Date(), 'yyyy-MM-dd')}
-                  className="bg-white text-[#1e3a5f] border-0 [&::-webkit-calendar-picker-indicator]:opacity-0"
+                  className="[ [&::-webkit-calendar-picker-indicator]:opacity-0::-webkit-calendar-picker-indicator]:opacity-0"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-sky-100">
-                  Scheduled Time ({teacherTzAbbr}) <span className="text-red-400">*</span>
+                <Label className="text-foreground">
+                  Scheduled Time ({teacherTzAbbr}) <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   type="time"
@@ -745,49 +745,49 @@ export function UnifiedAttendanceForm({
                   readOnly={!allowTimeEdit}
                   disabled={!allowTimeEdit}
                   className={allowTimeEdit
-                    ? "bg-white text-[#1e3a5f] border-0 [&::-webkit-calendar-picker-indicator]:opacity-0"
-                    : "bg-slate-200 text-[#1e3a5f] border-0 cursor-not-allowed [&::-webkit-calendar-picker-indicator]:opacity-0"}
+                    ? "[ [&::-webkit-calendar-picker-indicator]:opacity-0::-webkit-calendar-picker-indicator]:opacity-0"
+                    : "bg-muted cursor-not-allowed [&::-webkit-calendar-picker-indicator]:opacity-0"}
                 />
               </div>
             </div>
           ) : (
             // Variant B — reschedule statuses: contained block, "Originally scheduled" first, "Actually conducted on" second
-            <div className="rounded-lg bg-[#2d4a6f] p-3 sm:p-4 space-y-4">
+            <div className="rounded-lg bg-muted p-3 sm:p-4 space-y-4">
               {/* Info banner (blue, not amber — reschedule is routine) */}
-              <div className="flex items-start gap-2 rounded-md bg-sky-500/15 border border-sky-400/30 px-3 py-2">
-                <Info className="h-4 w-4 text-sky-300 mt-0.5 shrink-0" />
-                <div className="text-sm text-sky-100">
+              <div className="flex items-start gap-2 rounded-md bg-primary/10 border border-primary/30 px-3 py-2">
+                <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                <div className="text-sm text-foreground">
                   <span className="font-medium">Reschedule details</span>
-                  <span className="block text-xs text-sky-200/80">This class is a make-up for a missed slot.</span>
+                  <span className="block text-xs text-muted-foreground">This class is a make-up for a missed slot.</span>
                 </div>
               </div>
 
               {/* Sub-section 1: Originally scheduled (FIRST) */}
               <div className="space-y-2">
-                <Label className="text-sky-100 text-sm font-semibold">Originally scheduled</Label>
+                <Label className="text-foreground text-sm font-semibold">Originally scheduled</Label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-1.5">
-                    <Label className="text-sky-100 text-xs">Date <span className="text-red-400">*</span></Label>
+                    <Label className="text-foreground text-xs">Date <span className="text-destructive">*</span></Label>
                     <Input
                       type="date"
                       value={rescheduleDate}
                       min={format(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')}
                       max={format(new Date(), 'yyyy-MM-dd')}
                       onChange={(e) => setRescheduleDate(e.target.value)}
-                      className="bg-white text-[#1e3a5f] border-0 [&::-webkit-calendar-picker-indicator]:opacity-0"
+                      className="[ [&::-webkit-calendar-picker-indicator]:opacity-0::-webkit-calendar-picker-indicator]:opacity-0"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-sky-100 text-xs">Time</Label>
+                    <Label className="text-foreground text-xs">Time</Label>
                     <Input
                       type="time"
                       value={rescheduleTime}
                       onChange={(e) => setRescheduleTime(e.target.value)}
-                      className="bg-white text-[#1e3a5f] border-0 [&::-webkit-calendar-picker-indicator]:opacity-0"
+                      className="[ [&::-webkit-calendar-picker-indicator]:opacity-0::-webkit-calendar-picker-indicator]:opacity-0"
                     />
                   </div>
                 </div>
-                <p className="text-[11px] text-sky-200/70">Pick the missed scheduled day this class makes up for.</p>
+                <p className="text-[11px] text-muted-foreground">Pick the missed scheduled day this class makes up for.</p>
               </div>
 
               {/* Thin divider — no text label */}
@@ -795,36 +795,36 @@ export function UnifiedAttendanceForm({
 
               {/* Sub-section 2: Actually conducted on (SECOND) */}
               <div className="space-y-2">
-                <Label className="text-sky-100 text-sm font-semibold">Actually conducted on</Label>
+                <Label className="text-foreground text-sm font-semibold">Actually conducted on</Label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-1.5">
-                    <Label className="text-sky-100 text-xs">Date <span className="text-red-400">*</span></Label>
+                    <Label className="text-foreground text-xs">Date <span className="text-destructive">*</span></Label>
                     <Input
                       type="date"
                       value={classDate}
                       onChange={(e) => setClassDate(e.target.value)}
                       max={format(new Date(), 'yyyy-MM-dd')}
-                      className="bg-white text-[#1e3a5f] border-0 [&::-webkit-calendar-picker-indicator]:opacity-0"
+                      className="[ [&::-webkit-calendar-picker-indicator]:opacity-0::-webkit-calendar-picker-indicator]:opacity-0"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-sky-100 text-xs">Time ({teacherTzAbbr}) <span className="text-red-400">*</span></Label>
+                    <Label className="text-foreground text-xs">Time ({teacherTzAbbr}) <span className="text-destructive">*</span></Label>
                     <Input
                       type="time"
                       value={classTime}
                       onChange={(e) => setClassTime(e.target.value)}
-                      className="bg-white text-[#1e3a5f] border-0 [&::-webkit-calendar-picker-indicator]:opacity-0"
+                      className="[ [&::-webkit-calendar-picker-indicator]:opacity-0::-webkit-calendar-picker-indicator]:opacity-0"
                     />
                   </div>
                 </div>
-                <p className="text-[11px] text-sky-200/70">Can be any day, including weekends.</p>
+                <p className="text-[11px] text-muted-foreground">Can be any day, including weekends.</p>
               </div>
             </div>
           )}
 
           {/* Duration — fixed position, always visible. Editable when reschedule (off-roster). */}
           <div className="space-y-2">
-            <Label className="text-sky-100">Duration (minutes)</Label>
+            <Label className="text-foreground">Duration (minutes)</Label>
             <Input
               type="number"
               value={duration}
@@ -832,18 +832,18 @@ export function UnifiedAttendanceForm({
               readOnly={!requiresReschedule(selectedStatus) && !isEdit}
               disabled={!requiresReschedule(selectedStatus) && !isEdit}
               className={(requiresReschedule(selectedStatus) || isEdit)
-                ? "bg-white text-[#1e3a5f] border-0"
-                : "bg-slate-200 text-[#1e3a5f] border-0 cursor-not-allowed"}
+                ? ""
+                : "bg-muted cursor-not-allowed"}
             />
           </div>
 
           {/* Reason fields for absent status */}
           {requiresReason(selectedStatus) && (
-            <div className="space-y-4 p-4 bg-[#2d4a6f] rounded-lg">
+            <div className="space-y-4 p-4 bg-muted rounded-lg">
               <div className="space-y-2">
-                <Label className="text-sky-100">Reason Category <span className="text-red-400">*</span></Label>
+                <Label className="text-foreground">Reason Category <span className="text-destructive">*</span></Label>
                 <Select value={reasonCategory} onValueChange={(v) => setReasonCategory(v as ReasonCategory)}>
-                  <SelectTrigger className="bg-white text-[#1e3a5f] border-0">
+                  <SelectTrigger className="">
                     <SelectValue placeholder="Select reason" />
                   </SelectTrigger>
                   <SelectContent>
@@ -855,11 +855,11 @@ export function UnifiedAttendanceForm({
               </div>
               {reasonCategory === 'other' && (
                 <div className="space-y-2">
-                  <Label className="text-sky-100">Specify Reason <span className="text-red-400">*</span></Label>
+                  <Label className="text-foreground">Specify Reason <span className="text-destructive">*</span></Label>
                   <Textarea
                     value={reasonText}
                     onChange={(e) => setReasonText(e.target.value)}
-                    className="bg-white text-[#1e3a5f] border-0"
+                    className=""
                     placeholder="Please specify..."
                   />
                 </div>
@@ -962,7 +962,7 @@ export function UnifiedAttendanceForm({
 
               {/* Inline lesson-details validation error — appears directly under the offending fields */}
               {lessonRequired && !hasLessonDetails && (
-                <p className="text-xs text-red-300 flex items-center gap-1.5 -mt-2">
+                <p className="text-xs text-destructive flex items-center gap-1.5 -mt-2">
                   <AlertTriangle className="h-3.5 w-3.5" />
                   Lesson details are required when the class was conducted.
                 </p>
@@ -971,12 +971,12 @@ export function UnifiedAttendanceForm({
               {/* Homework - if not academic (academic includes it) */}
               {currentSubjectType !== 'academic' && (
                 <div className="space-y-2">
-                  <Label className="text-sky-100">Homework</Label>
+                  <Label className="text-foreground">Homework</Label>
                   <Textarea 
                     value={homework}
                     onChange={(e) => setHomework(e.target.value)}
                     placeholder="Enter homework assignment..."
-                    className="bg-white text-[#1e3a5f] border-0"
+                    className=""
                   />
                 </div>
               )}
@@ -991,22 +991,22 @@ export function UnifiedAttendanceForm({
 
           {/* Remarks */}
           <div className="space-y-2">
-            <Label className="text-sky-100">Remarks</Label>
+            <Label className="text-foreground">Remarks</Label>
             <Textarea 
               value={remarks}
               onChange={(e) => setRemarks(e.target.value)}
               placeholder="Any additional notes..."
-              className="bg-white text-[#1e3a5f] border-0"
+              className=""
             />
           </div>
         </div>
 
         {/* Actions */}
-        <div className="flex justify-end gap-3 pt-4 border-t border-[#2d4a6f]">
+        <div className="flex justify-end gap-3 pt-4 border-t border-border">
           <Button 
             variant="outline" 
             onClick={() => onOpenChange(false)}
-            className="border-sky/30 text-sky-200 hover:bg-[#2d4a6f]"
+            className="border-primary/30 text-muted-foreground hover:bg-muted/80"
           >
             Cancel
           </Button>
