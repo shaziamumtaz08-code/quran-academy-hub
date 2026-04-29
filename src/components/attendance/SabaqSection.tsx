@@ -186,7 +186,7 @@ export function SabaqSection({
                 <SelectTrigger className="rounded-lg">
                   <SelectValue placeholder="Select Juz" />
                 </SelectTrigger>
-                <SelectContent className="bg-white z-50">
+                <SelectContent className="z-50 bg-popover">
                   {JUZ_DATA.map((juz) => (
                     <SelectItem key={juz.number} value={juz.number.toString()}>
                       Juz {juz.number} - {juz.name}
@@ -198,7 +198,7 @@ export function SabaqSection({
                 <SelectTrigger className="rounded-lg">
                   <SelectValue placeholder="Ruku #" />
                 </SelectTrigger>
-                <SelectContent className="bg-white z-50">
+                <SelectContent className="z-50 bg-popover">
                   {Array.from({ length: maxRukuFrom }, (_, i) => (
                     <SelectItem key={i + 1} value={(i + 1).toString()}>
                       Ruku {i + 1}
@@ -217,7 +217,7 @@ export function SabaqSection({
                 <SelectTrigger className="rounded-lg">
                   <SelectValue placeholder="Select Juz" />
                 </SelectTrigger>
-                <SelectContent className="bg-white z-50">
+                <SelectContent className="z-50 bg-popover">
                   {JUZ_DATA.map((juz) => (
                     <SelectItem key={juz.number} value={juz.number.toString()}>
                       Juz {juz.number} - {juz.name}
@@ -229,7 +229,7 @@ export function SabaqSection({
                 <SelectTrigger className="rounded-lg">
                   <SelectValue placeholder="Ruku #" />
                 </SelectTrigger>
-                <SelectContent className="bg-white z-50">
+                <SelectContent className="z-50 bg-popover">
                   {Array.from({ length: maxRukuTo }, (_, i) => (
                     <SelectItem key={i + 1} value={(i + 1).toString()}>
                       Ruku {i + 1}
@@ -253,7 +253,7 @@ export function SabaqSection({
                 <SelectTrigger className="rounded-lg">
                   <SelectValue placeholder="Select Surah" />
                 </SelectTrigger>
-                <SelectContent className="bg-white z-50 max-h-[300px]">
+                <SelectContent className="z-50 max-h-[300px] bg-popover">
                   {SURAHS.map((surah) => (
                     <SelectItem key={surah.number} value={surah.name}>
                       {surah.number}. {surah.name}
@@ -265,7 +265,7 @@ export function SabaqSection({
                 <SelectTrigger className="rounded-lg">
                   <SelectValue placeholder="Ayah" />
                 </SelectTrigger>
-                <SelectContent className="bg-white z-50 max-h-[300px]">
+                <SelectContent className="z-50 max-h-[300px] bg-popover">
                   {Array.from({ length: maxAyahFrom }, (_, i) => (
                     <SelectItem key={i + 1} value={(i + 1).toString()}>
                       Ayah {i + 1}
@@ -284,7 +284,7 @@ export function SabaqSection({
                 <SelectTrigger className="rounded-lg">
                   <SelectValue placeholder="Select Surah" />
                 </SelectTrigger>
-                <SelectContent className="bg-white z-50 max-h-[300px]">
+                <SelectContent className="z-50 max-h-[300px] bg-popover">
                   {SURAHS.map((surah) => (
                     <SelectItem key={surah.number} value={surah.name}>
                       {surah.number}. {surah.name}
@@ -296,7 +296,7 @@ export function SabaqSection({
                 <SelectTrigger className="rounded-lg">
                   <SelectValue placeholder="Ayah" />
                 </SelectTrigger>
-                <SelectContent className="bg-white z-50 max-h-[300px]">
+                <SelectContent className="z-50 max-h-[300px] bg-popover">
                   {Array.from({ length: maxAyahTo }, (_, i) => (
                     <SelectItem key={i + 1} value={(i + 1).toString()}>
                       Ayah {i + 1}
@@ -320,7 +320,7 @@ export function SabaqSection({
                 <SelectTrigger className="rounded-lg">
                   <SelectValue placeholder="Select Juz" />
                 </SelectTrigger>
-                <SelectContent className="bg-white z-50">
+                <SelectContent className="z-50 bg-popover">
                   {JUZ_DATA.map((juz) => (
                     <SelectItem key={juz.number} value={juz.number.toString()}>
                       Juz {juz.number} - {juz.name}
@@ -332,7 +332,7 @@ export function SabaqSection({
                 <SelectTrigger className="rounded-lg">
                   <SelectValue placeholder="Quarter" />
                 </SelectTrigger>
-                <SelectContent className="bg-white z-50">
+                <SelectContent className="z-50 bg-popover">
                   <SelectItem value="1">1st Quarter</SelectItem>
                   <SelectItem value="2">2nd Quarter</SelectItem>
                   <SelectItem value="3">3rd Quarter</SelectItem>
@@ -350,7 +350,7 @@ export function SabaqSection({
                 <SelectTrigger className="rounded-lg">
                   <SelectValue placeholder="Select Juz" />
                 </SelectTrigger>
-                <SelectContent className="bg-white z-50">
+                <SelectContent className="z-50 bg-popover">
                   {JUZ_DATA.map((juz) => (
                     <SelectItem key={juz.number} value={juz.number.toString()}>
                       Juz {juz.number} - {juz.name}
@@ -362,7 +362,7 @@ export function SabaqSection({
                 <SelectTrigger className="rounded-lg">
                   <SelectValue placeholder="Quarter" />
                 </SelectTrigger>
-                <SelectContent className="bg-white z-50">
+                <SelectContent className="z-50 bg-popover">
                   <SelectItem value="1">1st Quarter</SelectItem>
                   <SelectItem value="2">2nd Quarter</SelectItem>
                   <SelectItem value="3">3rd Quarter</SelectItem>
@@ -380,7 +380,7 @@ export function SabaqSection({
           <div className="bg-sky-900/50 rounded-lg px-4 py-3">
             <span className="text-muted-foreground text-sm font-medium">{totalCalculation.label}</span>
           </div>
-          <div className="bg-white rounded-lg px-4 py-3 text-center">
+          <div className="bg-card rounded-lg px-4 py-3 text-center">
             <span className="text-foreground font-bold text-lg">
               {totalCalculation.value > 0 ? totalCalculation.value : '—'}
             </span>

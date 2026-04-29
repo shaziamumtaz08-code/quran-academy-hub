@@ -49,7 +49,7 @@ export function QaidaProgressInput({
                   placeholder="e.g., 1"
                   value={lessonNumber}
                   onChange={(e) => onLessonNumberChange(e.target.value)}
-                  className="bg-white text-navy-900 border-0 placeholder:text-slate-400"
+                  className="placeholder:text-muted-foreground"
                 />
               </div>
               <div>
@@ -60,7 +60,7 @@ export function QaidaProgressInput({
                   placeholder="e.g., 5"
                   value={pageNumber}
                   onChange={(e) => onPageNumberChange(e.target.value)}
-                  className="bg-white text-navy-900 border-0 placeholder:text-slate-400"
+                  className="placeholder:text-muted-foreground"
                 />
               </div>
             </div>
@@ -78,7 +78,7 @@ export function QaidaProgressInput({
                   placeholder="e.g., 5"
                   value={lessonNumberTo}
                   onChange={(e) => onLessonNumberToChange(e.target.value)}
-                  className="bg-white text-navy-900 border-0 placeholder:text-slate-400"
+                  className="placeholder:text-muted-foreground"
                 />
               </div>
               <div>
@@ -89,7 +89,7 @@ export function QaidaProgressInput({
                   placeholder="e.g., 15"
                   value={pageNumberTo}
                   onChange={(e) => onPageNumberToChange(e.target.value)}
-                  className="bg-white text-navy-900 border-0 placeholder:text-slate-400"
+                  className="placeholder:text-muted-foreground"
                 />
               </div>
             </div>
@@ -121,7 +121,7 @@ export function QaidaProgressInput({
             placeholder="e.g., 12"
             value={lessonNumber}
             onChange={(e) => onLessonNumberChange(e.target.value)}
-            className="bg-white text-navy-900 border-0 placeholder:text-slate-400"
+            className="placeholder:text-muted-foreground"
           />
         </div>
         <div className="space-y-2">
@@ -133,7 +133,7 @@ export function QaidaProgressInput({
             placeholder="e.g., 25"
             value={pageNumber}
             onChange={(e) => onPageNumberChange(e.target.value)}
-            className="bg-white text-navy-900 border-0 placeholder:text-slate-400"
+            className="placeholder:text-muted-foreground"
           />
         </div>
       </div>
