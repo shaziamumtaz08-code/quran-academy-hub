@@ -69,9 +69,59 @@ export interface StudentInfo {
   timezone?: string;
 }
 
+/** Shape of an attendance row when editing. Extends create payload with id + nullable progress fields. */
+export interface ExistingAttendanceRecord {
+  id: string;
+  student_id: string;
+  teacher_id: string;
+  class_date: string;
+  class_time: string | null;
+  duration_minutes: number;
+  status: AttendanceStatus;
+  reason: string | null;
+  reason_category: string | null;
+  reason_text: string | null;
+  reschedule_date: string | null;
+  reschedule_time: string | null;
+  lesson_covered: string | null;
+  homework: string | null;
+  voice_note_url?: string | null;
+  // Sabaq / progress
+  sabaq_marker_type?: string | null;
+  sabaq_surah_from: string | null;
+  sabaq_surah_to: string | null;
+  sabaq_ayah_from: number | null;
+  sabaq_ayah_to: number | null;
+  sabaq_ruku_from_juz?: number | null;
+  sabaq_ruku_from_number?: number | null;
+  sabaq_ruku_to_juz?: number | null;
+  sabaq_ruku_to_number?: number | null;
+  sabaq_quarter_from_juz?: number | null;
+  sabaq_quarter_from_number?: number | null;
+  sabaq_quarter_to_juz?: number | null;
+  sabaq_quarter_to_number?: number | null;
+  sabqi_done: boolean | null;
+  manzil_done: boolean | null;
+  lesson_number: number | null;
+  page_number: number | null;
+  lines_completed: number | null;
+  variance_reason: string | null;
+  input_unit: string | null;
+  raw_input_amount: number | null;
+  // Legacy
+  surah_name: string | null;
+  ayah_from: number | null;
+  ayah_to: number | null;
+  created_at?: string;
+}
+
 interface UnifiedAttendanceFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** 'create' (default) inserts a new row; 'edit' updates `existingRecord`. */
+  mode?: 'create' | 'edit';
+  /** Required when mode='edit'. Source row to hydrate the form. */
+  existingRecord?: ExistingAttendanceRecord;
   /** Pre-selected student. If omitted, `students` picker will be shown. */
   student?: StudentInfo;
   /** Optional list of selectable students (used when `student` is not preset). */
@@ -80,19 +130,25 @@ interface UnifiedAttendanceFormProps {
   initialStatus?: AttendanceStatus;
   teacherId?: string;
   teacherTimezone?: string;
+  /** When true, Class Time is editable (admins). Defaults to false. */
+  allowTimeEdit?: boolean;
   onSuccess?: () => void;
 }
 
 export function UnifiedAttendanceForm({ 
   open, 
   onOpenChange, 
+  mode = 'create',
+  existingRecord,
   student: presetStudent,
   students,
   initialStatus,
   teacherId,
   teacherTimezone,
+  allowTimeEdit = false,
   onSuccess
 }: UnifiedAttendanceFormProps) {
+  const isEdit = mode === 'edit' && !!existingRecord;
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -148,6 +204,12 @@ export function UnifiedAttendanceForm({
   const [sabqiDone, setSabqiDone] = useState(false);
   const [manzilDone, setManzilDone] = useState(false);
 
+  // Edit-only progress fields (Phase A schema). Pre-filled in edit mode, written back on save.
+  const [linesCompleted, setLinesCompleted] = useState<string>('');
+  const [varianceReason, setVarianceReason] = useState<string>('');
+  const [inputUnit, setInputUnit] = useState<string>('');
+  const [rawInputAmount, setRawInputAmount] = useState<string>('');
+
   // Academic fields
   const [academicLessonTopic, setAcademicLessonTopic] = useState('');
   const [academicLessonStatus, setAcademicLessonStatus] = useState<LessonStatus | ''>('');
@@ -186,9 +248,9 @@ export function UnifiedAttendanceForm({
     enabled: open && !!effectiveTeacherId,
   });
 
-  // Check for duplicate attendance
+  // Check for duplicate attendance (skipped in edit mode — the row being edited is itself the match)
   const { data: existingAttendance } = useQuery({
-    queryKey: ['attendance-check-unified', student.id, classDate],
+    queryKey: ['attendance-check-unified', student.id, classDate, isEdit],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('attendance')
@@ -199,10 +261,10 @@ export function UnifiedAttendanceForm({
       if (error) throw error;
       return data;
     },
-    enabled: open && !!classDate,
+    enabled: open && !!classDate && !isEdit,
   });
 
-  const hasDuplicateAttendance = existingAttendance && existingAttendance.length > 0;
+  const hasDuplicateAttendance = !isEdit && existingAttendance && existingAttendance.length > 0;
 
   // Get scheduled days array
   const scheduledDays = useMemo(() => {
@@ -237,8 +299,9 @@ export function UnifiedAttendanceForm({
     } : null;
   };
 
-  // Update time when date changes or modal opens
+  // Update time when date changes or modal opens (create mode only — edit preserves recorded values)
   useEffect(() => {
+    if (isEdit) return;
     if (open && classDate && scheduleData) {
       const scheduleInfo = getScheduledInfoForDay(classDate);
       if (scheduleInfo) {
@@ -247,7 +310,7 @@ export function UnifiedAttendanceForm({
         setDuration(scheduleInfo.duration.toString());
       }
     }
-  }, [open, classDate, scheduleData]);
+  }, [open, classDate, scheduleData, isEdit]);
 
   const requiresReason = (status: AttendanceStatus) => 
     ['student_absent', 'student_leave', 'teacher_absent', 'teacher_leave'].includes(status);
@@ -255,7 +318,7 @@ export function UnifiedAttendanceForm({
   const requiresReschedule = (status: AttendanceStatus) => 
     ['rescheduled', 'student_rescheduled'].includes(status);
 
-  // Reset form when modal closes; apply initialStatus when modal opens
+  // Reset/hydrate form on open. Edit mode hydrates from existingRecord; create mode resets to defaults.
   useEffect(() => {
     if (!open) {
       setSelectedStatus(initialStatus || 'present');
@@ -271,20 +334,65 @@ export function UnifiedAttendanceForm({
       setRescheduleTime('');
       setLessonNumber('');
       setPageNumber('');
+      setMarkerType('ayah');
+      setRukuFromJuz(''); setRukuFromNumber(''); setRukuToJuz(''); setRukuToNumber('');
+      setQuarterFromJuz(''); setQuarterFromNumber(''); setQuarterToJuz(''); setQuarterToNumber('');
       setAyahFromSurah('');
       setAyahFromNumber('');
       setAyahToSurah('');
       setAyahToNumber('');
       setSabqiDone(false);
       setManzilDone(false);
+      setLinesCompleted(''); setVarianceReason(''); setInputUnit(''); setRawInputAmount('');
       setAcademicLessonTopic('');
       setAcademicLessonStatus('');
       setAcademicFollowups([]);
       setPickedStudentId('');
-    } else if (initialStatus) {
-      setSelectedStatus(initialStatus);
+      return;
     }
-  }, [open, initialStatus]);
+
+    // EDIT MODE: hydrate every state from existingRecord
+    if (isEdit && existingRecord) {
+      const r = existingRecord;
+      setSelectedStatus(r.status);
+      setClassDate(r.class_date);
+      setClassTime(r.class_time ? r.class_time.substring(0, 5) : '');
+      setDuration(String(r.duration_minutes ?? 30));
+      setHomework(r.homework ?? '');
+      setRemarks(r.reason ?? '');
+      setVoiceNoteUrl(r.voice_note_url ?? null);
+      setReasonCategory((r.reason_category as ReasonCategory) || '');
+      setReasonText(r.reason_text ?? '');
+      setRescheduleDate(r.reschedule_date ?? '');
+      setRescheduleTime(r.reschedule_time ? r.reschedule_time.substring(0, 5) : '');
+      setMarkerType(((r.sabaq_marker_type as MarkerType) || 'ayah'));
+      // Sabaq surah/ayah — fall back to legacy surah_name/ayah_from for old rows
+      setAyahFromSurah(r.sabaq_surah_from ?? r.surah_name ?? '');
+      setAyahFromNumber(r.sabaq_ayah_from != null ? String(r.sabaq_ayah_from) : (r.ayah_from != null ? String(r.ayah_from) : ''));
+      setAyahToSurah(r.sabaq_surah_to ?? '');
+      setAyahToNumber(r.sabaq_ayah_to != null ? String(r.sabaq_ayah_to) : (r.ayah_to != null ? String(r.ayah_to) : ''));
+      setRukuFromJuz(r.sabaq_ruku_from_juz != null ? String(r.sabaq_ruku_from_juz) : '');
+      setRukuFromNumber(r.sabaq_ruku_from_number != null ? String(r.sabaq_ruku_from_number) : '');
+      setRukuToJuz(r.sabaq_ruku_to_juz != null ? String(r.sabaq_ruku_to_juz) : '');
+      setRukuToNumber(r.sabaq_ruku_to_number != null ? String(r.sabaq_ruku_to_number) : '');
+      setQuarterFromJuz(r.sabaq_quarter_from_juz != null ? String(r.sabaq_quarter_from_juz) : '');
+      setQuarterFromNumber(r.sabaq_quarter_from_number != null ? String(r.sabaq_quarter_from_number) : '');
+      setQuarterToJuz(r.sabaq_quarter_to_juz != null ? String(r.sabaq_quarter_to_juz) : '');
+      setQuarterToNumber(r.sabaq_quarter_to_number != null ? String(r.sabaq_quarter_to_number) : '');
+      setSabqiDone(!!r.sabqi_done);
+      setManzilDone(!!r.manzil_done);
+      setLessonNumber(r.lesson_number != null ? String(r.lesson_number) : '');
+      setPageNumber(r.page_number != null ? String(r.page_number) : '');
+      setLinesCompleted(r.lines_completed != null ? String(r.lines_completed) : '');
+      setVarianceReason(r.variance_reason ?? '');
+      setInputUnit(r.input_unit ?? '');
+      setRawInputAmount(r.raw_input_amount != null ? String(r.raw_input_amount) : '');
+      setAcademicLessonTopic(r.lesson_covered ?? '');
+      return;
+    }
+
+    if (initialStatus) setSelectedStatus(initialStatus);
+  }, [open, initialStatus, isEdit, existingRecord]);
 
   const markAttendance = useMutation({
     mutationFn: async () => {
@@ -327,9 +435,12 @@ export function UnifiedAttendanceForm({
         finalReason = `Make-up for missed class on ${rescheduleDate}${rescheduleTime ? ` at ${rescheduleTime}` : ''}. ${remarks || ''}`.trim();
       }
 
-      const { data, error } = await supabase.from('attendance').insert({
-        student_id: resolvedStudentId,
-        teacher_id: effectiveTeacherId,
+      // Build the full payload. In edit mode we always write the Phase A superset
+      // so progress fields edited in the dialog actually persist.
+      const isHifzOrNazra = currentSubjectType === 'hifz' || currentSubjectType === 'nazra';
+      const isQaida = currentSubjectType === 'qaida';
+
+      const basePayload: Record<string, any> = {
         class_date: classDate,
         class_time: classTime,
         duration_minutes: parseInt(duration),
@@ -341,29 +452,64 @@ export function UnifiedAttendanceForm({
         reason_text: reasonCategory === 'other' ? reasonText : null,
         reschedule_date: rescheduleDate || null,
         reschedule_time: rescheduleTime || null,
-        surah_name: currentSubjectType === 'qaida' ? null : (ayahFromSurah || null),
-        ayah_from: currentSubjectType === 'qaida' ? null : (ayahFromNumber ? parseInt(ayahFromNumber) : null),
-        ayah_to: currentSubjectType === 'qaida' ? null : (ayahToNumber ? parseInt(ayahToNumber) : null),
-        lesson_number: currentSubjectType === 'qaida' && lessonNumber ? parseInt(lessonNumber) : null,
-        page_number: currentSubjectType === 'qaida' && pageNumber ? parseInt(pageNumber) : null,
-        sabaq_surah_from: (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') ? ayahFromSurah || null : null,
-        sabaq_surah_to: (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') ? ayahToSurah || null : null,
-        sabaq_ayah_from: (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') && ayahFromNumber ? parseInt(ayahFromNumber) : null,
-        sabaq_ayah_to: (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') && ayahToNumber ? parseInt(ayahToNumber) : null,
+        surah_name: isQaida ? null : (ayahFromSurah || null),
+        ayah_from: isQaida ? null : (ayahFromNumber ? parseInt(ayahFromNumber) : null),
+        ayah_to: isQaida ? null : (ayahToNumber ? parseInt(ayahToNumber) : null),
+        lesson_number: isQaida && lessonNumber ? parseInt(lessonNumber) : null,
+        page_number: isQaida && pageNumber ? parseInt(pageNumber) : null,
+        sabaq_surah_from: isHifzOrNazra ? ayahFromSurah || null : null,
+        sabaq_surah_to: isHifzOrNazra ? ayahToSurah || null : null,
+        sabaq_ayah_from: isHifzOrNazra && ayahFromNumber ? parseInt(ayahFromNumber) : null,
+        sabaq_ayah_to: isHifzOrNazra && ayahToNumber ? parseInt(ayahToNumber) : null,
         sabqi_done: currentSubjectType === 'hifz' ? sabqiDone : null,
-        manzil_done: (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') ? manzilDone : null,
+        manzil_done: isHifzOrNazra ? manzilDone : null,
         voice_note_url: voiceNoteUrl || null,
-      }).select('id').single();
+      };
 
-      if (error) throw error;
+      // Phase A columns — written on both create and edit (no-op when null on legacy rows)
+      const phaseAPayload: Record<string, any> = {
+        sabaq_marker_type: isHifzOrNazra ? markerType : null,
+        sabaq_ruku_from_juz: isHifzOrNazra && rukuFromJuz ? parseInt(rukuFromJuz) : null,
+        sabaq_ruku_from_number: isHifzOrNazra && rukuFromNumber ? parseInt(rukuFromNumber) : null,
+        sabaq_ruku_to_juz: isHifzOrNazra && rukuToJuz ? parseInt(rukuToJuz) : null,
+        sabaq_ruku_to_number: isHifzOrNazra && rukuToNumber ? parseInt(rukuToNumber) : null,
+        sabaq_quarter_from_juz: isHifzOrNazra && quarterFromJuz ? parseInt(quarterFromJuz) : null,
+        sabaq_quarter_from_number: isHifzOrNazra && quarterFromNumber ? parseInt(quarterFromNumber) : null,
+        sabaq_quarter_to_juz: isHifzOrNazra && quarterToJuz ? parseInt(quarterToJuz) : null,
+        sabaq_quarter_to_number: isHifzOrNazra && quarterToNumber ? parseInt(quarterToNumber) : null,
+        lines_completed: linesCompleted ? parseInt(linesCompleted) : null,
+        variance_reason: varianceReason || null,
+        input_unit: inputUnit || null,
+        raw_input_amount: rawInputAmount ? parseFloat(rawInputAmount) : null,
+      };
 
-      // Log reschedule history (best-effort; never blocks the attendance save)
-      // Semantics: classDate = the actual day the make-up class happened.
-      // rescheduleDate/Time = the original missed slot this lesson replaces.
-      if (requiresReschedule(selectedStatus) && rescheduleDate && user?.id) {
+      let savedId: string | undefined;
+
+      if (isEdit && existingRecord) {
+        const { error } = await supabase
+          .from('attendance')
+          .update({ ...basePayload, ...phaseAPayload })
+          .eq('id', existingRecord.id);
+        if (error) throw error;
+        savedId = existingRecord.id;
+      } else {
+        const insertPayload: any = {
+          student_id: resolvedStudentId,
+          teacher_id: effectiveTeacherId,
+          ...basePayload,
+          ...phaseAPayload,
+        };
+        const { data, error } = await supabase.from('attendance').insert(insertPayload).select('id').single();
+        if (error) throw error;
+        savedId = data?.id;
+      }
+
+      // Log reschedule history (best-effort; never blocks the save). Create-mode only —
+      // edits don't fork a new reschedule record.
+      if (!isEdit && requiresReschedule(selectedStatus) && rescheduleDate && user?.id) {
         try {
           await supabase.from('session_reschedules' as any).insert({
-            attendance_id: data?.id,
+            attendance_id: savedId,
             student_id: resolvedStudentId,
             teacher_id: effectiveTeacherId,
             original_date: rescheduleDate,
@@ -380,9 +526,9 @@ export function UnifiedAttendanceForm({
 
       // Track activity
       await trackActivity({
-        action: 'attendance_marked',
+        action: isEdit ? 'attendance_updated' : 'attendance_marked',
         entityType: 'attendance',
-        entityId: data?.id,
+        entityId: savedId,
         details: {
           student_name: student.full_name,
           subject: student.subject_name,
@@ -392,10 +538,15 @@ export function UnifiedAttendanceForm({
         }
       });
 
-      return data;
+      return { id: savedId };
     },
     onSuccess: () => {
-      toast({ title: 'Attendance Marked', description: `Attendance recorded for ${student.full_name}` });
+      toast({
+        title: isEdit ? 'Attendance Updated' : 'Attendance Marked',
+        description: isEdit
+          ? `Updated record for ${student.full_name}`
+          : `Attendance recorded for ${student.full_name}`,
+      });
       queryClient.invalidateQueries({ queryKey: ['attendance'] });
       queryClient.invalidateQueries({ queryKey: ['teacher-students-detailed'] });
       onSuccess?.();
@@ -456,10 +607,19 @@ export function UnifiedAttendanceForm({
             <div className="h-10 w-10 rounded-full bg-sky/20 flex items-center justify-center">
               <User className="h-5 w-5 text-sky-300" />
             </div>
-            Mark Attendance
+            {isEdit ? 'Edit Attendance' : 'Mark Attendance'}
           </DialogTitle>
           <DialogDescription className="text-sky-200">
-            {student.full_name ? `Record attendance for ${student.full_name}` : 'Record attendance for a class'}
+            {isEdit
+              ? <>
+                  {student.full_name ? `Edit attendance for ${student.full_name}` : 'Edit attendance record'}
+                  {existingRecord?.created_at && (
+                    <span className="block text-xs text-sky-200/70 mt-1">
+                      Created: {format(parseISO(existingRecord.created_at), 'dd MMM yyyy h:mm a')}
+                    </span>
+                  )}
+                </>
+              : (student.full_name ? `Record attendance for ${student.full_name}` : 'Record attendance for a class')}
           </DialogDescription>
         </DialogHeader>
 
@@ -582,9 +742,11 @@ export function UnifiedAttendanceForm({
                   type="time"
                   value={classTime}
                   onChange={(e) => setClassTime(e.target.value)}
-                  readOnly
-                  disabled
-                  className="bg-slate-200 text-[#1e3a5f] border-0 cursor-not-allowed [&::-webkit-calendar-picker-indicator]:opacity-0"
+                  readOnly={!allowTimeEdit}
+                  disabled={!allowTimeEdit}
+                  className={allowTimeEdit
+                    ? "bg-white text-[#1e3a5f] border-0 [&::-webkit-calendar-picker-indicator]:opacity-0"
+                    : "bg-slate-200 text-[#1e3a5f] border-0 cursor-not-allowed [&::-webkit-calendar-picker-indicator]:opacity-0"}
                 />
               </div>
             </div>
@@ -667,9 +829,9 @@ export function UnifiedAttendanceForm({
               type="number"
               value={duration}
               onChange={(e) => setDuration(e.target.value)}
-              readOnly={!requiresReschedule(selectedStatus)}
-              disabled={!requiresReschedule(selectedStatus)}
-              className={requiresReschedule(selectedStatus)
+              readOnly={!requiresReschedule(selectedStatus) && !isEdit}
+              disabled={!requiresReschedule(selectedStatus) && !isEdit}
+              className={(requiresReschedule(selectedStatus) || isEdit)
                 ? "bg-white text-[#1e3a5f] border-0"
                 : "bg-slate-200 text-[#1e3a5f] border-0 cursor-not-allowed"}
             />
@@ -854,7 +1016,7 @@ export function UnifiedAttendanceForm({
             className="bg-emerald-600 hover:bg-emerald-700 text-white"
           >
             {markAttendance.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Mark Attendance
+            {isEdit ? 'Save Changes' : 'Mark Attendance'}
           </Button>
         </div>
       </DialogContent>
