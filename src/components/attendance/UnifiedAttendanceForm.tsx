@@ -607,10 +607,19 @@ export function UnifiedAttendanceForm({
             <div className="h-10 w-10 rounded-full bg-sky/20 flex items-center justify-center">
               <User className="h-5 w-5 text-sky-300" />
             </div>
-            Mark Attendance
+            {isEdit ? 'Edit Attendance' : 'Mark Attendance'}
           </DialogTitle>
           <DialogDescription className="text-sky-200">
-            {student.full_name ? `Record attendance for ${student.full_name}` : 'Record attendance for a class'}
+            {isEdit
+              ? <>
+                  {student.full_name ? `Edit attendance for ${student.full_name}` : 'Edit attendance record'}
+                  {existingRecord?.created_at && (
+                    <span className="block text-xs text-sky-200/70 mt-1">
+                      Created: {format(parseISO(existingRecord.created_at), 'dd MMM yyyy h:mm a')}
+                    </span>
+                  )}
+                </>
+              : (student.full_name ? `Record attendance for ${student.full_name}` : 'Record attendance for a class')}
           </DialogDescription>
         </DialogHeader>
 
