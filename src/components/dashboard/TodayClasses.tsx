@@ -1,32 +1,13 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Clock, User, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { useDivision } from '@/contexts/DivisionContext';
-import { format } from 'date-fns';
-import { SurahSearchSelect } from '@/components/attendance/SurahSearchSelect';
-import { UnitInputSelector } from '@/components/attendance/UnitInputSelector';
-import { type LearningUnit, type MushafType, convertToLines } from '@/lib/quranData';
-
-type AttendanceStatus = 'present' | 'late' | 'student_absent';
-type VarianceReason = 'slow_pace' | 'lack_of_revision' | 'technical_issues' | 'student_late' | 'short_verses';
-
-const VARIANCE_REASONS: { value: VarianceReason; label: string }[] = [
-  { value: 'slow_pace', label: 'Slow Pace' },
-  { value: 'lack_of_revision', label: 'Lack of Revision' },
-  { value: 'technical_issues', label: 'Technical Issues' },
-  { value: 'student_late', label: 'Student Late' },
-  { value: 'short_verses', label: 'Short Verses' },
-];
+import {
+  UnifiedAttendanceForm,
+  type AttendanceStatus,
+  type StudentInfo,
+} from '@/components/attendance/UnifiedAttendanceForm';
 
 interface ClassItem {
   id: string;
@@ -38,6 +19,8 @@ interface ClassItem {
   dailyTargetLines?: number;
   mushafType?: string;
   preferredUnit?: string;
+  subjectName?: string | null;
+  subjectId?: string | null;
 }
 
 interface TodayClassesProps {
@@ -48,140 +31,28 @@ interface TodayClassesProps {
 
 export function TodayClasses({ classes, onMarkAttendance, isTeacher = false }: TodayClassesProps) {
   const { user } = useAuth();
-  const { toast } = useToast();
-  const { activeDivision } = useDivision();
-  const queryClient = useQueryClient();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null);
-  const [selectedStatus, setSelectedStatus] = useState<AttendanceStatus>('present');
-
-  // Form state
-  const [lessonCovered, setLessonCovered] = useState('');
-  const [homework, setHomework] = useState('');
-  const [surahName, setSurahName] = useState('');
-  const [ayahFrom, setAyahFrom] = useState('');
-  const [ayahTo, setAyahTo] = useState('');
-  const [varianceReason, setVarianceReason] = useState<VarianceReason | ''>('');
-  
-  // Multi-unit input fields
-  const [inputUnit, setInputUnit] = useState<LearningUnit>('lines');
-  const [rawInputAmount, setRawInputAmount] = useState('');
-
-  const mushafType = (selectedClass?.mushafType || '15-line') as MushafType;
-  const dailyTarget = selectedClass?.dailyTargetLines || 10;
-  const preferredUnit = (selectedClass?.preferredUnit || 'lines') as LearningUnit;
-  
-  // Calculate line equivalent
-  const rawInputNum = parseFloat(rawInputAmount) || 0;
-  const lineEquivalent = useMemo(() => {
-    return convertToLines(rawInputNum, inputUnit, mushafType);
-  }, [rawInputNum, inputUnit, mushafType]);
-  
-  const needsVarianceReason = lineEquivalent > 0 && lineEquivalent < dailyTarget;
-
-  // Set input unit to student's preferred unit when class changes
-  useEffect(() => {
-    if (selectedClass?.preferredUnit) {
-      setInputUnit(selectedClass.preferredUnit as LearningUnit);
-    }
-  }, [selectedClass]);
-
-  const isFormValid = useMemo(() => {
-    if (needsVarianceReason && !varianceReason) return false;
-    return true;
-  }, [needsVarianceReason, varianceReason]);
-
-  const resetForm = () => {
-    setLessonCovered('');
-    setHomework('');
-    setSurahName('');
-    setAyahFrom('');
-    setAyahTo('');
-    setVarianceReason('');
-    setInputUnit('lines');
-    setRawInputAmount('');
-  };
+  const [initialStatus, setInitialStatus] = useState<AttendanceStatus>('present');
 
   const handleOpenDialog = (classItem: ClassItem, status: AttendanceStatus) => {
     setSelectedClass(classItem);
-    setSelectedStatus(status);
-    resetForm();
+    setInitialStatus(status);
     setDialogOpen(true);
   };
 
-  // Mark attendance mutation
-  const markAttendance = useMutation({
-    mutationFn: async () => {
-      if (!user?.id || !selectedClass) throw new Error('Missing data');
-
-      // Map status for database
-      const dbStatus = selectedStatus === 'late' ? 'present' : selectedStatus === 'student_absent' ? 'student_absent' : 'present';
-
-      // Build lesson_covered from structured fields
-      let lessonCoveredText = '';
-      if (surahName && ayahFrom && ayahTo) {
-        lessonCoveredText = `${surahName}, Ayah ${ayahFrom}-${ayahTo}`;
-      } else if (surahName && ayahFrom) {
-        lessonCoveredText = `${surahName}, Ayah ${ayahFrom}`;
-      } else if (surahName) {
-        lessonCoveredText = surahName;
-      } else if (lessonCovered) {
-        lessonCoveredText = lessonCovered;
+  const studentForForm: StudentInfo | undefined = selectedClass
+    ? {
+        id: selectedClass.studentId,
+        full_name: selectedClass.studentName,
+        subject_name: selectedClass.subjectName ?? null,
+        subject_id: selectedClass.subjectId ?? null,
+        last_lesson: null,
+        daily_target_lines: selectedClass.dailyTargetLines,
+        preferred_unit: selectedClass.preferredUnit,
       }
-
-      // Calculate final lines completed from the unit input
-      const finalLinesCompleted = lineEquivalent > 0 ? Math.round(lineEquivalent) : null;
-
-      const { error } = await supabase.from('attendance').insert({
-        student_id: selectedClass.studentId,
-        teacher_id: user.id,
-        class_date: format(new Date(), 'yyyy-MM-dd'),
-        class_time: selectedClass.time,
-        duration_minutes: selectedClass.duration,
-        status: dbStatus,
-        lesson_covered: lessonCoveredText || null,
-        homework: homework || null,
-        surah_name: surahName || null,
-        ayah_from: ayahFrom ? parseInt(ayahFrom) : null,
-        ayah_to: ayahTo ? parseInt(ayahTo) : null,
-        lines_completed: finalLinesCompleted,
-        variance_reason: needsVarianceReason ? varianceReason : null,
-        reason: selectedStatus === 'late' ? 'Student arrived late' : null,
-        input_unit: inputUnit,
-        raw_input_amount: rawInputNum > 0 ? rawInputNum : null,
-        division_id: activeDivision?.id || null,
-      });
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast({ title: 'Attendance Marked', description: `Marked ${selectedClass?.studentName} as ${selectedStatus}` });
-      
-      // Invalidate all relevant queries for immediate UI updates
-      queryClient.invalidateQueries({ queryKey: ['attendance'] });
-      queryClient.invalidateQueries({ queryKey: ['teacher-stats'] });
-      queryClient.invalidateQueries({ queryKey: ['student-progress'] });
-      queryClient.invalidateQueries({ queryKey: ['detailed-progress'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
-      
-      // Call the optional callback
-      if (onMarkAttendance && selectedClass) {
-        onMarkAttendance(selectedClass.id, selectedStatus === 'student_absent' ? 'absent' : selectedStatus);
-      }
-      
-      resetForm();
-      setDialogOpen(false);
-      setSelectedClass(null);
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to mark attendance',
-        variant: 'destructive',
-      });
-    },
-  });
+    : undefined;
 
   return (
     <>
@@ -230,15 +101,6 @@ export function TodayClasses({ classes, onMarkAttendance, isTeacher = false }: T
                       <Button
                         size="sm"
                         variant="outline"
-                        className="text-accent border-accent hover:bg-accent/10"
-                        onClick={() => handleOpenDialog(classItem, 'late')}
-                      >
-                        <AlertCircle className="h-4 w-4 mr-1" />
-                        Late
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
                         className="text-destructive border-destructive hover:bg-destructive/10"
                         onClick={() => handleOpenDialog(classItem, 'student_absent')}
                       >
@@ -256,152 +118,26 @@ export function TodayClasses({ classes, onMarkAttendance, isTeacher = false }: T
         </div>
       </div>
 
-      {/* Mark Attendance Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="font-serif">
-              Mark {selectedClass?.studentName} as {selectedStatus === 'student_absent' ? 'Absent' : selectedStatus === 'late' ? 'Late' : 'Present'}
-            </DialogTitle>
-            <DialogDescription>
-              Record lesson progress and homework for this class
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 mt-4">
-            {/* Only show progress fields for present/late */}
-            {selectedStatus !== 'student_absent' && (
-              <>
-                {/* Quran Progress Section */}
-                <div className="p-4 bg-secondary/30 rounded-lg space-y-4">
-                  <h4 className="font-medium text-sm text-foreground">Quran Progress</h4>
-                  
-                  {/* Searchable Surah Dropdown */}
-                  <div className="space-y-2">
-                    <Label htmlFor="surahName">Surah Name</Label>
-                    <SurahSearchSelect
-                      value={surahName}
-                      onChange={setSurahName}
-                      placeholder="Search and select a Surah..."
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="ayahFrom">Ayah From</Label>
-                      <Input
-                        id="ayahFrom"
-                        type="number"
-                        min="1"
-                        placeholder="1"
-                        value={ayahFrom}
-                        onChange={(e) => setAyahFrom(e.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="ayahTo">Ayah To</Label>
-                      <Input
-                        id="ayahTo"
-                        type="number"
-                        min="1"
-                        placeholder="10"
-                        value={ayahTo}
-                        onChange={(e) => setAyahTo(e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Multi-Unit Input Selector */}
-                  <UnitInputSelector
-                    inputUnit={inputUnit}
-                    onInputUnitChange={setInputUnit}
-                    inputAmount={rawInputAmount}
-                    onInputAmountChange={setRawInputAmount}
-                    mushafType={mushafType}
-                    dailyTargetLines={dailyTarget}
-                    preferredUnit={preferredUnit}
-                    showConversion={true}
-                  />
-
-                  {/* Variance Reason - only show if below target */}
-                  {needsVarianceReason && (
-                    <div className="space-y-2 p-3 bg-accent/10 rounded-lg border border-accent/20">
-                      <Label htmlFor="varianceReason" className="flex items-center gap-2 text-accent">
-                        <AlertCircle className="h-4 w-4" />
-                        Variance Reason (Required)
-                      </Label>
-                      <p className="text-xs text-muted-foreground">
-                        Lines completed ({Math.round(lineEquivalent)}) is below target ({dailyTarget}). Please select a reason.
-                      </p>
-                      <Select value={varianceReason} onValueChange={(v) => setVarianceReason(v as VarianceReason)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select reason" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {VARIANCE_REASONS.map((reason) => (
-                            <SelectItem key={reason.value} value={reason.value}>
-                              {reason.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                </div>
-
-                {/* Lesson & Homework */}
-                <div className="space-y-2">
-                  <Label htmlFor="lessonCovered">Additional Lesson Notes (Optional)</Label>
-                  <Textarea
-                    id="lessonCovered"
-                    placeholder="Any additional notes about the lesson..."
-                    value={lessonCovered}
-                    onChange={(e) => setLessonCovered(e.target.value)}
-                    rows={2}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="homework">Homework Assigned</Label>
-                  <Textarea
-                    id="homework"
-                    placeholder="e.g., Revise Surah Al-Fatiha 3 times"
-                    value={homework}
-                    onChange={(e) => setHomework(e.target.value)}
-                    rows={2}
-                  />
-                </div>
-              </>
-            )}
-
-            {selectedStatus === 'student_absent' && (
-              <div className="p-4 bg-destructive/10 rounded-lg text-center">
-                <XCircle className="h-8 w-8 mx-auto mb-2 text-destructive" />
-                <p className="text-sm text-muted-foreground">
-                  This will mark the student as absent for today's class.
-                </p>
-              </div>
-            )}
-
-            <div className="flex gap-3 pt-4">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => setDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                className="flex-1"
-                onClick={() => markAttendance.mutate()}
-                disabled={!isFormValid || markAttendance.isPending}
-              >
-                {markAttendance.isPending ? 'Saving...' : 'Save Attendance'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Mark attendance via the unified form (Phase C: removed inline duplicate) */}
+      {studentForForm && (
+        <UnifiedAttendanceForm
+          open={dialogOpen}
+          onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) setSelectedClass(null);
+          }}
+          student={studentForForm}
+          initialStatus={initialStatus}
+          teacherId={user?.id}
+          onSuccess={() => {
+            if (onMarkAttendance && selectedClass) {
+              const cb: 'present' | 'absent' | 'late' =
+                initialStatus === 'student_absent' ? 'absent' : 'present';
+              onMarkAttendance(selectedClass.id, cb);
+            }
+          }}
+        />
+      )}
     </>
   );
 }
