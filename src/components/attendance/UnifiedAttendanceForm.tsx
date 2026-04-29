@@ -318,7 +318,7 @@ export function UnifiedAttendanceForm({
   const requiresReschedule = (status: AttendanceStatus) => 
     ['rescheduled', 'student_rescheduled'].includes(status);
 
-  // Reset form when modal closes; apply initialStatus when modal opens
+  // Reset/hydrate form on open. Edit mode hydrates from existingRecord; create mode resets to defaults.
   useEffect(() => {
     if (!open) {
       setSelectedStatus(initialStatus || 'present');
@@ -334,20 +334,65 @@ export function UnifiedAttendanceForm({
       setRescheduleTime('');
       setLessonNumber('');
       setPageNumber('');
+      setMarkerType('ayah');
+      setRukuFromJuz(''); setRukuFromNumber(''); setRukuToJuz(''); setRukuToNumber('');
+      setQuarterFromJuz(''); setQuarterFromNumber(''); setQuarterToJuz(''); setQuarterToNumber('');
       setAyahFromSurah('');
       setAyahFromNumber('');
       setAyahToSurah('');
       setAyahToNumber('');
       setSabqiDone(false);
       setManzilDone(false);
+      setLinesCompleted(''); setVarianceReason(''); setInputUnit(''); setRawInputAmount('');
       setAcademicLessonTopic('');
       setAcademicLessonStatus('');
       setAcademicFollowups([]);
       setPickedStudentId('');
-    } else if (initialStatus) {
-      setSelectedStatus(initialStatus);
+      return;
     }
-  }, [open, initialStatus]);
+
+    // EDIT MODE: hydrate every state from existingRecord
+    if (isEdit && existingRecord) {
+      const r = existingRecord;
+      setSelectedStatus(r.status);
+      setClassDate(r.class_date);
+      setClassTime(r.class_time ? r.class_time.substring(0, 5) : '');
+      setDuration(String(r.duration_minutes ?? 30));
+      setHomework(r.homework ?? '');
+      setRemarks(r.reason ?? '');
+      setVoiceNoteUrl(r.voice_note_url ?? null);
+      setReasonCategory((r.reason_category as ReasonCategory) || '');
+      setReasonText(r.reason_text ?? '');
+      setRescheduleDate(r.reschedule_date ?? '');
+      setRescheduleTime(r.reschedule_time ? r.reschedule_time.substring(0, 5) : '');
+      setMarkerType(((r.sabaq_marker_type as MarkerType) || 'ayah'));
+      // Sabaq surah/ayah — fall back to legacy surah_name/ayah_from for old rows
+      setAyahFromSurah(r.sabaq_surah_from ?? r.surah_name ?? '');
+      setAyahFromNumber(r.sabaq_ayah_from != null ? String(r.sabaq_ayah_from) : (r.ayah_from != null ? String(r.ayah_from) : ''));
+      setAyahToSurah(r.sabaq_surah_to ?? '');
+      setAyahToNumber(r.sabaq_ayah_to != null ? String(r.sabaq_ayah_to) : (r.ayah_to != null ? String(r.ayah_to) : ''));
+      setRukuFromJuz(r.sabaq_ruku_from_juz != null ? String(r.sabaq_ruku_from_juz) : '');
+      setRukuFromNumber(r.sabaq_ruku_from_number != null ? String(r.sabaq_ruku_from_number) : '');
+      setRukuToJuz(r.sabaq_ruku_to_juz != null ? String(r.sabaq_ruku_to_juz) : '');
+      setRukuToNumber(r.sabaq_ruku_to_number != null ? String(r.sabaq_ruku_to_number) : '');
+      setQuarterFromJuz(r.sabaq_quarter_from_juz != null ? String(r.sabaq_quarter_from_juz) : '');
+      setQuarterFromNumber(r.sabaq_quarter_from_number != null ? String(r.sabaq_quarter_from_number) : '');
+      setQuarterToJuz(r.sabaq_quarter_to_juz != null ? String(r.sabaq_quarter_to_juz) : '');
+      setQuarterToNumber(r.sabaq_quarter_to_number != null ? String(r.sabaq_quarter_to_number) : '');
+      setSabqiDone(!!r.sabqi_done);
+      setManzilDone(!!r.manzil_done);
+      setLessonNumber(r.lesson_number != null ? String(r.lesson_number) : '');
+      setPageNumber(r.page_number != null ? String(r.page_number) : '');
+      setLinesCompleted(r.lines_completed != null ? String(r.lines_completed) : '');
+      setVarianceReason(r.variance_reason ?? '');
+      setInputUnit(r.input_unit ?? '');
+      setRawInputAmount(r.raw_input_amount != null ? String(r.raw_input_amount) : '');
+      setAcademicLessonTopic(r.lesson_covered ?? '');
+      return;
+    }
+
+    if (initialStatus) setSelectedStatus(initialStatus);
+  }, [open, initialStatus, isEdit, existingRecord]);
 
   const markAttendance = useMutation({
     mutationFn: async () => {
