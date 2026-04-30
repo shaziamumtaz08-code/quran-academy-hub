@@ -5,7 +5,7 @@ import { InstallBanner } from "@/components/pwa/InstallBanner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import { DivisionProvider } from "@/contexts/DivisionContext";
+import { DivisionProvider, useDivision } from "@/contexts/DivisionContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -212,6 +212,40 @@ function AdminOrTeacherRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/dashboard" replace />;
   }
 
+  return <>{children}</>;
+}
+
+function TeacherOnlyRoute({ children }: { children: React.ReactNode }) {
+  const { activeRole, isLoading, profile } = useAuth();
+
+  if (isLoading || (profile && !activeRole)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+      </div>
+    );
+  }
+
+  if (activeRole !== 'teacher' && activeRole !== 'examiner') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+type DivisionModel = 'one_to_one' | 'group' | 'recorded';
+function DivisionModelGuard({ allowedModels, children }: { allowedModels: DivisionModel[]; children: React.ReactNode }) {
+  const { activeDivision, isLoading } = useDivision();
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+      </div>
+    );
+  }
+  if (!activeDivision || !allowedModels.includes(activeDivision.model_type as DivisionModel)) {
+    return <Navigate to="/dashboard" replace />;
+  }
   return <>{children}</>;
 }
 
