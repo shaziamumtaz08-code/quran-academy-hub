@@ -4,8 +4,10 @@ import { format, startOfWeek, endOfWeek } from 'date-fns';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { PageShell } from '@/components/layout/PageShell';
 import { Skeleton } from '@/components/ui/skeleton';
+import TeacherTeachingLanding from '@/components/teacher/TeacherTeachingLanding';
 
 const Attendance = lazy(() => import('./Attendance'));
 const Assignments = lazy(() => import('./Assignments'));
