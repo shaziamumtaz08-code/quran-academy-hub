@@ -324,16 +324,16 @@ function AppRoutes() {
       <Route path="/my-courses" element={<ProtectedRoute><DashboardLayout><MyCourses /></DashboardLayout></ProtectedRoute>} />
       <Route path="/my-courses/:courseId" element={<ProtectedRoute><DashboardLayout><StudentCourseView /></DashboardLayout></ProtectedRoute>} />
       <Route path="/my-teaching/:courseId" element={<ProtectedRoute><DashboardLayout><TeacherCourseView /></DashboardLayout></ProtectedRoute>} />
-      <Route path="/user-management" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
-      <Route path="/assignments" element={<ProtectedRoute><Assignments /></ProtectedRoute>} />
-      <Route path="/subjects" element={<ProtectedRoute><Subjects /></ProtectedRoute>} />
-      <Route path="/teachers" element={<ProtectedRoute><Teachers /></ProtectedRoute>} />
-      <Route path="/students" element={<ProtectedRoute><Students /></ProtectedRoute>} />
-      <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
-      <Route path="/lessons" element={<ProtectedRoute><Lessons /></ProtectedRoute>} />
-      <Route path="/reports" element={<ProtectedRoute><DashboardLayout><Reports /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/user-management" element={<ProtectedRoute><AdminRoute><UserManagement /></AdminRoute></ProtectedRoute>} />
+      <Route path="/assignments" element={<ProtectedRoute><NonStudentRoute><Assignments /></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/subjects" element={<ProtectedRoute><AdminRoute><Subjects /></AdminRoute></ProtectedRoute>} />
+      <Route path="/teachers" element={<ProtectedRoute><NonStudentRoute><Teachers /></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/students" element={<ProtectedRoute><NonStudentRoute><Students /></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/attendance" element={<ProtectedRoute><NonStudentRoute><Attendance /></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/lessons" element={<ProtectedRoute><NonStudentRoute><Lessons /></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/reports" element={<ProtectedRoute><NonStudentRoute><DashboardLayout><Reports /></DashboardLayout></NonStudentRoute></ProtectedRoute>} />
       <Route path="/payments" element={<Navigate to="/finance?view=payments" replace />} />
-      <Route path="/kpi" element={<ProtectedRoute><KPI /></ProtectedRoute>} />
+      <Route path="/kpi" element={<ProtectedRoute><NonStudentRoute><KPI /></NonStudentRoute></ProtectedRoute>} />
       <Route path="/schedules" element={<ProtectedRoute><AdminRoute><Schedules /></AdminRoute></ProtectedRoute>} />
       <Route path="/zoom-management" element={<ProtectedRoute><AdminRoute><ZoomManagement /></AdminRoute></ProtectedRoute>} />
       <Route path="/integrity-audit" element={<ProtectedRoute><AdminRoute><IntegrityAudit /></AdminRoute></ProtectedRoute>} />
