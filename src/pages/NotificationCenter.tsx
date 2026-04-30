@@ -35,7 +35,8 @@ const statusConfig: Record<string, { icon: React.ReactNode; variant: "default" |
 };
 
 export default function NotificationCenter() {
-  const { user } = useAuth();
+  const { user, activeRole } = useAuth();
+  const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_');
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("my-notifications");
   const [templateDialog, setTemplateDialog] = useState(false);
