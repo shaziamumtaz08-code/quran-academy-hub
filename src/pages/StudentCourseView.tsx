@@ -981,6 +981,233 @@ export default function StudentCourseView() {
             </Card>
           )}
         </TabsContent>
+
+        {/* ═══ TAB 7: RESOURCES ═══ */}
+        <TabsContent value="resources" className="space-y-2 mt-4">
+          {resources.length === 0 ? (
+            <Card><CardContent className="py-12 text-center">
+              <FileText className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
+              <p className="text-sm font-semibold">No resources yet</p>
+              <p className="text-xs text-muted-foreground mt-1">Course resources will appear here when shared by your teacher.</p>
+            </CardContent></Card>
+          ) : (
+            resources.map((r: any) => (
+              <Card key={r.id}>
+                <CardContent className="p-4 flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold truncate">{r.title}</p>
+                    <p className="text-[10px] text-muted-foreground">{r.folder}{r.sub_folder ? ` / ${r.sub_folder}` : ''} · {r.type}</p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => window.open(r.url, '_blank')}>
+                    <ExternalLink className="h-3.5 w-3.5 mr-1" /> Open
+                  </Button>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </TabsContent>
+
+        {/* ═══ TAB 8: RECORDINGS ═══ */}
+        <TabsContent value="recordings" className="space-y-2 mt-4">
+          {recordings.length === 0 ? (
+            <Card><CardContent className="py-12 text-center">
+              <Video className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
+              <p className="text-sm font-semibold">No recordings yet</p>
+              <p className="text-xs text-muted-foreground mt-1">Recordings will appear here after live classes.</p>
+            </CardContent></Card>
+          ) : (
+            recordings.map((rec: any) => {
+              const startDate = rec.actual_start || rec.scheduled_start;
+              const durationMin = rec.actual_start && rec.actual_end
+                ? Math.round((new Date(rec.actual_end).getTime() - new Date(rec.actual_start).getTime()) / 60000)
+                : null;
+              return (
+                <Card key={rec.id}>
+                  <CardContent className="p-4 flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold flex items-center gap-1.5">
+                        <PlayCircle className="h-4 w-4 text-primary" /> Class Recording
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {startDate ? format(new Date(startDate), 'EEE, MMM d, yyyy · h:mm a') : 'Date unknown'}
+                        {durationMin ? ` · ${durationMin} min` : ''}
+                      </p>
+                    </div>
+                    <Button size="sm" onClick={() => window.open(rec.recording_link, '_blank')}>
+                      <PlayCircle className="h-3.5 w-3.5 mr-1" /> Watch
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
+        </TabsContent>
+
+        {/* ═══ TAB 9: RESULTS ═══ */}
+        <TabsContent value="results" className="space-y-4 mt-4">
+          {quizResults.length === 0 && gradedSubmissions.length === 0 ? (
+            <Card><CardContent className="py-12 text-center">
+              <Award className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
+              <p className="text-sm font-semibold">No results yet</p>
+              <p className="text-xs text-muted-foreground mt-1">Quiz scores, assignment grades, and report cards will appear here.</p>
+            </CardContent></Card>
+          ) : (
+            <>
+              {quizResults.length > 0 && (
+                <Card>
+                  <CardContent className="p-4">
+                    <p className="text-sm font-semibold mb-3">Quizzes</p>
+                    <div className="space-y-2">
+                      {quizResults.map((q: any) => (
+                        <div key={q.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm truncate">{q.quiz_title}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {q.completed_at ? format(new Date(q.completed_at), 'MMM d, yyyy') : (q.started_at ? format(new Date(q.started_at), 'MMM d, yyyy') : '—')}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold">{q.score ?? 0}/{q.max_score ?? 0}</span>
+                            <Badge variant={q.status === 'completed' ? 'default' : 'secondary'} className="text-[9px]">{q.status}</Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+              {gradedSubmissions.length > 0 && (
+                <Card>
+                  <CardContent className="p-4">
+                    <p className="text-sm font-semibold mb-3">Assignments</p>
+                    <div className="space-y-2">
+                      {gradedSubmissions.map((s: any) => (
+                        <div key={s.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm truncate">{s.assignment_title}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {s.submitted_at ? format(new Date(s.submitted_at), 'MMM d, yyyy') : '—'}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-emerald-600">{s.score}</span>
+                            <Badge variant="default" className="text-[9px] bg-emerald-500">{s.status}</Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          )}
+        </TabsContent>
+
+        {/* ═══ TAB 10: CERTIFICATE ═══ */}
+        <TabsContent value="certificate" className="space-y-2 mt-4">
+          {certificates.length === 0 ? (
+            <Card><CardContent className="py-12 text-center">
+              <Award className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
+              <p className="text-sm font-semibold">No certificate yet</p>
+              <p className="text-xs text-muted-foreground mt-1">Earn a certificate by completing this course.</p>
+            </CardContent></Card>
+          ) : (
+            certificates.map((cert: any) => (
+              <Card key={cert.id}>
+                <CardContent className="p-6 text-center space-y-3">
+                  <div className="h-16 w-16 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto">
+                    <Award className="h-8 w-8 text-emerald-600" />
+                  </div>
+                  <p className="text-base font-bold">{cert.certificate?.template_name || 'Certificate of Completion'}</p>
+                  <div className="text-xs text-muted-foreground space-y-0.5">
+                    {cert.certificate_number && <p>Certificate #: <span className="font-mono">{cert.certificate_number}</span></p>}
+                    {cert.grade && <p>Grade: <span className="font-semibold">{cert.grade}</span></p>}
+                    <p>Issued: {format(new Date(cert.issued_at), 'MMMM d, yyyy')}</p>
+                  </div>
+                  <Badge className="bg-emerald-500 text-white">Issued</Badge>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </TabsContent>
+
+        {/* ═══ TAB 11: FEE ═══ */}
+        <TabsContent value="fee" className="space-y-4 mt-4">
+          {invoices.length === 0 ? (
+            <Card><CardContent className="py-12 text-center">
+              <Receipt className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
+              <p className="text-sm font-semibold">No invoices yet</p>
+              <p className="text-xs text-muted-foreground mt-1">Fee invoices will appear here once generated.</p>
+            </CardContent></Card>
+          ) : (() => {
+            const outstanding = invoices.reduce((sum: number, i: any) =>
+              i.status !== 'paid' ? sum + (Number(i.amount) - Number(i.amount_paid || 0)) : sum, 0);
+            const thisMonthKey = format(new Date(), 'yyyy-MM');
+            const paidThisMonth = invoices
+              .filter((i: any) => i.billing_month?.startsWith(thisMonthKey) && i.status === 'paid')
+              .reduce((s: number, i: any) => s + Number(i.amount_paid || 0), 0);
+            const nextDue = invoices
+              .filter((i: any) => i.status !== 'paid' && i.due_date)
+              .sort((a: any, b: any) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())[0];
+            const currency = invoices[0]?.currency || 'USD';
+            const fmt = (n: number) => `${currency} ${n.toFixed(2)}`;
+            return (
+              <>
+                <p className="text-[11px] text-muted-foreground">All your fee invoices.</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <Card><CardContent className="p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">Outstanding</p>
+                    <p className={cn("text-base font-bold mt-1", outstanding > 0 ? "text-destructive" : "text-emerald-600")}>{fmt(outstanding)}</p>
+                  </CardContent></Card>
+                  <Card><CardContent className="p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">Paid this month</p>
+                    <p className="text-base font-bold text-emerald-600 mt-1">{fmt(paidThisMonth)}</p>
+                  </CardContent></Card>
+                  <Card><CardContent className="p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">Next due</p>
+                    <p className="text-xs font-semibold mt-1">{nextDue?.due_date ? format(new Date(nextDue.due_date), 'MMM d') : '—'}</p>
+                  </CardContent></Card>
+                </div>
+                <Card>
+                  <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead className="bg-muted/50">
+                          <tr className="text-left">
+                            <th className="p-2.5 font-medium">Month</th>
+                            <th className="p-2.5 font-medium">Amount</th>
+                            <th className="p-2.5 font-medium">Paid</th>
+                            <th className="p-2.5 font-medium">Status</th>
+                            <th className="p-2.5 font-medium">Due</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {invoices.map((inv: any) => {
+                            const isOverdue = inv.status !== 'paid' && inv.due_date && isPast(new Date(inv.due_date));
+                            const statusLabel = isOverdue ? 'overdue' : inv.status;
+                            const statusColor =
+                              statusLabel === 'paid' ? 'bg-emerald-500 text-white' :
+                              statusLabel === 'overdue' ? 'bg-destructive text-white' :
+                              'bg-amber-500 text-white';
+                            return (
+                              <tr key={inv.id} className="border-t">
+                                <td className="p-2.5">{inv.billing_month}</td>
+                                <td className="p-2.5">{inv.currency} {Number(inv.amount).toFixed(2)}</td>
+                                <td className="p-2.5">{inv.currency} {Number(inv.amount_paid || 0).toFixed(2)}</td>
+                                <td className="p-2.5"><Badge className={cn("text-[9px]", statusColor)}>{statusLabel}</Badge></td>
+                                <td className="p-2.5">{inv.due_date ? format(new Date(inv.due_date), 'MMM d, yyyy') : '—'}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            );
+          })()}
+        </TabsContent>
       </Tabs>
 
       {/* ═══ DIALOGS ═══ */}
