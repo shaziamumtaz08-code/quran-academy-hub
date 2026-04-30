@@ -38,7 +38,6 @@ export function buildRailNav(role: AppRole | null): RailItem[] {
       { label: 'Attendance', href: '/attendance', icon: ClipboardCheck },
       { label: 'Planning', href: '/monthly-planning', icon: Target },
       { label: 'Reports', href: '/student-reports', icon: BarChart3 },
-      { label: 'Exams', href: '/student-reports', icon: Award },
       { label: 'Salary', href: '/salary', icon: DollarSign },
       { label: 'Communication', href: '/communication', icon: MessageSquare },
     ];
