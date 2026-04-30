@@ -14,9 +14,10 @@ import { Users, BookOpen, ClipboardCheck, BarChart3, MessageSquare, Target } fro
 export default function TeacherTeachingLanding() {
   const { user } = useAuth();
   const { activeDivision } = useDivision();
-  const isOneToOne = activeDivision?.model_type === 'one_to_one';
-  const isGroup = activeDivision?.model_type === 'group';
-  const isRecorded = activeDivision?.model_type === 'recorded';
+  const modelType = activeDivision?.model_type as string | undefined;
+  const isOneToOne = modelType === 'one_to_one';
+  const isGroup = modelType === 'group';
+  const isRecorded = modelType === 'recorded';
 
   const { data: oneToOneStudents = [], isLoading: loadingStudents } = useQuery({
     queryKey: ['teacher-landing-students', user?.id, activeDivision?.id],
