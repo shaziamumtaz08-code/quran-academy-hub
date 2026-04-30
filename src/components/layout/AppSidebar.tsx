@@ -26,6 +26,17 @@ interface SidebarNavItem {
 
 function getHomeSidebar(isOneToOne?: boolean, role?: string | null, activeModelType?: string | null): { title: string; subtitle: string; items: SidebarNavItem[] } {
   const isStudent = role === 'student';
+  if (role === 'teacher') {
+    return {
+      title: 'My Workspace',
+      subtitle: 'Teacher dashboard',
+      items: [
+        { label: 'Dashboard', href: '/dashboard' },
+        { label: 'My Students', href: '/students' },
+        { label: 'Today', href: '/teaching' },
+      ],
+    };
+  }
   if (isStudent) {
     const isGroupStudent = activeModelType === 'group';
     return {
@@ -51,7 +62,21 @@ function getHomeSidebar(isOneToOne?: boolean, role?: string | null, activeModelT
   };
 }
 
-function getTeachingSidebar(courseCount: number, isOneToOne?: boolean): { title: string; subtitle: string; items: SidebarNavItem[]; showNewCourse?: boolean } {
+function getTeachingSidebar(courseCount: number, isOneToOne?: boolean, role?: string | null): { title: string; subtitle: string; items: SidebarNavItem[]; showNewCourse?: boolean } {
+  if (role === 'teacher') {
+    return {
+      title: 'Teaching',
+      subtitle: 'Your classes',
+      items: [
+        { label: 'My Classes', href: '/teaching' },
+        { label: 'Schedules', href: '/my-schedule' },
+        { label: 'Attendance', href: '/attendance' },
+        { label: 'Planning', href: '/monthly-planning' },
+        { label: 'Lessons', href: '/lessons' },
+        { label: 'Assignments', href: '/assignments' },
+      ],
+    };
+  }
   const items: SidebarNavItem[] = isOneToOne
     ? [
         { label: '1-to-1 Assignments', href: '/teaching?section=assignments' },
@@ -70,6 +95,16 @@ function getTeachingSidebar(courseCount: number, isOneToOne?: boolean): { title:
 }
 
 function getPeopleSidebar(isOneToOne?: boolean, role?: string | null): { title: string; subtitle: string; items: SidebarNavItem[]; showSearch?: boolean } {
+  if (role === 'teacher') {
+    return {
+      title: 'People',
+      subtitle: '',
+      items: [
+        { label: 'My Students', href: '/students' },
+      ],
+      showSearch: false,
+    };
+  }
   const isAdmin = role === 'super_admin' || role === 'admin' || role?.startsWith('admin_');
   return {
     title: 'People',
@@ -84,7 +119,16 @@ function getPeopleSidebar(isOneToOne?: boolean, role?: string | null): { title: 
   };
 }
 
-function getFinanceSidebar(isOneToOne?: boolean): { title: string; subtitle: string; items: SidebarNavItem[] } {
+function getFinanceSidebar(isOneToOne?: boolean, role?: string | null): { title: string; subtitle: string; items: SidebarNavItem[] } {
+  if (role === 'teacher') {
+    return {
+      title: 'Finance',
+      subtitle: '',
+      items: [
+        { label: 'My Salary', href: '/salary' },
+      ],
+    };
+  }
   return {
     title: 'Finance',
     subtitle: '',
@@ -136,7 +180,16 @@ function getSettingsSidebar(): { title: string; subtitle: string; items: Sidebar
   };
 }
 
-function getReportsSidebar(): { title: string; subtitle: string; items: SidebarNavItem[] } {
+function getReportsSidebar(role?: string | null): { title: string; subtitle: string; items: SidebarNavItem[] } {
+  if (role === 'teacher') {
+    return {
+      title: 'Reports',
+      subtitle: '',
+      items: [
+        { label: 'Student Reports', href: '/student-reports' },
+      ],
+    };
+  }
   return {
     title: 'Reports',
     subtitle: '',
