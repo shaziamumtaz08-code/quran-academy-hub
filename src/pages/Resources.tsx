@@ -114,6 +114,10 @@ export default function Resources() {
   // Permissions - Admin & Super Admin can manage, others can view
   const canManage = isSuperAdmin || profile?.role === "admin";
 
+  // Default tab: managers land on Browse, everyone else (students/parents/teachers)
+  // lands on "My Assigned" since the Browse view is read-only for them.
+  const activeTab = tabParam || (canManage ? "browse" : "assigned");
+
   // Fetch assigned resources for "My Assigned" tab
   const { data: assignedResources = [] } = useQuery({
     queryKey: ['my-assigned-resources', user?.id],
