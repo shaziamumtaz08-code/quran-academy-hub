@@ -331,72 +331,72 @@ function AppRoutes() {
       } />
 
       <Route path="/admin" element={<ProtectedRoute><AdminRoute><AdminCommandCenter /></AdminRoute></ProtectedRoute>} />
-      <Route path="/teacher" element={<ProtectedRoute><TeacherOnlyRoute><DivisionModelGuard allowedModels={['one_to_one']}><TeacherNazraDashboard /></DivisionModelGuard></TeacherOnlyRoute></ProtectedRoute>} />
+      <Route path="/teacher" element={<ProtectedRoute><RouteGuard moduleId="teacher_nazra"><DivisionModelGuard allowedModels={['one_to_one']}><TeacherNazraDashboard /></DivisionModelGuard></RouteGuard></ProtectedRoute>} />
 
-      <Route path="/teaching" element={<ProtectedRoute><NonStudentRoute><DashboardLayout><TeachingLanding /></DashboardLayout></NonStudentRoute></ProtectedRoute>} />
-      <Route path="/teaching-os" element={<ProtectedRoute><NonStudentRoute><LanguageProvider><TeachingOS /></LanguageProvider></NonStudentRoute></ProtectedRoute>} />
-      <Route path="/teaching-os/outline" element={<ProtectedRoute><NonStudentRoute><DivisionModelGuard allowedModels={['group','recorded']}><LanguageProvider><TeachingOSOutline /></LanguageProvider></DivisionModelGuard></NonStudentRoute></ProtectedRoute>} />
-      <Route path="/teaching-os/planner" element={<ProtectedRoute><NonStudentRoute><DivisionModelGuard allowedModels={['group','recorded']}><LanguageProvider><TeachingOSPlanner /></LanguageProvider></DivisionModelGuard></NonStudentRoute></ProtectedRoute>} />
-      <Route path="/teaching-os/dayboard" element={<ProtectedRoute><NonStudentRoute><DivisionModelGuard allowedModels={['group','recorded']}><LanguageProvider><TeachingOSDayBoard /></LanguageProvider></DivisionModelGuard></NonStudentRoute></ProtectedRoute>} />
-      <Route path="/teaching-os/dayboard/live" element={<ProtectedRoute><NonStudentRoute><DivisionModelGuard allowedModels={['group','recorded']}><LanguageProvider><TeachingOSDayBoard /></LanguageProvider></DivisionModelGuard></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/teaching" element={<ProtectedRoute><RouteGuard moduleId="teaching_landing"><DashboardLayout><TeachingLanding /></DashboardLayout></RouteGuard></ProtectedRoute>} />
+      <Route path="/teaching-os" element={<ProtectedRoute><RouteGuard moduleId="teaching_os"><LanguageProvider><TeachingOS /></LanguageProvider></RouteGuard></ProtectedRoute>} />
+      <Route path="/teaching-os/outline" element={<ProtectedRoute><RouteGuard moduleId="teaching_os"><DivisionModelGuard allowedModels={['group','recorded']}><LanguageProvider><TeachingOSOutline /></LanguageProvider></DivisionModelGuard></RouteGuard></ProtectedRoute>} />
+      <Route path="/teaching-os/planner" element={<ProtectedRoute><RouteGuard moduleId="teaching_os"><DivisionModelGuard allowedModels={['group','recorded']}><LanguageProvider><TeachingOSPlanner /></LanguageProvider></DivisionModelGuard></RouteGuard></ProtectedRoute>} />
+      <Route path="/teaching-os/dayboard" element={<ProtectedRoute><RouteGuard moduleId="teaching_os"><DivisionModelGuard allowedModels={['group','recorded']}><LanguageProvider><TeachingOSDayBoard /></LanguageProvider></DivisionModelGuard></RouteGuard></ProtectedRoute>} />
+      <Route path="/teaching-os/dayboard/live" element={<ProtectedRoute><RouteGuard moduleId="teaching_os"><DivisionModelGuard allowedModels={['group','recorded']}><LanguageProvider><TeachingOSDayBoard /></LanguageProvider></DivisionModelGuard></RouteGuard></ProtectedRoute>} />
       <Route path="/teaching-os/student-view" element={<LanguageProvider><TeachingOSStudentView /></LanguageProvider>} />
-      <Route path="/teaching-os/content-kit" element={<ProtectedRoute><NonStudentRoute><DivisionModelGuard allowedModels={['group','recorded']}><LanguageProvider><TeachingOSContentKit /></LanguageProvider></DivisionModelGuard></NonStudentRoute></ProtectedRoute>} />
-      <Route path="/teaching-os/assessment" element={<ProtectedRoute><NonStudentRoute><DivisionModelGuard allowedModels={['group','recorded']}><LanguageProvider><TeachingOSAssessment /></LanguageProvider></DivisionModelGuard></NonStudentRoute></ProtectedRoute>} />
-      <Route path="/teaching-os/video" element={<ProtectedRoute><NonStudentRoute><DivisionModelGuard allowedModels={['group','recorded']}><LanguageProvider><TeachingOSVideo /></LanguageProvider></DivisionModelGuard></NonStudentRoute></ProtectedRoute>} />
-      <Route path="/teaching-os/speaking-tutor" element={<ProtectedRoute><NonStudentRoute><DivisionModelGuard allowedModels={['group','recorded']}><LanguageProvider><TeachingOSSpeakingTutor /></LanguageProvider></DivisionModelGuard></NonStudentRoute></ProtectedRoute>} />
-      <Route path="/teaching-os/analytics" element={<ProtectedRoute><NonStudentRoute><DivisionModelGuard allowedModels={['group','recorded']}><LanguageProvider><TeachingOSAnalytics /></LanguageProvider></DivisionModelGuard></NonStudentRoute></ProtectedRoute>} />
-      <Route path="/parent" element={<ProtectedRoute><ParentDashboard /></ProtectedRoute>} />
-      <Route path="/parent/child/:studentId" element={<ProtectedRoute><ParentDashboard /></ProtectedRoute>} />
-      <Route path="/people" element={<ProtectedRoute><AdminRoute><DashboardLayout><PeopleLanding /></DashboardLayout></AdminRoute></ProtectedRoute>} />
-      <Route path="/finance" element={<ProtectedRoute><AdminRoute><DashboardLayout><FinanceLanding /></DashboardLayout></AdminRoute></ProtectedRoute>} />
+      <Route path="/teaching-os/content-kit" element={<ProtectedRoute><RouteGuard moduleId="teaching_os"><DivisionModelGuard allowedModels={['group','recorded']}><LanguageProvider><TeachingOSContentKit /></LanguageProvider></DivisionModelGuard></RouteGuard></ProtectedRoute>} />
+      <Route path="/teaching-os/assessment" element={<ProtectedRoute><RouteGuard moduleId="teaching_os"><DivisionModelGuard allowedModels={['group','recorded']}><LanguageProvider><TeachingOSAssessment /></LanguageProvider></DivisionModelGuard></RouteGuard></ProtectedRoute>} />
+      <Route path="/teaching-os/video" element={<ProtectedRoute><RouteGuard moduleId="teaching_os"><DivisionModelGuard allowedModels={['group','recorded']}><LanguageProvider><TeachingOSVideo /></LanguageProvider></DivisionModelGuard></RouteGuard></ProtectedRoute>} />
+      <Route path="/teaching-os/speaking-tutor" element={<ProtectedRoute><RouteGuard moduleId="teaching_os"><DivisionModelGuard allowedModels={['group','recorded']}><LanguageProvider><TeachingOSSpeakingTutor /></LanguageProvider></DivisionModelGuard></RouteGuard></ProtectedRoute>} />
+      <Route path="/teaching-os/analytics" element={<ProtectedRoute><RouteGuard moduleId="teaching_os"><DivisionModelGuard allowedModels={['group','recorded']}><LanguageProvider><TeachingOSAnalytics /></LanguageProvider></DivisionModelGuard></RouteGuard></ProtectedRoute>} />
+      <Route path="/parent" element={<ProtectedRoute><RouteGuard moduleId="parent_portal"><ParentDashboard /></RouteGuard></ProtectedRoute>} />
+      <Route path="/parent/child/:studentId" element={<ProtectedRoute><RouteGuard moduleId="parent_portal"><ParentDashboard /></RouteGuard></ProtectedRoute>} />
+      <Route path="/people" element={<ProtectedRoute><RouteGuard moduleId="people"><DashboardLayout><PeopleLanding /></DashboardLayout></RouteGuard></ProtectedRoute>} />
+      <Route path="/finance" element={<ProtectedRoute><RouteGuard moduleId="finance"><DashboardLayout><FinanceLanding /></DashboardLayout></RouteGuard></ProtectedRoute>} />
       <Route path="/reports-hub" element={<Navigate to="/reports?view=executive" replace />} />
       <Route path="/my-dashboard" element={<Navigate to="/dashboard" replace />} />
-      <Route path="/communication" element={<ProtectedRoute><DashboardLayout><CommunicationLanding /></DashboardLayout></ProtectedRoute>} />
-      <Route path="/settings" element={<ProtectedRoute><AdminRoute><DashboardLayout><SettingsLanding /></DashboardLayout></AdminRoute></ProtectedRoute>} />
+      <Route path="/communication" element={<ProtectedRoute><RouteGuard moduleId="communication"><DashboardLayout><CommunicationLanding /></DashboardLayout></RouteGuard></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute><RouteGuard moduleId="settings"><DashboardLayout><SettingsLanding /></DashboardLayout></RouteGuard></ProtectedRoute>} />
 
-      <Route path="/dashboard" element={<ProtectedRoute><DashboardWrapper /></ProtectedRoute>} />
-      <Route path="/my-courses" element={<ProtectedRoute><DashboardLayout><MyCourses /></DashboardLayout></ProtectedRoute>} />
-      <Route path="/my-courses/:courseId" element={<ProtectedRoute><DashboardLayout><StudentCourseView /></DashboardLayout></ProtectedRoute>} />
-      <Route path="/my-teaching/:courseId" element={<ProtectedRoute><TeacherOnlyRoute><DashboardLayout><TeacherCourseView /></DashboardLayout></TeacherOnlyRoute></ProtectedRoute>} />
-      <Route path="/user-management" element={<ProtectedRoute><AdminRoute><UserManagement /></AdminRoute></ProtectedRoute>} />
-      <Route path="/assignments" element={<ProtectedRoute><NonStudentRoute><Assignments /></NonStudentRoute></ProtectedRoute>} />
-      <Route path="/subjects" element={<ProtectedRoute><AdminRoute><Subjects /></AdminRoute></ProtectedRoute>} />
-      <Route path="/teachers" element={<ProtectedRoute><NonStudentRoute><Teachers /></NonStudentRoute></ProtectedRoute>} />
-      <Route path="/students" element={<ProtectedRoute><NonStudentRoute><Students /></NonStudentRoute></ProtectedRoute>} />
-      <Route path="/attendance" element={<ProtectedRoute><NonStudentRoute><Attendance /></NonStudentRoute></ProtectedRoute>} />
-      <Route path="/lessons" element={<ProtectedRoute><NonStudentRoute><Lessons /></NonStudentRoute></ProtectedRoute>} />
-      <Route path="/reports" element={<ProtectedRoute><AdminRoute><DashboardLayout><Reports /></DashboardLayout></AdminRoute></ProtectedRoute>} />
+      <Route path="/dashboard" element={<ProtectedRoute><RouteGuard moduleId="dashboard"><DashboardWrapper /></RouteGuard></ProtectedRoute>} />
+      <Route path="/my-courses" element={<ProtectedRoute><RouteGuard moduleId="my_courses"><DashboardLayout><MyCourses /></DashboardLayout></RouteGuard></ProtectedRoute>} />
+      <Route path="/my-courses/:courseId" element={<ProtectedRoute><RouteGuard moduleId="my_courses"><DashboardLayout><StudentCourseView /></DashboardLayout></RouteGuard></ProtectedRoute>} />
+      <Route path="/my-teaching/:courseId" element={<ProtectedRoute><RouteGuard moduleId="my_teaching"><DashboardLayout><TeacherCourseView /></DashboardLayout></RouteGuard></ProtectedRoute>} />
+      <Route path="/user-management" element={<ProtectedRoute><RouteGuard moduleId="user_management"><UserManagement /></RouteGuard></ProtectedRoute>} />
+      <Route path="/assignments" element={<ProtectedRoute><RouteGuard moduleId="assignments"><Assignments /></RouteGuard></ProtectedRoute>} />
+      <Route path="/subjects" element={<ProtectedRoute><RouteGuard moduleId="subjects"><Subjects /></RouteGuard></ProtectedRoute>} />
+      <Route path="/teachers" element={<ProtectedRoute><RouteGuard moduleId="teachers"><Teachers /></RouteGuard></ProtectedRoute>} />
+      <Route path="/students" element={<ProtectedRoute><RouteGuard moduleId="students"><Students /></RouteGuard></ProtectedRoute>} />
+      <Route path="/attendance" element={<ProtectedRoute><RouteGuard moduleId="attendance"><Attendance /></RouteGuard></ProtectedRoute>} />
+      <Route path="/lessons" element={<ProtectedRoute><RouteGuard moduleId="lessons"><Lessons /></RouteGuard></ProtectedRoute>} />
+      <Route path="/reports" element={<ProtectedRoute><RouteGuard moduleId="reports"><DashboardLayout><Reports /></DashboardLayout></RouteGuard></ProtectedRoute>} />
       <Route path="/payments" element={<Navigate to="/finance?view=payments" replace />} />
-      <Route path="/kpi" element={<ProtectedRoute><AdminRoute><KPI /></AdminRoute></ProtectedRoute>} />
-      <Route path="/schedules" element={<ProtectedRoute><AdminRoute><Schedules /></AdminRoute></ProtectedRoute>} />
-      <Route path="/my-schedule" element={<ProtectedRoute><TeacherOnlyRoute><DashboardLayout><MySchedule /></DashboardLayout></TeacherOnlyRoute></ProtectedRoute>} />
-      <Route path="/zoom-management" element={<ProtectedRoute><AdminRoute><ZoomManagement /></AdminRoute></ProtectedRoute>} />
-      <Route path="/integrity-audit" element={<ProtectedRoute><AdminRoute><IntegrityAudit /></AdminRoute></ProtectedRoute>} />
-      <Route path="/courses" element={<ProtectedRoute><AdminRoute><Courses /></AdminRoute></ProtectedRoute>} />
-      <Route path="/courses/:id" element={<ProtectedRoute><AdminRoute><DashboardLayout><CourseBuilder /></DashboardLayout></AdminRoute></ProtectedRoute>} />
-      <Route path="/academics/courses/:id" element={<ProtectedRoute><AdminRoute><DashboardLayout><CourseBuilder /></DashboardLayout></AdminRoute></ProtectedRoute>} />
-      <Route path="/organization-settings" element={<ProtectedRoute><AdminRoute><OrganizationSettings /></AdminRoute></ProtectedRoute>} />
-      <Route path="/finance-setup" element={<ProtectedRoute><AdminRoute><FinanceSetup /></AdminRoute></ProtectedRoute>} />
-      <Route path="/salary" element={<ProtectedRoute><AdminOrTeacherRoute><SalaryEngine /></AdminOrTeacherRoute></ProtectedRoute>} />
-      <Route path="/staff-salaries" element={<ProtectedRoute><AdminRoute><StaffSalarySetup /></AdminRoute></ProtectedRoute>} />
-      <Route path="/expenses" element={<ProtectedRoute><AdminRoute><Expenses /></AdminRoute></ProtectedRoute>} />
-      <Route path="/cash-advances" element={<ProtectedRoute><AdminRoute><CashAdvances /></AdminRoute></ProtectedRoute>} />
-      <Route path="/monthly-planning" element={<ProtectedRoute><AdminOrTeacherRoute><MonthlyPlanning /></AdminOrTeacherRoute></ProtectedRoute>} />
-      <Route path="/report-card-templates" element={<ProtectedRoute><AdminOrExaminerRoute><ReportCardTemplates /></AdminOrExaminerRoute></ProtectedRoute>} />
-      <Route path="/generate-report-card" element={<ProtectedRoute><AdminOrExaminerRoute><GenerateReportCard /></AdminOrExaminerRoute></ProtectedRoute>} />
-      <Route path="/student-reports" element={<ProtectedRoute><StudentReports /></ProtectedRoute>} />
+      <Route path="/kpi" element={<ProtectedRoute><RouteGuard moduleId="kpi"><KPI /></RouteGuard></ProtectedRoute>} />
+      <Route path="/schedules" element={<ProtectedRoute><RouteGuard moduleId="schedules"><Schedules /></RouteGuard></ProtectedRoute>} />
+      <Route path="/my-schedule" element={<ProtectedRoute><RouteGuard moduleId="my_schedule"><DashboardLayout><MySchedule /></DashboardLayout></RouteGuard></ProtectedRoute>} />
+      <Route path="/zoom-management" element={<ProtectedRoute><RouteGuard moduleId="zoom_management"><ZoomManagement /></RouteGuard></ProtectedRoute>} />
+      <Route path="/integrity-audit" element={<ProtectedRoute><RouteGuard moduleId="integrity_audit"><IntegrityAudit /></RouteGuard></ProtectedRoute>} />
+      <Route path="/courses" element={<ProtectedRoute><RouteGuard moduleId="courses_admin"><Courses /></RouteGuard></ProtectedRoute>} />
+      <Route path="/courses/:id" element={<ProtectedRoute><RouteGuard moduleId="courses_admin"><DashboardLayout><CourseBuilder /></DashboardLayout></RouteGuard></ProtectedRoute>} />
+      <Route path="/academics/courses/:id" element={<ProtectedRoute><RouteGuard moduleId="courses_admin"><DashboardLayout><CourseBuilder /></DashboardLayout></RouteGuard></ProtectedRoute>} />
+      <Route path="/organization-settings" element={<ProtectedRoute><RouteGuard moduleId="org_settings"><OrganizationSettings /></RouteGuard></ProtectedRoute>} />
+      <Route path="/finance-setup" element={<ProtectedRoute><RouteGuard moduleId="finance_setup"><FinanceSetup /></RouteGuard></ProtectedRoute>} />
+      <Route path="/salary" element={<ProtectedRoute><RouteGuard moduleId="salary"><SalaryEngine /></RouteGuard></ProtectedRoute>} />
+      <Route path="/staff-salaries" element={<ProtectedRoute><RouteGuard moduleId="staff_salaries"><StaffSalarySetup /></RouteGuard></ProtectedRoute>} />
+      <Route path="/expenses" element={<ProtectedRoute><RouteGuard moduleId="expenses"><Expenses /></RouteGuard></ProtectedRoute>} />
+      <Route path="/cash-advances" element={<ProtectedRoute><RouteGuard moduleId="cash_advances"><CashAdvances /></RouteGuard></ProtectedRoute>} />
+      <Route path="/monthly-planning" element={<ProtectedRoute><RouteGuard moduleId="monthly_planning"><MonthlyPlanning /></RouteGuard></ProtectedRoute>} />
+      <Route path="/report-card-templates" element={<ProtectedRoute><RouteGuard moduleId="report_card_tpl"><ReportCardTemplates /></RouteGuard></ProtectedRoute>} />
+      <Route path="/generate-report-card" element={<ProtectedRoute><RouteGuard moduleId="generate_report_card"><GenerateReportCard /></RouteGuard></ProtectedRoute>} />
+      <Route path="/student-reports" element={<ProtectedRoute><RouteGuard moduleId="student_reports"><StudentReports /></RouteGuard></ProtectedRoute>} />
       <Route path="/exam-templates" element={<Navigate to="/report-card-templates" replace />} />
       <Route path="/exam-submission" element={<Navigate to="/generate-report-card" replace />} />
       <Route path="/exam-results" element={<Navigate to="/student-reports" replace />} />
-      <Route path="/resources" element={<ProtectedRoute><DashboardLayout><Resources /></DashboardLayout></ProtectedRoute>} />
-      <Route path="/leads" element={<ProtectedRoute><AdminRoute><LeadsPipeline /></AdminRoute></ProtectedRoute>} />
-      <Route path="/identity" element={<ProtectedRoute><AdminRoute><IdentityResolution /></AdminRoute></ProtectedRoute>} />
-      <Route path="/notifications" element={<ProtectedRoute><NotificationCenter /></ProtectedRoute>} />
+      <Route path="/resources" element={<ProtectedRoute><RouteGuard moduleId="resources"><DashboardLayout><Resources /></DashboardLayout></RouteGuard></ProtectedRoute>} />
+      <Route path="/leads" element={<ProtectedRoute><RouteGuard moduleId="leads"><LeadsPipeline /></RouteGuard></ProtectedRoute>} />
+      <Route path="/identity" element={<ProtectedRoute><RouteGuard moduleId="identity"><IdentityResolution /></RouteGuard></ProtectedRoute>} />
+      <Route path="/notifications" element={<ProtectedRoute><RouteGuard moduleId="notifications"><NotificationCenter /></RouteGuard></ProtectedRoute>} />
       <Route path="/hub" element={<Navigate to="/work-hub" replace />} />
       <Route path="/workhub" element={<Navigate to="/work-hub" replace />} />
-      <Route path="/work-hub" element={<ProtectedRoute><WorkHub /></ProtectedRoute>} />
-      <Route path="/chat" element={<ProtectedRoute><GroupChat /></ProtectedRoute>} />
-      <Route path="/whatsapp" element={<ProtectedRoute><AdminRoute><WhatsAppInbox /></AdminRoute></ProtectedRoute>} />
+      <Route path="/work-hub" element={<ProtectedRoute><RouteGuard moduleId="work_hub"><WorkHub /></RouteGuard></ProtectedRoute>} />
+      <Route path="/chat" element={<ProtectedRoute><RouteGuard moduleId="chat"><GroupChat /></RouteGuard></ProtectedRoute>} />
+      <Route path="/whatsapp" element={<ProtectedRoute><RouteGuard moduleId="whatsapp"><WhatsAppInbox /></RouteGuard></ProtectedRoute>} />
       <Route path="/my-resources" element={<Navigate to="/resources?tab=assigned" replace />} />
       <Route path="/reports/print/:reportId" element={<ProtectedRoute><PrintReport /></ProtectedRoute>} />
       <Route path="/finance/print/invoice/:invoiceId" element={<ProtectedRoute><PrintInvoice /></ProtectedRoute>} />
@@ -407,24 +407,12 @@ function AppRoutes() {
       <Route path="/courses-catalog" element={<CourseCatalog />} />
       <Route path="/recorded-courses" element={<RecordedCourses />} />
       <Route path="/apply/:slug" element={<PublicApplyForm />} />
-      <Route path="/quiz-engine" element={<ProtectedRoute><AdminOrTeacherRoute><QuizEngine /></AdminOrTeacherRoute></ProtectedRoute>} />
-      <Route path="/my-quizzes" element={<ProtectedRoute><StudentQuizView /></ProtectedRoute>} />
+      <Route path="/quiz-engine" element={<ProtectedRoute><RouteGuard moduleId="quiz_engine"><QuizEngine /></RouteGuard></ProtectedRoute>} />
+      <Route path="/my-quizzes" element={<ProtectedRoute><RouteGuard moduleId="my_quizzes"><StudentQuizView /></RouteGuard></ProtectedRoute>} />
       <Route path="/quiz/:token" element={<PublicQuiz />} />
-      <Route path="/classroom/:sessionId" element={<ProtectedRoute><VirtualClassroom /></ProtectedRoute>} />
-      <Route path="/admin/schema-explorer" element={
-        <ProtectedRoute>
-          {(() => {
-            const Guard = () => {
-              const { activeRole, isLoading } = useAuth();
-              if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-background"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div></div>;
-              if (activeRole !== 'super_admin') return <Navigate to="/dashboard" replace />;
-              return <SchemaExplorer />;
-            };
-            return <Guard />;
-          })()}
-        </ProtectedRoute>
-      } />
-      <Route path="/connections/:userType/:userId" element={<ProtectedRoute><UserConnections /></ProtectedRoute>} />
+      <Route path="/classroom/:sessionId" element={<ProtectedRoute><RouteGuard moduleId="classroom"><VirtualClassroom /></RouteGuard></ProtectedRoute>} />
+      <Route path="/admin/schema-explorer" element={<ProtectedRoute><RouteGuard moduleId="schema_explorer"><SchemaExplorer /></RouteGuard></ProtectedRoute>} />
+      <Route path="/connections/:userType/:userId" element={<ProtectedRoute><RouteGuard moduleId="connections"><UserConnections /></RouteGuard></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
