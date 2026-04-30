@@ -227,7 +227,7 @@ function getSidebarForRoute(pathname: string, isOneToOne?: boolean, role?: strin
     return getCommunicationSidebar(role);
   }
   if (pathname.startsWith('/settings') || pathname.startsWith('/organization') || pathname.startsWith('/finance-setup') || pathname.startsWith('/identity') || pathname.startsWith('/integrity')) {
-    return getSettingsSidebar();
+    return getSettingsSidebar(role);
   }
   if (pathname.startsWith('/reports') || pathname.startsWith('/student-reports') || pathname.startsWith('/kpi') || pathname.startsWith('/report-card')) {
     return getReportsSidebar(role);
