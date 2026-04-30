@@ -779,27 +779,43 @@ export default function StudentCourseView() {
 
         {/* ═══ TAB 5: CLASS CHAT ═══ */}
         <TabsContent value="class-chat" className="mt-4 space-y-3">
-          {/* Sub-tabs: Chat | Classmates */}
-          <div className="flex gap-2">
-            <Button size="sm" variant={chatSubTab === 'chat' ? 'default' : 'outline'} onClick={() => setChatSubTab('chat')}>
-              <MessageSquare className="h-3.5 w-3.5 mr-1" /> Chat
-            </Button>
-            <Button size="sm" variant={chatSubTab === 'classmates' ? 'default' : 'outline'} onClick={() => setChatSubTab('classmates')}>
-              <Users className="h-3.5 w-3.5 mr-1" /> Classmates
-            </Button>
-          </div>
+          {!myClass ? (
+            <Card>
+              <CardContent className="py-10 text-center">
+                <MessageSquare className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
+                <p className="text-sm text-muted-foreground">
+                  No class data for this enrollment.
+                </p>
+                <p className="text-xs text-muted-foreground/70 mt-1">
+                  Some features are only available in group courses.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {/* Sub-tabs: Chat | Classmates */}
+              <div className="flex gap-2">
+                <Button size="sm" variant={chatSubTab === 'chat' ? 'default' : 'outline'} onClick={() => setChatSubTab('chat')}>
+                  <MessageSquare className="h-3.5 w-3.5 mr-1" /> Chat
+                </Button>
+                <Button size="sm" variant={chatSubTab === 'classmates' ? 'default' : 'outline'} onClick={() => setChatSubTab('classmates')}>
+                  <Users className="h-3.5 w-3.5 mr-1" /> Classmates
+                </Button>
+              </div>
 
-          {chatSubTab === 'chat' && <ClassChatTab courseId={courseId!} mode="student" />}
+              {chatSubTab === 'chat' && <ClassChatTab courseId={courseId!} mode="student" />}
 
-          {chatSubTab === 'classmates' && (
-            <ClassmatesDirectory
-              courseId={courseId!}
-              classId={myClass?.id || null}
-              dmMode={(course as any)?.student_dm_mode || 'disabled'}
-              userId={user?.id || ''}
-              courseName={course?.name || ''}
-              onOpenDM={(groupId, name) => { setDmGroupId(groupId); setDmRecipientName(name); setDmSheetOpen(true); }}
-            />
+              {chatSubTab === 'classmates' && (
+                <ClassmatesDirectory
+                  courseId={courseId!}
+                  classId={myClass?.id || null}
+                  dmMode={(course as any)?.student_dm_mode || 'disabled'}
+                  userId={user?.id || ''}
+                  courseName={course?.name || ''}
+                  onOpenDM={(groupId, name) => { setDmGroupId(groupId); setDmRecipientName(name); setDmSheetOpen(true); }}
+                />
+              )}
+            </>
           )}
         </TabsContent>
 

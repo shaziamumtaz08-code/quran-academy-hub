@@ -97,7 +97,8 @@ export default function Resources() {
 
   // Current folder from URL
   const currentFolderId = searchParams.get("folder") || null;
-  const activeTab = searchParams.get("tab") || "browse";
+  // Permissions resolved below; default tab differs by role.
+  const tabParam = searchParams.get("tab");
 
   // UI state
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
@@ -112,6 +113,10 @@ export default function Resources() {
 
   // Permissions - Admin & Super Admin can manage, others can view
   const canManage = isSuperAdmin || profile?.role === "admin";
+
+  // Default tab: managers land on Browse, everyone else (students/parents/teachers)
+  // lands on "My Assigned" since the Browse view is read-only for them.
+  const activeTab = tabParam || (canManage ? "browse" : "assigned");
 
   // Fetch assigned resources for "My Assigned" tab
   const { data: assignedResources = [] } = useQuery({
