@@ -31,10 +31,19 @@ const views = [
 
 export default function TeachingLanding() {
   const { activeDivision } = useDivision();
+  const { activeRole } = useAuth();
   const [searchParams] = useSearchParams();
   const divisionId = activeDivision?.id;
   const requested = searchParams.get('view');
   const activeView = views.some((item) => item.value === requested) ? requested! : null;
+
+  if (activeRole === 'teacher') {
+    return (
+      <PageShell title="Teaching" description="Your classes, schedule, and planning.">
+        <TeacherTeachingLanding />
+      </PageShell>
+    );
+  }
 
   useQuery({
     queryKey: ['teaching-landing-counts', divisionId],
