@@ -428,9 +428,14 @@ export default function TeacherCourseView() {
           <TabsTrigger value="today" className="gap-1 shrink-0"><Video className="h-3.5 w-3.5" /> Today's Class</TabsTrigger>
           <TabsTrigger value="teach" className="gap-1 shrink-0"><Sparkles className="h-3.5 w-3.5" /> Teach Today</TabsTrigger>
           <TabsTrigger value="assignments" className="gap-1 shrink-0"><FileText className="h-3.5 w-3.5" /> Assignments</TabsTrigger>
-          <TabsTrigger value="lesson-planner" className="gap-1 shrink-0"><BookOpen className="h-3.5 w-3.5" /> Lesson Planner</TabsTrigger>
+          <TabsTrigger value="lesson-planner" className="gap-1 shrink-0"><BookOpen className="h-3.5 w-3.5" /> Lessons</TabsTrigger>
           <TabsTrigger value="announcements" className="gap-1 shrink-0"><Bell className="h-3.5 w-3.5" /> Announcements</TabsTrigger>
-          <TabsTrigger value="students" className="gap-1 shrink-0"><BarChart3 className="h-3.5 w-3.5" /> Student Progress</TabsTrigger>
+          <TabsTrigger value="class-chat" className="gap-1 shrink-0"><MessageSquare className="h-3.5 w-3.5" /> Class Chat</TabsTrigger>
+          <TabsTrigger value="students" className="gap-1 shrink-0"><BarChart3 className="h-3.5 w-3.5" /> Progress</TabsTrigger>
+          <TabsTrigger value="resources" className="gap-1 shrink-0"><FileText className="h-3.5 w-3.5" /> Resources</TabsTrigger>
+          <TabsTrigger value="recordings" className="gap-1 shrink-0"><Video className="h-3.5 w-3.5" /> Recordings</TabsTrigger>
+          <TabsTrigger value="roster" className="gap-1 shrink-0"><Users className="h-3.5 w-3.5" /> Roster</TabsTrigger>
+          <TabsTrigger value="settings" className="gap-1 shrink-0"><AlertTriangle className="h-3.5 w-3.5" /> Settings</TabsTrigger>
         </TabsList>
 
         {/* ═══ TAB 1: TODAY'S CLASS ═══ */}
@@ -920,8 +925,110 @@ export default function TeacherCourseView() {
       {/* DM Chat Sheet */}
       <DMChatSheet open={dmSheetOpen} onOpenChange={setDmSheetOpen} groupId={dmGroupId} recipientName={dmRecipientName} showFlaggedHighlight />
 
-      {/* DM Approval Inbox */}
-      <DMApprovalInbox courseId={courseId!} open={dmApprovalOpen} onOpenChange={setDmApprovalOpen} />
+      {/* New tab content stubs (Class Chat, Resources, Recordings, Roster, Settings) live inside Tabs above via portals — render here as additional TabsContent in JSX continuation */}
+      <TeacherCourseExtraTabs
+        activeTab={activeTab}
+        courseId={courseId!}
+        selectedClassId={selectedClassId}
+        classStudents={classStudents}
+        course={course}
+      />
     </div>
   );
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// Extra tabs (Class Chat / Resources / Recordings / Roster / Settings)
+// Rendered alongside the main Tabs container; each conditional on activeTab
+// to keep the empty-state pattern consistent.
+// ───────────────────────────────────────────────────────────────────────
+function TeacherCourseExtraTabs({
+  activeTab, courseId, selectedClassId, classStudents, course,
+}: {
+  activeTab: string;
+  courseId: string;
+  selectedClassId: string | null;
+  classStudents: any[];
+  course: any;
+}) {
+  if (!['class-chat', 'resources', 'recordings', 'roster', 'settings'].includes(activeTab)) return null;
+
+  const EmptyState = ({ Icon, headline, sub }: { Icon: any; headline: string; sub: string }) => (
+    <div className="text-center py-16 text-muted-foreground border rounded-xl bg-muted/20 mt-4">
+      <Icon className="h-12 w-12 mx-auto mb-3 opacity-40" />
+      <p className="text-base font-medium text-foreground">{headline}</p>
+      <p className="text-sm mt-1">{sub}</p>
+    </div>
+  );
+
+  if (activeTab === 'class-chat') {
+    return (
+      <div className="mt-4">
+        <ClassChatTab courseId={courseId} className="h-[60vh]" />
+      </div>
+    );
+  }
+
+  if (activeTab === 'resources') {
+    return <EmptyState Icon={FileText} headline="No resources yet" sub="Course resources will appear here once uploaded." />;
+  }
+
+  if (activeTab === 'recordings') {
+    return <EmptyState Icon={Video} headline="No recordings available" sub="Past class recordings will appear here." />;
+  }
+
+  if (activeTab === 'roster') {
+    return (
+      <div className="mt-4">
+        {classStudents.length === 0 ? (
+          <EmptyState Icon={Users} headline="No students enrolled" sub="Enrolled students will appear here once added to this class." />
+        ) : (
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {classStudents.map((s: any) => (
+                    <TableRow key={s.id}>
+                      <TableCell className="text-sm font-medium">{s.profile?.full_name || 'Unknown'}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{s.profile?.email || '—'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    );
+  }
+
+  if (activeTab === 'settings') {
+    return (
+      <div className="mt-4 space-y-3">
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div>
+              <Label className="text-xs">Course Name</Label>
+              <Input value={course?.name || ''} readOnly />
+            </div>
+            <div>
+              <Label className="text-xs">Description</Label>
+              <Textarea value={course?.description || ''} readOnly rows={3} />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Read-only — contact admin to edit course settings.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return null;
 }
