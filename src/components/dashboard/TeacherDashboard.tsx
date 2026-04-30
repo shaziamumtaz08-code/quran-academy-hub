@@ -64,8 +64,11 @@ export function TeacherDashboard() {
         {/* Prayer widget */}
         <PrayerTimesWidget islamicDate={islamicDate} timezone={timezone} />
 
-        {/* Next Class — full-width block */}
-        <NextClassCountdown />
+        {/* Next Class — full-width block (1:1 only) */}
+        {isOneToOne && <NextClassCountdown />}
+
+        {/* Group / Recorded widgets */}
+        {!isOneToOne && <TeacherGroupAcademyWidgets />}
 
         {/* Rescheduled sessions landing today */}
         <RescheduledTodayBanner />
