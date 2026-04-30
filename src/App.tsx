@@ -82,8 +82,32 @@ import PeopleLanding from "./pages/PeopleLanding";
 import FinanceLanding from "./pages/FinanceLanding";
 import CommunicationLanding from "./pages/CommunicationLanding";
 import SettingsLanding from "./pages/SettingsLanding";
+import { isStudentRouteAllowed } from "@/lib/studentRoutes";
 
 const queryClient = new QueryClient();
+
+/**
+ * Blocks the `student` role from admin/teacher routes that previously had no
+ * guard. Other roles pass through unchanged.
+ */
+function NonStudentRoute({ children }: { children: React.ReactNode }) {
+  const { activeRole, isLoading, profile } = useAuth();
+  const location = useLocation();
+
+  if (isLoading || (profile && !activeRole)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+      </div>
+    );
+  }
+
+  if (activeRole === 'student' && !isStudentRouteAllowed(location.pathname)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -275,22 +299,22 @@ function AppRoutes() {
       <Route path="/admin" element={<ProtectedRoute><AdminRoute><AdminCommandCenter /></AdminRoute></ProtectedRoute>} />
       <Route path="/teacher" element={<ProtectedRoute><TeacherRoute><TeacherNazraDashboard /></TeacherRoute></ProtectedRoute>} />
 
-      <Route path="/teaching" element={<ProtectedRoute><DashboardLayout><TeachingLanding /></DashboardLayout></ProtectedRoute>} />
-      <Route path="/teaching-os" element={<ProtectedRoute><LanguageProvider><TeachingOS /></LanguageProvider></ProtectedRoute>} />
-      <Route path="/teaching-os/outline" element={<ProtectedRoute><LanguageProvider><TeachingOSOutline /></LanguageProvider></ProtectedRoute>} />
-      <Route path="/teaching-os/planner" element={<ProtectedRoute><LanguageProvider><TeachingOSPlanner /></LanguageProvider></ProtectedRoute>} />
-      <Route path="/teaching-os/dayboard" element={<ProtectedRoute><LanguageProvider><TeachingOSDayBoard /></LanguageProvider></ProtectedRoute>} />
-      <Route path="/teaching-os/dayboard/live" element={<ProtectedRoute><LanguageProvider><TeachingOSDayBoard /></LanguageProvider></ProtectedRoute>} />
+      <Route path="/teaching" element={<ProtectedRoute><NonStudentRoute><DashboardLayout><TeachingLanding /></DashboardLayout></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/teaching-os" element={<ProtectedRoute><NonStudentRoute><LanguageProvider><TeachingOS /></LanguageProvider></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/teaching-os/outline" element={<ProtectedRoute><NonStudentRoute><LanguageProvider><TeachingOSOutline /></LanguageProvider></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/teaching-os/planner" element={<ProtectedRoute><NonStudentRoute><LanguageProvider><TeachingOSPlanner /></LanguageProvider></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/teaching-os/dayboard" element={<ProtectedRoute><NonStudentRoute><LanguageProvider><TeachingOSDayBoard /></LanguageProvider></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/teaching-os/dayboard/live" element={<ProtectedRoute><NonStudentRoute><LanguageProvider><TeachingOSDayBoard /></LanguageProvider></NonStudentRoute></ProtectedRoute>} />
       <Route path="/teaching-os/student-view" element={<LanguageProvider><TeachingOSStudentView /></LanguageProvider>} />
-      <Route path="/teaching-os/content-kit" element={<ProtectedRoute><LanguageProvider><TeachingOSContentKit /></LanguageProvider></ProtectedRoute>} />
-      <Route path="/teaching-os/assessment" element={<ProtectedRoute><LanguageProvider><TeachingOSAssessment /></LanguageProvider></ProtectedRoute>} />
-      <Route path="/teaching-os/video" element={<ProtectedRoute><LanguageProvider><TeachingOSVideo /></LanguageProvider></ProtectedRoute>} />
-      <Route path="/teaching-os/speaking-tutor" element={<ProtectedRoute><LanguageProvider><TeachingOSSpeakingTutor /></LanguageProvider></ProtectedRoute>} />
-      <Route path="/teaching-os/analytics" element={<ProtectedRoute><LanguageProvider><TeachingOSAnalytics /></LanguageProvider></ProtectedRoute>} />
+      <Route path="/teaching-os/content-kit" element={<ProtectedRoute><NonStudentRoute><LanguageProvider><TeachingOSContentKit /></LanguageProvider></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/teaching-os/assessment" element={<ProtectedRoute><NonStudentRoute><LanguageProvider><TeachingOSAssessment /></LanguageProvider></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/teaching-os/video" element={<ProtectedRoute><NonStudentRoute><LanguageProvider><TeachingOSVideo /></LanguageProvider></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/teaching-os/speaking-tutor" element={<ProtectedRoute><NonStudentRoute><LanguageProvider><TeachingOSSpeakingTutor /></LanguageProvider></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/teaching-os/analytics" element={<ProtectedRoute><NonStudentRoute><LanguageProvider><TeachingOSAnalytics /></LanguageProvider></NonStudentRoute></ProtectedRoute>} />
       <Route path="/parent" element={<ProtectedRoute><ParentDashboard /></ProtectedRoute>} />
       <Route path="/parent/child/:studentId" element={<ProtectedRoute><ParentDashboard /></ProtectedRoute>} />
       <Route path="/people" element={<ProtectedRoute><AdminRoute><DashboardLayout><PeopleLanding /></DashboardLayout></AdminRoute></ProtectedRoute>} />
-      <Route path="/finance" element={<ProtectedRoute><DashboardLayout><FinanceLanding /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/finance" element={<ProtectedRoute><NonStudentRoute><DashboardLayout><FinanceLanding /></DashboardLayout></NonStudentRoute></ProtectedRoute>} />
       <Route path="/reports-hub" element={<Navigate to="/reports?view=executive" replace />} />
       <Route path="/my-dashboard" element={<Navigate to="/dashboard" replace />} />
       <Route path="/communication" element={<ProtectedRoute><DashboardLayout><CommunicationLanding /></DashboardLayout></ProtectedRoute>} />
@@ -300,16 +324,16 @@ function AppRoutes() {
       <Route path="/my-courses" element={<ProtectedRoute><DashboardLayout><MyCourses /></DashboardLayout></ProtectedRoute>} />
       <Route path="/my-courses/:courseId" element={<ProtectedRoute><DashboardLayout><StudentCourseView /></DashboardLayout></ProtectedRoute>} />
       <Route path="/my-teaching/:courseId" element={<ProtectedRoute><DashboardLayout><TeacherCourseView /></DashboardLayout></ProtectedRoute>} />
-      <Route path="/user-management" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
-      <Route path="/assignments" element={<ProtectedRoute><Assignments /></ProtectedRoute>} />
-      <Route path="/subjects" element={<ProtectedRoute><Subjects /></ProtectedRoute>} />
-      <Route path="/teachers" element={<ProtectedRoute><Teachers /></ProtectedRoute>} />
-      <Route path="/students" element={<ProtectedRoute><Students /></ProtectedRoute>} />
-      <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
-      <Route path="/lessons" element={<ProtectedRoute><Lessons /></ProtectedRoute>} />
-      <Route path="/reports" element={<ProtectedRoute><DashboardLayout><Reports /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/user-management" element={<ProtectedRoute><AdminRoute><UserManagement /></AdminRoute></ProtectedRoute>} />
+      <Route path="/assignments" element={<ProtectedRoute><NonStudentRoute><Assignments /></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/subjects" element={<ProtectedRoute><AdminRoute><Subjects /></AdminRoute></ProtectedRoute>} />
+      <Route path="/teachers" element={<ProtectedRoute><NonStudentRoute><Teachers /></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/students" element={<ProtectedRoute><NonStudentRoute><Students /></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/attendance" element={<ProtectedRoute><NonStudentRoute><Attendance /></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/lessons" element={<ProtectedRoute><NonStudentRoute><Lessons /></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/reports" element={<ProtectedRoute><NonStudentRoute><DashboardLayout><Reports /></DashboardLayout></NonStudentRoute></ProtectedRoute>} />
       <Route path="/payments" element={<Navigate to="/finance?view=payments" replace />} />
-      <Route path="/kpi" element={<ProtectedRoute><KPI /></ProtectedRoute>} />
+      <Route path="/kpi" element={<ProtectedRoute><NonStudentRoute><KPI /></NonStudentRoute></ProtectedRoute>} />
       <Route path="/schedules" element={<ProtectedRoute><AdminRoute><Schedules /></AdminRoute></ProtectedRoute>} />
       <Route path="/zoom-management" element={<ProtectedRoute><AdminRoute><ZoomManagement /></AdminRoute></ProtectedRoute>} />
       <Route path="/integrity-audit" element={<ProtectedRoute><AdminRoute><IntegrityAudit /></AdminRoute></ProtectedRoute>} />
@@ -329,22 +353,10 @@ function AppRoutes() {
       <Route path="/exam-templates" element={<Navigate to="/report-card-templates" replace />} />
       <Route path="/exam-submission" element={<Navigate to="/generate-report-card" replace />} />
       <Route path="/exam-results" element={<Navigate to="/student-reports" replace />} />
-      <Route path="/resources" element={
-        <ProtectedRoute>
-          {(() => {
-            const ResourcesGuard = () => {
-              const { activeRole, isLoading } = useAuth();
-              if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-background"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div></div>;
-              if (activeRole !== 'super_admin') return <Navigate to="/dashboard" replace />;
-              return <DashboardLayout><Resources /></DashboardLayout>;
-            };
-            return <ResourcesGuard />;
-          })()}
-        </ProtectedRoute>
-      } />
+      <Route path="/resources" element={<ProtectedRoute><DashboardLayout><Resources /></DashboardLayout></ProtectedRoute>} />
       <Route path="/leads" element={<ProtectedRoute><AdminRoute><LeadsPipeline /></AdminRoute></ProtectedRoute>} />
       <Route path="/identity" element={<ProtectedRoute><AdminRoute><IdentityResolution /></AdminRoute></ProtectedRoute>} />
-      <Route path="/notifications" element={<ProtectedRoute><AdminRoute><NotificationCenter /></AdminRoute></ProtectedRoute>} />
+      <Route path="/notifications" element={<ProtectedRoute><NotificationCenter /></ProtectedRoute>} />
       <Route path="/hub" element={<Navigate to="/work-hub" replace />} />
       <Route path="/workhub" element={<Navigate to="/work-hub" replace />} />
       <Route path="/work-hub" element={<ProtectedRoute><WorkHub /></ProtectedRoute>} />
