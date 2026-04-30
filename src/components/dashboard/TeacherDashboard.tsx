@@ -15,9 +15,14 @@ import { TeacherNotificationsSection } from "./teacher/TeacherNotificationsSecti
 import { TeacherAttendanceComments } from "./teacher/TeacherAttendanceComments";
 import { RescheduledTodayBanner } from "./teacher/RescheduledTodayBanner";
 import { AiInsightsWidget } from "./AiInsightsWidget";
+import { TeacherGroupAcademyWidgets } from "./teacher/TeacherGroupAcademyWidgets";
+import { useDivision } from "@/contexts/DivisionContext";
 
 export function TeacherDashboard() {
   const { user, profile } = useAuth();
+  const { activeDivision } = useDivision();
+  const modelType = (activeDivision?.model_type as string) || null;
+  const isOneToOne = modelType !== 'group' && modelType !== 'recorded';
   const [islamicDate, setIslamicDate] = useState<IslamicDateData | null>(null);
   const [timezone, setTimezone] = useState<string>("Asia/Karachi");
   const firstName = profile?.full_name?.split(" ")[0] || "Teacher";
@@ -59,8 +64,11 @@ export function TeacherDashboard() {
         {/* Prayer widget */}
         <PrayerTimesWidget islamicDate={islamicDate} timezone={timezone} />
 
-        {/* Next Class — full-width block */}
-        <NextClassCountdown />
+        {/* Next Class — full-width block (1:1 only) */}
+        {isOneToOne && <NextClassCountdown />}
+
+        {/* Group / Recorded widgets */}
+        {!isOneToOne && <TeacherGroupAcademyWidgets />}
 
         {/* Rescheduled sessions landing today */}
         <RescheduledTodayBanner />

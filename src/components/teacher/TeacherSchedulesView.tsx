@@ -13,16 +13,23 @@ const DAYS_LABELS: Record<string, string> = {
   thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun',
 };
 
-export default function TeacherSchedulesView() {
+interface TeacherSchedulesViewProps {
+  readOnly?: boolean;
+  rangeFilter?: 'today' | 'this_week' | 'next_week';
+}
+
+export default function TeacherSchedulesView({ readOnly: _readOnly, rangeFilter }: TeacherSchedulesViewProps = {}) {
   const { user } = useAuth();
   const { activeDivision } = useDivision();
+  const modelType = (activeDivision?.model_type as string) || null;
 
-  const { data: schedules = [], isLoading } = useQuery({
+  // ───────── 1:1 BRANCH ─────────
+  const oneToOneEnabled = !!user?.id && modelType !== 'group' && modelType !== 'recorded';
+  const { data: schedules1to1 = [], isLoading: loading1to1 } = useQuery({
     queryKey: ['teacher-my-schedules', user?.id, activeDivision?.id],
     queryFn: async () => {
       if (!user?.id) return [];
-      
-      // Get assignment IDs for this teacher
+
       let assignQuery = supabase
         .from('student_teacher_assignments')
         .select('id, student_id')
@@ -48,7 +55,6 @@ export default function TeacherSchedulesView() {
 
       if (error) throw error;
 
-      // Fetch student names
       const studentIds = [...new Set(Object.values(studentMap))] as string[];
       const { data: profiles } = studentIds.length > 0
         ? await supabase.from('profiles').select('id, full_name').in('id', studentIds)
@@ -61,13 +67,136 @@ export default function TeacherSchedulesView() {
         student_name: nameMap[studentMap[s.assignment_id]] || 'Unknown',
       }));
     },
-    enabled: !!user?.id,
+    enabled: oneToOneEnabled,
   });
+
+  // ───────── GROUP BRANCH ─────────
+  const groupEnabled = !!user?.id && modelType === 'group';
+  const { data: groupSchedules = [], isLoading: loadingGroup } = useQuery({
+    queryKey: ['teacher-group-schedules', user?.id, activeDivision?.id, rangeFilter],
+    queryFn: async () => {
+      if (!user?.id) return [];
+
+      // Classes the teacher staffs
+      const { data: staff, error: staffErr } = await (supabase as any)
+        .from('course_class_staff')
+        .select('class_id, course_classes!inner(id, name, course_id, schedule_days, schedule_time, session_duration, courses!inner(name))')
+        .eq('user_id', user.id);
+      if (staffErr) throw staffErr;
+      if (!staff || staff.length === 0) return [];
+
+      // Try to derive upcoming live_sessions for this range; fall back to class meta only
+      const classIds = staff.map((s: any) => s.class_id).filter(Boolean);
+      let liveSessions: any[] = [];
+      try {
+        const { data: ls } = await (supabase as any)
+          .from('live_sessions')
+          .select('id, class_id, course_id, scheduled_start, scheduled_end, status')
+          .in('class_id', classIds)
+          .order('scheduled_start', { ascending: true })
+          .limit(200);
+        liveSessions = ls || [];
+      } catch {
+        liveSessions = [];
+      }
+
+      return staff.map((s: any) => {
+        const cls = s.course_classes;
+        const upcoming = liveSessions.filter((l) => l.class_id === s.class_id);
+        return {
+          id: s.class_id,
+          class_name: cls?.name || 'Unnamed Class',
+          course_name: cls?.courses?.name || '—',
+          schedule_days: cls?.schedule_days || [],
+          schedule_time: cls?.schedule_time || null,
+          duration_minutes: cls?.session_duration || null,
+          upcoming_count: upcoming.length,
+        };
+      });
+    },
+    enabled: groupEnabled,
+  });
+
+  const isLoading = loading1to1 || loadingGroup;
 
   if (isLoading) {
     return <div className="space-y-3 p-4">{[1,2,3].map(i => <Skeleton key={i} className="h-14 rounded-lg" />)}</div>;
   }
 
+  // ───────── RECORDED EMPTY STATE ─────────
+  if (modelType === 'recorded') {
+    return (
+      <div className="text-center py-16 text-muted-foreground">
+        <Calendar className="h-12 w-12 mx-auto mb-3 opacity-40" />
+        <p className="text-base font-medium">No live schedule</p>
+        <p className="text-sm mt-1">Recorded courses don't have a live schedule.</p>
+      </div>
+    );
+  }
+
+  // ───────── GROUP RENDER ─────────
+  if (modelType === 'group') {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-lms-navy">My Class Schedule</h2>
+            <p className="text-sm text-muted-foreground">Classes you teach</p>
+          </div>
+          <Badge variant="secondary" className="gap-1">
+            <Calendar className="h-3 w-3" />
+            {groupSchedules.length} classes
+          </Badge>
+        </div>
+
+        {groupSchedules.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <Calendar className="h-10 w-10 mx-auto mb-2 opacity-40" />
+            <p className="text-sm">No classes assigned</p>
+            <p className="text-xs mt-1">You aren't currently staffed on any group classes.</p>
+          </div>
+        ) : (
+          <div className="rounded-lg border border-border overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="text-xs">Class</TableHead>
+                  <TableHead className="text-xs">Course</TableHead>
+                  <TableHead className="text-xs">Days</TableHead>
+                  <TableHead className="text-xs">Time</TableHead>
+                  <TableHead className="text-xs">Duration</TableHead>
+                  <TableHead className="text-xs">Upcoming</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {groupSchedules.map((s: any) => (
+                  <TableRow key={s.id}>
+                    <TableCell className="font-medium text-sm">{s.class_name}</TableCell>
+                    <TableCell className="text-sm">{s.course_name}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {(Array.isArray(s.schedule_days) ? s.schedule_days : []).map((d: string) => (
+                          <Badge key={d} variant="outline" className="text-[10px] px-1.5 py-0">
+                            {DAYS_LABELS[d?.toLowerCase()] || d}
+                          </Badge>
+                        ))}
+                        {(!s.schedule_days || s.schedule_days.length === 0) && '—'}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm">{s.schedule_time || '—'}</TableCell>
+                    <TableCell className="text-sm">{s.duration_minutes ? `${s.duration_minutes}m` : '—'}</TableCell>
+                    <TableCell className="text-sm">{s.upcoming_count}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ───────── 1:1 RENDER (default) ─────────
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -77,11 +206,11 @@ export default function TeacherSchedulesView() {
         </div>
         <Badge variant="secondary" className="gap-1">
           <Calendar className="h-3 w-3" />
-          {schedules.length} slots
+          {schedules1to1.length} slots
         </Badge>
       </div>
 
-      {schedules.length === 0 ? (
+      {schedules1to1.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <Calendar className="h-10 w-10 mx-auto mb-2 opacity-40" />
           <p className="text-sm">No active schedules</p>
@@ -99,7 +228,7 @@ export default function TeacherSchedulesView() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {schedules.map((s: any) => (
+              {schedules1to1.map((s: any) => (
                 <TableRow key={s.id}>
                   <TableCell className="font-medium text-sm">{s.student_name}</TableCell>
                   <TableCell>
