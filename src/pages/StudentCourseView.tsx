@@ -370,7 +370,7 @@ export default function StudentCourseView() {
     enabled: !!courseId && !!user?.id && activeTab === 'progress',
   });
 
-  // ─── Certificates (Tab 6) ───
+  // ─── Certificates (Tab 6 + Tab 10) ───
   const { data: certificates = [] } = useQuery({
     queryKey: ['student-certificates', courseId, user?.id],
     queryFn: async () => {
@@ -380,7 +380,77 @@ export default function StudentCourseView() {
         .eq('course_id', courseId!);
       return data || [];
     },
-    enabled: !!courseId && !!user?.id && activeTab === 'progress',
+    enabled: !!courseId && !!user?.id && (activeTab === 'progress' || activeTab === 'certificate'),
+  });
+
+  // ─── Recordings (Tab 8) ───
+  const { data: recordings = [] } = useQuery({
+    queryKey: ['student-recordings', courseId, user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('live_sessions')
+        .select('id, actual_start, actual_end, scheduled_start, recording_link, recording_status, assignment_id')
+        .eq('student_id', user!.id)
+        .not('recording_link', 'is', null)
+        .order('actual_start', { ascending: false, nullsFirst: false });
+      return data || [];
+    },
+    enabled: !!courseId && !!user?.id && activeTab === 'recordings',
+  });
+
+  // ─── Results: Quizzes (Tab 9) ───
+  const { data: quizResults = [] } = useQuery({
+    queryKey: ['student-quiz-results', courseId, user?.id],
+    queryFn: async () => {
+      const { data: quizzes } = await supabase.from('course_quizzes')
+        .select('id, title').eq('course_id', courseId!);
+      const quizIds = (quizzes || []).map(q => q.id);
+      if (!quizIds.length) return [];
+      const { data: attempts } = await supabase.from('course_quiz_attempts')
+        .select('id, quiz_id, score, max_score, percentage, status, completed_at, started_at')
+        .eq('student_id', user!.id)
+        .in('quiz_id', quizIds)
+        .order('started_at', { ascending: false });
+      return (attempts || []).map(a => ({
+        ...a,
+        quiz_title: quizzes!.find(q => q.id === a.quiz_id)?.title || 'Quiz',
+      }));
+    },
+    enabled: !!courseId && !!user?.id && activeTab === 'results',
+  });
+
+  // ─── Results: Graded assignments (Tab 9) ───
+  const { data: gradedSubmissions = [] } = useQuery({
+    queryKey: ['student-graded-submissions', courseId, user?.id],
+    queryFn: async () => {
+      const { data: courseAssignments } = await supabase.from('course_assignments')
+        .select('id, title').eq('course_id', courseId!);
+      const ids = (courseAssignments || []).map(a => a.id);
+      if (!ids.length) return [];
+      const { data } = await supabase.from('course_assignment_submissions')
+        .select('id, assignment_id, score, status, submitted_at, feedback')
+        .eq('student_id', user!.id)
+        .in('assignment_id', ids)
+        .not('score', 'is', null);
+      return (data || []).map(s => ({
+        ...s,
+        assignment_title: courseAssignments!.find(a => a.id === s.assignment_id)?.title || 'Assignment',
+      }));
+    },
+    enabled: !!courseId && !!user?.id && activeTab === 'results',
+  });
+
+  // ─── Fee invoices (Tab 11) ───
+  const { data: invoices = [] } = useQuery({
+    queryKey: ['student-fees', user?.id],
+    queryFn: async () => {
+      const { data } = await supabase.from('fee_invoices')
+        .select('id, billing_month, amount, amount_paid, status, due_date, currency')
+        .eq('student_id', user!.id)
+        .order('billing_month', { ascending: false });
+      return data || [];
+    },
+    enabled: !!user?.id && activeTab === 'fee',
   });
 
   // ─── Assignment submission ───
