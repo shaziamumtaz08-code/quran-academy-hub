@@ -963,8 +963,8 @@ function TeacherCourseExtraTabs({
 
   if (activeTab === 'class-chat') {
     return (
-      <div className="mt-4">
-        <ClassChatTab courseId={courseId} className="h-[60vh]" />
+      <div className="mt-4 h-[60vh]">
+        <ClassChatTab courseId={courseId} />
       </div>
     );
   }
