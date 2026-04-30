@@ -82,8 +82,32 @@ import PeopleLanding from "./pages/PeopleLanding";
 import FinanceLanding from "./pages/FinanceLanding";
 import CommunicationLanding from "./pages/CommunicationLanding";
 import SettingsLanding from "./pages/SettingsLanding";
+import { isStudentRouteAllowed } from "@/lib/studentRoutes";
 
 const queryClient = new QueryClient();
+
+/**
+ * Blocks the `student` role from admin/teacher routes that previously had no
+ * guard. Other roles pass through unchanged.
+ */
+function NonStudentRoute({ children }: { children: React.ReactNode }) {
+  const { activeRole, isLoading, profile } = useAuth();
+  const location = useLocation();
+
+  if (isLoading || (profile && !activeRole)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+      </div>
+    );
+  }
+
+  if (activeRole === 'student' && !isStudentRouteAllowed(location.pathname)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
