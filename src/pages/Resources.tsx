@@ -97,7 +97,8 @@ export default function Resources() {
 
   // Current folder from URL
   const currentFolderId = searchParams.get("folder") || null;
-  const activeTab = searchParams.get("tab") || "browse";
+  // Permissions resolved below; default tab differs by role.
+  const tabParam = searchParams.get("tab");
 
   // UI state
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
