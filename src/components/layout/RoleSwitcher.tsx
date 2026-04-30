@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 const ROLE_HOME: Record<AppRole, string> = {
   super_admin: '/dashboard',
   admin: '/dashboard',
+  admin_division: '/dashboard',
   admin_admissions: '/dashboard',
   admin_fees: '/dashboard',
   admin_academic: '/dashboard',
