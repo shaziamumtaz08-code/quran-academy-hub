@@ -114,6 +114,7 @@ const ALL_PERMISSIONS = [
 const ROLE_LABELS: Record<AppRole, string> = {
   super_admin: 'Super Administrator',
   admin: 'Administrator',
+  admin_division: 'Division Admin',
   admin_admissions: 'Admissions Admin',
   admin_fees: 'Fees Admin',
   admin_academic: 'Academic Admin',
@@ -126,6 +127,7 @@ const ROLE_LABELS: Record<AppRole, string> = {
 const ROLE_COLORS: Record<AppRole, string> = {
   super_admin: 'bg-red-500/10 text-red-700 border-red-200',
   admin: 'bg-purple-500/10 text-purple-700 border-purple-200',
+  admin_division: 'bg-purple-500/10 text-purple-700 border-purple-200',
   admin_admissions: 'bg-blue-500/10 text-blue-700 border-blue-200',
   admin_fees: 'bg-green-500/10 text-green-700 border-green-200',
   admin_academic: 'bg-orange-500/10 text-orange-700 border-orange-200',
@@ -139,6 +141,7 @@ const ROLE_COLORS: Record<AppRole, string> = {
 const ROLE_PILL: Record<AppRole, { bg: string; text: string; dot: string }> = {
   super_admin: { bg: 'bg-red-100 dark:bg-red-500/15', text: 'text-red-700 dark:text-red-300', dot: 'bg-red-500' },
   admin: { bg: 'bg-slate-100 dark:bg-slate-500/15', text: 'text-slate-700 dark:text-slate-300', dot: 'bg-slate-500' },
+  admin_division: { bg: 'bg-purple-100 dark:bg-purple-500/15', text: 'text-purple-700 dark:text-purple-300', dot: 'bg-purple-500' },
   admin_admissions: { bg: 'bg-blue-100 dark:bg-blue-500/15', text: 'text-blue-700 dark:text-blue-300', dot: 'bg-blue-500' },
   admin_fees: { bg: 'bg-emerald-100 dark:bg-emerald-500/15', text: 'text-emerald-700 dark:text-emerald-300', dot: 'bg-emerald-500' },
   admin_academic: { bg: 'bg-orange-100 dark:bg-orange-500/15', text: 'text-orange-700 dark:text-orange-300', dot: 'bg-orange-500' },
