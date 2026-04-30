@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDivision } from '@/contexts/DivisionContext';
+import { can, AppRole } from '@/lib/accessMatrix';
 import {
   Plus, Search, ArrowLeft, ChevronDown, ChevronRight,
   Settings, BookOpen, Megaphone, Layers, GraduationCap, MessageSquare,
