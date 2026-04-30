@@ -279,8 +279,9 @@ function LoginRedirect() {
   const getDefaultRoute = () => {
     if (!activeRole) return '/dashboard';
     if (activeRole === 'super_admin') return '/select-division';
-    if (activeRole === 'admin' || activeRole?.startsWith('admin_')) return '/admin';
+    if (activeRole === 'admin_division' || activeRole === 'admin' || activeRole?.startsWith('admin_')) return '/admin';
     if (activeRole === 'teacher' || activeRole === 'examiner') return '/dashboard';
+    if (activeRole === 'parent') return '/parent';
     return '/dashboard';
   };
 
