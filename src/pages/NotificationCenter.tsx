@@ -158,7 +158,9 @@ export default function NotificationCenter() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Notification Center</h1>
-            <p className="text-muted-foreground">Your notifications and system templates</p>
+            <p className="text-muted-foreground">
+              {isAdmin ? "Your notifications and system templates" : "Your notifications"}
+            </p>
           </div>
           {unreadCount > 0 && (
             <Button variant="outline" size="sm" onClick={() => markAllRead.mutate()}>
@@ -172,8 +174,8 @@ export default function NotificationCenter() {
             <TabsTrigger value="my-notifications">
               My Notifications {unreadCount > 0 && <Badge variant="destructive" className="ml-1.5 text-[10px] h-4 min-w-4 px-1">{unreadCount}</Badge>}
             </TabsTrigger>
-            <TabsTrigger value="templates">Templates</TabsTrigger>
-            <TabsTrigger value="history">Send History</TabsTrigger>
+            {isAdmin && <TabsTrigger value="templates">Templates</TabsTrigger>}
+            {isAdmin && <TabsTrigger value="history">Send History</TabsTrigger>}
           </TabsList>
 
           {/* My Notifications */}
