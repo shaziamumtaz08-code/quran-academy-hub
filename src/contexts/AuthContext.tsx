@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 export type AppRole =
   | "super_admin"
   | "admin"
+  | "admin_division"
   | "admin_admissions"
   | "admin_fees"
   | "admin_academic"
