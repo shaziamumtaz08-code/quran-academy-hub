@@ -106,15 +106,17 @@ function getPeopleSidebar(isOneToOne?: boolean, role?: string | null): { title: 
       showSearch: false,
     };
   }
-  const isAdmin = role === 'super_admin' || role === 'admin' || role?.startsWith('admin_');
+  const r = (role || 'student') as AppRole;
+  const canStaff = can(r, 'user_management', 'view');
+  const canLeads = can(r, 'leads', 'view');
   return {
     title: 'People',
     subtitle: '',
     items: [
-      { label: 'Students', href: '/students' },
-      { label: 'Teachers', href: '/teachers' },
-      ...(isAdmin ? [{ label: 'Staff', href: '/user-management?mode=staff' }] : []),
-      ...(isOneToOne ? [{ label: 'Leads', href: '/leads', badge: 0, badgeType: 'alert' as const }] : []),
+      ...(can(r, 'students', 'view') ? [{ label: 'Students', href: '/students' }] : []),
+      ...(can(r, 'teachers', 'view') ? [{ label: 'Teachers', href: '/teachers' }] : []),
+      ...(canStaff ? [{ label: 'Staff', href: '/user-management?mode=staff' }] : []),
+      ...(isOneToOne && canLeads ? [{ label: 'Leads', href: '/leads', badge: 0, badgeType: 'alert' as const }] : []),
     ],
     showSearch: true,
   };
