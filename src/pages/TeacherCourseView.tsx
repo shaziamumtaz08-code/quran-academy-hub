@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { format, isToday, isPast, addDays } from 'date-fns';
 import { toast } from 'sonner';
 import { findOrCreateCourseDM } from '@/lib/messaging';
+import { handleSupabaseError } from '@/lib/handleSupabaseError';
 import { TeachTodayTab } from '@/components/courses/TeachTodayTab';
 import { ClassChatTab } from '@/components/courses/ClassChatTab';
 import { ZoomClassPanel } from '@/components/classroom/ZoomClassPanel';
