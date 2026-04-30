@@ -23,7 +23,7 @@ import {
   GraduationCap, MessageSquare, Video, Clock, ExternalLink,
   Loader2, Award, ChevronLeft, ChevronRight, RotateCcw,
   Upload, Download, Bell, BarChart3, Radio, Layers, FlipVertical,
-  HelpCircle, Check, X, Users,
+  HelpCircle, Check, X, Users, Receipt, PlayCircle,
 } from 'lucide-react';
 import { DMChatSheet } from '@/components/chat/DMChatSheet';
 import {
