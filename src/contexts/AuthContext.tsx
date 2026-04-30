@@ -18,6 +18,7 @@ export type AppRole =
 const ROLE_PRIORITY: Record<AppRole, number> = {
   super_admin: 1,
   admin: 2,
+  admin_division: 2,
   admin_admissions: 3,
   admin_fees: 4,
   admin_academic: 5,
