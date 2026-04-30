@@ -84,6 +84,7 @@ import MySchedule from "./pages/MySchedule";
 import CommunicationLanding from "./pages/CommunicationLanding";
 import SettingsLanding from "./pages/SettingsLanding";
 import { isStudentRouteAllowed } from "@/lib/studentRoutes";
+import { RouteGuard } from "@/components/auth/RouteGuard";
 
 const queryClient = new QueryClient();
 
