@@ -23,7 +23,7 @@ import {
   GraduationCap, MessageSquare, Video, Clock, ExternalLink,
   Loader2, Award, ChevronLeft, ChevronRight, RotateCcw,
   Upload, Download, Bell, BarChart3, Radio, Layers, FlipVertical,
-  HelpCircle, Check, X, Users,
+  HelpCircle, Check, X, Users, Receipt, PlayCircle,
 } from 'lucide-react';
 import { DMChatSheet } from '@/components/chat/DMChatSheet';
 import {
@@ -370,7 +370,7 @@ export default function StudentCourseView() {
     enabled: !!courseId && !!user?.id && activeTab === 'progress',
   });
 
-  // ─── Certificates (Tab 6) ───
+  // ─── Certificates (Tab 6 + Tab 10) ───
   const { data: certificates = [] } = useQuery({
     queryKey: ['student-certificates', courseId, user?.id],
     queryFn: async () => {
@@ -380,7 +380,92 @@ export default function StudentCourseView() {
         .eq('course_id', courseId!);
       return data || [];
     },
-    enabled: !!courseId && !!user?.id && activeTab === 'progress',
+    enabled: !!courseId && !!user?.id && (activeTab === 'progress' || activeTab === 'certificate'),
+  });
+
+  // ─── Recordings (Tab 8) ───
+  const { data: recordings = [] } = useQuery({
+    queryKey: ['student-recordings', courseId, user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('live_sessions')
+        .select('id, actual_start, actual_end, scheduled_start, recording_link, recording_status, assignment_id')
+        .eq('student_id', user!.id)
+        .not('recording_link', 'is', null)
+        .order('actual_start', { ascending: false, nullsFirst: false });
+      return data || [];
+    },
+    enabled: !!courseId && !!user?.id && activeTab === 'recordings',
+  });
+
+  // ─── Results: Quizzes (Tab 9) ───
+  const { data: quizResults = [] } = useQuery({
+    queryKey: ['student-quiz-results', courseId, user?.id],
+    queryFn: async () => {
+      const { data: quizzes } = await supabase.from('course_quizzes')
+        .select('id, title').eq('course_id', courseId!);
+      const quizIds = (quizzes || []).map(q => q.id);
+      if (!quizIds.length) return [];
+      const { data: attempts } = await supabase.from('course_quiz_attempts')
+        .select('id, quiz_id, score, max_score, percentage, status, completed_at, started_at')
+        .eq('student_id', user!.id)
+        .in('quiz_id', quizIds)
+        .order('started_at', { ascending: false });
+      return (attempts || []).map(a => ({
+        ...a,
+        quiz_title: quizzes!.find(q => q.id === a.quiz_id)?.title || 'Quiz',
+      }));
+    },
+    enabled: !!courseId && !!user?.id && activeTab === 'results',
+  });
+
+  // ─── Results: Graded assignments (Tab 9) ───
+  const { data: gradedSubmissions = [] } = useQuery({
+    queryKey: ['student-graded-submissions', courseId, user?.id],
+    queryFn: async () => {
+      const { data: courseAssignments } = await supabase.from('course_assignments')
+        .select('id, title').eq('course_id', courseId!);
+      const ids = (courseAssignments || []).map(a => a.id);
+      if (!ids.length) return [];
+      const { data } = await supabase.from('course_assignment_submissions')
+        .select('id, assignment_id, score, status, submitted_at, feedback')
+        .eq('student_id', user!.id)
+        .in('assignment_id', ids)
+        .not('score', 'is', null);
+      return (data || []).map(s => ({
+        ...s,
+        assignment_title: courseAssignments!.find(a => a.id === s.assignment_id)?.title || 'Assignment',
+      }));
+    },
+    enabled: !!courseId && !!user?.id && activeTab === 'results',
+  });
+
+  // ─── Resources (Tab 7) ───
+  const { data: resources = [] } = useQuery({
+    queryKey: ['student-course-resources', courseId, user?.id],
+    queryFn: async () => {
+      const { data: ras } = await supabase.from('resource_assignments')
+        .select('resource_id, notes, course_id, resource:resources(id, title, type, url, folder, sub_folder)')
+        .or(`assigned_to.eq.${user!.id},course_id.eq.${courseId}`);
+      const seen = new Set<string>();
+      return (ras || [])
+        .map((r: any) => r.resource)
+        .filter((r: any) => r && !seen.has(r.id) && seen.add(r.id));
+    },
+    enabled: !!courseId && !!user?.id && activeTab === 'resources',
+  });
+
+  // ─── Fee invoices (Tab 11) ───
+  const { data: invoices = [] } = useQuery({
+    queryKey: ['student-fees', user?.id],
+    queryFn: async () => {
+      const { data } = await supabase.from('fee_invoices')
+        .select('id, billing_month, amount, amount_paid, status, due_date, currency')
+        .eq('student_id', user!.id)
+        .order('billing_month', { ascending: false });
+      return data || [];
+    },
+    enabled: !!user?.id && activeTab === 'fee',
   });
 
   // ─── Assignment submission ───
@@ -527,7 +612,7 @@ export default function StudentCourseView() {
       {/* ═══ TABS ═══ */}
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="w-full overflow-x-auto justify-start h-auto flex-nowrap sticky top-0 z-10 bg-background">
-          <TabsTrigger value="today" className="gap-1 shrink-0"><Video className="h-3.5 w-3.5" /> Today</TabsTrigger>
+          <TabsTrigger value="today" className="gap-1 shrink-0"><Video className="h-3.5 w-3.5" /> Overview</TabsTrigger>
           <TabsTrigger value="lessons" className="gap-1 shrink-0"><BookOpen className="h-3.5 w-3.5" /> Lessons</TabsTrigger>
           <TabsTrigger value="assignments" className="gap-1 shrink-0"><ClipboardList className="h-3.5 w-3.5" /> Assignments</TabsTrigger>
           <TabsTrigger value="announcements" className="gap-1 shrink-0 relative">
@@ -535,7 +620,12 @@ export default function StudentCourseView() {
             {hasUnreadAnnouncements && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-destructive" />}
           </TabsTrigger>
           <TabsTrigger value="class-chat" className="gap-1 shrink-0"><MessageSquare className="h-3.5 w-3.5" /> Class Chat</TabsTrigger>
-          <TabsTrigger value="progress" className="gap-1 shrink-0"><BarChart3 className="h-3.5 w-3.5" /> My Progress</TabsTrigger>
+          <TabsTrigger value="progress" className="gap-1 shrink-0"><BarChart3 className="h-3.5 w-3.5" /> Progress</TabsTrigger>
+          <TabsTrigger value="resources" className="gap-1 shrink-0"><FileText className="h-3.5 w-3.5" /> Resources</TabsTrigger>
+          <TabsTrigger value="recordings" className="gap-1 shrink-0"><PlayCircle className="h-3.5 w-3.5" /> Recordings</TabsTrigger>
+          <TabsTrigger value="results" className="gap-1 shrink-0"><GraduationCap className="h-3.5 w-3.5" /> Results</TabsTrigger>
+          <TabsTrigger value="certificate" className="gap-1 shrink-0"><Award className="h-3.5 w-3.5" /> Certificate</TabsTrigger>
+          <TabsTrigger value="fee" className="gap-1 shrink-0"><Receipt className="h-3.5 w-3.5" /> Fee</TabsTrigger>
         </TabsList>
 
         {/* ═══ TAB 1: TODAY ═══ */}
@@ -890,6 +980,233 @@ export default function StudentCourseView() {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        {/* ═══ TAB 7: RESOURCES ═══ */}
+        <TabsContent value="resources" className="space-y-2 mt-4">
+          {resources.length === 0 ? (
+            <Card><CardContent className="py-12 text-center">
+              <FileText className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
+              <p className="text-sm font-semibold">No resources yet</p>
+              <p className="text-xs text-muted-foreground mt-1">Course resources will appear here when shared by your teacher.</p>
+            </CardContent></Card>
+          ) : (
+            resources.map((r: any) => (
+              <Card key={r.id}>
+                <CardContent className="p-4 flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold truncate">{r.title}</p>
+                    <p className="text-[10px] text-muted-foreground">{r.folder}{r.sub_folder ? ` / ${r.sub_folder}` : ''} · {r.type}</p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => window.open(r.url, '_blank')}>
+                    <ExternalLink className="h-3.5 w-3.5 mr-1" /> Open
+                  </Button>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </TabsContent>
+
+        {/* ═══ TAB 8: RECORDINGS ═══ */}
+        <TabsContent value="recordings" className="space-y-2 mt-4">
+          {recordings.length === 0 ? (
+            <Card><CardContent className="py-12 text-center">
+              <Video className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
+              <p className="text-sm font-semibold">No recordings yet</p>
+              <p className="text-xs text-muted-foreground mt-1">Recordings will appear here after live classes.</p>
+            </CardContent></Card>
+          ) : (
+            recordings.map((rec: any) => {
+              const startDate = rec.actual_start || rec.scheduled_start;
+              const durationMin = rec.actual_start && rec.actual_end
+                ? Math.round((new Date(rec.actual_end).getTime() - new Date(rec.actual_start).getTime()) / 60000)
+                : null;
+              return (
+                <Card key={rec.id}>
+                  <CardContent className="p-4 flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold flex items-center gap-1.5">
+                        <PlayCircle className="h-4 w-4 text-primary" /> Class Recording
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {startDate ? format(new Date(startDate), 'EEE, MMM d, yyyy · h:mm a') : 'Date unknown'}
+                        {durationMin ? ` · ${durationMin} min` : ''}
+                      </p>
+                    </div>
+                    <Button size="sm" onClick={() => window.open(rec.recording_link, '_blank')}>
+                      <PlayCircle className="h-3.5 w-3.5 mr-1" /> Watch
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
+        </TabsContent>
+
+        {/* ═══ TAB 9: RESULTS ═══ */}
+        <TabsContent value="results" className="space-y-4 mt-4">
+          {quizResults.length === 0 && gradedSubmissions.length === 0 ? (
+            <Card><CardContent className="py-12 text-center">
+              <Award className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
+              <p className="text-sm font-semibold">No results yet</p>
+              <p className="text-xs text-muted-foreground mt-1">Quiz scores, assignment grades, and report cards will appear here.</p>
+            </CardContent></Card>
+          ) : (
+            <>
+              {quizResults.length > 0 && (
+                <Card>
+                  <CardContent className="p-4">
+                    <p className="text-sm font-semibold mb-3">Quizzes</p>
+                    <div className="space-y-2">
+                      {quizResults.map((q: any) => (
+                        <div key={q.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm truncate">{q.quiz_title}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {q.completed_at ? format(new Date(q.completed_at), 'MMM d, yyyy') : (q.started_at ? format(new Date(q.started_at), 'MMM d, yyyy') : '—')}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold">{q.score ?? 0}/{q.max_score ?? 0}</span>
+                            <Badge variant={q.status === 'completed' ? 'default' : 'secondary'} className="text-[9px]">{q.status}</Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+              {gradedSubmissions.length > 0 && (
+                <Card>
+                  <CardContent className="p-4">
+                    <p className="text-sm font-semibold mb-3">Assignments</p>
+                    <div className="space-y-2">
+                      {gradedSubmissions.map((s: any) => (
+                        <div key={s.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm truncate">{s.assignment_title}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {s.submitted_at ? format(new Date(s.submitted_at), 'MMM d, yyyy') : '—'}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-emerald-600">{s.score}</span>
+                            <Badge variant="default" className="text-[9px] bg-emerald-500">{s.status}</Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          )}
+        </TabsContent>
+
+        {/* ═══ TAB 10: CERTIFICATE ═══ */}
+        <TabsContent value="certificate" className="space-y-2 mt-4">
+          {certificates.length === 0 ? (
+            <Card><CardContent className="py-12 text-center">
+              <Award className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
+              <p className="text-sm font-semibold">No certificate yet</p>
+              <p className="text-xs text-muted-foreground mt-1">Earn a certificate by completing this course.</p>
+            </CardContent></Card>
+          ) : (
+            certificates.map((cert: any) => (
+              <Card key={cert.id}>
+                <CardContent className="p-6 text-center space-y-3">
+                  <div className="h-16 w-16 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto">
+                    <Award className="h-8 w-8 text-emerald-600" />
+                  </div>
+                  <p className="text-base font-bold">{cert.certificate?.template_name || 'Certificate of Completion'}</p>
+                  <div className="text-xs text-muted-foreground space-y-0.5">
+                    {cert.certificate_number && <p>Certificate #: <span className="font-mono">{cert.certificate_number}</span></p>}
+                    {cert.grade && <p>Grade: <span className="font-semibold">{cert.grade}</span></p>}
+                    <p>Issued: {format(new Date(cert.issued_at), 'MMMM d, yyyy')}</p>
+                  </div>
+                  <Badge className="bg-emerald-500 text-white">Issued</Badge>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </TabsContent>
+
+        {/* ═══ TAB 11: FEE ═══ */}
+        <TabsContent value="fee" className="space-y-4 mt-4">
+          {invoices.length === 0 ? (
+            <Card><CardContent className="py-12 text-center">
+              <Receipt className="h-10 w-10 mx-auto mb-2 text-muted-foreground/30" />
+              <p className="text-sm font-semibold">No invoices yet</p>
+              <p className="text-xs text-muted-foreground mt-1">Fee invoices will appear here once generated.</p>
+            </CardContent></Card>
+          ) : (() => {
+            const outstanding = invoices.reduce((sum: number, i: any) =>
+              i.status !== 'paid' ? sum + (Number(i.amount) - Number(i.amount_paid || 0)) : sum, 0);
+            const thisMonthKey = format(new Date(), 'yyyy-MM');
+            const paidThisMonth = invoices
+              .filter((i: any) => i.billing_month?.startsWith(thisMonthKey) && i.status === 'paid')
+              .reduce((s: number, i: any) => s + Number(i.amount_paid || 0), 0);
+            const nextDue = invoices
+              .filter((i: any) => i.status !== 'paid' && i.due_date)
+              .sort((a: any, b: any) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())[0];
+            const currency = invoices[0]?.currency || 'USD';
+            const fmt = (n: number) => `${currency} ${n.toFixed(2)}`;
+            return (
+              <>
+                <p className="text-[11px] text-muted-foreground">All your fee invoices.</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <Card><CardContent className="p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">Outstanding</p>
+                    <p className={cn("text-base font-bold mt-1", outstanding > 0 ? "text-destructive" : "text-emerald-600")}>{fmt(outstanding)}</p>
+                  </CardContent></Card>
+                  <Card><CardContent className="p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">Paid this month</p>
+                    <p className="text-base font-bold text-emerald-600 mt-1">{fmt(paidThisMonth)}</p>
+                  </CardContent></Card>
+                  <Card><CardContent className="p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">Next due</p>
+                    <p className="text-xs font-semibold mt-1">{nextDue?.due_date ? format(new Date(nextDue.due_date), 'MMM d') : '—'}</p>
+                  </CardContent></Card>
+                </div>
+                <Card>
+                  <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead className="bg-muted/50">
+                          <tr className="text-left">
+                            <th className="p-2.5 font-medium">Month</th>
+                            <th className="p-2.5 font-medium">Amount</th>
+                            <th className="p-2.5 font-medium">Paid</th>
+                            <th className="p-2.5 font-medium">Status</th>
+                            <th className="p-2.5 font-medium">Due</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {invoices.map((inv: any) => {
+                            const isOverdue = inv.status !== 'paid' && inv.due_date && isPast(new Date(inv.due_date));
+                            const statusLabel = isOverdue ? 'overdue' : inv.status;
+                            const statusColor =
+                              statusLabel === 'paid' ? 'bg-emerald-500 text-white' :
+                              statusLabel === 'overdue' ? 'bg-destructive text-white' :
+                              'bg-amber-500 text-white';
+                            return (
+                              <tr key={inv.id} className="border-t">
+                                <td className="p-2.5">{inv.billing_month}</td>
+                                <td className="p-2.5">{inv.currency} {Number(inv.amount).toFixed(2)}</td>
+                                <td className="p-2.5">{inv.currency} {Number(inv.amount_paid || 0).toFixed(2)}</td>
+                                <td className="p-2.5"><Badge className={cn("text-[9px]", statusColor)}>{statusLabel}</Badge></td>
+                                <td className="p-2.5">{inv.due_date ? format(new Date(inv.due_date), 'MMM d, yyyy') : '—'}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            );
+          })()}
         </TabsContent>
       </Tabs>
 
