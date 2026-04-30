@@ -597,7 +597,7 @@ export default function StudentCourseView() {
       {/* ═══ TABS ═══ */}
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="w-full overflow-x-auto justify-start h-auto flex-nowrap sticky top-0 z-10 bg-background">
-          <TabsTrigger value="today" className="gap-1 shrink-0"><Video className="h-3.5 w-3.5" /> Today</TabsTrigger>
+          <TabsTrigger value="today" className="gap-1 shrink-0"><Video className="h-3.5 w-3.5" /> Overview</TabsTrigger>
           <TabsTrigger value="lessons" className="gap-1 shrink-0"><BookOpen className="h-3.5 w-3.5" /> Lessons</TabsTrigger>
           <TabsTrigger value="assignments" className="gap-1 shrink-0"><ClipboardList className="h-3.5 w-3.5" /> Assignments</TabsTrigger>
           <TabsTrigger value="announcements" className="gap-1 shrink-0 relative">
@@ -605,7 +605,12 @@ export default function StudentCourseView() {
             {hasUnreadAnnouncements && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-destructive" />}
           </TabsTrigger>
           <TabsTrigger value="class-chat" className="gap-1 shrink-0"><MessageSquare className="h-3.5 w-3.5" /> Class Chat</TabsTrigger>
-          <TabsTrigger value="progress" className="gap-1 shrink-0"><BarChart3 className="h-3.5 w-3.5" /> My Progress</TabsTrigger>
+          <TabsTrigger value="progress" className="gap-1 shrink-0"><BarChart3 className="h-3.5 w-3.5" /> Progress</TabsTrigger>
+          <TabsTrigger value="resources" className="gap-1 shrink-0"><FileText className="h-3.5 w-3.5" /> Resources</TabsTrigger>
+          <TabsTrigger value="recordings" className="gap-1 shrink-0"><PlayCircle className="h-3.5 w-3.5" /> Recordings</TabsTrigger>
+          <TabsTrigger value="results" className="gap-1 shrink-0"><GraduationCap className="h-3.5 w-3.5" /> Results</TabsTrigger>
+          <TabsTrigger value="certificate" className="gap-1 shrink-0"><Award className="h-3.5 w-3.5" /> Certificate</TabsTrigger>
+          <TabsTrigger value="fee" className="gap-1 shrink-0"><Receipt className="h-3.5 w-3.5" /> Fee</TabsTrigger>
         </TabsList>
 
         {/* ═══ TAB 1: TODAY ═══ */}
