@@ -133,6 +133,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/** @deprecated Use <RouteGuard moduleId="..."/>. Kept for one sprint during transition. */
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { activeRole, isLoading, profile } = useAuth();
 
@@ -153,6 +154,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/** @deprecated Use <RouteGuard moduleId="..."/>. Kept for one sprint during transition. */
 function AdminOrExaminerRoute({ children }: { children: React.ReactNode }) {
   const { activeRole, isLoading, profile } = useAuth();
 
@@ -173,6 +175,7 @@ function AdminOrExaminerRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/** @deprecated Use <RouteGuard moduleId="..."/>. Kept for one sprint during transition. */
 function AdminOrExaminerOrTeacherRoute({ children }: { children: React.ReactNode }) {
   const { activeRole, isLoading, profile } = useAuth();
 
@@ -193,6 +196,7 @@ function AdminOrExaminerOrTeacherRoute({ children }: { children: React.ReactNode
   return <>{children}</>;
 }
 
+/** @deprecated Use <RouteGuard moduleId="..."/>. Kept for one sprint during transition. */
 function AdminOrTeacherRoute({ children }: { children: React.ReactNode }) {
   const { activeRole, isLoading, profile } = useAuth();
 
@@ -217,6 +221,7 @@ function AdminOrTeacherRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/** @deprecated Use <RouteGuard moduleId="..."/>. Kept for one sprint during transition. */
 function TeacherOnlyRoute({ children }: { children: React.ReactNode }) {
   const { activeRole, isLoading, profile } = useAuth();
 
@@ -251,6 +256,7 @@ function DivisionModelGuard({ allowedModels, children }: { allowedModels: Divisi
   return <>{children}</>;
 }
 
+/** @deprecated Use <RouteGuard moduleId="..."/>. Kept for one sprint during transition. */
 function TeacherRoute({ children }: { children: React.ReactNode }) {
   const { activeRole, isLoading, profile } = useAuth();
 
