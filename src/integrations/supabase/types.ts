@@ -9248,6 +9248,22 @@ export type Database = {
         Returns: string[]
       }
       get_schema_overview: { Args: never; Returns: Json }
+      get_student_active_assignment_ids: {
+        Args: { _student_id: string }
+        Returns: string[]
+      }
+      get_student_class_ids: {
+        Args: { _student_id: string }
+        Returns: string[]
+      }
+      get_student_division_ids: {
+        Args: { _student_id: string }
+        Returns: string[]
+      }
+      get_student_enrolled_course_ids: {
+        Args: { _student_id: string }
+        Returns: string[]
+      }
       get_teacher_student_ids: {
         Args: { _teacher_id: string }
         Returns: string[]
