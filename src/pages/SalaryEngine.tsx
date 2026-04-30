@@ -541,7 +541,7 @@ export default function SalaryEngine() {
       toast({ title: 'Salary saved & confirmed' });
       queryClient.invalidateQueries({ queryKey: ['salary-payouts'] });
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => handleSupabaseError(e, 'save changes'),
   });
 
   const markPaid = useMutation({
@@ -594,7 +594,7 @@ export default function SalaryEngine() {
       toast({ title: 'Payment recorded' });
       queryClient.invalidateQueries({ queryKey: ['salary-payouts'] });
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => handleSupabaseError(e, 'save changes'),
   });
 
   const topUpPayment = useMutation({
@@ -626,7 +626,7 @@ export default function SalaryEngine() {
       toast({ title: 'Top-up payment recorded' });
       queryClient.invalidateQueries({ queryKey: ['salary-payouts'] });
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => handleSupabaseError(e, 'save changes'),
   });
 
   const updateProofs = useMutation({
@@ -645,7 +645,7 @@ export default function SalaryEngine() {
       toast({ title: 'Payment proofs updated' });
       queryClient.invalidateQueries({ queryKey: ['salary-payouts'] });
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => handleSupabaseError(e, 'save changes'),
   });
 
   const lockPayout = useMutation({
@@ -664,7 +664,7 @@ export default function SalaryEngine() {
       toast({ title: 'Payout locked' });
       queryClient.invalidateQueries({ queryKey: ['salary-payouts'] });
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => handleSupabaseError(e, 'save changes'),
   });
 
   const revertToDraft = useMutation({
@@ -705,7 +705,7 @@ export default function SalaryEngine() {
       setRevertReason('');
       setRevertOtherText('');
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => handleSupabaseError(e, 'save changes'),
   });
 
   const addLeaveEvent = useMutation({
@@ -727,7 +727,7 @@ export default function SalaryEngine() {
       setLeaveModalOpen(false);
       setLeaveForm({ teacher_id: '', leave_type: 'unpaid', start_date: '', end_date: '', reason: '' });
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => handleSupabaseError(e, 'save changes'),
   });
 
   const addAdjustment = useMutation({
@@ -753,7 +753,7 @@ export default function SalaryEngine() {
       setAdjustmentModalOpen(false);
       setAdjForm({ teacher_id: '', adjustment_type: 'bonus', amount: '', reason: '', mode: 'flat' });
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => handleSupabaseError(e, 'save changes'),
   });
 
   const bulkAdjustment = useMutation({
@@ -780,7 +780,7 @@ export default function SalaryEngine() {
       setBulkAddOpen(false);
       setBulkDeductOpen(false);
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => handleSupabaseError(e, 'save changes'),
   });
 
   // ── Helpers ──

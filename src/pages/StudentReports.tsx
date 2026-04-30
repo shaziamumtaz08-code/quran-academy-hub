@@ -303,7 +303,7 @@ export default function StudentReports() {
       setDeleteTarget(null);
     },
     onError: (error: any) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      handleSupabaseError(error, 'save changes');
     },
   });
 

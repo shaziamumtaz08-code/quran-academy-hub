@@ -248,7 +248,7 @@ export default function Assignments() {
       resetForm();
     },
     onError: (error: any) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      handleSupabaseError(error, 'save changes');
     },
   });
 
@@ -263,7 +263,7 @@ export default function Assignments() {
       toast({ title: 'Deleted', description: 'Assignment removed' });
     },
     onError: (error: any) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      handleSupabaseError(error, 'save changes');
     },
   });
 
@@ -289,7 +289,7 @@ export default function Assignments() {
       handleCancelEdit();
     },
     onError: (error: any) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      handleSupabaseError(error, 'save changes');
     },
   });
 
@@ -330,7 +330,7 @@ export default function Assignments() {
       setStatusChangeDialog(null);
     },
     onError: (error: any) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      handleSupabaseError(error, 'save changes');
     },
   });
 
@@ -380,7 +380,7 @@ export default function Assignments() {
       setReassignEffectiveDate('');
     },
     onError: (error: any) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      handleSupabaseError(error, 'save changes');
     },
   });
 
