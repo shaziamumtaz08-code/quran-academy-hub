@@ -18,6 +18,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useAuth } from '@/contexts/AuthContext';
 import { useDivision } from '@/contexts/DivisionContext';
 import { supabase } from '@/integrations/supabase/client';
+import { handleSupabaseError } from '@/lib/handleSupabaseError';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
@@ -982,7 +983,7 @@ export default function MonthlyPlanning() {
       if (error.message?.includes('duplicate')) {
         toast({ title: 'Error', description: 'A plan already exists for this student and month', variant: 'destructive' });
       } else {
-        toast({ title: 'Error', description: error.message || 'Failed to save plan', variant: 'destructive' });
+        handleSupabaseError(error, 'failed to save plan');
       }
     },
   });
@@ -1008,7 +1009,7 @@ export default function MonthlyPlanning() {
       queryClient.invalidateQueries({ queryKey: ['monthly-plans'] });
     },
     onError: (error) => {
-      toast({ title: 'Error', description: error.message || 'Failed to approve plan', variant: 'destructive' });
+      handleSupabaseError(error, 'failed to approve plan');
     },
   });
 
@@ -1034,7 +1035,7 @@ export default function MonthlyPlanning() {
       setSelectedPlanIds(new Set());
     },
     onError: (error) => {
-      toast({ title: 'Error', description: error.message || 'Failed to approve plans', variant: 'destructive' });
+      handleSupabaseError(error, 'failed to approve plans');
     },
   });
 
@@ -1056,7 +1057,7 @@ export default function MonthlyPlanning() {
       setSelectedPlanIds(new Set());
     },
     onError: (error) => {
-      toast({ title: 'Error', description: error.message || 'Failed to delete plan(s)', variant: 'destructive' });
+      handleSupabaseError(error, 'failed to delete plan(s)');
     },
   });
 

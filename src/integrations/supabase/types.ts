@@ -6063,6 +6063,33 @@ export type Database = {
         }
         Relationships: []
       }
+      route_hits: {
+        Row: {
+          division_id: string | null
+          hit_at: string
+          id: string
+          role: string
+          route: string
+          user_id: string | null
+        }
+        Insert: {
+          division_id?: string | null
+          hit_at?: string
+          id?: string
+          role: string
+          route: string
+          user_id?: string | null
+        }
+        Update: {
+          division_id?: string | null
+          hit_at?: string
+          id?: string
+          role?: string
+          route?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       rukus: {
         Row: {
           ayah_from: number

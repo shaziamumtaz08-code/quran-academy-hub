@@ -23,6 +23,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { handleSupabaseError } from '@/lib/handleSupabaseError';
 import { useDivision } from '@/contexts/DivisionContext';
 import { BulkAssignmentImportDialog } from '@/components/assignments/BulkAssignmentImportDialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -247,7 +248,7 @@ export default function Assignments() {
       resetForm();
     },
     onError: (error: any) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      handleSupabaseError(error, 'save changes');
     },
   });
 
@@ -262,7 +263,7 @@ export default function Assignments() {
       toast({ title: 'Deleted', description: 'Assignment removed' });
     },
     onError: (error: any) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      handleSupabaseError(error, 'save changes');
     },
   });
 
@@ -288,7 +289,7 @@ export default function Assignments() {
       handleCancelEdit();
     },
     onError: (error: any) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      handleSupabaseError(error, 'save changes');
     },
   });
 
@@ -329,7 +330,7 @@ export default function Assignments() {
       setStatusChangeDialog(null);
     },
     onError: (error: any) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      handleSupabaseError(error, 'save changes');
     },
   });
 
@@ -379,7 +380,7 @@ export default function Assignments() {
       setReassignEffectiveDate('');
     },
     onError: (error: any) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      handleSupabaseError(error, 'save changes');
     },
   });
 

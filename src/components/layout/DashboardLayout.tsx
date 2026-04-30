@@ -21,6 +21,8 @@ import {
   Wallet,
 } from "lucide-react";
 import { useAuth, type AppRole } from "@/contexts/AuthContext";
+import { useDivision } from "@/contexts/DivisionContext";
+import { logRouteHit } from "@/lib/telemetry";
 import { DivisionSwitcher } from "@/components/layout/DivisionSwitcher";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -284,12 +286,19 @@ function filterSectionsForRole(sections: DrawerSection[], role: AppRole | null) 
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { profile, isLoading, logout, activeRole, setActiveRole } = useAuth();
+  const { activeDivision } = useDivision();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [desktopCollapsed, setDesktopCollapsed] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
+
+  // Telemetry: log route hits (deduped, fire-and-forget)
+  useEffect(() => {
+    if (!activeRole) return;
+    void logRouteHit(activeRole, location.pathname, activeDivision?.id);
+  }, [activeRole, location.pathname, activeDivision?.id]);
 
   const sections = useMemo(() => filterSectionsForRole(buildDrawerSections(activeRole), activeRole), [activeRole]);
   const expandedStorageKey = expandedKeyForUser(profile?.id);

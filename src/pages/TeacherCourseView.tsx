@@ -804,7 +804,7 @@ export default function TeacherCourseView() {
               </Button>
             </CardContent>
           </Card>
-          {pastAnnouncements.length > 0 && (
+          {pastAnnouncements.length > 0 ? (
             <div className="space-y-2">
               <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Past Announcements</p>
               {pastAnnouncements.map(a => (
@@ -817,6 +817,8 @@ export default function TeacherCourseView() {
                 </Card>
               ))}
             </div>
+          ) : (
+            <Card><CardContent className="py-8 text-center text-sm text-muted-foreground"><Bell className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />No announcements yet</CardContent></Card>
           )}
         </TabsContent>
 

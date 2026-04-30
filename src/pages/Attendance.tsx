@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDivision } from '@/contexts/DivisionContext';
 import { supabase } from '@/integrations/supabase/client';
+import { handleSupabaseError } from '@/lib/handleSupabaseError';
 import { useToast } from '@/hooks/use-toast';
 import { format, startOfMonth, endOfMonth, parseISO, startOfWeek, endOfWeek, getDay, isAfter } from 'date-fns';
 import { SurahSearchSelect } from '@/components/attendance/SurahSearchSelect';
@@ -618,7 +619,7 @@ export default function Attendance() {
       setHolidayName('');
       setHolidayDate(format(new Date(), 'yyyy-MM-dd'));
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => handleSupabaseError(e, 'save changes'),
   });
 
   // Mark attendance mutation
@@ -797,7 +798,7 @@ export default function Attendance() {
       setEditingRecord(null);
     },
     onError: (error) => {
-      toast({ title: 'Error', description: error instanceof Error ? error.message : 'Failed to update', variant: 'destructive' });
+      handleSupabaseError(error, 'failed to update');
     },
   });
 
@@ -817,7 +818,7 @@ export default function Attendance() {
       setSelectedRecordIds(new Set());
     },
     onError: (error) => {
-      toast({ title: 'Error', description: error instanceof Error ? error.message : 'Failed to delete', variant: 'destructive' });
+      handleSupabaseError(error, 'failed to delete');
     },
   });
 
