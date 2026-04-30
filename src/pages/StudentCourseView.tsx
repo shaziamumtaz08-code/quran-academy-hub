@@ -440,6 +440,21 @@ export default function StudentCourseView() {
     enabled: !!courseId && !!user?.id && activeTab === 'results',
   });
 
+  // ─── Resources (Tab 7) ───
+  const { data: resources = [] } = useQuery({
+    queryKey: ['student-course-resources', courseId, user?.id],
+    queryFn: async () => {
+      const { data: ras } = await supabase.from('resource_assignments')
+        .select('resource_id, notes, course_id, resource:resources(id, title, type, url, folder, sub_folder)')
+        .or(`assigned_to.eq.${user!.id},course_id.eq.${courseId}`);
+      const seen = new Set<string>();
+      return (ras || [])
+        .map((r: any) => r.resource)
+        .filter((r: any) => r && !seen.has(r.id) && seen.add(r.id));
+    },
+    enabled: !!courseId && !!user?.id && activeTab === 'resources',
+  });
+
   // ─── Fee invoices (Tab 11) ───
   const { data: invoices = [] } = useQuery({
     queryKey: ['student-fees', user?.id],
