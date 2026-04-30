@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDivision } from '@/contexts/DivisionContext';
+import { can, AppRole } from '@/lib/accessMatrix';
 import {
   Plus, Search, ArrowLeft, ChevronDown, ChevronRight,
   Settings, BookOpen, Megaphone, Layers, GraduationCap, MessageSquare,
@@ -105,15 +106,17 @@ function getPeopleSidebar(isOneToOne?: boolean, role?: string | null): { title: 
       showSearch: false,
     };
   }
-  const isAdmin = role === 'super_admin' || role === 'admin' || role?.startsWith('admin_');
+  const r = (role || 'student') as AppRole;
+  const canStaff = can(r, 'user_management', 'view');
+  const canLeads = can(r, 'leads', 'view');
   return {
     title: 'People',
     subtitle: '',
     items: [
-      { label: 'Students', href: '/students' },
-      { label: 'Teachers', href: '/teachers' },
-      ...(isAdmin ? [{ label: 'Staff', href: '/user-management?mode=staff' }] : []),
-      ...(isOneToOne ? [{ label: 'Leads', href: '/leads', badge: 0, badgeType: 'alert' as const }] : []),
+      ...(can(r, 'students', 'view') ? [{ label: 'Students', href: '/students' }] : []),
+      ...(can(r, 'teachers', 'view') ? [{ label: 'Teachers', href: '/teachers' }] : []),
+      ...(canStaff ? [{ label: 'Staff', href: '/user-management?mode=staff' }] : []),
+      ...(isOneToOne && canLeads ? [{ label: 'Leads', href: '/leads', badge: 0, badgeType: 'alert' as const }] : []),
     ],
     showSearch: true,
   };
@@ -129,53 +132,49 @@ function getFinanceSidebar(isOneToOne?: boolean, role?: string | null): { title:
       ],
     };
   }
+  const r = (role || 'student') as AppRole;
   return {
     title: 'Finance',
     subtitle: '',
     items: [
-      { label: 'Overview', href: '/finance' },
-      { label: 'Fee Plans', href: '/finance?section=fee-setup' },
-      { label: 'Payments', href: '/finance?section=payments' },
-      ...(isOneToOne ? [
-        { label: 'Salaries', href: '/finance?section=salaries' },
-      ] : []),
-      ...(!isOneToOne ? [
-        { label: 'Teacher Payouts', href: '/finance?section=teacher-payouts' },
-      ] : []),
-      { label: 'Expenses', href: '/finance?section=expenses' },
-      ...(isOneToOne ? [
-        { label: 'Cash Advances', href: '/finance?section=advances' },
-      ] : []),
+      ...(can(r, 'finance', 'view') ? [{ label: 'Overview', href: '/finance' }] : []),
+      ...(can(r, 'finance_setup', 'view') ? [{ label: 'Fee Plans', href: '/finance?section=fee-setup' }] : []),
+      ...(can(r, 'finance', 'view') ? [{ label: 'Payments', href: '/finance?section=payments' }] : []),
+      ...(isOneToOne && can(r, 'salary', 'view') ? [{ label: 'Salaries', href: '/finance?section=salaries' }] : []),
+      ...(!isOneToOne && can(r, 'staff_salaries', 'view') ? [{ label: 'Teacher Payouts', href: '/finance?section=teacher-payouts' }] : []),
+      ...(can(r, 'expenses', 'view') ? [{ label: 'Expenses', href: '/finance?section=expenses' }] : []),
+      ...(isOneToOne && can(r, 'cash_advances', 'view') ? [{ label: 'Cash Advances', href: '/finance?section=advances' }] : []),
     ],
   };
 }
 
 function getCommunicationSidebar(role?: string | null): { title: string; subtitle: string; items: SidebarNavItem[] } {
-  const isAdmin = role === 'super_admin' || role === 'admin' || role?.startsWith('admin_');
+  const r = (role || 'student') as AppRole;
   const isStudentOrTeacher = role === 'student' || role === 'teacher';
   return {
     title: 'Communication',
     subtitle: '',
     items: [
-      { label: 'Group Chat', href: '/chat' },
+      ...(can(r, 'chat', 'view') ? [{ label: 'Group Chat', href: '/chat' }] : []),
       ...(isStudentOrTeacher ? [{ label: 'Direct Messages', href: '/chat?filter=dm' }] : []),
-      ...(isAdmin ? [{ label: 'WhatsApp Inbox', href: '/whatsapp' }] : []),
-      { label: 'Notifications', href: '/notifications' },
-      ...(isAdmin ? [{ label: 'Zoom', href: '/zoom-management' }] : []),
-      { label: 'Work Hub', href: '/hub' },
+      ...(can(r, 'whatsapp', 'view') ? [{ label: 'WhatsApp Inbox', href: '/whatsapp' }] : []),
+      ...(can(r, 'notifications', 'view') ? [{ label: 'Notifications', href: '/notifications' }] : []),
+      ...(can(r, 'zoom_management', 'view') ? [{ label: 'Zoom', href: '/zoom-management' }] : []),
+      ...(can(r, 'work_hub', 'view') ? [{ label: 'Work Hub', href: '/hub' }] : []),
     ],
   };
 }
 
-function getSettingsSidebar(): { title: string; subtitle: string; items: SidebarNavItem[] } {
+function getSettingsSidebar(role?: string | null): { title: string; subtitle: string; items: SidebarNavItem[] } {
+  const r = (role || 'student') as AppRole;
   return {
     title: 'Settings',
     subtitle: '',
     items: [
-      { label: 'Organization', href: '/organization-settings' },
-      { label: 'Finance Setup', href: '/finance-setup' },
-      { label: 'Identity', href: '/identity' },
-      { label: 'Integrity Audit', href: '/integrity-audit' },
+      ...(can(r, 'org_settings', 'view') ? [{ label: 'Organization', href: '/organization-settings' }] : []),
+      ...(can(r, 'finance_setup', 'view') ? [{ label: 'Finance Setup', href: '/finance-setup' }] : []),
+      ...(can(r, 'identity', 'view') ? [{ label: 'Identity', href: '/identity' }] : []),
+      ...(can(r, 'integrity_audit', 'view') ? [{ label: 'Integrity Audit', href: '/integrity-audit' }] : []),
     ],
   };
 }
@@ -228,7 +227,7 @@ function getSidebarForRoute(pathname: string, isOneToOne?: boolean, role?: strin
     return getCommunicationSidebar(role);
   }
   if (pathname.startsWith('/settings') || pathname.startsWith('/organization') || pathname.startsWith('/finance-setup') || pathname.startsWith('/identity') || pathname.startsWith('/integrity')) {
-    return getSettingsSidebar();
+    return getSettingsSidebar(role);
   }
   if (pathname.startsWith('/reports') || pathname.startsWith('/student-reports') || pathname.startsWith('/kpi') || pathname.startsWith('/report-card')) {
     return getReportsSidebar(role);
