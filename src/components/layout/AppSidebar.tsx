@@ -216,13 +216,13 @@ function getSidebarForRoute(pathname: string, isOneToOne?: boolean, role?: strin
   }
   // Students should never see Teaching sidebar
   if (!isStudent && (pathname.startsWith('/teaching') || pathname.startsWith('/courses') || pathname.startsWith('/assignments') || pathname.startsWith('/subjects') || pathname.startsWith('/attendance') || pathname.startsWith('/schedules') || pathname.startsWith('/monthly-planning'))) {
-    return getTeachingSidebar(0, isOneToOne);
+    return getTeachingSidebar(0, isOneToOne, role);
   }
   if (pathname.startsWith('/people') || pathname.startsWith('/students') || pathname.startsWith('/teachers') || pathname.startsWith('/user-management') || pathname.startsWith('/leads')) {
     return getPeopleSidebar(isOneToOne, role);
   }
   if (pathname.startsWith('/finance') || pathname.startsWith('/payments') || pathname.startsWith('/salary') || pathname.startsWith('/expenses') || pathname.startsWith('/cash-advances') || pathname.startsWith('/staff-salaries')) {
-    return getFinanceSidebar(isOneToOne);
+    return getFinanceSidebar(isOneToOne, role);
   }
   if (!isStudent && (pathname.startsWith('/communication') || pathname.startsWith('/chat') || pathname.startsWith('/whatsapp') || pathname.startsWith('/notifications') || pathname.startsWith('/zoom') || pathname.startsWith('/hub'))) {
     return getCommunicationSidebar(role);
@@ -231,7 +231,7 @@ function getSidebarForRoute(pathname: string, isOneToOne?: boolean, role?: strin
     return getSettingsSidebar();
   }
   if (pathname.startsWith('/reports') || pathname.startsWith('/student-reports') || pathname.startsWith('/kpi') || pathname.startsWith('/report-card')) {
-    return getReportsSidebar();
+    return getReportsSidebar(role);
   }
   return getHomeSidebar(isOneToOne, role, activeModelType);
 }
