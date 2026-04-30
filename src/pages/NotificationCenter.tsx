@@ -71,6 +71,7 @@ export default function NotificationCenter() {
       if (error) throw error;
       return data;
     },
+    enabled: isAdmin,
   });
 
   // Fetch recent events (admin view)
@@ -85,6 +86,7 @@ export default function NotificationCenter() {
       if (error) throw error;
       return data;
     },
+    enabled: isAdmin,
   });
 
   // Mark notification as read
