@@ -356,7 +356,7 @@ function AppRoutes() {
       <Route path="/resources" element={<ProtectedRoute><DashboardLayout><Resources /></DashboardLayout></ProtectedRoute>} />
       <Route path="/leads" element={<ProtectedRoute><AdminRoute><LeadsPipeline /></AdminRoute></ProtectedRoute>} />
       <Route path="/identity" element={<ProtectedRoute><AdminRoute><IdentityResolution /></AdminRoute></ProtectedRoute>} />
-      <Route path="/notifications" element={<ProtectedRoute><AdminRoute><NotificationCenter /></AdminRoute></ProtectedRoute>} />
+      <Route path="/notifications" element={<ProtectedRoute><NotificationCenter /></ProtectedRoute>} />
       <Route path="/hub" element={<Navigate to="/work-hub" replace />} />
       <Route path="/workhub" element={<Navigate to="/work-hub" replace />} />
       <Route path="/work-hub" element={<ProtectedRoute><WorkHub /></ProtectedRoute>} />
