@@ -15,6 +15,8 @@ import { TeacherNotificationsSection } from "./teacher/TeacherNotificationsSecti
 import { TeacherAttendanceComments } from "./teacher/TeacherAttendanceComments";
 import { RescheduledTodayBanner } from "./teacher/RescheduledTodayBanner";
 import { AiInsightsWidget } from "./AiInsightsWidget";
+import { TeacherGroupAcademyWidgets } from "./teacher/TeacherGroupAcademyWidgets";
+import { useDivision } from "@/contexts/DivisionContext";
 
 export function TeacherDashboard() {
   const { user, profile } = useAuth();
