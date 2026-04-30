@@ -26,7 +26,7 @@ function getMobileTabs(role: AppRole | null): MobileTabItem[] {
       { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
       { label: 'Classes', href: '/teaching', icon: BookOpen },
       { label: 'Attendance', href: '/attendance', icon: ClipboardCheck },
-      { label: 'Plan', href: '/monthly-planning', icon: CalendarDays },
+      { label: 'Schedule', href: '/my-schedule', icon: CalendarDays },
       { label: 'Comms', href: '/communication', icon: MessageSquare },
     ];
   }

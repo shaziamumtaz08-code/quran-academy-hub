@@ -80,6 +80,7 @@ import UserConnections from "./pages/UserConnections";
 import TeachingLanding from "./pages/TeachingLanding";
 import PeopleLanding from "./pages/PeopleLanding";
 import FinanceLanding from "./pages/FinanceLanding";
+import MySchedule from "./pages/MySchedule";
 import CommunicationLanding from "./pages/CommunicationLanding";
 import SettingsLanding from "./pages/SettingsLanding";
 import { isStudentRouteAllowed } from "@/lib/studentRoutes";
@@ -369,6 +370,7 @@ function AppRoutes() {
       <Route path="/payments" element={<Navigate to="/finance?view=payments" replace />} />
       <Route path="/kpi" element={<ProtectedRoute><AdminRoute><KPI /></AdminRoute></ProtectedRoute>} />
       <Route path="/schedules" element={<ProtectedRoute><AdminRoute><Schedules /></AdminRoute></ProtectedRoute>} />
+      <Route path="/my-schedule" element={<ProtectedRoute><TeacherOnlyRoute><DashboardLayout><MySchedule /></DashboardLayout></TeacherOnlyRoute></ProtectedRoute>} />
       <Route path="/zoom-management" element={<ProtectedRoute><AdminRoute><ZoomManagement /></AdminRoute></ProtectedRoute>} />
       <Route path="/integrity-audit" element={<ProtectedRoute><AdminRoute><IntegrityAudit /></AdminRoute></ProtectedRoute>} />
       <Route path="/courses" element={<ProtectedRoute><AdminRoute><Courses /></AdminRoute></ProtectedRoute>} />
