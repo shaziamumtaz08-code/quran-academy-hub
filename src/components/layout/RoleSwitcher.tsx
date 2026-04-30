@@ -25,6 +25,7 @@ const ROLE_HOME: Record<AppRole, string> = {
 const ROLE_LABELS: Record<AppRole, string> = {
   super_admin: 'Super Admin',
   admin: 'Admin',
+  admin_division: 'Division Admin',
   admin_admissions: 'Admissions',
   admin_fees: 'Fees Admin',
   admin_academic: 'Academic',
