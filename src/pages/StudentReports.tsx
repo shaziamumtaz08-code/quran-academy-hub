@@ -14,6 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Eye, Filter, FileText, AlertCircle, X, TrendingUp, Trash2, ArrowUpDown, ArrowUp, ArrowDown, RotateCcw, Loader2, Pencil } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { handleSupabaseError } from '@/lib/handleSupabaseError';
 import { TemplateStructure, StoredCriteriaEntry } from '@/types/reportCard';
 import { ReportCardCertificate } from '@/components/reports/ReportCardCertificate';
 import { useToast } from '@/hooks/use-toast';
