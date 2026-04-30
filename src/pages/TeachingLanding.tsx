@@ -4,8 +4,10 @@ import { format, startOfWeek, endOfWeek } from 'date-fns';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { PageShell } from '@/components/layout/PageShell';
 import { Skeleton } from '@/components/ui/skeleton';
+import TeacherTeachingLanding from '@/components/teacher/TeacherTeachingLanding';
 
 const Attendance = lazy(() => import('./Attendance'));
 const Assignments = lazy(() => import('./Assignments'));
@@ -29,10 +31,19 @@ const views = [
 
 export default function TeachingLanding() {
   const { activeDivision } = useDivision();
+  const { activeRole } = useAuth();
   const [searchParams] = useSearchParams();
   const divisionId = activeDivision?.id;
   const requested = searchParams.get('view');
   const activeView = views.some((item) => item.value === requested) ? requested! : null;
+
+  if (activeRole === 'teacher') {
+    return (
+      <PageShell title="Teaching" description="Your classes, schedule, and planning.">
+        <TeacherTeachingLanding />
+      </PageShell>
+    );
+  }
 
   useQuery({
     queryKey: ['teaching-landing-counts', divisionId],

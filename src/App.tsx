@@ -5,7 +5,7 @@ import { InstallBanner } from "@/components/pwa/InstallBanner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import { DivisionProvider } from "@/contexts/DivisionContext";
+import { DivisionProvider, useDivision } from "@/contexts/DivisionContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -215,6 +215,40 @@ function AdminOrTeacherRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function TeacherOnlyRoute({ children }: { children: React.ReactNode }) {
+  const { activeRole, isLoading, profile } = useAuth();
+
+  if (isLoading || (profile && !activeRole)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+      </div>
+    );
+  }
+
+  if (activeRole !== 'teacher' && activeRole !== 'examiner') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+type DivisionModel = 'one_to_one' | 'group' | 'recorded';
+function DivisionModelGuard({ allowedModels, children }: { allowedModels: DivisionModel[]; children: React.ReactNode }) {
+  const { activeDivision, isLoading } = useDivision();
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+      </div>
+    );
+  }
+  if (!activeDivision || !allowedModels.includes(activeDivision.model_type as DivisionModel)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <>{children}</>;
+}
+
 function TeacherRoute({ children }: { children: React.ReactNode }) {
   const { activeRole, isLoading, profile } = useAuth();
 
@@ -297,24 +331,24 @@ function AppRoutes() {
       } />
 
       <Route path="/admin" element={<ProtectedRoute><AdminRoute><AdminCommandCenter /></AdminRoute></ProtectedRoute>} />
-      <Route path="/teacher" element={<ProtectedRoute><TeacherRoute><TeacherNazraDashboard /></TeacherRoute></ProtectedRoute>} />
+      <Route path="/teacher" element={<ProtectedRoute><TeacherOnlyRoute><DivisionModelGuard allowedModels={['one_to_one']}><TeacherNazraDashboard /></DivisionModelGuard></TeacherOnlyRoute></ProtectedRoute>} />
 
       <Route path="/teaching" element={<ProtectedRoute><NonStudentRoute><DashboardLayout><TeachingLanding /></DashboardLayout></NonStudentRoute></ProtectedRoute>} />
       <Route path="/teaching-os" element={<ProtectedRoute><NonStudentRoute><LanguageProvider><TeachingOS /></LanguageProvider></NonStudentRoute></ProtectedRoute>} />
-      <Route path="/teaching-os/outline" element={<ProtectedRoute><NonStudentRoute><LanguageProvider><TeachingOSOutline /></LanguageProvider></NonStudentRoute></ProtectedRoute>} />
-      <Route path="/teaching-os/planner" element={<ProtectedRoute><NonStudentRoute><LanguageProvider><TeachingOSPlanner /></LanguageProvider></NonStudentRoute></ProtectedRoute>} />
-      <Route path="/teaching-os/dayboard" element={<ProtectedRoute><NonStudentRoute><LanguageProvider><TeachingOSDayBoard /></LanguageProvider></NonStudentRoute></ProtectedRoute>} />
-      <Route path="/teaching-os/dayboard/live" element={<ProtectedRoute><NonStudentRoute><LanguageProvider><TeachingOSDayBoard /></LanguageProvider></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/teaching-os/outline" element={<ProtectedRoute><NonStudentRoute><DivisionModelGuard allowedModels={['group','recorded']}><LanguageProvider><TeachingOSOutline /></LanguageProvider></DivisionModelGuard></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/teaching-os/planner" element={<ProtectedRoute><NonStudentRoute><DivisionModelGuard allowedModels={['group','recorded']}><LanguageProvider><TeachingOSPlanner /></LanguageProvider></DivisionModelGuard></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/teaching-os/dayboard" element={<ProtectedRoute><NonStudentRoute><DivisionModelGuard allowedModels={['group','recorded']}><LanguageProvider><TeachingOSDayBoard /></LanguageProvider></DivisionModelGuard></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/teaching-os/dayboard/live" element={<ProtectedRoute><NonStudentRoute><DivisionModelGuard allowedModels={['group','recorded']}><LanguageProvider><TeachingOSDayBoard /></LanguageProvider></DivisionModelGuard></NonStudentRoute></ProtectedRoute>} />
       <Route path="/teaching-os/student-view" element={<LanguageProvider><TeachingOSStudentView /></LanguageProvider>} />
-      <Route path="/teaching-os/content-kit" element={<ProtectedRoute><NonStudentRoute><LanguageProvider><TeachingOSContentKit /></LanguageProvider></NonStudentRoute></ProtectedRoute>} />
-      <Route path="/teaching-os/assessment" element={<ProtectedRoute><NonStudentRoute><LanguageProvider><TeachingOSAssessment /></LanguageProvider></NonStudentRoute></ProtectedRoute>} />
-      <Route path="/teaching-os/video" element={<ProtectedRoute><NonStudentRoute><LanguageProvider><TeachingOSVideo /></LanguageProvider></NonStudentRoute></ProtectedRoute>} />
-      <Route path="/teaching-os/speaking-tutor" element={<ProtectedRoute><NonStudentRoute><LanguageProvider><TeachingOSSpeakingTutor /></LanguageProvider></NonStudentRoute></ProtectedRoute>} />
-      <Route path="/teaching-os/analytics" element={<ProtectedRoute><NonStudentRoute><LanguageProvider><TeachingOSAnalytics /></LanguageProvider></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/teaching-os/content-kit" element={<ProtectedRoute><NonStudentRoute><DivisionModelGuard allowedModels={['group','recorded']}><LanguageProvider><TeachingOSContentKit /></LanguageProvider></DivisionModelGuard></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/teaching-os/assessment" element={<ProtectedRoute><NonStudentRoute><DivisionModelGuard allowedModels={['group','recorded']}><LanguageProvider><TeachingOSAssessment /></LanguageProvider></DivisionModelGuard></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/teaching-os/video" element={<ProtectedRoute><NonStudentRoute><DivisionModelGuard allowedModels={['group','recorded']}><LanguageProvider><TeachingOSVideo /></LanguageProvider></DivisionModelGuard></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/teaching-os/speaking-tutor" element={<ProtectedRoute><NonStudentRoute><DivisionModelGuard allowedModels={['group','recorded']}><LanguageProvider><TeachingOSSpeakingTutor /></LanguageProvider></DivisionModelGuard></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/teaching-os/analytics" element={<ProtectedRoute><NonStudentRoute><DivisionModelGuard allowedModels={['group','recorded']}><LanguageProvider><TeachingOSAnalytics /></LanguageProvider></DivisionModelGuard></NonStudentRoute></ProtectedRoute>} />
       <Route path="/parent" element={<ProtectedRoute><ParentDashboard /></ProtectedRoute>} />
       <Route path="/parent/child/:studentId" element={<ProtectedRoute><ParentDashboard /></ProtectedRoute>} />
       <Route path="/people" element={<ProtectedRoute><AdminRoute><DashboardLayout><PeopleLanding /></DashboardLayout></AdminRoute></ProtectedRoute>} />
-      <Route path="/finance" element={<ProtectedRoute><NonStudentRoute><DashboardLayout><FinanceLanding /></DashboardLayout></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/finance" element={<ProtectedRoute><AdminRoute><DashboardLayout><FinanceLanding /></DashboardLayout></AdminRoute></ProtectedRoute>} />
       <Route path="/reports-hub" element={<Navigate to="/reports?view=executive" replace />} />
       <Route path="/my-dashboard" element={<Navigate to="/dashboard" replace />} />
       <Route path="/communication" element={<ProtectedRoute><DashboardLayout><CommunicationLanding /></DashboardLayout></ProtectedRoute>} />
@@ -323,7 +357,7 @@ function AppRoutes() {
       <Route path="/dashboard" element={<ProtectedRoute><DashboardWrapper /></ProtectedRoute>} />
       <Route path="/my-courses" element={<ProtectedRoute><DashboardLayout><MyCourses /></DashboardLayout></ProtectedRoute>} />
       <Route path="/my-courses/:courseId" element={<ProtectedRoute><DashboardLayout><StudentCourseView /></DashboardLayout></ProtectedRoute>} />
-      <Route path="/my-teaching/:courseId" element={<ProtectedRoute><DashboardLayout><TeacherCourseView /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/my-teaching/:courseId" element={<ProtectedRoute><TeacherOnlyRoute><DashboardLayout><TeacherCourseView /></DashboardLayout></TeacherOnlyRoute></ProtectedRoute>} />
       <Route path="/user-management" element={<ProtectedRoute><AdminRoute><UserManagement /></AdminRoute></ProtectedRoute>} />
       <Route path="/assignments" element={<ProtectedRoute><NonStudentRoute><Assignments /></NonStudentRoute></ProtectedRoute>} />
       <Route path="/subjects" element={<ProtectedRoute><AdminRoute><Subjects /></AdminRoute></ProtectedRoute>} />
@@ -331,9 +365,9 @@ function AppRoutes() {
       <Route path="/students" element={<ProtectedRoute><NonStudentRoute><Students /></NonStudentRoute></ProtectedRoute>} />
       <Route path="/attendance" element={<ProtectedRoute><NonStudentRoute><Attendance /></NonStudentRoute></ProtectedRoute>} />
       <Route path="/lessons" element={<ProtectedRoute><NonStudentRoute><Lessons /></NonStudentRoute></ProtectedRoute>} />
-      <Route path="/reports" element={<ProtectedRoute><NonStudentRoute><DashboardLayout><Reports /></DashboardLayout></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/reports" element={<ProtectedRoute><AdminRoute><DashboardLayout><Reports /></DashboardLayout></AdminRoute></ProtectedRoute>} />
       <Route path="/payments" element={<Navigate to="/finance?view=payments" replace />} />
-      <Route path="/kpi" element={<ProtectedRoute><NonStudentRoute><KPI /></NonStudentRoute></ProtectedRoute>} />
+      <Route path="/kpi" element={<ProtectedRoute><AdminRoute><KPI /></AdminRoute></ProtectedRoute>} />
       <Route path="/schedules" element={<ProtectedRoute><AdminRoute><Schedules /></AdminRoute></ProtectedRoute>} />
       <Route path="/zoom-management" element={<ProtectedRoute><AdminRoute><ZoomManagement /></AdminRoute></ProtectedRoute>} />
       <Route path="/integrity-audit" element={<ProtectedRoute><AdminRoute><IntegrityAudit /></AdminRoute></ProtectedRoute>} />
