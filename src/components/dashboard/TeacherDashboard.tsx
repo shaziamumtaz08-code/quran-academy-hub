@@ -20,6 +20,9 @@ import { useDivision } from "@/contexts/DivisionContext";
 
 export function TeacherDashboard() {
   const { user, profile } = useAuth();
+  const { activeDivision } = useDivision();
+  const modelType = (activeDivision?.model_type as string) || null;
+  const isOneToOne = modelType !== 'group' && modelType !== 'recorded';
   const [islamicDate, setIslamicDate] = useState<IslamicDateData | null>(null);
   const [timezone, setTimezone] = useState<string>("Asia/Karachi");
   const firstName = profile?.full_name?.split(" ")[0] || "Teacher";
