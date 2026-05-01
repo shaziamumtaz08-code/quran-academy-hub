@@ -68,10 +68,10 @@ function pct(profile: any): number {
 }
 
 export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props) {
-  const { isSuperAdmin, user: currentUser } = useAuth();
+  const { isSuperAdmin, user: currentUser, activeRole } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
-  const [tab, setTab] = useState('personal');
+  const [tab, setTab] = useState<TabKey>('personal');
   const [form, setForm] = useState<Record<string, any>>({});
   const [uploading, setUploading] = useState<'avatar' | 'gov_id' | null>(null);
   const [guardianDialogOpen, setGuardianDialogOpen] = useState(false);
