@@ -315,6 +315,32 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
   const initials = (form.full_name || 'U').split(' ').map((s: string) => s[0]).slice(0, 2).join('').toUpperCase();
   const completion = pct(form);
 
+  // Per-tab access gating
+  const ALL_TABS: { key: TabKey; label: string; Icon: any }[] = [
+    { key: 'personal',  label: 'Personal',  Icon: User },
+    { key: 'contact',   label: 'Contact',   Icon: Mail },
+    { key: 'identity',  label: 'Identity',  Icon: Shield },
+    { key: 'guardian',  label: 'Guardian',  Icon: UsersIcon },
+    { key: 'academic',  label: 'Academic',  Icon: GraduationCap },
+    { key: 'documents', label: 'Docs',      Icon: FileText },
+    { key: 'activity',  label: 'Activity',  Icon: Activity },
+    { key: 'password',  label: 'Password',  Icon: KeyRound },
+  ];
+  const visibleTabs = ALL_TABS.filter(t => tabAccessFor(activeRole, t.key) !== 'none');
+  const currentTabAccess = tabAccessFor(activeRole, tab);
+  const canSaveCurrentTab = currentTabAccess === 'write';
+
+  // If current tab not visible, snap to first visible
+  useEffect(() => {
+    if (!visibleTabs.find(t => t.key === tab) && visibleTabs.length > 0) {
+      setTab(visibleTabs[0].key);
+    }
+  }, [activeRole, visibleTabs.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Shared-email detection for guardian banner (parent and student profiles share email)
+  const guardianSharesEmail = !!(parentLink?.profile?.email && profile?.email &&
+    parentLink.profile.email.trim().toLowerCase() === profile.email.trim().toLowerCase());
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-[80vw] sm:w-[80vw] overflow-y-auto p-0">
