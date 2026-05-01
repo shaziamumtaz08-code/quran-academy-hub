@@ -89,6 +89,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { BulkUserImportDialog } from '@/components/users/BulkUserImportDialog';
 import { ExportUsersDialog } from '@/components/users/ExportUsersDialog';
 import { HolisticUserProfileDrawer } from '@/components/users/HolisticUserProfileDrawer';
+import { AssignRoleDialog } from '@/components/users/AssignRoleDialog';
 import { AuthAuditTab } from '@/components/admin/AuthAuditTab';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Country, State, City, ICountry, IState, ICity } from 'country-state-city';
@@ -300,6 +301,8 @@ export default function UserManagement() {
   const [newUserParentExisting, setNewUserParentExisting] = useState(false);
   const [emailExistsCheck, setEmailExistsCheck] = useState<{ id: string; full_name: string | null } | null>(null);
   const [emailChecking, setEmailChecking] = useState(false);
+  const [assignRoleUser, setAssignRoleUser] = useState<UserWithRoles | null>(null);
+  const [showNoRoleOnly, setShowNoRoleOnly] = useState(false);
 
   // View/Edit dialog states
   const [isEditMode, setIsEditMode] = useState(false);
@@ -640,7 +643,7 @@ export default function UserManagement() {
       email: string;
       password?: string;
       fullName: string;
-      role: AppRole;
+      role?: AppRole;
       whatsapp?: string;
       gender?: 'male' | 'female';
       country?: string;
@@ -1044,6 +1047,7 @@ export default function UserManagement() {
   // Split into matched (in scope division) vs unassigned (no memberships at all).
   // Global-role users (admin/super_admin/etc.) are always matched.
   const filteredUsers = (filteredAll || []).filter(user => {
+    if (showNoRoleOnly) return (user.roles?.length ?? 0) === 0;
     if (!effectiveDivisionId) return true;
     const memberships = divMembershipMap?.get(user.id) || [];
     if (memberships.some(d => d.divisionId === effectiveDivisionId)) return true;
@@ -1059,6 +1063,23 @@ export default function UserManagement() {
     const hasGlobalRole = (user.roles || []).some(r => GLOBAL_ROLES.includes(r));
     return !hasGlobalRole; // global-role users without context already counted as matched
   });
+
+  // Users with NO role assigned at all (critical)
+  const noRoleUsers = useMemo(
+    () => (users || []).filter(u => !u.archived_at && (u.roles?.length ?? 0) === 0),
+    [users]
+  );
+
+  // admin_division users with no division assigned (informational)
+  const adminDivWithoutDivision = useMemo(
+    () => (users || []).filter(u => {
+      if (u.archived_at) return false;
+      if (!(u.roles || []).includes('admin_division')) return false;
+      const memberships = divMembershipMap?.get(u.id) || [];
+      return memberships.length === 0;
+    }),
+    [users, divMembershipMap]
+  );
 
   const hasActiveFilters = !!filterCountry || !!filterCity || !!filterRole || !!filterDivision || showArchived;
 
@@ -1268,285 +1289,174 @@ export default function UserManagement() {
                           </Button>
                         </div>
                       </div>
-                    ) : (
-                      <>
-                        {/* Row 2: Password | Role */}
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1.5">
-                            <Label htmlFor="password" className="text-xs">Password (optional, blank = invite)</Label>
-                            <div className="relative">
-                              <Input
-                                id="password"
-                                type={showNewUserPassword ? 'text' : 'password'}
-                                value={newUserPassword}
-                                onChange={(e) => setNewUserPassword(e.target.value)}
-                                placeholder="Min 6 characters"
-                                className="h-9 pr-9"
-                              />
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="absolute right-0 top-0 h-full px-2 hover:bg-transparent"
-                                onClick={() => setShowNewUserPassword(!showNewUserPassword)}
-                              >
-                                {showNewUserPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                              </Button>
-                            </div>
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label htmlFor="role" className="text-xs">Role *</Label>
-                            <Select value={newUserRole} onValueChange={(v) => setNewUserRole(v as AppRole)}>
-                              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="student">Student</SelectItem>
-                                <SelectItem value="teacher">Teacher</SelectItem>
-                                <SelectItem value="examiner">Examiner</SelectItem>
-                                <SelectItem value="parent">Parent</SelectItem>
-                                <SelectItem value="admin_division">Division Admin</SelectItem>
-                                {isSuperAdmin && <SelectItem value="super_admin">Super Admin</SelectItem>}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
+                     ) : (
+                       <>
+                         {/* Row 2: Password | Phone */}
+                         <div className="grid grid-cols-2 gap-3">
+                           <div className="space-y-1.5">
+                             <Label htmlFor="password" className="text-xs">Password (optional, blank = invite)</Label>
+                             <div className="relative">
+                               <Input
+                                 id="password"
+                                 type={showNewUserPassword ? 'text' : 'password'}
+                                 value={newUserPassword}
+                                 onChange={(e) => setNewUserPassword(e.target.value)}
+                                 placeholder="Min 6 characters"
+                                 className="h-9 pr-9"
+                               />
+                               <Button
+                                 type="button"
+                                 variant="ghost"
+                                 size="sm"
+                                 className="absolute right-0 top-0 h-full px-2 hover:bg-transparent"
+                                 onClick={() => setShowNewUserPassword(!showNewUserPassword)}
+                               >
+                                 {showNewUserPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                               </Button>
+                             </div>
+                           </div>
+                           <div className="space-y-1.5">
+                             <Label className="text-xs">Phone (E.164)</Label>
+                             <Input
+                               value={newUserWhatsapp}
+                               onChange={(e) => setNewUserWhatsapp(e.target.value)}
+                               placeholder="+1234567890"
+                               className="h-9"
+                             />
+                           </div>
+                         </div>
 
-                        {newUserRole === 'admin_division' && (
-                          <p className="text-[11px] text-muted-foreground">
-                            ℹ️ Division Admin has full rights scoped to the selected division only.
-                          </p>
-                        )}
+                         {/* Row 3: Gender | DOB | Country */}
+                         <div className="grid grid-cols-3 gap-3">
+                           <div className="space-y-1.5">
+                             <Label className="text-xs">Gender</Label>
+                             <Select value={newUserGender} onValueChange={(v) => setNewUserGender(v as 'male' | 'female' | '')}>
+                               <SelectTrigger className="h-9"><SelectValue placeholder="Select" /></SelectTrigger>
+                               <SelectContent>
+                                 <SelectItem value="male">Male</SelectItem>
+                                 <SelectItem value="female">Female</SelectItem>
+                               </SelectContent>
+                             </Select>
+                           </div>
+                           <div className="space-y-1.5">
+                             <Label className="text-xs">Date of Birth</Label>
+                             <Input
+                               type="date"
+                               value={newUserDob}
+                               onChange={(e) => setNewUserDob(e.target.value)}
+                               className="h-9"
+                             />
+                           </div>
+                           <div className="space-y-1.5">
+                             <Label className="text-xs">Country</Label>
+                             <Select
+                               value={newUserCountry}
+                               onValueChange={(v) => {
+                                 setNewUserCountry(v);
+                                 setNewUserCity('');
+                                 const name = getCountryName(v).toLowerCase();
+                                 const tzMap: Record<string, string> = {
+                                   'pakistan': 'Asia/Karachi',
+                                   'united arab emirates': 'Asia/Dubai',
+                                   'saudi arabia': 'Asia/Riyadh',
+                                   'united kingdom': 'Europe/London',
+                                   'united states': 'America/New_York',
+                                   'australia': 'Australia/Sydney',
+                                   'qatar': 'Asia/Qatar',
+                                   'belgium': 'Europe/Brussels',
+                                   'canada': 'America/Toronto',
+                                 };
+                                 if (tzMap[name]) setNewUserTimezone(tzMap[name]);
+                               }}
+                             >
+                               <SelectTrigger className="h-9"><SelectValue placeholder="Select country" /></SelectTrigger>
+                               <SelectContent className="max-h-60">
+                                 {allCountries.map((c) => (
+                                   <SelectItem key={c.isoCode} value={c.isoCode}>{c.name}</SelectItem>
+                                 ))}
+                               </SelectContent>
+                             </Select>
+                           </div>
+                         </div>
 
-                        {/* Row 3: Division | Branch */}
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1.5">
-                            <Label className="text-xs">Division {newUserRole === 'admin_division' && '*'}</Label>
-                            <Select value={newUserDivisionId} onValueChange={setNewUserDivisionId}>
-                              <SelectTrigger className="h-9"><SelectValue placeholder="Select division" /></SelectTrigger>
-                              <SelectContent>
-                                {allDivisions.map((d) => (
-                                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label className="text-xs">Branch {newUserRole === 'admin_division' && '*'}</Label>
-                            <Select value={newUserBranchId} onValueChange={setNewUserBranchId}>
-                              <SelectTrigger className="h-9"><SelectValue placeholder="Select branch" /></SelectTrigger>
-                              <SelectContent>
-                                {branches.map((b) => (
-                                  <SelectItem key={b.id} value={b.id}>{b.name}{b.code ? ` (${b.code})` : ''}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
+                         {/* Row 4: City | Timezone */}
+                         <div className="grid grid-cols-2 gap-3">
+                           <div className="space-y-1.5">
+                             <Label className="text-xs">City</Label>
+                             <SearchableCitySelect
+                               countryCode={newUserCountry}
+                               value={newUserCity}
+                               onValueChange={setNewUserCity}
+                             />
+                           </div>
+                           <div className="space-y-1.5">
+                             <Label className="text-xs">Timezone (auto from country)</Label>
+                             <Input
+                               value={newUserTimezone}
+                               onChange={(e) => setNewUserTimezone(e.target.value)}
+                               placeholder="e.g. Asia/Karachi"
+                               className="h-9"
+                             />
+                           </div>
+                         </div>
 
-                        {/* Row 4: Gender | DOB | Country */}
-                        <div className="grid grid-cols-3 gap-3">
-                          <div className="space-y-1.5">
-                            <Label className="text-xs">Gender</Label>
-                            <Select value={newUserGender} onValueChange={(v) => setNewUserGender(v as 'male' | 'female' | '')}>
-                              <SelectTrigger className="h-9"><SelectValue placeholder="Select" /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="male">Male</SelectItem>
-                                <SelectItem value="female">Female</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label className="text-xs">Date of Birth</Label>
-                            <Input
-                              type="date"
-                              value={newUserDob}
-                              onChange={(e) => setNewUserDob(e.target.value)}
-                              className="h-9"
-                            />
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label className="text-xs">Country</Label>
-                            <Select
-                              value={newUserCountry}
-                              onValueChange={(v) => {
-                                setNewUserCountry(v);
-                                setNewUserCity('');
-                                const name = getCountryName(v).toLowerCase();
-                                const tzMap: Record<string, string> = {
-                                  'pakistan': 'Asia/Karachi',
-                                  'united arab emirates': 'Asia/Dubai',
-                                  'saudi arabia': 'Asia/Riyadh',
-                                  'united kingdom': 'Europe/London',
-                                  'united states': 'America/New_York',
-                                  'australia': 'Australia/Sydney',
-                                  'qatar': 'Asia/Qatar',
-                                  'belgium': 'Europe/Brussels',
-                                  'canada': 'America/Toronto',
-                                };
-                                if (tzMap[name]) setNewUserTimezone(tzMap[name]);
-                              }}
-                            >
-                              <SelectTrigger className="h-9"><SelectValue placeholder="Select country" /></SelectTrigger>
-                              <SelectContent className="max-h-60">
-                                {allCountries.map((c) => (
-                                  <SelectItem key={c.isoCode} value={c.isoCode}>{c.name}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
+                         <p className="text-[11px] text-muted-foreground">
+                           ℹ️ User will be created without a role. Assign a role from the user list to enable access.
+                         </p>
 
-                        {/* Row 5: WhatsApp | Timezone */}
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1.5">
-                            <Label className="text-xs">WhatsApp (E.164)</Label>
-                            <Input
-                              value={newUserWhatsapp}
-                              onChange={(e) => setNewUserWhatsapp(e.target.value)}
-                              placeholder="+1234567890"
-                              className="h-9"
-                            />
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label className="text-xs">Timezone</Label>
-                            <Input
-                              value={newUserTimezone}
-                              onChange={(e) => setNewUserTimezone(e.target.value)}
-                              placeholder="e.g. Asia/Karachi"
-                              className="h-9"
-                            />
-                          </div>
-                        </div>
+                         <div className="flex justify-end gap-2 pt-2 border-t border-border mt-2">
+                           <Button variant="outline" size="sm" onClick={() => setIsCreateDialogOpen(false)}>
+                             Cancel
+                           </Button>
+                           <Button
+                             size="sm"
+                             disabled={createUserMutation.isPending}
+                             onClick={() => {
+                               const email = newUserEmail.trim().toLowerCase();
+                               const fullName = newUserName.trim();
+                               const password = newUserPassword;
 
-                        {/* Conditional: Student guardian section */}
-                        {newUserRole === 'student' && (
-                          <div className="space-y-3 rounded-md border border-border bg-muted/30 p-3">
-                            <div className="space-y-1.5">
-                              <Label className="text-xs">Guardian Type</Label>
-                              <Select
-                                value={newUserGuardianType}
-                                onValueChange={(v) => setNewUserGuardianType(v as any)}
-                              >
-                                <SelectTrigger className="h-9"><SelectValue placeholder="Select guardian type" /></SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="none">None — adult self-learner</SelectItem>
-                                  <SelectItem value="parent">Parent (linked account)</SelectItem>
-                                  <SelectItem value="guardian">Guardian (non-parent)</SelectItem>
-                                  <SelectItem value="emergency">Emergency Contact Only</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            {newUserGuardianType === 'parent' && (
-                              <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1.5">
-                                  <Label className="text-xs">Parent Email *</Label>
-                                  <Input
-                                    type="email"
-                                    value={newUserParentEmail}
-                                    onChange={(e) => setNewUserParentEmail(e.target.value)}
-                                    placeholder="parent@example.com"
-                                    className="h-9"
-                                  />
-                                  {newUserParentEmail && newUserParentEmail.trim().toLowerCase() === newUserEmail.trim().toLowerCase() && (
-                                    <p className="text-[11px] text-destructive">Parent email must differ from student email.</p>
-                                  )}
-                                </div>
-                                <div className="space-y-1.5">
-                                  <Label className="text-xs">Parent Name *</Label>
-                                  <Input
-                                    value={newUserParentName}
-                                    onChange={(e) => setNewUserParentName(e.target.value)}
-                                    placeholder="Parent full name"
-                                    className="h-9"
-                                  />
-                                </div>
-                                <div className="col-span-2 flex items-center gap-2">
-                                  <Checkbox
-                                    id="parentExists"
-                                    checked={newUserParentExisting}
-                                    onCheckedChange={(c) => setNewUserParentExisting(c === true)}
-                                  />
-                                  <Label htmlFor="parentExists" className="text-xs cursor-pointer">
-                                    Parent account already exists — just link
-                                  </Label>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
+                               if (!fullName || fullName.length < 2) {
+                                 toast({ title: 'Name required', description: 'Full name must be at least 2 characters.', variant: 'destructive' });
+                                 return;
+                               }
+                               if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                                 toast({ title: 'Email required', description: 'Enter a valid email address.', variant: 'destructive' });
+                                 return;
+                               }
+                               if (password && (password.length < 6 || password.length > 100)) {
+                                 toast({ title: 'Invalid password', description: 'Password must be 6-100 characters.', variant: 'destructive' });
+                                 return;
+                               }
 
-                        <div className="flex justify-end gap-2 pt-2 border-t border-border mt-2">
-                          <Button variant="outline" size="sm" onClick={() => setIsCreateDialogOpen(false)}>
-                            Cancel
-                          </Button>
-                          <Button
-                            size="sm"
-                            disabled={createUserMutation.isPending}
-                            onClick={() => {
-                              const email = newUserEmail.trim().toLowerCase();
-                              const fullName = newUserName.trim();
-                              const password = newUserPassword;
-
-                              if (!fullName || fullName.length < 2) {
-                                toast({ title: 'Name required', description: 'Full name must be at least 2 characters.', variant: 'destructive' });
-                                return;
-                              }
-                              if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                                toast({ title: 'Email required', description: 'Enter a valid email address.', variant: 'destructive' });
-                                return;
-                              }
-                              if (password && (password.length < 6 || password.length > 100)) {
-                                toast({ title: 'Invalid password', description: 'Password must be 6-100 characters.', variant: 'destructive' });
-                                return;
-                              }
-                              if (newUserRole === 'admin_division' && (!newUserDivisionId || !newUserBranchId)) {
-                                toast({ title: 'Division & branch required', description: 'Division Admin requires both division and branch.', variant: 'destructive' });
-                                return;
-                              }
-                              if (newUserRole === 'student' && newUserGuardianType === 'parent') {
-                                if (!newUserParentEmail.trim() || !newUserParentName.trim()) {
-                                  toast({ title: 'Parent details required', description: 'Parent email and name are required.', variant: 'destructive' });
-                                  return;
-                                }
-                                if (newUserParentEmail.trim().toLowerCase() === email) {
-                                  toast({ title: 'Invalid parent email', description: 'Parent email must differ from student email.', variant: 'destructive' });
-                                  return;
-                                }
-                              }
-
-                              createUserMutation.mutate({
-                                email,
-                                password: password || undefined,
-                                fullName,
-                                role: newUserRole,
-                                whatsapp: newUserWhatsapp.trim() || undefined,
-                                gender: newUserGender || undefined,
-                                country: newUserCountry ? getCountryName(newUserCountry) : undefined,
-                                city: newUserCity || undefined,
-                                branch_id: newUserBranchId || undefined,
-                                division_id: newUserDivisionId || undefined,
-                                date_of_birth: newUserDob || undefined,
-                                timezone: newUserTimezone || undefined,
-                                guardian_type: newUserRole === 'student' ? (newUserGuardianType || undefined) : undefined,
-                                parent_email: (newUserRole === 'student' && newUserGuardianType === 'parent') ? newUserParentEmail.trim().toLowerCase() : undefined,
-                                parent_name: (newUserRole === 'student' && newUserGuardianType === 'parent') ? newUserParentName.trim() : undefined,
-                                parentExistingOnly: (newUserRole === 'student' && newUserGuardianType === 'parent') ? newUserParentExisting : undefined,
-                              });
-                            }}
-                          >
-                            {createUserMutation.isPending ? (
-                              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing…</>
-                            ) : (
-                              'Create User'
-                            )}
-                          </Button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                 </DialogContent>
-               </Dialog>
-               </>
-             )}
+                               createUserMutation.mutate({
+                                 email,
+                                 password: password || undefined,
+                                 fullName,
+                                 // role intentionally omitted — assigned separately
+                                 whatsapp: newUserWhatsapp.trim() || undefined,
+                                 gender: newUserGender || undefined,
+                                 country: newUserCountry ? getCountryName(newUserCountry) : undefined,
+                                 city: newUserCity || undefined,
+                                 date_of_birth: newUserDob || undefined,
+                                 timezone: newUserTimezone || undefined,
+                               });
+                             }}
+                           >
+                             {createUserMutation.isPending ? (
+                               <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing…</>
+                             ) : (
+                               'Create User'
+                             )}
+                           </Button>
+                         </div>
+                       </>
+                     )}
+                   </div>
+                  </DialogContent>
+                </Dialog>
+                </>
+              )}
              {(activeRole === 'super_admin' || activeRole === 'admin_division' || activeRole === 'admin') && (
                <BulkUserImportDialog open={isBulkImportOpen} onOpenChange={setIsBulkImportOpen} />
              )}
@@ -1563,6 +1473,43 @@ export default function UserManagement() {
                 <Button variant="outline" size="sm" onClick={() => refetch()}>
                   Retry
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Banner A: users with NO role assigned (critical) */}
+        {(activeRole === 'super_admin' || activeRole === 'admin_division') && noRoleUsers.length > 0 && (
+          <Card className="border-destructive/40 bg-destructive/5">
+            <CardContent className="py-3">
+              <button
+                type="button"
+                onClick={() => setShowNoRoleOnly(s => !s)}
+                className="flex w-full items-center justify-between gap-3 text-left"
+              >
+                <div className="flex items-center gap-3 text-destructive">
+                  <AlertCircle className="h-5 w-5" />
+                  <span className="text-sm font-medium">
+                    {noRoleUsers.length} user{noRoleUsers.length === 1 ? '' : 's'} have NO role assigned
+                  </span>
+                </div>
+                <span className="text-xs text-destructive/80 underline">
+                  {showNoRoleOnly ? 'Show all users' : 'Show these users'}
+                </span>
+              </button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Banner B: admin_division users with no division (informational) */}
+        {(activeRole === 'super_admin' || activeRole === 'admin_division') && adminDivWithoutDivision.length > 0 && (
+          <Card className="border-amber-300/60 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-800/60">
+            <CardContent className="py-3">
+              <div className="flex items-center gap-3 text-amber-800 dark:text-amber-300">
+                <AlertTriangle className="h-5 w-5" />
+                <span className="text-sm font-medium">
+                  {adminDivWithoutDivision.length} Division Admin user{adminDivWithoutDivision.length === 1 ? '' : 's'} have no division assigned
+                </span>
               </div>
             </CardContent>
           </Card>
@@ -2004,6 +1951,19 @@ export default function UserManagement() {
                                 <Network className="h-4 w-4" />
                               </Button>
 
+                              {/* Assign Role — super_admin & admin_division */}
+                              {(activeRole === 'super_admin' || activeRole === 'admin_division') && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setAssignRoleUser(user)}
+                                  title="Assign or modify role"
+                                  className={(user.roles?.length ?? 0) === 0 ? 'text-amber-600 hover:text-amber-700' : ''}
+                                >
+                                  <UserPlus className="h-4 w-4" />
+                                </Button>
+                              )}
+
                               {/* Edit → opens 8-tab holistic profile (the profile drawer enforces tab-level access per role) */}
                               {activeRole !== 'admin_fees' && (
                                 <Button
@@ -2033,47 +1993,6 @@ export default function UserManagement() {
                           </TableCell>
                         </TableRow>
                       ))}
-                      {effectiveDivisionId && unassignedUsers.length > 0 && (
-                        <>
-                          <TableRow className="bg-amber-500/5 hover:bg-amber-500/10 cursor-pointer" onClick={() => setShowUnassigned(s => !s)}>
-                            <TableCell colSpan={isSuperAdmin ? 8 : 7} className="text-amber-700 dark:text-amber-400 text-sm font-medium py-2">
-                              <div className="flex items-center gap-2">
-                                {showUnassigned ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                                <AlertTriangle className="h-4 w-4" />
-                                {unassignedUsers.length} user{unassignedUsers.length === 1 ? '' : 's'} not assigned to any division
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                          {showUnassigned && unassignedUsers.map((user) => (
-                            <TableRow key={`u-${user.id}`} className="bg-amber-500/5">
-                              {isSuperAdmin && <TableCell />}
-                              <TableCell className="text-amber-600"><AlertTriangle className="h-3 w-3" /></TableCell>
-                              <TableCell className="font-medium">{user.full_name}</TableCell>
-                              <TableCell>
-                                <Badge variant="outline" className="text-xs font-mono">{personNumberMap.get(user.id) || '—'}</Badge>
-                              </TableCell>
-                              <TableCell><span className="text-sm">{user.whatsapp_number || '—'}</span></TableCell>
-                              <TableCell colSpan={3}>
-                                <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-700 border-amber-200">⚠ Unassigned</Badge>
-                              </TableCell>
-                              <TableCell><span className="text-sm">{[user.city, user.country].filter(Boolean).join(', ') || '—'}</span></TableCell>
-                              <TableCell className="text-right">
-                                {isSuperAdmin && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-7 text-xs"
-                                    disabled={assignDivisionMutation.isPending}
-                                    onClick={() => assignDivisionMutation.mutate({ userId: user.id, divisionId: effectiveDivisionId })}
-                                  >
-                                    Assign here
-                                  </Button>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </>
-                      )}
                     </TableBody>
                   </Table>
                 )}
@@ -2122,6 +2041,13 @@ export default function UserManagement() {
             <AuthAuditTab />
           </TabsContent>
         </Tabs>
+
+        {/* Assign Role Dialog (new — decoupled from creation) */}
+        <AssignRoleDialog
+          open={!!assignRoleUser}
+          onOpenChange={(o) => { if (!o) setAssignRoleUser(null); }}
+          user={assignRoleUser}
+        />
 
         {/* Add Role Dialog */}
         <Dialog open={isAddRoleDialogOpen} onOpenChange={setIsAddRoleDialogOpen}>

@@ -173,14 +173,15 @@ serve(async (req) => {
 
     const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Authorization: super_admin only
-    const { data: superRow } = await adminClient
+    // Authorization: super_admin or admin_division
+    const { data: callerRoles } = await adminClient
       .from("user_roles")
       .select("role")
-      .eq("user_id", caller.id)
-      .eq("role", "super_admin")
-      .maybeSingle();
-    if (!superRow) return json(403, { error: "Forbidden" }, requestOrigin);
+      .eq("user_id", caller.id);
+    const callerRoleSet = new Set((callerRoles ?? []).map((r: any) => r.role));
+    if (!callerRoleSet.has("super_admin") && !callerRoleSet.has("admin_division")) {
+      return json(403, { error: "Forbidden" }, requestOrigin);
+    }
 
     const body = await req.json().catch(() => null);
     if (!body) return json(400, { error: "Invalid request body" }, requestOrigin);
@@ -188,7 +189,8 @@ serve(async (req) => {
     const email = String(body?.email ?? "").trim().toLowerCase();
     const password = String(body?.password ?? "");
     const fullName = sanitize(String(body?.fullName ?? "").trim());
-    const role = String(body?.role ?? "student") as AppRole;
+    const roleProvided = body?.role !== undefined && body?.role !== null && String(body?.role).trim() !== "";
+    const role = (roleProvided ? String(body.role) : "") as AppRole | "";
     const whatsapp = body?.whatsapp ? sanitize(String(body.whatsapp).trim()) : null;
     const gender = body?.gender ? String(body.gender).toLowerCase() : null;
     const country = body?.country ? sanitize(String(body.country).trim()) : null;
@@ -217,14 +219,17 @@ serve(async (req) => {
     // ---------- ADD ROLE ONLY ----------
     if (addRoleOnly) {
       if (!existingUserId) return json(400, { error: "existingUserId required for addRoleOnly" }, requestOrigin);
-      if (!ALLOWED_ROLES.includes(role)) return json(400, { error: "Invalid role" }, requestOrigin);
+      if (!roleProvided || !ALLOWED_ROLES.includes(role as AppRole)) return json(400, { error: "Invalid role" }, requestOrigin);
+      if (role === "admin_division" && (!divisionId || !branchId)) {
+        return json(400, { error: "Division and branch required for Division Admin" }, requestOrigin);
+      }
 
       const { error: roleErr } = await adminClient
         .from("user_roles")
         .upsert({ user_id: existingUserId, role }, { onConflict: "user_id,role" });
       if (roleErr) return json(500, { error: "Failed to assign role" }, requestOrigin);
 
-      if (divisionId || branchId) {
+      if (role === "admin_division") {
         await ensureUserContext(adminClient, existingUserId, branchId, divisionId, role);
       }
       return json(200, {
@@ -241,11 +246,11 @@ serve(async (req) => {
     else if (!isValidEmail(email)) errors.push("Invalid email format");
     if (!fullName) errors.push("Full name is required");
     else if (!isValidFullName(fullName)) errors.push("Full name must be 2-100 characters");
-    if (!ALLOWED_ROLES.includes(role)) errors.push("Invalid role specified");
+    if (roleProvided && !ALLOWED_ROLES.includes(role as AppRole)) errors.push("Invalid role specified");
     if (!isValidWhatsApp(whatsapp)) errors.push("Invalid phone number format");
     if (!isValidGender(gender)) errors.push("Invalid gender value");
-    if (role === "admin_division" && !divisionId) errors.push("Division required for Division Admin");
-    if (role === "student" && guardianType === "parent") {
+    if (roleProvided && role === "admin_division" && (!divisionId || !branchId)) errors.push("Division and branch required for Division Admin");
+    if (roleProvided && role === "student" && guardianType === "parent") {
       if (!parentEmail) errors.push("Parent email required");
       else if (parentEmail === email) errors.push("Parent email must differ from student email");
       if (!parentName) errors.push("Parent name required");
@@ -307,7 +312,7 @@ serve(async (req) => {
         const { data: list } = await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 });
         const authUser = list?.users?.find((u: any) => (u.email || "").toLowerCase() === email);
         if (authUser) {
-          const regId = await generateRegId(adminClient, branchId, role);
+          const regId = roleProvided ? await generateRegId(adminClient, branchId, role as AppRole) : null;
           await adminClient.from("profiles").upsert({
             id: authUser.id,
             email,
@@ -324,19 +329,23 @@ serve(async (req) => {
             arabic_level: arabicLevel,
             guardian_type: guardianType,
           }, { onConflict: "id" });
-          await adminClient.from("user_roles").upsert(
-            { user_id: authUser.id, role },
-            { onConflict: "user_id,role" },
-          );
-          await ensureUserContext(adminClient, authUser.id, branchId, divisionId, role);
-          return json(200, { userId: authUser.id, email, role, registration_id: regId, message: "User linked to existing auth account" }, requestOrigin);
+          if (roleProvided) {
+            await adminClient.from("user_roles").upsert(
+              { user_id: authUser.id, role },
+              { onConflict: "user_id,role" },
+            );
+            if (role === "admin_division") {
+              await ensureUserContext(adminClient, authUser.id, branchId, divisionId, role);
+            }
+          }
+          return json(200, { userId: authUser.id, email, role: roleProvided ? role : null, registration_id: regId, message: "User linked to existing auth account" }, requestOrigin);
         }
       }
       return json(400, { error: createErr?.message || "Failed to create user account" }, requestOrigin);
     }
 
     const newUserId = created.user.id;
-    const registrationId = await generateRegId(adminClient, branchId, role);
+    const registrationId = roleProvided ? await generateRegId(adminClient, branchId, role as AppRole) : null;
 
     const { error: profileErr } = await adminClient.from("profiles").upsert(
       {
@@ -362,12 +371,16 @@ serve(async (req) => {
       return json(500, { error: "User created but profile setup failed" }, requestOrigin);
     }
 
-    const { error: roleErr } = await adminClient
-      .from("user_roles")
-      .upsert({ user_id: newUserId, role }, { onConflict: "user_id,role" });
-    if (roleErr) return json(500, { error: "User created but role assignment failed" }, requestOrigin);
+    if (roleProvided) {
+      const { error: roleErr } = await adminClient
+        .from("user_roles")
+        .upsert({ user_id: newUserId, role }, { onConflict: "user_id,role" });
+      if (roleErr) return json(500, { error: "User created but role assignment failed" }, requestOrigin);
 
-    await ensureUserContext(adminClient, newUserId, branchId, divisionId, role);
+      if (role === "admin_division") {
+        await ensureUserContext(adminClient, newUserId, branchId, divisionId, role);
+      }
+    }
 
     // ---------- PARENT LINKING ----------
     let parentLinked = false;
@@ -436,9 +449,9 @@ serve(async (req) => {
       userId: newUserId,
       email,
       full_name: fullName,
-      role,
+      role: roleProvided ? role : null,
       registration_id: registrationId,
-      message: parentNotice || "User created successfully",
+      message: parentNotice || (roleProvided ? "User created successfully" : "User created. Assign a role to enable access."),
       roleAdded: false,
       parentLinked,
     }, requestOrigin);
