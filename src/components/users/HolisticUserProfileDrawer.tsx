@@ -17,9 +17,30 @@ import { useToast } from '@/hooks/use-toast';
 import {
   User, Mail, Shield, Users as UsersIcon, GraduationCap, FileText,
   Activity, KeyRound, Loader2, Upload, Download, CheckCircle2, XCircle,
-  AlertTriangle, Calendar, Save, RefreshCw, Link2, Unlink,
+  AlertTriangle, Calendar, Save, RefreshCw, Link2, Unlink, Eye,
 } from 'lucide-react';
 import { LinkGuardianDialog } from './LinkGuardianDialog';
+import type { AppRole } from '@/contexts/AuthContext';
+
+/* ── Per-tab access matrix. V=view, C=create, E=edit, D=delete (we treat C/E/D collectively as "write"). ── */
+type TabAccess = 'none' | 'view' | 'write';
+type TabKey = 'personal' | 'contact' | 'identity' | 'guardian' | 'academic' | 'documents' | 'activity' | 'password';
+
+const TAB_ACCESS: Record<TabKey, Partial<Record<AppRole, TabAccess>>> = {
+  personal:  { super_admin: 'write', admin: 'write', admin_division: 'write', admin_admissions: 'view', admin_academic: 'view' },
+  contact:   { super_admin: 'write', admin: 'write', admin_division: 'write', admin_admissions: 'view' },
+  identity:  { super_admin: 'write', admin: 'write', admin_division: 'write', admin_admissions: 'view' },
+  guardian:  { super_admin: 'write', admin: 'write', admin_division: 'write', admin_admissions: 'write' },
+  academic:  { super_admin: 'write', admin: 'write', admin_division: 'write', admin_admissions: 'view', admin_academic: 'write' },
+  documents: { super_admin: 'write', admin: 'write', admin_division: 'write', admin_admissions: 'view' },
+  activity:  { super_admin: 'write', admin: 'write', admin_division: 'write' },
+  password:  { super_admin: 'write' },
+};
+
+function tabAccessFor(role: AppRole | null | undefined, key: TabKey): TabAccess {
+  if (!role) return 'none';
+  return TAB_ACCESS[key][role] ?? 'none';
+}
 
 interface Props {
   open: boolean;
@@ -47,10 +68,10 @@ function pct(profile: any): number {
 }
 
 export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props) {
-  const { isSuperAdmin, user: currentUser } = useAuth();
+  const { isSuperAdmin, user: currentUser, activeRole } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
-  const [tab, setTab] = useState('personal');
+  const [tab, setTab] = useState<TabKey>('personal');
   const [form, setForm] = useState<Record<string, any>>({});
   const [uploading, setUploading] = useState<'avatar' | 'gov_id' | null>(null);
   const [guardianDialogOpen, setGuardianDialogOpen] = useState(false);
@@ -294,6 +315,32 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
   const initials = (form.full_name || 'U').split(' ').map((s: string) => s[0]).slice(0, 2).join('').toUpperCase();
   const completion = pct(form);
 
+  // Per-tab access gating
+  const ALL_TABS: { key: TabKey; label: string; Icon: any }[] = [
+    { key: 'personal',  label: 'Personal',  Icon: User },
+    { key: 'contact',   label: 'Contact',   Icon: Mail },
+    { key: 'identity',  label: 'Identity',  Icon: Shield },
+    { key: 'guardian',  label: 'Guardian',  Icon: UsersIcon },
+    { key: 'academic',  label: 'Academic',  Icon: GraduationCap },
+    { key: 'documents', label: 'Docs',      Icon: FileText },
+    { key: 'activity',  label: 'Activity',  Icon: Activity },
+    { key: 'password',  label: 'Password',  Icon: KeyRound },
+  ];
+  const visibleTabs = ALL_TABS.filter(t => tabAccessFor(activeRole, t.key) !== 'none');
+  const currentTabAccess = tabAccessFor(activeRole, tab);
+  const canSaveCurrentTab = currentTabAccess === 'write';
+
+  // If current tab not visible, snap to first visible
+  useEffect(() => {
+    if (!visibleTabs.find(t => t.key === tab) && visibleTabs.length > 0) {
+      setTab(visibleTabs[0].key);
+    }
+  }, [activeRole, visibleTabs.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Shared-email detection for guardian banner (parent and student profiles share email)
+  const guardianSharesEmail = !!(parentLink?.profile?.email && profile?.email &&
+    parentLink.profile.email.trim().toLowerCase() === profile.email.trim().toLowerCase());
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-[80vw] sm:w-[80vw] overflow-y-auto p-0">
@@ -312,7 +359,12 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
                   <Badge variant="outline" className="text-xs">{completion}% complete</Badge>
                 </SheetDescription>
               </div>
-              <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="gap-2">
+              <Button
+                onClick={() => saveMutation.mutate()}
+                disabled={saveMutation.isPending || !canSaveCurrentTab}
+                className="gap-2"
+                title={!canSaveCurrentTab ? 'Read-only — your role cannot edit this tab' : undefined}
+              >
                 {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 Save
               </Button>
@@ -325,17 +377,28 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : (
-          <Tabs value={tab} onValueChange={setTab} className="px-6 py-4">
-            <TabsList className="grid grid-cols-4 lg:grid-cols-8 mb-4 h-auto">
-              <TabsTrigger value="personal" className="gap-1.5"><User className="h-3.5 w-3.5" /><span className="hidden lg:inline">Personal</span></TabsTrigger>
-              <TabsTrigger value="contact" className="gap-1.5"><Mail className="h-3.5 w-3.5" /><span className="hidden lg:inline">Contact</span></TabsTrigger>
-              <TabsTrigger value="identity" className="gap-1.5"><Shield className="h-3.5 w-3.5" /><span className="hidden lg:inline">Identity</span></TabsTrigger>
-              <TabsTrigger value="guardian" className="gap-1.5"><UsersIcon className="h-3.5 w-3.5" /><span className="hidden lg:inline">Guardian</span></TabsTrigger>
-              <TabsTrigger value="academic" className="gap-1.5"><GraduationCap className="h-3.5 w-3.5" /><span className="hidden lg:inline">Academic</span></TabsTrigger>
-              <TabsTrigger value="documents" className="gap-1.5"><FileText className="h-3.5 w-3.5" /><span className="hidden lg:inline">Docs</span></TabsTrigger>
-              <TabsTrigger value="activity" className="gap-1.5"><Activity className="h-3.5 w-3.5" /><span className="hidden lg:inline">Activity</span></TabsTrigger>
-              <TabsTrigger value="password" className="gap-1.5"><KeyRound className="h-3.5 w-3.5" /><span className="hidden lg:inline">Password</span></TabsTrigger>
+          <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)} className="px-6 py-4">
+            <TabsList
+              className="mb-4 h-auto grid"
+              style={{ gridTemplateColumns: `repeat(${Math.min(visibleTabs.length, 8)}, minmax(0, 1fr))` }}
+            >
+              {visibleTabs.map(({ key, label, Icon }) => (
+                <TabsTrigger key={key} value={key} className="gap-1.5">
+                  <Icon className="h-3.5 w-3.5" />
+                  <span className="hidden lg:inline">{label}</span>
+                </TabsTrigger>
+              ))}
             </TabsList>
+
+            {currentTabAccess === 'view' && (
+              <div className="mb-3 flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+                <Eye className="h-3.5 w-3.5" />
+                <span>Read-only — your role can view this tab but cannot make changes.</span>
+              </div>
+            )}
+
+            {/* All TabsContent inside a fieldset so we can disable inputs/buttons on view-only without changing markup */}
+            <fieldset disabled={!canSaveCurrentTab} className="contents">
 
             {/* PERSONAL */}
             <TabsContent value="personal" className="space-y-4">
@@ -454,6 +517,26 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
 
             {/* GUARDIAN */}
             <TabsContent value="guardian" className="space-y-4">
+              {/* Shared-email warning (parent and student use the same login) */}
+              {guardianSharesEmail && (
+                <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-3 flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                  <p className="text-sm text-amber-800 dark:text-amber-200">
+                    This parent shares login credentials with the student. A separate parent account is recommended.
+                  </p>
+                </div>
+              )}
+
+              {/* No guardian linked — info banner suggesting upload (only when student needs one) */}
+              {!parentLink && (requiresGuardian || form.guardian_type === 'parent' || form.guardian_type === 'guardian') && (
+                <div className="rounded-lg border border-sky-300 bg-sky-50 dark:bg-sky-950/30 p-3 flex items-start gap-2">
+                  <UsersIcon className="h-4 w-4 text-sky-600 mt-0.5 shrink-0" />
+                  <p className="text-sm text-sky-800 dark:text-sky-200">
+                    No guardian linked. Upload the parent data file in this tab to create and link a guardian account.
+                  </p>
+                </div>
+              )}
+
               <Field label="Guardian Type">
                 <Select value={form.guardian_type || ''} onValueChange={(v) => setForm({ ...form, guardian_type: v })}>
                   <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
@@ -657,6 +740,7 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
                 <Switch checked={!!form.force_password_reset} onCheckedChange={(v) => setForm({ ...form, force_password_reset: v })} />
               </div>
             </TabsContent>
+            </fieldset>
           </Tabs>
         )}
       </SheetContent>

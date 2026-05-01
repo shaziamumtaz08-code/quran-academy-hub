@@ -112,12 +112,12 @@ const ALL_PERMISSIONS = [
 ];
 
 const ROLE_LABELS: Record<AppRole, string> = {
-  super_admin: 'Super Administrator',
-  admin: 'Administrator',
+  super_admin: 'Super Admin',
+  admin: 'Admin',
   admin_division: 'Division Admin',
-  admin_admissions: 'Admissions Admin',
-  admin_fees: 'Fees Admin',
-  admin_academic: 'Academic Admin',
+  admin_admissions: 'Admissions Manager',
+  admin_fees: 'Finance Manager',
+  admin_academic: 'Academic Manager',
   teacher: 'Teacher',
   examiner: 'Examiner',
   student: 'Student',
@@ -254,7 +254,7 @@ interface UserWithRoles {
 }
 
 export default function UserManagement() {
-  const { isSuperAdmin, hasPermission, user: currentUser, session } = useAuth();
+  const { isSuperAdmin, hasPermission, user: currentUser, session, activeRole } = useAuth();
   const { activeDivision } = useDivision();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -919,7 +919,7 @@ export default function UserManagement() {
     if (!filterRole) return 'all';
     if (filterRole === 'student') return 'student';
     if (filterRole === 'teacher') return 'teacher';
-    if (['admin', 'super_admin', 'admin_admissions', 'admin_fees', 'admin_academic', 'examiner'].includes(filterRole)) return 'staff';
+    if (['admin', 'super_admin', 'admin_division', 'admin_admissions', 'admin_fees', 'admin_academic', 'examiner'].includes(filterRole)) return 'staff';
     return 'all';
   }, [filterRole]);
 
@@ -1457,6 +1457,7 @@ export default function UserManagement() {
                     { key: 'teacher', label: 'Teachers', dot: 'bg-violet-500', role: 'teacher' },
                     { key: 'parent', label: 'Parents', dot: 'bg-amber-500', role: 'parent' },
                     { key: 'admin', label: 'Admins', dot: 'bg-rose-500', role: 'admin' },
+                    { key: 'admin_division', label: 'Division Admin', dot: 'bg-purple-500', role: 'admin_division' },
                     { key: 'examiner', label: 'Examiners', dot: 'bg-sky-500', role: 'examiner' },
                   ] as const).map((p) => {
                     const active = (filterRole || '') === p.role;
@@ -1827,6 +1828,7 @@ export default function UserManagement() {
                           </TableCell>
                           <TableCell className="py-3 text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="flex justify-end gap-1">
+                              {/* Connections — visible to all admin roles (view-only roles allowed) */}
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -1840,64 +1842,32 @@ export default function UserManagement() {
                               >
                                 <Network className="h-4 w-4" />
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setViewingUser(user);
-                                  setIsViewDialogOpen(true);
-                                }}
-                                title="View details"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setHolisticUserId(user.id)}
-                                title="Open full profile"
-                              >
-                                <User className="h-4 w-4" />
-                                <span className="hidden md:inline ml-1.5 text-xs">Profile</span>
-                              </Button>
-                              {isSuperAdmin && (
-                                <>
+
+                              {/* Edit → opens 8-tab holistic profile (the profile drawer enforces tab-level access per role) */}
+                              {activeRole !== 'admin_fees' && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setHolisticUserId(user.id)}
+                                  title="Open full profile"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              )}
+
+                              {/* Delete — super_admin & admin_division only; never for current user */}
+                              {(activeRole === 'super_admin' || activeRole === 'admin_division' || activeRole === 'admin') &&
+                                user.id !== currentUser?.id && (
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => {
-                                      setSelectedUser(user);
-                                      setIsEditDialogOpen(true);
-                                    }}
-                                    title="Edit permissions"
+                                    onClick={() => setDeleteConfirmUser(user)}
+                                    className="text-destructive hover:text-destructive"
+                                    title="Delete user"
                                   >
-                                    <Edit className="h-4 w-4" />
+                                    <Trash2 className="h-4 w-4" />
                                   </Button>
-                              {user.id !== currentUser?.id && (
-                                    <>
-                                       <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => archiveMutation.mutate({ userId: user.id, archive: !user.archived_at })}
-                                        className={user.archived_at ? "text-emerald-600 hover:text-emerald-700" : "text-amber-600 hover:text-amber-700"}
-                                        title={user.archived_at ? "Unarchive user" : "Archive user"}
-                                        disabled={archiveMutation.isPending}
-                                      >
-                                        {user.archived_at ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => setDeleteConfirmUser(user)}
-                                        className="text-destructive hover:text-destructive"
-                                        title="Delete user"
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </>
-                                  )}
-                                </>
-                              )}
+                                )}
                             </div>
                           </TableCell>
                         </TableRow>
