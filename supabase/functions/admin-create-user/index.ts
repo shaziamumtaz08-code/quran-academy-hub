@@ -312,7 +312,7 @@ serve(async (req) => {
         const { data: list } = await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 });
         const authUser = list?.users?.find((u: any) => (u.email || "").toLowerCase() === email);
         if (authUser) {
-          const regId = await generateRegId(adminClient, branchId, role);
+          const regId = roleProvided ? await generateRegId(adminClient, branchId, role as AppRole) : null;
           await adminClient.from("profiles").upsert({
             id: authUser.id,
             email,
@@ -329,19 +329,23 @@ serve(async (req) => {
             arabic_level: arabicLevel,
             guardian_type: guardianType,
           }, { onConflict: "id" });
-          await adminClient.from("user_roles").upsert(
-            { user_id: authUser.id, role },
-            { onConflict: "user_id,role" },
-          );
-          await ensureUserContext(adminClient, authUser.id, branchId, divisionId, role);
-          return json(200, { userId: authUser.id, email, role, registration_id: regId, message: "User linked to existing auth account" }, requestOrigin);
+          if (roleProvided) {
+            await adminClient.from("user_roles").upsert(
+              { user_id: authUser.id, role },
+              { onConflict: "user_id,role" },
+            );
+            if (role === "admin_division") {
+              await ensureUserContext(adminClient, authUser.id, branchId, divisionId, role);
+            }
+          }
+          return json(200, { userId: authUser.id, email, role: roleProvided ? role : null, registration_id: regId, message: "User linked to existing auth account" }, requestOrigin);
         }
       }
       return json(400, { error: createErr?.message || "Failed to create user account" }, requestOrigin);
     }
 
     const newUserId = created.user.id;
-    const registrationId = await generateRegId(adminClient, branchId, role);
+    const registrationId = roleProvided ? await generateRegId(adminClient, branchId, role as AppRole) : null;
 
     const { error: profileErr } = await adminClient.from("profiles").upsert(
       {
@@ -367,12 +371,16 @@ serve(async (req) => {
       return json(500, { error: "User created but profile setup failed" }, requestOrigin);
     }
 
-    const { error: roleErr } = await adminClient
-      .from("user_roles")
-      .upsert({ user_id: newUserId, role }, { onConflict: "user_id,role" });
-    if (roleErr) return json(500, { error: "User created but role assignment failed" }, requestOrigin);
+    if (roleProvided) {
+      const { error: roleErr } = await adminClient
+        .from("user_roles")
+        .upsert({ user_id: newUserId, role }, { onConflict: "user_id,role" });
+      if (roleErr) return json(500, { error: "User created but role assignment failed" }, requestOrigin);
 
-    await ensureUserContext(adminClient, newUserId, branchId, divisionId, role);
+      if (role === "admin_division") {
+        await ensureUserContext(adminClient, newUserId, branchId, divisionId, role);
+      }
+    }
 
     // ---------- PARENT LINKING ----------
     let parentLinked = false;
