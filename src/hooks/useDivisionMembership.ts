@@ -151,8 +151,23 @@ export function getDivisionBadgeClass(modelType: string): string {
   return 'bg-muted text-muted-foreground border-border';
 }
 
+/** Display labels for app roles. Centralized so all UI surfaces stay consistent. */
+const ROLE_DISPLAY_LABELS: Record<string, string> = {
+  super_admin: 'Super Admin',
+  admin: 'Admin',
+  admin_division: 'Division Admin',
+  admin_admissions: 'Admissions Manager',
+  admin_fees: 'Finance Manager',
+  admin_academic: 'Academic Manager',
+  teacher: 'Teacher',
+  examiner: 'Examiner',
+  student: 'Student',
+  parent: 'Parent',
+};
+
 /** Capitalize a role string for display */
 export function formatRoleLabel(role: string): string {
   if (!role) return '';
+  if (ROLE_DISPLAY_LABELS[role]) return ROLE_DISPLAY_LABELS[role];
   return role.charAt(0).toUpperCase() + role.slice(1).replace(/_/g, ' ');
 }
