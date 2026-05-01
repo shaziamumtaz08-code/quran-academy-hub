@@ -51,7 +51,7 @@ export const ACCESS_MATRIX: ModuleAccess[] = [
   { id:'people',              route:'/people',                 roles:{...adminFull}, group:'people' },
   { id:'students',            route:'/students',               roles:{...adminFull, teacher:VIEW_ONLY, examiner:VIEW_ONLY, parent:VIEW_ONLY}, group:'people' },
   { id:'teachers',            route:'/teachers',               roles:{...adminFull, teacher:VIEW_ONLY, examiner:VIEW_ONLY}, group:'people' },
-  { id:'user_management',     route:'/user-management',        roles:{super_admin:ADMIN_FULL, admin:ADMIN_FULL, admin_division:ADMIN_FULL}, group:'people' },
+  { id:'user_management',     route:'/user-management',        roles:{super_admin:ADMIN_FULL, admin:ADMIN_FULL, admin_division:ADMIN_FULL, admin_admissions:['view','create','edit'], admin_academic:VIEW_ONLY}, group:'people' },
   { id:'leads',               route:'/leads',                  roles:{...adminFull}, divisions:['one_to_one'], group:'people' },
   { id:'identity',            route:'/identity',               roles:{super_admin:ADMIN_FULL, admin:ADMIN_FULL, admin_division:ADMIN_FULL}, group:'people' },
   { id:'finance',             route:'/finance',                roles:{super_admin:ADMIN_FULL, admin:ADMIN_FULL, admin_division:ADMIN_FULL, admin_fees:ADMIN_FULL, admin_academic:VIEW_ONLY, admin_admissions:VIEW_ONLY}, group:'finance' },
