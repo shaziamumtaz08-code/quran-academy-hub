@@ -17,6 +17,7 @@ import {
   LayoutDashboard,
   Menu,
   MessageSquare,
+  UserCog,
   Users,
   Wallet,
 } from "lucide-react";
@@ -50,6 +51,7 @@ interface DashboardLayoutProps {
 interface DrawerChildItem {
   label: string;
   href: string;
+  icon?: React.ElementType;
   adminOnly?: boolean;
   superAdminOnly?: boolean;
 }
@@ -99,6 +101,7 @@ function buildDrawerSections(role: AppRole | null): DrawerSection[] {
             label: "People",
             icon: Users,
             children: [
+              { label: "User Management", href: "/user-management", icon: UserCog },
               { label: "Students", href: "/people?view=students" },
               { label: "Teachers", href: "/people?view=teachers" },
               { label: "Staff", href: "/people?view=staff" },
