@@ -699,16 +699,19 @@ export default function UserManagement() {
       setNewUserAge('');
       setNewUserCountry('PK');
       setNewUserCity('');
-      setCreateAsSibling(false);
       setNewUserBranchId('');
       setNewUserParentId('');
+      setNewUserDivisionId('');
+      setNewUserDob('');
+      setNewUserTimezone('');
+      setNewUserGuardianType('');
+      setNewUserParentEmail('');
+      setNewUserParentName('');
+      setNewUserParentExisting(false);
+      setEmailExistsCheck(null);
       setIsCreateDialogOpen(false);
     },
     onError: (error: any) => {
-      // Auto-check sibling option if backend says it's needed
-      if (error?.requiresForceNew) {
-        setCreateAsSibling(true);
-      }
       toast({
         title: 'Failed to create user',
         description: error instanceof Error ? error.message : 'Please try again.',
