@@ -112,12 +112,12 @@ const ALL_PERMISSIONS = [
 ];
 
 const ROLE_LABELS: Record<AppRole, string> = {
-  super_admin: 'Super Administrator',
-  admin: 'Administrator',
+  super_admin: 'Super Admin',
+  admin: 'Admin',
   admin_division: 'Division Admin',
-  admin_admissions: 'Admissions Admin',
-  admin_fees: 'Fees Admin',
-  admin_academic: 'Academic Admin',
+  admin_admissions: 'Admissions Manager',
+  admin_fees: 'Finance Manager',
+  admin_academic: 'Academic Manager',
   teacher: 'Teacher',
   examiner: 'Examiner',
   student: 'Student',
