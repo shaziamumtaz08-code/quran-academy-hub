@@ -1827,6 +1827,7 @@ export default function UserManagement() {
                           </TableCell>
                           <TableCell className="py-3 text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="flex justify-end gap-1">
+                              {/* Connections — visible to all admin roles (view-only roles allowed) */}
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -1840,64 +1841,32 @@ export default function UserManagement() {
                               >
                                 <Network className="h-4 w-4" />
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setViewingUser(user);
-                                  setIsViewDialogOpen(true);
-                                }}
-                                title="View details"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setHolisticUserId(user.id)}
-                                title="Open full profile"
-                              >
-                                <User className="h-4 w-4" />
-                                <span className="hidden md:inline ml-1.5 text-xs">Profile</span>
-                              </Button>
-                              {isSuperAdmin && (
-                                <>
+
+                              {/* Edit → opens 8-tab holistic profile (the profile drawer enforces tab-level access per role) */}
+                              {activeRole !== 'admin_fees' && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setHolisticUserId(user.id)}
+                                  title="Open full profile"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              )}
+
+                              {/* Delete — super_admin & admin_division only; never for current user */}
+                              {(activeRole === 'super_admin' || activeRole === 'admin_division' || activeRole === 'admin') &&
+                                user.id !== currentUser?.id && (
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => {
-                                      setSelectedUser(user);
-                                      setIsEditDialogOpen(true);
-                                    }}
-                                    title="Edit permissions"
+                                    onClick={() => setDeleteConfirmUser(user)}
+                                    className="text-destructive hover:text-destructive"
+                                    title="Delete user"
                                   >
-                                    <Edit className="h-4 w-4" />
+                                    <Trash2 className="h-4 w-4" />
                                   </Button>
-                              {user.id !== currentUser?.id && (
-                                    <>
-                                       <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => archiveMutation.mutate({ userId: user.id, archive: !user.archived_at })}
-                                        className={user.archived_at ? "text-emerald-600 hover:text-emerald-700" : "text-amber-600 hover:text-amber-700"}
-                                        title={user.archived_at ? "Unarchive user" : "Archive user"}
-                                        disabled={archiveMutation.isPending}
-                                      >
-                                        {user.archived_at ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => setDeleteConfirmUser(user)}
-                                        className="text-destructive hover:text-destructive"
-                                        title="Delete user"
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </>
-                                  )}
-                                </>
-                              )}
+                                )}
                             </div>
                           </TableCell>
                         </TableRow>
