@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,84 +10,96 @@ import { DivisionProvider, useDivision } from "@/contexts/DivisionContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import Login from "./pages/Login";
-import TenantLoginPage from "./pages/TenantLogin";
-import Dashboard from "./pages/Dashboard";
-import Teachers from "./pages/Teachers";
-import Students from "./pages/Students";
-import Schedules from "./pages/Schedules";
-import Attendance from "./pages/Attendance";
-import Lessons from "./pages/Lessons";
-import Reports from "./pages/Reports";
-import Payments from "./pages/Payments";
-import KPI from "./pages/KPI";
-import ReportCardTemplates from "./pages/ReportCardTemplates";
-import GenerateReportCard from "./pages/GenerateReportCard";
-import StudentReports from "./pages/StudentReports";
-import UserManagement from "./pages/UserManagement";
-import Resources from "./pages/Resources";
-import Assignments from "./pages/Assignments";
-import MonthlyPlanning from "./pages/MonthlyPlanning";
-import AdminCommandCenter from "./pages/AdminCommandCenter";
-import TeacherNazraDashboard from "./pages/TeacherNazraDashboard";
-import Subjects from "./pages/Subjects";
-import ZoomManagement from "./pages/ZoomManagement";
-import IntegrityAudit from "./pages/IntegrityAudit";
-import Courses from "./pages/Courses";
-import CourseBuilder from "./pages/CourseBuilder";
-import PublicCoursePage from "./pages/PublicCoursePage";
-import OrganizationSettings from "./pages/OrganizationSettings";
-import FinanceSetup from "./pages/FinanceSetup";
-import SalaryEngine from "./pages/SalaryEngine";
-import StaffSalarySetup from "./pages/StaffSalarySetup";
-import Expenses from "./pages/Expenses";
-import CashAdvances from "./pages/CashAdvances";
-import SelectDivision from "./pages/SelectDivision";
-import PrintReport from "./pages/PrintReport";
-import PrintInvoice from "./pages/PrintInvoice";
-import PrintSalary from "./pages/PrintSalary";
-import WorkHub from "./pages/WorkHub";
-import LeadsPipeline from "./pages/LeadsPipeline";
-import EnrollmentForm from "./pages/EnrollmentForm";
-import PublicInquiryForm from "./pages/PublicInquiryForm";
-import StudentCourseView from "./pages/StudentCourseView";
-import MyCourses from "./pages/MyCourses";
-import TeacherCourseView from "./pages/TeacherCourseView";
-import NotFound from "./pages/NotFound";
-import IdentityResolution from "./pages/IdentityResolution";
-import CourseCatalog from "./pages/CourseCatalog";
-import RecordedCourses from "./pages/RecordedCourses";
-import NotificationCenter from "./pages/NotificationCenter";
-import GroupChat from "./pages/GroupChat";
-import WhatsAppInbox from "./pages/WhatsAppInbox";
-import PublicApplyForm from "./pages/PublicApplyForm";
-import TeachingOS from "./pages/TeachingOS";
-import TeachingOSOutline from "./pages/TeachingOSOutline";
-import TeachingOSPlanner from "./pages/TeachingOSPlanner";
-import TeachingOSDayBoard from "./pages/TeachingOSDayBoard";
-import TeachingOSStudentView from "./pages/TeachingOSStudentView";
-import TeachingOSContentKit from "./pages/TeachingOSContentKit";
-import TeachingOSAssessment from "./pages/TeachingOSAssessment";
-import TeachingOSVideo from "./pages/TeachingOSVideo";
-import TeachingOSSpeakingTutor from "./pages/TeachingOSSpeakingTutor";
-import TeachingOSAnalytics from "./pages/TeachingOSAnalytics";
-import ParentDashboard from "./pages/ParentDashboard";
-import QuizEngine from "./pages/QuizEngine";
-import PublicQuiz from "./pages/PublicQuiz";
-import StudentQuizView from "./pages/StudentQuizView";
-import VirtualClassroom from "./pages/VirtualClassroom";
-import SchemaExplorer from "./pages/SchemaExplorer";
-import UserConnections from "./pages/UserConnections";
-import TeachingLanding from "./pages/TeachingLanding";
-import PeopleLanding from "./pages/PeopleLanding";
-import FinanceLanding from "./pages/FinanceLanding";
-import MySchedule from "./pages/MySchedule";
-import CommunicationLanding from "./pages/CommunicationLanding";
-import SettingsLanding from "./pages/SettingsLanding";
 import { isStudentRouteAllowed } from "@/lib/studentRoutes";
 import { RouteGuard } from "@/components/auth/RouteGuard";
 
 const queryClient = new QueryClient();
+
+function AppShellLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="text-center">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    </div>
+  );
+}
+
+const Login = lazy(() => import("./pages/Login"));
+const TenantLoginPage = lazy(() => import("./pages/TenantLogin"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Teachers = lazy(() => import("./pages/Teachers"));
+const Students = lazy(() => import("./pages/Students"));
+const Schedules = lazy(() => import("./pages/Schedules"));
+const Attendance = lazy(() => import("./pages/Attendance"));
+const Lessons = lazy(() => import("./pages/Lessons"));
+const Reports = lazy(() => import("./pages/Reports"));
+const Payments = lazy(() => import("./pages/Payments"));
+const KPI = lazy(() => import("./pages/KPI"));
+const ReportCardTemplates = lazy(() => import("./pages/ReportCardTemplates"));
+const GenerateReportCard = lazy(() => import("./pages/GenerateReportCard"));
+const StudentReports = lazy(() => import("./pages/StudentReports"));
+const UserManagement = lazy(() => import("./pages/UserManagement"));
+const Resources = lazy(() => import("./pages/Resources"));
+const Assignments = lazy(() => import("./pages/Assignments"));
+const MonthlyPlanning = lazy(() => import("./pages/MonthlyPlanning"));
+const AdminCommandCenter = lazy(() => import("./pages/AdminCommandCenter"));
+const TeacherNazraDashboard = lazy(() => import("./pages/TeacherNazraDashboard"));
+const Subjects = lazy(() => import("./pages/Subjects"));
+const ZoomManagement = lazy(() => import("./pages/ZoomManagement"));
+const IntegrityAudit = lazy(() => import("./pages/IntegrityAudit"));
+const Courses = lazy(() => import("./pages/Courses"));
+const CourseBuilder = lazy(() => import("./pages/CourseBuilder"));
+const PublicCoursePage = lazy(() => import("./pages/PublicCoursePage"));
+const OrganizationSettings = lazy(() => import("./pages/OrganizationSettings"));
+const FinanceSetup = lazy(() => import("./pages/FinanceSetup"));
+const SalaryEngine = lazy(() => import("./pages/SalaryEngine"));
+const StaffSalarySetup = lazy(() => import("./pages/StaffSalarySetup"));
+const Expenses = lazy(() => import("./pages/Expenses"));
+const CashAdvances = lazy(() => import("./pages/CashAdvances"));
+const SelectDivision = lazy(() => import("./pages/SelectDivision"));
+const PrintReport = lazy(() => import("./pages/PrintReport"));
+const PrintInvoice = lazy(() => import("./pages/PrintInvoice"));
+const PrintSalary = lazy(() => import("./pages/PrintSalary"));
+const WorkHub = lazy(() => import("./pages/WorkHub"));
+const LeadsPipeline = lazy(() => import("./pages/LeadsPipeline"));
+const EnrollmentForm = lazy(() => import("./pages/EnrollmentForm"));
+const PublicInquiryForm = lazy(() => import("./pages/PublicInquiryForm"));
+const StudentCourseView = lazy(() => import("./pages/StudentCourseView"));
+const MyCourses = lazy(() => import("./pages/MyCourses"));
+const TeacherCourseView = lazy(() => import("./pages/TeacherCourseView"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const IdentityResolution = lazy(() => import("./pages/IdentityResolution"));
+const CourseCatalog = lazy(() => import("./pages/CourseCatalog"));
+const RecordedCourses = lazy(() => import("./pages/RecordedCourses"));
+const NotificationCenter = lazy(() => import("./pages/NotificationCenter"));
+const GroupChat = lazy(() => import("./pages/GroupChat"));
+const WhatsAppInbox = lazy(() => import("./pages/WhatsAppInbox"));
+const PublicApplyForm = lazy(() => import("./pages/PublicApplyForm"));
+const TeachingOS = lazy(() => import("./pages/TeachingOS"));
+const TeachingOSOutline = lazy(() => import("./pages/TeachingOSOutline"));
+const TeachingOSPlanner = lazy(() => import("./pages/TeachingOSPlanner"));
+const TeachingOSDayBoard = lazy(() => import("./pages/TeachingOSDayBoard"));
+const TeachingOSStudentView = lazy(() => import("./pages/TeachingOSStudentView"));
+const TeachingOSContentKit = lazy(() => import("./pages/TeachingOSContentKit"));
+const TeachingOSAssessment = lazy(() => import("./pages/TeachingOSAssessment"));
+const TeachingOSVideo = lazy(() => import("./pages/TeachingOSVideo"));
+const TeachingOSSpeakingTutor = lazy(() => import("./pages/TeachingOSSpeakingTutor"));
+const TeachingOSAnalytics = lazy(() => import("./pages/TeachingOSAnalytics"));
+const ParentDashboard = lazy(() => import("./pages/ParentDashboard"));
+const QuizEngine = lazy(() => import("./pages/QuizEngine"));
+const PublicQuiz = lazy(() => import("./pages/PublicQuiz"));
+const StudentQuizView = lazy(() => import("./pages/StudentQuizView"));
+const VirtualClassroom = lazy(() => import("./pages/VirtualClassroom"));
+const SchemaExplorer = lazy(() => import("./pages/SchemaExplorer"));
+const UserConnections = lazy(() => import("./pages/UserConnections"));
+const TeachingLanding = lazy(() => import("./pages/TeachingLanding"));
+const PeopleLanding = lazy(() => import("./pages/PeopleLanding"));
+const FinanceLanding = lazy(() => import("./pages/FinanceLanding"));
+const MySchedule = lazy(() => import("./pages/MySchedule"));
+const CommunicationLanding = lazy(() => import("./pages/CommunicationLanding"));
+const SettingsLanding = lazy(() => import("./pages/SettingsLanding"));
 
 /**
  * Blocks the `student` role from admin/teacher routes that previously had no
@@ -433,7 +446,9 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <DivisionProvider>
-            <AppRoutes />
+            <Suspense fallback={<AppShellLoader />}>
+              <AppRoutes />
+            </Suspense>
           </DivisionProvider>
         </AuthProvider>
       </BrowserRouter>
