@@ -720,6 +720,7 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
                 <Switch checked={!!form.force_password_reset} onCheckedChange={(v) => setForm({ ...form, force_password_reset: v })} />
               </div>
             </TabsContent>
+            </fieldset>
           </Tabs>
         )}
       </SheetContent>
