@@ -1063,6 +1063,23 @@ export default function UserManagement() {
     return !hasGlobalRole; // global-role users without context already counted as matched
   });
 
+  // Users with NO role assigned at all (critical)
+  const noRoleUsers = useMemo(
+    () => (users || []).filter(u => !u.archived_at && (u.roles?.length ?? 0) === 0),
+    [users]
+  );
+
+  // admin_division users with no division assigned (informational)
+  const adminDivWithoutDivision = useMemo(
+    () => (users || []).filter(u => {
+      if (u.archived_at) return false;
+      if (!(u.roles || []).includes('admin_division')) return false;
+      const memberships = divMembershipMap?.get(u.id) || [];
+      return memberships.length === 0;
+    }),
+    [users, divMembershipMap]
+  );
+
   const hasActiveFilters = !!filterCountry || !!filterCity || !!filterRole || !!filterDivision || showArchived;
 
   const resetFilters = () => {
