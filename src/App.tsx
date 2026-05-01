@@ -15,6 +15,17 @@ import { RouteGuard } from "@/components/auth/RouteGuard";
 
 const queryClient = new QueryClient();
 
+function AppShellLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="text-center">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    </div>
+  );
+}
+
 const Login = lazy(() => import("./pages/Login"));
 const TenantLoginPage = lazy(() => import("./pages/TenantLogin"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -435,7 +446,9 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <DivisionProvider>
-            <AppRoutes />
+            <Suspense fallback={<AppShellLoader />}>
+              <AppRoutes />
+            </Suspense>
           </DivisionProvider>
         </AuthProvider>
       </BrowserRouter>
