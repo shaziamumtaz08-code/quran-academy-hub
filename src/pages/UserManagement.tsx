@@ -919,7 +919,7 @@ export default function UserManagement() {
     if (!filterRole) return 'all';
     if (filterRole === 'student') return 'student';
     if (filterRole === 'teacher') return 'teacher';
-    if (['admin', 'super_admin', 'admin_admissions', 'admin_fees', 'admin_academic', 'examiner'].includes(filterRole)) return 'staff';
+    if (['admin', 'super_admin', 'admin_division', 'admin_admissions', 'admin_fees', 'admin_academic', 'examiner'].includes(filterRole)) return 'staff';
     return 'all';
   }, [filterRole]);
 
