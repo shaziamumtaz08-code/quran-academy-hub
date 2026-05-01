@@ -1524,12 +1524,14 @@ export default function UserManagement() {
                       </>
                     )}
                   </div>
-                </DialogContent>
-              </Dialog>
-              <BulkUserImportDialog open={isBulkImportOpen} onOpenChange={setIsBulkImportOpen} />
-              </>
-            )}
-          </div>
+                 </DialogContent>
+               </Dialog>
+               </>
+             )}
+             {(activeRole === 'super_admin' || activeRole === 'admin_division' || activeRole === 'admin') && (
+               <BulkUserImportDialog open={isBulkImportOpen} onOpenChange={setIsBulkImportOpen} />
+             )}
+           </div>
         </div>
 
         {/* Error state */}
