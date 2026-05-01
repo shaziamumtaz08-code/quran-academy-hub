@@ -54,6 +54,7 @@ export default function Dashboard() {
     case 'super_admin':
       return <SuperAdminDashboard />;
     case 'admin':
+    case 'admin_division':
       return <AdminDashboard />;
     case 'admin_admissions':
       return <AdmissionsAdminDashboard />;
