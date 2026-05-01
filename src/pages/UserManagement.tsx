@@ -345,6 +345,18 @@ export default function UserManagement() {
   // Check access permission
   const canAccessPage = isSuperAdmin || hasPermission('users.view');
 
+  // Open profile drawer with permission check (prevents blank-page bug for unauthorized roles)
+  const openProfileDrawer = (userId: string) => {
+    const ADMIN_VIEWERS: AppRole[] = ['super_admin', 'admin', 'admin_division', 'admin_admissions', 'admin_academic'];
+    const role = activeRole as AppRole | null;
+    const allowed = isSuperAdmin || (role && ADMIN_VIEWERS.includes(role));
+    if (!allowed) {
+      toast({ title: 'Access denied', description: 'You do not have permission to view user profiles.', variant: 'destructive' });
+      return;
+    }
+    setHolisticUserId(userId);
+  };
+
   // Fetch users with profiles and ALL roles
   const { data: users, isLoading: usersLoading, error: usersError, refetch, isFetching } = useQuery({
     queryKey: ['users-with-roles'],
