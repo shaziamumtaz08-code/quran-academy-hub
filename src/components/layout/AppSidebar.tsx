@@ -9,7 +9,7 @@ import { can, AppRole } from '@/lib/accessMatrix';
 import {
   Plus, Search, ArrowLeft, ChevronDown, ChevronRight,
   Settings, BookOpen, Megaphone, Layers, GraduationCap, MessageSquare,
-  LayoutDashboard
+  LayoutDashboard, UserCog
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -113,7 +113,7 @@ function getPeopleSidebar(isOneToOne?: boolean, role?: string | null): { title: 
     title: 'People',
     subtitle: '',
     items: [
-      ...(canStaff ? [{ label: 'User Management', href: '/user-management' }] : []),
+      { label: 'User Management', href: '/user-management', icon: UserCog },
       ...(can(r, 'students', 'view') ? [{ label: 'Students', href: '/students' }] : []),
       ...(can(r, 'teachers', 'view') ? [{ label: 'Teachers', href: '/teachers' }] : []),
       ...(canStaff ? [{ label: 'Staff', href: '/user-management?mode=staff' }] : []),
