@@ -1599,8 +1599,7 @@ export default function UserManagement() {
                     { key: 'student', label: 'Students', dot: 'bg-teal-500', role: 'student' },
                     { key: 'teacher', label: 'Teachers', dot: 'bg-violet-500', role: 'teacher' },
                     { key: 'parent', label: 'Parents', dot: 'bg-amber-500', role: 'parent' },
-                    { key: 'admin', label: 'Admins', dot: 'bg-rose-500', role: 'admin' },
-                    { key: 'admin_division', label: 'Division Admin', dot: 'bg-purple-500', role: 'admin_division' },
+                    { key: 'admin_division', label: 'Division Admin', dot: 'bg-purple-500', role: '__admins__' },
                     { key: 'examiner', label: 'Examiners', dot: 'bg-sky-500', role: 'examiner' },
                   ] as const).map((p) => {
                     const active = (filterRole || '') === p.role;
