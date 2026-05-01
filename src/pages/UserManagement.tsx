@@ -984,12 +984,19 @@ export default function UserManagement() {
       const userMemberships = divMembershipMap?.get(user.id) || [];
       let matchesRole = true;
       if (filterRole) {
+        const ADMIN_ROLES: AppRole[] = ['super_admin', 'admin', 'admin_division', 'admin_admissions', 'admin_fees', 'admin_academic'];
+        const isAdminsPill = filterRole === '__admins__';
         if (effectiveDivisionId) {
-          matchesRole = userMemberships.some(
-            d => d.divisionId === effectiveDivisionId && d.roles.includes(filterRole),
-          );
+          matchesRole = userMemberships.some(d => {
+            if (d.divisionId !== effectiveDivisionId) return false;
+            return isAdminsPill
+              ? d.roles.some((r: string) => ADMIN_ROLES.includes(r as AppRole))
+              : d.roles.includes(filterRole);
+          });
         } else {
-          matchesRole = !!user.roles?.includes(filterRole as AppRole);
+          matchesRole = isAdminsPill
+            ? !!user.roles?.some(r => ADMIN_ROLES.includes(r))
+            : !!user.roles?.includes(filterRole as AppRole);
         }
       }
 
