@@ -326,8 +326,9 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
     { key: 'activity',  label: 'Activity',  Icon: Activity },
     { key: 'password',  label: 'Password',  Icon: KeyRound },
   ];
-  const visibleTabs = ALL_TABS.filter(t => tabAccessFor(activeRole, t.key) !== 'none');
-  const currentTabAccess = tabAccessFor(activeRole, tab);
+  const effectiveRole: AppRole | null | undefined = activeRole || (isSuperAdmin ? 'super_admin' : activeRole);
+  const visibleTabs = ALL_TABS.filter(t => tabAccessFor(effectiveRole, t.key) !== 'none');
+  const currentTabAccess = tabAccessFor(effectiveRole, tab);
   const canSaveCurrentTab = currentTabAccess === 'write';
 
   // If current tab not visible, snap to first visible
@@ -335,7 +336,7 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
     if (!visibleTabs.find(t => t.key === tab) && visibleTabs.length > 0) {
       setTab(visibleTabs[0].key);
     }
-  }, [activeRole, visibleTabs.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [effectiveRole, visibleTabs.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Shared-email detection for guardian banner (parent and student profiles share email)
   const guardianSharesEmail = !!(parentLink?.profile?.email && profile?.email &&
@@ -375,6 +376,15 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : visibleTabs.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+            <Shield className="h-10 w-10 text-muted-foreground mb-3" />
+            <h3 className="text-base font-semibold mb-1">Access denied</h3>
+            <p className="text-sm text-muted-foreground max-w-md">
+              You do not have permission to view this user's profile.
+              {!effectiveRole && ' Your active role is still loading — please try again in a moment.'}
+            </p>
           </div>
         ) : (
           <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)} className="px-6 py-4">

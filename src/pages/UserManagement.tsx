@@ -319,7 +319,7 @@ export default function UserManagement() {
   const [filterRole, setFilterRole] = useState<string>('');
   const [filterDivision, setFilterDivision] = useState<string>('');
   const [showArchived, setShowArchived] = useState(false);
-  const [showLegend, setShowLegend] = useState(true);
+  const [showLegend, setShowLegend] = useState(false);
   // Sorting state
   type SortField = 'name' | 'role' | 'gender' | 'age' | 'country' | 'city';
   type SortDirection = 'asc' | 'desc';
@@ -344,6 +344,18 @@ export default function UserManagement() {
 
   // Check access permission
   const canAccessPage = isSuperAdmin || hasPermission('users.view');
+
+  // Open profile drawer with permission check (prevents blank-page bug for unauthorized roles)
+  const openProfileDrawer = (userId: string) => {
+    const ADMIN_VIEWERS: AppRole[] = ['super_admin', 'admin', 'admin_division', 'admin_admissions', 'admin_academic'];
+    const role = activeRole as AppRole | null;
+    const allowed = isSuperAdmin || (role && ADMIN_VIEWERS.includes(role));
+    if (!allowed) {
+      toast({ title: 'Access denied', description: 'You do not have permission to view user profiles.', variant: 'destructive' });
+      return;
+    }
+    setHolisticUserId(userId);
+  };
 
   // Fetch users with profiles and ALL roles
   const { data: users, isLoading: usersLoading, error: usersError, refetch, isFetching } = useQuery({
@@ -984,12 +996,19 @@ export default function UserManagement() {
       const userMemberships = divMembershipMap?.get(user.id) || [];
       let matchesRole = true;
       if (filterRole) {
+        const ADMIN_ROLES: AppRole[] = ['super_admin', 'admin', 'admin_division', 'admin_admissions', 'admin_fees', 'admin_academic'];
+        const isAdminsPill = filterRole === '__admins__';
         if (effectiveDivisionId) {
-          matchesRole = userMemberships.some(
-            d => d.divisionId === effectiveDivisionId && d.roles.includes(filterRole),
-          );
+          matchesRole = userMemberships.some(d => {
+            if (d.divisionId !== effectiveDivisionId) return false;
+            return isAdminsPill
+              ? d.roles.some((r: string) => ADMIN_ROLES.includes(r as AppRole))
+              : d.roles.includes(filterRole);
+          });
         } else {
-          matchesRole = !!user.roles?.includes(filterRole as AppRole);
+          matchesRole = isAdminsPill
+            ? !!user.roles?.some(r => ADMIN_ROLES.includes(r))
+            : !!user.roles?.includes(filterRole as AppRole);
         }
       }
 
@@ -1599,8 +1618,7 @@ export default function UserManagement() {
                     { key: 'student', label: 'Students', dot: 'bg-teal-500', role: 'student' },
                     { key: 'teacher', label: 'Teachers', dot: 'bg-violet-500', role: 'teacher' },
                     { key: 'parent', label: 'Parents', dot: 'bg-amber-500', role: 'parent' },
-                    { key: 'admin', label: 'Admins', dot: 'bg-rose-500', role: 'admin' },
-                    { key: 'admin_division', label: 'Division Admin', dot: 'bg-purple-500', role: 'admin_division' },
+                    { key: 'admin_division', label: 'Division Admin', dot: 'bg-purple-500', role: '__admins__' },
                     { key: 'examiner', label: 'Examiners', dot: 'bg-sky-500', role: 'examiner' },
                   ] as const).map((p) => {
                     const active = (filterRole || '') === p.role;
@@ -1812,7 +1830,7 @@ export default function UserManagement() {
                       {filteredUsers.map((user, idx) => (
                         <TableRow
                           key={user.id}
-                          onClick={() => setHolisticUserId(user.id)}
+                          onClick={() => openProfileDrawer(user.id)}
                           className={`group min-h-[64px] border-l-2 border-transparent transition-colors hover:bg-muted/30 hover:border-l-primary cursor-pointer ${idx % 2 === 0 ? 'bg-transparent' : 'bg-muted/20'}`}
                         >
                           {isSuperAdmin && (
@@ -1991,7 +2009,7 @@ export default function UserManagement() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => setHolisticUserId(user.id)}
+                                  onClick={() => openProfileDrawer(user.id)}
                                   title="Open full profile"
                                 >
                                   <Edit className="h-4 w-4" />
