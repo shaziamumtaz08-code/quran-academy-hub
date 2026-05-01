@@ -173,14 +173,15 @@ serve(async (req) => {
 
     const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Authorization: super_admin only
-    const { data: superRow } = await adminClient
+    // Authorization: super_admin or admin_division
+    const { data: callerRoles } = await adminClient
       .from("user_roles")
       .select("role")
-      .eq("user_id", caller.id)
-      .eq("role", "super_admin")
-      .maybeSingle();
-    if (!superRow) return json(403, { error: "Forbidden" }, requestOrigin);
+      .eq("user_id", caller.id);
+    const callerRoleSet = new Set((callerRoles ?? []).map((r: any) => r.role));
+    if (!callerRoleSet.has("super_admin") && !callerRoleSet.has("admin_division")) {
+      return json(403, { error: "Forbidden" }, requestOrigin);
+    }
 
     const body = await req.json().catch(() => null);
     if (!body) return json(400, { error: "Invalid request body" }, requestOrigin);
