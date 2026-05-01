@@ -359,7 +359,12 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
                   <Badge variant="outline" className="text-xs">{completion}% complete</Badge>
                 </SheetDescription>
               </div>
-              <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="gap-2">
+              <Button
+                onClick={() => saveMutation.mutate()}
+                disabled={saveMutation.isPending || !canSaveCurrentTab}
+                className="gap-2"
+                title={!canSaveCurrentTab ? 'Read-only — your role cannot edit this tab' : undefined}
+              >
                 {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 Save
               </Button>
@@ -372,17 +377,25 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : (
-          <Tabs value={tab} onValueChange={setTab} className="px-6 py-4">
-            <TabsList className="grid grid-cols-4 lg:grid-cols-8 mb-4 h-auto">
-              <TabsTrigger value="personal" className="gap-1.5"><User className="h-3.5 w-3.5" /><span className="hidden lg:inline">Personal</span></TabsTrigger>
-              <TabsTrigger value="contact" className="gap-1.5"><Mail className="h-3.5 w-3.5" /><span className="hidden lg:inline">Contact</span></TabsTrigger>
-              <TabsTrigger value="identity" className="gap-1.5"><Shield className="h-3.5 w-3.5" /><span className="hidden lg:inline">Identity</span></TabsTrigger>
-              <TabsTrigger value="guardian" className="gap-1.5"><UsersIcon className="h-3.5 w-3.5" /><span className="hidden lg:inline">Guardian</span></TabsTrigger>
-              <TabsTrigger value="academic" className="gap-1.5"><GraduationCap className="h-3.5 w-3.5" /><span className="hidden lg:inline">Academic</span></TabsTrigger>
-              <TabsTrigger value="documents" className="gap-1.5"><FileText className="h-3.5 w-3.5" /><span className="hidden lg:inline">Docs</span></TabsTrigger>
-              <TabsTrigger value="activity" className="gap-1.5"><Activity className="h-3.5 w-3.5" /><span className="hidden lg:inline">Activity</span></TabsTrigger>
-              <TabsTrigger value="password" className="gap-1.5"><KeyRound className="h-3.5 w-3.5" /><span className="hidden lg:inline">Password</span></TabsTrigger>
+          <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)} className="px-6 py-4">
+            <TabsList
+              className="mb-4 h-auto grid"
+              style={{ gridTemplateColumns: `repeat(${Math.min(visibleTabs.length, 8)}, minmax(0, 1fr))` }}
+            >
+              {visibleTabs.map(({ key, label, Icon }) => (
+                <TabsTrigger key={key} value={key} className="gap-1.5">
+                  <Icon className="h-3.5 w-3.5" />
+                  <span className="hidden lg:inline">{label}</span>
+                </TabsTrigger>
+              ))}
             </TabsList>
+
+            {currentTabAccess === 'view' && (
+              <div className="mb-3 flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+                <Eye className="h-3.5 w-3.5" />
+                <span>Read-only — your role can view this tab but cannot make changes.</span>
+              </div>
+            )}
 
             {/* PERSONAL */}
             <TabsContent value="personal" className="space-y-4">
