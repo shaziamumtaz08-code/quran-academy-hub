@@ -189,7 +189,8 @@ serve(async (req) => {
     const email = String(body?.email ?? "").trim().toLowerCase();
     const password = String(body?.password ?? "");
     const fullName = sanitize(String(body?.fullName ?? "").trim());
-    const role = String(body?.role ?? "student") as AppRole;
+    const roleProvided = body?.role !== undefined && body?.role !== null && String(body?.role).trim() !== "";
+    const role = (roleProvided ? String(body.role) : "") as AppRole | "";
     const whatsapp = body?.whatsapp ? sanitize(String(body.whatsapp).trim()) : null;
     const gender = body?.gender ? String(body.gender).toLowerCase() : null;
     const country = body?.country ? sanitize(String(body.country).trim()) : null;
