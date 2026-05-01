@@ -624,36 +624,46 @@ export default function UserManagement() {
 
   // Create user mutation
   const createUserMutation = useMutation({
-    mutationFn: async ({
-      email,
-      password,
-      fullName,
-      role,
-      whatsapp,
-      gender,
-      age,
-      country,
-      city,
-      forceNewProfile,
-      branch_id,
-      parent_id,
-    }: {
+    mutationFn: async (payload: {
       email: string;
-      password: string;
+      password?: string;
       fullName: string;
       role: AppRole;
       whatsapp?: string;
       gender?: 'male' | 'female';
-      age?: number;
       country?: string;
       city?: string;
-      forceNewProfile?: boolean;
       branch_id?: string;
+      division_id?: string;
+      date_of_birth?: string;
+      timezone?: string;
+      guardian_type?: string;
+      parent_email?: string;
+      parent_name?: string;
+      parentExistingOnly?: boolean;
       parent_id?: string;
+      addRoleOnly?: boolean;
+      existingUserId?: string;
     }) => {
       const { data, error } = await supabase.functions.invoke('admin-create-user', {
-        body: { email, password, fullName, role, whatsapp, gender, age, country, city, forceNewProfile, branch_id, parent_id },
+        body: payload,
       });
+      if (error) {
+        let serverMsg = error.message || 'Failed to create user';
+        try {
+          const ctx: any = (error as any).context;
+          if (ctx && typeof ctx.json === 'function') {
+            const b = await ctx.json();
+            if (b?.message) serverMsg = b.message;
+            else if (b?.error) serverMsg = b.error;
+          } else if (ctx && typeof ctx.text === 'function') {
+            const txt = await ctx.text();
+            try { const b = JSON.parse(txt); if (b?.message) serverMsg = b.message; else if (b?.error) serverMsg = b.error; } catch { if (txt) serverMsg = txt; }
+          }
+        } catch { /* keep */ }
+        throw new Error(serverMsg);
+      }
+      if (data?.error) throw new Error(data.message || data.error);
       if (error) {
         // Non-2xx from edge function. Read the JSON body for the real message.
         let serverMsg = error.message || 'Failed to create user';
