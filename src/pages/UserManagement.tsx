@@ -1896,6 +1896,19 @@ export default function UserManagement() {
                                 <Network className="h-4 w-4" />
                               </Button>
 
+                              {/* Assign Role — super_admin & admin_division */}
+                              {(activeRole === 'super_admin' || activeRole === 'admin_division') && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setAssignRoleUser(user)}
+                                  title="Assign or modify role"
+                                  className={(user.roles?.length ?? 0) === 0 ? 'text-amber-600 hover:text-amber-700' : ''}
+                                >
+                                  <UserPlus className="h-4 w-4" />
+                                </Button>
+                              )}
+
                               {/* Edit → opens 8-tab holistic profile (the profile drawer enforces tab-level access per role) */}
                               {activeRole !== 'admin_fees' && (
                                 <Button
