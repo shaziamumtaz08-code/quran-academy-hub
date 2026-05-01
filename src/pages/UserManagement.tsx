@@ -291,6 +291,15 @@ export default function UserManagement() {
   const [createAsSibling, setCreateAsSibling] = useState(false); // For creating siblings with shared email
   const [newUserBranchId, setNewUserBranchId] = useState('');
   const [newUserParentId, setNewUserParentId] = useState('');
+  const [newUserDivisionId, setNewUserDivisionId] = useState('');
+  const [newUserDob, setNewUserDob] = useState('');
+  const [newUserTimezone, setNewUserTimezone] = useState('');
+  const [newUserGuardianType, setNewUserGuardianType] = useState<'' | 'none' | 'parent' | 'guardian' | 'emergency'>('');
+  const [newUserParentEmail, setNewUserParentEmail] = useState('');
+  const [newUserParentName, setNewUserParentName] = useState('');
+  const [newUserParentExisting, setNewUserParentExisting] = useState(false);
+  const [emailExistsCheck, setEmailExistsCheck] = useState<{ id: string; full_name: string | null } | null>(null);
+  const [emailChecking, setEmailChecking] = useState(false);
 
   // View/Edit dialog states
   const [isEditMode, setIsEditMode] = useState(false);
