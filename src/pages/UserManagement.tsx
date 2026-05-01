@@ -643,7 +643,7 @@ export default function UserManagement() {
       email: string;
       password?: string;
       fullName: string;
-      role: AppRole;
+      role?: AppRole;
       whatsapp?: string;
       gender?: 'male' | 'female';
       country?: string;
