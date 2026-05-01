@@ -1047,6 +1047,7 @@ export default function UserManagement() {
   // Split into matched (in scope division) vs unassigned (no memberships at all).
   // Global-role users (admin/super_admin/etc.) are always matched.
   const filteredUsers = (filteredAll || []).filter(user => {
+    if (showNoRoleOnly) return (user.roles?.length ?? 0) === 0;
     if (!effectiveDivisionId) return true;
     const memberships = divMembershipMap?.get(user.id) || [];
     if (memberships.some(d => d.divisionId === effectiveDivisionId)) return true;
