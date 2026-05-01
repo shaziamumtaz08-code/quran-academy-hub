@@ -310,8 +310,6 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
     qc.invalidateQueries({ queryKey: ['holistic-parent', userId] });
   };
 
-  if (!userId) return null;
-
   const initials = (form.full_name || 'U').split(' ').map((s: string) => s[0]).slice(0, 2).join('').toUpperCase();
   const completion = pct(form);
 
@@ -337,6 +335,10 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
       setTab(visibleTabs[0].key);
     }
   }, [effectiveRole, visibleTabs.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Early return AFTER all hooks to preserve hook order (fixes React error #310)
+  if (!userId) return null;
+
 
   // Shared-email detection for guardian banner (parent and student profiles share email)
   const guardianSharesEmail = !!(parentLink?.profile?.email && profile?.email &&
