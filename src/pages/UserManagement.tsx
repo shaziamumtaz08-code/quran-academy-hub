@@ -1478,6 +1478,43 @@ export default function UserManagement() {
           </Card>
         )}
 
+        {/* Banner A: users with NO role assigned (critical) */}
+        {(activeRole === 'super_admin' || activeRole === 'admin_division') && noRoleUsers.length > 0 && (
+          <Card className="border-destructive/40 bg-destructive/5">
+            <CardContent className="py-3">
+              <button
+                type="button"
+                onClick={() => setShowNoRoleOnly(s => !s)}
+                className="flex w-full items-center justify-between gap-3 text-left"
+              >
+                <div className="flex items-center gap-3 text-destructive">
+                  <AlertCircle className="h-5 w-5" />
+                  <span className="text-sm font-medium">
+                    {noRoleUsers.length} user{noRoleUsers.length === 1 ? '' : 's'} have NO role assigned
+                  </span>
+                </div>
+                <span className="text-xs text-destructive/80 underline">
+                  {showNoRoleOnly ? 'Show all users' : 'Show these users'}
+                </span>
+              </button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Banner B: admin_division users with no division (informational) */}
+        {(activeRole === 'super_admin' || activeRole === 'admin_division') && adminDivWithoutDivision.length > 0 && (
+          <Card className="border-amber-300/60 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-800/60">
+            <CardContent className="py-3">
+              <div className="flex items-center gap-3 text-amber-800 dark:text-amber-300">
+                <AlertTriangle className="h-5 w-5" />
+                <span className="text-sm font-medium">
+                  {adminDivWithoutDivision.length} Division Admin user{adminDivWithoutDivision.length === 1 ? '' : 's'} have no division assigned
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <Tabs defaultValue="users" className="space-y-6">
           <TabsList>
             <TabsTrigger value="users" className="gap-2">
