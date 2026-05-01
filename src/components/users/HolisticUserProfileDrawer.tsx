@@ -397,6 +397,9 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
               </div>
             )}
 
+            {/* All TabsContent inside a fieldset so we can disable inputs/buttons on view-only without changing markup */}
+            <fieldset disabled={!canSaveCurrentTab} className="contents">
+
             {/* PERSONAL */}
             <TabsContent value="personal" className="space-y-4">
               <div className="flex items-center gap-4">
