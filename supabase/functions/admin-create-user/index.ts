@@ -449,9 +449,9 @@ serve(async (req) => {
       userId: newUserId,
       email,
       full_name: fullName,
-      role,
+      role: roleProvided ? role : null,
       registration_id: registrationId,
-      message: parentNotice || "User created successfully",
+      message: parentNotice || (roleProvided ? "User created successfully" : "User created. Assign a role to enable access."),
       roleAdded: false,
       parentLinked,
     }, requestOrigin);
