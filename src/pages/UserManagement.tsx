@@ -1116,27 +1116,33 @@ export default function UserManagement() {
             <h1 className="text-2xl font-serif font-bold text-foreground">{staffMode ? 'Staff' : 'User Management'}</h1>
             <p className="text-muted-foreground">{staffMode ? 'Non-teaching staff (admins, moderators, supervisors, examiners)' : 'Manage users, roles, and permissions'}</p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="icon" onClick={() => refetch()} title="Refresh" disabled={isFetching}>
-              <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
-            </Button>
-            {isSuperAdmin && (
-              <>
-                <Button variant="outline" onClick={() => setIsBulkImportOpen(true)}>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Bulk Import
-                </Button>
-                <Button variant="outline" onClick={() => setIsExportDialogOpen(true)}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Export Users
-                </Button>
-                <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button className="btn-primary-glow">
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Add User
-                    </Button>
-                  </DialogTrigger>
+           {(() => null)()}
+           {/* Header button gating by role */}
+           <div className="flex gap-2">
+             <Button variant="outline" size="icon" onClick={() => refetch()} title="Refresh" disabled={isFetching}>
+               <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+             </Button>
+             {(activeRole === 'super_admin' || activeRole === 'admin_division' || activeRole === 'admin') && (
+               <Button variant="outline" onClick={() => setIsBulkImportOpen(true)}>
+                 <Upload className="h-4 w-4 mr-2" />
+                 Bulk Import
+               </Button>
+             )}
+             {(activeRole === 'super_admin' || activeRole === 'admin_division' || activeRole === 'admin' || activeRole === 'admin_admissions' || activeRole === 'admin_academic') && (
+               <Button variant="outline" onClick={() => setIsExportDialogOpen(true)}>
+                 <Download className="h-4 w-4 mr-2" />
+                 Export Users
+               </Button>
+             )}
+             {(activeRole === 'super_admin' || activeRole === 'admin_division' || activeRole === 'admin' || activeRole === 'admin_admissions') && (
+               <>
+                 <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                   <DialogTrigger asChild>
+                     <Button className="btn-primary-glow">
+                       <UserPlus className="h-4 w-4 mr-2" />
+                       Add User
+                     </Button>
+                   </DialogTrigger>
                 <DialogContent className="max-w-[600px]">
                   <DialogHeader>
                     <DialogTitle>Create New User</DialogTitle>
