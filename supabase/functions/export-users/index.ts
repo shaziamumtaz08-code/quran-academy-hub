@@ -2,12 +2,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 
 interface ExportRequest {
-  userIds?: string[]; // For selected users
-  searchTerm?: string; // For filtered users
-  exportType: "selected" | "filtered" | "all";
+  userIds?: string[];
+  searchTerm?: string;
+  exportType: "selected" | "filtered" | "all" | "my_division";
   format: "csv" | "xlsx";
   fields: string[];
-  includePasswords: boolean;
+  includePasswords?: boolean;
   adminId: string;
 }
 
@@ -18,16 +18,35 @@ const FIELD_HEADERS: Record<string, string> = {
   whatsapp_number: "Phone",
   role: "Role",
   status: "Status",
+  account_status: "Account Status",
   gender: "Gender",
   age: "Age",
+  date_of_birth: "Date of Birth",
+  nationality: "Nationality",
+  urn: "UID / Roll No",
   country: "Country",
   city: "City",
+  timezone: "Timezone",
+  first_language: "First Language",
+  arabic_level: "Arabic Level",
+  division: "Division",
+  branch: "Branch",
+  join_date: "Join Date",
+  profile_completion: "Profile Completion %",
+  guardian_type: "Guardian Type",
+  parent_email: "Parent Email",
+  parent_name: "Parent Name",
   created_at: "Created Date",
-  password: "Password",
 };
 
+// Fields used to compute profile completion %
+const COMPLETION_FIELDS = [
+  "full_name", "email", "whatsapp_number", "gender", "age",
+  "date_of_birth", "country", "city", "timezone", "nationality",
+  "first_language", "arabic_level",
+];
+
 Deno.serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -35,13 +54,10 @@ Deno.serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "Missing authorization header" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Missing authorization header" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Create Supabase client with user's token to verify super_admin
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -50,168 +66,251 @@ Deno.serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    // Verify the user is super_admin
     const { data: { user }, error: userError } = await userClient.auth.getUser();
     if (userError || !user) {
-      console.error("Auth error:", userError);
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Check if user has super_admin role
-    const { data: roleData } = await userClient
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Fetch caller roles
+    const { data: callerRoles } = await adminClient
       .from("user_roles")
       .select("role")
-      .eq("user_id", user.id)
-      .eq("role", "super_admin")
-      .single();
+      .eq("user_id", user.id);
 
-    if (!roleData) {
-      console.error("User is not super_admin:", user.id);
-      return new Response(
-        JSON.stringify({ error: "Only Super Admin can export users" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    const roles = (callerRoles || []).map(r => r.role);
+    const isSuperAdmin = roles.includes("super_admin");
+    const isDivisionAdmin = roles.includes("admin_division") || roles.includes("admin");
+    const isAdmissionsOrAcademic =
+      roles.includes("admin_admissions") || roles.includes("admin_academic");
+
+    if (!isSuperAdmin && !isDivisionAdmin && !isAdmissionsOrAcademic) {
+      return new Response(JSON.stringify({ error: "Insufficient permissions to export users" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const body: ExportRequest = await req.json();
-    const { userIds, searchTerm, exportType, format, fields, includePasswords, adminId } = body;
+    const { userIds, searchTerm, exportType, format, fields, adminId } = body;
 
-    console.log("Export request:", { exportType, format, fields, includePasswords, userCount: userIds?.length });
+    console.log("Export request:", { exportType, format, fields, userCount: userIds?.length, roles });
 
-    // Use service role client for fetching all users and auth data
-    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+    // Resolve caller's active division (used for division-scoped exports)
+    let callerDivisionId: string | null = null;
+    if (!isSuperAdmin) {
+      const { data: ctx } = await adminClient
+        .from("user_context")
+        .select("division_id, is_default")
+        .eq("user_id", user.id)
+        .order("is_default", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      callerDivisionId = ctx?.division_id || null;
+    }
 
-    // Fetch users based on export type
+    // Build base query
     let query = adminClient.from("profiles").select("*");
 
     if (exportType === "selected" && userIds && userIds.length > 0) {
       query = query.in("id", userIds);
     } else if (exportType === "filtered" && searchTerm) {
       query = query.or(`full_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
+    } else if (exportType === "my_division") {
+      // Will scope below using division-member ids
+    } else if (exportType === "all" && !isSuperAdmin) {
+      return new Response(JSON.stringify({ error: "Only Super Admin can export all users" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Division scoping for non-super-admin roles
+    if (!isSuperAdmin) {
+      if (!callerDivisionId) {
+        return new Response(JSON.stringify({ error: "No active division found for caller" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const { data: divMembers } = await adminClient
+        .from("user_context")
+        .select("user_id")
+        .eq("division_id", callerDivisionId);
+      const allowedIds = (divMembers || []).map(m => m.user_id);
+      if (allowedIds.length === 0) {
+        return new Response(JSON.stringify({ error: "No users in your division" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      query = query.in("id", allowedIds);
     }
 
     const { data: profiles, error: profilesError } = await query.order("created_at", { ascending: false });
 
     if (profilesError) {
       console.error("Error fetching profiles:", profilesError);
-      return new Response(
-        JSON.stringify({ error: "Failed to fetch users" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Failed to fetch users" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     if (!profiles || profiles.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "No users to export" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "No users to export" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Fetch roles for all users
-    const userIdsToFetch = profiles.map(p => p.id);
+    const profileIds = profiles.map(p => p.id);
+
+    // Roles map
     const { data: rolesData } = await adminClient
       .from("user_roles")
       .select("user_id, role")
-      .in("user_id", userIdsToFetch);
-
+      .in("user_id", profileIds);
     const rolesMap: Record<string, string[]> = {};
     rolesData?.forEach(r => {
       if (!rolesMap[r.user_id]) rolesMap[r.user_id] = [];
       rolesMap[r.user_id].push(r.role);
     });
 
-    // Fetch passwords from auth.users if requested
-    let passwordsMap: Record<string, string> = {};
-    if (includePasswords && fields.includes("password")) {
-      // Note: Supabase Auth hashes passwords - they cannot be retrieved in plain text
-      // This would require a custom password field stored in profiles
-      // For now, we'll show "N/A - Auth Managed" as passwords are not stored in plain text
-      console.log("Password export requested - passwords are managed by auth system");
+    // Division/branch via user_context (default first)
+    const needsDivisionOrBranch = fields.includes("division") || fields.includes("branch");
+    const divisionMap: Record<string, string> = {};
+    const branchMap: Record<string, string> = {};
+    if (needsDivisionOrBranch) {
+      const { data: ctxData } = await adminClient
+        .from("user_context")
+        .select("user_id, division_id, branch_id, is_default")
+        .in("user_id", profileIds)
+        .order("is_default", { ascending: false });
+
+      const divIds = new Set<string>();
+      const brIds = new Set<string>();
+      const userCtx: Record<string, { division_id?: string; branch_id?: string }> = {};
+      ctxData?.forEach(row => {
+        if (!userCtx[row.user_id]) {
+          userCtx[row.user_id] = { division_id: row.division_id, branch_id: row.branch_id };
+          if (row.division_id) divIds.add(row.division_id);
+          if (row.branch_id) brIds.add(row.branch_id);
+        }
+      });
+
+      const divNames: Record<string, string> = {};
+      const brNames: Record<string, string> = {};
+      if (divIds.size > 0) {
+        const { data } = await adminClient.from("divisions").select("id, name").in("id", [...divIds]);
+        data?.forEach(d => { divNames[d.id] = d.name; });
+      }
+      if (brIds.size > 0) {
+        const { data } = await adminClient.from("branches").select("id, name").in("id", [...brIds]);
+        data?.forEach(b => { brNames[b.id] = b.name; });
+      }
+      profileIds.forEach(uid => {
+        const ctx = userCtx[uid];
+        if (ctx?.division_id && divNames[ctx.division_id]) divisionMap[uid] = divNames[ctx.division_id];
+        if (ctx?.branch_id && brNames[ctx.branch_id]) branchMap[uid] = brNames[ctx.branch_id];
+      });
     }
 
-    // Build export data
+    // Parent info via student_parent_links
+    const needsParent = fields.includes("parent_email") || fields.includes("parent_name");
+    const parentEmailMap: Record<string, string> = {};
+    const parentNameMap: Record<string, string> = {};
+    if (needsParent) {
+      const { data: links } = await adminClient
+        .from("student_parent_links")
+        .select("student_id, parent_id")
+        .in("student_id", profileIds);
+      const parentIds = [...new Set((links || []).map(l => l.parent_id).filter(Boolean))];
+      const parentInfo: Record<string, { email: string; name: string }> = {};
+      if (parentIds.length > 0) {
+        const { data: parents } = await adminClient
+          .from("profiles")
+          .select("id, full_name, email")
+          .in("id", parentIds);
+        parents?.forEach(p => {
+          parentInfo[p.id] = { email: p.email || "", name: p.full_name || "" };
+        });
+      }
+      links?.forEach(l => {
+        const info = parentInfo[l.parent_id];
+        if (!info) return;
+        // Take first parent encountered
+        if (!parentEmailMap[l.student_id]) parentEmailMap[l.student_id] = info.email;
+        if (!parentNameMap[l.student_id]) parentNameMap[l.student_id] = info.name;
+      });
+    }
+
+    // Build export rows
     const exportData = profiles.map(profile => {
       const row: Record<string, string> = {};
-      
+
+      const completion = (() => {
+        const filled = COMPLETION_FIELDS.filter(f => {
+          const v = (profile as Record<string, unknown>)[f];
+          return v !== null && v !== undefined && String(v).trim() !== "";
+        }).length;
+        return Math.round((filled / COMPLETION_FIELDS.length) * 100);
+      })();
+
       fields.forEach(field => {
+        const header = FIELD_HEADERS[field] || field;
         switch (field) {
-          case "id":
-            row[FIELD_HEADERS[field]] = profile.id;
+          case "id": row[header] = profile.id; break;
+          case "full_name": row[header] = profile.full_name || ""; break;
+          case "email": row[header] = profile.email || ""; break;
+          case "whatsapp_number": row[header] = profile.whatsapp_number || ""; break;
+          case "role": row[header] = rolesMap[profile.id]?.join(", ") || "No role"; break;
+          case "status": row[header] = profile.account_status || "active"; break;
+          case "account_status": row[header] = profile.account_status || "active"; break;
+          case "gender": row[header] = profile.gender || ""; break;
+          case "age": row[header] = profile.age?.toString() || ""; break;
+          case "date_of_birth":
+            row[header] = profile.date_of_birth
+              ? new Date(profile.date_of_birth).toISOString().slice(0, 10) : "";
             break;
-          case "full_name":
-            row[FIELD_HEADERS[field]] = profile.full_name || "";
+          case "nationality": row[header] = profile.nationality || ""; break;
+          case "urn": row[header] = profile.registration_id || ""; break;
+          case "country": row[header] = profile.country || ""; break;
+          case "city": row[header] = profile.city || ""; break;
+          case "timezone": row[header] = profile.timezone || ""; break;
+          case "first_language": row[header] = profile.first_language || ""; break;
+          case "arabic_level": row[header] = profile.arabic_level || ""; break;
+          case "division": row[header] = divisionMap[profile.id] || ""; break;
+          case "branch": row[header] = branchMap[profile.id] || ""; break;
+          case "join_date":
+            row[header] = profile.created_at
+              ? new Date(profile.created_at).toISOString().slice(0, 10) : "";
             break;
-          case "email":
-            row[FIELD_HEADERS[field]] = profile.email || "";
-            break;
-          case "whatsapp_number":
-            row[FIELD_HEADERS[field]] = profile.whatsapp_number || "";
-            break;
-          case "role":
-            row[FIELD_HEADERS[field]] = rolesMap[profile.id]?.join(", ") || "No role";
-            break;
-          case "status":
-            row[FIELD_HEADERS[field]] = "Active"; // Could be derived from other data
-            break;
-          case "gender":
-            row[FIELD_HEADERS[field]] = profile.gender || "";
-            break;
-          case "age":
-            row[FIELD_HEADERS[field]] = profile.age?.toString() || "";
-            break;
-          case "country":
-            row[FIELD_HEADERS[field]] = profile.country || "";
-            break;
-          case "city":
-            row[FIELD_HEADERS[field]] = profile.city || "";
-            break;
+          case "profile_completion": row[header] = `${completion}%`; break;
+          case "guardian_type": row[header] = profile.guardian_type || ""; break;
+          case "parent_email": row[header] = parentEmailMap[profile.id] || ""; break;
+          case "parent_name": row[header] = parentNameMap[profile.id] || ""; break;
           case "created_at":
-            row[FIELD_HEADERS[field]] = profile.created_at 
-              ? new Date(profile.created_at).toLocaleDateString()
-              : "";
-            break;
-          case "password":
-            // Passwords in Supabase Auth are hashed and cannot be retrieved
-            row[FIELD_HEADERS[field]] = passwordsMap[profile.id] || "N/A - Auth Managed";
+            row[header] = profile.created_at
+              ? new Date(profile.created_at).toLocaleDateString() : "";
             break;
         }
       });
-      
       return row;
     });
 
-    // Log the export action
+    // Audit log
     const { error: auditError } = await adminClient.from("export_audit_logs").insert({
       admin_id: adminId,
       user_count: profiles.length,
       export_type: exportType,
       export_format: format,
       fields_included: fields,
-      included_passwords: includePasswords,
+      included_passwords: false,
     });
+    if (auditError) console.error("Failed to log export:", auditError);
 
-    if (auditError) {
-      console.error("Failed to log export:", auditError);
-      // Don't fail the export for audit log failure
-    }
-
-    // Generate file content
+    // Generate output
     let fileContent: string;
     let contentType: string;
     let fileExtension: string;
 
     if (format === "csv") {
-      // Generate CSV
       const headers = fields.map(f => FIELD_HEADERS[f] || f);
       const csvRows = [headers.join(",")];
-      
       exportData.forEach(row => {
         const values = headers.map(h => {
           const val = row[h] || "";
-          // Escape quotes and wrap in quotes if contains comma or quote
           if (val.includes(",") || val.includes('"') || val.includes("\n")) {
             return `"${val.replace(/"/g, '""')}"`;
           }
@@ -219,14 +318,11 @@ Deno.serve(async (req) => {
         });
         csvRows.push(values.join(","));
       });
-      
       fileContent = csvRows.join("\n");
       contentType = "text/csv";
       fileExtension = "csv";
     } else {
-      // Generate simple XLSX-compatible XML (Excel can open this)
       const headers = fields.map(f => FIELD_HEADERS[f] || f);
-      
       let xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
 <?mso-application progid="Excel.Sheet"?>
 <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
@@ -234,12 +330,10 @@ Deno.serve(async (req) => {
   <Worksheet ss:Name="Users">
     <Table>
       <Row>`;
-      
       headers.forEach(h => {
         xmlContent += `<Cell><Data ss:Type="String">${escapeXml(h)}</Data></Cell>`;
       });
       xmlContent += `</Row>`;
-      
       exportData.forEach(row => {
         xmlContent += `<Row>`;
         headers.forEach(h => {
@@ -248,17 +342,13 @@ Deno.serve(async (req) => {
         });
         xmlContent += `</Row>`;
       });
-      
       xmlContent += `</Table></Worksheet></Workbook>`;
-      
       fileContent = xmlContent;
       contentType = "application/vnd.ms-excel";
       fileExtension = "xls";
     }
 
-    // Generate filename
     const now = new Date();
-    const dateStr = now.toISOString().slice(0, 16).replace(/[-:T]/g, "_").replace("_", "_");
     const filename = `users_export_${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, "0")}_${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}.${fileExtension}`;
 
     console.log(`Export complete: ${profiles.length} users, format: ${format}, file: ${filename}`);
@@ -273,10 +363,8 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error("Export error:", error);
     const errorMessage = error instanceof Error ? error.message : "Export failed";
-    return new Response(
-      JSON.stringify({ error: errorMessage }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: errorMessage }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
 
