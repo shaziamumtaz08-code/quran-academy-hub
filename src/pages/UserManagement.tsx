@@ -1116,7 +1116,6 @@ export default function UserManagement() {
             <h1 className="text-2xl font-serif font-bold text-foreground">{staffMode ? 'Staff' : 'User Management'}</h1>
             <p className="text-muted-foreground">{staffMode ? 'Non-teaching staff (admins, moderators, supervisors, examiners)' : 'Manage users, roles, and permissions'}</p>
           </div>
-           {(() => null)()}
            {/* Header button gating by role */}
            <div className="flex gap-2">
              <Button variant="outline" size="icon" onClick={() => refetch()} title="Refresh" disabled={isFetching}>
