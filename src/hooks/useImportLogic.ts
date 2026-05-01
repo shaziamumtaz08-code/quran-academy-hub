@@ -198,6 +198,24 @@ export function useImportLogic(type: ImportType, onComplete?: () => void) {
   const [importResults, setImportResults] = useState<ImportResults | null>(null);
 
   const downloadTemplate = useCallback(() => {
+    if (type === "users") {
+      try {
+        downloadUsersTemplateXLSX();
+        toast.success("Template downloaded (users_import_template.xlsx)");
+      } catch (e: any) {
+        console.error("XLSX template generation failed, falling back to CSV", e);
+        const csv = generateTemplate(type);
+        const blob = new Blob([csv], { type: "text/csv" });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${type}_import_template.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        toast.success("Template downloaded");
+      }
+      return;
+    }
     const csv = generateTemplate(type);
     const blob = new Blob([csv], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
@@ -214,11 +232,31 @@ export function useImportLogic(type: ImportType, onComplete?: () => void) {
       setIsValidating(true);
 
       try {
-        const text = await file.text();
-        const rows = parseCSV(text);
+        let rows: Record<string, string>[] = [];
+        const lower = file.name.toLowerCase();
+        if (lower.endsWith(".xlsx") || lower.endsWith(".xls")) {
+          const buf = await file.arrayBuffer();
+          const wb = XLSX.read(buf, { type: "array" });
+          const sheetName =
+            type === "users" && wb.SheetNames.includes("Users")
+              ? "Users"
+              : wb.SheetNames[0];
+          const sheet = wb.Sheets[sheetName];
+          const json = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: "", raw: false });
+          rows = json.map((r) => {
+            const out: Record<string, string> = {};
+            Object.entries(r).forEach(([k, v]) => {
+              out[String(k).trim().toLowerCase().replace(/\s+/g, "_")] = v == null ? "" : String(v).trim();
+            });
+            return out;
+          });
+        } else {
+          const text = await file.text();
+          rows = parseCSV(text);
+        }
 
         if (rows.length === 0) {
-          toast.error("No valid rows found in CSV");
+          toast.error("No valid rows found in file");
           setIsValidating(false);
           return;
         }
@@ -234,7 +272,7 @@ export function useImportLogic(type: ImportType, onComplete?: () => void) {
         setStep("preview");
       } catch (error: any) {
         console.error("Validation error:", error);
-        toast.error(error.message || "Failed to validate CSV");
+        toast.error(error.message || "Failed to validate file");
       } finally {
         setIsValidating(false);
       }
