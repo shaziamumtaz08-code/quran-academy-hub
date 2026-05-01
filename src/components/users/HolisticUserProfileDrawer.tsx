@@ -326,8 +326,9 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
     { key: 'activity',  label: 'Activity',  Icon: Activity },
     { key: 'password',  label: 'Password',  Icon: KeyRound },
   ];
-  const visibleTabs = ALL_TABS.filter(t => tabAccessFor(activeRole, t.key) !== 'none');
-  const currentTabAccess = tabAccessFor(activeRole, tab);
+  const effectiveRole: AppRole | null | undefined = activeRole || (isSuperAdmin ? 'super_admin' : activeRole);
+  const visibleTabs = ALL_TABS.filter(t => tabAccessFor(effectiveRole, t.key) !== 'none');
+  const currentTabAccess = tabAccessFor(effectiveRole, tab);
   const canSaveCurrentTab = currentTabAccess === 'write';
 
   // If current tab not visible, snap to first visible
@@ -335,7 +336,7 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
     if (!visibleTabs.find(t => t.key === tab) && visibleTabs.length > 0) {
       setTab(visibleTabs[0].key);
     }
-  }, [activeRole, visibleTabs.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [effectiveRole, visibleTabs.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Shared-email detection for guardian banner (parent and student profiles share email)
   const guardianSharesEmail = !!(parentLink?.profile?.email && profile?.email &&
