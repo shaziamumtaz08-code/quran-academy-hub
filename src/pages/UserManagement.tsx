@@ -301,6 +301,8 @@ export default function UserManagement() {
   const [newUserParentExisting, setNewUserParentExisting] = useState(false);
   const [emailExistsCheck, setEmailExistsCheck] = useState<{ id: string; full_name: string | null } | null>(null);
   const [emailChecking, setEmailChecking] = useState(false);
+  const [assignRoleUser, setAssignRoleUser] = useState<UserWithRoles | null>(null);
+  const [showNoRoleOnly, setShowNoRoleOnly] = useState(false);
 
   // View/Edit dialog states
   const [isEditMode, setIsEditMode] = useState(false);
