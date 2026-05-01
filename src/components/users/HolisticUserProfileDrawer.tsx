@@ -517,6 +517,26 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
 
             {/* GUARDIAN */}
             <TabsContent value="guardian" className="space-y-4">
+              {/* Shared-email warning (parent and student use the same login) */}
+              {guardianSharesEmail && (
+                <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-3 flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                  <p className="text-sm text-amber-800 dark:text-amber-200">
+                    This parent shares login credentials with the student. A separate parent account is recommended.
+                  </p>
+                </div>
+              )}
+
+              {/* No guardian linked — info banner suggesting upload (only when student needs one) */}
+              {!parentLink && (requiresGuardian || form.guardian_type === 'parent' || form.guardian_type === 'guardian') && (
+                <div className="rounded-lg border border-sky-300 bg-sky-50 dark:bg-sky-950/30 p-3 flex items-start gap-2">
+                  <UsersIcon className="h-4 w-4 text-sky-600 mt-0.5 shrink-0" />
+                  <p className="text-sm text-sky-800 dark:text-sky-200">
+                    No guardian linked. Upload the parent data file in this tab to create and link a guardian account.
+                  </p>
+                </div>
+              )}
+
               <Field label="Guardian Type">
                 <Select value={form.guardian_type || ''} onValueChange={(v) => setForm({ ...form, guardian_type: v })}>
                   <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
