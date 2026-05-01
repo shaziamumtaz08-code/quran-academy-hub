@@ -235,11 +235,11 @@ function UploadStep({
 
       {/* File Upload */}
       <div className="space-y-2">
-        <p className="text-sm font-medium">Upload CSV File</p>
+        <p className="text-sm font-medium">Upload File ({type === "users" ? "CSV or XLSX" : "CSV"})</p>
         <div className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
           <Input
             type="file"
-            accept=".csv"
+            accept={type === "users" ? ".csv,.xlsx,.xls" : ".csv"}
             onChange={onFileChange}
             disabled={isValidating}
             className="hidden"
@@ -257,7 +257,7 @@ function UploadStep({
             ) : (
               <>
                 <Upload className="h-10 w-10 text-muted-foreground" />
-                <span className="font-medium">Click to upload CSV</span>
+                <span className="font-medium">Click to upload {type === "users" ? "CSV or XLSX" : "CSV"}</span>
                 <span className="text-sm text-muted-foreground">
                   or drag and drop
                 </span>
