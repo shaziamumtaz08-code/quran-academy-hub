@@ -1830,7 +1830,7 @@ export default function UserManagement() {
                       {filteredUsers.map((user, idx) => (
                         <TableRow
                           key={user.id}
-                          onClick={() => setHolisticUserId(user.id)}
+                          onClick={() => openProfileDrawer(user.id)}
                           className={`group min-h-[64px] border-l-2 border-transparent transition-colors hover:bg-muted/30 hover:border-l-primary cursor-pointer ${idx % 2 === 0 ? 'bg-transparent' : 'bg-muted/20'}`}
                         >
                           {isSuperAdmin && (
@@ -2009,7 +2009,7 @@ export default function UserManagement() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => setHolisticUserId(user.id)}
+                                  onClick={() => openProfileDrawer(user.id)}
                                   title="Open full profile"
                                 >
                                   <Edit className="h-4 w-4" />
