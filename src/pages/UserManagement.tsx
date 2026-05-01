@@ -89,6 +89,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { BulkUserImportDialog } from '@/components/users/BulkUserImportDialog';
 import { ExportUsersDialog } from '@/components/users/ExportUsersDialog';
 import { HolisticUserProfileDrawer } from '@/components/users/HolisticUserProfileDrawer';
+import { AssignRoleDialog } from '@/components/users/AssignRoleDialog';
 import { AuthAuditTab } from '@/components/admin/AuthAuditTab';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Country, State, City, ICountry, IState, ICity } from 'country-state-city';
