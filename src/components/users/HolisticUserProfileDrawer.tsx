@@ -17,9 +17,30 @@ import { useToast } from '@/hooks/use-toast';
 import {
   User, Mail, Shield, Users as UsersIcon, GraduationCap, FileText,
   Activity, KeyRound, Loader2, Upload, Download, CheckCircle2, XCircle,
-  AlertTriangle, Calendar, Save, RefreshCw, Link2, Unlink,
+  AlertTriangle, Calendar, Save, RefreshCw, Link2, Unlink, Eye,
 } from 'lucide-react';
 import { LinkGuardianDialog } from './LinkGuardianDialog';
+import type { AppRole } from '@/contexts/AuthContext';
+
+/* ── Per-tab access matrix. V=view, C=create, E=edit, D=delete (we treat C/E/D collectively as "write"). ── */
+type TabAccess = 'none' | 'view' | 'write';
+type TabKey = 'personal' | 'contact' | 'identity' | 'guardian' | 'academic' | 'documents' | 'activity' | 'password';
+
+const TAB_ACCESS: Record<TabKey, Partial<Record<AppRole, TabAccess>>> = {
+  personal:  { super_admin: 'write', admin: 'write', admin_division: 'write', admin_admissions: 'view', admin_academic: 'view' },
+  contact:   { super_admin: 'write', admin: 'write', admin_division: 'write', admin_admissions: 'view' },
+  identity:  { super_admin: 'write', admin: 'write', admin_division: 'write', admin_admissions: 'view' },
+  guardian:  { super_admin: 'write', admin: 'write', admin_division: 'write', admin_admissions: 'write' },
+  academic:  { super_admin: 'write', admin: 'write', admin_division: 'write', admin_admissions: 'view', admin_academic: 'write' },
+  documents: { super_admin: 'write', admin: 'write', admin_division: 'write', admin_admissions: 'view' },
+  activity:  { super_admin: 'write', admin: 'write', admin_division: 'write' },
+  password:  { super_admin: 'write' },
+};
+
+function tabAccessFor(role: AppRole | null | undefined, key: TabKey): TabAccess {
+  if (!role) return 'none';
+  return TAB_ACCESS[key][role] ?? 'none';
+}
 
 interface Props {
   open: boolean;
