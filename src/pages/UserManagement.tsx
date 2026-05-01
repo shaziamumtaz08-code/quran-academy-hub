@@ -2042,6 +2042,13 @@ export default function UserManagement() {
           </TabsContent>
         </Tabs>
 
+        {/* Assign Role Dialog (new — decoupled from creation) */}
+        <AssignRoleDialog
+          open={!!assignRoleUser}
+          onOpenChange={(o) => { if (!o) setAssignRoleUser(null); }}
+          user={assignRoleUser}
+        />
+
         {/* Add Role Dialog */}
         <Dialog open={isAddRoleDialogOpen} onOpenChange={setIsAddRoleDialogOpen}>
           <DialogContent>
