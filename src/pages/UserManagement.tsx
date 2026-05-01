@@ -254,7 +254,7 @@ interface UserWithRoles {
 }
 
 export default function UserManagement() {
-  const { isSuperAdmin, hasPermission, user: currentUser, session } = useAuth();
+  const { isSuperAdmin, hasPermission, user: currentUser, session, activeRole } = useAuth();
   const { activeDivision } = useDivision();
   const { toast } = useToast();
   const queryClient = useQueryClient();
