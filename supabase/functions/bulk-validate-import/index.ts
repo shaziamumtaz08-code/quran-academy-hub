@@ -686,21 +686,42 @@ serve(async (req) => {
     const validationResults: ValidationResult[] = [];
 
     if (type === "users") {
-      // Fetch existing users for upsert matching by full_name (username)
+      // Fetch existing users keyed by canonical email identity
       const { data: existingUsersData } = await supabase
         .from("profiles")
-        .select("id, email, full_name, whatsapp_number, age, gender");
+        .select("id, email, full_name, whatsapp_number, age, gender, country, city");
 
-      // Map by full_name (username) as unique key - allows duplicate emails
-      const existingUsersByName = new Map<string, any>();
-      const existingEmails = new Set<string>();
+      const existingUsersByEmail = new Map<string, any>();
       existingUsersData?.forEach((u) => {
-        if (u.full_name) existingUsersByName.set(u.full_name.toLowerCase(), u);
-        if (u.email) existingEmails.add(u.email.toLowerCase());
+        if (u.email) existingUsersByEmail.set(u.email.toLowerCase(), u);
+      });
+
+      // Fetch divisions keyed by model_type (one_to_one|group|recorded)
+      const { data: divisionsData } = await supabase
+        .from("divisions")
+        .select("id, name, model_type");
+      const divisionsByKey = new Map<string, { id: string; model_type: string; name: string }>();
+      divisionsData?.forEach((d: any) => {
+        if (d.model_type) divisionsByKey.set(String(d.model_type).toLowerCase(), d);
+      });
+
+      // Fetch branches keyed by name (lowercased)
+      const { data: branchesData } = await supabase
+        .from("branches")
+        .select("id, name");
+      const branchesByKey = new Map<string, { id: string; name: string }>();
+      branchesData?.forEach((b: any) => {
+        if (b.name) branchesByKey.set(String(b.name).toLowerCase(), b);
       });
 
       for (let i = 0; i < rows.length; i++) {
-        const result = await validateUserRow(rows[i], i + 1, existingUsersByName, existingEmails);
+        const result = await validateUserRow(
+          rows[i],
+          i + 1,
+          existingUsersByEmail,
+          divisionsByKey,
+          branchesByKey
+        );
         validationResults.push(result);
       }
     } else if (type === "assignments") {
