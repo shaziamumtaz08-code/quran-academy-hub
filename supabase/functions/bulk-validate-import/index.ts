@@ -92,12 +92,14 @@ function isValidEmail(email: string): boolean {
   return emailRegex.test(email);
 }
 
-// Validate user row - using full_name (username) as unique key to allow duplicate emails
+// Validate user row — uses email as the canonical unique identity.
+// Supports the full profile schema. Flags shared parent/student emails.
 async function validateUserRow(
   row: Record<string, any>,
   rowNum: number,
-  existingUsersByName: Map<string, any>,
-  existingEmails: Set<string>
+  existingUsersByEmail: Map<string, any>,
+  divisionsByKey: Map<string, { id: string; model_type: string; name: string }>,
+  branchesByKey: Map<string, { id: string; name: string }>
 ): Promise<ValidationResult> {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -105,96 +107,150 @@ async function validateUserRow(
   let diff: Record<string, { old: any; new: any }> | null = null;
   let existingId: string | null = null;
 
-  const email = row.email?.trim()?.toLowerCase();
-  const fullName = row.full_name?.trim();
-  const role = row.role?.trim()?.toLowerCase();
-  // Support both 'phone' and 'whatsapp_number' column names, filter out 'nan' values
-  const rawWhatsapp = (row.whatsapp_number || row.phone)?.trim();
-  const whatsappNumber = rawWhatsapp && rawWhatsapp.toLowerCase() !== 'nan' && rawWhatsapp.toLowerCase() !== 'n/a' ? rawWhatsapp : null;
-  const age = row.age ? parseInt(row.age) : null;
-  const gender = row.gender?.trim()?.toLowerCase();
-  const password = row.password?.trim();
+  const email = row.email?.trim()?.toLowerCase() || null;
+  const fullName = row.full_name?.trim() || null;
+  const role = row.role?.trim()?.toLowerCase() || null;
+  const password = row.password?.trim() || null;
 
-  // Required field validation - full_name is the unique key
+  // Phone — accept either phone_whatsapp or legacy phone/whatsapp_number
+  const rawWhatsapp = (row.phone_whatsapp || row.whatsapp_number || row.phone)?.toString().trim();
+  const whatsappNumber = rawWhatsapp && !["nan", "n/a"].includes(rawWhatsapp.toLowerCase()) ? rawWhatsapp : null;
+  const rawAlternate = (row.phone_alternate || "").toString().trim();
+  const phoneAlternate = rawAlternate && !["nan", "n/a"].includes(rawAlternate.toLowerCase()) ? rawAlternate : null;
+
+  const ageRaw = row.age?.toString().trim();
+  const age = ageRaw && ageRaw !== "" ? parseInt(ageRaw) : null;
+  const gender = row.gender?.trim()?.toLowerCase() || null;
+  const dateOfBirth = parseFlexibleDate(row.date_of_birth?.toString() || "");
+
+  const country = row.country?.trim() || null;
+  const city = row.city?.trim() || null;
+  const timezone = row.timezone?.trim() || null;
+  const nationality = row.nationality?.trim() || null;
+  const firstLanguage = row.first_language?.trim() || null;
+  const arabicLevel = row.arabic_level?.trim()?.toLowerCase() || null;
+
+  const divisionRaw = row.division?.trim()?.toLowerCase() || null;
+  const branchRaw = row.branch?.trim() || null;
+
+  const parentEmail = row.parent_email?.trim()?.toLowerCase() || null;
+  const guardianType = row.guardian_type?.trim()?.toLowerCase() || null;
+
+  const specialNeeds = row.special_needs?.trim() || null;
+  const learningGoals = row.learning_goals?.trim() || null;
+  const howDidYouHear = row.how_did_you_hear?.trim() || null;
+
+  // Required fields
   if (!fullName || fullName.length < 2) {
-    errors.push("Full name (username) is required (min 2 characters)");
+    errors.push("full_name is required (min 2 characters)");
   }
-
-  // Email is optional but validate format if provided
-  if (email && !isValidEmail(email)) {
+  if (!email) {
+    errors.push("email is required");
+  } else if (!isValidEmail(email)) {
     errors.push(`Invalid email format: "${email}"`);
   }
 
   if (!role) {
-    errors.push("Role is required");
+    errors.push("role is required");
   } else {
-    const validRoles = ["admin", "teacher", "student", "parent", "examiner", "super_admin", "admin_admissions", "admin_fees", "admin_academic"];
+    const validRoles = [
+      "student", "teacher", "parent", "examiner",
+      "admin_division", "admin_admissions", "admin_fees", "admin_academic",
+    ];
     if (!validRoles.includes(role)) {
       errors.push(`Invalid role: "${role}". Valid: ${validRoles.join(", ")}`);
     }
   }
 
-  // Phone validation - E.164 format only, no country-specific parsing
+  // Phone validation
   const phoneResult = validatePhone(whatsappNumber);
-  if (phoneResult.critical) {
-    errors.push(phoneResult.error!);
-  } else if (phoneResult.warning) {
-    warnings.push(phoneResult.warning);
+  if (phoneResult.critical) errors.push(phoneResult.error!);
+  if (phoneAlternate) {
+    const altResult = validatePhone(phoneAlternate);
+    if (altResult.critical) errors.push(`phone_alternate: ${altResult.error}`);
   }
 
-  // Age validation
+  // Age
   if (age !== null && (isNaN(age) || age < 1 || age > 120)) {
     errors.push(`Invalid age: "${row.age}"`);
   }
 
-  // Gender validation
+  // Gender
   if (gender && !["male", "female", "other"].includes(gender)) {
-    errors.push(`Invalid gender: "${gender}". Valid: male, female, other`);
+    errors.push(`Invalid gender: "${gender}". Valid: male, female`);
   }
 
-  // Check if user exists by full_name (username) for upsert
-  const nameKey = fullName?.toLowerCase();
-  if (nameKey && existingUsersByName.has(nameKey)) {
-    const existing = existingUsersByName.get(nameKey);
+  // Arabic level
+  if (arabicLevel && !["none", "beginner", "intermediate", "advanced", "native"].includes(arabicLevel)) {
+    errors.push(`Invalid arabic_level: "${arabicLevel}". Valid: none, beginner, intermediate, advanced, native`);
+  }
+
+  // Guardian type
+  if (guardianType && !["none", "parent", "guardian", "emergency_contact"].includes(guardianType)) {
+    errors.push(`Invalid guardian_type: "${guardianType}". Valid: none, parent, guardian, emergency_contact`);
+  }
+
+  // Division
+  let divisionId: string | null = null;
+  if (divisionRaw) {
+    const validDivisions = ["one_to_one", "group", "recorded"];
+    if (!validDivisions.includes(divisionRaw)) {
+      errors.push(`Invalid division: "${divisionRaw}". Valid: ${validDivisions.join(", ")}`);
+    } else {
+      const matchedDiv = divisionsByKey.get(divisionRaw);
+      if (matchedDiv) divisionId = matchedDiv.id;
+      else warnings.push(`Division "${divisionRaw}" does not exist in the system — user will be created without a division.`);
+    }
+  }
+
+  // Branch (optional, name lookup)
+  let branchId: string | null = null;
+  if (branchRaw) {
+    const matchedBranch = branchesByKey.get(branchRaw.toLowerCase());
+    if (matchedBranch) branchId = matchedBranch.id;
+    else warnings.push(`Branch "${branchRaw}" not found — user will be created without a branch.`);
+  }
+
+  // Parent email rules
+  if (role === "student") {
+    if (guardianType === "parent") {
+      if (!parentEmail) {
+        errors.push("parent_email is required when role=student and guardian_type=parent");
+      } else if (!isValidEmail(parentEmail)) {
+        errors.push(`Invalid parent_email format: "${parentEmail}"`);
+      } else if (email && parentEmail === email) {
+        errors.push("Student and parent cannot share the same email. Please provide a separate parent email.");
+      }
+    } else if (parentEmail && email && parentEmail === email) {
+      errors.push("Student and parent cannot share the same email. Please provide a separate parent email.");
+    }
+  }
+
+  // Existing-user matching by email (canonical identity)
+  if (email && existingUsersByEmail.has(email)) {
+    const existing = existingUsersByEmail.get(email);
     existingId = existing.id;
     status = "update";
     diff = {};
-
-    // Calculate diff
-    if (existing.email !== email) {
-      diff.email = { old: existing.email, new: email };
-    }
-    if (existing.whatsapp_number !== phoneResult.value) {
-      diff.whatsapp_number = { old: existing.whatsapp_number, new: phoneResult.value };
-    }
-    if (existing.age !== age) {
-      diff.age = { old: existing.age, new: age };
-    }
-    if (existing.gender !== gender) {
-      diff.gender = { old: existing.gender, new: gender };
-    }
-
+    if (existing.full_name !== fullName) diff.full_name = { old: existing.full_name, new: fullName };
+    if (existing.whatsapp_number !== phoneResult.value) diff.whatsapp_number = { old: existing.whatsapp_number, new: phoneResult.value };
+    if (existing.age !== age) diff.age = { old: existing.age, new: age };
+    if (existing.gender !== gender) diff.gender = { old: existing.gender, new: gender };
+    if (existing.country !== country) diff.country = { old: existing.country, new: country };
+    if (existing.city !== city) diff.city = { old: existing.city, new: city };
     if (Object.keys(diff).length === 0) {
       diff = null;
-      warnings.push("No changes detected - row will be skipped");
+      warnings.push("No changes detected — row will be skipped");
     }
   } else {
-    // New user - password is required
-    if (!password || password.length < 6) {
-      errors.push("Password is required for new users (min 6 characters)");
-    }
-    // Email required for new users (for auth)
-    if (!email) {
-      errors.push("Email is required for new users");
+    // New user — password optional (blank = invite email flow handled at execute step)
+    if (password && password.length < 6) {
+      errors.push("Password must be at least 6 characters when provided");
     }
   }
 
-  // Determine final status
-  if (errors.length > 0) {
-    status = "error";
-  } else if (warnings.length > 0 && status !== "update") {
-    status = "warning";
-  }
+  if (errors.length > 0) status = "error";
+  else if (warnings.length > 0 && status !== "update") status = "warning";
 
   return {
     rowNum,
@@ -205,10 +261,25 @@ async function validateUserRow(
       email,
       full_name: fullName,
       role,
+      password,
       whatsapp_number: phoneResult.value,
+      phone_alternate: phoneAlternate,
       age,
       gender,
-      password,
+      date_of_birth: dateOfBirth,
+      country,
+      city,
+      timezone,
+      nationality,
+      first_language: firstLanguage,
+      arabic_level: arabicLevel,
+      division_id: divisionId,
+      branch_id: branchId,
+      parent_email: parentEmail,
+      guardian_type: guardianType,
+      special_needs: specialNeeds,
+      learning_goals: learningGoals,
+      hear_about_us: howDidYouHear,
     },
     diff,
     existingId,
