@@ -1457,6 +1457,7 @@ export default function UserManagement() {
                     { key: 'teacher', label: 'Teachers', dot: 'bg-violet-500', role: 'teacher' },
                     { key: 'parent', label: 'Parents', dot: 'bg-amber-500', role: 'parent' },
                     { key: 'admin', label: 'Admins', dot: 'bg-rose-500', role: 'admin' },
+                    { key: 'admin_division', label: 'Division Admin', dot: 'bg-purple-500', role: 'admin_division' },
                     { key: 'examiner', label: 'Examiners', dot: 'bg-sky-500', role: 'examiner' },
                   ] as const).map((p) => {
                     const active = (filterRole || '') === p.role;
