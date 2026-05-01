@@ -1439,11 +1439,6 @@ export default function UserManagement() {
                 </Dialog>
                 </>
               )}
-                  </div>
-                 </DialogContent>
-               </Dialog>
-               </>
-             )}
              {(activeRole === 'super_admin' || activeRole === 'admin_division' || activeRole === 'admin') && (
                <BulkUserImportDialog open={isBulkImportOpen} onOpenChange={setIsBulkImportOpen} />
              )}
