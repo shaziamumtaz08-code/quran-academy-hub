@@ -1137,18 +1137,18 @@ export default function UserManagement() {
                       Add User
                     </Button>
                   </DialogTrigger>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-[600px]">
                   <DialogHeader>
                     <DialogTitle>Create New User</DialogTitle>
                     <DialogDescription>
-                      Add a new user or assign a role to an existing user by email.
+                      Add a new user to the platform. Each email can only be used once.
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {/* Row 1 */}
+                  <div className="space-y-3">
+                    {/* Row 1: Full Name | Email */}
+                    <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
-                        <Label htmlFor="name" className="text-xs">Full Name</Label>
+                        <Label htmlFor="name" className="text-xs">Full Name *</Label>
                         <Input
                           id="name"
                           value={newUserName}
@@ -1163,218 +1163,361 @@ export default function UserManagement() {
                           id="email"
                           type="email"
                           value={newUserEmail}
-                          onChange={(e) => setNewUserEmail(e.target.value)}
-                          placeholder="Enter email"
+                          onChange={(e) => {
+                            setNewUserEmail(e.target.value);
+                            setEmailExistsCheck(null);
+                          }}
+                          onBlur={async () => {
+                            const em = newUserEmail.trim().toLowerCase();
+                            if (!em || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
+                              setEmailExistsCheck(null);
+                              return;
+                            }
+                            setEmailChecking(true);
+                            const { data } = await supabase
+                              .from('profiles')
+                              .select('id, full_name')
+                              .eq('email', em)
+                              .maybeSingle();
+                            setEmailChecking(false);
+                            setEmailExistsCheck(data ? { id: data.id, full_name: data.full_name } : null);
+                          }}
+                          placeholder="user@example.com"
                           className="h-9"
                         />
+                        {emailChecking && (
+                          <p className="text-[11px] text-muted-foreground">Checking…</p>
+                        )}
                       </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="password" className="text-xs">Password (min 6 chars)</Label>
-                        <div className="relative">
-                          <Input
-                            id="password"
-                            type={showNewUserPassword ? "text" : "password"}
-                            value={newUserPassword}
-                            onChange={(e) => setNewUserPassword(e.target.value)}
-                            placeholder="Min 6 characters"
-                            className="h-9 pr-9"
-                          />
+                    </div>
+
+                    {/* Email-exists hard block */}
+                    {emailExistsCheck ? (
+                      <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-3 space-y-2">
+                        <p className="text-sm text-amber-900 dark:text-amber-200">
+                          ⚠️ This email is already registered to <strong>{emailExistsCheck.full_name || 'an existing user'}</strong>. Use Add Role to assign an additional role to this user.
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Role to add</Label>
+                            <Select value={newUserRole} onValueChange={(v) => setNewUserRole(v as AppRole)}>
+                              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="student">Student</SelectItem>
+                                <SelectItem value="teacher">Teacher</SelectItem>
+                                <SelectItem value="examiner">Examiner</SelectItem>
+                                <SelectItem value="parent">Parent</SelectItem>
+                                <SelectItem value="admin_division">Division Admin</SelectItem>
+                                {isSuperAdmin && <SelectItem value="super_admin">Super Admin</SelectItem>}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Division (optional)</Label>
+                            <Select value={newUserDivisionId} onValueChange={setNewUserDivisionId}>
+                              <SelectTrigger className="h-9"><SelectValue placeholder="Select division" /></SelectTrigger>
+                              <SelectContent>
+                                {allDivisions.map((d) => (
+                                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button variant="outline" size="sm" onClick={() => setIsCreateDialogOpen(false)}>Cancel</Button>
                           <Button
-                            type="button"
-                            variant="ghost"
                             size="sm"
-                            className="absolute right-0 top-0 h-full px-2 hover:bg-transparent"
-                            onClick={() => setShowNewUserPassword(!showNewUserPassword)}
+                            disabled={createUserMutation.isPending}
+                            onClick={() => {
+                              createUserMutation.mutate({
+                                addRoleOnly: true,
+                                existingUserId: emailExistsCheck.id,
+                                email: newUserEmail.trim().toLowerCase(),
+                                fullName: emailExistsCheck.full_name || 'User',
+                                role: newUserRole,
+                                division_id: newUserDivisionId || undefined,
+                              });
+                            }}
                           >
-                            {showNewUserPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                            {createUserMutation.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Adding…</> : 'Add Role'}
                           </Button>
                         </div>
                       </div>
-                      {/* Row 2 */}
-                      <div className="space-y-1.5">
-                        <Label htmlFor="role" className="text-xs">Role *</Label>
-                        <Select value={newUserRole} onValueChange={(v) => setNewUserRole(v as AppRole)}>
-                          <SelectTrigger className="h-9">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {Object.entries(ROLE_LABELS).map(([role, label]) => (
-                              <SelectItem key={role} value={role}>{label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="gender" className="text-xs">Gender</Label>
-                        <Select value={newUserGender} onValueChange={(v) => setNewUserGender(v as 'male' | 'female' | '')}>
-                          <SelectTrigger className="h-9">
-                            <SelectValue placeholder="Select" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="male">Male</SelectItem>
-                            <SelectItem value="female">Female</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="age" className="text-xs">Age</Label>
-                        <Input
-                          id="age"
-                          type="number"
-                          min="1"
-                          max="120"
-                          value={newUserAge}
-                          onChange={(e) => setNewUserAge(e.target.value)}
-                          placeholder="Age"
-                          className="h-9"
-                        />
-                      </div>
-                      {/* Row 3 - Country/City */}
-                      <div className="space-y-1.5">
-                        <Label htmlFor="new-country" className="text-xs">Country</Label>
-                        <Select 
-                          value={newUserCountry} 
-                          onValueChange={(v) => {
-                            setNewUserCountry(v);
-                            setNewUserCity('');
-                          }}
-                        >
-                          <SelectTrigger className="h-9">
-                            <SelectValue placeholder="Select country" />
-                          </SelectTrigger>
-                          <SelectContent className="max-h-60">
-                            {allCountries.map((c) => (
-                              <SelectItem key={c.isoCode} value={c.isoCode}>{c.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="new-city" className="text-xs">City</Label>
-                        <SearchableCitySelect
-                          countryCode={newUserCountry}
-                          value={newUserCity}
-                          onValueChange={setNewUserCity}
-                          placeholder="Search city..."
-                        />
-                      </div>
-                      {/* Row 4 */}
-                      <div className="space-y-1.5">
-                        <Label htmlFor="whatsapp" className="text-xs">WhatsApp</Label>
-                        <Input
-                          id="whatsapp"
-                          value={newUserWhatsapp}
-                          onChange={(e) => setNewUserWhatsapp(e.target.value)}
-                          placeholder="+1234567890"
-                          className="h-9"
-                        />
-                      </div>
-                      {/* Branch selector for registration ID */}
-                      <div className="space-y-1.5">
-                        <Label htmlFor="branch" className="text-xs">Branch (for ID generation)</Label>
-                        <Select value={newUserBranchId} onValueChange={setNewUserBranchId}>
-                          <SelectTrigger className="h-9">
-                            <SelectValue placeholder="Select branch" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {branches.map((b) => (
-                              <SelectItem key={b.id} value={b.id}>
-                                {b.name} {b.code ? `(${b.code})` : ''}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Parent linker - only show when role is student */}
-                      {(newUserRole === 'student') && (
-                        <div className="space-y-1.5">
-                          <Label htmlFor="parentLink" className="text-xs">Link to Parent</Label>
-                          <Select value={newUserParentId} onValueChange={setNewUserParentId}>
-                            <SelectTrigger className="h-9">
-                              <SelectValue placeholder="Select parent (optional)" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">None</SelectItem>
-                              {parentUsers.map((p) => (
-                                <SelectItem key={p.id} value={p.id}>
-                                  {p.full_name} ({p.email})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                    ) : (
+                      <>
+                        {/* Row 2: Password | Role */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <Label htmlFor="password" className="text-xs">Password (optional, blank = invite)</Label>
+                            <div className="relative">
+                              <Input
+                                id="password"
+                                type={showNewUserPassword ? 'text' : 'password'}
+                                value={newUserPassword}
+                                onChange={(e) => setNewUserPassword(e.target.value)}
+                                placeholder="Min 6 characters"
+                                className="h-9 pr-9"
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="absolute right-0 top-0 h-full px-2 hover:bg-transparent"
+                                onClick={() => setShowNewUserPassword(!showNewUserPassword)}
+                              >
+                                {showNewUserPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor="role" className="text-xs">Role *</Label>
+                            <Select value={newUserRole} onValueChange={(v) => setNewUserRole(v as AppRole)}>
+                              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="student">Student</SelectItem>
+                                <SelectItem value="teacher">Teacher</SelectItem>
+                                <SelectItem value="examiner">Examiner</SelectItem>
+                                <SelectItem value="parent">Parent</SelectItem>
+                                <SelectItem value="admin_division">Division Admin</SelectItem>
+                                {isSuperAdmin && <SelectItem value="super_admin">Super Admin</SelectItem>}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
-                      )}
 
-                      {/* Create new profile checkbox - for different people sharing an email */}
-                      <div className="flex items-center space-x-2 pt-4 col-span-full">
-                        <Checkbox
-                          id="forceNewProfile"
-                          checked={createAsSibling}
-                          onCheckedChange={(checked) => setCreateAsSibling(checked === true)}
-                        />
-                        <Label htmlFor="forceNewProfile" className="text-xs cursor-pointer">
-                          Create as new person (different person sharing this email, e.g., sibling or family member)
-                        </Label>
-                      </div>
-                    </div>
-                    <div className="flex justify-end gap-2 pt-3 border-t border-blue-200 dark:border-blue-800 mt-3">
-                      <Button variant="outline" size="sm" onClick={() => setIsCreateDialogOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button 
-                        size="sm"
-                        disabled={createUserMutation.isPending}
-                        onClick={() => {
-                          const email = newUserEmail.trim();
-                          const fullName = newUserName.trim();
-                          const password = newUserPassword;
-
-                          if (!email) {
-                            toast({
-                              title: 'Email required',
-                              description: 'Please enter an email address.',
-                              variant: 'destructive',
-                            });
-                            return;
-                          }
-
-                          // Password is required for new users and must be 8-100 characters
-                          if (password && (password.length < 8 || password.length > 100)) {
-                            toast({
-                              title: 'Invalid password',
-                              description: 'Password must be between 8 and 100 characters.',
-                              variant: 'destructive',
-                            });
-                            return;
-                          }
-
-                          createUserMutation.mutate({
-                            email,
-                            password,
-                            fullName,
-                            role: newUserRole,
-                            whatsapp: newUserWhatsapp.trim() || undefined,
-                            gender: newUserGender || undefined,
-                            age: newUserAge ? parseInt(newUserAge) : undefined,
-                            country: newUserCountry ? getCountryName(newUserCountry) : undefined,
-                            city: newUserCity || undefined,
-                            forceNewProfile: createAsSibling || undefined,
-                            branch_id: newUserBranchId || undefined,
-                            parent_id: newUserParentId && newUserParentId !== 'none' ? newUserParentId : undefined,
-                          });
-                        }}
-                      >
-                        {createUserMutation.isPending ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Processing...
-                          </>
-                        ) : (
-                          'Create User / Add Role'
+                        {newUserRole === 'admin_division' && (
+                          <p className="text-[11px] text-muted-foreground">
+                            ℹ️ Division Admin has full rights scoped to the selected division only.
+                          </p>
                         )}
-                      </Button>
-                    </div>
+
+                        {/* Row 3: Division | Branch */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Division {newUserRole === 'admin_division' && '*'}</Label>
+                            <Select value={newUserDivisionId} onValueChange={setNewUserDivisionId}>
+                              <SelectTrigger className="h-9"><SelectValue placeholder="Select division" /></SelectTrigger>
+                              <SelectContent>
+                                {allDivisions.map((d) => (
+                                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Branch {newUserRole === 'admin_division' && '*'}</Label>
+                            <Select value={newUserBranchId} onValueChange={setNewUserBranchId}>
+                              <SelectTrigger className="h-9"><SelectValue placeholder="Select branch" /></SelectTrigger>
+                              <SelectContent>
+                                {branches.map((b) => (
+                                  <SelectItem key={b.id} value={b.id}>{b.name}{b.code ? ` (${b.code})` : ''}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        {/* Row 4: Gender | DOB | Country */}
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Gender</Label>
+                            <Select value={newUserGender} onValueChange={(v) => setNewUserGender(v as 'male' | 'female' | '')}>
+                              <SelectTrigger className="h-9"><SelectValue placeholder="Select" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="male">Male</SelectItem>
+                                <SelectItem value="female">Female</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Date of Birth</Label>
+                            <Input
+                              type="date"
+                              value={newUserDob}
+                              onChange={(e) => setNewUserDob(e.target.value)}
+                              className="h-9"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Country</Label>
+                            <Select
+                              value={newUserCountry}
+                              onValueChange={(v) => {
+                                setNewUserCountry(v);
+                                setNewUserCity('');
+                                const name = getCountryName(v).toLowerCase();
+                                const tzMap: Record<string, string> = {
+                                  'pakistan': 'Asia/Karachi',
+                                  'united arab emirates': 'Asia/Dubai',
+                                  'saudi arabia': 'Asia/Riyadh',
+                                  'united kingdom': 'Europe/London',
+                                  'united states': 'America/New_York',
+                                  'australia': 'Australia/Sydney',
+                                  'qatar': 'Asia/Qatar',
+                                  'belgium': 'Europe/Brussels',
+                                  'canada': 'America/Toronto',
+                                };
+                                if (tzMap[name]) setNewUserTimezone(tzMap[name]);
+                              }}
+                            >
+                              <SelectTrigger className="h-9"><SelectValue placeholder="Select country" /></SelectTrigger>
+                              <SelectContent className="max-h-60">
+                                {allCountries.map((c) => (
+                                  <SelectItem key={c.isoCode} value={c.isoCode}>{c.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        {/* Row 5: WhatsApp | Timezone */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">WhatsApp (E.164)</Label>
+                            <Input
+                              value={newUserWhatsapp}
+                              onChange={(e) => setNewUserWhatsapp(e.target.value)}
+                              placeholder="+1234567890"
+                              className="h-9"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Timezone</Label>
+                            <Input
+                              value={newUserTimezone}
+                              onChange={(e) => setNewUserTimezone(e.target.value)}
+                              placeholder="e.g. Asia/Karachi"
+                              className="h-9"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Conditional: Student guardian section */}
+                        {newUserRole === 'student' && (
+                          <div className="space-y-3 rounded-md border border-border bg-muted/30 p-3">
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Guardian Type</Label>
+                              <Select
+                                value={newUserGuardianType}
+                                onValueChange={(v) => setNewUserGuardianType(v as any)}
+                              >
+                                <SelectTrigger className="h-9"><SelectValue placeholder="Select guardian type" /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">None — adult self-learner</SelectItem>
+                                  <SelectItem value="parent">Parent (linked account)</SelectItem>
+                                  <SelectItem value="guardian">Guardian (non-parent)</SelectItem>
+                                  <SelectItem value="emergency">Emergency Contact Only</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            {newUserGuardianType === 'parent' && (
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1.5">
+                                  <Label className="text-xs">Parent Email *</Label>
+                                  <Input
+                                    type="email"
+                                    value={newUserParentEmail}
+                                    onChange={(e) => setNewUserParentEmail(e.target.value)}
+                                    placeholder="parent@example.com"
+                                    className="h-9"
+                                  />
+                                  {newUserParentEmail && newUserParentEmail.trim().toLowerCase() === newUserEmail.trim().toLowerCase() && (
+                                    <p className="text-[11px] text-destructive">Parent email must differ from student email.</p>
+                                  )}
+                                </div>
+                                <div className="space-y-1.5">
+                                  <Label className="text-xs">Parent Name *</Label>
+                                  <Input
+                                    value={newUserParentName}
+                                    onChange={(e) => setNewUserParentName(e.target.value)}
+                                    placeholder="Parent full name"
+                                    className="h-9"
+                                  />
+                                </div>
+                                <div className="col-span-2 flex items-center gap-2">
+                                  <Checkbox
+                                    id="parentExists"
+                                    checked={newUserParentExisting}
+                                    onCheckedChange={(c) => setNewUserParentExisting(c === true)}
+                                  />
+                                  <Label htmlFor="parentExists" className="text-xs cursor-pointer">
+                                    Parent account already exists — just link
+                                  </Label>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="flex justify-end gap-2 pt-2 border-t border-border mt-2">
+                          <Button variant="outline" size="sm" onClick={() => setIsCreateDialogOpen(false)}>
+                            Cancel
+                          </Button>
+                          <Button
+                            size="sm"
+                            disabled={createUserMutation.isPending}
+                            onClick={() => {
+                              const email = newUserEmail.trim().toLowerCase();
+                              const fullName = newUserName.trim();
+                              const password = newUserPassword;
+
+                              if (!fullName || fullName.length < 2) {
+                                toast({ title: 'Name required', description: 'Full name must be at least 2 characters.', variant: 'destructive' });
+                                return;
+                              }
+                              if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                                toast({ title: 'Email required', description: 'Enter a valid email address.', variant: 'destructive' });
+                                return;
+                              }
+                              if (password && (password.length < 6 || password.length > 100)) {
+                                toast({ title: 'Invalid password', description: 'Password must be 6-100 characters.', variant: 'destructive' });
+                                return;
+                              }
+                              if (newUserRole === 'admin_division' && (!newUserDivisionId || !newUserBranchId)) {
+                                toast({ title: 'Division & branch required', description: 'Division Admin requires both division and branch.', variant: 'destructive' });
+                                return;
+                              }
+                              if (newUserRole === 'student' && newUserGuardianType === 'parent') {
+                                if (!newUserParentEmail.trim() || !newUserParentName.trim()) {
+                                  toast({ title: 'Parent details required', description: 'Parent email and name are required.', variant: 'destructive' });
+                                  return;
+                                }
+                                if (newUserParentEmail.trim().toLowerCase() === email) {
+                                  toast({ title: 'Invalid parent email', description: 'Parent email must differ from student email.', variant: 'destructive' });
+                                  return;
+                                }
+                              }
+
+                              createUserMutation.mutate({
+                                email,
+                                password: password || undefined,
+                                fullName,
+                                role: newUserRole,
+                                whatsapp: newUserWhatsapp.trim() || undefined,
+                                gender: newUserGender || undefined,
+                                country: newUserCountry ? getCountryName(newUserCountry) : undefined,
+                                city: newUserCity || undefined,
+                                branch_id: newUserBranchId || undefined,
+                                division_id: newUserDivisionId || undefined,
+                                date_of_birth: newUserDob || undefined,
+                                timezone: newUserTimezone || undefined,
+                                guardian_type: newUserRole === 'student' ? (newUserGuardianType || undefined) : undefined,
+                                parent_email: (newUserRole === 'student' && newUserGuardianType === 'parent') ? newUserParentEmail.trim().toLowerCase() : undefined,
+                                parent_name: (newUserRole === 'student' && newUserGuardianType === 'parent') ? newUserParentName.trim() : undefined,
+                                parentExistingOnly: (newUserRole === 'student' && newUserGuardianType === 'parent') ? newUserParentExisting : undefined,
+                              });
+                            }}
+                          >
+                            {createUserMutation.isPending ? (
+                              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing…</>
+                            ) : (
+                              'Create User'
+                            )}
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </DialogContent>
               </Dialog>
