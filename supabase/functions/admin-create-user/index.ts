@@ -219,14 +219,17 @@ serve(async (req) => {
     // ---------- ADD ROLE ONLY ----------
     if (addRoleOnly) {
       if (!existingUserId) return json(400, { error: "existingUserId required for addRoleOnly" }, requestOrigin);
-      if (!ALLOWED_ROLES.includes(role)) return json(400, { error: "Invalid role" }, requestOrigin);
+      if (!roleProvided || !ALLOWED_ROLES.includes(role as AppRole)) return json(400, { error: "Invalid role" }, requestOrigin);
+      if (role === "admin_division" && (!divisionId || !branchId)) {
+        return json(400, { error: "Division and branch required for Division Admin" }, requestOrigin);
+      }
 
       const { error: roleErr } = await adminClient
         .from("user_roles")
         .upsert({ user_id: existingUserId, role }, { onConflict: "user_id,role" });
       if (roleErr) return json(500, { error: "Failed to assign role" }, requestOrigin);
 
-      if (divisionId || branchId) {
+      if (role === "admin_division") {
         await ensureUserContext(adminClient, existingUserId, branchId, divisionId, role);
       }
       return json(200, {
@@ -243,11 +246,11 @@ serve(async (req) => {
     else if (!isValidEmail(email)) errors.push("Invalid email format");
     if (!fullName) errors.push("Full name is required");
     else if (!isValidFullName(fullName)) errors.push("Full name must be 2-100 characters");
-    if (!ALLOWED_ROLES.includes(role)) errors.push("Invalid role specified");
+    if (roleProvided && !ALLOWED_ROLES.includes(role as AppRole)) errors.push("Invalid role specified");
     if (!isValidWhatsApp(whatsapp)) errors.push("Invalid phone number format");
     if (!isValidGender(gender)) errors.push("Invalid gender value");
-    if (role === "admin_division" && !divisionId) errors.push("Division required for Division Admin");
-    if (role === "student" && guardianType === "parent") {
+    if (roleProvided && role === "admin_division" && (!divisionId || !branchId)) errors.push("Division and branch required for Division Admin");
+    if (roleProvided && role === "student" && guardianType === "parent") {
       if (!parentEmail) errors.push("Parent email required");
       else if (parentEmail === email) errors.push("Parent email must differ from student email");
       if (!parentName) errors.push("Parent name required");
