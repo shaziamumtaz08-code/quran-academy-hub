@@ -38,9 +38,10 @@ interface Props {
 const ROLE_PILL: Record<string, { bg: string; label: string }> = {
   super_admin:      { bg: 'bg-red-500',     label: 'Super Admin' },
   admin:            { bg: 'bg-blue-500',    label: 'Admin' },
-  admin_admissions: { bg: 'bg-blue-500',    label: 'Admissions' },
-  admin_fees:       { bg: 'bg-blue-500',    label: 'Fees Admin' },
-  admin_academic:   { bg: 'bg-blue-500',    label: 'Academic Admin' },
+  admin_division:   { bg: 'bg-purple-500',  label: 'Division Admin' },
+  admin_admissions: { bg: 'bg-blue-500',    label: 'Admissions Manager' },
+  admin_fees:       { bg: 'bg-emerald-500', label: 'Finance Manager' },
+  admin_academic:   { bg: 'bg-orange-500',  label: 'Academic Manager' },
   teacher:          { bg: 'bg-emerald-500', label: 'Teacher' },
   student:          { bg: 'bg-violet-500',  label: 'Student' },
   parent:           { bg: 'bg-amber-500',   label: 'Parent' },
