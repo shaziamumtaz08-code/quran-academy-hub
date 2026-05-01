@@ -18,6 +18,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 interface SidebarNavItem {
   label: string;
   href?: string;
+  icon?: React.ElementType;
   param?: string; // query param value for section=
   badge?: number;
   badgeType?: 'alert' | 'info';
