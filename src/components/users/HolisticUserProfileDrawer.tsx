@@ -377,6 +377,15 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
+        ) : visibleTabs.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+            <Shield className="h-10 w-10 text-muted-foreground mb-3" />
+            <h3 className="text-base font-semibold mb-1">Access denied</h3>
+            <p className="text-sm text-muted-foreground max-w-md">
+              You do not have permission to view this user's profile.
+              {!effectiveRole && ' Your active role is still loading — please try again in a moment.'}
+            </p>
+          </div>
         ) : (
           <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)} className="px-6 py-4">
             <TabsList
