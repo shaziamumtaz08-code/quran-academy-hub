@@ -16,6 +16,8 @@ const MonthlyPlanning = lazy(() => import('./MonthlyPlanning'));
 const Subjects = lazy(() => import('./Subjects'));
 const ZoomManagement = lazy(() => import('./ZoomManagement'));
 const TeacherStudentsView = lazy(() => import('@/components/teacher/TeacherStudentsView'));
+const TeachingOS = lazy(() => import('./TeachingOS'));
+const QuizEngine = lazy(() => import('./QuizEngine'));
 
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
 
@@ -27,6 +29,8 @@ const views = [
   { label: 'Planning', value: 'planning' },
   { label: 'Subjects', value: 'subjects' },
   { label: '1-to-1', value: 'one-to-one' },
+  { label: 'AI Teaching OS', value: 'teaching-os' },
+  { label: 'Quiz Engine', value: 'quiz-engine' },
 ] as const;
 
 export default function TeachingLanding() {
@@ -82,6 +86,8 @@ export default function TeachingLanding() {
     planning: <Suspense fallback={<Loading />}><MonthlyPlanning /></Suspense>,
     subjects: <Suspense fallback={<Loading />}><Subjects /></Suspense>,
     'one-to-one': <Suspense fallback={<Loading />}><TeacherStudentsView /></Suspense>,
+    'teaching-os': <Suspense fallback={<Loading />}><TeachingOS /></Suspense>,
+    'quiz-engine': <Suspense fallback={<Loading />}><QuizEngine /></Suspense>,
   }), []);
 
   if (!activeView) return <Navigate to="/teaching?view=assignments" replace />;
