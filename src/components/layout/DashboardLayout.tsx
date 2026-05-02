@@ -95,6 +95,8 @@ function buildDrawerSections(role: AppRole | null): DrawerSection[] {
               { label: "Planning", href: "/teaching?view=planning" },
               { label: "Subjects", href: "/teaching?view=subjects" },
               { label: "1-to-1 Assignments", href: "/teaching?view=one-to-one" },
+              { label: "AI Teaching OS", href: "/teaching-os" },
+              { label: "Quiz Engine", href: "/quiz-engine" },
             ],
           },
           {
