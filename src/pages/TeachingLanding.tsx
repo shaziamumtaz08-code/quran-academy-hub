@@ -86,6 +86,8 @@ export default function TeachingLanding() {
     planning: <Suspense fallback={<Loading />}><MonthlyPlanning /></Suspense>,
     subjects: <Suspense fallback={<Loading />}><Subjects /></Suspense>,
     'one-to-one': <Suspense fallback={<Loading />}><TeacherStudentsView /></Suspense>,
+    'teaching-os': <Suspense fallback={<Loading />}><TeachingOS /></Suspense>,
+    'quiz-engine': <Suspense fallback={<Loading />}><QuizEngine /></Suspense>,
   }), []);
 
   if (!activeView) return <Navigate to="/teaching?view=assignments" replace />;
