@@ -349,7 +349,14 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
 
-      <Route path="/admin" element={<ProtectedRoute><RouteGuard moduleId="admin_command"><AdminCommandCenter /></RouteGuard></ProtectedRoute>} />
+      <Route path="/admin" element={<ProtectedRoute>{(() => {
+        const SuperAdminOnly = () => {
+          const { activeRole } = useAuth();
+          if (activeRole && activeRole !== 'super_admin') return <Navigate to="/dashboard" replace />;
+          return <AdminCommandCenter />;
+        };
+        return <SuperAdminOnly />;
+      })()}</ProtectedRoute>} />
       <Route path="/teacher" element={<ProtectedRoute><RouteGuard moduleId="teacher_nazra"><DivisionModelGuard allowedModels={['one_to_one']}><TeacherNazraDashboard /></DivisionModelGuard></RouteGuard></ProtectedRoute>} />
 
       <Route path="/teaching" element={<ProtectedRoute><RouteGuard moduleId="teaching_landing"><DashboardLayout><TeachingLanding /></DashboardLayout></RouteGuard></ProtectedRoute>} />
