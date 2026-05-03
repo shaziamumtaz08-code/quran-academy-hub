@@ -980,7 +980,6 @@ export default function UserManagement() {
   // division-scoped via user_context — they should only appear in their own division.
   const GLOBAL_ROLES: AppRole[] = ['super_admin'];
 
-  const { switcherOptions } = useDivision();
   // Divisions the caller may filter by. Super admin sees all; everyone else
   // is restricted to their entitled divisions (per Division Context Engine).
   const allowedDivisionIds = useMemo(
