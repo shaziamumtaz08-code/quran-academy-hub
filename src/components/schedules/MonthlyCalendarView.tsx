@@ -28,6 +28,7 @@ interface Schedule {
 interface MonthlyCalendarViewProps {
   assignments: Assignment[];
   schedules: Schedule[];
+  onSelectDate?: (date: Date) => void;
 }
 
 const DAY_MAP: Record<string, number> = {
@@ -40,7 +41,7 @@ const DAY_MAP: Record<string, number> = {
   saturday: 6,
 };
 
-export function MonthlyCalendarView({ assignments, schedules }: MonthlyCalendarViewProps) {
+export function MonthlyCalendarView({ assignments, schedules, onSelectDate }: MonthlyCalendarViewProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const calendarDays = useMemo(() => {
@@ -106,32 +107,36 @@ export function MonthlyCalendarView({ assignments, schedules }: MonthlyCalendarV
           const inMonth = isSameMonth(date, currentMonth);
           const today = isToday(date);
           const events = getEventsForDate(date);
+          const count = events.length;
 
           return (
             <Card
               key={idx}
-              className={`min-h-[90px] p-1.5 ${
-                !inMonth ? 'opacity-30' : ''
+              role="button"
+              tabIndex={0}
+              onClick={() => inMonth && onSelectDate?.(date)}
+              onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && inMonth) onSelectDate?.(date); }}
+              className={`min-h-[90px] p-2 flex flex-col cursor-pointer transition hover:border-primary hover:shadow-sm ${
+                !inMonth ? 'opacity-30 pointer-events-none' : ''
               } ${today ? 'ring-2 ring-primary' : ''}`}
+              title={inMonth ? `${count} class${count === 1 ? '' : 'es'} on ${format(date, 'EEE, MMM d')} — click to open daily view` : ''}
             >
-              <div className={`text-xs font-medium mb-1 ${today ? 'text-primary' : 'text-muted-foreground'}`}>
-                {format(date, 'd')}
+              <div className="flex items-center justify-between">
+                <div className={`text-xs font-medium ${today ? 'text-primary' : 'text-muted-foreground'}`}>
+                  {format(date, 'd')}
+                </div>
+                {count > 0 && (
+                  <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">{count}</Badge>
+                )}
               </div>
-              <div className="space-y-0.5 overflow-hidden max-h-[60px]">
-                {events.slice(0, 3).map((event, i) => (
-                  <div
-                    key={`${event.id}-${i}`}
-                    className="text-[10px] leading-tight bg-primary/10 text-foreground rounded px-1 py-0.5 truncate"
-                    title={`${event.assignment.student_name} → ${event.assignment.teacher_name} at ${formatTime12h(event.student_local_time)}`}
-                  >
-                    <span className="font-medium">{event.assignment.student_name.split(' ')[0]}</span>
-                    <span className="text-muted-foreground ml-1">{formatTime12h(event.student_local_time)}</span>
+              <div className="flex-1 flex items-center justify-center">
+                {count > 0 ? (
+                  <div className="text-center">
+                    <div className="text-2xl font-bold leading-none text-foreground">{count}</div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">class{count === 1 ? '' : 'es'}</div>
                   </div>
-                ))}
-                {events.length > 3 && (
-                  <div className="text-[10px] text-muted-foreground text-center">
-                    +{events.length - 3} more
-                  </div>
+                ) : (
+                  <div className="text-[10px] text-muted-foreground">—</div>
                 )}
               </div>
             </Card>

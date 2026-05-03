@@ -219,6 +219,7 @@ export default function Schedules() {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [showAllDivisions, setShowAllDivisions] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'daily'>('list');
+  const [dailyInitialDate, setDailyInitialDate] = useState<Date | undefined>(undefined);
   
   // Sorting state
   type ScheduleSortField = 'student' | 'teacher' | 'subject' | 'status' | 'classes' | 'time';
@@ -1441,6 +1442,7 @@ export default function Schedules() {
               <MonthlyCalendarView
                 assignments={filteredAssignments}
                 schedules={schedules}
+                onSelectDate={(date) => { setDailyInitialDate(date); setViewMode('daily'); }}
               />
             )}
           </div>
@@ -1457,6 +1459,7 @@ export default function Schedules() {
               <DailySlotCalendar
                 assignments={filteredAssignments}
                 schedules={schedules}
+                initialDate={dailyInitialDate}
               />
             )}
           </div>

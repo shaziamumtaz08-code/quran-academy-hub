@@ -105,10 +105,12 @@ interface DailySlotCalendarProps {
   assignments: Assignment[];
   schedules: Schedule[];
   onEditSchedule?: (scheduleId: string) => void;
+  initialDate?: Date;
 }
 
-export function DailySlotCalendar({ assignments, schedules, onEditSchedule }: DailySlotCalendarProps) {
-  const [selectedDate, setSelectedDate] = useState(new Date());
+export function DailySlotCalendar({ assignments, schedules, onEditSchedule, initialDate }: DailySlotCalendarProps) {
+  const [selectedDate, setSelectedDate] = useState(initialDate ?? new Date());
+  React.useEffect(() => { if (initialDate) setSelectedDate(initialDate); }, [initialDate?.getTime()]);
   const [timeView, setTimeView] = useState<'teacher' | 'student'>('teacher');
   const [selectedSlot, setSelectedSlot] = useState<SlotEntry | null>(null);
 
