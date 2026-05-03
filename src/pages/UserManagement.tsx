@@ -980,9 +980,23 @@ export default function UserManagement() {
   // division-scoped via user_context — they should only appear in their own division.
   const GLOBAL_ROLES: AppRole[] = ['super_admin'];
 
-  // Effective division: '__all__' = user explicitly picked All (override global), '' = follow global context, <id> = specific.
+  const { switcherOptions } = useDivision();
+  // Divisions the caller may filter by. Super admin sees all; everyone else
+  // is restricted to their entitled divisions (per Division Context Engine).
+  const allowedDivisionIds = useMemo(
+    () => new Set(switcherOptions.map(o => o.divisionId)),
+    [switcherOptions]
+  );
+  const visibleFilterDivisions = useMemo(
+    () => isSuperAdmin ? allDivisions : allDivisions.filter(d => allowedDivisionIds.has(d.id)),
+    [isSuperAdmin, allDivisions, allowedDivisionIds]
+  );
+
+  // Effective division: '__all__' = user explicitly picked All (super admin only),
+  // '' = follow active context, <id> = specific.
+  // For non-super-admins, '__all__' is downgraded to active context to prevent leakage.
   const effectiveDivisionId = filterDivision === '__all__'
-    ? ''
+    ? (isSuperAdmin ? '' : (activeDivision?.id || ''))
     : (filterDivision || activeDivision?.id || '');
 
   const filteredAll = users
