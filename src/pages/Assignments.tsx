@@ -563,22 +563,91 @@ export default function Assignments() {
               <Upload className="h-4 w-4 mr-2" />
               Bulk Import
             </Button>
+            <Button onClick={handleOpenCreate}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Assignment
+            </Button>
           </div>
         </div>
 
         <BulkAssignmentImportDialog open={isBulkImportOpen} onOpenChange={setIsBulkImportOpen} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Assignment Form */}
+        {/* Stats Cards on Top */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Users className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Teachers</p>
+                  <p className="text-2xl font-bold">{teachers.length}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                  <GraduationCap className="h-6 w-6 text-emerald-500" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Students</p>
+                  <p className="text-2xl font-bold">{students.length}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                  <UserPlus className="h-6 w-6 text-amber-500" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Active Assignments</p>
+                  <p className="text-2xl font-bold">{statusCounts.active}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Status Summary */}
+        {(statusCounts.paused > 0 || statusCounts.completed > 0) && (
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            {statusCounts.paused > 0 && (
+              <span className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-amber-500" />
+                {statusCounts.paused} paused
+              </span>
+            )}
+            {statusCounts.completed > 0 && (
+              <span className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-slate-400" />
+                {statusCounts.completed} completed
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Create / Edit Assignment Dialog */}
+        <Dialog open={isFormOpen} onOpenChange={(open) => { if (!open) resetForm(); else setIsFormOpen(true); }}>
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
                 <UserPlus className="h-5 w-5" />
                 {editingAssignment ? 'Edit Assignment' : 'Create Assignment'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Teacher Selection */}
+              </DialogTitle>
+              <DialogDescription>
+                {editingAssignment
+                  ? 'Update the teacher, subject, or payout details for this assignment.'
+                  : 'Assign a teacher to one or more students with payout configuration.'}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
               <div className="space-y-2">
                 <Label>Select Teacher *</Label>
                 <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
@@ -591,7 +660,6 @@ export default function Assignments() {
                 </Select>
               </div>
 
-              {/* Subject Selection */}
               <div className="space-y-2">
                 <Label>Subject</Label>
                 <Select value={selectedSubject} onValueChange={setSelectedSubject}>
@@ -604,7 +672,6 @@ export default function Assignments() {
                 </Select>
               </div>
 
-              {/* Student Selection */}
               <div className="space-y-2">
                 <Label>Select Students * {editingAssignment && <span className="text-xs text-muted-foreground">(Cannot change student when editing)</span>}</Label>
                 <div className={`border border-border rounded-lg max-h-48 overflow-y-auto ${editingAssignment ? 'opacity-60 pointer-events-none' : ''}`}>
@@ -635,7 +702,6 @@ export default function Assignments() {
                 )}
               </div>
 
-              {/* Teacher Payout Section */}
               <Separator />
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
@@ -645,12 +711,7 @@ export default function Assignments() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs">Payout Amount</Label>
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      value={payoutAmount}
-                      onChange={(e) => setPayoutAmount(e.target.value)}
-                    />
+                    <Input type="number" placeholder="0" value={payoutAmount} onChange={(e) => setPayoutAmount(e.target.value)} />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Payout Type</Label>
@@ -665,87 +726,19 @@ export default function Assignments() {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Effective From</Label>
-                  <Input
-                    type="date"
-                    value={effectiveFromDate}
-                    onChange={(e) => setEffectiveFromDate(e.target.value)}
-                  />
+                  <Input type="date" value={effectiveFromDate} onChange={(e) => setEffectiveFromDate(e.target.value)} />
                 </div>
               </div>
-
-              <div className="flex gap-2">
-                {editingAssignment && (
-                  <Button variant="outline" onClick={handleCancelEdit} className="flex-1">Cancel</Button>
-                )}
-                <Button onClick={handleSubmit} disabled={!selectedTeacher || selectedStudents.length === 0 || isPending} className="flex-1">
-                  {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  {editingAssignment ? 'Update Assignment' : 'Save Assignment'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Stats */}
-          <div className="space-y-4">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Users className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Teachers</p>
-                    <p className="text-2xl font-bold">{teachers.length}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                    <GraduationCap className="h-6 w-6 text-emerald-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Students</p>
-                    <p className="text-2xl font-bold">{students.length}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                    <UserPlus className="h-6 w-6 text-amber-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Active Assignments</p>
-                    <p className="text-2xl font-bold">{statusCounts.active}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* Status Summary */}
-        {(statusCounts.paused > 0 || statusCounts.completed > 0) && (
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            {statusCounts.paused > 0 && (
-              <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-amber-500" />
-                {statusCounts.paused} paused
-              </span>
-            )}
-            {statusCounts.completed > 0 && (
-              <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-slate-400" />
-                {statusCounts.completed} completed
-              </span>
-            )}
-          </div>
-        )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={handleCancelEdit}>Cancel</Button>
+              <Button onClick={handleSubmit} disabled={!selectedTeacher || selectedStudents.length === 0 || isPending}>
+                {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {editingAssignment ? 'Update Assignment' : 'Save Assignment'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Assignments Table */}
         <Card>
