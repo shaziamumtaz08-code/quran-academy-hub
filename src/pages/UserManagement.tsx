@@ -1948,20 +1948,7 @@ export default function UserManagement() {
                           </TableCell>
                           <TableCell className="py-3 text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="flex justify-end gap-1">
-                              {/* Connections — visible to all admin roles (view-only roles allowed) */}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  const r = user.roles || [];
-                                  const ut = r.includes('teacher') ? 'teacher' : r.includes('student') ? 'student' : r.includes('parent') ? 'parent' : 'student';
-                                  navigate(`/connections/${ut}/${user.id}`);
-                                }}
-                                title="View connections graph"
-                                className="text-primary hover:text-primary"
-                              >
-                                <Network className="h-4 w-4" />
-                              </Button>
+                              {/* Connections moved into the ID/roles pill */}
 
                               {/* Assign Role — super_admin & admin_division */}
                               {(activeRole === 'super_admin' || activeRole === 'admin_division') && (
