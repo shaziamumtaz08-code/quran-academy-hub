@@ -22,7 +22,6 @@ const QuizEngine = lazy(() => import('./QuizEngine'));
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
 
 const views = [
-  { label: 'Live Classes', value: 'live-classes' },
   { label: 'Assignments', value: 'assignments' },
   { label: 'Schedules', value: 'schedules' },
   { label: 'Attendance', value: 'attendance' },
