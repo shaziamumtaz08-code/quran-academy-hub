@@ -14,7 +14,7 @@ const Assignments = lazy(() => import('./Assignments'));
 const Schedules = lazy(() => import('./Schedules'));
 const MonthlyPlanning = lazy(() => import('./MonthlyPlanning'));
 const Subjects = lazy(() => import('./Subjects'));
-const ZoomManagement = lazy(() => import('./ZoomManagement'));
+
 const TeacherStudentsView = lazy(() => import('@/components/teacher/TeacherStudentsView'));
 const TeachingOS = lazy(() => import('./TeachingOS'));
 const QuizEngine = lazy(() => import('./QuizEngine'));
