@@ -647,7 +647,81 @@ export default function Schedules() {
     setShowAllDivisions(false);
   };
 
-  // Get selected assignment info for displaying location labels
+  // Export schedules to CSV
+  const downloadCsv = (rows: (string | number)[][], filename: string) => {
+    const csv = rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const flatScheduleRows = useMemo(() => {
+    const rows: { student: string; teacher: string; subject: string; day: string; teacherTime: string; studentTime: string; duration: number }[] = [];
+    filteredAssignments.forEach(a => {
+      const sch = schedules.filter(s => s.assignment_id === a.id);
+      sch.forEach(s => rows.push({
+        student: a.student_name,
+        teacher: a.teacher_name,
+        subject: a.subject_name || '',
+        day: s.day_of_week,
+        teacherTime: s.teacher_local_time,
+        studentTime: s.student_local_time,
+        duration: s.duration_minutes || 30,
+      }));
+    });
+    return rows;
+  }, [filteredAssignments, schedules]);
+
+  const handleExport = (mode: 'student' | 'teacher' | 'day' | 'week' | 'flat') => {
+    if (flatScheduleRows.length === 0) {
+      toast({ title: 'Nothing to export', description: 'No schedules match current filters.', variant: 'destructive' });
+      return;
+    }
+    const stamp = new Date().toISOString().slice(0, 10);
+    const dayOrder: Record<string, number> = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+    const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+    if (mode === 'flat') {
+      const header = ['Student', 'Teacher', 'Subject', 'Day', 'Teacher Time', 'Student Time', 'Duration (min)'];
+      const data = [...flatScheduleRows]
+        .sort((a, b) => a.student.localeCompare(b.student) || (dayOrder[a.day] - dayOrder[b.day]))
+        .map(r => [r.student, r.teacher, r.subject, cap(r.day), formatTime12h(r.teacherTime), formatTime12h(r.studentTime), r.duration]);
+      downloadCsv([header, ...data], `schedules_${stamp}.csv`);
+    } else if (mode === 'student' || mode === 'teacher') {
+      const groupKey = mode === 'student' ? 'student' : 'teacher';
+      const header = [cap(groupKey), 'Day', 'Teacher Time', 'Student Time', 'Subject', mode === 'student' ? 'Teacher' : 'Student', 'Duration (min)'];
+      const data = [...flatScheduleRows]
+        .sort((a, b) => a[groupKey].localeCompare(b[groupKey]) || (dayOrder[a.day] - dayOrder[b.day]) || a.teacherTime.localeCompare(b.teacherTime))
+        .map(r => [r[groupKey], cap(r.day), formatTime12h(r.teacherTime), formatTime12h(r.studentTime), r.subject, mode === 'student' ? r.teacher : r.student, r.duration]);
+      downloadCsv([header, ...data], `schedules_by_${mode}_${stamp}.csv`);
+    } else if (mode === 'day') {
+      const header = ['Day', 'Teacher Time', 'Student Time', 'Student', 'Teacher', 'Subject', 'Duration (min)'];
+      const data = [...flatScheduleRows]
+        .sort((a, b) => (dayOrder[a.day] - dayOrder[b.day]) || a.teacherTime.localeCompare(b.teacherTime))
+        .map(r => [cap(r.day), formatTime12h(r.teacherTime), formatTime12h(r.studentTime), r.student, r.teacher, r.subject, r.duration]);
+      downloadCsv([header, ...data], `schedules_by_day_${stamp}.csv`);
+    } else if (mode === 'week') {
+      // Pivot: one row per assignment, columns Sun-Sat
+      const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const header = ['Student', 'Teacher', 'Subject', ...days.map(cap)];
+      const data = filteredAssignments.map(a => {
+        const sch = schedules.filter(s => s.assignment_id === a.id);
+        const dayCells = days.map(d => {
+          const s = sch.find(x => x.day_of_week === d);
+          return s ? `${formatTime12h(s.teacher_local_time)} (T) / ${formatTime12h(s.student_local_time)} (S)` : '';
+        });
+        return [a.student_name, a.teacher_name, a.subject_name || '', ...dayCells];
+      });
+      downloadCsv([header, ...data], `schedules_weekly_${stamp}.csv`);
+    }
+    toast({ title: 'Exported', description: `Schedules exported (${mode}).` });
+  };
   const selectedAssignment = useMemo(() => {
     return assignments.find(a => a.id === newSchedule.assignmentId);
   }, [assignments, newSchedule.assignmentId]);
