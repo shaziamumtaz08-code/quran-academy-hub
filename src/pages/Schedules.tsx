@@ -1442,6 +1442,7 @@ export default function Schedules() {
               <MonthlyCalendarView
                 assignments={filteredAssignments}
                 schedules={schedules}
+                onSelectDate={(date) => { setDailyInitialDate(date); setViewMode('daily'); }}
               />
             )}
           </div>
