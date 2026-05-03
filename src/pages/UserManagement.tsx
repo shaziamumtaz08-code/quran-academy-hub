@@ -2737,18 +2737,16 @@ export default function UserManagement() {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Export Users Dialog - Super Admin Only */}
-        {isSuperAdmin && (
-          <ExportUsersDialog
-            open={isExportDialogOpen}
-            onOpenChange={setIsExportDialogOpen}
-            selectedUserIds={selectedUserIds}
-            searchTerm={searchTerm}
-            filteredUserIds={filteredUsers?.map(u => u.id) || []}
-            totalUsers={users?.length || 0}
-            filteredCount={filteredUsers?.length || 0}
-          />
-        )}
+        {/* Export Users Dialog */}
+        <ExportUsersDialog
+          open={isExportDialogOpen}
+          onOpenChange={setIsExportDialogOpen}
+          selectedUserIds={selectedUserIds}
+          searchTerm={searchTerm}
+          filteredUserIds={filteredUsers?.map(u => u.id) || []}
+          totalUsers={users?.length || 0}
+          filteredCount={filteredUsers?.length || 0}
+        />
 
         {/* Holistic User Profile Drawer */}
         <HolisticUserProfileDrawer
