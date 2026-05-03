@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Calendar, CalendarDays, Clock, User, ChevronDown, ChevronRight, Loader2, AlertCircle, Globe, Pencil, Trash2, Upload, ArrowUpDown, ArrowUp, ArrowDown, Search, X, List, LayoutGrid } from 'lucide-react';
+import { Plus, Calendar, CalendarDays, Clock, User, ChevronDown, ChevronRight, Loader2, AlertCircle, Globe, Pencil, Trash2, Upload, ArrowUpDown, ArrowUp, ArrowDown, Search, X, List, LayoutGrid, Download } from 'lucide-react';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { MonthlyCalendarView } from '@/components/schedules/MonthlyCalendarView';
 import { DailySlotCalendar } from '@/components/schedules/DailySlotCalendar';
 import { useToast } from '@/hooks/use-toast';
