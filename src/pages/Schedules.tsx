@@ -221,7 +221,7 @@ export default function Schedules() {
   const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'daily'>('list');
   
   // Sorting state
-  type ScheduleSortField = 'student' | 'teacher' | 'subject' | 'status' | 'classes';
+  type ScheduleSortField = 'student' | 'teacher' | 'subject' | 'status' | 'classes' | 'time';
   type SortDirection = 'asc' | 'desc';
   const [sortField, setSortField] = useState<ScheduleSortField>('student');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
