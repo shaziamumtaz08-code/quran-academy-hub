@@ -1611,8 +1611,10 @@ export default function UserManagement() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="context">Current context{activeDivision ? ` (${activeDivision.name})` : ''}</SelectItem>
-                    <SelectItem value="__all__">All Divisions (combined)</SelectItem>
-                    {allDivisions.map((d) => (
+                    {isSuperAdmin && (
+                      <SelectItem value="__all__">All Divisions (combined)</SelectItem>
+                    )}
+                    {visibleFilterDivisions.map((d) => (
                       <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
                     ))}
                   </SelectContent>
