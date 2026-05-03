@@ -1103,7 +1103,7 @@ export default function Schedules() {
                           <SelectValue placeholder="Select" />
                         </SelectTrigger>
                         <SelectContent>
-                          {assignments.map((assignment) => (
+                          {[...assignments].sort((a, b) => (a.student_name || '').localeCompare(b.student_name || '')).map((assignment) => (
                             <SelectItem key={assignment.id} value={assignment.id}>
                               {assignment.student_name} → {assignment.teacher_name}
                             </SelectItem>
