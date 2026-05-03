@@ -204,7 +204,6 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
             label: "My Classes",
             icon: BookOpen,
             children: [
-              { label: "Live Classes", href: "/teaching?view=live-classes" },
               { label: "Attendance", href: "/teaching?view=attendance" },
               { label: "Planning", href: "/teaching?view=planning" },
               { label: "AI Teaching OS", href: "/teaching-os" },
