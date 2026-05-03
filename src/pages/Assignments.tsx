@@ -465,6 +465,9 @@ export default function Assignments() {
     let result = assignments.filter(a =>
       statusFilter === 'all' ? true : a.status === statusFilter
     );
+    if (teacherFilter !== 'all') result = result.filter(a => a.teacher_id === teacherFilter);
+    if (subjectFilter !== 'all') result = result.filter(a => (a.subject_id || 'none') === subjectFilter);
+    if (payoutTypeFilter !== 'all') result = result.filter(a => (a.payout_type || 'monthly') === payoutTypeFilter);
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       result = result.filter(a =>
@@ -473,16 +476,18 @@ export default function Assignments() {
         (a.subject_name?.toLowerCase().includes(term) ?? false)
       );
     }
+    const dir = sortDir === 'asc' ? 1 : -1;
     result.sort((a, b) => {
-      switch (sortMode) {
-        case 'az': return a.student_name.localeCompare(b.student_name);
-        case 'za': return b.student_name.localeCompare(a.student_name);
-        case 'newest': return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        default: return 0;
-      }
+      let av: any = a[sortKey as keyof Assignment];
+      let bv: any = b[sortKey as keyof Assignment];
+      if (sortKey === 'created_at') return (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) * dir;
+      if (sortKey === 'payout_amount') return ((a.payout_amount || 0) - (b.payout_amount || 0)) * dir;
+      av = (av ?? '').toString().toLowerCase();
+      bv = (bv ?? '').toString().toLowerCase();
+      return av.localeCompare(bv) * dir;
     });
     return result;
-  }, [assignments, statusFilter, searchTerm, sortMode]);
+  }, [assignments, statusFilter, teacherFilter, subjectFilter, payoutTypeFilter, searchTerm, sortKey, sortDir]);
 
   const statusCounts = {
     active: assignments.filter(a => a.status === 'active').length,
@@ -491,10 +496,24 @@ export default function Assignments() {
     left: assignments.filter(a => a.status === 'left').length,
   };
 
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir('asc'); }
+  };
+
+  const SortIcon = ({ k }: { k: SortKey }) => {
+    if (sortKey !== k) return <ArrowUpDown className="h-3 w-3 inline ml-1 opacity-50" />;
+    return sortDir === 'asc' ? <ArrowUp className="h-3 w-3 inline ml-1" /> : <ArrowDown className="h-3 w-3 inline ml-1" />;
+  };
+
   const resetToolbar = () => {
     setSearchTerm('');
-    setSortMode('az');
+    setSortKey('created_at');
+    setSortDir('desc');
     setStatusFilter('active');
+    setTeacherFilter('all');
+    setSubjectFilter('all');
+    setPayoutTypeFilter('all');
   };
 
   const exportAssignments = () => {
