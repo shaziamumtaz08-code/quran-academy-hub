@@ -72,6 +72,7 @@ const TeacherCourseView = lazy(() => import("./pages/TeacherCourseView"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const IdentityResolution = lazy(() => import("./pages/IdentityResolution"));
 const CourseCatalog = lazy(() => import("./pages/CourseCatalog"));
+const CourseAssetLibrary = lazy(() => import("./pages/CourseAssetLibrary"));
 const RecordedCourses = lazy(() => import("./pages/RecordedCourses"));
 const NotificationCenter = lazy(() => import("./pages/NotificationCenter"));
 const GroupChat = lazy(() => import("./pages/GroupChat"));
@@ -403,6 +404,7 @@ function AppRoutes() {
       <Route path="/courses" element={<ProtectedRoute><RouteGuard moduleId="courses_admin"><Courses /></RouteGuard></ProtectedRoute>} />
       <Route path="/courses/:id" element={<ProtectedRoute><RouteGuard moduleId="courses_admin"><DashboardLayout><CourseBuilder /></DashboardLayout></RouteGuard></ProtectedRoute>} />
       <Route path="/academics/courses/:id" element={<ProtectedRoute><RouteGuard moduleId="courses_admin"><DashboardLayout><CourseBuilder /></DashboardLayout></RouteGuard></ProtectedRoute>} />
+      <Route path="/course-asset-library" element={<ProtectedRoute><RouteGuard moduleId="courses_admin"><CourseAssetLibrary /></RouteGuard></ProtectedRoute>} />
       <Route path="/organization-settings" element={<ProtectedRoute><RouteGuard moduleId="org_settings"><OrganizationSettings /></RouteGuard></ProtectedRoute>} />
       <Route path="/finance-setup" element={<ProtectedRoute><RouteGuard moduleId="finance_setup"><FinanceSetup /></RouteGuard></ProtectedRoute>} />
       <Route path="/salary" element={<ProtectedRoute><RouteGuard moduleId="salary"><SalaryEngine /></RouteGuard></ProtectedRoute>} />
