@@ -298,7 +298,8 @@ function LoginRedirect() {
   const getDefaultRoute = () => {
     if (!activeRole) return '/dashboard';
     if (activeRole === 'super_admin') return '/select-division';
-    if (activeRole === 'admin_division' || activeRole === 'admin' || activeRole?.startsWith('admin_')) return '/admin';
+    if (activeRole === 'admin_division') return '/dashboard';
+    if (activeRole === 'admin' || activeRole?.startsWith('admin_')) return '/admin';
     if (activeRole === 'teacher' || activeRole === 'examiner') return '/dashboard';
     if (activeRole === 'parent') return '/parent';
     return '/dashboard';
@@ -324,7 +325,8 @@ function AppRoutes() {
   const getDefaultRoute = () => {
     if (!activeRole) return '/dashboard';
     if (activeRole === 'super_admin') return '/select-division';
-    if (activeRole === 'admin_division' || activeRole === 'admin' || activeRole?.startsWith('admin_')) return '/admin';
+    if (activeRole === 'admin_division') return '/dashboard';
+    if (activeRole === 'admin' || activeRole?.startsWith('admin_')) return '/admin';
     if (activeRole === 'teacher' || activeRole === 'examiner') return '/dashboard';
     if (activeRole === 'parent') return '/parent';
     return '/dashboard';
@@ -349,7 +351,14 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
 
-      <Route path="/admin" element={<ProtectedRoute><RouteGuard moduleId="admin_command"><AdminCommandCenter /></RouteGuard></ProtectedRoute>} />
+      <Route path="/admin" element={<ProtectedRoute>{(() => {
+        const SuperAdminOnly = () => {
+          const { activeRole } = useAuth();
+          if (activeRole && activeRole !== 'super_admin') return <Navigate to="/dashboard" replace />;
+          return <AdminCommandCenter />;
+        };
+        return <SuperAdminOnly />;
+      })()}</ProtectedRoute>} />
       <Route path="/teacher" element={<ProtectedRoute><RouteGuard moduleId="teacher_nazra"><DivisionModelGuard allowedModels={['one_to_one']}><TeacherNazraDashboard /></DivisionModelGuard></RouteGuard></ProtectedRoute>} />
 
       <Route path="/teaching" element={<ProtectedRoute><RouteGuard moduleId="teaching_landing"><DashboardLayout><TeachingLanding /></DashboardLayout></RouteGuard></ProtectedRoute>} />

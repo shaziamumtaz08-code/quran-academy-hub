@@ -285,6 +285,8 @@ export function AppSidebar({ className }: AppSidebarProps) {
   const { activeDivision } = useDivision();
 
   const isOneToOne = activeDivision?.model_type === 'one_to_one';
+  // TEMP DIAG (remove after verification)
+  console.log('[AppSidebar] Division model:', activeDivision?.model_type, 'isOneToOne:', isOneToOne, 'role:', activeRole);
   const isCourseDetail = isCourseDetailRoute(location.pathname);
   const isStudentCourseDetail = /^\/my-courses\/[^/]+$/.test(location.pathname);
   const courseIdMatch = location.pathname.match(/\/(?:courses|my-courses)\/([^/]+)$/);
