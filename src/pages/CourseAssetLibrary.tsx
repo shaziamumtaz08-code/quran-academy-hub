@@ -10,15 +10,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDivision } from '@/contexts/DivisionContext';
 import { cn } from '@/lib/utils';
 import {
-  Plus, Search, FileText, Video, File, BookOpen, Archive, Copy,
-  Trash2, Pencil, Eye, Tag, Filter, MoreHorizontal, Star,
+  Plus, Search, FileText, Video, File, BookOpen, Copy,
+  Trash2, Pencil, Star,
   MessageSquare, ClipboardList, Megaphone, StickyNote, ExternalLink
 } from 'lucide-react';
 import { format } from 'date-fns';
