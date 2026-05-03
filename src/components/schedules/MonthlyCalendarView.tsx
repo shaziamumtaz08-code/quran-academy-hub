@@ -28,6 +28,7 @@ interface Schedule {
 interface MonthlyCalendarViewProps {
   assignments: Assignment[];
   schedules: Schedule[];
+  onSelectDate?: (date: Date) => void;
 }
 
 const DAY_MAP: Record<string, number> = {
@@ -40,7 +41,7 @@ const DAY_MAP: Record<string, number> = {
   saturday: 6,
 };
 
-export function MonthlyCalendarView({ assignments, schedules }: MonthlyCalendarViewProps) {
+export function MonthlyCalendarView({ assignments, schedules, onSelectDate }: MonthlyCalendarViewProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const calendarDays = useMemo(() => {
