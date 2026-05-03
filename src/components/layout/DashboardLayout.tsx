@@ -416,6 +416,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const handleParentClick = async (item: DrawerItem) => {
     const key = getParentKey(item);
     const hasChildren = !!item.children?.length;
+    const isExpanded = expandedKey === key;
 
     if (!hasChildren && item.href) {
       await navigateWithPreload(item.href);
@@ -429,8 +430,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       return;
     }
 
-    handleExpandedChange(expandedKey === key ? null : key);
-    if (!expanded) {
+    handleExpandedChange(isExpanded ? null : key);
+    if (!isExpanded) {
       void preloadRouteModules(item.children?.map((child) => child.href) ?? [item.href]);
     }
   };
