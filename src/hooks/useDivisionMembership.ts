@@ -87,6 +87,12 @@ export function useDivisionMembership(userIds: string[], enabled = true) {
         if (divId) addMembership(row.user_id, divId, row.staff_role || 'teacher');
       });
 
+      // user_context-driven memberships (e.g. admin_division)
+      (ctxRows || []).forEach((row: any) => {
+        if (!row.division_id) return;
+        addMembership(row.user_id, row.division_id, row.primary_role || 'admin');
+      });
+
       // Parent memberships: each parent inherits division membership from each linked child.
       // Skip self-links (defensive — these exist as data corruption).
       const childDivisions = new Map<string, Set<string>>(); // studentId → Set<divisionId>
