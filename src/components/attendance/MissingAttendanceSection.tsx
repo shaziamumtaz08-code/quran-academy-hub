@@ -63,8 +63,8 @@ export function MissingAttendanceSection({
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { roles } = useAuth();
-  const isAdmin = (roles || []).some((r) => ['super_admin', 'admin', 'admin_academic', 'admin_division', 'admin_admissions', 'admin_fees'].includes(r as string));
+  const { profile } = useAuth();
+  const isAdmin = (profile?.roles || []).some((r) => ['super_admin', 'admin', 'admin_academic', 'admin_division', 'admin_admissions', 'admin_fees'].includes(r as string));
 
   type ParkStatus = 'paused' | 'left' | 'completed';
   const [parkDialog, setParkDialog] = useState<{
