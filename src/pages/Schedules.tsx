@@ -219,6 +219,7 @@ export default function Schedules() {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [showAllDivisions, setShowAllDivisions] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'daily'>('list');
+  const [dailyInitialDate, setDailyInitialDate] = useState<Date | undefined>(undefined);
   
   // Sorting state
   type ScheduleSortField = 'student' | 'teacher' | 'subject' | 'status' | 'classes' | 'time';
