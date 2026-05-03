@@ -123,21 +123,75 @@ Deno.serve(async (req) => {
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Division scoping for non-super-admin roles
+    // Division scoping for non-super-admin roles.
+    // Mirror the UI's multi-source membership resolution so the export matches
+    // the table the admin sees: user_context + 1:1 assignments + group class
+    // students + group class staff + parents (via student_parent_links).
     if (!isSuperAdmin) {
       if (!callerDivisionId) {
         return new Response(JSON.stringify({ error: "No active division found for caller" }),
           { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
-      const { data: divMembers } = await adminClient
+
+      const allowed = new Set<string>();
+
+      // 1) user_context (admins, staff bound directly)
+      const { data: ctxRows } = await adminClient
         .from("user_context")
         .select("user_id")
         .eq("division_id", callerDivisionId);
-      const allowedIds = (divMembers || []).map(m => m.user_id);
+      ctxRows?.forEach(r => r.user_id && allowed.add(r.user_id));
+
+      // 2) 1:1 student_teacher_assignments (students + teachers)
+      const { data: staRows } = await adminClient
+        .from("student_teacher_assignments")
+        .select("student_id, teacher_id")
+        .eq("division_id", callerDivisionId);
+      staRows?.forEach(r => {
+        if (r.student_id) allowed.add(r.student_id);
+        if (r.teacher_id) allowed.add(r.teacher_id);
+      });
+
+      // 3) Group classes — collect class ids in this division first
+      const { data: classRows } = await adminClient
+        .from("course_classes")
+        .select("id, courses:courses!inner(division_id)")
+        .eq("courses.division_id", callerDivisionId);
+      const classIds = (classRows || []).map((c: any) => c.id);
+
+      if (classIds.length > 0) {
+        const { data: groupStudents } = await adminClient
+          .from("course_class_students")
+          .select("student_id")
+          .in("class_id", classIds);
+        groupStudents?.forEach(r => r.student_id && allowed.add(r.student_id));
+
+        const { data: groupStaff } = await adminClient
+          .from("course_class_staff")
+          .select("user_id")
+          .in("class_id", classIds);
+        groupStaff?.forEach(r => r.user_id && allowed.add(r.user_id));
+      }
+
+      // 4) Parents inherit from any in-scope student
+      const studentIds = [...allowed];
+      if (studentIds.length > 0) {
+        const { data: parentLinks } = await adminClient
+          .from("student_parent_links")
+          .select("parent_id, student_id")
+          .in("student_id", studentIds);
+        parentLinks?.forEach(r => r.parent_id && allowed.add(r.parent_id));
+      }
+
+      const allowedIds = [...allowed];
       if (allowedIds.length === 0) {
         return new Response(JSON.stringify({ error: "No users in your division" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
+
+      // Intersect with any explicit selection / filtered ids the client passed,
+      // so a "selected" or "filtered" export from a division admin can never leak
+      // outside their division.
       query = query.in("id", allowedIds);
     }
 
