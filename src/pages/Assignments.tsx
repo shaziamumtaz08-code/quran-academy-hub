@@ -400,6 +400,18 @@ export default function Assignments() {
     setPayoutType('monthly');
     setEffectiveFromDate('');
     setEditingAssignment(null);
+    setIsFormOpen(false);
+  };
+
+  const handleOpenCreate = () => {
+    setEditingAssignment(null);
+    setSelectedTeacher('');
+    setSelectedStudents([]);
+    setSelectedSubject('');
+    setPayoutAmount('');
+    setPayoutType('monthly');
+    setEffectiveFromDate('');
+    setIsFormOpen(true);
   };
 
   const handleEditAssignment = (assignment: Assignment) => {
@@ -410,6 +422,7 @@ export default function Assignments() {
     setPayoutAmount(assignment.payout_amount?.toString() || '');
     setPayoutType(assignment.payout_type || 'monthly');
     setEffectiveFromDate(assignment.effective_from_date || '');
+    setIsFormOpen(true);
   };
 
   const handleCancelEdit = () => {
