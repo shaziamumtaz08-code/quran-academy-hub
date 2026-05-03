@@ -1889,16 +1889,28 @@ export default function UserManagement() {
                                             if (isAdmin) push('admin', 'text-slate-700 dark:text-slate-300', 'Global');
                                             if (isSuperAdmin) push('super_admin', 'text-rose-600 dark:text-rose-400', 'Global');
 
-                                            const slots = Array.from({ length: 8 }, (_, i) => items[i]);
-                                            return (
-                                              <span className="inline-flex items-center gap-1 border-l border-slate-200 pl-2" style={{ width: 'calc(8 * 14px + 7 * 4px)' }}>
-                                                {slots.map((it, i) => (
-                                                  <span key={i} className="inline-flex items-center justify-center" style={{ width: 14, height: 14 }} title={it?.title}>
-                                                    {it ? <it.Icon className={`h-3.5 w-3.5 ${it.color}`} /> : null}
-                                                  </span>
-                                                ))}
-                                              </span>
-                                            );
+                                             const slots = Array.from({ length: 8 }, (_, i) => items[i]);
+                                             const r = user.roles || [];
+                                             const ut = r.includes('teacher') ? 'teacher' : r.includes('student') ? 'student' : r.includes('parent') ? 'parent' : 'student';
+                                             return (
+                                               <span className="inline-flex items-center gap-1 border-l border-slate-200 pl-2" style={{ width: 'calc(8 * 14px + 7 * 4px + 22px)' }}>
+                                                 {slots.map((it, i) => (
+                                                   <span key={i} className="inline-flex items-center justify-center" style={{ width: 14, height: 14 }} title={it?.title}>
+                                                     {it ? <it.Icon className={`h-3.5 w-3.5 ${it.color}`} /> : null}
+                                                   </span>
+                                                 ))}
+                                                 <span
+                                                   role="button"
+                                                   tabIndex={0}
+                                                   onClick={(e) => { e.stopPropagation(); navigate(`/connections/${ut}/${user.id}`); }}
+                                                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); navigate(`/connections/${ut}/${user.id}`); } }}
+                                                   title="View connections"
+                                                   className="inline-flex items-center justify-center ml-1 pl-1.5 border-l border-slate-200 cursor-pointer hover:opacity-70 transition-opacity"
+                                                 >
+                                                   <Network className="h-3.5 w-3.5 text-primary" />
+                                                 </span>
+                                               </span>
+                                             );
                                           })()}
                                         </span>
                                         <Copy className="h-3 w-3 text-muted-foreground opacity-0 group-hover/id:opacity-100 transition-opacity" />
