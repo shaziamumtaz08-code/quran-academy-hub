@@ -70,9 +70,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [activeRole, setActiveRoleState] = useState<AppRole | null>(null);
   const [activeRolePermissions, setActiveRolePermissions] = useState<string[]>([]);
 
-  // Set initial active role when profile loads
+  // Keep active role aligned with the current authenticated user's real roles.
   useEffect(() => {
-    if (profile?.roles && profile.roles.length > 0 && !activeRole) {
+    if (!profile?.roles?.length) {
+      if (activeRole) setActiveRoleState(null);
+      return;
+    }
+
+    if (!activeRole || !profile.roles.includes(activeRole)) {
       setActiveRoleState(profile.role || profile.roles[0]);
     }
   }, [profile, activeRole]);
@@ -141,6 +146,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         roles,
         role: primaryRole,
       });
+
+      setActiveRoleState((currentRole) => {
+        if (!primaryRole) return null;
+        return currentRole && roles.includes(currentRole) ? currentRole : primaryRole;
+      });
     } catch (error) {
       console.error("Error in fetchProfile:", error);
     }
@@ -173,6 +183,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
 
       if (session?.user) {
+        setActiveRoleState(null);
+        setActiveRolePermissions([]);
+
         // Defer to avoid Supabase deadlock on rapid state changes
         setTimeout(() => {
           fetchProfile(session.user.id).finally(() => {

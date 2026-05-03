@@ -58,15 +58,16 @@ export default function SelectDivision() {
   useEffect(() => {
     const fetchDivisions = async () => {
       setLoading(true);
-      const { data: divisions } = await supabase
-        .from('divisions')
-        .select('id, name, model_type, branch_id')
-        .eq('is_active', true);
-
-      const { data: branches } = await supabase
-        .from('branches')
-        .select('id, name, type')
-        .eq('is_active', true);
+      const [{ data: divisions }, { data: branches }] = await Promise.all([
+        supabase
+          .from('divisions')
+          .select('id, name, model_type, branch_id')
+          .eq('is_active', true),
+        supabase
+          .from('branches')
+          .select('id, name, type')
+          .eq('is_active', true),
+      ]);
 
       if (!divisions || !branches) {
         setLoading(false);
@@ -88,19 +89,68 @@ export default function SelectDivision() {
         };
       });
 
-      // Fetch counts per division
-      const { data: assignmentCounts } = await supabase
-        .from('student_teacher_assignments')
-        .select('division_id, student_id, teacher_id')
-        .eq('status', 'active');
+      const [assignmentRes, courseRes, enrollmentRes, classStaffRes] = await Promise.all([
+        supabase
+          .from('student_teacher_assignments')
+          .select('division_id, student_id, teacher_id')
+          .eq('status', 'active'),
+        supabase
+          .from('courses')
+          .select('id, division_id, teacher_id'),
+        supabase
+          .from('course_enrollments')
+          .select('student_id, course:courses!inner(id, division_id)')
+          .eq('status', 'active'),
+        supabase
+          .from('course_class_staff')
+          .select('user_id, class:course_classes!inner(courses!inner(division_id))'),
+      ]);
 
-      if (assignmentCounts) {
-        for (const card of enriched) {
-          const divAssignments = assignmentCounts.filter(a => a.division_id === card.divisionId);
-          card.studentCount = new Set(divAssignments.map(a => a.student_id)).size;
-          card.teacherCount = new Set(divAssignments.map(a => a.teacher_id)).size;
+      const oneToOneCounts = new Map<string, { students: Set<string>; teachers: Set<string> }>();
+      (assignmentRes.data || []).forEach((row) => {
+        if (!row.division_id) return;
+        if (!oneToOneCounts.has(row.division_id)) {
+          oneToOneCounts.set(row.division_id, { students: new Set(), teachers: new Set() });
         }
-      }
+        const bucket = oneToOneCounts.get(row.division_id)!;
+        if (row.student_id) bucket.students.add(row.student_id);
+        if (row.teacher_id) bucket.teachers.add(row.teacher_id);
+      });
+
+      const groupCounts = new Map<string, { students: Set<string>; teachers: Set<string> }>();
+      const ensureGroupBucket = (divisionId: string) => {
+        if (!groupCounts.has(divisionId)) {
+          groupCounts.set(divisionId, { students: new Set(), teachers: new Set() });
+        }
+        return groupCounts.get(divisionId)!;
+      };
+
+      (courseRes.data || []).forEach((course) => {
+        if (!course.division_id) return;
+        const bucket = ensureGroupBucket(course.division_id);
+        if (course.teacher_id) bucket.teachers.add(course.teacher_id);
+      });
+
+      (enrollmentRes.data || []).forEach((row: any) => {
+        const divisionId = row.course?.division_id;
+        if (!divisionId || !row.student_id) return;
+        ensureGroupBucket(divisionId).students.add(row.student_id);
+      });
+
+      (classStaffRes.data || []).forEach((row: any) => {
+        const divisionId = row.class?.courses?.division_id;
+        if (!divisionId || !row.user_id) return;
+        ensureGroupBucket(divisionId).teachers.add(row.user_id);
+      });
+
+      enriched.forEach((card) => {
+        const source = card.modelType === 'one_to_one'
+          ? oneToOneCounts.get(card.divisionId)
+          : groupCounts.get(card.divisionId);
+
+        card.studentCount = source?.students.size || 0;
+        card.teacherCount = source?.teachers.size || 0;
+      });
 
       setCards(enriched);
       setLoading(false);
