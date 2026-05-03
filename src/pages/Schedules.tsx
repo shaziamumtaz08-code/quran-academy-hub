@@ -606,13 +606,33 @@ export default function Schedules() {
           case 'subject':
             comparison = (a.subject_name || '').localeCompare(b.subject_name || '');
             break;
-          case 'status':
-            comparison = (aSchedules.length > 0 ? 1 : 0) - (bSchedules.length > 0 ? 1 : 0);
+          case 'status': {
+            const aIs = aSchedules.length > 0 ? 1 : 0;
+            const bIs = bSchedules.length > 0 ? 1 : 0;
+            // Primary: scheduled vs not. Secondary: more classes/week first.
+            comparison = aIs - bIs;
+            if (comparison === 0) comparison = aSchedules.length - bSchedules.length;
             break;
+          }
           case 'classes':
             comparison = aSchedules.length - bSchedules.length;
             break;
+          case 'time': {
+            // Sort by teacher time first, then student time. "No class" goes last.
+            const todayA = aSchedules.find(s => s.day_of_week === todayDayName);
+            const todayB = bSchedules.find(s => s.day_of_week === todayDayName);
+            const toMin = (t?: string) => {
+              if (!t) return Number.POSITIVE_INFINITY;
+              const [h, m] = t.split(':').map(Number);
+              return (h || 0) * 60 + (m || 0);
+            };
+            comparison = toMin(todayA?.teacher_local_time) - toMin(todayB?.teacher_local_time);
+            if (comparison === 0) comparison = toMin(todayA?.student_local_time) - toMin(todayB?.student_local_time);
+            break;
+          }
         }
+        // Status sort default: descending (more classes first when ascending click)
+        if (sortField === 'status' && sortDirection === 'asc') return -comparison;
         return sortDirection === 'asc' ? comparison : -comparison;
       });
   }, [assignments, schedules, searchTerm, filterTeacher, filterSubject, filterStatus, sortField, sortDirection]);
