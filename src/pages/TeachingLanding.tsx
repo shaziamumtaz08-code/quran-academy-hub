@@ -78,7 +78,6 @@ export default function TeachingLanding() {
   });
 
   const contentMap: Record<string, React.ReactNode> = useMemo(() => ({
-    'live-classes': <Suspense fallback={<Loading />}><ZoomManagement /></Suspense>,
     assignments: <Suspense fallback={<Loading />}><Assignments /></Suspense>,
     schedules: <Suspense fallback={<Loading />}><Schedules /></Suspense>,
     attendance: <Suspense fallback={<Loading />}><Attendance /></Suspense>,
