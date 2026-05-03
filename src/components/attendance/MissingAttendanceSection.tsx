@@ -27,6 +27,7 @@ interface MissingRecord {
   teacherName: string;
   subjectName: string | null;
   scheduledTime: string;
+  assignmentId: string;
 }
 
 // Bypass cutoff: only count missing from April 2026 onwards
