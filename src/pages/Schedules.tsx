@@ -635,7 +635,7 @@ export default function Schedules() {
         if (sortField === 'status' && sortDirection === 'asc') return -comparison;
         return sortDirection === 'asc' ? comparison : -comparison;
       });
-  }, [assignments, schedules, searchTerm, filterTeacher, filterSubject, filterStatus, sortField, sortDirection]);
+  }, [assignments, schedules, searchTerm, filterTeacher, filterSubject, filterStatus, sortField, sortDirection, todayDayName]);
 
   const hasActiveFilters = !!filterTeacher || !!filterSubject || !!filterStatus || !!searchTerm || showAllDivisions;
 
