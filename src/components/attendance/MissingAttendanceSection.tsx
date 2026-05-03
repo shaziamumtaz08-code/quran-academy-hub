@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertTriangle, Calendar, User, Search, X, Filter, ArrowUpDown } from 'lucide-react';
+import { AlertTriangle, Calendar as CalendarIcon, User, Search, Filter, ArrowUpDown, Pause, LogOut, CheckCircle2, MoreHorizontal, Loader2 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isAfter } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -22,6 +27,7 @@ interface MissingRecord {
   teacherName: string;
   subjectName: string | null;
   scheduledTime: string;
+  assignmentId: string;
 }
 
 // Bypass cutoff: only count missing from April 2026 onwards
@@ -55,6 +61,58 @@ export function MissingAttendanceSection({
   const [sortField, setSortField] = useState<'date' | 'student' | 'teacher' | 'subject' | 'time'>('date');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { profile } = useAuth();
+  const isAdmin = (profile?.roles || []).some((r) => ['super_admin', 'admin', 'admin_academic', 'admin_division', 'admin_admissions', 'admin_fees'].includes(r as string));
+
+  type ParkStatus = 'paused' | 'left' | 'completed';
+  const [parkDialog, setParkDialog] = useState<{
+    record: MissingRecord;
+    status: ParkStatus;
+  } | null>(null);
+  const [effectiveDate, setEffectiveDate] = useState<Date | undefined>(undefined);
+
+  const parkMutation = useMutation({
+    mutationFn: async (input: { assignmentId: string; status: ParkStatus; date: string }) => {
+      const updatePayload: Record<string, any> = {
+        status: input.status,
+        status_effective_date: input.date,
+      };
+      if (input.status === 'left' || input.status === 'completed') {
+        updatePayload.ended_at = new Date(input.date).toISOString();
+      }
+      const { error } = await supabase
+        .from('student_teacher_assignments')
+        .update(updatePayload)
+        .eq('id', input.assignmentId);
+      if (error) throw error;
+
+      // For 'left', also deactivate related schedules so they stop generating expected classes
+      if (input.status === 'left') {
+        await supabase
+          .from('schedules')
+          .update({ is_active: false, ended_at: new Date(input.date).toISOString() })
+          .eq('assignment_id', input.assignmentId)
+          .is('ended_at', null);
+      }
+    },
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['all-schedules-for-missing'] });
+      queryClient.invalidateQueries({ queryKey: ['schedules-count-missing'] });
+      queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
+      toast({
+        title: 'Assignment parked',
+        description: `Marked as ${vars.status} effective ${vars.date}. Stale missing rows cleared.`,
+      });
+      setParkDialog(null);
+      setEffectiveDate(undefined);
+    },
+    onError: (err: any) => {
+      toast({ title: 'Failed to park assignment', description: err.message, variant: 'destructive' });
+    },
+  });
+
   // Compute date range — enforce bypass cutoff (no missing before April 2026)
   const { startDate, endDate } = useMemo(() => {
     let sd: string, ed: string;
@@ -87,9 +145,12 @@ export function MissingAttendanceSection({
           is_active,
           division_id,
             student_teacher_assignments!inner (
+              id,
               student_id,
               teacher_id,
               status,
+              status_effective_date,
+              ended_at,
               requires_attendance,
               division_id,
               subject:subjects(name),
@@ -98,7 +159,7 @@ export function MissingAttendanceSection({
             )
           `)
           .eq('is_active', true)
-          .eq('student_teacher_assignments.status', 'active')
+          .in('student_teacher_assignments.status', ['active', 'paused', 'left', 'completed'])
           .eq('student_teacher_assignments.requires_attendance', true);
 
       if (teacherId) {
@@ -182,6 +243,15 @@ export function MissingAttendanceSection({
       const assignment = schedule.student_teacher_assignments as any;
       if (!assignment?.student || !assignment?.teacher) continue;
 
+      // Compute effective cutoff for parked assignments — suppress dates from cutoff onward
+      const cutoffStr: string | null = assignment.status !== 'active'
+        ? (assignment.status_effective_date
+            ? String(assignment.status_effective_date).substring(0, 10)
+            : (assignment.ended_at ? format(parseISO(assignment.ended_at), 'yyyy-MM-dd') : null))
+        : null;
+      // If assignment is parked but has no cutoff recorded, skip entirely (treat as fully parked).
+      if (assignment.status !== 'active' && !cutoffStr) continue;
+
       const scheduledDayName = schedule.day_of_week.toLowerCase();
       const scheduledDayIndex = DAY_NAMES.indexOf(scheduledDayName);
       if (scheduledDayIndex === -1) continue;
@@ -194,6 +264,8 @@ export function MissingAttendanceSection({
         if (dayStr === format(new Date(), 'yyyy-MM-dd')) continue;
         // Skip holidays
         if (holidaySet.has(dayStr)) continue;
+        // For parked assignments, suppress dates on/after the effective cutoff
+        if (cutoffStr && dayStr >= cutoffStr) continue;
 
         if (getDay(day) === scheduledDayIndex) {
           const key = `${assignment.student_id}:${dayStr}`;
@@ -206,6 +278,7 @@ export function MissingAttendanceSection({
               teacherName: assignment.teacher.full_name,
               subjectName: assignment.subject?.name || null,
               scheduledTime: schedule.teacher_local_time?.substring(0, 5) || '-',
+              assignmentId: assignment.id,
             });
           }
         }
@@ -362,7 +435,7 @@ export function MissingAttendanceSection({
           </div>
         ) : filteredAndSortedMissing.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            <Calendar className="h-10 w-10 mx-auto mb-3 opacity-30" />
+            <CalendarIcon className="h-10 w-10 mx-auto mb-3 opacity-30" />
             <p className="text-sm">No missing attendance records found</p>
           </div>
         ) : (
@@ -378,6 +451,7 @@ export function MissingAttendanceSection({
                       </span>
                     </TableHead>
                   ))}
+                  {isAdmin && <TableHead className="text-right">Action</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -385,7 +459,7 @@ export function MissingAttendanceSection({
                   <TableRow key={`${record.studentId}-${record.date}-${idx}`} className="bg-destructive/5 hover:bg-destructive/10">
                     <TableCell>
                       <span className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-destructive/70" />
+                        <CalendarIcon className="h-4 w-4 text-destructive/70" />
                         {format(parseISO(record.date), 'dd MMM yyyy')}
                       </span>
                     </TableCell>
@@ -402,6 +476,41 @@ export function MissingAttendanceSection({
                       ) : '-'}
                     </TableCell>
                     <TableCell>{record.scheduledTime}</TableCell>
+                    {isAdmin && (
+                      <TableCell className="text-right">
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 px-2" title="Park assignment">
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="ml-1 text-xs">Park</span>
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent align="end" className="w-44 p-1">
+                            <button
+                              type="button"
+                              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
+                              onClick={() => { setParkDialog({ record, status: 'paused' }); setEffectiveDate(undefined); }}
+                            >
+                              <Pause className="h-4 w-4 text-amber-600" /> Mark Paused
+                            </button>
+                            <button
+                              type="button"
+                              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
+                              onClick={() => { setParkDialog({ record, status: 'left' }); setEffectiveDate(undefined); }}
+                            >
+                              <LogOut className="h-4 w-4 text-rose-600" /> Mark Left
+                            </button>
+                            <button
+                              type="button"
+                              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
+                              onClick={() => { setParkDialog({ record, status: 'completed' }); setEffectiveDate(undefined); }}
+                            >
+                              <CheckCircle2 className="h-4 w-4 text-slate-500" /> Mark Completed
+                            </button>
+                          </PopoverContent>
+                        </Popover>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
@@ -409,6 +518,61 @@ export function MissingAttendanceSection({
           </div>
         )}
       </CardContent>
+
+      {/* Park assignment dialog — requires manual effective date */}
+      <Dialog open={!!parkDialog} onOpenChange={(open) => { if (!open) { setParkDialog(null); setEffectiveDate(undefined); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="capitalize">Mark assignment as {parkDialog?.status}</DialogTitle>
+            <DialogDescription>
+              <strong>{parkDialog?.record.studentName}</strong> with <strong>{parkDialog?.record.teacherName}</strong>.
+              Pick the effective date — every missing class on or after this date will be cleared from the red zone.
+              {parkDialog?.status === 'left' && ' All related schedules will also be deactivated.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <label className="text-sm font-medium">Effective date</label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn('w-full justify-start text-left font-normal', !effectiveDate && 'text-muted-foreground')}>
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {effectiveDate ? format(effectiveDate, 'PPP') : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={effectiveDate}
+                  onSelect={setEffectiveDate}
+                  disabled={(d) => d > new Date()}
+                  initialFocus
+                  className={cn('p-3 pointer-events-auto')}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setParkDialog(null); setEffectiveDate(undefined); }} disabled={parkMutation.isPending}>
+              Cancel
+            </Button>
+            <Button
+              variant={parkDialog?.status === 'left' ? 'destructive' : 'default'}
+              disabled={!effectiveDate || parkMutation.isPending || !parkDialog}
+              onClick={() => {
+                if (!parkDialog || !effectiveDate) return;
+                parkMutation.mutate({
+                  assignmentId: parkDialog.record.assignmentId,
+                  status: parkDialog.status,
+                  date: format(effectiveDate, 'yyyy-MM-dd'),
+                });
+              }}
+            >
+              {parkMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
@@ -445,15 +609,18 @@ export function useMissingAttendanceCount(
         .select(`
           day_of_week,
             student_teacher_assignments!inner (
+              id,
               student_id,
               teacher_id,
               status,
+              status_effective_date,
+              ended_at,
               requires_attendance,
               division_id
             )
           `)
           .eq('is_active', true)
-          .eq('student_teacher_assignments.status', 'active')
+          .in('student_teacher_assignments.status', ['active', 'paused', 'left', 'completed'])
           .eq('student_teacher_assignments.requires_attendance', true);
 
       if (teacherId) {
@@ -525,6 +692,13 @@ export function useMissingAttendanceCount(
       const assignment = schedule.student_teacher_assignments as any;
       if (!assignment) continue;
 
+      const cutoffStr: string | null = assignment.status !== 'active'
+        ? (assignment.status_effective_date
+            ? String(assignment.status_effective_date).substring(0, 10)
+            : (assignment.ended_at ? format(parseISO(assignment.ended_at), 'yyyy-MM-dd') : null))
+        : null;
+      if (assignment.status !== 'active' && !cutoffStr) continue;
+
       const scheduledDayIndex = DAY_NAMES.indexOf(schedule.day_of_week.toLowerCase());
       if (scheduledDayIndex === -1) continue;
 
@@ -533,6 +707,7 @@ export function useMissingAttendanceCount(
         const dayStr = format(day, 'yyyy-MM-dd');
         if (dayStr === format(new Date(), 'yyyy-MM-dd')) continue;
         if (holidaySet.has(dayStr)) continue;
+        if (cutoffStr && dayStr >= cutoffStr) continue;
 
         if (getDay(day) === scheduledDayIndex) {
           const key = `${assignment.student_id}:${dayStr}`;
