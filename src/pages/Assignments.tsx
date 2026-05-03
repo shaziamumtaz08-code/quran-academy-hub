@@ -79,6 +79,14 @@ export default function Assignments() {
   const [statusFilter, setStatusFilter] = useState<AssignmentStatus | 'all'>('active');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortMode, setSortMode] = useState<'az' | 'za' | 'newest'>('az');
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  // Per-column sort + filters
+  type SortKey = 'teacher_name' | 'student_name' | 'subject_name' | 'payout_amount' | 'status' | 'created_at';
+  const [sortKey, setSortKey] = useState<SortKey>('created_at');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [teacherFilter, setTeacherFilter] = useState<string>('all');
+  const [subjectFilter, setSubjectFilter] = useState<string>('all');
+  const [payoutTypeFilter, setPayoutTypeFilter] = useState<string>('all');
   const [reassignDialog, setReassignDialog] = useState<Assignment | null>(null);
   const [reassignTeacherId, setReassignTeacherId] = useState('');
   const [reassignReason, setReassignReason] = useState('');
