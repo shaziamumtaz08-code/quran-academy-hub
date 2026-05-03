@@ -743,30 +743,52 @@ export default function Assignments() {
         {/* Assignments Table */}
         <Card>
           <CardHeader className="space-y-4">
-            <CardTitle>Assignments</CardTitle>
-            <TableToolbar
-              searchValue={searchTerm}
-              onSearchChange={setSearchTerm}
-              searchPlaceholder="Search by name or subject..."
-              sortValue={sortMode}
-              onSortChange={(v) => setSortMode(v as 'az' | 'za' | 'newest')}
-              sortOptions={[
-                { value: 'az', label: 'A → Z (Student)' },
-                { value: 'za', label: 'Z → A (Student)' },
-                { value: 'newest', label: 'Newest First' },
-              ]}
-              filterValue={statusFilter}
-              onFilterChange={(v) => setStatusFilter(v as AssignmentStatus | 'all')}
-              filterOptions={[
-                { value: 'all', label: 'All Statuses' },
-                { value: 'active', label: `Active (${statusCounts.active})` },
-                { value: 'paused', label: `Paused (${statusCounts.paused})` },
-                { value: 'completed', label: `Completed (${statusCounts.completed})` },
-                { value: 'left', label: `Left (${statusCounts.left})` },
-              ]}
-              filterLabel="Status"
-              onReset={resetToolbar}
-            />
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <CardTitle>Assignments ({filteredAssignments.length})</CardTitle>
+              <Button variant="ghost" size="sm" onClick={resetToolbar} className="gap-1.5">
+                <X className="h-3.5 w-3.5" /> Reset filters
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+              <Input
+                placeholder="Search name or subject..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as AssignmentStatus | 'all')}>
+                <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="active">Active ({statusCounts.active})</SelectItem>
+                  <SelectItem value="paused">Paused ({statusCounts.paused})</SelectItem>
+                  <SelectItem value="completed">Completed ({statusCounts.completed})</SelectItem>
+                  <SelectItem value="left">Left ({statusCounts.left})</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={teacherFilter} onValueChange={setTeacherFilter}>
+                <SelectTrigger><SelectValue placeholder="Teacher" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Teachers</SelectItem>
+                  {teachers.map(t => <SelectItem key={t.id} value={t.id}>{t.full_name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={subjectFilter} onValueChange={setSubjectFilter}>
+                <SelectTrigger><SelectValue placeholder="Subject" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Subjects</SelectItem>
+                  <SelectItem value="none">No Subject</SelectItem>
+                  {subjects.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={payoutTypeFilter} onValueChange={setPayoutTypeFilter}>
+                <SelectTrigger><SelectValue placeholder="Payout Type" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Payout Types</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="per_class">Per Class</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -782,15 +804,15 @@ export default function Assignments() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                     <TableHead>Teacher</TableHead>
-                     <TableHead>Student</TableHead>
-                     <TableHead>Subject</TableHead>
-                     <TableHead>Payout</TableHead>
-                     <TableHead>Billing Plan</TableHead>
-                     <TableHead>Tracking</TableHead>
-                     <TableHead>Status</TableHead>
-                     <TableHead className="text-center">Reassign</TableHead>
-                     <TableHead className="text-center">Action</TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('teacher_name')}>Teacher<SortIcon k="teacher_name" /></TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('student_name')}>Student<SortIcon k="student_name" /></TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('subject_name')}>Subject<SortIcon k="subject_name" /></TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('payout_amount')}>Payout<SortIcon k="payout_amount" /></TableHead>
+                    <TableHead>Billing Plan</TableHead>
+                    <TableHead>Tracking</TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('status')}>Status<SortIcon k="status" /></TableHead>
+                    <TableHead className="text-center">Reassign</TableHead>
+                    <TableHead className="text-center">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
