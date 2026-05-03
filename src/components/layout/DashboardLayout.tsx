@@ -39,6 +39,7 @@ import {
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { preloadRouteModule, preloadRouteModules } from "@/lib/routePreload";
 import logoDark from "@/assets/logo-dark.jpg";
 
 const DashboardLayoutContext = createContext(false);
@@ -406,23 +407,32 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const collapsed = isDesktop && desktopCollapsed;
   const drawerWidthClass = collapsed ? "lg:w-16" : "lg:w-[260px]";
 
-  const handleParentClick = (item: DrawerItem) => {
+  const navigateWithPreload = async (href: string) => {
+    await preloadRouteModule(href);
+    navigate(href);
+    closeMobileDrawer();
+  };
+
+  const handleParentClick = async (item: DrawerItem) => {
     const key = getParentKey(item);
     const hasChildren = !!item.children?.length;
 
     if (!hasChildren && item.href) {
-      navigate(item.href);
-      closeMobileDrawer();
+      await navigateWithPreload(item.href);
       return;
     }
 
     if (collapsed && isDesktop) {
       handleDesktopCollapsedChange(false);
       handleExpandedChange(key);
+      void preloadRouteModules(item.children?.map((child) => child.href) ?? [item.href]);
       return;
     }
 
     handleExpandedChange(expandedKey === key ? null : key);
+    if (!expanded) {
+      void preloadRouteModules(item.children?.map((child) => child.href) ?? [item.href]);
+    }
   };
 
   const renderNavItem = (item: DrawerItem) => {
@@ -439,7 +449,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     const parentButton = (
       <button
         type="button"
-        onClick={() => handleParentClick(item)}
+          onClick={() => void handleParentClick(item)}
+          onMouseEnter={() => void preloadRouteModules(item.children?.map((child) => child.href) ?? [item.href])}
         className={cn(
           "relative flex h-10 w-full items-center gap-3 rounded-none border-l-[3px] border-transparent px-3 text-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6]/40",
           parentIsExactActive
@@ -482,10 +493,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 <button
                   key={child.href}
                   type="button"
-                  onClick={() => {
-                    navigate(child.href);
-                    closeMobileDrawer();
-                  }}
+                  onClick={() => void navigateWithPreload(child.href)}
+                  onMouseEnter={() => void preloadRouteModule(child.href)}
                   className={cn(
                     "relative flex h-10 w-full items-center rounded-none border-l-[3px] px-3 text-left text-[13px] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6]/40",
                     childActive
