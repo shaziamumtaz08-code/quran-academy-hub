@@ -1459,6 +1459,7 @@ export default function Schedules() {
               <DailySlotCalendar
                 assignments={filteredAssignments}
                 schedules={schedules}
+                initialDate={dailyInitialDate}
               />
             )}
           </div>
