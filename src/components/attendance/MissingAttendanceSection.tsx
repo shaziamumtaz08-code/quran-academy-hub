@@ -191,6 +191,15 @@ export function MissingAttendanceSection({
       const assignment = schedule.student_teacher_assignments as any;
       if (!assignment?.student || !assignment?.teacher) continue;
 
+      // Compute effective cutoff for parked assignments — suppress dates from cutoff onward
+      const cutoffStr: string | null = assignment.status !== 'active'
+        ? (assignment.status_effective_date
+            ? String(assignment.status_effective_date).substring(0, 10)
+            : (assignment.ended_at ? format(parseISO(assignment.ended_at), 'yyyy-MM-dd') : null))
+        : null;
+      // If assignment is parked but has no cutoff recorded, skip entirely (treat as fully parked).
+      if (assignment.status !== 'active' && !cutoffStr) continue;
+
       const scheduledDayName = schedule.day_of_week.toLowerCase();
       const scheduledDayIndex = DAY_NAMES.indexOf(scheduledDayName);
       if (scheduledDayIndex === -1) continue;
@@ -203,6 +212,8 @@ export function MissingAttendanceSection({
         if (dayStr === format(new Date(), 'yyyy-MM-dd')) continue;
         // Skip holidays
         if (holidaySet.has(dayStr)) continue;
+        // For parked assignments, suppress dates on/after the effective cutoff
+        if (cutoffStr && dayStr >= cutoffStr) continue;
 
         if (getDay(day) === scheduledDayIndex) {
           const key = `${assignment.student_id}:${dayStr}`;
@@ -215,6 +226,7 @@ export function MissingAttendanceSection({
               teacherName: assignment.teacher.full_name,
               subjectName: assignment.subject?.name || null,
               scheduledTime: schedule.teacher_local_time?.substring(0, 5) || '-',
+              assignmentId: assignment.id,
             });
           }
         }
