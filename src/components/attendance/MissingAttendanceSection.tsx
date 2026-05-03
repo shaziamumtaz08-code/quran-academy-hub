@@ -692,6 +692,13 @@ export function useMissingAttendanceCount(
       const assignment = schedule.student_teacher_assignments as any;
       if (!assignment) continue;
 
+      const cutoffStr: string | null = assignment.status !== 'active'
+        ? (assignment.status_effective_date
+            ? String(assignment.status_effective_date).substring(0, 10)
+            : (assignment.ended_at ? format(parseISO(assignment.ended_at), 'yyyy-MM-dd') : null))
+        : null;
+      if (assignment.status !== 'active' && !cutoffStr) continue;
+
       const scheduledDayIndex = DAY_NAMES.indexOf(schedule.day_of_week.toLowerCase());
       if (scheduledDayIndex === -1) continue;
 
@@ -700,6 +707,7 @@ export function useMissingAttendanceCount(
         const dayStr = format(day, 'yyyy-MM-dd');
         if (dayStr === format(new Date(), 'yyyy-MM-dd')) continue;
         if (holidaySet.has(dayStr)) continue;
+        if (cutoffStr && dayStr >= cutoffStr) continue;
 
         if (getDay(day) === scheduledDayIndex) {
           const key = `${assignment.student_id}:${dayStr}`;
