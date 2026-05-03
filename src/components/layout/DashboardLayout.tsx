@@ -93,11 +93,13 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
             children: [
               ...(isGroupStyleModel ? [{ label: "All Courses", href: "/courses" }, { label: "Course Asset Library", href: "/course-asset-library" }] : []),
               { label: "Live Classes", href: "/teaching?view=live-classes" },
-              { label: "Assignments", href: "/teaching?view=assignments" },
-              { label: "Schedules", href: "/teaching?view=schedules" },
-              { label: "Attendance", href: "/teaching?view=attendance" },
-              { label: "Planning", href: "/teaching?view=planning" },
-              { label: "Subjects", href: "/teaching?view=subjects" },
+              ...(isOneToOne ? [
+                { label: "Assignments", href: "/teaching?view=assignments" },
+                { label: "Schedules", href: "/teaching?view=schedules" },
+                { label: "Attendance", href: "/teaching?view=attendance" },
+                { label: "Planning", href: "/teaching?view=planning" },
+                { label: "Subjects", href: "/teaching?view=subjects" },
+              ] : []),
               ...(isOneToOne ? [{ label: "1-to-1 Assignments", href: "/teaching?view=one-to-one" }] : []),
               ...(isGroupStyleModel
                 ? [
