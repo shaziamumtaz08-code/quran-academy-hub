@@ -10,7 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Users, GraduationCap, Trash2, Loader2, UserPlus, BookOpen, Pencil, Upload, ArrowRightLeft, Banknote, Eye, Download } from 'lucide-react';
+import { Users, GraduationCap, Trash2, Loader2, UserPlus, BookOpen, Pencil, Upload, ArrowRightLeft, Banknote, Eye, Download, Plus, ArrowUp, ArrowDown, ArrowUpDown, X } from 'lucide-react';
 import { TableToolbar } from '@/components/ui/table-toolbar';
 import {
   Dialog,
@@ -79,6 +79,14 @@ export default function Assignments() {
   const [statusFilter, setStatusFilter] = useState<AssignmentStatus | 'all'>('active');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortMode, setSortMode] = useState<'az' | 'za' | 'newest'>('az');
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  // Per-column sort + filters
+  type SortKey = 'teacher_name' | 'student_name' | 'subject_name' | 'payout_amount' | 'status' | 'created_at';
+  const [sortKey, setSortKey] = useState<SortKey>('created_at');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [teacherFilter, setTeacherFilter] = useState<string>('all');
+  const [subjectFilter, setSubjectFilter] = useState<string>('all');
+  const [payoutTypeFilter, setPayoutTypeFilter] = useState<string>('all');
   const [reassignDialog, setReassignDialog] = useState<Assignment | null>(null);
   const [reassignTeacherId, setReassignTeacherId] = useState('');
   const [reassignReason, setReassignReason] = useState('');
@@ -392,6 +400,18 @@ export default function Assignments() {
     setPayoutType('monthly');
     setEffectiveFromDate('');
     setEditingAssignment(null);
+    setIsFormOpen(false);
+  };
+
+  const handleOpenCreate = () => {
+    setEditingAssignment(null);
+    setSelectedTeacher('');
+    setSelectedStudents([]);
+    setSelectedSubject('');
+    setPayoutAmount('');
+    setPayoutType('monthly');
+    setEffectiveFromDate('');
+    setIsFormOpen(true);
   };
 
   const handleEditAssignment = (assignment: Assignment) => {
@@ -402,6 +422,7 @@ export default function Assignments() {
     setPayoutAmount(assignment.payout_amount?.toString() || '');
     setPayoutType(assignment.payout_type || 'monthly');
     setEffectiveFromDate(assignment.effective_from_date || '');
+    setIsFormOpen(true);
   };
 
   const handleCancelEdit = () => {
@@ -444,6 +465,9 @@ export default function Assignments() {
     let result = assignments.filter(a =>
       statusFilter === 'all' ? true : a.status === statusFilter
     );
+    if (teacherFilter !== 'all') result = result.filter(a => a.teacher_id === teacherFilter);
+    if (subjectFilter !== 'all') result = result.filter(a => (a.subject_id || 'none') === subjectFilter);
+    if (payoutTypeFilter !== 'all') result = result.filter(a => (a.payout_type || 'monthly') === payoutTypeFilter);
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       result = result.filter(a =>
@@ -452,16 +476,18 @@ export default function Assignments() {
         (a.subject_name?.toLowerCase().includes(term) ?? false)
       );
     }
+    const dir = sortDir === 'asc' ? 1 : -1;
     result.sort((a, b) => {
-      switch (sortMode) {
-        case 'az': return a.student_name.localeCompare(b.student_name);
-        case 'za': return b.student_name.localeCompare(a.student_name);
-        case 'newest': return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        default: return 0;
-      }
+      let av: any = a[sortKey as keyof Assignment];
+      let bv: any = b[sortKey as keyof Assignment];
+      if (sortKey === 'created_at') return (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) * dir;
+      if (sortKey === 'payout_amount') return ((a.payout_amount || 0) - (b.payout_amount || 0)) * dir;
+      av = (av ?? '').toString().toLowerCase();
+      bv = (bv ?? '').toString().toLowerCase();
+      return av.localeCompare(bv) * dir;
     });
     return result;
-  }, [assignments, statusFilter, searchTerm, sortMode]);
+  }, [assignments, statusFilter, teacherFilter, subjectFilter, payoutTypeFilter, searchTerm, sortKey, sortDir]);
 
   const statusCounts = {
     active: assignments.filter(a => a.status === 'active').length,
@@ -470,10 +496,24 @@ export default function Assignments() {
     left: assignments.filter(a => a.status === 'left').length,
   };
 
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir('asc'); }
+  };
+
+  const SortIcon = ({ k }: { k: SortKey }) => {
+    if (sortKey !== k) return <ArrowUpDown className="h-3 w-3 inline ml-1 opacity-50" />;
+    return sortDir === 'asc' ? <ArrowUp className="h-3 w-3 inline ml-1" /> : <ArrowDown className="h-3 w-3 inline ml-1" />;
+  };
+
   const resetToolbar = () => {
     setSearchTerm('');
-    setSortMode('az');
+    setSortKey('created_at');
+    setSortDir('desc');
     setStatusFilter('active');
+    setTeacherFilter('all');
+    setSubjectFilter('all');
+    setPayoutTypeFilter('all');
   };
 
   const exportAssignments = () => {
@@ -523,22 +563,91 @@ export default function Assignments() {
               <Upload className="h-4 w-4 mr-2" />
               Bulk Import
             </Button>
+            <Button onClick={handleOpenCreate}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Assignment
+            </Button>
           </div>
         </div>
 
         <BulkAssignmentImportDialog open={isBulkImportOpen} onOpenChange={setIsBulkImportOpen} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Assignment Form */}
+        {/* Stats Cards on Top */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Users className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Teachers</p>
+                  <p className="text-2xl font-bold">{teachers.length}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                  <GraduationCap className="h-6 w-6 text-emerald-500" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Students</p>
+                  <p className="text-2xl font-bold">{students.length}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                  <UserPlus className="h-6 w-6 text-amber-500" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Active Assignments</p>
+                  <p className="text-2xl font-bold">{statusCounts.active}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Status Summary */}
+        {(statusCounts.paused > 0 || statusCounts.completed > 0) && (
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            {statusCounts.paused > 0 && (
+              <span className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-amber-500" />
+                {statusCounts.paused} paused
+              </span>
+            )}
+            {statusCounts.completed > 0 && (
+              <span className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-slate-400" />
+                {statusCounts.completed} completed
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Create / Edit Assignment Dialog */}
+        <Dialog open={isFormOpen} onOpenChange={(open) => { if (!open) resetForm(); else setIsFormOpen(true); }}>
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
                 <UserPlus className="h-5 w-5" />
                 {editingAssignment ? 'Edit Assignment' : 'Create Assignment'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Teacher Selection */}
+              </DialogTitle>
+              <DialogDescription>
+                {editingAssignment
+                  ? 'Update the teacher, subject, or payout details for this assignment.'
+                  : 'Assign a teacher to one or more students with payout configuration.'}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
               <div className="space-y-2">
                 <Label>Select Teacher *</Label>
                 <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
@@ -551,7 +660,6 @@ export default function Assignments() {
                 </Select>
               </div>
 
-              {/* Subject Selection */}
               <div className="space-y-2">
                 <Label>Subject</Label>
                 <Select value={selectedSubject} onValueChange={setSelectedSubject}>
@@ -564,7 +672,6 @@ export default function Assignments() {
                 </Select>
               </div>
 
-              {/* Student Selection */}
               <div className="space-y-2">
                 <Label>Select Students * {editingAssignment && <span className="text-xs text-muted-foreground">(Cannot change student when editing)</span>}</Label>
                 <div className={`border border-border rounded-lg max-h-48 overflow-y-auto ${editingAssignment ? 'opacity-60 pointer-events-none' : ''}`}>
@@ -595,7 +702,6 @@ export default function Assignments() {
                 )}
               </div>
 
-              {/* Teacher Payout Section */}
               <Separator />
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
@@ -605,12 +711,7 @@ export default function Assignments() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs">Payout Amount</Label>
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      value={payoutAmount}
-                      onChange={(e) => setPayoutAmount(e.target.value)}
-                    />
+                    <Input type="number" placeholder="0" value={payoutAmount} onChange={(e) => setPayoutAmount(e.target.value)} />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Payout Type</Label>
@@ -625,115 +726,69 @@ export default function Assignments() {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Effective From</Label>
-                  <Input
-                    type="date"
-                    value={effectiveFromDate}
-                    onChange={(e) => setEffectiveFromDate(e.target.value)}
-                  />
+                  <Input type="date" value={effectiveFromDate} onChange={(e) => setEffectiveFromDate(e.target.value)} />
                 </div>
               </div>
-
-              <div className="flex gap-2">
-                {editingAssignment && (
-                  <Button variant="outline" onClick={handleCancelEdit} className="flex-1">Cancel</Button>
-                )}
-                <Button onClick={handleSubmit} disabled={!selectedTeacher || selectedStudents.length === 0 || isPending} className="flex-1">
-                  {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  {editingAssignment ? 'Update Assignment' : 'Save Assignment'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Stats */}
-          <div className="space-y-4">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Users className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Teachers</p>
-                    <p className="text-2xl font-bold">{teachers.length}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                    <GraduationCap className="h-6 w-6 text-emerald-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Students</p>
-                    <p className="text-2xl font-bold">{students.length}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                    <UserPlus className="h-6 w-6 text-amber-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Active Assignments</p>
-                    <p className="text-2xl font-bold">{statusCounts.active}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* Status Summary */}
-        {(statusCounts.paused > 0 || statusCounts.completed > 0) && (
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            {statusCounts.paused > 0 && (
-              <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-amber-500" />
-                {statusCounts.paused} paused
-              </span>
-            )}
-            {statusCounts.completed > 0 && (
-              <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-slate-400" />
-                {statusCounts.completed} completed
-              </span>
-            )}
-          </div>
-        )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={handleCancelEdit}>Cancel</Button>
+              <Button onClick={handleSubmit} disabled={!selectedTeacher || selectedStudents.length === 0 || isPending}>
+                {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {editingAssignment ? 'Update Assignment' : 'Save Assignment'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Assignments Table */}
         <Card>
           <CardHeader className="space-y-4">
-            <CardTitle>Assignments</CardTitle>
-            <TableToolbar
-              searchValue={searchTerm}
-              onSearchChange={setSearchTerm}
-              searchPlaceholder="Search by name or subject..."
-              sortValue={sortMode}
-              onSortChange={(v) => setSortMode(v as 'az' | 'za' | 'newest')}
-              sortOptions={[
-                { value: 'az', label: 'A → Z (Student)' },
-                { value: 'za', label: 'Z → A (Student)' },
-                { value: 'newest', label: 'Newest First' },
-              ]}
-              filterValue={statusFilter}
-              onFilterChange={(v) => setStatusFilter(v as AssignmentStatus | 'all')}
-              filterOptions={[
-                { value: 'all', label: 'All Statuses' },
-                { value: 'active', label: `Active (${statusCounts.active})` },
-                { value: 'paused', label: `Paused (${statusCounts.paused})` },
-                { value: 'completed', label: `Completed (${statusCounts.completed})` },
-                { value: 'left', label: `Left (${statusCounts.left})` },
-              ]}
-              filterLabel="Status"
-              onReset={resetToolbar}
-            />
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <CardTitle>Assignments ({filteredAssignments.length})</CardTitle>
+              <Button variant="ghost" size="sm" onClick={resetToolbar} className="gap-1.5">
+                <X className="h-3.5 w-3.5" /> Reset filters
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+              <Input
+                placeholder="Search name or subject..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as AssignmentStatus | 'all')}>
+                <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="active">Active ({statusCounts.active})</SelectItem>
+                  <SelectItem value="paused">Paused ({statusCounts.paused})</SelectItem>
+                  <SelectItem value="completed">Completed ({statusCounts.completed})</SelectItem>
+                  <SelectItem value="left">Left ({statusCounts.left})</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={teacherFilter} onValueChange={setTeacherFilter}>
+                <SelectTrigger><SelectValue placeholder="Teacher" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Teachers</SelectItem>
+                  {teachers.map(t => <SelectItem key={t.id} value={t.id}>{t.full_name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={subjectFilter} onValueChange={setSubjectFilter}>
+                <SelectTrigger><SelectValue placeholder="Subject" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Subjects</SelectItem>
+                  <SelectItem value="none">No Subject</SelectItem>
+                  {subjects.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={payoutTypeFilter} onValueChange={setPayoutTypeFilter}>
+                <SelectTrigger><SelectValue placeholder="Payout Type" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Payout Types</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="per_class">Per Class</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -749,15 +804,15 @@ export default function Assignments() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                     <TableHead>Teacher</TableHead>
-                     <TableHead>Student</TableHead>
-                     <TableHead>Subject</TableHead>
-                     <TableHead>Payout</TableHead>
-                     <TableHead>Billing Plan</TableHead>
-                     <TableHead>Tracking</TableHead>
-                     <TableHead>Status</TableHead>
-                     <TableHead className="text-center">Reassign</TableHead>
-                     <TableHead className="text-center">Action</TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('teacher_name')}>Teacher<SortIcon k="teacher_name" /></TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('student_name')}>Student<SortIcon k="student_name" /></TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('subject_name')}>Subject<SortIcon k="subject_name" /></TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('payout_amount')}>Payout<SortIcon k="payout_amount" /></TableHead>
+                    <TableHead>Billing Plan</TableHead>
+                    <TableHead>Tracking</TableHead>
+                    <TableHead className="cursor-pointer select-none" onClick={() => toggleSort('status')}>Status<SortIcon k="status" /></TableHead>
+                    <TableHead className="text-center">Reassign</TableHead>
+                    <TableHead className="text-center">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
