@@ -14,7 +14,7 @@ const Assignments = lazy(() => import('./Assignments'));
 const Schedules = lazy(() => import('./Schedules'));
 const MonthlyPlanning = lazy(() => import('./MonthlyPlanning'));
 const Subjects = lazy(() => import('./Subjects'));
-const ZoomManagement = lazy(() => import('./ZoomManagement'));
+
 const TeacherStudentsView = lazy(() => import('@/components/teacher/TeacherStudentsView'));
 const TeachingOS = lazy(() => import('./TeachingOS'));
 const QuizEngine = lazy(() => import('./QuizEngine'));
@@ -22,7 +22,6 @@ const QuizEngine = lazy(() => import('./QuizEngine'));
 const Loading = () => <div className="py-8"><Skeleton className="h-64 rounded-2xl" /></div>;
 
 const views = [
-  { label: 'Live Classes', value: 'live-classes' },
   { label: 'Assignments', value: 'assignments' },
   { label: 'Schedules', value: 'schedules' },
   { label: 'Attendance', value: 'attendance' },
@@ -79,7 +78,6 @@ export default function TeachingLanding() {
   });
 
   const contentMap: Record<string, React.ReactNode> = useMemo(() => ({
-    'live-classes': <Suspense fallback={<Loading />}><ZoomManagement /></Suspense>,
     assignments: <Suspense fallback={<Loading />}><Assignments /></Suspense>,
     schedules: <Suspense fallback={<Loading />}><Schedules /></Suspense>,
     attendance: <Suspense fallback={<Loading />}><Attendance /></Suspense>,
