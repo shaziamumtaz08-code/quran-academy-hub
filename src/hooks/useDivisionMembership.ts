@@ -49,6 +49,13 @@ export function useDivisionMembership(userIds: string[], enabled = true) {
         .from('student_parent_links')
         .select('parent_id, student_id');
 
+      // Admin / staff memberships from user_context (covers admin_division and any role
+      // whose division binding is recorded directly in user_context rather than via assignments)
+      const { data: ctxRows } = await supabase
+        .from('user_context')
+        .select('user_id, division_id, primary_role')
+        .in('user_id', userIds);
+
       // Map<userId, Map<divisionId, Set<role>>>
       const membershipMap = new Map<string, Map<string, Set<string>>>();
       const userIdSet = new Set(userIds);
