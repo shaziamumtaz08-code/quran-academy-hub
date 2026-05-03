@@ -1472,11 +1472,11 @@ export default function Schedules() {
                         <TableCell>
                           {todaysClass ? (
                             <span className="text-sm font-medium">
-                              <span className="text-primary">{formatTime12h(todaysClass.student_local_time)}</span>
-                              <span className="text-muted-foreground text-xs ml-1">({studentCode})</span>
-                              <span className="text-muted-foreground mx-1">/</span>
                               <span className="text-foreground">{formatTime12h(todaysClass.teacher_local_time)}</span>
                               <span className="text-muted-foreground text-xs ml-1">({teacherCode})</span>
+                              <span className="text-muted-foreground mx-1">/</span>
+                              <span className="text-primary">{formatTime12h(todaysClass.student_local_time)}</span>
+                              <span className="text-muted-foreground text-xs ml-1">({studentCode})</span>
                             </span>
                           ) : (
                             <span className="text-muted-foreground text-sm">No class today</span>
