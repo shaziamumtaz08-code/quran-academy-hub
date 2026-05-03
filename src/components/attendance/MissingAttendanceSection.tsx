@@ -451,6 +451,7 @@ export function MissingAttendanceSection({
                       </span>
                     </TableHead>
                   ))}
+                  {isAdmin && <TableHead className="text-right">Action</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -475,6 +476,41 @@ export function MissingAttendanceSection({
                       ) : '-'}
                     </TableCell>
                     <TableCell>{record.scheduledTime}</TableCell>
+                    {isAdmin && (
+                      <TableCell className="text-right">
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 px-2" title="Park assignment">
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="ml-1 text-xs">Park</span>
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent align="end" className="w-44 p-1">
+                            <button
+                              type="button"
+                              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
+                              onClick={() => { setParkDialog({ record, status: 'paused' }); setEffectiveDate(undefined); }}
+                            >
+                              <Pause className="h-4 w-4 text-amber-600" /> Mark Paused
+                            </button>
+                            <button
+                              type="button"
+                              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
+                              onClick={() => { setParkDialog({ record, status: 'left' }); setEffectiveDate(undefined); }}
+                            >
+                              <LogOut className="h-4 w-4 text-rose-600" /> Mark Left
+                            </button>
+                            <button
+                              type="button"
+                              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
+                              onClick={() => { setParkDialog({ record, status: 'completed' }); setEffectiveDate(undefined); }}
+                            >
+                              <CheckCircle2 className="h-4 w-4 text-slate-500" /> Mark Completed
+                            </button>
+                          </PopoverContent>
+                        </Popover>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
@@ -482,6 +518,61 @@ export function MissingAttendanceSection({
           </div>
         )}
       </CardContent>
+
+      {/* Park assignment dialog — requires manual effective date */}
+      <Dialog open={!!parkDialog} onOpenChange={(open) => { if (!open) { setParkDialog(null); setEffectiveDate(undefined); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="capitalize">Mark assignment as {parkDialog?.status}</DialogTitle>
+            <DialogDescription>
+              <strong>{parkDialog?.record.studentName}</strong> with <strong>{parkDialog?.record.teacherName}</strong>.
+              Pick the effective date — every missing class on or after this date will be cleared from the red zone.
+              {parkDialog?.status === 'left' && ' All related schedules will also be deactivated.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <label className="text-sm font-medium">Effective date</label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn('w-full justify-start text-left font-normal', !effectiveDate && 'text-muted-foreground')}>
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {effectiveDate ? format(effectiveDate, 'PPP') : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={effectiveDate}
+                  onSelect={setEffectiveDate}
+                  disabled={(d) => d > new Date()}
+                  initialFocus
+                  className={cn('p-3 pointer-events-auto')}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setParkDialog(null); setEffectiveDate(undefined); }} disabled={parkMutation.isPending}>
+              Cancel
+            </Button>
+            <Button
+              variant={parkDialog?.status === 'left' ? 'destructive' : 'default'}
+              disabled={!effectiveDate || parkMutation.isPending || !parkDialog}
+              onClick={() => {
+                if (!parkDialog || !effectiveDate) return;
+                parkMutation.mutate({
+                  assignmentId: parkDialog.record.assignmentId,
+                  status: parkDialog.status,
+                  date: format(effectiveDate, 'yyyy-MM-dd'),
+                });
+              }}
+            >
+              {parkMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
