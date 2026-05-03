@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Calendar, CalendarDays, Clock, User, ChevronDown, ChevronRight, Loader2, AlertCircle, Globe, Pencil, Trash2, Upload, ArrowUpDown, ArrowUp, ArrowDown, Search, X, List, LayoutGrid } from 'lucide-react';
+import { Plus, Calendar, CalendarDays, Clock, User, ChevronDown, ChevronRight, Loader2, AlertCircle, Globe, Pencil, Trash2, Upload, ArrowUpDown, ArrowUp, ArrowDown, Search, X, List, LayoutGrid, Download } from 'lucide-react';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { MonthlyCalendarView } from '@/components/schedules/MonthlyCalendarView';
 import { DailySlotCalendar } from '@/components/schedules/DailySlotCalendar';
 import { useToast } from '@/hooks/use-toast';
@@ -220,7 +221,7 @@ export default function Schedules() {
   const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'daily'>('list');
   
   // Sorting state
-  type ScheduleSortField = 'student' | 'teacher' | 'subject' | 'status' | 'classes';
+  type ScheduleSortField = 'student' | 'teacher' | 'subject' | 'status' | 'classes' | 'time';
   type SortDirection = 'asc' | 'desc';
   const [sortField, setSortField] = useState<ScheduleSortField>('student');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -605,16 +606,36 @@ export default function Schedules() {
           case 'subject':
             comparison = (a.subject_name || '').localeCompare(b.subject_name || '');
             break;
-          case 'status':
-            comparison = (aSchedules.length > 0 ? 1 : 0) - (bSchedules.length > 0 ? 1 : 0);
+          case 'status': {
+            const aIs = aSchedules.length > 0 ? 1 : 0;
+            const bIs = bSchedules.length > 0 ? 1 : 0;
+            // Primary: scheduled vs not. Secondary: more classes/week first.
+            comparison = aIs - bIs;
+            if (comparison === 0) comparison = aSchedules.length - bSchedules.length;
             break;
+          }
           case 'classes':
             comparison = aSchedules.length - bSchedules.length;
             break;
+          case 'time': {
+            // Sort by teacher time first, then student time. "No class" goes last.
+            const todayA = aSchedules.find(s => s.day_of_week === todayDayName);
+            const todayB = bSchedules.find(s => s.day_of_week === todayDayName);
+            const toMin = (t?: string) => {
+              if (!t) return Number.POSITIVE_INFINITY;
+              const [h, m] = t.split(':').map(Number);
+              return (h || 0) * 60 + (m || 0);
+            };
+            comparison = toMin(todayA?.teacher_local_time) - toMin(todayB?.teacher_local_time);
+            if (comparison === 0) comparison = toMin(todayA?.student_local_time) - toMin(todayB?.student_local_time);
+            break;
+          }
         }
+        // Status sort default: descending (more classes first when ascending click)
+        if (sortField === 'status' && sortDirection === 'asc') return -comparison;
         return sortDirection === 'asc' ? comparison : -comparison;
       });
-  }, [assignments, schedules, searchTerm, filterTeacher, filterSubject, filterStatus, sortField, sortDirection]);
+  }, [assignments, schedules, searchTerm, filterTeacher, filterSubject, filterStatus, sortField, sortDirection, todayDayName]);
 
   const hasActiveFilters = !!filterTeacher || !!filterSubject || !!filterStatus || !!searchTerm || showAllDivisions;
 
@@ -626,7 +647,81 @@ export default function Schedules() {
     setShowAllDivisions(false);
   };
 
-  // Get selected assignment info for displaying location labels
+  // Export schedules to CSV
+  const downloadCsv = (rows: (string | number)[][], filename: string) => {
+    const csv = rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const flatScheduleRows = useMemo(() => {
+    const rows: { student: string; teacher: string; subject: string; day: string; teacherTime: string; studentTime: string; duration: number }[] = [];
+    filteredAssignments.forEach(a => {
+      const sch = schedules.filter(s => s.assignment_id === a.id);
+      sch.forEach(s => rows.push({
+        student: a.student_name,
+        teacher: a.teacher_name,
+        subject: a.subject_name || '',
+        day: s.day_of_week,
+        teacherTime: s.teacher_local_time,
+        studentTime: s.student_local_time,
+        duration: s.duration_minutes || 30,
+      }));
+    });
+    return rows;
+  }, [filteredAssignments, schedules]);
+
+  const handleExport = (mode: 'student' | 'teacher' | 'day' | 'week' | 'flat') => {
+    if (flatScheduleRows.length === 0) {
+      toast({ title: 'Nothing to export', description: 'No schedules match current filters.', variant: 'destructive' });
+      return;
+    }
+    const stamp = new Date().toISOString().slice(0, 10);
+    const dayOrder: Record<string, number> = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+    const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+    if (mode === 'flat') {
+      const header = ['Student', 'Teacher', 'Subject', 'Day', 'Teacher Time', 'Student Time', 'Duration (min)'];
+      const data = [...flatScheduleRows]
+        .sort((a, b) => a.student.localeCompare(b.student) || (dayOrder[a.day] - dayOrder[b.day]))
+        .map(r => [r.student, r.teacher, r.subject, cap(r.day), formatTime12h(r.teacherTime), formatTime12h(r.studentTime), r.duration]);
+      downloadCsv([header, ...data], `schedules_${stamp}.csv`);
+    } else if (mode === 'student' || mode === 'teacher') {
+      const groupKey = mode === 'student' ? 'student' : 'teacher';
+      const header = [cap(groupKey), 'Day', 'Teacher Time', 'Student Time', 'Subject', mode === 'student' ? 'Teacher' : 'Student', 'Duration (min)'];
+      const data = [...flatScheduleRows]
+        .sort((a, b) => a[groupKey].localeCompare(b[groupKey]) || (dayOrder[a.day] - dayOrder[b.day]) || a.teacherTime.localeCompare(b.teacherTime))
+        .map(r => [r[groupKey], cap(r.day), formatTime12h(r.teacherTime), formatTime12h(r.studentTime), r.subject, mode === 'student' ? r.teacher : r.student, r.duration]);
+      downloadCsv([header, ...data], `schedules_by_${mode}_${stamp}.csv`);
+    } else if (mode === 'day') {
+      const header = ['Day', 'Teacher Time', 'Student Time', 'Student', 'Teacher', 'Subject', 'Duration (min)'];
+      const data = [...flatScheduleRows]
+        .sort((a, b) => (dayOrder[a.day] - dayOrder[b.day]) || a.teacherTime.localeCompare(b.teacherTime))
+        .map(r => [cap(r.day), formatTime12h(r.teacherTime), formatTime12h(r.studentTime), r.student, r.teacher, r.subject, r.duration]);
+      downloadCsv([header, ...data], `schedules_by_day_${stamp}.csv`);
+    } else if (mode === 'week') {
+      // Pivot: one row per assignment, columns Sun-Sat
+      const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const header = ['Student', 'Teacher', 'Subject', ...days.map(cap)];
+      const data = filteredAssignments.map(a => {
+        const sch = schedules.filter(s => s.assignment_id === a.id);
+        const dayCells = days.map(d => {
+          const s = sch.find(x => x.day_of_week === d);
+          return s ? `${formatTime12h(s.teacher_local_time)} (T) / ${formatTime12h(s.student_local_time)} (S)` : '';
+        });
+        return [a.student_name, a.teacher_name, a.subject_name || '', ...dayCells];
+      });
+      downloadCsv([header, ...data], `schedules_weekly_${stamp}.csv`);
+    }
+    toast({ title: 'Exported', description: `Schedules exported (${mode}).` });
+  };
   const selectedAssignment = useMemo(() => {
     return assignments.find(a => a.id === newSchedule.assignmentId);
   }, [assignments, newSchedule.assignmentId]);
@@ -964,6 +1059,23 @@ export default function Schedules() {
             <p className="text-muted-foreground mt-1">Manage class schedules with timezone support</p>
           </div>
           <div className="flex gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <Download className="h-4 w-4 mr-1" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Export schedules</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => handleExport('flat')}>All rows (flat)</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('student')}>By Student</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('teacher')}>By Teacher</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('day')}>By Day</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('week')}>Weekly grid</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             {/* CSV Import Button */}
             <Button variant="outline" onClick={() => setIsCsvImportOpen(true)}>
               <Upload className="h-4 w-4 mr-1" />
@@ -1401,7 +1513,15 @@ export default function Schedules() {
                       {getSortIcon('status')}
                     </div>
                   </TableHead>
-                  <TableHead>Time (Student / Teacher)</TableHead>
+                  <TableHead
+                    className="cursor-pointer select-none hover:bg-muted/50"
+                    onClick={() => handleSort('time')}
+                  >
+                    <div className="flex items-center">
+                      Time (Teacher / Student)
+                      {getSortIcon('time')}
+                    </div>
+                  </TableHead>
                   <TableHead className="w-20">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -1443,11 +1563,11 @@ export default function Schedules() {
                         <TableCell>
                           {todaysClass ? (
                             <span className="text-sm font-medium">
-                              <span className="text-primary">{formatTime12h(todaysClass.student_local_time)}</span>
-                              <span className="text-muted-foreground text-xs ml-1">({studentCode})</span>
-                              <span className="text-muted-foreground mx-1">/</span>
                               <span className="text-foreground">{formatTime12h(todaysClass.teacher_local_time)}</span>
                               <span className="text-muted-foreground text-xs ml-1">({teacherCode})</span>
+                              <span className="text-muted-foreground mx-1">/</span>
+                              <span className="text-primary">{formatTime12h(todaysClass.student_local_time)}</span>
+                              <span className="text-muted-foreground text-xs ml-1">({studentCode})</span>
                             </span>
                           ) : (
                             <span className="text-muted-foreground text-sm">No class today</span>
