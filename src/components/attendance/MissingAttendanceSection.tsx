@@ -406,7 +406,7 @@ export function MissingAttendanceSection({
                   <TableRow key={`${record.studentId}-${record.date}-${idx}`} className="bg-destructive/5 hover:bg-destructive/10">
                     <TableCell>
                       <span className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-destructive/70" />
+                        <CalendarIcon className="h-4 w-4 text-destructive/70" />
                         {format(parseISO(record.date), 'dd MMM yyyy')}
                       </span>
                     </TableCell>
