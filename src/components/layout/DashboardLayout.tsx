@@ -315,7 +315,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     void logRouteHit(activeRole, location.pathname, activeDivision?.id);
   }, [activeRole, location.pathname, activeDivision?.id]);
 
-  const sections = useMemo(() => filterSectionsForRole(buildDrawerSections(activeRole), activeRole), [activeRole]);
+  const sections = useMemo(
+    () => filterSectionsForRole(buildDrawerSections(activeRole, activeDivision?.model_type ?? null), activeRole),
+    [activeRole, activeDivision?.model_type]
+  );
   const expandedStorageKey = expandedKeyForUser(profile?.id);
   const collapsedStorageKey = collapsedKeyForUser(profile?.id);
 
