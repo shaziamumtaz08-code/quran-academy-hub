@@ -256,7 +256,7 @@ interface UserWithRoles {
 
 export default function UserManagement() {
   const { isSuperAdmin, hasPermission, user: currentUser, session, activeRole } = useAuth();
-  const { activeDivision } = useDivision();
+  const { activeDivision, switcherOptions } = useDivision();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const location = useLocation();
@@ -975,12 +975,27 @@ export default function UserManagement() {
     return Array.from(cities).sort();
   }, [users, filterCountry]);
 
-  // Roles that are considered "global" (org-wide, not tied to any specific division)
-  const GLOBAL_ROLES: AppRole[] = ['super_admin', 'admin', 'admin_admissions', 'admin_fees', 'admin_academic'];
+  // Roles that are truly org-wide and visible across all divisions.
+  // Note: admin / admin_division / admin_admissions / admin_fees / admin_academic are
+  // division-scoped via user_context — they should only appear in their own division.
+  const GLOBAL_ROLES: AppRole[] = ['super_admin'];
 
-  // Effective division: '__all__' = user explicitly picked All (override global), '' = follow global context, <id> = specific.
+  // Divisions the caller may filter by. Super admin sees all; everyone else
+  // is restricted to their entitled divisions (per Division Context Engine).
+  const allowedDivisionIds = useMemo(
+    () => new Set(switcherOptions.map(o => o.divisionId)),
+    [switcherOptions]
+  );
+  const visibleFilterDivisions = useMemo(
+    () => isSuperAdmin ? allDivisions : allDivisions.filter(d => allowedDivisionIds.has(d.id)),
+    [isSuperAdmin, allDivisions, allowedDivisionIds]
+  );
+
+  // Effective division: '__all__' = user explicitly picked All (super admin only),
+  // '' = follow active context, <id> = specific.
+  // For non-super-admins, '__all__' is downgraded to active context to prevent leakage.
   const effectiveDivisionId = filterDivision === '__all__'
-    ? ''
+    ? (isSuperAdmin ? '' : (activeDivision?.id || ''))
     : (filterDivision || activeDivision?.id || '');
 
   const filteredAll = users
@@ -1595,8 +1610,10 @@ export default function UserManagement() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="context">Current context{activeDivision ? ` (${activeDivision.name})` : ''}</SelectItem>
-                    <SelectItem value="__all__">All Divisions (combined)</SelectItem>
-                    {allDivisions.map((d) => (
+                    {isSuperAdmin && (
+                      <SelectItem value="__all__">All Divisions (combined)</SelectItem>
+                    )}
+                    {visibleFilterDivisions.map((d) => (
                       <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -2720,18 +2737,16 @@ export default function UserManagement() {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Export Users Dialog - Super Admin Only */}
-        {isSuperAdmin && (
-          <ExportUsersDialog
-            open={isExportDialogOpen}
-            onOpenChange={setIsExportDialogOpen}
-            selectedUserIds={selectedUserIds}
-            searchTerm={searchTerm}
-            filteredUserIds={filteredUsers?.map(u => u.id) || []}
-            totalUsers={users?.length || 0}
-            filteredCount={filteredUsers?.length || 0}
-          />
-        )}
+        {/* Export Users Dialog */}
+        <ExportUsersDialog
+          open={isExportDialogOpen}
+          onOpenChange={setIsExportDialogOpen}
+          selectedUserIds={selectedUserIds}
+          searchTerm={searchTerm}
+          filteredUserIds={filteredUsers?.map(u => u.id) || []}
+          totalUsers={users?.length || 0}
+          filteredCount={filteredUsers?.length || 0}
+        />
 
         {/* Holistic User Profile Drawer */}
         <HolisticUserProfileDrawer
