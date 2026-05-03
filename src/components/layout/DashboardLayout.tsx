@@ -77,7 +77,10 @@ function isAdminRole(role: AppRole | null) {
   return !!role && (adminRoles.includes(role) || role.startsWith("admin_"));
 }
 
-function buildDrawerSections(role: AppRole | null): DrawerSection[] {
+function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "group" | "recorded" | null): DrawerSection[] {
+  const isOneToOne = modelType === "one_to_one";
+  const isGroupStyleModel = !isOneToOne;
+
   if (isAdminRole(role)) {
     return [
       {
@@ -88,15 +91,20 @@ function buildDrawerSections(role: AppRole | null): DrawerSection[] {
             label: "Teaching",
             icon: BookOpen,
             children: [
+              ...(isGroupStyleModel ? [{ label: "All Courses", href: "/courses" }] : []),
               { label: "Live Classes", href: "/teaching?view=live-classes" },
               { label: "Assignments", href: "/teaching?view=assignments" },
               { label: "Schedules", href: "/teaching?view=schedules" },
               { label: "Attendance", href: "/teaching?view=attendance" },
               { label: "Planning", href: "/teaching?view=planning" },
               { label: "Subjects", href: "/teaching?view=subjects" },
-              { label: "1-to-1 Assignments", href: "/teaching?view=one-to-one" },
-              { label: "AI Teaching OS", href: "/teaching-os" },
-              { label: "Quiz Engine", href: "/quiz-engine" },
+              ...(isOneToOne ? [{ label: "1-to-1 Assignments", href: "/teaching?view=one-to-one" }] : []),
+              ...(isGroupStyleModel
+                ? [
+                    { label: "AI Teaching OS", href: "/teaching-os" },
+                    { label: "Quiz Engine", href: "/quiz-engine" },
+                  ]
+                : []),
             ],
           },
           {
@@ -108,7 +116,7 @@ function buildDrawerSections(role: AppRole | null): DrawerSection[] {
               { label: "Teachers", href: "/people?view=teachers" },
               { label: "Staff", href: "/people?view=staff" },
               { label: "Parents", href: "/people?view=parents" },
-              { label: "Leads", href: "/people?view=leads" },
+              ...(isOneToOne ? [{ label: "Leads", href: "/people?view=leads" }] : []),
             ],
           },
           {
@@ -307,7 +315,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     void logRouteHit(activeRole, location.pathname, activeDivision?.id);
   }, [activeRole, location.pathname, activeDivision?.id]);
 
-  const sections = useMemo(() => filterSectionsForRole(buildDrawerSections(activeRole), activeRole), [activeRole]);
+  const sections = useMemo(
+    () => filterSectionsForRole(buildDrawerSections(activeRole, activeDivision?.model_type ?? null), activeRole),
+    [activeRole, activeDivision?.model_type]
+  );
   const expandedStorageKey = expandedKeyForUser(profile?.id);
   const collapsedStorageKey = collapsedKeyForUser(profile?.id);
 
