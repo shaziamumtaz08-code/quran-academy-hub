@@ -383,7 +383,7 @@ export function MissingAttendanceSection({
           </div>
         ) : filteredAndSortedMissing.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            <Calendar className="h-10 w-10 mx-auto mb-3 opacity-30" />
+            <CalendarIcon className="h-10 w-10 mx-auto mb-3 opacity-30" />
             <p className="text-sm">No missing attendance records found</p>
           </div>
         ) : (
