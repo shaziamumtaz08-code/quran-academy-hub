@@ -10,7 +10,7 @@ interface PageShellProps {
 
 export function PageShell({ title, description, actions, children }: PageShellProps) {
   return (
-    <div className="mx-auto max-w-[1400px] p-6 md:p-8">
+    <div className="mx-auto max-w-[1400px] px-6 py-6 md:px-12 md:py-10 lg:px-16">
       <PageBreadcrumb />
       <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
