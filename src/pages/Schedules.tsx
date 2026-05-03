@@ -1422,7 +1422,15 @@ export default function Schedules() {
                       {getSortIcon('status')}
                     </div>
                   </TableHead>
-                  <TableHead>Time (Student / Teacher)</TableHead>
+                  <TableHead
+                    className="cursor-pointer select-none hover:bg-muted/50"
+                    onClick={() => handleSort('time')}
+                  >
+                    <div className="flex items-center">
+                      Time (Teacher / Student)
+                      {getSortIcon('time')}
+                    </div>
+                  </TableHead>
                   <TableHead className="w-20">Actions</TableHead>
                 </TableRow>
               </TableHeader>
