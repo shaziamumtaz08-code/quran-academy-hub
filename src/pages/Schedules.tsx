@@ -1059,6 +1059,23 @@ export default function Schedules() {
             <p className="text-muted-foreground mt-1">Manage class schedules with timezone support</p>
           </div>
           <div className="flex gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <Download className="h-4 w-4 mr-1" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Export schedules</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => handleExport('flat')}>All rows (flat)</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('student')}>By Student</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('teacher')}>By Teacher</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('day')}>By Day</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('week')}>Weekly grid</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             {/* CSV Import Button */}
             <Button variant="outline" onClick={() => setIsCsvImportOpen(true)}>
               <Upload className="h-4 w-4 mr-1" />
