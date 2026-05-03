@@ -61,6 +61,58 @@ export function MissingAttendanceSection({
   const [sortField, setSortField] = useState<'date' | 'student' | 'teacher' | 'subject' | 'time'>('date');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { roles } = useAuth();
+  const isAdmin = (roles || []).some((r) => ['super_admin', 'admin', 'admin_academic', 'admin_division', 'admin_admissions', 'admin_fees'].includes(r as string));
+
+  type ParkStatus = 'paused' | 'left' | 'completed';
+  const [parkDialog, setParkDialog] = useState<{
+    record: MissingRecord;
+    status: ParkStatus;
+  } | null>(null);
+  const [effectiveDate, setEffectiveDate] = useState<Date | undefined>(undefined);
+
+  const parkMutation = useMutation({
+    mutationFn: async (input: { assignmentId: string; status: ParkStatus; date: string }) => {
+      const updatePayload: Record<string, any> = {
+        status: input.status,
+        status_effective_date: input.date,
+      };
+      if (input.status === 'left' || input.status === 'completed') {
+        updatePayload.ended_at = new Date(input.date).toISOString();
+      }
+      const { error } = await supabase
+        .from('student_teacher_assignments')
+        .update(updatePayload)
+        .eq('id', input.assignmentId);
+      if (error) throw error;
+
+      // For 'left', also deactivate related schedules so they stop generating expected classes
+      if (input.status === 'left') {
+        await supabase
+          .from('schedules')
+          .update({ is_active: false, ended_at: new Date(input.date).toISOString() })
+          .eq('assignment_id', input.assignmentId)
+          .is('ended_at', null);
+      }
+    },
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['all-schedules-for-missing'] });
+      queryClient.invalidateQueries({ queryKey: ['schedules-count-missing'] });
+      queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
+      toast({
+        title: 'Assignment parked',
+        description: `Marked as ${vars.status} effective ${vars.date}. Stale missing rows cleared.`,
+      });
+      setParkDialog(null);
+      setEffectiveDate(undefined);
+    },
+    onError: (err: any) => {
+      toast({ title: 'Failed to park assignment', description: err.message, variant: 'destructive' });
+    },
+  });
+
   // Compute date range — enforce bypass cutoff (no missing before April 2026)
   const { startDate, endDate } = useMemo(() => {
     let sd: string, ed: string;
