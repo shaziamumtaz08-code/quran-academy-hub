@@ -87,10 +87,19 @@ export function useDivisionMembership(userIds: string[], enabled = true) {
         if (divId) addMembership(row.user_id, divId, row.staff_role || 'teacher');
       });
 
-      // user_context-driven memberships (e.g. admin_division)
+      // user_context-driven memberships — ONLY for admin-style roles.
+      // Teacher/student/parent roles must come from real assignments
+      // (course_class_staff, student_teacher_assignments, course_class_students,
+      // student_parent_links). Trusting user_context.primary_role for these
+      // produces ghost roles when a user is reclassified across divisions.
+      const ADMIN_CTX_ROLES = new Set([
+        'admin', 'admin_division', 'admin_admissions', 'admin_fees',
+        'admin_academic', 'super_admin', 'examiner', 'moderator', 'supervisor'
+      ]);
       (ctxRows || []).forEach((row: any) => {
-        if (!row.division_id) return;
-        addMembership(row.user_id, row.division_id, row.primary_role || 'admin');
+        if (!row.division_id || !row.primary_role) return;
+        if (!ADMIN_CTX_ROLES.has(row.primary_role)) return;
+        addMembership(row.user_id, row.division_id, row.primary_role);
       });
 
       // Parent memberships: each parent inherits division membership from each linked child.
