@@ -475,6 +475,7 @@ export default function Assignments() {
     setPayoutAmount('');
     setPayoutType('monthly');
     setEffectiveFromDate('');
+    setEffectiveToDate('');
     setEditingAssignment(null);
     setIsFormOpen(false);
   };
