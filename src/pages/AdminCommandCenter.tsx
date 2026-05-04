@@ -42,7 +42,7 @@ const ROLE_LABELS: Record<AppRole, string> = {
 };
 
 export default function AdminCommandCenter() {
-  const { isSuperAdmin, hasPermission } = useAuth();
+  const { isSuperAdmin, hasPermission, activeRole } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
@@ -64,7 +64,9 @@ export default function AdminCommandCenter() {
   const [assignSubjectId, setAssignSubjectId] = useState('');
 
   // Check access
-  if (!isSuperAdmin && !hasPermission('users.view')) {
+  const ADMIN_ROLES = ['super_admin', 'admin', 'admin_division', 'admin_academic', 'admin_admissions', 'admin_fees'];
+  const isAdminRole = !!activeRole && ADMIN_ROLES.includes(activeRole);
+  if (!isSuperAdmin && !isAdminRole && !hasPermission('users.view')) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-[60vh]">
