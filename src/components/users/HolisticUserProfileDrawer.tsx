@@ -562,7 +562,7 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
                 </Select>
               </Field>
 
-              {!requiresGuardian && form.guardian_type !== 'parent' && form.guardian_type !== 'guardian' ? (
+              {!parentLink && !requiresGuardian && form.guardian_type !== 'parent' && form.guardian_type !== 'guardian' ? (
                 <>
                   <div className="rounded-lg border bg-muted/40 p-4 flex items-center gap-3">
                     <CheckCircle2 className="h-5 w-5 text-emerald-600" />
