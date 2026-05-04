@@ -173,7 +173,8 @@ export default function Assignments() {
         .from('student_teacher_assignments')
         .select(`
           id, teacher_id, student_id, subject_id, status, created_at,
-          payout_amount, payout_type, effective_from_date,
+          payout_amount, payout_type, effective_from_date, effective_to_date,
+          transfer_type, parent_assignment_id, substitute_end_date,
           requires_schedule, requires_planning, requires_attendance,
           teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name),
           student:profiles!student_teacher_assignments_student_id_fkey(full_name),
@@ -198,6 +199,10 @@ export default function Assignments() {
         payout_amount: row.payout_amount || 0,
         payout_type: row.payout_type || 'monthly',
         effective_from_date: row.effective_from_date,
+        effective_to_date: row.effective_to_date,
+        transfer_type: row.transfer_type,
+        parent_assignment_id: row.parent_assignment_id,
+        substitute_end_date: row.substitute_end_date,
         requires_schedule: row.requires_schedule ?? true,
         requires_planning: row.requires_planning ?? true,
         requires_attendance: row.requires_attendance ?? true,
