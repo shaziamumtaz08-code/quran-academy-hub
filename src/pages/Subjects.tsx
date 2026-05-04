@@ -19,7 +19,7 @@ import { TableToolbar } from '@/components/ui/table-toolbar';
 import { useNavigate } from 'react-router-dom';
 
 export default function Subjects() {
-  const { isSuperAdmin, hasPermission } = useAuth();
+  const { isSuperAdmin, hasPermission, activeRole } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -32,7 +32,8 @@ export default function Subjects() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
 
-  const canAccess = isSuperAdmin || hasPermission('settings.edit');
+  const ADMIN_ROLES = ['super_admin', 'admin', 'admin_division', 'admin_academic', 'admin_admissions', 'admin_fees'];
+  const canAccess = isSuperAdmin || (activeRole && ADMIN_ROLES.includes(activeRole)) || hasPermission('settings.edit');
 
   // Fetch subjects
   const { data: subjects, isLoading } = useQuery({
