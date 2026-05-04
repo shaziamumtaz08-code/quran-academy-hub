@@ -261,6 +261,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
           { label: "Fees", href: "/finance?view=payments", icon: Landmark },
           { label: "Communication", href: "/communication", icon: MessageSquare },
           { label: "Resources", href: "/resources", icon: FolderOpen },
+          { label: "Work Hub", href: "/work-hub", icon: Briefcase },
         ],
       },
     ];
