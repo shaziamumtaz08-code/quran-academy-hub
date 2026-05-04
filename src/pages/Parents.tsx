@@ -40,7 +40,8 @@ interface MinorAtRisk {
 }
 
 export default function Parents() {
-  const { isSuperAdmin } = useAuth();
+  const { isSuperAdmin: isSA, activeRole } = useAuth();
+  const isSuperAdmin = isSA || activeRole === 'admin_division' || activeRole === 'admin';
   const { toast } = useToast();
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
