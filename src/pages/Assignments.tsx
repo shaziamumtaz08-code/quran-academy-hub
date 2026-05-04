@@ -62,6 +62,10 @@ interface Assignment {
   payout_amount: number;
   payout_type: string;
   effective_from_date: string | null;
+  effective_to_date: string | null;
+  transfer_type: string | null;
+  parent_assignment_id: string | null;
+  substitute_end_date: string | null;
   requires_schedule: boolean;
   requires_planning: boolean;
   requires_attendance: boolean;
