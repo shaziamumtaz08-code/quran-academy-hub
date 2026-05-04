@@ -34,7 +34,7 @@ export function GroupAttendanceTab() {
   const [duration, setDuration] = useState('30');
   const [studentMarks, setStudentMarks] = useState<StudentMark[]>([]);
 
-  const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' ||
+  const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' || activeRole === 'admin_division' ||
     activeRole === 'admin_admissions' || activeRole === 'admin_fees' || activeRole === 'admin_academic';
   const isTeacher = activeRole === 'teacher' || activeRole === 'examiner';
 
