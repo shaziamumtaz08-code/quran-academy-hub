@@ -70,7 +70,7 @@ export const ACCESS_MATRIX: ModuleAccess[] = [
   { id:'whatsapp',            route:'/whatsapp',               roles:{super_admin:ADMIN_FULL, admin:ADMIN_FULL, admin_division:ADMIN_FULL}, group:'communication' },
   { id:'notifications',       route:'/notifications',          roles:{...adminFull, teacher:VIEW_ONLY, examiner:VIEW_ONLY, student:VIEW_ONLY, parent:VIEW_ONLY}, group:'communication' },
   { id:'zoom_management',     route:'/zoom-management',        roles:{super_admin:ADMIN_FULL, admin:ADMIN_FULL, admin_division:ADMIN_FULL}, group:'settings' },
-  { id:'work_hub',            route:'/work-hub',               roles:{...adminFull, teacher:VIEW_ONLY, examiner:VIEW_ONLY, student:VIEW_ONLY, parent:VIEW_ONLY}, group:'communication' },
+  { id:'work_hub',            route:'/work-hub',               roles:{...adminFull, teacher:['view','create'], examiner:['view','create'], student:['view','create'], parent:['view','create']}, group:'communication' },
   { id:'resources',           route:'/resources',              roles:{...adminFull, teacher:VIEW_ONLY, examiner:VIEW_ONLY, student:VIEW_ONLY}, group:'teaching' },
   { id:'settings',            route:'/settings',               roles:{super_admin:ADMIN_FULL, admin:ADMIN_FULL, admin_division:ADMIN_FULL}, group:'settings' },
   { id:'org_settings',        route:'/organization-settings',  roles:{super_admin:ADMIN_FULL}, group:'settings' },
