@@ -106,6 +106,7 @@ export default function Assignments() {
   const [payoutAmount, setPayoutAmount] = useState('');
   const [payoutType, setPayoutType] = useState('monthly');
   const [effectiveFromDate, setEffectiveFromDate] = useState('');
+  const [effectiveToDate, setEffectiveToDate] = useState('');
   // Billing plan detail dialog
   const [billingDetailAssignmentId, setBillingDetailAssignmentId] = useState<string | null>(null);
 
