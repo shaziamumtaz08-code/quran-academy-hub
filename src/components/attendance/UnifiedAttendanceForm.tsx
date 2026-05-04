@@ -35,7 +35,8 @@ export type AttendanceStatus =
   | 'student_rescheduled' 
   | 'holiday';
 
-type ReasonCategory = 'sick' | 'personal' | 'emergency' | 'internet_issue' | 'other';
+type ReasonCategory = 'sick' | 'personal' | 'emergency' | 'internet_issue' | 'periods' | 'family' | 'travel' | 'other';
+type RescheduleReason = 'teacher_unavailable' | 'student_unavailable' | 'tech_issue' | 'power_outage' | 'emergency' | 'holiday_overlap' | 'other';
 
 export const STATUS_OPTIONS: { value: AttendanceStatus; label: string }[] = [
   { value: 'present', label: 'Present' },
@@ -48,11 +49,24 @@ export const STATUS_OPTIONS: { value: AttendanceStatus; label: string }[] = [
   { value: 'holiday', label: 'Holiday' },
 ];
 
-const REASON_CATEGORIES: { value: ReasonCategory; label: string }[] = [
+const REASON_CATEGORIES: { value: ReasonCategory; label: string; femaleOnly?: boolean }[] = [
   { value: 'sick', label: 'Sick' },
   { value: 'personal', label: 'Personal' },
   { value: 'emergency', label: 'Emergency' },
+  { value: 'family', label: 'Family Matter' },
+  { value: 'travel', label: 'Travel' },
   { value: 'internet_issue', label: 'Internet Issue' },
+  { value: 'periods', label: 'Periods', femaleOnly: true },
+  { value: 'other', label: 'Other' },
+];
+
+const RESCHEDULE_REASONS: { value: RescheduleReason; label: string }[] = [
+  { value: 'teacher_unavailable', label: 'Teacher Unavailable' },
+  { value: 'student_unavailable', label: 'Student Unavailable' },
+  { value: 'tech_issue', label: 'Technical Issue' },
+  { value: 'power_outage', label: 'Power Outage' },
+  { value: 'emergency', label: 'Emergency' },
+  { value: 'holiday_overlap', label: 'Holiday Overlap' },
   { value: 'other', label: 'Other' },
 ];
 
