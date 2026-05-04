@@ -81,7 +81,7 @@ export function PlanReminderBanner() {
           </p>
         )}
         <button
-          onClick={() => navigate('/planning')}
+          onClick={() => navigate('/teaching?view=planning')}
           className="mt-2 bg-gold text-primary-foreground border-none rounded-lg px-3.5 py-1.5 text-xs font-bold cursor-pointer hover:bg-gold/90 transition-colors"
         >
           Fill Plan Now →

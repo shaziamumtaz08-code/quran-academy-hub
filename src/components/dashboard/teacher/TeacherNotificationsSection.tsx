@@ -131,7 +131,7 @@ export function TeacherNotificationsSection() {
             )}
           </div>
           <button
-            onClick={() => navigate('/planning')}
+            onClick={() => navigate('/teaching?view=planning')}
             className="mt-2.5 ml-6 bg-gold text-primary-foreground border-none rounded-lg px-3.5 py-1.5 text-xs font-bold cursor-pointer hover:bg-gold/90 transition-colors"
           >
             Fill Plan Now →
@@ -146,7 +146,7 @@ export function TeacherNotificationsSection() {
             <MessageSquare className="h-4 w-4 text-primary" />
             <p className="font-extrabold text-[13px] text-foreground">Messages & Alerts</p>
             <button
-              onClick={() => navigate('/workhub')}
+              onClick={() => navigate('/work-hub')}
               className="ml-auto text-[11px] text-teal font-bold bg-transparent border-none cursor-pointer hover:underline"
             >
               View All →
@@ -157,7 +157,7 @@ export function TeacherNotificationsSection() {
               <div
                 key={n.id}
                 className="px-3 py-2.5 hover:bg-secondary/30 cursor-pointer transition-colors"
-                onClick={() => navigate(`/workhub`)}
+                onClick={() => navigate('/work-hub')}
               >
                 <p className="text-[13px] font-bold text-foreground truncate">{n.title}</p>
                 <p className="text-[11px] text-muted-foreground truncate mt-0.5">
