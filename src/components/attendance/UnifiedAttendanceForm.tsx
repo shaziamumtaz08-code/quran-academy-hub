@@ -476,7 +476,9 @@ export function UnifiedAttendanceForm({
 
       let finalReason = remarks || '';
       if (requiresReschedule(selectedStatus) && rescheduleDate) {
-        finalReason = `Make-up for missed class on ${rescheduleDate}${rescheduleTime ? ` at ${rescheduleTime}` : ''}. ${remarks || ''}`.trim();
+        const rrLabel = rescheduleReason === 'other' ? reasonText : (RESCHEDULE_REASONS.find(r => r.value === rescheduleReason)?.label || '');
+        const byLabel = rescheduleBy === 'student' ? 'Student' : 'Teacher';
+        finalReason = `Rescheduled by ${byLabel}${rrLabel ? ` — ${rrLabel}` : ''}. Make-up for missed class on ${rescheduleDate}${rescheduleTime ? ` at ${rescheduleTime}` : ''}. ${remarks || ''}`.trim();
       }
 
       // Build the full payload. In edit mode we always write the Phase A superset
