@@ -558,15 +558,10 @@ export default function Students() {
               </Badge>
             )}
           </div>
-          {isTeacher && (
+        </div>
+        {isTeacher && (
+          <div className="flex justify-start">
             <div className="inline-flex items-center rounded-full border border-border bg-muted/40 p-1">
-              <button
-                onClick={() => setTeacherViewMode('list')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${teacherViewMode === 'list' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-                aria-pressed={teacherViewMode === 'list'}
-              >
-                <List className="h-3.5 w-3.5" /> List
-              </button>
               <button
                 onClick={() => setTeacherViewMode('cards')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${teacherViewMode === 'cards' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
@@ -574,9 +569,16 @@ export default function Students() {
               >
                 <LayoutGrid className="h-3.5 w-3.5" /> Cards
               </button>
+              <button
+                onClick={() => setTeacherViewMode('list')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${teacherViewMode === 'list' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                aria-pressed={teacherViewMode === 'list'}
+              >
+                <List className="h-3.5 w-3.5" /> List
+              </button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Search and Filters */}
         <div className="flex flex-col md:flex-row gap-4">
