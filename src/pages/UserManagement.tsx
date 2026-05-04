@@ -1767,7 +1767,7 @@ export default function UserManagement() {
                     )}
                   </div>
                 ) : (
-                  <Table wrapperClassName="max-h-[65vh] overflow-auto">
+                  <Table wrapperClassName="overflow-x-auto">
                     <TableHeader className="bg-muted/40 backdrop-blur-sm">
                       <TableRow className="border-b border-border/60 hover:bg-transparent">
                         {isSuperAdmin && (
