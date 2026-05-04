@@ -230,6 +230,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
             ],
           },
           { label: "Resources", href: "/resources", icon: FolderOpen },
+          { label: "Work Hub", href: "/work-hub", icon: Briefcase },
         ],
       },
     ];
