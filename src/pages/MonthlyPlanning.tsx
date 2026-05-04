@@ -110,6 +110,10 @@ export default function MonthlyPlanning() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'edit' | 'view'>('edit'); // For admin full-form view
   const [editingPlan, setEditingPlan] = useState<MonthlyPlan | null>(null);
+  // Read-only view dialog (separate from edit)
+  const [viewPlan, setViewPlan] = useState<MonthlyPlan | null>(null);
+  const [reviewNoteDraft, setReviewNoteDraft] = useState('');
+  const [reviewAction, setReviewAction] = useState<'decline' | 'clarification' | null>(null);
   const [selectedPlanIds, setSelectedPlanIds] = useState<Set<string>>(new Set());
   const [monthFilter, setMonthFilter] = useState(format(new Date(), 'MM'));
   const [yearFilter, setYearFilter] = useState(currentYear.toString());
