@@ -108,12 +108,14 @@ export default function Subjects() {
 
   // Update subject mutation
   const updateMutation = useMutation({
-    mutationFn: async (data: { id: string; name: string; description: string; is_active: boolean }) => {
-      const { error } = await supabase.from('subjects').update({
+    mutationFn: async (data: { id: string; name: string; description: string; is_active: boolean; image_url?: string | null }) => {
+      const payload: Record<string, unknown> = {
         name: data.name,
         description: data.description || null,
         is_active: data.is_active,
-      }).eq('id', data.id);
+      };
+      if (data.image_url !== undefined) payload.image_url = data.image_url;
+      const { error } = await supabase.from('subjects').update(payload).eq('id', data.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -127,6 +129,25 @@ export default function Subjects() {
       toast({ title: 'Failed to update subject', description: error instanceof Error ? error.message : 'Please try again', variant: 'destructive' });
     },
   });
+
+  const handleImageUpload = async (subjectId: string, file: File) => {
+    try {
+      setUploadingId(subjectId);
+      const ext = file.name.split('.').pop() || 'jpg';
+      const path = `${subjectId}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('subject-images').upload(path, file, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from('subject-images').getPublicUrl(path);
+      const { error: updErr } = await supabase.from('subjects').update({ image_url: pub.publicUrl } as never).eq('id', subjectId);
+      if (updErr) throw updErr;
+      queryClient.invalidateQueries({ queryKey: ['subjects-all'] });
+      toast({ title: 'Image updated' });
+    } catch (e) {
+      toast({ title: 'Upload failed', description: e instanceof Error ? e.message : 'Try again', variant: 'destructive' });
+    } finally {
+      setUploadingId(null);
+    }
+  };
 
   // Delete subject mutation
   const deleteMutation = useMutation({
