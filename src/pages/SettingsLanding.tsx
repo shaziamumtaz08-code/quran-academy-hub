@@ -20,7 +20,6 @@ const views = [
   'holidays',
   'payouts-config',
   'classroom',
-  'resources',
   'schema',
   'finance-setup',
   'teaching-config',
@@ -31,6 +30,8 @@ export default function SettingsLanding() {
   const { isSuperAdmin } = useAuth();
   const [searchParams] = useSearchParams();
   const requested = searchParams.get('view');
+  // Legacy redirect: Resources Manager moved to top-level /resources
+  if (requested === 'resources') return <Navigate to="/resources" replace />;
   const activeView = views.includes((requested || '') as (typeof views)[number]) ? requested! : null;
 
   const contentMap: Record<string, React.ReactNode> = useMemo(() => ({
@@ -40,7 +41,6 @@ export default function SettingsLanding() {
     holidays: <Suspense fallback={<Loading />}><OrganizationSettings /></Suspense>,
     'payouts-config': <Suspense fallback={<Loading />}><OrganizationSettings /></Suspense>,
     classroom: <Suspense fallback={<Loading />}><OrganizationSettings /></Suspense>,
-    resources: <Suspense fallback={<Loading />}><Resources /></Suspense>,
     schema: isSuperAdmin ? <Suspense fallback={<Loading />}><SchemaExplorer /></Suspense> : <div className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">Schema Explorer is available to super administrators only.</div>,
     'finance-setup': <Suspense fallback={<Loading />}><FinanceSetup /></Suspense>,
     'teaching-config': <Suspense fallback={<Loading />}><ZoomManagement /></Suspense>,

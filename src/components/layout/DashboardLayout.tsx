@@ -171,6 +171,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
               { label: "Zoom", href: "/communication?view=zoom" },
             ],
           },
+          { label: "Resources", href: "/resources", icon: FolderOpen },
           { label: "Work Hub", href: "/work-hub", icon: Briefcase },
           {
             label: "Settings",
@@ -184,7 +185,6 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
               { label: "Classroom", href: "/settings?view=classroom" },
               { label: "Finance Setup", href: "/settings?view=finance-setup" },
               { label: "Teaching Config", href: "/settings?view=teaching-config" },
-              { label: "Resources Manager", href: "/settings?view=resources" },
               { label: "Integrity Audit", href: "/settings?view=integrity" },
               { label: "Schema Explorer", href: "/settings?view=schema", superAdminOnly: true },
             ],

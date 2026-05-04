@@ -1,41 +1,30 @@
 import { useState, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDivision } from "@/contexts/DivisionContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from "@/components/ui/sheet";
 import {
-  ArrowLeft,
-  FolderPlus,
-  Upload,
-  Grid3X3,
-  List,
-  Search,
-  Loader2,
-  FolderOpen,
-  Star,
+  FolderPlus, Upload, Grid3X3, List, Search, Loader2, FolderOpen,
+  Star, ChevronRight, ChevronDown, Folder as FolderIcon, MoreVertical,
+  Pencil, Trash2, Settings2, Menu,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { FileDetailPanel } from "@/components/resources/FileDetailPanel";
 import { toast } from "sonner";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-import { ResourcesBreadcrumb } from "@/components/resources/ResourcesBreadcrumb";
-import { FolderItem } from "@/components/resources/FolderItem";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { FileItem } from "@/components/resources/FileItem";
-import { NewFolderDialog } from "@/components/resources/NewFolderDialog";
 import { UploadFileDialog } from "@/components/resources/UploadFileDialog";
 import { RenameDialog } from "@/components/resources/RenameDialog";
+import { FolderAccessDialog, ACCESS_META, type FolderAccess } from "@/components/resources/FolderAccessDialog";
+import { cn } from "@/lib/utils";
 
 type Folder = {
   id: string;
@@ -46,6 +35,10 @@ type Folder = {
   updated_at: string;
   visibility?: string;
   visible_to_roles?: string[];
+  visible_to_user_ids?: string[];
+  division_id?: string | null;
+  is_system?: boolean;
+  source_type?: string | null;
 };
 
 type Resource = {
@@ -59,349 +52,266 @@ type Resource = {
   created_at: string;
   updated_at: string;
   visibility?: string;
-  visible_to_roles?: string[];
 };
 
-type ViewMode = "grid" | "list";
-
-// Extension to type mapping
 const EXTENSION_TO_TYPE: Record<string, string> = {
-  ".pdf": "pdf",
-  ".mp3": "audio",
-  ".wav": "audio",
-  ".m4a": "audio",
-  ".ogg": "audio",
-  ".mp4": "video",
-  ".webm": "video",
-  ".mov": "video",
-  ".avi": "video",
-  ".jpg": "image",
-  ".jpeg": "image",
-  ".png": "image",
-  ".gif": "image",
-  ".webp": "image",
-  ".zip": "zip",
-  ".rar": "zip",
-  ".7z": "zip",
+  ".pdf": "pdf", ".mp3": "audio", ".wav": "audio", ".m4a": "audio", ".ogg": "audio",
+  ".mp4": "video", ".webm": "video", ".mov": "video", ".avi": "video",
+  ".jpg": "image", ".jpeg": "image", ".png": "image", ".gif": "image", ".webp": "image",
+  ".zip": "zip", ".rar": "zip", ".7z": "zip",
 };
+const getFileType = (n: string) => EXTENSION_TO_TYPE["." + n.split(".").pop()?.toLowerCase()] || "file";
 
-function getFileType(filename: string): string {
-  const ext = "." + filename.split(".").pop()?.toLowerCase();
-  return EXTENSION_TO_TYPE[ext] || "file";
+function FolderTreeNode({
+  folder, allFolders, depth, currentId, onSelect,
+}: {
+  folder: Folder; allFolders: Folder[]; depth: number;
+  currentId: string | null; onSelect: (id: string | null) => void;
+}) {
+  const children = allFolders.filter((f) => f.parent_id === folder.id);
+  const [open, setOpen] = useState(depth < 1);
+  const isActive = currentId === folder.id;
+  const access = (folder.visibility as FolderAccess) || "all";
+  const meta = ACCESS_META[access] || ACCESS_META.all;
+
+  return (
+    <div>
+      <div
+        className={cn(
+          "group flex items-center gap-1.5 pr-2 py-1.5 rounded-md cursor-pointer text-sm transition-colors",
+          isActive ? "bg-white/10 text-white border-l-2 border-accent" : "text-white/70 hover:bg-white/5 hover:text-white border-l-2 border-transparent",
+        )}
+        style={{ paddingLeft: `${depth * 12 + 6}px` }}
+        onClick={() => onSelect(folder.id)}
+      >
+        {children.length > 0 ? (
+          <button onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }} className="p-0.5 hover:bg-white/10 rounded">
+            {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+          </button>
+        ) : (
+          <span className="w-4" />
+        )}
+        <FolderIcon className="h-3.5 w-3.5 shrink-0" />
+        <span className="truncate flex-1">{folder.name}</span>
+        <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", meta.dot)} />
+      </div>
+      {open && children.map((c) => (
+        <FolderTreeNode key={c.id} folder={c} allFolders={allFolders} depth={depth + 1} currentId={currentId} onSelect={onSelect} />
+      ))}
+    </div>
+  );
+}
+
+function FolderTree({
+  folders, currentId, onSelect, divisionLabel,
+}: {
+  folders: Folder[]; currentId: string | null;
+  onSelect: (id: string | null) => void; divisionLabel: string;
+}) {
+  const roots = folders.filter((f) => !f.parent_id);
+  return (
+    <div className="flex flex-col h-full">
+      <div className="px-3 py-3 border-b border-white/10">
+        <p className="text-[10px] uppercase tracking-wider text-white/40">Division</p>
+        <p className="text-sm font-semibold text-white truncate">{divisionLabel}</p>
+      </div>
+      <div className="flex-1 overflow-y-auto py-2 px-1.5">
+        <button
+          onClick={() => onSelect(null)}
+          className={cn(
+            "w-full text-left px-2 py-1.5 rounded-md text-sm transition-colors",
+            currentId === null ? "bg-white/10 text-white" : "text-white/70 hover:bg-white/5 hover:text-white",
+          )}
+        >
+          All folders
+        </button>
+        <div className="mt-1 space-y-0.5">
+          {roots.map((r) => (
+            <FolderTreeNode key={r.id} folder={r} allFolders={folders} depth={0} currentId={currentId} onSelect={onSelect} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function Resources() {
-  const { user, isSuperAdmin, profile, activeRole } = useAuth();
+  const { user, isSuperAdmin, profile } = useAuth();
+  const { activeDivision } = useDivision();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Current folder from URL
   const currentFolderId = searchParams.get("folder") || null;
-  // Permissions resolved below; default tab differs by role.
   const tabParam = searchParams.get("tab");
+  const divisionId = activeDivision?.id || null;
 
-  // UI state
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
-  const [newFolderOpen, setNewFolderOpen] = useState(false);
+  const [folderDialogOpen, setFolderDialogOpen] = useState(false);
+  const [editFolder, setEditFolder] = useState<Folder | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
-  const [renameItem, setRenameItem] = useState<{ type: "folder" | "file"; item: Folder | Resource } | null>(null);
+  const [renameItem, setRenameItem] = useState<{ type: "file"; item: Resource } | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteItem, setDeleteItem] = useState<{ type: "folder" | "file"; item: Folder | Resource } | null>(null);
   const [detailResource, setDetailResource] = useState<any>(null);
+  const [mobileTreeOpen, setMobileTreeOpen] = useState(false);
 
-  // Permissions - Admin & Super Admin can manage, others can view
-  const canManage = isSuperAdmin || profile?.role === "admin";
-
-  // Default tab: managers land on Browse, everyone else (students/parents/teachers)
-  // lands on "My Assigned" since the Browse view is read-only for them.
+  const isAdmin = isSuperAdmin || profile?.role === "admin";
+  const isTeacher = profile?.role === "teacher";
+  const canManage = isAdmin;
+  const canUploadHere = isAdmin || isTeacher;
   const activeTab = tabParam || (canManage ? "browse" : "assigned");
 
-  // Fetch assigned resources for "My Assigned" tab
-  const { data: assignedResources = [] } = useQuery({
-    queryKey: ['my-assigned-resources', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return [];
-      const { data: assignments } = await supabase
-        .from('resource_assignments')
-        .select('resource_id')
-        .eq('assigned_to', user.id);
-      const resourceIds = (assignments || []).map((a: any) => a.resource_id);
-      if (!resourceIds.length) return [];
-      const { data: res } = await supabase
-        .from('resources')
-        .select('*')
-        .in('id', resourceIds);
-      return (res || []).map((r: any) => ({ ...r, isAssigned: true }));
-    },
-    enabled: !!user?.id && activeTab === 'assigned',
-  });
-
-  const setActiveTab = (tab: string) => {
-    const params: Record<string, string> = { tab };
-    if (tab === 'browse' && currentFolderId) params.folder = currentFolderId;
-    setSearchParams(params);
-  };
-
-  // Fetch all folders
+  // Folders scoped by division
   const { data: folders = [], isLoading: foldersLoading } = useQuery({
-    queryKey: ["folders"],
+    queryKey: ["folders", divisionId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("folders")
-        .select("*")
-        .order("name");
+      let q = supabase.from("folders").select("*").order("name");
+      if (divisionId) q = q.or(`division_id.eq.${divisionId},division_id.is.null`);
+      const { data, error } = await q;
       if (error) throw error;
-      return data as Folder[];
+      return (data || []) as Folder[];
     },
   });
 
-  // Fetch all resources
   const { data: resources = [], isLoading: resourcesLoading } = useQuery({
     queryKey: ["resources"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("resources")
-        .select("*")
-        .order("title");
+      const { data, error } = await supabase.from("resources").select("*").order("title");
       if (error) throw error;
-      return data as Resource[];
+      return (data || []) as Resource[];
     },
+  });
+
+  const { data: assignedResources = [] } = useQuery({
+    queryKey: ["my-assigned-resources", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data: a } = await supabase.from("resource_assignments").select("resource_id").eq("assigned_to", user.id);
+      const ids = (a || []).map((x: any) => x.resource_id);
+      if (!ids.length) return [];
+      const { data: res } = await supabase.from("resources").select("*").in("id", ids);
+      return (res || []).map((r: any) => ({ ...r, isAssigned: true }));
+    },
+    enabled: !!user?.id && activeTab === "assigned",
   });
 
   const isLoading = foldersLoading || resourcesLoading;
 
-  // Build folder path for breadcrumb
   const folderPath = useMemo(() => {
-    if (!currentFolderId) return [];
+    if (!currentFolderId) return [] as Folder[];
     const path: Folder[] = [];
-    let current = folders.find((f) => f.id === currentFolderId);
-    while (current) {
-      path.unshift(current);
-      current = folders.find((f) => f.id === current?.parent_id);
-    }
+    let cur = folders.find((f) => f.id === currentFolderId);
+    while (cur) { path.unshift(cur); cur = folders.find((f) => f.id === cur?.parent_id); }
     return path;
   }, [currentFolderId, folders]);
 
-  // Get current folder
-  const currentFolder = useMemo(
-    () => folders.find((f) => f.id === currentFolderId) || null,
-    [currentFolderId, folders]
-  );
+  const currentFolder = useMemo(() => folders.find((f) => f.id === currentFolderId) || null, [currentFolderId, folders]);
 
-  // Folders in current directory
   const currentFolders = useMemo(() => {
-    let result = folders.filter((f) => f.parent_id === currentFolderId);
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter((f) => f.name.toLowerCase().includes(query));
-    }
-    return result;
+    let r = folders.filter((f) => f.parent_id === currentFolderId);
+    if (searchQuery.trim()) r = r.filter((f) => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    return r;
   }, [folders, currentFolderId, searchQuery]);
 
-  // Files in current directory
   const currentFiles = useMemo(() => {
-    let result = resources.filter((r) => r.folder_id === currentFolderId);
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter((r) => r.title.toLowerCase().includes(query));
-    }
-    return result;
+    let r = resources.filter((rr) => rr.folder_id === currentFolderId);
+    if (searchQuery.trim()) r = r.filter((rr) => rr.title.toLowerCase().includes(searchQuery.toLowerCase()));
+    return r;
   }, [resources, currentFolderId, searchQuery]);
 
-  // Navigate to folder
+  const folderItemCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const f of folders) {
+      const sub = folders.filter((x) => x.parent_id === f.id).length;
+      const files = resources.filter((r) => r.folder_id === f.id).length;
+      counts[f.id] = sub + files;
+    }
+    return counts;
+  }, [folders, resources]);
+
   const navigateToFolder = useCallback(
     (folderId: string | null) => {
-      if (folderId) {
-        setSearchParams({ folder: folderId });
-      } else {
-        setSearchParams({});
-      }
+      const next: Record<string, string> = {};
+      if (folderId) next.folder = folderId;
+      if (tabParam) next.tab = tabParam;
+      setSearchParams(next);
       setSearchQuery("");
     },
-    [setSearchParams]
+    [setSearchParams, tabParam],
   );
 
-  // Go back
-  const goBack = useCallback(() => {
-    if (currentFolder?.parent_id) {
-      navigateToFolder(currentFolder.parent_id);
-    } else {
-      navigateToFolder(null);
-    }
-  }, [currentFolder, navigateToFolder]);
+  const setActiveTab = (tab: string) => {
+    const params: Record<string, string> = { tab };
+    if (tab === "browse" && currentFolderId) params.folder = currentFolderId;
+    setSearchParams(params);
+  };
 
-  // Create folder mutation
-  const createFolderMutation = useMutation({
-    mutationFn: async ({ name, visibility }: { name: string; visibility: string }) => {
-      const { error } = await supabase.from("folders").insert({
-        name,
-        parent_id: currentFolderId,
-        created_by: user?.id,
-        visibility,
-      });
-      if (error) throw error;
+  // Mutations
+  const saveFolderMutation = useMutation({
+    mutationFn: async (v: { id?: string; name: string; visibility: FolderAccess; visible_to_user_ids: string[] }) => {
+      if (v.id) {
+        const { error } = await supabase.from("folders").update({
+          name: v.name, visibility: v.visibility, visible_to_user_ids: v.visible_to_user_ids,
+        }).eq("id", v.id);
+        if (error) throw error;
+      } else {
+        // Teachers cannot create root folders
+        if (!isAdmin && !currentFolderId) throw new Error("Only admins can create root folders");
+        const { error } = await supabase.from("folders").insert({
+          name: v.name,
+          parent_id: currentFolderId,
+          created_by: user?.id,
+          visibility: v.visibility,
+          visible_to_user_ids: v.visible_to_user_ids,
+          division_id: divisionId,
+        });
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["folders"] });
-      toast.success("Folder created");
+      toast.success("Folder saved");
     },
-    onError: (error: Error) => {
-      toast.error("Failed to create folder: " + error.message);
-    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
-  // Upload files mutation
   const uploadFilesMutation = useMutation({
     mutationFn: async ({ files, visibility }: { files: FileList; visibility: string }) => {
-      const uploadPromises = Array.from(files).map(async (file) => {
-        const fileType = getFileType(file.name);
-        const fileExt = file.name.split(".").pop();
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const records = await Promise.all(Array.from(files).map(async (file) => {
+        const ext = file.name.split(".").pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
         const folderPath = currentFolderId || "root";
         const filePath = `${folderPath}/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("resources")
-          .upload(filePath, file);
-
-        if (uploadError) throw uploadError;
-
+        const { error } = await supabase.storage.from("resources").upload(filePath, file);
+        if (error) throw error;
         return {
           title: file.name.replace(/\.[^/.]+$/, ""),
-          type: fileType,
+          type: getFileType(file.name),
           url: filePath,
           folder_id: currentFolderId,
           folder: "Uploads",
           uploaded_by: user?.id,
           visibility,
         };
-      });
-
-      const uploadedResources = await Promise.all(uploadPromises);
-
-      const { error: insertError } = await supabase
-        .from("resources")
-        .insert(uploadedResources);
-
-      if (insertError) throw insertError;
-      return uploadedResources.length;
+      }));
+      const { error } = await supabase.from("resources").insert(records);
+      if (error) throw error;
+      return records.length;
     },
-    onSuccess: (count) => {
+    onSuccess: (n) => {
       queryClient.invalidateQueries({ queryKey: ["resources"] });
-      toast.success(`${count} file(s) uploaded`);
+      toast.success(`${n} file(s) uploaded`);
     },
-    onError: (error: Error) => {
-      toast.error("Upload failed: " + error.message);
-    },
+    onError: (e: Error) => toast.error("Upload failed: " + e.message),
   });
 
-  // Upload folder mutation
-  const uploadFolderMutation = useMutation({
-    mutationFn: async ({ files, paths }: { files: File[]; paths: string[] }) => {
-      // Get root folder name from first path
-      const rootFolderName = paths[0]?.split("/")[0] || "Uploaded Folder";
-      
-      // Create the root folder
-      const { data: createdFolder, error: folderError } = await supabase
-        .from("folders")
-        .insert({
-          name: rootFolderName,
-          parent_id: currentFolderId,
-          created_by: user?.id,
-        })
-        .select()
-        .single();
-
-      if (folderError) throw folderError;
-
-      // Map to track created subfolders: relative path -> folder id
-      const folderMap = new Map<string, string>();
-      folderMap.set(rootFolderName, createdFolder.id);
-
-      // Create subfolders and upload files
-      const uploadPromises = files.map(async (file, index) => {
-        const relativePath = paths[index];
-        const pathParts = relativePath.split("/");
-        const fileName = pathParts.pop()!;
-        
-        // Create any necessary subfolders
-        let parentFolderId = createdFolder.id;
-        let currentPath = rootFolderName;
-        
-        for (let i = 1; i < pathParts.length; i++) {
-          currentPath = pathParts.slice(0, i + 1).join("/");
-          
-          if (!folderMap.has(currentPath)) {
-            const { data: subfolder, error: subfolderError } = await supabase
-              .from("folders")
-              .insert({
-                name: pathParts[i],
-                parent_id: parentFolderId,
-                created_by: user?.id,
-              })
-              .select()
-              .single();
-
-            if (subfolderError) throw subfolderError;
-            folderMap.set(currentPath, subfolder.id);
-          }
-          parentFolderId = folderMap.get(currentPath)!;
-        }
-
-        // Upload the file
-        const fileType = getFileType(file.name);
-        const fileExt = file.name.split(".").pop();
-        const storageName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-        const storagePath = `${parentFolderId}/${storageName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("resources")
-          .upload(storagePath, file);
-
-        if (uploadError) throw uploadError;
-
-        return {
-          title: fileName.replace(/\.[^/.]+$/, ""),
-          type: fileType,
-          url: storagePath,
-          folder_id: parentFolderId,
-          folder: "Uploads",
-          uploaded_by: user?.id,
-        };
-      });
-
-      const uploadedResources = await Promise.all(uploadPromises);
-
-      const { error: insertError } = await supabase
-        .from("resources")
-        .insert(uploadedResources);
-
-      if (insertError) throw insertError;
-      return uploadedResources.length;
-    },
-    onSuccess: (count) => {
-      queryClient.invalidateQueries({ queryKey: ["folders"] });
-      queryClient.invalidateQueries({ queryKey: ["resources"] });
-      toast.success(`Folder uploaded with ${count} file(s)`);
-    },
-    onError: (error: Error) => {
-      toast.error("Folder upload failed: " + error.message);
-    },
-  });
-
-  // Add link mutation
   const addLinkMutation = useMutation({
     mutationFn: async ({ title, url, visibility }: { title: string; url: string; visibility: string }) => {
       const { error } = await supabase.from("resources").insert({
-        title,
-        type: "link",
-        url,
-        folder_id: currentFolderId,
-        folder: "Links",
-        uploaded_by: user?.id,
-        visibility,
+        title, type: "link", url, folder_id: currentFolderId, folder: "Links",
+        uploaded_by: user?.id, visibility,
       });
       if (error) throw error;
     },
@@ -409,233 +319,53 @@ export default function Resources() {
       queryClient.invalidateQueries({ queryKey: ["resources"] });
       toast.success("Link added");
     },
-    onError: (error: Error) => {
-      toast.error("Failed to add link: " + error.message);
-    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
-  // Rename folder mutation
-  const renameFolderMutation = useMutation({
-    mutationFn: async ({ id, name }: { id: string; name: string }) => {
-      const { error } = await supabase
-        .from("folders")
-        .update({ name })
-        .eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["folders"] });
-      toast.success("Folder renamed");
-    },
-    onError: (error: Error) => {
-      toast.error("Failed to rename: " + error.message);
-    },
-  });
-
-  // Rename resource mutation
   const renameResourceMutation = useMutation({
     mutationFn: async ({ id, title }: { id: string; title: string }) => {
-      const { error } = await supabase
-        .from("resources")
-        .update({ title })
-        .eq("id", id);
+      const { error } = await supabase.from("resources").update({ title }).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["resources"] });
-      toast.success("File renamed");
-    },
-    onError: (error: Error) => {
-      toast.error("Failed to rename: " + error.message);
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["resources"] }); toast.success("Renamed"); },
+    onError: (e: Error) => toast.error(e.message),
   });
 
-  // Delete folder mutation
   const deleteFolderMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("folders").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["folders"] });
-      toast.success("Folder deleted");
-    },
-    onError: (error: Error) => {
-      toast.error("Failed to delete folder: " + error.message);
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["folders"] }); toast.success("Folder deleted"); },
+    onError: (e: Error) => toast.error(e.message),
   });
 
-  // Delete resource mutation
   const deleteResourceMutation = useMutation({
     mutationFn: async (resource: Resource) => {
-      if (resource.type !== "link") {
-        // resource.url now stores the file path directly
-        await supabase.storage.from("resources").remove([resource.url]);
-      }
-      const { error } = await supabase
-        .from("resources")
-        .delete()
-        .eq("id", resource.id);
+      if (resource.type !== "link") await supabase.storage.from("resources").remove([resource.url]);
+      const { error } = await supabase.from("resources").delete().eq("id", resource.id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["resources"] });
-      toast.success("File deleted");
-    },
-    onError: (error: Error) => {
-      toast.error("Failed to delete: " + error.message);
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["resources"] }); toast.success("Deleted"); },
+    onError: (e: Error) => toast.error(e.message),
   });
 
-  // Move folder mutation
-  const moveFolderMutation = useMutation({
-    mutationFn: async ({ folderId, newParentId }: { folderId: string; newParentId: string | null }) => {
-      const { error } = await supabase
-        .from("folders")
-        .update({ parent_id: newParentId })
-        .eq("id", folderId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["folders"] });
-      toast.success("Folder moved");
-    },
-    onError: (error: Error) => {
-      toast.error("Failed to move folder: " + error.message);
-    },
-  });
-
-  // Move file mutation
-  const moveFileMutation = useMutation({
-    mutationFn: async ({ fileId, newFolderId }: { fileId: string; newFolderId: string | null }) => {
-      const { error } = await supabase
-        .from("resources")
-        .update({ folder_id: newFolderId })
-        .eq("id", fileId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["resources"] });
-      toast.success("File moved");
-    },
-    onError: (error: Error) => {
-      toast.error("Failed to move file: " + error.message);
-    },
-  });
-
-  // Handle drop on folder
-  const handleDropOnFolder = useCallback(
-    (itemId: string, itemType: "folder" | "file", targetFolderId: string) => {
-      if (itemType === "folder") {
-        // Prevent dropping folder into itself or its children
-        const isDescendant = (parentId: string, childId: string): boolean => {
-          const folder = folders.find((f) => f.id === childId);
-          if (!folder) return false;
-          if (folder.parent_id === parentId) return true;
-          if (folder.parent_id) return isDescendant(parentId, folder.parent_id);
-          return false;
-        };
-        
-        if (itemId === targetFolderId || isDescendant(itemId, targetFolderId)) {
-          toast.error("Cannot move folder into itself or its subfolder");
-          return;
-        }
-        moveFolderMutation.mutate({ folderId: itemId, newParentId: targetFolderId });
-      } else {
-        moveFileMutation.mutate({ fileId: itemId, newFolderId: targetFolderId });
-      }
-    },
-    [folders, moveFolderMutation, moveFileMutation]
-  );
-
-  // Handle drop on breadcrumb (move to folder in path or root)
-  const handleDropOnBreadcrumb = useCallback(
-    (itemId: string, itemType: "folder" | "file", targetFolderId: string | null) => {
-      if (itemType === "folder") {
-        // Prevent dropping folder into itself or its children
-        if (targetFolderId) {
-          const isDescendant = (parentId: string, childId: string): boolean => {
-            const folder = folders.find((f) => f.id === childId);
-            if (!folder) return false;
-            if (folder.parent_id === parentId) return true;
-            if (folder.parent_id) return isDescendant(parentId, folder.parent_id);
-            return false;
-          };
-          
-          if (itemId === targetFolderId || isDescendant(itemId, targetFolderId)) {
-            toast.error("Cannot move folder into itself or its subfolder");
-            return;
-          }
-        }
-        moveFolderMutation.mutate({ folderId: itemId, newParentId: targetFolderId });
-      } else {
-        moveFileMutation.mutate({ fileId: itemId, newFolderId: targetFolderId });
-      }
-    },
-    [folders, moveFolderMutation, moveFileMutation]
-  );
-
-  // Handle rename
-  const handleRename = async (newName: string) => {
-    if (!renameItem) return;
-    if (renameItem.type === "folder") {
-      await renameFolderMutation.mutateAsync({
-        id: renameItem.item.id,
-        name: newName,
-      });
-    } else {
-      await renameResourceMutation.mutateAsync({
-        id: renameItem.item.id,
-        title: newName,
-      });
-    }
-    setRenameItem(null);
-  };
-
-  // Handle delete confirm
   const handleDeleteConfirm = async () => {
     if (!deleteItem) return;
-    if (deleteItem.type === "folder") {
-      await deleteFolderMutation.mutateAsync(deleteItem.item.id);
-    } else {
-      await deleteResourceMutation.mutateAsync(deleteItem.item as Resource);
-    }
+    if (deleteItem.type === "folder") await deleteFolderMutation.mutateAsync(deleteItem.item.id);
+    else await deleteResourceMutation.mutateAsync(deleteItem.item as Resource);
     setDeleteItem(null);
     setDeleteConfirmOpen(false);
   };
 
-  // Open rename dialog
-  const openRenameFolder = (folder: Folder) => {
-    setRenameItem({ type: "folder", item: folder });
-    setRenameOpen(true);
-  };
+  const divisionLabel = activeDivision?.name || "All Divisions";
 
-  const openRenameFile = (resource: Resource) => {
-    setRenameItem({ type: "file", item: resource });
-    setRenameOpen(true);
-  };
-
-  // Open delete dialog
-  const openDeleteFolder = (folder: Folder) => {
-    setDeleteItem({ type: "folder", item: folder });
-    setDeleteConfirmOpen(true);
-  };
-
-  const openDeleteFile = (resource: Resource) => {
-    setDeleteItem({ type: "file", item: resource });
-    setDeleteConfirmOpen(true);
-  };
-
-  // Compute item counts per folder (subfolders + files)
-  const folderItemCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const f of currentFolders) {
-      const subFolders = folders.filter((sf) => sf.parent_id === f.id).length;
-      const files = resources.filter((r) => r.folder_id === f.id).length;
-      counts[f.id] = subFolders + files;
-    }
-    return counts;
-  }, [currentFolders, folders, resources]);
+  // Sidebar (left tree)
+  const TreePanel = (
+    <div className="h-full bg-lms-navy text-white">
+      <FolderTree folders={folders} currentId={currentFolderId} onSelect={navigateToFolder} divisionLabel={divisionLabel} />
+    </div>
+  );
 
   if (isLoading) {
     return (
@@ -645,344 +375,271 @@ export default function Resources() {
     );
   }
 
-  const isEmpty = currentFolders.length === 0 && currentFiles.length === 0;
-
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Premium Header */}
-      <div className="page-header-premium rounded-xl p-6 mb-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            {currentFolderId && activeTab === 'browse' && (
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={goBack}
-                className="text-white/80 hover:text-white hover:bg-white/10"
-              >
-                <ArrowLeft className="h-4 w-4" />
+    <div className="flex h-[calc(100vh-4rem)] -m-4 lg:-m-6 animate-fade-in">
+      {/* Desktop tree */}
+      <aside className="hidden md:flex w-[220px] shrink-0 border-r border-border">{TreePanel}</aside>
+
+      {/* Mobile tree */}
+      <Sheet open={mobileTreeOpen} onOpenChange={setMobileTreeOpen}>
+        <SheetContent side="left" className="w-[260px] p-0 bg-lms-navy border-0">
+          <SheetHeader className="sr-only"><SheetTitle>Folders</SheetTitle></SheetHeader>
+          {TreePanel}
+        </SheetContent>
+      </Sheet>
+
+      {/* Right content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top row */}
+        <div className="px-4 lg:px-6 pt-4 pb-2 flex items-center gap-2 border-b border-border/60">
+          <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileTreeOpen(true)}>
+            <Menu className="h-4 w-4" />
+          </Button>
+          <div className="flex-1 min-w-0">
+            <nav className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+              <button onClick={() => navigateToFolder(null)} className="hover:text-foreground">Resources</button>
+              {folderPath.map((f) => (
+                <span key={f.id} className="flex items-center gap-1">
+                  <ChevronRight className="h-3 w-3" />
+                  <button onClick={() => navigateToFolder(f.id)} className="hover:text-foreground truncate">{f.name}</button>
+                </span>
+              ))}
+            </nav>
+            {currentFolder && (
+              <h1 className="text-lg font-semibold text-foreground mt-0.5 truncate">{currentFolder.name}</h1>
+            )}
+            {!currentFolder && <h1 className="text-lg font-semibold text-foreground mt-0.5">All folders</h1>}
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="relative hidden sm:block">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search…" className="pl-8 h-9 w-48" />
+            </div>
+            {canUploadHere && currentFolderId && (
+              <Button size="sm" onClick={() => setUploadOpen(true)}>
+                <Upload className="h-4 w-4 mr-1.5" /> Upload
               </Button>
             )}
-            <div>
-              <h1 className="text-2xl font-bold text-white">Resources</h1>
-              {activeTab === 'browse' && (
-                <div className="mt-1">
-                  <ResourcesBreadcrumb
-                    folderPath={folderPath}
-                    onNavigate={navigateToFolder}
-                    onDrop={handleDropOnBreadcrumb}
-                  />
-                </div>
-              )}
-            </div>
+            {(canManage || (isTeacher && currentFolderId)) && (
+              <Button size="sm" variant="outline" onClick={() => { setEditFolder(null); setFolderDialogOpen(true); }}>
+                <FolderPlus className="h-4 w-4 mr-1.5" /> New Folder
+              </Button>
+            )}
           </div>
-
-          {canManage && activeTab === 'browse' && (
-            <div className="flex items-center gap-3">
-              <Button 
-                variant="outline" 
-                onClick={() => setNewFolderOpen(true)}
-                className="bg-primary text-primary-foreground border-primary hover:bg-primary/90 shadow-md"
-              >
-                <FolderPlus className="h-4 w-4 mr-2" />
-                New Folder
-              </Button>
-              <Button 
-                onClick={() => setUploadOpen(true)}
-                className="bg-accent hover:bg-accent/90 text-white shadow-lg"
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Upload
-              </Button>
-            </div>
-          )}
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mt-4">
-          <button
-            onClick={() => setActiveTab('browse')}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
-              activeTab === 'browse'
-                ? 'bg-white text-primary shadow-md'
-                : 'text-white/70 hover:text-white hover:bg-white/10'
-            }`}
-          >
-            <FolderOpen className="h-3.5 w-3.5 inline mr-1.5" />
-            Browse
-          </button>
-          <button
-            onClick={() => setActiveTab('assigned')}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
-              activeTab === 'assigned'
-                ? 'bg-white text-primary shadow-md'
-                : 'text-white/70 hover:text-white hover:bg-white/10'
-            }`}
-          >
-            <Star className="h-3.5 w-3.5 inline mr-1.5" />
-            My Assigned
-            {assignedResources.length > 0 && (
-              <Badge className="ml-1.5 text-[10px] px-1.5 py-0 h-4 bg-accent/20 text-white border-0">
-                {assignedResources.length}
-              </Badge>
-            )}
-          </button>
+        <div className="px-4 lg:px-6 border-b border-border/60 flex items-center gap-1">
+          {[
+            { id: "browse", label: "All Files", icon: FolderOpen },
+            { id: "assigned", label: "My Assigned", icon: Star },
+          ].map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              className={cn(
+                "px-3 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px flex items-center gap-1.5",
+                activeTab === t.id
+                  ? "border-accent text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <t.icon className="h-3.5 w-3.5" />
+              {t.label}
+              {t.id === "assigned" && assignedResources.length > 0 && (
+                <Badge variant="secondary" className="text-[10px] h-4 px-1.5">{assignedResources.length}</Badge>
+              )}
+            </button>
+          ))}
+          <div className="ml-auto flex items-center border border-border/60 rounded-md p-0.5 my-1.5">
+            <button onClick={() => setViewMode("grid")} className={cn("p-1.5 rounded", viewMode === "grid" ? "bg-muted" : "")}>
+              <Grid3X3 className="h-3.5 w-3.5" />
+            </button>
+            <button onClick={() => setViewMode("list")} className={cn("p-1.5 rounded", viewMode === "list" ? "bg-muted" : "")}>
+              <List className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-4 lg:p-6">
+          {activeTab === "browse" && (
+            <>
+              {currentFolders.length === 0 && currentFiles.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                  <FolderOpen className="h-10 w-10 mb-2" />
+                  <p className="text-sm">This folder is empty</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {currentFolders.length > 0 && (
+                    <div>
+                      <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
+                        Folders · {currentFolders.length}
+                      </h3>
+                      <div className={cn(
+                        viewMode === "grid"
+                          ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3"
+                          : "space-y-1",
+                      )}>
+                        {currentFolders.map((f) => {
+                          const access = (f.visibility as FolderAccess) || "all";
+                          const meta = ACCESS_META[access] || ACCESS_META.all;
+                          const count = folderItemCounts[f.id] ?? 0;
+                          return (
+                            <div
+                              key={f.id}
+                              onClick={() => navigateToFolder(f.id)}
+                              className={cn(
+                                "group relative flex items-center gap-3 bg-card border border-border rounded-lg cursor-pointer hover:shadow-sm hover:border-accent/40 transition-all overflow-hidden",
+                                viewMode === "grid" ? "p-4" : "p-3",
+                              )}
+                            >
+                              <span className={cn("absolute left-0 top-0 bottom-0 w-1", meta.stripe)} />
+                              <div className="pl-1.5 flex items-center gap-3 flex-1 min-w-0">
+                                <FolderIcon className="h-5 w-5 text-muted-foreground shrink-0" />
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-semibold text-foreground truncate">{f.name}</p>
+                                  <p className="text-[11px] text-muted-foreground truncate">
+                                    {count} {count === 1 ? "item" : "items"} · {meta.label}
+                                  </p>
+                                </div>
+                              </div>
+                              {canManage && !f.is_system && (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                    <button className="p-1 rounded-md hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditFolder(f); setFolderDialogOpen(true); }}>
+                                      <Settings2 className="h-4 w-4 mr-2" /> Edit & Access
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      className="text-destructive focus:text-destructive"
+                                      onClick={(e) => { e.stopPropagation(); setDeleteItem({ type: "folder", item: f }); setDeleteConfirmOpen(true); }}
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" /> Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {currentFiles.length > 0 && (
+                    <div>
+                      <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-2">
+                        Files · {currentFiles.length}
+                      </h3>
+                      <div className={cn(
+                        viewMode === "grid"
+                          ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3"
+                          : "border border-border rounded-lg divide-y divide-border bg-card",
+                      )}>
+                        {currentFiles.map((file) => (
+                          <FileItem
+                            key={file.id}
+                            resource={file}
+                            viewMode={viewMode}
+                            canManage={canManage}
+                            onRename={(r) => { setRenameItem({ type: "file", item: r as Resource }); setRenameOpen(true); }}
+                            onDelete={(r) => { setDeleteItem({ type: "file", item: r as Resource }); setDeleteConfirmOpen(true); }}
+                            onSelect={setDetailResource}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
+          {activeTab === "assigned" && (
+            <div>
+              {assignedResources.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-20">
+                  <Star className="h-10 w-10 mb-2" />
+                  <p className="text-sm">No assigned resources yet</p>
+                </div>
+              ) : (
+                <div className="border border-border rounded-lg divide-y divide-border bg-card">
+                  {assignedResources.map((file: any) => (
+                    <FileItem
+                      key={file.id}
+                      resource={file}
+                      viewMode="list"
+                      canManage={false}
+                      onRename={() => {}}
+                      onDelete={() => {}}
+                      onSelect={setDetailResource}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Browse Tab */}
-      {activeTab === 'browse' && (
-        <>
-          {/* Toolbar Card */}
-          <div className="premium-card p-4">
-            <div className="flex items-center gap-4 flex-wrap">
-              <div className="relative flex-1 min-w-[200px] max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search in folder..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 premium-input"
-                />
-              </div>
-
-              <div className="flex items-center border border-border/50 rounded-xl p-1 bg-muted/30">
-                <button
-                  onClick={() => setViewMode("grid")}
-                  className={`p-2 rounded-lg transition-all duration-200 ${
-                    viewMode === "grid"
-                      ? "bg-accent text-white shadow-md"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                  }`}
-                >
-                  <Grid3X3 className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => setViewMode("list")}
-                  className={`p-2 rounded-lg transition-all duration-200 ${
-                    viewMode === "list"
-                      ? "bg-accent text-white shadow-md"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                  }`}
-                >
-                  <List className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Content */}
-          {isEmpty ? (
-            <div className="premium-card p-12 flex flex-col items-center justify-center text-muted-foreground">
-              <div className="w-20 h-20 rounded-full bg-accent/10 flex items-center justify-center mb-4">
-                <FolderOpen className="h-10 w-10 text-accent" />
-              </div>
-              <p className="font-semibold text-lg text-foreground">This folder is empty</p>
-              {canManage && (
-                <p className="text-sm mt-2 text-muted-foreground">
-                  Create a folder or upload files to get started
-                </p>
-              )}
-            </div>
-          ) : viewMode === "grid" ? (
-            <div className="space-y-6">
-              {currentFolders.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">
-                    Folders ({currentFolders.length})
-                  </h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
-                    {currentFolders.map((folder, index) => (
-                      <div key={folder.id} className="animate-fade-in" style={{ animationDelay: `${index * 30}ms` }}>
-                        <FolderItem
-                          folder={folder}
-                          viewMode="grid"
-                          canManage={canManage}
-                          itemCount={folderItemCounts[folder.id] ?? 0}
-                          onOpen={navigateToFolder}
-                          onRename={openRenameFolder}
-                          onDelete={openDeleteFolder}
-                          onDrop={handleDropOnFolder}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {currentFiles.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">
-                    Files ({currentFiles.length})
-                  </h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
-                    {currentFiles.map((file, index) => (
-                      <div key={file.id} className="animate-fade-in" style={{ animationDelay: `${index * 30}ms` }}>
-                        <FileItem
-                          resource={file}
-                          viewMode="grid"
-                          canManage={canManage}
-                          onRename={openRenameFile}
-                          onDelete={openDeleteFile}
-                          onSelect={setDetailResource}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {currentFolders.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
-                    Folders ({currentFolders.length})
-                  </h3>
-                  <div className="premium-card divide-y divide-border/50">
-                    {currentFolders.map((folder) => (
-                      <FolderItem
-                        key={folder.id}
-                        folder={folder}
-                        viewMode="list"
-                        canManage={canManage}
-                        itemCount={folderItemCounts[folder.id] ?? 0}
-                        onOpen={navigateToFolder}
-                        onRename={openRenameFolder}
-                        onDelete={openDeleteFolder}
-                        onDrop={handleDropOnFolder}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {currentFiles.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
-                    Files ({currentFiles.length})
-                  </h3>
-                  <div className="premium-card divide-y divide-border/50">
-                    {currentFiles.map((file) => (
-                      <FileItem
-                        key={file.id}
-                        resource={file}
-                        viewMode="list"
-                        canManage={canManage}
-                        onRename={openRenameFile}
-                        onDelete={openDeleteFile}
-                        onSelect={setDetailResource}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* My Assigned Tab */}
-      {activeTab === 'assigned' && (
-        <div className="space-y-4">
-          {assignedResources.length === 0 ? (
-            <div className="premium-card p-12 flex flex-col items-center justify-center text-muted-foreground">
-              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <Star className="h-10 w-10 text-primary" />
-              </div>
-              <p className="font-semibold text-lg text-foreground">No assigned resources</p>
-              <p className="text-sm mt-2 text-muted-foreground">
-                Resources assigned to you by admins will appear here
-              </p>
-            </div>
-          ) : (
-            <div className="premium-card divide-y divide-border/50">
-              {assignedResources.map((file: any) => (
-                <FileItem
-                  key={file.id}
-                  resource={file}
-                  viewMode="list"
-                  canManage={false}
-                  onRename={() => {}}
-                  onDelete={() => {}}
-                  onSelect={setDetailResource}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Dialogs */}
-      <NewFolderDialog
-        open={newFolderOpen}
-        onOpenChange={setNewFolderOpen}
-        onSubmit={async (name, visibility) => {
-          await createFolderMutation.mutateAsync({ name, visibility });
+      <FolderAccessDialog
+        open={folderDialogOpen}
+        onOpenChange={(o) => { setFolderDialogOpen(o); if (!o) setEditFolder(null); }}
+        title={editFolder ? "Edit Folder" : "New Folder"}
+        initial={editFolder ? {
+          name: editFolder.name,
+          visibility: (editFolder.visibility as FolderAccess) || "all",
+          visible_to_user_ids: editFolder.visible_to_user_ids || [],
+        } : undefined}
+        onSubmit={async (v) => {
+          await saveFolderMutation.mutateAsync({ id: editFolder?.id, ...v });
         }}
-        showVisibility={canManage}
       />
 
       <UploadFileDialog
         open={uploadOpen}
         onOpenChange={setUploadOpen}
-        onUploadFiles={async (files, visibility) => {
-          await uploadFilesMutation.mutateAsync({ files, visibility });
-        }}
-        onUploadFolder={async (files, paths, visibility) => {
-          await uploadFolderMutation.mutateAsync({ files, paths });
-        }}
-        onAddLink={async (title, url, visibility) => {
-          await addLinkMutation.mutateAsync({ title, url, visibility });
-        }}
+        onUploadFiles={async (files, visibility) => { await uploadFilesMutation.mutateAsync({ files, visibility }); }}
+        onAddLink={async (title, url, visibility) => { await addLinkMutation.mutateAsync({ title, url, visibility }); }}
         showVisibility={canManage}
       />
 
       <RenameDialog
         open={renameOpen}
-        onOpenChange={(open) => {
-          setRenameOpen(open);
-          if (!open) setRenameItem(null);
+        onOpenChange={(o) => { setRenameOpen(o); if (!o) setRenameItem(null); }}
+        currentName={renameItem ? (renameItem.item as Resource).title : ""}
+        onSubmit={async (newName) => {
+          if (renameItem) await renameResourceMutation.mutateAsync({ id: renameItem.item.id, title: newName });
+          setRenameItem(null);
         }}
-        currentName={
-          renameItem?.type === "folder"
-            ? (renameItem.item as Folder).name
-            : renameItem?.type === "file"
-            ? (renameItem.item as Resource).title
-            : ""
-        }
-        onSubmit={handleRename}
-        itemType={renameItem?.type || "file"}
+        itemType="file"
       />
 
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {deleteItem?.type}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {deleteItem?.type === "folder"
-                ? "This will permanently delete this folder and all its contents."
-                : "This will permanently delete this file."}
-            </AlertDialogDescription>
+            <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteConfirm}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* File Detail Panel */}
-      <FileDetailPanel
-        open={!!detailResource}
-        onOpenChange={(open) => !open && setDetailResource(null)}
-        resource={detailResource}
-      />
+      {detailResource && (
+        <FileDetailPanel resource={detailResource} open={!!detailResource} onOpenChange={(o) => !o && setDetailResource(null)} />
+      )}
     </div>
   );
 }
