@@ -250,6 +250,9 @@ export default function TeacherNazraDashboard() {
           </Card>
         </div>
 
+        {/* My Performance */}
+        <MyPerformanceSection />
+
         {/* Class List */}
         <Card>
           <CardHeader>
