@@ -720,6 +720,11 @@ export default function Students() {
                 </TableBody>
               </Table>
             </div>
+            <div className="mt-6">
+              <h2 className="font-serif text-xl font-semibold text-foreground mb-3">My Schedules</h2>
+              <TeacherSchedulesView readOnly />
+            </div>
+            </>
           )
         ) : (
           // Admin/Parent Table View
