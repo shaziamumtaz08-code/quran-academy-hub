@@ -276,6 +276,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
           { label: "Exam Center", href: "/report-card-templates", icon: Award },
           { label: "Student Reports", href: "/student-reports", icon: FileText },
           { label: "Resources", href: "/resources", icon: FolderOpen },
+          { label: "Work Hub", href: "/work-hub", icon: Briefcase },
         ],
       },
     ];
