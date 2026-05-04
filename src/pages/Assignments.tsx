@@ -211,6 +211,39 @@ export default function Assignments() {
     },
   });
 
+  // Auto-revert expired substitute assignments: complete the substitute, resume the parent
+  useEffect(() => {
+    if (!assignments.length) return;
+    const today = new Date().toISOString().split('T')[0];
+    const expired = assignments.filter(a =>
+      a.transfer_type === 'substitute' &&
+      a.status === 'active' &&
+      a.parent_assignment_id &&
+      a.substitute_end_date &&
+      a.substitute_end_date < today
+    );
+    if (!expired.length) return;
+    (async () => {
+      const sb = supabase as any;
+      for (const sub of expired) {
+        await sb.from('student_teacher_assignments')
+          .update({ status: 'completed', status_effective_date: sub.substitute_end_date })
+          .eq('id', sub.id);
+        await sb.from('assignment_history')
+          .update({ ended_at: new Date(sub.substitute_end_date!).toISOString() })
+          .eq('assignment_id', sub.id)
+          .is('ended_at', null);
+        // Resume parent
+        await sb.from('student_teacher_assignments')
+          .update({ status: 'active', status_effective_date: sub.substitute_end_date })
+          .eq('id', sub.parent_assignment_id)
+          .eq('status', 'paused');
+      }
+      queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignments]);
+
   // Fetch linked billing plans for all assignments (read-only display)
   const assignmentIds = assignments.map(a => a.id);
   const { data: linkedPlans = [] } = useQuery({
