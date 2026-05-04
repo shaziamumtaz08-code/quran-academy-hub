@@ -679,36 +679,76 @@ export default function Schedules() {
     return rows;
   }, [filteredAssignments, schedules]);
 
-  const handleExport = (mode: 'student' | 'teacher' | 'day' | 'week' | 'flat') => {
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportMode, setExportMode] = useState<'student' | 'teacher' | 'day' | 'week' | 'flat'>('flat');
+  const [exportFromDate, setExportFromDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [exportToDate, setExportToDate] = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() + 7);
+    return format(d, 'yyyy-MM-dd');
+  });
+
+  const openExportDialog = (mode: 'student' | 'teacher' | 'day' | 'week' | 'flat') => {
     if (flatScheduleRows.length === 0) {
       toast({ title: 'Nothing to export', description: 'No schedules match current filters.', variant: 'destructive' });
       return;
     }
+    setExportMode(mode);
+    setExportDialogOpen(true);
+  };
+
+  const handleExport = (mode: 'student' | 'teacher' | 'day' | 'week' | 'flat') => {
     const stamp = new Date().toISOString().slice(0, 10);
+    const fromD = new Date(exportFromDate + 'T00:00:00');
+    const toD = new Date(exportToDate + 'T00:00:00');
+    if (isNaN(fromD.getTime()) || isNaN(toD.getTime()) || fromD > toD) {
+      toast({ title: 'Invalid date range', description: 'Please select a valid From and To date.', variant: 'destructive' });
+      return;
+    }
+    const MAX_DAYS = 366;
+    const dayDiff = Math.round((toD.getTime() - fromD.getTime()) / 86400000) + 1;
+    if (dayDiff > MAX_DAYS) {
+      toast({ title: 'Range too large', description: `Please select a range of ${MAX_DAYS} days or fewer.`, variant: 'destructive' });
+      return;
+    }
+    const dayNameByIdx = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    // Expand each scheduled row into actual dated occurrences within range
+    const expandedRows: (typeof flatScheduleRows[number] & { date: string })[] = [];
+    for (let d = new Date(fromD); d <= toD; d.setDate(d.getDate() + 1)) {
+      const dayName = dayNameByIdx[d.getDay()];
+      const dateStr = format(d, 'yyyy-MM-dd');
+      flatScheduleRows.forEach(r => {
+        if (r.day === dayName) expandedRows.push({ ...r, date: dateStr });
+      });
+    }
+    if (expandedRows.length === 0) {
+      toast({ title: 'No classes in range', description: 'No scheduled classes fall within the selected dates.', variant: 'destructive' });
+      return;
+    }
     const dayOrder: Record<string, number> = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
     const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
+    const rangeTag = `${exportFromDate}_to_${exportToDate}`;
     if (mode === 'flat') {
-      const header = ['Student', 'Teacher', 'Subject', 'Day', 'Teacher Time', 'Student Time', 'Duration (min)'];
-      const data = [...flatScheduleRows]
-        .sort((a, b) => a.student.localeCompare(b.student) || (dayOrder[a.day] - dayOrder[b.day]))
-        .map(r => [r.student, r.teacher, r.subject, cap(r.day), formatTime12h(r.teacherTime), formatTime12h(r.studentTime), r.duration]);
-      downloadCsv([header, ...data], `schedules_${stamp}.csv`);
+      const header = ['Date', 'Day', 'Student', 'Teacher', 'Subject', 'Teacher Time', 'Student Time', 'Duration (min)'];
+      const data = [...expandedRows]
+        .sort((a, b) => a.date.localeCompare(b.date) || a.student.localeCompare(b.student) || a.teacherTime.localeCompare(b.teacherTime))
+        .map(r => [r.date, cap(r.day), r.student, r.teacher, r.subject, formatTime12h(r.teacherTime), formatTime12h(r.studentTime), r.duration]);
+      downloadCsv([header, ...data], `schedules_${rangeTag}.csv`);
     } else if (mode === 'student' || mode === 'teacher') {
       const groupKey = mode === 'student' ? 'student' : 'teacher';
-      const header = [cap(groupKey), 'Day', 'Teacher Time', 'Student Time', 'Subject', mode === 'student' ? 'Teacher' : 'Student', 'Duration (min)'];
-      const data = [...flatScheduleRows]
-        .sort((a, b) => a[groupKey].localeCompare(b[groupKey]) || (dayOrder[a.day] - dayOrder[b.day]) || a.teacherTime.localeCompare(b.teacherTime))
-        .map(r => [r[groupKey], cap(r.day), formatTime12h(r.teacherTime), formatTime12h(r.studentTime), r.subject, mode === 'student' ? r.teacher : r.student, r.duration]);
-      downloadCsv([header, ...data], `schedules_by_${mode}_${stamp}.csv`);
+      const header = [cap(groupKey), 'Date', 'Day', 'Teacher Time', 'Student Time', 'Subject', mode === 'student' ? 'Teacher' : 'Student', 'Duration (min)'];
+      const data = [...expandedRows]
+        .sort((a, b) => a[groupKey].localeCompare(b[groupKey]) || a.date.localeCompare(b.date) || a.teacherTime.localeCompare(b.teacherTime))
+        .map(r => [r[groupKey], r.date, cap(r.day), formatTime12h(r.teacherTime), formatTime12h(r.studentTime), r.subject, mode === 'student' ? r.teacher : r.student, r.duration]);
+      downloadCsv([header, ...data], `schedules_by_${mode}_${rangeTag}.csv`);
     } else if (mode === 'day') {
-      const header = ['Day', 'Teacher Time', 'Student Time', 'Student', 'Teacher', 'Subject', 'Duration (min)'];
-      const data = [...flatScheduleRows]
-        .sort((a, b) => (dayOrder[a.day] - dayOrder[b.day]) || a.teacherTime.localeCompare(b.teacherTime))
-        .map(r => [cap(r.day), formatTime12h(r.teacherTime), formatTime12h(r.studentTime), r.student, r.teacher, r.subject, r.duration]);
-      downloadCsv([header, ...data], `schedules_by_day_${stamp}.csv`);
+      const header = ['Date', 'Day', 'Teacher Time', 'Student Time', 'Student', 'Teacher', 'Subject', 'Duration (min)'];
+      const data = [...expandedRows]
+        .sort((a, b) => a.date.localeCompare(b.date) || a.teacherTime.localeCompare(b.teacherTime))
+        .map(r => [r.date, cap(r.day), formatTime12h(r.teacherTime), formatTime12h(r.studentTime), r.student, r.teacher, r.subject, r.duration]);
+      downloadCsv([header, ...data], `schedules_by_day_${rangeTag}.csv`);
     } else if (mode === 'week') {
-      // Pivot: one row per assignment, columns Sun-Sat
+      // Pivot: one row per assignment, columns Sun-Sat (template view, not expanded)
       const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
       const header = ['Student', 'Teacher', 'Subject', ...days.map(cap)];
       const data = filteredAssignments.map(a => {
@@ -719,9 +759,10 @@ export default function Schedules() {
         });
         return [a.student_name, a.teacher_name, a.subject_name || '', ...dayCells];
       });
-      downloadCsv([header, ...data], `schedules_weekly_${stamp}.csv`);
+      downloadCsv([header, ...data], `schedules_weekly_${rangeTag}.csv`);
     }
-    toast({ title: 'Exported', description: `Schedules exported (${mode}).` });
+    setExportDialogOpen(false);
+    toast({ title: 'Exported', description: `${expandedRows.length} class occurrences exported (${mode}).` });
   };
   const selectedAssignment = useMemo(() => {
     return assignments.find(a => a.id === newSchedule.assignmentId);
@@ -1070,11 +1111,11 @@ export default function Schedules() {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>Export schedules</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => handleExport('flat')}>All rows (flat)</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport('student')}>By Student</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport('teacher')}>By Teacher</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport('day')}>By Day</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport('week')}>Weekly grid</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => openExportDialog('flat')}>All rows (flat)</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => openExportDialog('student')}>By Student</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => openExportDialog('teacher')}>By Teacher</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => openExportDialog('day')}>By Day</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => openExportDialog('week')}>Weekly grid (template)</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             {/* CSV Import Button */}
@@ -1714,6 +1755,55 @@ export default function Schedules() {
           open={isCsvImportOpen} 
           onOpenChange={setIsCsvImportOpen} 
         />
+
+        {/* Export Date Range Dialog */}
+        <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Export Schedules — Select Date Range</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <p className="text-sm text-muted-foreground">
+                Schedules will be expanded into actual class occurrences between the selected dates.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">From</Label>
+                  <Input type="date" value={exportFromDate} onChange={(e) => setExportFromDate(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">To</Label>
+                  <Input type="date" value={exportToDate} onChange={(e) => setExportToDate(e.target.value)} min={exportFromDate} />
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {[
+                  { label: 'This Week', days: 7 },
+                  { label: 'This Month', days: 30 },
+                  { label: 'Next 3 Months', days: 90 },
+                ].map(p => (
+                  <Button key={p.label} variant="outline" size="sm" onClick={() => {
+                    const f = new Date();
+                    const t = new Date(); t.setDate(t.getDate() + p.days - 1);
+                    setExportFromDate(format(f, 'yyyy-MM-dd'));
+                    setExportToDate(format(t, 'yyyy-MM-dd'));
+                  }}>{p.label}</Button>
+                ))}
+              </div>
+              {exportMode === 'week' && (
+                <p className="text-xs text-amber-600">
+                  Weekly grid mode exports the recurring template (one row per assignment). Date range is used only for the filename.
+                </p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setExportDialogOpen(false)}>Cancel</Button>
+              <Button onClick={() => handleExport(exportMode)}>
+                <Download className="h-4 w-4 mr-1" /> Export CSV
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
