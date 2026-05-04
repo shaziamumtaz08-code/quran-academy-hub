@@ -1502,7 +1502,7 @@ export default function UserManagement() {
         )}
 
         {/* Banner A: users with NO role assigned (critical) */}
-        {(activeRole === 'super_admin' || activeRole === 'admin_division') && noRoleUsers.length > 0 && (
+        {(activeRole === 'super_admin' || activeRole === 'admin_division' || activeRole === 'admin') && noRoleUsers.length > 0 && (
           <Card className="border-destructive/40 bg-destructive/5">
             <CardContent className="py-3">
               <button
@@ -1525,7 +1525,7 @@ export default function UserManagement() {
         )}
 
         {/* Banner B: admin_division users with no division (informational) */}
-        {(activeRole === 'super_admin' || activeRole === 'admin_division') && adminDivWithoutDivision.length > 0 && (
+        {(activeRole === 'super_admin' || activeRole === 'admin_division' || activeRole === 'admin') && adminDivWithoutDivision.length > 0 && (
           <Card className="border-amber-300/60 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-800/60">
             <CardContent className="py-3">
               <div className="flex items-center gap-3 text-amber-800 dark:text-amber-300">
