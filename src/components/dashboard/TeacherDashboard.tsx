@@ -80,6 +80,9 @@ export function TeacherDashboard() {
         {/* My Stats */}
         <TeacherStatsRow />
 
+        {/* My Performance */}
+        <MyPerformanceSection />
+
         {/* Recent Sessions with Comments */}
         <TeacherAttendanceComments />
 
