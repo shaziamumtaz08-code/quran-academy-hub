@@ -214,6 +214,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
           },
           { label: "Students", href: "/students", icon: Users },
           { label: "Student Reports", href: "/student-reports", icon: FileText },
+          { label: "Performance", href: "/performance", icon: BarChart3 },
         ],
       },
       {
