@@ -25,6 +25,7 @@ import { StudentDetailDrawer } from '@/components/students/StudentDetailDrawer';
 import { useDivisionMembership, getDivisionShortName, getDivisionBadgeClass } from '@/hooks/useDivisionMembership';
 import { StudentHistoryDialog } from '@/components/students/StudentHistoryDialog';
 import { StudentScheduleDialog } from '@/components/students/StudentScheduleDialog';
+import TeacherSchedulesView from '@/components/teacher/TeacherSchedulesView';
 import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
 import { useSearchParams } from 'react-router-dom';
 import { EntityLink } from '@/components/shared/EntityLink';
@@ -88,7 +89,7 @@ export default function Students() {
   const [filterCountry, setFilterCountry] = useState('');
   const [filterCity, setFilterCity] = useState('');
   const [filterSubjectId, setFilterSubjectId] = useState(searchParams.get('subjectId') || '');
-  const [teacherViewMode, setTeacherViewMode] = useState<'cards' | 'list'>(() => (localStorage.getItem('teacherStudentsView') as 'cards' | 'list') || 'list');
+  const [teacherViewMode, setTeacherViewMode] = useState<'cards' | 'list'>(() => (localStorage.getItem('teacherStudentsView') as 'cards' | 'list') || 'cards');
   useEffect(() => { localStorage.setItem('teacherStudentsView', teacherViewMode); }, [teacherViewMode]);
 
   // Determine role-based behavior
@@ -558,15 +559,10 @@ export default function Students() {
               </Badge>
             )}
           </div>
-          {isTeacher && (
+        </div>
+        {isTeacher && (
+          <div className="flex justify-start">
             <div className="inline-flex items-center rounded-full border border-border bg-muted/40 p-1">
-              <button
-                onClick={() => setTeacherViewMode('list')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${teacherViewMode === 'list' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-                aria-pressed={teacherViewMode === 'list'}
-              >
-                <List className="h-3.5 w-3.5" /> List
-              </button>
               <button
                 onClick={() => setTeacherViewMode('cards')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${teacherViewMode === 'cards' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
@@ -574,9 +570,16 @@ export default function Students() {
               >
                 <LayoutGrid className="h-3.5 w-3.5" /> Cards
               </button>
+              <button
+                onClick={() => setTeacherViewMode('list')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${teacherViewMode === 'list' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                aria-pressed={teacherViewMode === 'list'}
+              >
+                <List className="h-3.5 w-3.5" /> List
+              </button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Search and Filters */}
         <div className="flex flex-col md:flex-row gap-4">
@@ -672,6 +675,7 @@ export default function Students() {
               ))}
             </div>
           ) : (
+            <>
             <div className="bg-card rounded-xl border border-border overflow-hidden">
               <Table>
                 <TableHeader>
@@ -717,6 +721,11 @@ export default function Students() {
                 </TableBody>
               </Table>
             </div>
+            <div className="mt-6">
+              <h2 className="font-serif text-xl font-semibold text-foreground mb-3">My Schedules</h2>
+              <TeacherSchedulesView readOnly />
+            </div>
+            </>
           )
         ) : (
           // Admin/Parent Table View

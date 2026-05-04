@@ -206,8 +206,10 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
             children: [
               { label: "Attendance", href: "/teaching?view=attendance" },
               { label: "Planning", href: "/teaching?view=planning" },
-              { label: "AI Teaching OS", href: "/teaching-os" },
-              { label: "Quiz Engine", href: "/quiz-engine" },
+              ...(isOneToOne ? [] : [
+                { label: "AI Teaching OS", href: "/teaching-os" },
+                { label: "Quiz Engine", href: "/quiz-engine" },
+              ]),
             ],
           },
           { label: "Students", href: "/students", icon: Users },
