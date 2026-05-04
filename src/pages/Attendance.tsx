@@ -1572,12 +1572,18 @@ export default function Attendance() {
               <DialogDescription>Mark a date as a holiday — all scheduled sessions on this date will be excluded from missing attendance.</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 mt-2">
-              <div className="space-y-2">
-                <Label>Holiday Date</Label>
-                <Input type="date" value={holidayDate} onChange={e => setHolidayDate(e.target.value)} />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-foreground">From</Label>
+                  <Input type="date" value={holidayDate} onChange={e => { setHolidayDate(e.target.value); if (!holidayEndDate || holidayEndDate < e.target.value) setHolidayEndDate(e.target.value); }} />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-foreground">To</Label>
+                  <Input type="date" value={holidayEndDate} min={holidayDate} onChange={e => setHolidayEndDate(e.target.value)} />
+                </div>
               </div>
               <div className="space-y-2">
-                <Label>Holiday Name</Label>
+                <Label className="text-foreground">Holiday Name</Label>
                 <Input value={holidayName} onChange={e => setHolidayName(e.target.value)} placeholder="e.g. Eid ul Fitr, Weekend Off" />
               </div>
               <div className="flex gap-3 pt-2">
@@ -1593,6 +1599,13 @@ export default function Attendance() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Teacher Leave (bulk from–to) Dialog */}
+        <TeacherLeaveBulkDialog
+          open={teacherLeaveDialogOpen}
+          onOpenChange={setTeacherLeaveDialogOpen}
+          divisionId={activeDivision?.id || null}
+        />
       </div>
     </DashboardLayout>
   );
