@@ -64,12 +64,16 @@ export default function Resources() {
   const activeTab = tabParam || "all";
 
   const { data: resources = [], isLoading } = useQuery({
-    queryKey: ["resources-all"],
+    queryKey: ["resources-all", isAdmin, user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("resources").select("*").order("created_at", { ascending: false });
+      let q = supabase.from("resources").select("*").order("created_at", { ascending: false });
+      // Non-admins only see their OWN personal uploads. Shared folder access is admin-only for now.
+      if (!isAdmin && user?.id) q = q.eq("uploaded_by", user.id);
+      const { data, error } = await q;
       if (error) throw error;
       return (data || []) as Resource[];
     },
+    enabled: !!user?.id,
   });
 
   const { data: assignedResources = [] } = useQuery({
@@ -200,7 +204,7 @@ export default function Resources() {
       {/* Tabs */}
       <div className="px-4 lg:px-6 border-b border-border/60 flex items-center gap-1">
         {[
-          { id: "all", label: "All Resources", icon: FolderOpen, count: resources.length },
+          { id: "all", label: isAdmin ? "All Resources" : "My Files", icon: FolderOpen, count: resources.length },
           { id: "assigned", label: "My Assigned", icon: Star, count: assignedResources.length },
         ].map((t) => (
           <button
