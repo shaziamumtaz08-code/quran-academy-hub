@@ -1720,7 +1720,7 @@ export default function MonthlyPlanning() {
                         )}
                         onClick={(e) => {
                           if (isAdmin && !plan.isMissing && !(e.target as HTMLElement).closest('button, [role="checkbox"]')) {
-                            openEditDialog(plan as MonthlyPlan, 'view');
+                            setViewPlan(plan as MonthlyPlan);
                           }
                         }}
                       >
