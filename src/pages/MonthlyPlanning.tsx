@@ -1889,6 +1889,181 @@ export default function MonthlyPlanning() {
         </Card>
       </div>
 
+      {/* View-only Monthly Plan Dialog (read-only detail card) */}
+      <Dialog open={!!viewPlan} onOpenChange={(open) => { if (!open) { setViewPlan(null); setReviewAction(null); setReviewNoteDraft(''); } }}>
+        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>View Monthly Plan</DialogTitle>
+            {viewPlan && (
+              <div className="flex items-center gap-2 mt-2">
+                <Badge className={
+                  viewPlan.status === 'approved' ? 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30' :
+                  (viewPlan.status as any) === 'declined' ? 'bg-rose-500/15 text-rose-700 border-rose-500/30' :
+                  (viewPlan.status as any) === 'clarification_required' ? 'bg-amber-500/15 text-amber-700 border-amber-500/30' :
+                  'bg-amber-500/15 text-amber-700 border-amber-500/30'
+                }>
+                  {viewPlan.status === 'approved' ? <CheckCircle className="h-3 w-3 mr-1" /> :
+                    (viewPlan.status as any) === 'declined' ? <AlertCircle className="h-3 w-3 mr-1" /> :
+                    <Clock className="h-3 w-3 mr-1" />}
+                  {((viewPlan.status as string) || 'pending').replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                </Badge>
+              </div>
+            )}
+          </DialogHeader>
+
+          {viewPlan && (
+            <div className="space-y-4 py-2">
+              {/* Header summary */}
+              <div className="rounded-lg border bg-muted/40 p-4 space-y-3">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-[11px] text-muted-foreground">Student</Label>
+                    <p className="font-semibold text-sm">{viewPlan.student?.full_name || '—'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-[11px] text-muted-foreground">Subject</Label>
+                    <p><Badge variant="outline">{viewPlan.subject?.name || '—'}</Badge></p>
+                  </div>
+                  <div>
+                    <Label className="text-[11px] text-muted-foreground">Period</Label>
+                    <p className="text-sm font-medium">{MONTHS.find(m => m.value === viewPlan.month)?.label} {viewPlan.year}</p>
+                  </div>
+                  <div>
+                    <Label className="text-[11px] text-muted-foreground">Teacher</Label>
+                    <p className="text-sm">{viewPlan.teacher?.full_name || '—'}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="text-[11px] text-muted-foreground">Created</Label>
+                    <p className="text-xs text-muted-foreground">{viewPlan.created_at ? format(parseISO(viewPlan.created_at), 'dd MMM yyyy h:mm a') : '—'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Plan details as labeled key-values */}
+              <div className="rounded-lg border p-4 space-y-3">
+                <h4 className="text-sm font-semibold text-foreground">Plan Details</h4>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                  <div>
+                    <Label className="text-[11px] text-muted-foreground">Resource Name</Label>
+                    <p className="font-medium break-words">{viewPlan.resource_name || '—'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-[11px] text-muted-foreground">Monthly Target</Label>
+                    <p className="font-medium">{viewPlan.monthly_target ?? '—'}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="text-[11px] text-muted-foreground">Goals</Label>
+                    <p className="whitespace-pre-wrap">{viewPlan.goals || '—'}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="text-[11px] text-muted-foreground">Topics to Cover</Label>
+                    <p className="whitespace-pre-wrap">{viewPlan.topics_to_cover || '—'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-[11px] text-muted-foreground">From Page</Label>
+                    <p className="font-medium">{viewPlan.page_from ?? '—'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-[11px] text-muted-foreground">To Page</Label>
+                    <p className="font-medium">{viewPlan.page_to ?? '—'}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="text-[11px] text-muted-foreground">Notes</Label>
+                    <p className="whitespace-pre-wrap text-muted-foreground">{viewPlan.notes || '—'}</p>
+                  </div>
+                  {(viewPlan as any).review_note && (
+                    <div className="col-span-2 rounded-md bg-amber-500/10 border border-amber-500/30 p-2">
+                      <Label className="text-[11px] text-amber-700">Reviewer Note</Label>
+                      <p className="text-sm whitespace-pre-wrap">{(viewPlan as any).review_note}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Inline note input when declining or asking clarification */}
+              {isAdmin && reviewAction && (
+                <div className="rounded-lg border p-3 space-y-2 bg-muted/30">
+                  <Label className="text-xs font-semibold">
+                    {reviewAction === 'decline' ? 'Reason for Decline' : 'What clarification is needed?'}
+                  </Label>
+                  <Textarea
+                    rows={3}
+                    value={reviewNoteDraft}
+                    onChange={(e) => setReviewNoteDraft(e.target.value)}
+                    placeholder={reviewAction === 'decline' ? 'Explain why this plan is declined...' : 'Describe what the teacher needs to clarify...'}
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" size="sm" onClick={() => { setReviewAction(null); setReviewNoteDraft(''); }}>Cancel</Button>
+                    <Button
+                      size="sm"
+                      className={reviewAction === 'decline' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-amber-500 hover:bg-amber-600'}
+                      disabled={!reviewNoteDraft.trim() || reviewPlanMutation.isPending}
+                      onClick={() => reviewPlanMutation.mutate({
+                        planId: viewPlan.id,
+                        status: reviewAction === 'decline' ? 'declined' : 'clarification_required',
+                        note: reviewNoteDraft.trim(),
+                      })}
+                    >
+                      {reviewPlanMutation.isPending && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                      Submit
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 flex-wrap">
+            <Button variant="outline" onClick={() => setViewPlan(null)}>Close</Button>
+            {isAdmin && viewPlan && !reviewAction && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const p = viewPlan;
+                    setViewPlan(null);
+                    openEditDialog(p, 'edit');
+                  }}
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-amber-500/40 text-amber-700 hover:bg-amber-500/10"
+                  onClick={() => { setReviewAction('clarification'); setReviewNoteDraft((viewPlan as any).review_note || ''); }}
+                >
+                  <AlertCircle className="h-4 w-4 mr-2" />
+                  Clarification
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-rose-500/40 text-rose-700 hover:bg-rose-500/10"
+                  onClick={() => { setReviewAction('decline'); setReviewNoteDraft((viewPlan as any).review_note || ''); }}
+                >
+                  <AlertTriangle className="h-4 w-4 mr-2" />
+                  Decline
+                </Button>
+                {viewPlan.status !== 'approved' && (
+                  <Button
+                    onClick={() => {
+                      approvePlanMutation.mutate(viewPlan.id);
+                      setViewPlan(null);
+                    }}
+                    disabled={approvePlanMutation.isPending}
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    {approvePlanMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Approve
+                  </Button>
+                )}
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Create/Edit/View Plan Dialog */}
       <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { resetForm(); setViewMode('edit'); } }}>
         <DialogContent className={cn(
