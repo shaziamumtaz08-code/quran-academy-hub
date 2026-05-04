@@ -1011,7 +1011,9 @@ export default function Assignments() {
                               setReassignReason('');
                               setReassignPayoutAmount(assignment.payout_amount?.toString() || '');
                               setReassignPayoutType(assignment.payout_type || 'monthly');
-                              setReassignEffectiveDate('');
+                              setReassignEffectiveDate(new Date().toISOString().split('T')[0]);
+                              setReassignTransferType('permanent');
+                              setReassignSubstituteEndDate('');
                             }}
                             title="Reassign teacher"
                           >
