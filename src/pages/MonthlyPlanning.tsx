@@ -1017,7 +1017,33 @@ export default function MonthlyPlanning() {
     },
   });
 
-  // Bulk approve plans mutation (admin only)
+  // Decline / Clarification mutation
+  const reviewPlanMutation = useMutation({
+    mutationFn: async ({ planId, status, note }: { planId: string; status: 'declined' | 'clarification_required'; note?: string }) => {
+      if (!user?.id) throw new Error('Not authenticated');
+      const { error } = await supabase
+        .from('student_monthly_plans')
+        .update({
+          status: status as any,
+          approved_by: user.id,
+          approved_at: new Date().toISOString(),
+          review_note: note || null,
+        } as any)
+        .eq('id', planId);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      toast({
+        title: vars.status === 'declined' ? 'Declined' : 'Clarification requested',
+        description: vars.status === 'declined' ? 'Plan was declined.' : 'Teacher has been notified to clarify.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['monthly-plans'] });
+      setViewPlan(null);
+      setReviewNoteDraft('');
+      setReviewAction(null);
+    },
+    onError: (e) => handleSupabaseError(e, 'failed to update plan status'),
+  });
   const bulkApproveMutation = useMutation({
     mutationFn: async (planIds: string[]) => {
       if (!user?.id) throw new Error('Not authenticated');
