@@ -88,6 +88,8 @@ export default function Students() {
   const [filterCountry, setFilterCountry] = useState('');
   const [filterCity, setFilterCity] = useState('');
   const [filterSubjectId, setFilterSubjectId] = useState(searchParams.get('subjectId') || '');
+  const [teacherViewMode, setTeacherViewMode] = useState<'cards' | 'list'>(() => (localStorage.getItem('teacherStudentsView') as 'cards' | 'list') || 'list');
+  useEffect(() => { localStorage.setItem('teacherStudentsView', teacherViewMode); }, [teacherViewMode]);
 
   // Determine role-based behavior
   const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_');
