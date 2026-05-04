@@ -1052,20 +1052,7 @@ export default function Attendance() {
           )}
         </div>
 
-        {/* Tabs for 1:1 vs Group */}
-        <Tabs defaultValue="one-on-one" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="one-on-one">
-              <User className="h-4 w-4 mr-1.5" />
-              1:1 Sessions
-            </TabsTrigger>
-            <TabsTrigger value="group">
-              <Users className="h-4 w-4 mr-1.5" />
-              Group Classes
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="one-on-one" className="space-y-6">
+        <div className="space-y-6">
 
         {/* Stats - Enhanced for Admin */}
         <div className={cn("grid gap-4", isAdmin ? "grid-cols-2 md:grid-cols-7" : isTeacher ? "grid-cols-2 md:grid-cols-5" : "grid-cols-2 md:grid-cols-4")}>
@@ -1523,12 +1510,7 @@ export default function Attendance() {
         </Card>
         )}
 
-          </TabsContent>
-
-          <TabsContent value="group">
-            <GroupAttendanceTab />
-          </TabsContent>
-        </Tabs>
+        </div>
 
         {/* Unified Mark Attendance — same form as Students tab */}
         <UnifiedAttendanceForm
