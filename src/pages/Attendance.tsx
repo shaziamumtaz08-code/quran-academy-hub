@@ -1021,13 +1021,22 @@ export default function Attendance() {
                 Missing{missingCount > 0 ? ` (${missingCount})` : ''}
               </Button>
               {isAdmin && (
-                <Button 
-                  variant="outline"
-                  onClick={() => setHolidayDialogOpen(true)}
-                >
-                  <Palmtree className="h-4 w-4 mr-2" />
-                  Mark Holiday
-                </Button>
+                <>
+                  <Button 
+                    variant="outline"
+                    onClick={() => setHolidayDialogOpen(true)}
+                  >
+                    <Palmtree className="h-4 w-4 mr-2" />
+                    Mark Holiday
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setTeacherLeaveDialogOpen(true)}
+                  >
+                    <UserX className="h-4 w-4 mr-2" />
+                    Teacher Leave
+                  </Button>
+                </>
               )}
               <Button 
                 onClick={() => {
