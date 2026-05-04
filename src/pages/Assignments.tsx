@@ -803,9 +803,21 @@ export default function Assignments() {
                     </Select>
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Effective From</Label>
-                  <Input type="date" value={effectiveFromDate} onChange={(e) => setEffectiveFromDate(e.target.value)} />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Effective From</Label>
+                    <Input type="date" value={effectiveFromDate} onChange={(e) => setEffectiveFromDate(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Effective To {editingAssignment?.transfer_type === 'substitute' && <span className="text-amber-600">(substitute end)</span>}</Label>
+                    <Input
+                      type="date"
+                      value={effectiveToDate}
+                      onChange={(e) => setEffectiveToDate(e.target.value)}
+                      min={effectiveFromDate || undefined}
+                    />
+                    <p className="text-[10px] text-muted-foreground">Leave blank for ongoing. Edit to extend or cut the assignment.</p>
+                  </div>
                 </div>
               </div>
             </div>
