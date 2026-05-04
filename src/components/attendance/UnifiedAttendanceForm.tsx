@@ -352,6 +352,9 @@ export function UnifiedAttendanceForm({
       setReasonText('');
       setRescheduleDate('');
       setRescheduleTime('');
+      setRescheduleBy('teacher');
+      setRescheduleReason('');
+      setLeaveEndDate('');
       setLessonNumber('');
       setPageNumber('');
       setMarkerType('ayah');
