@@ -16,6 +16,7 @@ import { TeacherAttendanceComments } from "./teacher/TeacherAttendanceComments";
 import { RescheduledTodayBanner } from "./teacher/RescheduledTodayBanner";
 import { AiInsightsWidget } from "./AiInsightsWidget";
 import { TeacherGroupAcademyWidgets } from "./teacher/TeacherGroupAcademyWidgets";
+import { MyPerformanceSection } from "./teacher/MyPerformanceSection";
 import { useDivision } from "@/contexts/DivisionContext";
 
 export function TeacherDashboard() {
@@ -78,6 +79,9 @@ export function TeacherDashboard() {
 
         {/* My Stats */}
         <TeacherStatsRow />
+
+        {/* My Performance */}
+        <MyPerformanceSection />
 
         {/* Recent Sessions with Comments */}
         <TeacherAttendanceComments />

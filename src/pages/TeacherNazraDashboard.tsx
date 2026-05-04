@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { MyPerformanceSection } from '@/components/dashboard/teacher/MyPerformanceSection';
 import { 
   Users, 
   BookOpen, 
@@ -248,6 +249,9 @@ export default function TeacherNazraDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* My Performance */}
+        <MyPerformanceSection />
 
         {/* Class List */}
         <Card>

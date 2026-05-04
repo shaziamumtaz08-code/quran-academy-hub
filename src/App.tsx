@@ -46,6 +46,7 @@ const Assignments = lazy(() => import("./pages/Assignments"));
 const MonthlyPlanning = lazy(() => import("./pages/MonthlyPlanning"));
 const AdminCommandCenter = lazy(() => import("./pages/AdminCommandCenter"));
 const TeacherNazraDashboard = lazy(() => import("./pages/TeacherNazraDashboard"));
+const TeacherPerformance = lazy(() => import("./pages/TeacherPerformance"));
 const Subjects = lazy(() => import("./pages/Subjects"));
 const ZoomManagement = lazy(() => import("./pages/ZoomManagement"));
 const IntegrityAudit = lazy(() => import("./pages/IntegrityAudit"));
@@ -361,6 +362,7 @@ function AppRoutes() {
         return <SuperAdminOnly />;
       })()}</ProtectedRoute>} />
       <Route path="/teacher" element={<ProtectedRoute><RouteGuard moduleId="teacher_nazra"><DivisionModelGuard allowedModels={['one_to_one']}><TeacherNazraDashboard /></DivisionModelGuard></RouteGuard></ProtectedRoute>} />
+      <Route path="/performance" element={<ProtectedRoute><TeacherPerformance /></ProtectedRoute>} />
 
       <Route path="/teaching" element={<ProtectedRoute><RouteGuard moduleId="teaching_landing"><DashboardLayout><TeachingLanding /></DashboardLayout></RouteGuard></ProtectedRoute>} />
       <Route path="/teaching-os" element={<ProtectedRoute><RouteGuard moduleId="teaching_os"><LanguageProvider><TeachingOS /></LanguageProvider></RouteGuard></ProtectedRoute>} />
