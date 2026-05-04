@@ -353,50 +353,113 @@ export default function Assignments() {
     },
   });
 
-  // Reassign teacher mutation - NOW logs history instead of overwriting
+  // Reassign teacher mutation - supports Permanent and Temporary (Substitute)
   const reassignMutation = useMutation({
-    mutationFn: async ({ id, newTeacherId, reason, payoutAmount: pa, payoutType: pt, effectiveDate }: { id: string; newTeacherId: string; reason?: string; payoutAmount?: number; payoutType?: string; effectiveDate?: string }) => {
-      // Find the current assignment to log history
+    mutationFn: async ({
+      id, newTeacherId, reason, payoutAmount: pa, payoutType: pt, effectiveDate,
+      transferType, substituteEndDate,
+    }: {
+      id: string; newTeacherId: string; reason?: string;
+      payoutAmount?: number; payoutType?: string; effectiveDate?: string;
+      transferType: 'permanent' | 'substitute'; substituteEndDate?: string;
+    }) => {
+      const sb = supabase as any;
       const assignment = assignments.find(a => a.id === id);
       if (!assignment) throw new Error('Assignment not found');
+      const effDate = effectiveDate || new Date().toISOString().split('T')[0];
 
-      // Close current history record
-      await supabase
-        .from('assignment_history')
-        .update({ ended_at: new Date().toISOString() })
-        .eq('assignment_id', id)
-        .is('ended_at', null);
+      if (transferType === 'permanent') {
+        // Close current history
+        await sb.from('assignment_history')
+          .update({ ended_at: new Date(effDate).toISOString(), reason: reason || 'Permanent transfer' })
+          .eq('assignment_id', id)
+          .is('ended_at', null);
 
-      // Update the assignment teacher + payout details
-      const updatePayload: any = { teacher_id: newTeacherId };
-      if (pa !== undefined && pa > 0) updatePayload.payout_amount = pa;
-      if (pt) updatePayload.payout_type = pt;
-      if (effectiveDate) updatePayload.effective_from_date = effectiveDate;
+        // Update assignment in place: new teacher + optional payout details
+        const updatePayload: any = { teacher_id: newTeacherId, transfer_type: 'permanent' };
+        if (pa !== undefined && pa > 0) updatePayload.payout_amount = pa;
+        if (pt) updatePayload.payout_type = pt;
+        updatePayload.effective_from_date = effDate;
 
-      const { error } = await supabase
-        .from('student_teacher_assignments')
-        .update(updatePayload)
-        .eq('id', id);
-      if (error) throw error;
+        const { error } = await sb.from('student_teacher_assignments').update(updatePayload).eq('id', id);
+        if (error) throw error;
 
-      // Create new history record
-      await supabase.from('assignment_history').insert({
-        assignment_id: id,
-        teacher_id: newTeacherId,
-        student_id: assignment.student_id,
-        subject_id: assignment.subject_id,
-        reason: reason || null,
-      });
+        await sb.from('assignment_history').insert({
+          assignment_id: id,
+          teacher_id: newTeacherId,
+          student_id: assignment.student_id,
+          subject_id: assignment.subject_id,
+          started_at: new Date(effDate).toISOString(),
+          reason: reason || 'Permanent transfer',
+        });
+      } else {
+        // SUBSTITUTE: pause original, create child substitute assignment
+        if (!substituteEndDate) throw new Error('Substitute end date is required');
+
+        await sb.from('student_teacher_assignments')
+          .update({ status: 'paused', status_effective_date: effDate })
+          .eq('id', id);
+
+        // Get full original assignment for cloning fields
+        const { data: oldAssign } = await sb
+          .from('student_teacher_assignments')
+          .select('subject_id, branch_id, division_id, duration_minutes, fee_package_id, requires_schedule, requires_planning, requires_attendance')
+          .eq('id', id)
+          .single();
+
+        const { data: subAssign } = await sb
+          .from('student_teacher_assignments')
+          .insert({
+            student_id: assignment.student_id,
+            teacher_id: newTeacherId,
+            subject_id: oldAssign?.subject_id ?? assignment.subject_id,
+            branch_id: oldAssign?.branch_id ?? activeDivision?.branch_id ?? null,
+            division_id: oldAssign?.division_id ?? activeDivision?.id ?? null,
+            duration_minutes: oldAssign?.duration_minutes ?? null,
+            payout_amount: pa && pa > 0 ? pa : assignment.payout_amount,
+            payout_type: pt || assignment.payout_type,
+            fee_package_id: oldAssign?.fee_package_id ?? null,
+            status: 'active',
+            effective_from_date: effDate,
+            effective_to_date: substituteEndDate,
+            transfer_type: 'substitute',
+            parent_assignment_id: id,
+            substitute_end_date: substituteEndDate,
+            requires_schedule: oldAssign?.requires_schedule ?? true,
+            requires_planning: oldAssign?.requires_planning ?? true,
+            requires_attendance: oldAssign?.requires_attendance ?? true,
+          })
+          .select('id')
+          .single();
+
+        if (subAssign) {
+          await sb.from('assignment_history').insert({
+            assignment_id: subAssign.id,
+            student_id: assignment.student_id,
+            teacher_id: newTeacherId,
+            subject_id: oldAssign?.subject_id ?? assignment.subject_id,
+            started_at: new Date(effDate).toISOString(),
+            reason: reason || `Temporary substitute until ${substituteEndDate}`,
+          });
+        }
+      }
     },
-    onSuccess: () => {
+    onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
-      toast({ title: 'Reassigned', description: 'Teacher reassigned with payout details. History recorded.' });
+      toast({
+        title: vars.transferType === 'permanent' ? 'Permanently Reassigned' : 'Substitute Assigned',
+        description: vars.transferType === 'permanent'
+          ? 'Teacher reassigned. History recorded.'
+          : 'Original teacher paused. Will auto-resume after substitute period.',
+      });
       setReassignDialog(null);
       setReassignTeacherId('');
       setReassignReason('');
       setReassignPayoutAmount('');
       setReassignPayoutType('monthly');
       setReassignEffectiveDate('');
+      setReassignTransferType('permanent');
+      setReassignSubstituteEndDate('');
     },
     onError: (error: any) => {
       handleSupabaseError(error, 'save changes');
