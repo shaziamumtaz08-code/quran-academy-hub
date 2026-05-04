@@ -230,6 +230,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
             ],
           },
           { label: "Resources", href: "/resources", icon: FolderOpen },
+          { label: "Work Hub", href: "/work-hub", icon: Briefcase },
         ],
       },
     ];
@@ -244,6 +245,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
           { label: "My Courses", href: "/my-courses", icon: GraduationCap },
           { label: "Resources", href: "/resources", icon: FolderOpen },
           { label: "Communication", href: "/communication", icon: MessageSquare },
+          { label: "Work Hub", href: "/work-hub", icon: Briefcase },
         ],
       },
     ];
@@ -259,6 +261,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
           { label: "Fees", href: "/finance?view=payments", icon: Landmark },
           { label: "Communication", href: "/communication", icon: MessageSquare },
           { label: "Resources", href: "/resources", icon: FolderOpen },
+          { label: "Work Hub", href: "/work-hub", icon: Briefcase },
         ],
       },
     ];
@@ -273,6 +276,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
           { label: "Exam Center", href: "/report-card-templates", icon: Award },
           { label: "Student Reports", href: "/student-reports", icon: FileText },
           { label: "Resources", href: "/resources", icon: FolderOpen },
+          { label: "Work Hub", href: "/work-hub", icon: Briefcase },
         ],
       },
     ];

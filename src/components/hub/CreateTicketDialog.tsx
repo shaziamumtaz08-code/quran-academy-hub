@@ -43,7 +43,8 @@ export function CreateTicketDialog({
   prefillSubject, prefillDescription, prefillAttachmentUrl, prefillAssigneeId,
   sourceType, sourceId, onLinkSource,
 }: CreateTicketDialogProps) {
-  const { profile } = useAuth();
+  const { profile, activeRole } = useAuth();
+  const isAdmin = !!activeRole && ['super_admin','admin','admin_division','admin_admissions','admin_fees','admin_academic'].includes(activeRole);
   const { activeDivision, activeBranch } = useDivision();
   const queryClient = useQueryClient();
 
@@ -99,7 +100,7 @@ export function CreateTicketDialog({
     enabled: open,
   });
 
-  // Fetch users with roles for assignee picker
+  // Fetch users with roles for assignee picker (admins only)
   const { data: users = [] } = useQuery({
     queryKey: ['hub-users-with-roles'],
     queryFn: async () => {
@@ -112,7 +113,22 @@ export function CreateTicketDialog({
       });
       return (profiles || []).map((p: any) => ({ ...p, roles: roleMap[p.id] || [] }));
     },
-    enabled: open,
+    enabled: open && isAdmin,
+  });
+
+  // For non-admins: auto-route to first available admin
+  const { data: defaultAdmin } = useQuery({
+    queryKey: ['hub-default-admin'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('user_roles')
+        .select('user_id, profile:profiles!user_roles_user_id_fkey(id, full_name)')
+        .in('role', ['admin','admin_division','super_admin'])
+        .limit(1)
+        .maybeSingle();
+      return (data as any)?.profile || null;
+    },
+    enabled: open && !isAdmin,
   });
 
   // Fetch TAT defaults
@@ -146,7 +162,9 @@ export function CreateTicketDialog({
 
       const metadata = category === 'leave_request' ? leaveMetadata : {};
 
-      const finalAssigneeId = assigneeId || profile!.id;
+      const finalAssigneeId = isAdmin
+        ? (assigneeId || profile!.id)
+        : (defaultAdmin?.id || profile!.id);
 
       const { data: created, error } = await supabase.from('tickets').insert({
         creator_id: profile!.id,
@@ -246,26 +264,32 @@ export function CreateTicketDialog({
             </div>
             <div>
               <Label className="text-xs">Assign To</Label>
-              <Select value={assigneeId} onValueChange={(v) => { setAssigneeId(v); setTargetRole(''); }}>
-                <SelectTrigger><SelectValue placeholder="Select user..." /></SelectTrigger>
-                <SelectContent>
-                  {users.map((u: any) => (
-                    <SelectItem key={u.id} value={u.id}>
-                      {u.full_name}
-                      {u.roles.length > 0 && (
-                        <span className="text-muted-foreground ml-1">
-                          ({u.roles.map((r: string) => r.replace('_', ' ')).join(', ')})
-                        </span>
-                      )}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {isAdmin ? (
+                <Select value={assigneeId} onValueChange={(v) => { setAssigneeId(v); setTargetRole(''); }}>
+                  <SelectTrigger><SelectValue placeholder="Select user..." /></SelectTrigger>
+                  <SelectContent>
+                    {users.map((u: any) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.full_name}
+                        {u.roles.length > 0 && (
+                          <span className="text-muted-foreground ml-1">
+                            ({u.roles.map((r: string) => r.replace('_', ' ')).join(', ')})
+                          </span>
+                        )}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="h-9 px-3 flex items-center rounded-md border bg-muted/40 text-sm text-muted-foreground">
+                  {defaultAdmin?.full_name ? `Admin (${defaultAdmin.full_name})` : 'Routed to Admin'}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Target Role (shown when assignee has multiple roles) */}
-          {assigneeId && assigneeRoles.length > 1 && (
+          {/* Target Role (admins only, when assignee has multiple roles) */}
+          {isAdmin && assigneeId && assigneeRoles.length > 1 && (
             <div>
               <Label className="text-xs">For Role</Label>
               <Select value={targetRole} onValueChange={setTargetRole}>
