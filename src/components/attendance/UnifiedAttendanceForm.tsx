@@ -35,7 +35,8 @@ export type AttendanceStatus =
   | 'student_rescheduled' 
   | 'holiday';
 
-type ReasonCategory = 'sick' | 'personal' | 'emergency' | 'internet_issue' | 'other';
+type ReasonCategory = 'sick' | 'personal' | 'emergency' | 'internet_issue' | 'periods' | 'family' | 'travel' | 'other';
+type RescheduleReason = 'teacher_unavailable' | 'student_unavailable' | 'tech_issue' | 'power_outage' | 'emergency' | 'holiday_overlap' | 'other';
 
 export const STATUS_OPTIONS: { value: AttendanceStatus; label: string }[] = [
   { value: 'present', label: 'Present' },
@@ -48,11 +49,24 @@ export const STATUS_OPTIONS: { value: AttendanceStatus; label: string }[] = [
   { value: 'holiday', label: 'Holiday' },
 ];
 
-const REASON_CATEGORIES: { value: ReasonCategory; label: string }[] = [
+const REASON_CATEGORIES: { value: ReasonCategory; label: string; femaleOnly?: boolean }[] = [
   { value: 'sick', label: 'Sick' },
   { value: 'personal', label: 'Personal' },
   { value: 'emergency', label: 'Emergency' },
+  { value: 'family', label: 'Family Matter' },
+  { value: 'travel', label: 'Travel' },
   { value: 'internet_issue', label: 'Internet Issue' },
+  { value: 'periods', label: 'Periods', femaleOnly: true },
+  { value: 'other', label: 'Other' },
+];
+
+const RESCHEDULE_REASONS: { value: RescheduleReason; label: string }[] = [
+  { value: 'teacher_unavailable', label: 'Teacher Unavailable' },
+  { value: 'student_unavailable', label: 'Student Unavailable' },
+  { value: 'tech_issue', label: 'Technical Issue' },
+  { value: 'power_outage', label: 'Power Outage' },
+  { value: 'emergency', label: 'Emergency' },
+  { value: 'holiday_overlap', label: 'Holiday Overlap' },
   { value: 'other', label: 'Other' },
 ];
 
@@ -67,6 +81,7 @@ export interface StudentInfo {
   daily_target_lines?: number;
   preferred_unit?: string;
   timezone?: string;
+  gender?: string | null;
 }
 
 /** Shape of an attendance row when editing. Extends create payload with id + nullable progress fields. */
@@ -181,6 +196,11 @@ export function UnifiedAttendanceForm({
   // Reschedule fields
   const [rescheduleDate, setRescheduleDate] = useState('');
   const [rescheduleTime, setRescheduleTime] = useState('');
+  const [rescheduleBy, setRescheduleBy] = useState<'teacher' | 'student'>('teacher');
+  const [rescheduleReason, setRescheduleReason] = useState<string>('');
+
+  // Leave date range (for student_leave / teacher_leave when applicable)
+  const [leaveEndDate, setLeaveEndDate] = useState('');
 
 
   // Subject-specific fields
@@ -218,6 +238,27 @@ export function UnifiedAttendanceForm({
   const currentSubjectType: SubjectType = useMemo(() => {
     return getSubjectType(student.subject_name);
   }, [student.subject_name]);
+
+  // Fetch student gender (for conditional reason options like Periods)
+  const { data: studentProfile } = useQuery({
+    queryKey: ['student-gender', student.id],
+    queryFn: async () => {
+      if (!student.id) return null;
+      const { data } = await supabase.from('profiles').select('gender').eq('id', student.id).maybeSingle();
+      return data;
+    },
+    enabled: open && !!student.id,
+  });
+  const studentGender = (student.gender || (studentProfile as any)?.gender || '').toString().toLowerCase();
+  const visibleReasonCategories = useMemo(() => {
+    return REASON_CATEGORIES.filter(r => !r.femaleOnly || studentGender === 'female');
+  }, [studentGender]);
+
+  // Sync rescheduleBy with selected status
+  useEffect(() => {
+    if (selectedStatus === 'rescheduled') setRescheduleBy('teacher');
+    else if (selectedStatus === 'student_rescheduled') setRescheduleBy('student');
+  }, [selectedStatus]);
 
   // Fetch student's schedule
   const { data: scheduleData } = useQuery({
@@ -332,6 +373,9 @@ export function UnifiedAttendanceForm({
       setReasonText('');
       setRescheduleDate('');
       setRescheduleTime('');
+      setRescheduleBy('teacher');
+      setRescheduleReason('');
+      setLeaveEndDate('');
       setLessonNumber('');
       setPageNumber('');
       setMarkerType('ayah');
@@ -432,7 +476,9 @@ export function UnifiedAttendanceForm({
 
       let finalReason = remarks || '';
       if (requiresReschedule(selectedStatus) && rescheduleDate) {
-        finalReason = `Make-up for missed class on ${rescheduleDate}${rescheduleTime ? ` at ${rescheduleTime}` : ''}. ${remarks || ''}`.trim();
+        const rrLabel = rescheduleReason === 'other' ? reasonText : (RESCHEDULE_REASONS.find(r => r.value === rescheduleReason)?.label || '');
+        const byLabel = rescheduleBy === 'student' ? 'Student' : 'Teacher';
+        finalReason = `Rescheduled by ${byLabel}${rrLabel ? ` — ${rrLabel}` : ''}. Make-up for missed class on ${rescheduleDate}${rescheduleTime ? ` at ${rescheduleTime}` : ''}. ${remarks || ''}`.trim();
       }
 
       // Build the full payload. In edit mode we always write the Phase A superset
@@ -592,18 +638,20 @@ export function UnifiedAttendanceForm({
     if (requiresReason(selectedStatus) && !reasonCategory) return false;
     if (requiresReason(selectedStatus) && reasonCategory === 'other' && !reasonText.trim()) return false;
     if (requiresReschedule(selectedStatus) && !rescheduleDate) return false;
+    if (requiresReschedule(selectedStatus) && !rescheduleReason) return false;
+    if (requiresReschedule(selectedStatus) && rescheduleReason === 'other' && !reasonText.trim()) return false;
     if (lessonRequired && !hasLessonDetails) return false;
     return true;
-  }, [selectedStatus, classTime, classDate, reasonCategory, reasonText, rescheduleDate, hasDuplicateAttendance, isScheduledDay, isFutureDate, lessonRequired, hasLessonDetails, needsStudent, student.id]);
+  }, [selectedStatus, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleReason, hasDuplicateAttendance, isScheduledDay, isFutureDate, lessonRequired, hasLessonDetails, needsStudent, student.id]);
 
   const studentTzAbbr = getTimezoneAbbr(student.timezone);
   const teacherTzAbbr = getTimezoneAbbr(effectiveTeacherTz);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border text-white">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border text-foreground">
         <DialogHeader>
-          <DialogTitle className="font-serif text-xl text-white flex items-center gap-3">
+          <DialogTitle className="font-serif text-xl text-foreground flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
               <User className="h-5 w-5 text-primary" />
             </div>
@@ -840,14 +888,25 @@ export function UnifiedAttendanceForm({
           {/* Reason fields for absent status */}
           {requiresReason(selectedStatus) && (
             <div className="space-y-4 p-4 bg-muted rounded-lg">
+              {/* Leave date range — for student_leave / teacher_leave */}
+              {(selectedStatus === 'student_leave' || selectedStatus === 'teacher_leave') && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-foreground text-xs">Leave From</Label>
+                    <Input type="date" value={classDate} onChange={(e) => setClassDate(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-foreground text-xs">Leave To</Label>
+                    <Input type="date" value={leaveEndDate || classDate} min={classDate} onChange={(e) => setLeaveEndDate(e.target.value)} />
+                  </div>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label className="text-foreground">Reason Category <span className="text-destructive">*</span></Label>
                 <Select value={reasonCategory} onValueChange={(v) => setReasonCategory(v as ReasonCategory)}>
-                  <SelectTrigger className="">
-                    <SelectValue placeholder="Select reason" />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Select reason" /></SelectTrigger>
                   <SelectContent>
-                    {REASON_CATEGORIES.map((opt) => (
+                    {visibleReasonCategories.map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                     ))}
                   </SelectContent>
@@ -856,12 +915,42 @@ export function UnifiedAttendanceForm({
               {reasonCategory === 'other' && (
                 <div className="space-y-2">
                   <Label className="text-foreground">Specify Reason <span className="text-destructive">*</span></Label>
-                  <Textarea
-                    value={reasonText}
-                    onChange={(e) => setReasonText(e.target.value)}
-                    className=""
-                    placeholder="Please specify..."
-                  />
+                  <Textarea value={reasonText} onChange={(e) => setReasonText(e.target.value)} placeholder="Please specify..." />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Reschedule meta — by whom + reason */}
+          {requiresReschedule(selectedStatus) && (
+            <div className="space-y-4 p-4 bg-muted rounded-lg">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-foreground">Rescheduled By <span className="text-destructive">*</span></Label>
+                  <Select value={rescheduleBy} onValueChange={(v) => { setRescheduleBy(v as any); setSelectedStatus(v === 'student' ? 'student_rescheduled' : 'rescheduled'); }}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="teacher">Teacher</SelectItem>
+                      <SelectItem value="student">Student</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-foreground">Reschedule Reason <span className="text-destructive">*</span></Label>
+                  <Select value={rescheduleReason} onValueChange={setRescheduleReason}>
+                    <SelectTrigger><SelectValue placeholder="Select reason" /></SelectTrigger>
+                    <SelectContent>
+                      {RESCHEDULE_REASONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {rescheduleReason === 'other' && (
+                <div className="space-y-2">
+                  <Label className="text-foreground">Specify Reason <span className="text-destructive">*</span></Label>
+                  <Textarea value={reasonText} onChange={(e) => setReasonText(e.target.value)} placeholder="Please specify..." />
                 </div>
               )}
             </div>

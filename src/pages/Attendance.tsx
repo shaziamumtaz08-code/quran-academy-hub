@@ -39,6 +39,7 @@ import { isRepeatLesson as checkRepeatLesson, type LessonPosition } from '@/lib/
 import { type MarkerType } from '@/components/attendance/SabaqSection';
 import { MissingAttendanceSection, useMissingAttendanceCount, BYPASS_CUTOFF } from '@/components/attendance/MissingAttendanceSection';
 import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
+import { TeacherLeaveBulkDialog } from '@/components/attendance/TeacherLeaveBulkDialog';
 
 const DAY_NAMES_MAIN = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
@@ -150,6 +151,8 @@ export default function Attendance() {
   const [holidayDialogOpen, setHolidayDialogOpen] = useState(false);
   const [holidayName, setHolidayName] = useState('');
   const [holidayDate, setHolidayDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [holidayEndDate, setHolidayEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [teacherLeaveDialogOpen, setTeacherLeaveDialogOpen] = useState(false);
   
   // Form state for marking attendance
   const [selectedStudent, setSelectedStudent] = useState('');
@@ -217,7 +220,7 @@ export default function Attendance() {
   const [academicFollowups, setAcademicFollowups] = useState<FollowupSuggestion[]>([]);
 
   // Role checks based on activeRole
-  const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' || 
+  const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' || activeRole === 'admin_division' ||
     activeRole === 'admin_admissions' || activeRole === 'admin_fees' || activeRole === 'admin_academic';
   const isTeacher = activeRole === 'teacher' || activeRole === 'examiner';
   const isStudent = activeRole === 'student';
@@ -597,27 +600,35 @@ export default function Attendance() {
     enabled: editDialogOpen && !!editingRecord?.student_id && !!editingRecord?.teacher_id,
   });
 
-  // Save holiday mutation
+  // Save holiday mutation — supports a date range (from/to inclusive)
   const saveHoliday = useMutation({
     mutationFn: async () => {
       if (!user?.id) throw new Error('Missing user');
-      const { error } = await supabase.from('holidays' as any).insert({
-        holiday_date: holidayDate,
-        name: holidayName,
-        created_by: user.id,
-        branch_id: null,
-        division_id: activeDivision?.id || null,
-      });
+      const start = new Date(holidayDate + 'T00:00:00');
+      const end = new Date((holidayEndDate || holidayDate) + 'T00:00:00');
+      if (end < start) throw new Error('End date cannot be before start date');
+      const rows: any[] = [];
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        rows.push({
+          holiday_date: format(d, 'yyyy-MM-dd'),
+          name: holidayName,
+          created_by: user.id,
+          branch_id: null,
+          division_id: activeDivision?.id || null,
+        });
+      }
+      const { error } = await supabase.from('holidays' as any).insert(rows);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: 'Holiday Saved', description: `${holidayName} on ${holidayDate} marked as holiday` });
+      toast({ title: 'Holiday Saved', description: `${holidayName} marked from ${holidayDate} to ${holidayEndDate || holidayDate}` });
       queryClient.invalidateQueries({ queryKey: ['holidays'] });
       queryClient.invalidateQueries({ queryKey: ['schedules-count-missing'] });
       queryClient.invalidateQueries({ queryKey: ['missing-attendance'] });
       setHolidayDialogOpen(false);
       setHolidayName('');
       setHolidayDate(format(new Date(), 'yyyy-MM-dd'));
+      setHolidayEndDate(format(new Date(), 'yyyy-MM-dd'));
     },
     onError: (e: any) => handleSupabaseError(e, 'save changes'),
   });
@@ -1011,13 +1022,22 @@ export default function Attendance() {
                 Missing{missingCount > 0 ? ` (${missingCount})` : ''}
               </Button>
               {isAdmin && (
-                <Button 
-                  variant="outline"
-                  onClick={() => setHolidayDialogOpen(true)}
-                >
-                  <Palmtree className="h-4 w-4 mr-2" />
-                  Mark Holiday
-                </Button>
+                <>
+                  <Button 
+                    variant="outline"
+                    onClick={() => setHolidayDialogOpen(true)}
+                  >
+                    <Palmtree className="h-4 w-4 mr-2" />
+                    Mark Holiday
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setTeacherLeaveDialogOpen(true)}
+                  >
+                    <UserX className="h-4 w-4 mr-2" />
+                    Teacher Leave
+                  </Button>
+                </>
               )}
               <Button 
                 onClick={() => {
@@ -1563,12 +1583,18 @@ export default function Attendance() {
               <DialogDescription>Mark a date as a holiday — all scheduled sessions on this date will be excluded from missing attendance.</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 mt-2">
-              <div className="space-y-2">
-                <Label>Holiday Date</Label>
-                <Input type="date" value={holidayDate} onChange={e => setHolidayDate(e.target.value)} />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-foreground">From</Label>
+                  <Input type="date" value={holidayDate} onChange={e => { setHolidayDate(e.target.value); if (!holidayEndDate || holidayEndDate < e.target.value) setHolidayEndDate(e.target.value); }} />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-foreground">To</Label>
+                  <Input type="date" value={holidayEndDate} min={holidayDate} onChange={e => setHolidayEndDate(e.target.value)} />
+                </div>
               </div>
               <div className="space-y-2">
-                <Label>Holiday Name</Label>
+                <Label className="text-foreground">Holiday Name</Label>
                 <Input value={holidayName} onChange={e => setHolidayName(e.target.value)} placeholder="e.g. Eid ul Fitr, Weekend Off" />
               </div>
               <div className="flex gap-3 pt-2">
@@ -1584,6 +1610,13 @@ export default function Attendance() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Teacher Leave (bulk from–to) Dialog */}
+        <TeacherLeaveBulkDialog
+          open={teacherLeaveDialogOpen}
+          onOpenChange={setTeacherLeaveDialogOpen}
+          divisionId={activeDivision?.id || null}
+        />
       </div>
     </DashboardLayout>
   );
