@@ -298,6 +298,7 @@ export default function Assignments() {
           payout_amount: parseFloat(payoutAmount) || 0,
           payout_type: payoutType,
           effective_from_date: effectiveFromDate || null,
+          effective_to_date: effectiveToDate || null,
           ...(status && { status }),
         })
         .eq('id', id);
