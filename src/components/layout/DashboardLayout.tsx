@@ -229,6 +229,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
               { label: "Notifications", href: "/communication?view=notifications" },
             ],
           },
+          { label: "Resources", href: "/resources", icon: FolderOpen },
         ],
       },
     ];
@@ -257,6 +258,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
           { label: "My Children's Reports", href: "/student-reports", icon: FileText },
           { label: "Fees", href: "/finance?view=payments", icon: Landmark },
           { label: "Communication", href: "/communication", icon: MessageSquare },
+          { label: "Resources", href: "/resources", icon: FolderOpen },
         ],
       },
     ];
@@ -270,6 +272,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
           { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
           { label: "Exam Center", href: "/report-card-templates", icon: Award },
           { label: "Student Reports", href: "/student-reports", icon: FileText },
+          { label: "Resources", href: "/resources", icon: FolderOpen },
         ],
       },
     ];
