@@ -196,6 +196,11 @@ export function UnifiedAttendanceForm({
   // Reschedule fields
   const [rescheduleDate, setRescheduleDate] = useState('');
   const [rescheduleTime, setRescheduleTime] = useState('');
+  const [rescheduleBy, setRescheduleBy] = useState<'teacher' | 'student'>('teacher');
+  const [rescheduleReason, setRescheduleReason] = useState<string>('');
+
+  // Leave date range (for student_leave / teacher_leave when applicable)
+  const [leaveEndDate, setLeaveEndDate] = useState('');
 
 
   // Subject-specific fields
