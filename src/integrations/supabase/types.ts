@@ -7304,6 +7304,7 @@ export type Database = {
           page_to: number | null
           primary_marker: Database["public"]["Enums"]["primary_marker"]
           resource_name: string | null
+          review_note: string | null
           status: Database["public"]["Enums"]["plan_status"]
           student_id: string
           subject_id: string | null
@@ -7338,6 +7339,7 @@ export type Database = {
           page_to?: number | null
           primary_marker?: Database["public"]["Enums"]["primary_marker"]
           resource_name?: string | null
+          review_note?: string | null
           status?: Database["public"]["Enums"]["plan_status"]
           student_id: string
           subject_id?: string | null
@@ -7372,6 +7374,7 @@ export type Database = {
           page_to?: number | null
           primary_marker?: Database["public"]["Enums"]["primary_marker"]
           resource_name?: string | null
+          review_note?: string | null
           status?: Database["public"]["Enums"]["plan_status"]
           student_id?: string
           subject_id?: string | null
@@ -9426,7 +9429,11 @@ export type Database = {
         | "dashboard.teacher"
         | "dashboard.student"
         | "dashboard.parent"
-      plan_status: "pending" | "approved"
+      plan_status:
+        | "pending"
+        | "approved"
+        | "declined"
+        | "clarification_required"
       primary_marker: "rukus" | "pages" | "lines"
       session_status: "scheduled" | "live" | "frozen" | "completed"
       zoom_license_status: "available" | "busy"
@@ -9630,7 +9637,12 @@ export const Constants = {
         "dashboard.student",
         "dashboard.parent",
       ],
-      plan_status: ["pending", "approved"],
+      plan_status: [
+        "pending",
+        "approved",
+        "declined",
+        "clarification_required",
+      ],
       primary_marker: ["rukus", "pages", "lines"],
       session_status: ["scheduled", "live", "frozen", "completed"],
       zoom_license_status: ["available", "busy"],
