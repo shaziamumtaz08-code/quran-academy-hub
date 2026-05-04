@@ -245,6 +245,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
           { label: "My Courses", href: "/my-courses", icon: GraduationCap },
           { label: "Resources", href: "/resources", icon: FolderOpen },
           { label: "Communication", href: "/communication", icon: MessageSquare },
+          { label: "Work Hub", href: "/work-hub", icon: Briefcase },
         ],
       },
     ];
