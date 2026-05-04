@@ -150,6 +150,7 @@ export default function Attendance() {
   const [holidayDialogOpen, setHolidayDialogOpen] = useState(false);
   const [holidayName, setHolidayName] = useState('');
   const [holidayDate, setHolidayDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [holidayEndDate, setHolidayEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   
   // Form state for marking attendance
   const [selectedStudent, setSelectedStudent] = useState('');
