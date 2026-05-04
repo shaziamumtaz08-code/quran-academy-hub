@@ -167,7 +167,7 @@ export default function Resources() {
   const { data: folders = [], isLoading: foldersLoading } = useQuery({
     queryKey: ["folders", divisionId],
     queryFn: async () => {
-      let q = supabase.from("folders").select("*").is("deleted_at" as any, null).order("name");
+      let q = supabase.from("folders").select("*").order("name");
       if (divisionId) q = q.or(`division_id.eq.${divisionId},division_id.is.null`);
       const { data, error } = await q;
       if (error) throw error;
