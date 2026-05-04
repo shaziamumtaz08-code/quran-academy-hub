@@ -43,7 +43,8 @@ export function CreateTicketDialog({
   prefillSubject, prefillDescription, prefillAttachmentUrl, prefillAssigneeId,
   sourceType, sourceId, onLinkSource,
 }: CreateTicketDialogProps) {
-  const { profile } = useAuth();
+  const { profile, activeRole } = useAuth();
+  const isAdmin = !!activeRole && ['super_admin','admin','admin_division','admin_admissions','admin_fees','admin_academic'].includes(activeRole);
   const { activeDivision, activeBranch } = useDivision();
   const queryClient = useQueryClient();
 
