@@ -1510,12 +1510,7 @@ export default function Attendance() {
         </Card>
         )}
 
-          </TabsContent>
-
-          <TabsContent value="group">
-            <GroupAttendanceTab />
-          </TabsContent>
-        </Tabs>
+        </div>
 
         {/* Unified Mark Attendance — same form as Students tab */}
         <UnifiedAttendanceForm
