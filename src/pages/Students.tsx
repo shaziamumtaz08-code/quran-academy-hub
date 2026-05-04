@@ -675,6 +675,7 @@ export default function Students() {
               ))}
             </div>
           ) : (
+            <>
             <div className="bg-card rounded-xl border border-border overflow-hidden">
               <Table>
                 <TableHeader>
