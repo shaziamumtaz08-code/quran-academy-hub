@@ -3701,36 +3701,58 @@ export type Database = {
           created_at: string
           created_by: string | null
           deleted_at: string | null
+          division_id: string | null
           id: string
+          is_system: boolean
           name: string
           parent_id: string | null
+          source_id: string | null
+          source_type: string | null
           updated_at: string
           visibility: string
           visible_to_roles: string[] | null
+          visible_to_user_ids: string[] | null
         }
         Insert: {
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
+          division_id?: string | null
           id?: string
+          is_system?: boolean
           name: string
           parent_id?: string | null
+          source_id?: string | null
+          source_type?: string | null
           updated_at?: string
           visibility?: string
           visible_to_roles?: string[] | null
+          visible_to_user_ids?: string[] | null
         }
         Update: {
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
+          division_id?: string | null
           id?: string
+          is_system?: boolean
           name?: string
           parent_id?: string | null
+          source_id?: string | null
+          source_type?: string | null
           updated_at?: string
           visibility?: string
           visible_to_roles?: string[] | null
+          visible_to_user_ids?: string[] | null
         }
         Relationships: [
+          {
+            foreignKeyName: "folders_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "folders_parent_id_fkey"
             columns: ["parent_id"]
@@ -9241,9 +9263,22 @@ export type Database = {
         Args: { _course_id: string }
         Returns: boolean
       }
-      can_view_resource_visibility: {
-        Args: { _visibility: string; _visible_to_roles: string[] }
-        Returns: boolean
+      can_view_resource_visibility:
+        | {
+            Args: { _visibility: string; _visible_to_roles: string[] }
+            Returns: boolean
+          }
+        | {
+            Args: {
+              _visibility: string
+              _visible_to_roles: string[]
+              _visible_to_user_ids: string[]
+            }
+            Returns: boolean
+          }
+      ensure_division_root_folders: {
+        Args: { _division_id: string }
+        Returns: undefined
       }
       ensure_user_context: {
         Args: {
