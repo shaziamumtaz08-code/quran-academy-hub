@@ -204,7 +204,7 @@ export default function Resources() {
       {/* Tabs */}
       <div className="px-4 lg:px-6 border-b border-border/60 flex items-center gap-1">
         {[
-          { id: "all", label: "All Resources", icon: FolderOpen, count: resources.length },
+          { id: "all", label: isAdmin ? "All Resources" : "My Files", icon: FolderOpen, count: resources.length },
           { id: "assigned", label: "My Assigned", icon: Star, count: assignedResources.length },
         ].map((t) => (
           <button
