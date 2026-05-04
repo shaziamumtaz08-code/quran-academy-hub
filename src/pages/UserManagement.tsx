@@ -1745,6 +1745,115 @@ export default function UserManagement() {
             )}
 
             {/* Users Table — premium redesign */}
+            {(activeRole === 'super_admin' || activeRole === 'admin_division' || activeRole === 'admin') && unassignedUsers.length > 0 && !showNoRoleOnly && (
+              <Card className="border-amber-300/60 bg-amber-50/40 dark:bg-amber-950/10 dark:border-amber-800/60 shadow-sm">
+                <CardContent className="py-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowUnassigned(s => !s)}
+                    className="flex w-full items-center justify-between gap-3 text-left"
+                  >
+                    <div className="flex items-center gap-3 text-amber-800 dark:text-amber-300">
+                      <AlertTriangle className="h-5 w-5" />
+                      <span className="text-sm font-medium">
+                        {unassignedUsers.length} user{unassignedUsers.length === 1 ? '' : 's'} are unassigned to any division
+                      </span>
+                    </div>
+                    <span className="text-xs text-amber-800/80 dark:text-amber-300/80 underline">
+                      {showUnassigned ? 'Hide users' : 'Show users'}
+                    </span>
+                  </button>
+                </CardContent>
+              </Card>
+            )}
+
+            {showUnassigned && (activeRole === 'super_admin' || activeRole === 'admin_division' || activeRole === 'admin') && unassignedUsers.length > 0 && !showNoRoleOnly && (
+              <Card className="overflow-hidden border-amber-300/60 dark:border-amber-800/60 shadow-sm">
+                <CardContent className="p-0">
+                  <Table wrapperClassName="overflow-x-auto">
+                    <TableHeader className="bg-amber-50/50 dark:bg-amber-950/10">
+                      <TableRow className="border-b border-border/60 hover:bg-transparent">
+                        <TableHead className="w-12 h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">#</TableHead>
+                        <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">User</TableHead>
+                        <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">ID &amp; Roles</TableHead>
+                        <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Phone</TableHead>
+                        <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Location</TableHead>
+                        <TableHead className="h-11 text-right text-[10px] uppercase tracking-wider font-semibold text-muted-foreground pr-4">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {unassignedUsers.map((user, idx) => (
+                        <TableRow
+                          key={`unassigned-${user.id}`}
+                          onClick={() => openProfileDrawer(user.id)}
+                          className={`group min-h-[64px] border-l-2 border-transparent transition-colors hover:bg-muted/30 hover:border-l-primary cursor-pointer ${idx % 2 === 0 ? 'bg-transparent' : 'bg-muted/20'}`}
+                        >
+                          <TableCell className="py-3 text-muted-foreground text-sm tabular-nums">{idx + 1}</TableCell>
+                          <TableCell className="py-3 font-medium">
+                            <div className="flex items-center gap-3">
+                              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white ${AVATAR_COLORS[getPrimaryRole(user.roles as AppRole[])] || AVATAR_COLORS.default}`}>
+                                {getInitials(user.full_name)}
+                              </div>
+                              <div className="flex flex-col min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="truncate text-sm font-semibold text-foreground">{user.full_name}</span>
+                                  <Badge variant="outline" className="text-[10px] border-amber-300/70 text-amber-700 dark:text-amber-300 bg-transparent">Unassigned</Badge>
+                                </div>
+                                {user.email && <span className="truncate text-xs text-muted-foreground">{user.email}</span>}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-3">
+                            <span className="font-mono text-xs bg-white text-slate-800 border border-slate-300 px-2 py-1 inline-flex items-center gap-2">
+                              <span className="tabular-nums truncate text-left" style={{ width: '12ch' }}>{personNumberMap.get(user.id) || '—'}</span>
+                            </span>
+                          </TableCell>
+                          <TableCell className="py-3">
+                            {user.whatsapp_number ? (
+                              <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground tabular-nums">
+                                <span className="text-base leading-none">{dialCodeToFlag(user.whatsapp_number) || '🌐'}</span>
+                                {user.whatsapp_number}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="py-3">
+                            {user.city || user.country ? (
+                              <span className="text-sm text-muted-foreground">{[user.city, user.country].filter(Boolean).join(', ')}</span>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setAssignRoleUser(user)}
+                                title="Assign or modify role"
+                                className={(user.roles?.length ?? 0) === 0 ? 'text-amber-600 hover:text-amber-700' : ''}
+                              >
+                                <UserPlus className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openProfileDrawer(user.id)}
+                                title="Open full profile"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+
             <Card className="overflow-hidden border-border/60 shadow-sm">
               <CardContent className="p-0">
                 {usersLoading ? (
