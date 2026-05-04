@@ -34,11 +34,11 @@ export function buildRailNav(role: AppRole | null): RailItem[] {
   if (role === 'teacher') {
     return [
       { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
-      { label: 'My Classes', href: '/teaching', icon: BookOpen },
       { label: 'Attendance', href: '/attendance', icon: ClipboardCheck },
       { label: 'Planning', href: '/monthly-planning', icon: Target },
-      { label: 'Reports', href: '/student-reports', icon: BarChart3 },
+      { label: 'Student Reports', href: '/student-reports', icon: BarChart3 },
       { label: 'Salary', href: '/salary', icon: DollarSign },
+      { label: 'Resources', href: '/resources', icon: FolderOpen },
       { label: 'Communication', href: '/communication', icon: MessageSquare },
     ];
   }
