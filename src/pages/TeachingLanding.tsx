@@ -40,10 +40,24 @@ export default function TeachingLanding() {
   const requested = searchParams.get('view');
   const activeView = views.some((item) => item.value === requested) ? requested! : null;
 
+  const teacherContentMap: Record<string, React.ReactNode> = {
+    attendance: <Suspense fallback={<Loading />}><Attendance /></Suspense>,
+    planning: <Suspense fallback={<Loading />}><MonthlyPlanning /></Suspense>,
+    'teaching-os': <Suspense fallback={<Loading />}><TeachingOS /></Suspense>,
+    'quiz-engine': <Suspense fallback={<Loading />}><QuizEngine /></Suspense>,
+    schedules: <Suspense fallback={<Loading />}><Schedules /></Suspense>,
+    subjects: <Suspense fallback={<Loading />}><Subjects /></Suspense>,
+  };
+
   if (activeRole === 'teacher') {
+    const teacherView = activeView && teacherContentMap[activeView] ? activeView : null;
     return (
       <PageShell title="Teaching" description="Your classes, schedule, and planning.">
-        <TeacherTeachingLanding />
+        {teacherView ? (
+          <div className="min-h-[420px] animate-fade-in">{teacherContentMap[teacherView]}</div>
+        ) : (
+          <TeacherTeachingLanding />
+        )}
       </PageShell>
     );
   }
