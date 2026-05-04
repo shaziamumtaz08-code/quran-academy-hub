@@ -261,7 +261,8 @@ export default function UserManagement() {
   const queryClient = useQueryClient();
   const location = useLocation();
   const navigate = useNavigate();
-  const staffMode = new URLSearchParams(location.search).get('mode') === 'staff';
+  const _qs = new URLSearchParams(location.search);
+  const staffMode = _qs.get('mode') === 'staff' || _qs.get('view') === 'staff';
   const TEACHING_ROLES: AppRole[] = ['teacher', 'student', 'parent'];
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserWithRoles | null>(null);
