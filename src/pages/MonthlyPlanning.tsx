@@ -1836,7 +1836,7 @@ export default function MonthlyPlanning() {
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  onClick={() => openEditDialog(plan as MonthlyPlan, 'view')}
+                                  onClick={() => setViewPlan(plan as MonthlyPlan)}
                                   title="View full form"
                                 >
                                   <Eye className="h-3 w-3" />
