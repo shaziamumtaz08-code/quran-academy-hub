@@ -884,12 +884,23 @@ export function UnifiedAttendanceForm({
           {/* Reason fields for absent status */}
           {requiresReason(selectedStatus) && (
             <div className="space-y-4 p-4 bg-muted rounded-lg">
+              {/* Leave date range — for student_leave / teacher_leave */}
+              {(selectedStatus === 'student_leave' || selectedStatus === 'teacher_leave') && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-foreground text-xs">Leave From</Label>
+                    <Input type="date" value={classDate} onChange={(e) => setClassDate(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-foreground text-xs">Leave To</Label>
+                    <Input type="date" value={leaveEndDate || classDate} min={classDate} onChange={(e) => setLeaveEndDate(e.target.value)} />
+                  </div>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label className="text-foreground">Reason Category <span className="text-destructive">*</span></Label>
                 <Select value={reasonCategory} onValueChange={(v) => setReasonCategory(v as ReasonCategory)}>
-                  <SelectTrigger className="">
-                    <SelectValue placeholder="Select reason" />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Select reason" /></SelectTrigger>
                   <SelectContent>
                     {visibleReasonCategories.map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
@@ -900,12 +911,42 @@ export function UnifiedAttendanceForm({
               {reasonCategory === 'other' && (
                 <div className="space-y-2">
                   <Label className="text-foreground">Specify Reason <span className="text-destructive">*</span></Label>
-                  <Textarea
-                    value={reasonText}
-                    onChange={(e) => setReasonText(e.target.value)}
-                    className=""
-                    placeholder="Please specify..."
-                  />
+                  <Textarea value={reasonText} onChange={(e) => setReasonText(e.target.value)} placeholder="Please specify..." />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Reschedule meta — by whom + reason */}
+          {requiresReschedule(selectedStatus) && (
+            <div className="space-y-4 p-4 bg-muted rounded-lg">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-foreground">Rescheduled By <span className="text-destructive">*</span></Label>
+                  <Select value={rescheduleBy} onValueChange={(v) => { setRescheduleBy(v as any); setSelectedStatus(v === 'student' ? 'student_rescheduled' : 'rescheduled'); }}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="teacher">Teacher</SelectItem>
+                      <SelectItem value="student">Student</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-foreground">Reschedule Reason <span className="text-destructive">*</span></Label>
+                  <Select value={rescheduleReason} onValueChange={setRescheduleReason}>
+                    <SelectTrigger><SelectValue placeholder="Select reason" /></SelectTrigger>
+                    <SelectContent>
+                      {RESCHEDULE_REASONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {rescheduleReason === 'other' && (
+                <div className="space-y-2">
+                  <Label className="text-foreground">Specify Reason <span className="text-destructive">*</span></Label>
+                  <Textarea value={reasonText} onChange={(e) => setReasonText(e.target.value)} placeholder="Please specify..." />
                 </div>
               )}
             </div>
