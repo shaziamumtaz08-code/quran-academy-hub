@@ -1080,11 +1080,11 @@ export default function UserManagement() {
   });
 
   const unassignedUsers = (filteredAll || []).filter(user => {
-    if (!scopeDivisionIds) return false;
     const memberships = divMembershipMap?.get(user.id) || [];
     if (memberships.length > 0) return false;
     const hasGlobalRole = (user.roles || []).some(r => GLOBAL_ROLES.includes(r));
-    return !hasGlobalRole; // global-role users without context already counted as matched
+    if (hasGlobalRole) return false;
+    return isSuperAdmin || !!scopeDivisionIds;
   });
 
   // Users with NO role assigned at all (critical)
