@@ -679,12 +679,51 @@ export default function Schedules() {
     return rows;
   }, [filteredAssignments, schedules]);
 
-  const handleExport = (mode: 'student' | 'teacher' | 'day' | 'week' | 'flat') => {
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportMode, setExportMode] = useState<'student' | 'teacher' | 'day' | 'week' | 'flat'>('flat');
+  const [exportFromDate, setExportFromDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [exportToDate, setExportToDate] = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() + 7);
+    return format(d, 'yyyy-MM-dd');
+  });
+
+  const openExportDialog = (mode: 'student' | 'teacher' | 'day' | 'week' | 'flat') => {
     if (flatScheduleRows.length === 0) {
       toast({ title: 'Nothing to export', description: 'No schedules match current filters.', variant: 'destructive' });
       return;
     }
+    setExportMode(mode);
+    setExportDialogOpen(true);
+  };
+
+  const handleExport = (mode: 'student' | 'teacher' | 'day' | 'week' | 'flat') => {
     const stamp = new Date().toISOString().slice(0, 10);
+    const fromD = new Date(exportFromDate + 'T00:00:00');
+    const toD = new Date(exportToDate + 'T00:00:00');
+    if (isNaN(fromD.getTime()) || isNaN(toD.getTime()) || fromD > toD) {
+      toast({ title: 'Invalid date range', description: 'Please select a valid From and To date.', variant: 'destructive' });
+      return;
+    }
+    const MAX_DAYS = 366;
+    const dayDiff = Math.round((toD.getTime() - fromD.getTime()) / 86400000) + 1;
+    if (dayDiff > MAX_DAYS) {
+      toast({ title: 'Range too large', description: `Please select a range of ${MAX_DAYS} days or fewer.`, variant: 'destructive' });
+      return;
+    }
+    const dayNameByIdx = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    // Expand each scheduled row into actual dated occurrences within range
+    const expandedRows: (typeof flatScheduleRows[number] & { date: string })[] = [];
+    for (let d = new Date(fromD); d <= toD; d.setDate(d.getDate() + 1)) {
+      const dayName = dayNameByIdx[d.getDay()];
+      const dateStr = format(d, 'yyyy-MM-dd');
+      flatScheduleRows.forEach(r => {
+        if (r.day === dayName) expandedRows.push({ ...r, date: dateStr });
+      });
+    }
+    if (expandedRows.length === 0) {
+      toast({ title: 'No classes in range', description: 'No scheduled classes fall within the selected dates.', variant: 'destructive' });
+      return;
+    }
     const dayOrder: Record<string, number> = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
     const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
