@@ -1830,54 +1830,54 @@ export default function MonthlyPlanning() {
                               <Plus className="h-3 w-3 mr-1" />
                               Create
                             </Button>
-                          ) : (
-                            <div className="flex items-center justify-center gap-2">
-                              {isAdmin && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => setViewPlan(plan as MonthlyPlan)}
-                                  title="View full form"
-                                >
-                                  <Eye className="h-3 w-3" />
-                                </Button>
-                              )}
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => openEditDialog(plan as MonthlyPlan, 'edit')}
-                                title="Edit"
-                              >
-                                <Edit className="h-3 w-3" />
-                              </Button>
-                              {isAdmin && (
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">
-                                      <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>Delete Plan</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Are you sure you want to delete this plan for {plan.student?.full_name}? This action cannot be undone.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                      <AlertDialogAction 
-                                        onClick={() => deletePlanMutation.mutate([plan.id])}
-                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                      >
-                                        Delete
-                                      </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                              )}
-                            </div>
-                          )}
+                           ) : (
+                             <div className="flex items-center justify-center gap-2">
+                               <Button
+                                 size="sm"
+                                 variant="ghost"
+                                 onClick={() => setViewPlan(plan as MonthlyPlan)}
+                                 title="View details"
+                               >
+                                 <Eye className="h-3 w-3" />
+                               </Button>
+                               {plan.status !== 'approved' && (
+                                 <Button
+                                   size="sm"
+                                   variant="outline"
+                                   onClick={() => openEditDialog(plan as MonthlyPlan, 'edit')}
+                                   title="Edit"
+                                 >
+                                   <Edit className="h-3 w-3" />
+                                 </Button>
+                               )}
+                               {isAdmin && plan.status !== 'approved' && (
+                                 <AlertDialog>
+                                   <AlertDialogTrigger asChild>
+                                     <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" title="Delete">
+                                       <Trash2 className="h-3 w-3" />
+                                     </Button>
+                                   </AlertDialogTrigger>
+                                   <AlertDialogContent>
+                                     <AlertDialogHeader>
+                                       <AlertDialogTitle>Delete Plan</AlertDialogTitle>
+                                       <AlertDialogDescription>
+                                         Are you sure you want to delete this plan for {plan.student?.full_name}? This action cannot be undone.
+                                       </AlertDialogDescription>
+                                     </AlertDialogHeader>
+                                     <AlertDialogFooter>
+                                       <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                       <AlertDialogAction 
+                                         onClick={() => deletePlanMutation.mutate([plan.id])}
+                                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                       >
+                                         Delete
+                                       </AlertDialogAction>
+                                     </AlertDialogFooter>
+                                   </AlertDialogContent>
+                                 </AlertDialog>
+                               )}
+                             </div>
+                           )}
                         </TableCell>
                       </TableRow>
                     );
