@@ -39,6 +39,7 @@ import { isRepeatLesson as checkRepeatLesson, type LessonPosition } from '@/lib/
 import { type MarkerType } from '@/components/attendance/SabaqSection';
 import { MissingAttendanceSection, useMissingAttendanceCount, BYPASS_CUTOFF } from '@/components/attendance/MissingAttendanceSection';
 import { UnifiedAttendanceForm } from '@/components/attendance/UnifiedAttendanceForm';
+import { TeacherLeaveBulkDialog } from '@/components/attendance/TeacherLeaveBulkDialog';
 
 const DAY_NAMES_MAIN = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
