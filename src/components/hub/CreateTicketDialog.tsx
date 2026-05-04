@@ -100,7 +100,7 @@ export function CreateTicketDialog({
     enabled: open,
   });
 
-  // Fetch users with roles for assignee picker
+  // Fetch users with roles for assignee picker (admins only)
   const { data: users = [] } = useQuery({
     queryKey: ['hub-users-with-roles'],
     queryFn: async () => {
@@ -113,7 +113,22 @@ export function CreateTicketDialog({
       });
       return (profiles || []).map((p: any) => ({ ...p, roles: roleMap[p.id] || [] }));
     },
-    enabled: open,
+    enabled: open && isAdmin,
+  });
+
+  // For non-admins: auto-route to first available admin
+  const { data: defaultAdmin } = useQuery({
+    queryKey: ['hub-default-admin'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('user_roles')
+        .select('user_id, profile:profiles!user_roles_user_id_fkey(id, full_name)')
+        .in('role', ['admin','admin_division','super_admin'])
+        .limit(1)
+        .maybeSingle();
+      return (data as any)?.profile || null;
+    },
+    enabled: open && !isAdmin,
   });
 
   // Fetch TAT defaults
