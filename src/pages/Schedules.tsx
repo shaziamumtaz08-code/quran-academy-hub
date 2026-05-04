@@ -1755,6 +1755,55 @@ export default function Schedules() {
           open={isCsvImportOpen} 
           onOpenChange={setIsCsvImportOpen} 
         />
+
+        {/* Export Date Range Dialog */}
+        <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Export Schedules — Select Date Range</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <p className="text-sm text-muted-foreground">
+                Schedules will be expanded into actual class occurrences between the selected dates.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">From</Label>
+                  <Input type="date" value={exportFromDate} onChange={(e) => setExportFromDate(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">To</Label>
+                  <Input type="date" value={exportToDate} onChange={(e) => setExportToDate(e.target.value)} min={exportFromDate} />
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {[
+                  { label: 'This Week', days: 7 },
+                  { label: 'This Month', days: 30 },
+                  { label: 'Next 3 Months', days: 90 },
+                ].map(p => (
+                  <Button key={p.label} variant="outline" size="sm" onClick={() => {
+                    const f = new Date();
+                    const t = new Date(); t.setDate(t.getDate() + p.days - 1);
+                    setExportFromDate(format(f, 'yyyy-MM-dd'));
+                    setExportToDate(format(t, 'yyyy-MM-dd'));
+                  }}>{p.label}</Button>
+                ))}
+              </div>
+              {exportMode === 'week' && (
+                <p className="text-xs text-amber-600">
+                  Weekly grid mode exports the recurring template (one row per assignment). Date range is used only for the filename.
+                </p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setExportDialogOpen(false)}>Cancel</Button>
+              <Button onClick={() => handleExport(exportMode)}>
+                <Download className="h-4 w-4 mr-1" /> Export CSV
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
