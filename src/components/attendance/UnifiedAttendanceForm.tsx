@@ -239,6 +239,27 @@ export function UnifiedAttendanceForm({
     return getSubjectType(student.subject_name);
   }, [student.subject_name]);
 
+  // Fetch student gender (for conditional reason options like Periods)
+  const { data: studentProfile } = useQuery({
+    queryKey: ['student-gender', student.id],
+    queryFn: async () => {
+      if (!student.id) return null;
+      const { data } = await supabase.from('profiles').select('gender').eq('id', student.id).maybeSingle();
+      return data;
+    },
+    enabled: open && !!student.id,
+  });
+  const studentGender = (student.gender || (studentProfile as any)?.gender || '').toString().toLowerCase();
+  const visibleReasonCategories = useMemo(() => {
+    return REASON_CATEGORIES.filter(r => !r.femaleOnly || studentGender === 'female');
+  }, [studentGender]);
+
+  // Sync rescheduleBy with selected status
+  useEffect(() => {
+    if (selectedStatus === 'rescheduled') setRescheduleBy('teacher');
+    else if (selectedStatus === 'student_rescheduled') setRescheduleBy('student');
+  }, [selectedStatus]);
+
   // Fetch student's schedule
   const { data: scheduleData } = useQuery({
     queryKey: ['student-schedule-unified', student.id, effectiveTeacherId],
