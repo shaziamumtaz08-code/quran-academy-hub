@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { ConditionalDashboardLayout as DashboardLayout } from '@/components/layout/ConditionalDashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -62,6 +62,10 @@ interface Assignment {
   payout_amount: number;
   payout_type: string;
   effective_from_date: string | null;
+  effective_to_date: string | null;
+  transfer_type: string | null;
+  parent_assignment_id: string | null;
+  substitute_end_date: string | null;
   requires_schedule: boolean;
   requires_planning: boolean;
   requires_attendance: boolean;
@@ -93,6 +97,8 @@ export default function Assignments() {
   const [reassignPayoutAmount, setReassignPayoutAmount] = useState('');
   const [reassignPayoutType, setReassignPayoutType] = useState('monthly');
   const [reassignEffectiveDate, setReassignEffectiveDate] = useState('');
+  const [reassignTransferType, setReassignTransferType] = useState<'permanent' | 'substitute'>('permanent');
+  const [reassignSubstituteEndDate, setReassignSubstituteEndDate] = useState('');
   // Status change dialog
   const [statusChangeDialog, setStatusChangeDialog] = useState<{ assignment: Assignment; newStatus: AssignmentStatus } | null>(null);
   const [statusEffectiveDate, setStatusEffectiveDate] = useState(new Date().toISOString().split('T')[0]);
@@ -100,6 +106,7 @@ export default function Assignments() {
   const [payoutAmount, setPayoutAmount] = useState('');
   const [payoutType, setPayoutType] = useState('monthly');
   const [effectiveFromDate, setEffectiveFromDate] = useState('');
+  const [effectiveToDate, setEffectiveToDate] = useState('');
   // Billing plan detail dialog
   const [billingDetailAssignmentId, setBillingDetailAssignmentId] = useState<string | null>(null);
 
@@ -167,7 +174,8 @@ export default function Assignments() {
         .from('student_teacher_assignments')
         .select(`
           id, teacher_id, student_id, subject_id, status, created_at,
-          payout_amount, payout_type, effective_from_date,
+          payout_amount, payout_type, effective_from_date, effective_to_date,
+          transfer_type, parent_assignment_id, substitute_end_date,
           requires_schedule, requires_planning, requires_attendance,
           teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name),
           student:profiles!student_teacher_assignments_student_id_fkey(full_name),
@@ -192,12 +200,49 @@ export default function Assignments() {
         payout_amount: row.payout_amount || 0,
         payout_type: row.payout_type || 'monthly',
         effective_from_date: row.effective_from_date,
+        effective_to_date: row.effective_to_date,
+        transfer_type: row.transfer_type,
+        parent_assignment_id: row.parent_assignment_id,
+        substitute_end_date: row.substitute_end_date,
         requires_schedule: row.requires_schedule ?? true,
         requires_planning: row.requires_planning ?? true,
         requires_attendance: row.requires_attendance ?? true,
       })) as Assignment[];
     },
   });
+
+  // Auto-revert expired substitute assignments: complete the substitute, resume the parent
+  useEffect(() => {
+    if (!assignments.length) return;
+    const today = new Date().toISOString().split('T')[0];
+    const expired = assignments.filter(a =>
+      a.transfer_type === 'substitute' &&
+      a.status === 'active' &&
+      a.parent_assignment_id &&
+      a.substitute_end_date &&
+      a.substitute_end_date < today
+    );
+    if (!expired.length) return;
+    (async () => {
+      const sb = supabase as any;
+      for (const sub of expired) {
+        await sb.from('student_teacher_assignments')
+          .update({ status: 'completed', status_effective_date: sub.substitute_end_date })
+          .eq('id', sub.id);
+        await sb.from('assignment_history')
+          .update({ ended_at: new Date(sub.substitute_end_date!).toISOString() })
+          .eq('assignment_id', sub.id)
+          .is('ended_at', null);
+        // Resume parent
+        await sb.from('student_teacher_assignments')
+          .update({ status: 'active', status_effective_date: sub.substitute_end_date })
+          .eq('id', sub.parent_assignment_id)
+          .eq('status', 'paused');
+      }
+      queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignments]);
 
   // Fetch linked billing plans for all assignments (read-only display)
   const assignmentIds = assignments.map(a => a.id);
@@ -286,6 +331,7 @@ export default function Assignments() {
           payout_amount: parseFloat(payoutAmount) || 0,
           payout_type: payoutType,
           effective_from_date: effectiveFromDate || null,
+          effective_to_date: effectiveToDate || null,
           ...(status && { status }),
         })
         .eq('id', id);
@@ -342,50 +388,113 @@ export default function Assignments() {
     },
   });
 
-  // Reassign teacher mutation - NOW logs history instead of overwriting
+  // Reassign teacher mutation - supports Permanent and Temporary (Substitute)
   const reassignMutation = useMutation({
-    mutationFn: async ({ id, newTeacherId, reason, payoutAmount: pa, payoutType: pt, effectiveDate }: { id: string; newTeacherId: string; reason?: string; payoutAmount?: number; payoutType?: string; effectiveDate?: string }) => {
-      // Find the current assignment to log history
+    mutationFn: async ({
+      id, newTeacherId, reason, payoutAmount: pa, payoutType: pt, effectiveDate,
+      transferType, substituteEndDate,
+    }: {
+      id: string; newTeacherId: string; reason?: string;
+      payoutAmount?: number; payoutType?: string; effectiveDate?: string;
+      transferType: 'permanent' | 'substitute'; substituteEndDate?: string;
+    }) => {
+      const sb = supabase as any;
       const assignment = assignments.find(a => a.id === id);
       if (!assignment) throw new Error('Assignment not found');
+      const effDate = effectiveDate || new Date().toISOString().split('T')[0];
 
-      // Close current history record
-      await supabase
-        .from('assignment_history')
-        .update({ ended_at: new Date().toISOString() })
-        .eq('assignment_id', id)
-        .is('ended_at', null);
+      if (transferType === 'permanent') {
+        // Close current history
+        await sb.from('assignment_history')
+          .update({ ended_at: new Date(effDate).toISOString(), reason: reason || 'Permanent transfer' })
+          .eq('assignment_id', id)
+          .is('ended_at', null);
 
-      // Update the assignment teacher + payout details
-      const updatePayload: any = { teacher_id: newTeacherId };
-      if (pa !== undefined && pa > 0) updatePayload.payout_amount = pa;
-      if (pt) updatePayload.payout_type = pt;
-      if (effectiveDate) updatePayload.effective_from_date = effectiveDate;
+        // Update assignment in place: new teacher + optional payout details
+        const updatePayload: any = { teacher_id: newTeacherId, transfer_type: 'permanent' };
+        if (pa !== undefined && pa > 0) updatePayload.payout_amount = pa;
+        if (pt) updatePayload.payout_type = pt;
+        updatePayload.effective_from_date = effDate;
 
-      const { error } = await supabase
-        .from('student_teacher_assignments')
-        .update(updatePayload)
-        .eq('id', id);
-      if (error) throw error;
+        const { error } = await sb.from('student_teacher_assignments').update(updatePayload).eq('id', id);
+        if (error) throw error;
 
-      // Create new history record
-      await supabase.from('assignment_history').insert({
-        assignment_id: id,
-        teacher_id: newTeacherId,
-        student_id: assignment.student_id,
-        subject_id: assignment.subject_id,
-        reason: reason || null,
-      });
+        await sb.from('assignment_history').insert({
+          assignment_id: id,
+          teacher_id: newTeacherId,
+          student_id: assignment.student_id,
+          subject_id: assignment.subject_id,
+          started_at: new Date(effDate).toISOString(),
+          reason: reason || 'Permanent transfer',
+        });
+      } else {
+        // SUBSTITUTE: pause original, create child substitute assignment
+        if (!substituteEndDate) throw new Error('Substitute end date is required');
+
+        await sb.from('student_teacher_assignments')
+          .update({ status: 'paused', status_effective_date: effDate })
+          .eq('id', id);
+
+        // Get full original assignment for cloning fields
+        const { data: oldAssign } = await sb
+          .from('student_teacher_assignments')
+          .select('subject_id, branch_id, division_id, duration_minutes, fee_package_id, requires_schedule, requires_planning, requires_attendance')
+          .eq('id', id)
+          .single();
+
+        const { data: subAssign } = await sb
+          .from('student_teacher_assignments')
+          .insert({
+            student_id: assignment.student_id,
+            teacher_id: newTeacherId,
+            subject_id: oldAssign?.subject_id ?? assignment.subject_id,
+            branch_id: oldAssign?.branch_id ?? activeDivision?.branch_id ?? null,
+            division_id: oldAssign?.division_id ?? activeDivision?.id ?? null,
+            duration_minutes: oldAssign?.duration_minutes ?? null,
+            payout_amount: pa && pa > 0 ? pa : assignment.payout_amount,
+            payout_type: pt || assignment.payout_type,
+            fee_package_id: oldAssign?.fee_package_id ?? null,
+            status: 'active',
+            effective_from_date: effDate,
+            effective_to_date: substituteEndDate,
+            transfer_type: 'substitute',
+            parent_assignment_id: id,
+            substitute_end_date: substituteEndDate,
+            requires_schedule: oldAssign?.requires_schedule ?? true,
+            requires_planning: oldAssign?.requires_planning ?? true,
+            requires_attendance: oldAssign?.requires_attendance ?? true,
+          })
+          .select('id')
+          .single();
+
+        if (subAssign) {
+          await sb.from('assignment_history').insert({
+            assignment_id: subAssign.id,
+            student_id: assignment.student_id,
+            teacher_id: newTeacherId,
+            subject_id: oldAssign?.subject_id ?? assignment.subject_id,
+            started_at: new Date(effDate).toISOString(),
+            reason: reason || `Temporary substitute until ${substituteEndDate}`,
+          });
+        }
+      }
     },
-    onSuccess: () => {
+    onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
-      toast({ title: 'Reassigned', description: 'Teacher reassigned with payout details. History recorded.' });
+      toast({
+        title: vars.transferType === 'permanent' ? 'Permanently Reassigned' : 'Substitute Assigned',
+        description: vars.transferType === 'permanent'
+          ? 'Teacher reassigned. History recorded.'
+          : 'Original teacher paused. Will auto-resume after substitute period.',
+      });
       setReassignDialog(null);
       setReassignTeacherId('');
       setReassignReason('');
       setReassignPayoutAmount('');
       setReassignPayoutType('monthly');
       setReassignEffectiveDate('');
+      setReassignTransferType('permanent');
+      setReassignSubstituteEndDate('');
     },
     onError: (error: any) => {
       handleSupabaseError(error, 'save changes');
@@ -399,6 +508,7 @@ export default function Assignments() {
     setPayoutAmount('');
     setPayoutType('monthly');
     setEffectiveFromDate('');
+    setEffectiveToDate('');
     setEditingAssignment(null);
     setIsFormOpen(false);
   };
@@ -411,6 +521,7 @@ export default function Assignments() {
     setPayoutAmount('');
     setPayoutType('monthly');
     setEffectiveFromDate('');
+    setEffectiveToDate('');
     setIsFormOpen(true);
   };
 
@@ -422,6 +533,7 @@ export default function Assignments() {
     setPayoutAmount(assignment.payout_amount?.toString() || '');
     setPayoutType(assignment.payout_type || 'monthly');
     setEffectiveFromDate(assignment.effective_from_date || '');
+    setEffectiveToDate(assignment.effective_to_date || '');
     setIsFormOpen(true);
   };
 
@@ -724,9 +836,21 @@ export default function Assignments() {
                     </Select>
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Effective From</Label>
-                  <Input type="date" value={effectiveFromDate} onChange={(e) => setEffectiveFromDate(e.target.value)} />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Effective From</Label>
+                    <Input type="date" value={effectiveFromDate} onChange={(e) => setEffectiveFromDate(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Effective To {editingAssignment?.transfer_type === 'substitute' && <span className="text-amber-600">(substitute end)</span>}</Label>
+                    <Input
+                      type="date"
+                      value={effectiveToDate}
+                      onChange={(e) => setEffectiveToDate(e.target.value)}
+                      min={effectiveFromDate || undefined}
+                    />
+                    <p className="text-[10px] text-muted-foreground">Leave blank for ongoing. Edit to extend or cut the assignment.</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -937,7 +1061,9 @@ export default function Assignments() {
                               setReassignReason('');
                               setReassignPayoutAmount(assignment.payout_amount?.toString() || '');
                               setReassignPayoutType(assignment.payout_type || 'monthly');
-                              setReassignEffectiveDate('');
+                              setReassignEffectiveDate(new Date().toISOString().split('T')[0]);
+                              setReassignTransferType('permanent');
+                              setReassignSubstituteEndDate('');
                             }}
                             title="Reassign teacher"
                           >
@@ -964,16 +1090,42 @@ export default function Assignments() {
         </Card>
 
         {/* Teacher Reassignment Dialog */}
-        <Dialog open={!!reassignDialog} onOpenChange={(open) => { if (!open) { setReassignDialog(null); setReassignTeacherId(''); setReassignReason(''); setReassignPayoutAmount(''); setReassignPayoutType('monthly'); setReassignEffectiveDate(''); } }}>
+        <Dialog open={!!reassignDialog} onOpenChange={(open) => { if (!open) { setReassignDialog(null); setReassignTeacherId(''); setReassignReason(''); setReassignPayoutAmount(''); setReassignPayoutType('monthly'); setReassignEffectiveDate(''); setReassignTransferType('permanent'); setReassignSubstituteEndDate(''); } }}>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>Reassign Teacher</DialogTitle>
               <DialogDescription>
                 Change the teacher for <strong>{reassignDialog?.student_name}</strong>'s assignment.
-                A history record will be created for audit purposes.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
+              {/* Transfer type */}
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold">Transfer Type *</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setReassignTransferType('permanent')}
+                    className={`rounded-xl border-2 p-3 text-left transition-all ${
+                      reassignTransferType === 'permanent' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'
+                    }`}
+                  >
+                    <p className="text-sm font-bold">Permanent</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Old assignment closes. New teacher takes over.</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReassignTransferType('substitute')}
+                    className={`rounded-xl border-2 p-3 text-left transition-all ${
+                      reassignTransferType === 'substitute' ? 'border-amber-500 bg-amber-500/5' : 'border-border hover:border-amber-500/40'
+                    }`}
+                  >
+                    <p className="text-sm font-bold">Temporary</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Original paused. Auto-reverts after end date.</p>
+                  </button>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label>Current Teacher</Label>
                 <p className="text-sm font-medium text-muted-foreground">{reassignDialog?.teacher_name}</p>
@@ -1018,14 +1170,30 @@ export default function Assignments() {
                     </Select>
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Effective From</Label>
-                  <Input
-                    type="date"
-                    value={reassignEffectiveDate}
-                    onChange={(e) => setReassignEffectiveDate(e.target.value)}
-                  />
+                <div className={`grid gap-3 ${reassignTransferType === 'substitute' ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Effective From {reassignTransferType === 'substitute' ? '*' : ''}</Label>
+                    <Input
+                      type="date"
+                      value={reassignEffectiveDate}
+                      onChange={(e) => setReassignEffectiveDate(e.target.value)}
+                    />
+                  </div>
+                  {reassignTransferType === 'substitute' && (
+                    <div className="space-y-1">
+                      <Label className="text-xs">Substitute Until *</Label>
+                      <Input
+                        type="date"
+                        value={reassignSubstituteEndDate}
+                        onChange={(e) => setReassignSubstituteEndDate(e.target.value)}
+                        min={reassignEffectiveDate || undefined}
+                      />
+                    </div>
+                  )}
                 </div>
+                {reassignTransferType === 'substitute' && (
+                  <p className="text-[11px] text-muted-foreground">Original teacher's assignment will auto-resume after this date.</p>
+                )}
               </div>
               <Separator />
               <div className="space-y-2">
@@ -1039,12 +1207,16 @@ export default function Assignments() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => { setReassignDialog(null); setReassignTeacherId(''); setReassignReason(''); setReassignPayoutAmount(''); setReassignPayoutType('monthly'); setReassignEffectiveDate(''); }}>
+              <Button variant="outline" onClick={() => { setReassignDialog(null); setReassignTeacherId(''); setReassignReason(''); setReassignPayoutAmount(''); setReassignPayoutType('monthly'); setReassignEffectiveDate(''); setReassignTransferType('permanent'); setReassignSubstituteEndDate(''); }}>
                 Cancel
               </Button>
               <Button
                 onClick={() => {
                   if (reassignDialog && reassignTeacherId) {
+                    if (reassignTransferType === 'substitute' && !reassignSubstituteEndDate) {
+                      toast({ title: 'Missing date', description: 'Substitute end date is required.', variant: 'destructive' });
+                      return;
+                    }
                     reassignMutation.mutate({
                       id: reassignDialog.id,
                       newTeacherId: reassignTeacherId,
@@ -1052,13 +1224,16 @@ export default function Assignments() {
                       payoutAmount: parseFloat(reassignPayoutAmount) || 0,
                       payoutType: reassignPayoutType,
                       effectiveDate: reassignEffectiveDate || undefined,
+                      transferType: reassignTransferType,
+                      substituteEndDate: reassignSubstituteEndDate || undefined,
                     });
                   }
                 }}
-                disabled={!reassignTeacherId || reassignMutation.isPending}
+                disabled={!reassignTeacherId || reassignMutation.isPending || (reassignTransferType === 'substitute' && !reassignSubstituteEndDate)}
+                className={reassignTransferType === 'substitute' ? 'bg-amber-500 hover:bg-amber-600' : ''}
               >
                 {reassignMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Reassign
+                {reassignTransferType === 'permanent' ? 'Transfer Permanently' : 'Assign Substitute'}
               </Button>
             </DialogFooter>
           </DialogContent>
