@@ -93,6 +93,8 @@ export default function Assignments() {
   const [reassignPayoutAmount, setReassignPayoutAmount] = useState('');
   const [reassignPayoutType, setReassignPayoutType] = useState('monthly');
   const [reassignEffectiveDate, setReassignEffectiveDate] = useState('');
+  const [reassignTransferType, setReassignTransferType] = useState<'permanent' | 'substitute'>('permanent');
+  const [reassignSubstituteEndDate, setReassignSubstituteEndDate] = useState('');
   // Status change dialog
   const [statusChangeDialog, setStatusChangeDialog] = useState<{ assignment: Assignment; newStatus: AssignmentStatus } | null>(null);
   const [statusEffectiveDate, setStatusEffectiveDate] = useState(new Date().toISOString().split('T')[0]);
