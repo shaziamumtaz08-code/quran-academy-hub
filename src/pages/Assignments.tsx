@@ -1038,16 +1038,42 @@ export default function Assignments() {
         </Card>
 
         {/* Teacher Reassignment Dialog */}
-        <Dialog open={!!reassignDialog} onOpenChange={(open) => { if (!open) { setReassignDialog(null); setReassignTeacherId(''); setReassignReason(''); setReassignPayoutAmount(''); setReassignPayoutType('monthly'); setReassignEffectiveDate(''); } }}>
+        <Dialog open={!!reassignDialog} onOpenChange={(open) => { if (!open) { setReassignDialog(null); setReassignTeacherId(''); setReassignReason(''); setReassignPayoutAmount(''); setReassignPayoutType('monthly'); setReassignEffectiveDate(''); setReassignTransferType('permanent'); setReassignSubstituteEndDate(''); } }}>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>Reassign Teacher</DialogTitle>
               <DialogDescription>
                 Change the teacher for <strong>{reassignDialog?.student_name}</strong>'s assignment.
-                A history record will be created for audit purposes.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
+              {/* Transfer type */}
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold">Transfer Type *</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setReassignTransferType('permanent')}
+                    className={`rounded-xl border-2 p-3 text-left transition-all ${
+                      reassignTransferType === 'permanent' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'
+                    }`}
+                  >
+                    <p className="text-sm font-bold">Permanent</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Old assignment closes. New teacher takes over.</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReassignTransferType('substitute')}
+                    className={`rounded-xl border-2 p-3 text-left transition-all ${
+                      reassignTransferType === 'substitute' ? 'border-amber-500 bg-amber-500/5' : 'border-border hover:border-amber-500/40'
+                    }`}
+                  >
+                    <p className="text-sm font-bold">Temporary</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Original paused. Auto-reverts after end date.</p>
+                  </button>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label>Current Teacher</Label>
                 <p className="text-sm font-medium text-muted-foreground">{reassignDialog?.teacher_name}</p>
@@ -1092,14 +1118,30 @@ export default function Assignments() {
                     </Select>
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Effective From</Label>
-                  <Input
-                    type="date"
-                    value={reassignEffectiveDate}
-                    onChange={(e) => setReassignEffectiveDate(e.target.value)}
-                  />
+                <div className={`grid gap-3 ${reassignTransferType === 'substitute' ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Effective From {reassignTransferType === 'substitute' ? '*' : ''}</Label>
+                    <Input
+                      type="date"
+                      value={reassignEffectiveDate}
+                      onChange={(e) => setReassignEffectiveDate(e.target.value)}
+                    />
+                  </div>
+                  {reassignTransferType === 'substitute' && (
+                    <div className="space-y-1">
+                      <Label className="text-xs">Substitute Until *</Label>
+                      <Input
+                        type="date"
+                        value={reassignSubstituteEndDate}
+                        onChange={(e) => setReassignSubstituteEndDate(e.target.value)}
+                        min={reassignEffectiveDate || undefined}
+                      />
+                    </div>
+                  )}
                 </div>
+                {reassignTransferType === 'substitute' && (
+                  <p className="text-[11px] text-muted-foreground">Original teacher's assignment will auto-resume after this date.</p>
+                )}
               </div>
               <Separator />
               <div className="space-y-2">
@@ -1113,12 +1155,16 @@ export default function Assignments() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => { setReassignDialog(null); setReassignTeacherId(''); setReassignReason(''); setReassignPayoutAmount(''); setReassignPayoutType('monthly'); setReassignEffectiveDate(''); }}>
+              <Button variant="outline" onClick={() => { setReassignDialog(null); setReassignTeacherId(''); setReassignReason(''); setReassignPayoutAmount(''); setReassignPayoutType('monthly'); setReassignEffectiveDate(''); setReassignTransferType('permanent'); setReassignSubstituteEndDate(''); }}>
                 Cancel
               </Button>
               <Button
                 onClick={() => {
                   if (reassignDialog && reassignTeacherId) {
+                    if (reassignTransferType === 'substitute' && !reassignSubstituteEndDate) {
+                      toast({ title: 'Missing date', description: 'Substitute end date is required.', variant: 'destructive' });
+                      return;
+                    }
                     reassignMutation.mutate({
                       id: reassignDialog.id,
                       newTeacherId: reassignTeacherId,
@@ -1126,13 +1172,16 @@ export default function Assignments() {
                       payoutAmount: parseFloat(reassignPayoutAmount) || 0,
                       payoutType: reassignPayoutType,
                       effectiveDate: reassignEffectiveDate || undefined,
+                      transferType: reassignTransferType,
+                      substituteEndDate: reassignSubstituteEndDate || undefined,
                     });
                   }
                 }}
-                disabled={!reassignTeacherId || reassignMutation.isPending}
+                disabled={!reassignTeacherId || reassignMutation.isPending || (reassignTransferType === 'substitute' && !reassignSubstituteEndDate)}
+                className={reassignTransferType === 'substitute' ? 'bg-amber-500 hover:bg-amber-600' : ''}
               >
                 {reassignMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Reassign
+                {reassignTransferType === 'permanent' ? 'Transfer Permanently' : 'Assign Substitute'}
               </Button>
             </DialogFooter>
           </DialogContent>
