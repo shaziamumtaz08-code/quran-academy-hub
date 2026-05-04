@@ -645,9 +645,9 @@ export function UnifiedAttendanceForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border text-white">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border text-foreground">
         <DialogHeader>
-          <DialogTitle className="font-serif text-xl text-white flex items-center gap-3">
+          <DialogTitle className="font-serif text-xl text-foreground flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
               <User className="h-5 w-5 text-primary" />
             </div>
