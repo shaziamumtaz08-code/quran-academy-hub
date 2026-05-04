@@ -258,93 +258,115 @@ export default function Subjects() {
                 ))}
               </div>
             ) : filteredSubjects.length > 0 ? (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {filteredSubjects.map((subject, idx) => {
                   const count = enrollmentCounts?.get(subject.id) || 0;
                   const palettes = [
-                    { from: 'from-indigo-500', to: 'to-blue-700', ring: 'ring-indigo-500/30', text: 'text-indigo-50' },
-                    { from: 'from-teal-500', to: 'to-emerald-700', ring: 'ring-teal-500/30', text: 'text-teal-50' },
-                    { from: 'from-fuchsia-500', to: 'to-purple-700', ring: 'ring-fuchsia-500/30', text: 'text-fuchsia-50' },
-                    { from: 'from-amber-500', to: 'to-orange-600', ring: 'ring-amber-500/30', text: 'text-amber-50' },
-                    { from: 'from-rose-500', to: 'to-pink-700', ring: 'ring-rose-500/30', text: 'text-rose-50' },
-                    { from: 'from-cyan-500', to: 'to-sky-700', ring: 'ring-cyan-500/30', text: 'text-cyan-50' },
-                    { from: 'from-lime-500', to: 'to-green-700', ring: 'ring-lime-500/30', text: 'text-lime-50' },
-                    { from: 'from-slate-600', to: 'to-slate-900', ring: 'ring-slate-500/30', text: 'text-slate-50' },
+                    { tint: 'from-rose-50 to-rose-100/60', accent: 'bg-rose-200/40', dot: 'bg-rose-400' },          // dusty rose
+                    { tint: 'from-emerald-50 to-emerald-100/60', accent: 'bg-emerald-200/40', dot: 'bg-emerald-400' }, // sage
+                    { tint: 'from-slate-50 to-slate-100/70', accent: 'bg-slate-200/40', dot: 'bg-slate-400' },     // warm slate
+                    { tint: 'from-indigo-50 to-indigo-100/60', accent: 'bg-indigo-200/40', dot: 'bg-indigo-400' }, // soft indigo
+                    { tint: 'from-amber-50 to-amber-100/60', accent: 'bg-amber-200/40', dot: 'bg-amber-400' },     // muted gold
+                    { tint: 'from-teal-50 to-teal-100/60', accent: 'bg-teal-200/40', dot: 'bg-teal-400' },         // dusty teal
                   ];
                   const p = palettes[idx % palettes.length];
-                  const initials = subject.name.split(/\s+/).map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
+                  const keyword = encodeURIComponent(subject.name.toLowerCase().includes('quran') || subject.name.toLowerCase().includes('hifz') || subject.name.toLowerCase().includes('nazra') ? 'quran,mosque' : subject.name.toLowerCase().includes('arab') ? 'arabic,calligraphy' : subject.name.toLowerCase().includes('deen') || subject.name.toLowerCase().includes('fehme') ? 'islamic,books' : subject.name.toLowerCase().includes('nahv') || subject.name.toLowerCase().includes('grammar') ? 'arabic,manuscript' : 'study,books');
+                  const fallbackImg = `https://source.unsplash.com/400x240/?${keyword}&sig=${subject.id.slice(0, 6)}`;
+                  const imgSrc = (subject as { image_url?: string | null }).image_url || fallbackImg;
+                  const fileInputId = `subject-img-${subject.id}`;
                   return (
                     <div
                       key={subject.id}
-                      className={`group relative overflow-hidden rounded-2xl bg-gradient-to-br ${p.from} ${p.to} text-white shadow-md ring-1 ${p.ring} transition-all duration-200 hover:-translate-y-1 hover:shadow-2xl hover:brightness-110`}
+                      className={`group relative overflow-hidden rounded-[20px] border border-white/60 bg-gradient-to-br ${p.tint} shadow-[0_4px_20px_-8px_rgba(0,0,0,0.12)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_32px_-12px_rgba(0,0,0,0.18)]`}
                     >
-                      {/* Decorative blob */}
-                      <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
-                      <div className="pointer-events-none absolute -bottom-12 -left-12 h-32 w-32 rounded-full bg-black/10 blur-2xl" />
+                      {/* Image area */}
+                      <div className="relative h-36 w-full overflow-hidden">
+                        <img
+                          src={imgSrc}
+                          alt={subject.name}
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          loading="lazy"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).src = fallbackImg; }}
+                        />
+                        {/* Soft gradient overlay fading to card body */}
+                        <div className={`pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white/95`} />
+                        {/* Grain texture */}
+                        <div className="pointer-events-none absolute inset-0 opacity-[0.08] mix-blend-overlay" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")" }} />
 
-                      {/* Top action buttons */}
-                      <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 rounded-full bg-white/15 text-white hover:bg-white/30"
-                          onClick={() => handleEdit({
-                            id: subject.id, name: subject.name, description: subject.description || '', is_active: subject.is_active,
-                          })}
+                        {/* Hover action icons (top-right) */}
+                        <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                          <button
+                            type="button"
+                            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/80 text-slate-700 backdrop-blur-md ring-1 ring-black/5 hover:bg-white"
+                            onClick={() => handleEdit({
+                              id: subject.id, name: subject.name, description: subject.description || '', is_active: subject.is_active,
+                              image_url: (subject as { image_url?: string | null }).image_url || null,
+                            })}
+                            aria-label="Edit"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/80 text-rose-600 backdrop-blur-md ring-1 ring-black/5 hover:bg-white"
+                            onClick={() => {
+                              if (confirm('Are you sure you want to delete this subject?')) {
+                                deleteMutation.mutate(subject.id);
+                              }
+                            }}
+                            aria-label="Delete"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+
+                        {/* Camera upload (bottom-right of image) */}
+                        <label
+                          htmlFor={fileInputId}
+                          className="absolute bottom-2 right-2 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-white/85 text-slate-700 backdrop-blur-md ring-1 ring-black/5 transition hover:bg-white"
+                          title="Upload custom image"
                         >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 rounded-full bg-white/15 text-white hover:bg-rose-500/80"
-                          onClick={() => {
-                            if (confirm('Are you sure you want to delete this subject?')) {
-                              deleteMutation.mutate(subject.id);
-                            }
+                          {uploadingId === subject.id
+                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            : <Camera className="h-3.5 w-3.5" />}
+                        </label>
+                        <input
+                          id={fileInputId}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) handleImageUpload(subject.id, f);
+                            e.target.value = '';
                           }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        />
                       </div>
 
-                      <div className="relative p-5 space-y-4">
-                        {/* Avatar / Icon */}
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-sm font-bold text-2xl tracking-tight shadow-inner">
-                            {initials || <BookOpen className="h-6 w-6" />}
-                          </div>
-                          <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                              subject.is_active
-                                ? 'bg-emerald-400/25 text-emerald-50 ring-1 ring-emerald-300/40'
-                                : 'bg-white/15 text-white/80 ring-1 ring-white/20'
-                            }`}
-                          >
-                            <span className={`mr-1.5 h-1.5 w-1.5 rounded-full ${subject.is_active ? 'bg-emerald-300' : 'bg-white/60'}`} />
+                      {/* Body */}
+                      <div className="relative space-y-3 px-5 pb-5 pt-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className="font-serif text-lg font-semibold leading-tight text-slate-800">
+                            {subject.name}
+                          </h3>
+                          <span className="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
+                            <span className={`h-1.5 w-1.5 rounded-full ${subject.is_active ? p.dot : 'bg-slate-300'}`} />
                             {subject.is_active ? 'Active' : 'Inactive'}
                           </span>
                         </div>
-
-                        {/* Title + Description */}
-                        <div className="space-y-1">
-                          <h3 className="text-lg font-bold leading-tight tracking-tight">{subject.name}</h3>
-                          <p className="text-sm text-white/75 line-clamp-2 min-h-[2.5rem]">
-                            {subject.description || 'No description provided.'}
-                          </p>
-                        </div>
-
-                        {/* Footer badges */}
+                        <p className="text-sm leading-relaxed text-slate-500/90 line-clamp-2 min-h-[2.5rem]">
+                          {subject.description || 'No description provided.'}
+                        </p>
                         <div className="flex items-center justify-between pt-1">
                           <button
                             type="button"
                             onClick={() => count > 0 && navigate(`/students?subjectId=${subject.id}`)}
                             disabled={count === 0}
-                            className={`inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-medium backdrop-blur-sm transition ${
-                              count > 0 ? 'hover:bg-white/30 cursor-pointer' : 'opacity-70 cursor-default'
+                            className={`inline-flex items-center gap-1.5 rounded-full ${p.accent} px-2.5 py-1 text-[11px] font-medium text-slate-700 ring-1 ring-black/5 transition ${
+                              count > 0 ? 'hover:brightness-95 cursor-pointer' : 'opacity-70 cursor-default'
                             }`}
                           >
-                            <Users className="h-3.5 w-3.5" />
+                            <Users className="h-3 w-3" />
                             {count} student{count !== 1 ? 's' : ''}
                           </button>
                         </div>
