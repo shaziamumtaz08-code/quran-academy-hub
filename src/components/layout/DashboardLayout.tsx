@@ -100,7 +100,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
                 { label: "Planning", href: "/teaching?view=planning" },
                 { label: "Subjects", href: "/teaching?view=subjects" },
               ] : []),
-              ...(isOneToOne ? [{ label: "1-to-1 Assignments", href: "/teaching?view=one-to-one" }] : []),
+              
               ...(isGroupStyleModel
                 ? [
                     { label: "AI Teaching OS", href: "/teaching-os" },
