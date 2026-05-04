@@ -68,7 +68,8 @@ function pct(profile: any): number {
 }
 
 export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props) {
-  const { isSuperAdmin, user: currentUser, activeRole } = useAuth();
+  const { isSuperAdmin: isSA, user: currentUser, activeRole } = useAuth();
+  const isSuperAdmin = isSA || activeRole === 'admin_division' || activeRole === 'admin';
   const { toast } = useToast();
   const qc = useQueryClient();
   const [tab, setTab] = useState<TabKey>('personal');

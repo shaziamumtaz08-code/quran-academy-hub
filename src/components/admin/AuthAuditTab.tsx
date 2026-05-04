@@ -31,7 +31,7 @@ export function AuthAuditTab() {
   const [syncResult, setSyncResult] = useState<any>(null);
   const [syncDialogOpen, setSyncDialogOpen] = useState(false);
 
-  const isSuperAdmin = profile?.role === 'super_admin';
+  const isSuperAdmin = profile?.role === 'super_admin' || profile?.role === 'admin_division' || profile?.role === 'admin';
 
   // Scan query
   const { data: scanResults, isLoading: isScanning, refetch: runScan, isFetched } = useQuery({
