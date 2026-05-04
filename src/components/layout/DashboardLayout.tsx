@@ -229,6 +229,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
               { label: "Notifications", href: "/communication?view=notifications" },
             ],
           },
+          { label: "Resources", href: "/resources", icon: FolderOpen },
         ],
       },
     ];
