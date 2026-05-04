@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { BookOpen, Plus, Pencil, Trash2, Loader2, Shield, Users } from 'lucide-react';
+import { BookOpen, Plus, Pencil, Trash2, Loader2, Shield, Users, Camera } from 'lucide-react';
 import { TableToolbar } from '@/components/ui/table-toolbar';
 import { useNavigate } from 'react-router-dom';
 
