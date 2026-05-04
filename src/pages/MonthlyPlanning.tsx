@@ -165,7 +165,7 @@ export default function MonthlyPlanning() {
   const [pageFrom, setPageFrom] = useState('');
   const [pageTo, setPageTo] = useState('');
 
-  const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' || 
+  const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' || activeRole === 'admin_division' ||
     activeRole === 'admin_admissions' || activeRole === 'admin_fees' || activeRole === 'admin_academic';
   const isTeacher = activeRole === 'teacher';
 
