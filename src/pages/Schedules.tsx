@@ -1111,11 +1111,11 @@ export default function Schedules() {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>Export schedules</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => handleExport('flat')}>All rows (flat)</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport('student')}>By Student</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport('teacher')}>By Teacher</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport('day')}>By Day</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport('week')}>Weekly grid</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => openExportDialog('flat')}>All rows (flat)</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => openExportDialog('student')}>By Student</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => openExportDialog('teacher')}>By Teacher</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => openExportDialog('day')}>By Day</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => openExportDialog('week')}>Weekly grid (template)</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             {/* CSV Import Button */}
