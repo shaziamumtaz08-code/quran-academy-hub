@@ -891,7 +891,7 @@ export function UnifiedAttendanceForm({
                     <SelectValue placeholder="Select reason" />
                   </SelectTrigger>
                   <SelectContent>
-                    {REASON_CATEGORIES.map((opt) => (
+                    {visibleReasonCategories.map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                     ))}
                   </SelectContent>
