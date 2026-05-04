@@ -81,6 +81,7 @@ export interface StudentInfo {
   daily_target_lines?: number;
   preferred_unit?: string;
   timezone?: string;
+  gender?: string | null;
 }
 
 /** Shape of an attendance row when editing. Extends create payload with id + nullable progress fields. */
