@@ -264,26 +264,32 @@ export function CreateTicketDialog({
             </div>
             <div>
               <Label className="text-xs">Assign To</Label>
-              <Select value={assigneeId} onValueChange={(v) => { setAssigneeId(v); setTargetRole(''); }}>
-                <SelectTrigger><SelectValue placeholder="Select user..." /></SelectTrigger>
-                <SelectContent>
-                  {users.map((u: any) => (
-                    <SelectItem key={u.id} value={u.id}>
-                      {u.full_name}
-                      {u.roles.length > 0 && (
-                        <span className="text-muted-foreground ml-1">
-                          ({u.roles.map((r: string) => r.replace('_', ' ')).join(', ')})
-                        </span>
-                      )}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {isAdmin ? (
+                <Select value={assigneeId} onValueChange={(v) => { setAssigneeId(v); setTargetRole(''); }}>
+                  <SelectTrigger><SelectValue placeholder="Select user..." /></SelectTrigger>
+                  <SelectContent>
+                    {users.map((u: any) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.full_name}
+                        {u.roles.length > 0 && (
+                          <span className="text-muted-foreground ml-1">
+                            ({u.roles.map((r: string) => r.replace('_', ' ')).join(', ')})
+                          </span>
+                        )}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="h-9 px-3 flex items-center rounded-md border bg-muted/40 text-sm text-muted-foreground">
+                  {defaultAdmin?.full_name ? `Admin (${defaultAdmin.full_name})` : 'Routed to Admin'}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Target Role (shown when assignee has multiple roles) */}
-          {assigneeId && assigneeRoles.length > 1 && (
+          {/* Target Role (admins only, when assignee has multiple roles) */}
+          {isAdmin && assigneeId && assigneeRoles.length > 1 && (
             <div>
               <Label className="text-xs">For Role</Label>
               <Select value={targetRole} onValueChange={setTargetRole}>
