@@ -654,14 +654,13 @@ export default function Students() {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : isTeacher ? (
-          // Teacher's Card Grid View
           filteredTeacherStudents.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p className="text-lg font-medium">No students found</p>
               <p className="text-sm mt-1">No students are assigned to you yet</p>
             </div>
-          ) : (
+          ) : teacherViewMode === 'cards' ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {filteredTeacherStudents.map((student) => (
                 <StudentCard
@@ -671,6 +670,52 @@ export default function Students() {
                   onViewSchedule={() => setScheduleStudent(student)}
                 />
               ))}
+            </div>
+          ) : (
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="text-xs">Student</TableHead>
+                    <TableHead className="text-xs">Subject</TableHead>
+                    <TableHead className="text-xs hidden md:table-cell">Last Lesson</TableHead>
+                    <TableHead className="text-xs hidden lg:table-cell">Daily Target</TableHead>
+                    <TableHead className="text-xs">Source</TableHead>
+                    <TableHead className="text-xs text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredTeacherStudents.map((student) => (
+                    <TableRow key={student.id} className="hover:bg-muted/30">
+                      <TableCell className="font-medium text-sm">
+                        <div className="flex flex-col">
+                          <span>{student.full_name}</span>
+                          {student.age != null && (
+                            <span className="text-[11px] text-muted-foreground">{student.age} yrs{student.gender ? ` • ${student.gender}` : ''}</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm">{student.subject_name || '—'}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground hidden md:table-cell max-w-[220px] truncate" title={student.last_lesson || ''}>
+                        {student.last_lesson || 'No lesson recorded'}
+                      </TableCell>
+                      <TableCell className="text-xs hidden lg:table-cell">
+                        {student.daily_target_lines ? `${student.daily_target_lines} ${student.preferred_unit || 'lines'}/day` : '—'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-[10px]">{student.enrollment_source || '1:1'}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1.5">
+                          <Button size="sm" variant="ghost" onClick={() => setAttendanceStudent(student)}>Attendance</Button>
+                          <Button size="sm" variant="ghost" onClick={() => setScheduleStudent(student)}>Schedule</Button>
+                          <Button size="sm" variant="ghost" onClick={() => setHistoryStudent(student)}>History</Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           )
         ) : (
