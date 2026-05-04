@@ -24,9 +24,8 @@ function getMobileTabs(role: AppRole | null): MobileTabItem[] {
   if (role === 'teacher') {
     return [
       { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
-      { label: 'Classes', href: '/teaching', icon: BookOpen },
       { label: 'Attendance', href: '/attendance', icon: ClipboardCheck },
-      { label: 'Schedule', href: '/my-schedule', icon: CalendarDays },
+      { label: 'Performance', href: '/performance', icon: Activity },
       { label: 'Comms', href: '/communication', icon: MessageSquare },
     ];
   }
