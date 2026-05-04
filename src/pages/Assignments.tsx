@@ -488,6 +488,7 @@ export default function Assignments() {
     setPayoutAmount('');
     setPayoutType('monthly');
     setEffectiveFromDate('');
+    setEffectiveToDate('');
     setIsFormOpen(true);
   };
 
@@ -499,6 +500,7 @@ export default function Assignments() {
     setPayoutAmount(assignment.payout_amount?.toString() || '');
     setPayoutType(assignment.payout_type || 'monthly');
     setEffectiveFromDate(assignment.effective_from_date || '');
+    setEffectiveToDate(assignment.effective_to_date || '');
     setIsFormOpen(true);
   };
 
