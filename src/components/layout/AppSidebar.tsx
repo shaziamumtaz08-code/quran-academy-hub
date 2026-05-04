@@ -80,9 +80,7 @@ function getTeachingSidebar(courseCount: number, isOneToOne?: boolean, role?: st
     };
   }
   const items: SidebarNavItem[] = isOneToOne
-    ? [
-        { label: '1-to-1 Assignments', href: '/teaching?section=assignments' },
-      ]
+    ? []
     : [
         { label: 'All Courses', href: '/teaching?section=courses' },
         { label: 'AI Teaching OS', href: '/teaching-os', badgeText: 'AI' },
