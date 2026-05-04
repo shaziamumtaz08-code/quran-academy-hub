@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Search, Mail, User, Loader2, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, RotateCcw } from 'lucide-react';
+import { Search, Mail, User, Loader2, AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, RotateCcw, LayoutGrid, List } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
