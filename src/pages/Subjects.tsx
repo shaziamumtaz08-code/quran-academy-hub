@@ -26,7 +26,8 @@ export default function Subjects() {
   
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingSubject, setEditingSubject] = useState<{ id: string; name: string; description: string; is_active: boolean } | null>(null);
+  const [editingSubject, setEditingSubject] = useState<{ id: string; name: string; description: string; is_active: boolean; image_url?: string | null } | null>(null);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
