@@ -598,27 +598,35 @@ export default function Attendance() {
     enabled: editDialogOpen && !!editingRecord?.student_id && !!editingRecord?.teacher_id,
   });
 
-  // Save holiday mutation
+  // Save holiday mutation — supports a date range (from/to inclusive)
   const saveHoliday = useMutation({
     mutationFn: async () => {
       if (!user?.id) throw new Error('Missing user');
-      const { error } = await supabase.from('holidays' as any).insert({
-        holiday_date: holidayDate,
-        name: holidayName,
-        created_by: user.id,
-        branch_id: null,
-        division_id: activeDivision?.id || null,
-      });
+      const start = new Date(holidayDate + 'T00:00:00');
+      const end = new Date((holidayEndDate || holidayDate) + 'T00:00:00');
+      if (end < start) throw new Error('End date cannot be before start date');
+      const rows: any[] = [];
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        rows.push({
+          holiday_date: format(d, 'yyyy-MM-dd'),
+          name: holidayName,
+          created_by: user.id,
+          branch_id: null,
+          division_id: activeDivision?.id || null,
+        });
+      }
+      const { error } = await supabase.from('holidays' as any).insert(rows);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast({ title: 'Holiday Saved', description: `${holidayName} on ${holidayDate} marked as holiday` });
+      toast({ title: 'Holiday Saved', description: `${holidayName} marked from ${holidayDate} to ${holidayEndDate || holidayDate}` });
       queryClient.invalidateQueries({ queryKey: ['holidays'] });
       queryClient.invalidateQueries({ queryKey: ['schedules-count-missing'] });
       queryClient.invalidateQueries({ queryKey: ['missing-attendance'] });
       setHolidayDialogOpen(false);
       setHolidayName('');
       setHolidayDate(format(new Date(), 'yyyy-MM-dd'));
+      setHolidayEndDate(format(new Date(), 'yyyy-MM-dd'));
     },
     onError: (e: any) => handleSupabaseError(e, 'save changes'),
   });
