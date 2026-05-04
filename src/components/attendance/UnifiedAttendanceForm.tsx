@@ -636,9 +636,11 @@ export function UnifiedAttendanceForm({
     if (requiresReason(selectedStatus) && !reasonCategory) return false;
     if (requiresReason(selectedStatus) && reasonCategory === 'other' && !reasonText.trim()) return false;
     if (requiresReschedule(selectedStatus) && !rescheduleDate) return false;
+    if (requiresReschedule(selectedStatus) && !rescheduleReason) return false;
+    if (requiresReschedule(selectedStatus) && rescheduleReason === 'other' && !reasonText.trim()) return false;
     if (lessonRequired && !hasLessonDetails) return false;
     return true;
-  }, [selectedStatus, classTime, classDate, reasonCategory, reasonText, rescheduleDate, hasDuplicateAttendance, isScheduledDay, isFutureDate, lessonRequired, hasLessonDetails, needsStudent, student.id]);
+  }, [selectedStatus, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleReason, hasDuplicateAttendance, isScheduledDay, isFutureDate, lessonRequired, hasLessonDetails, needsStudent, student.id]);
 
   const studentTzAbbr = getTimezoneAbbr(student.timezone);
   const teacherTzAbbr = getTimezoneAbbr(effectiveTeacherTz);
