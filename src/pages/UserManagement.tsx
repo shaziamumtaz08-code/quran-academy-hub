@@ -164,6 +164,130 @@ const RolePill = ({ role, prefix }: { role: AppRole; prefix?: string }) => {
   );
 };
 
+const STATUS_OPTIONS: Array<{ value: 'active' | 'paused' | 'completed' | 'left' | 'inactive'; label: string }> = [
+  { value: 'active', label: 'Active' },
+  { value: 'paused', label: 'Paused' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'left', label: 'Left' },
+  { value: 'inactive', label: 'Inactive' },
+];
+
+const STATUS_PILL_COLOR: Record<string, string> = {
+  active: 'bg-white text-emerald-700 border-emerald-500',
+  paused: 'bg-white text-amber-700 border-amber-500',
+  left: 'bg-white text-rose-700 border-rose-500',
+  completed: 'bg-white text-sky-700 border-sky-500',
+  inactive: 'bg-white text-slate-600 border-slate-400',
+  archived: 'bg-white text-amber-700 border-amber-500',
+};
+
+const STATUS_ICON_COLOR: Record<string, string> = {
+  active: 'text-emerald-600',
+  paused: 'text-amber-600',
+  left: 'text-rose-600',
+  completed: 'text-sky-600',
+  inactive: 'text-slate-500',
+  archived: 'text-amber-600',
+  unassigned: 'text-amber-600',
+};
+
+const UserStatusPopover: React.FC<{
+  user: { id: string; archived_at: string | null; roles: AppRole[]; roleStatuses: Partial<Record<AppRole, 'active' | 'paused' | 'left' | 'completed' | 'inactive'>> };
+  onChangeStatus: (role: AppRole, status: 'active' | 'paused' | 'left' | 'completed' | 'inactive') => void;
+  onArchive: (archive: boolean) => void;
+}> = ({ user, onChangeStatus, onArchive }) => {
+  const [open, setOpen] = React.useState(false);
+  const archived = !!user.archived_at;
+  const noRoles = user.roles.length === 0;
+  const overall: keyof typeof STATUS_ICON_COLOR = archived
+    ? 'archived'
+    : noRoles
+    ? 'unassigned'
+    : (user.roleStatuses?.[user.roles[0]] || 'active');
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          title={`Status: ${overall}`}
+          onClick={(e) => e.stopPropagation()}
+          className={STATUS_ICON_COLOR[overall]}
+        >
+          <Activity className="h-4 w-4" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-72 p-3" onClick={(e) => e.stopPropagation()}>
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Status</div>
+
+        {archived && (
+          <div className="space-y-2">
+            <div className={`inline-flex items-center justify-center px-2 py-1 text-[10px] font-medium uppercase border ${STATUS_PILL_COLOR.archived}`}>Archived</div>
+            <Button size="sm" variant="outline" className="w-full" onClick={() => { onArchive(false); setOpen(false); }}>
+              Restore user
+            </Button>
+          </div>
+        )}
+
+        {!archived && noRoles && (
+          <div className="space-y-2">
+            <div className={`inline-flex items-center justify-center px-2 py-1 text-[10px] font-medium uppercase border ${STATUS_PILL_COLOR.inactive}`}>Unassigned</div>
+            <p className="text-xs text-muted-foreground">No roles assigned. Assign a role first, or archive the user.</p>
+            <Button size="sm" variant="outline" className="w-full" onClick={() => { onArchive(true); setOpen(false); }}>
+              Archive user
+            </Button>
+          </div>
+        )}
+
+        {!archived && !noRoles && (
+          <div className="space-y-3">
+            {user.roles.map((role) => {
+              const st = (user.roleStatuses?.[role] || 'active') as 'active' | 'paused' | 'left' | 'completed' | 'inactive';
+              return (
+                <div key={role} className="flex items-center justify-between gap-2">
+                  <div className="text-xs font-medium capitalize">{role.replace(/_/g, ' ')}</div>
+                  <Select value={st} onValueChange={(v) => onChangeStatus(role, v as any)}>
+                    <SelectTrigger className={`h-7 px-2 py-0 border text-[10px] font-medium uppercase tracking-wide w-32 ${STATUS_PILL_COLOR[st] || STATUS_PILL_COLOR.inactive}`}>
+                      <span className="capitalize">{st}</span>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STATUS_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              );
+            })}
+
+            {user.roles.length > 1 && (
+              <div className="border-t pt-2 mt-1">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Apply to all roles</div>
+                <div className="flex flex-wrap gap-1">
+                  {STATUS_OPTIONS.map((o) => (
+                    <Button
+                      key={o.value}
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-[10px] uppercase"
+                      onClick={() => {
+                        user.roles.forEach((r) => onChangeStatus(r, o.value));
+                      }}
+                    >
+                      {o.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+};
+
 // ─── Identity Icons ──────────────────────────────────────────────────────
 // Inline icons that appear inside the URN pill: divisions a user belongs to,
 // plus a crown for global admin/super_admin roles. Mirrors the legend.
