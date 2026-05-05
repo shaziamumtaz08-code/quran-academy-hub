@@ -877,7 +877,26 @@ export default function UserManagement() {
       toast({
         title: variables.archive ? 'User Archived' : 'User Restored',
         description: variables.archive ? 'User has been archived.' : 'User has been restored from archive.',
-      });
+  });
+
+  // Update per-role status
+  const updateRoleStatusMutation = useMutation({
+    mutationFn: async ({ userId, role, status }: { userId: string; role: AppRole; status: RoleStatus }) => {
+      const { error } = await supabase
+        .from('user_roles')
+        .update({ status })
+        .eq('user_id', userId)
+        .eq('role', role);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users-with-roles'] });
+      toast({ title: 'Status updated' });
+    },
+    onError: (e) => {
+      toast({ title: 'Failed', description: e instanceof Error ? e.message : 'Could not update status', variant: 'destructive' });
+    },
+  });
     },
     onError: (error) => {
       toast({
