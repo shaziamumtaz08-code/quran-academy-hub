@@ -877,6 +877,15 @@ export default function UserManagement() {
       toast({
         title: variables.archive ? 'User Archived' : 'User Restored',
         description: variables.archive ? 'User has been archived.' : 'User has been restored from archive.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to update archive status',
+        variant: 'destructive',
+      });
+    },
   });
 
   // Update per-role status
@@ -897,15 +906,7 @@ export default function UserManagement() {
       toast({ title: 'Failed', description: e instanceof Error ? e.message : 'Could not update status', variant: 'destructive' });
     },
   });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to update archive status',
-        variant: 'destructive',
-      });
-    },
-  });
+
   // Fetch divisions for filter dropdown
   const { data: allDivisions = [] } = useQuery({
     queryKey: ['all-divisions-list'],
