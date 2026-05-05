@@ -2106,9 +2106,22 @@ export default function UserManagement() {
                                     <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-200">Archived</Badge>
                                   )}
                                 </div>
-                                {user.email && (
-                                  <span className="truncate text-xs text-muted-foreground">{user.email}</span>
-                                )}
+                                 {user.email ? (
+                                   <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+                                 ) : (
+                                   <TooltipProvider delayDuration={150}>
+                                     <Tooltip>
+                                       <TooltipTrigger asChild>
+                                         <Badge variant="outline" className="w-fit text-[10px] bg-amber-500/10 text-amber-700 border-amber-300 cursor-help">
+                                           ⚠️ Missing email — complete profile or archive
+                                         </Badge>
+                                       </TooltipTrigger>
+                                       <TooltipContent>
+                                         <p className="text-xs max-w-[240px]">This user has no email on file. Edit the profile to add one, or archive/delete the user to stay compliant with the Identity Uniqueness Standard.</p>
+                                       </TooltipContent>
+                                     </Tooltip>
+                                   </TooltipProvider>
+                                 )}
                               </div>
                             </div>
                           </TableCell>
