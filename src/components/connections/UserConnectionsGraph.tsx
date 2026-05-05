@@ -51,7 +51,7 @@ const ROLE_PILL: Record<string, { bg: string; label: string }> = {
 const ROLE_PRIORITY = ['super_admin', 'admin', 'admin_academic', 'admin_admissions', 'admin_fees', 'teacher', 'examiner', 'student', 'parent'];
 
 /* ---------- Relationship type → card colors ---------- */
-type RelKind = 'self' | 'teacher' | 'student' | 'parent' | 'sibling' | 'course';
+type RelKind = 'self' | 'teacher' | 'student' | 'parent' | 'sibling' | 'course' | 'subject';
 
 const REL_STYLE: Record<Exclude<RelKind, 'self'>, {
   bgClass: string; borderClass: string; headerClass: string; header: string; icon: React.ComponentType<any>;
@@ -61,6 +61,7 @@ const REL_STYLE: Record<Exclude<RelKind, 'self'>, {
   parent:  { bgClass: 'bg-[#FFFBEB] dark:bg-amber-950/30',  borderClass: 'border-l-[#D97706]', headerClass: 'text-[#D97706] dark:text-amber-300',  header: 'Guardian',    icon: Heart },
   sibling: { bgClass: 'bg-[#ECFEFF] dark:bg-cyan-950/30',   borderClass: 'border-l-[#0E7490]', headerClass: 'text-[#0E7490] dark:text-cyan-300',   header: 'Sibling',     icon: Baby },
   course:  { bgClass: 'bg-orange-50 dark:bg-orange-950/30', borderClass: 'border-l-orange-500', headerClass: 'text-orange-600 dark:text-orange-400', header: 'Enrolled Course', icon: BookOpen },
+  subject: { bgClass: 'bg-[#F0FDFA] dark:bg-teal-950/30',   borderClass: 'border-l-[#0F766E]', headerClass: 'text-[#0F766E] dark:text-teal-300',   header: 'Studying',    icon: BookMarked },
 };
 
 const STATUS_DOT: Record<string, string> = {
@@ -74,11 +75,12 @@ const STATUS_DOT: Record<string, string> = {
 
 /* ---------- Edge colors per relationship ---------- */
 const EDGE_STYLE: Record<Exclude<RelKind, 'self'>, { color: string; dashed: boolean; bidirectional?: boolean; label?: string }> = {
-  teacher: { color: '#6366F1', dashed: false, label: 'Teaching' },        // solid indigo (focus ↔ teacher)
-  student: { color: '#6366F1', dashed: false, label: 'Teaching' },        // solid indigo (teacher → student)
-  parent:  { color: '#D97706', dashed: true,  label: 'Guardian' },        // dashed gold
-  sibling: { color: '#0E7490', dashed: true,  bidirectional: true, label: 'Sibling' }, // dashed teal, double-headed
+  teacher: { color: '#6366F1', dashed: false, label: 'Teaching' },
+  student: { color: '#6366F1', dashed: false, label: 'Teaching' },
+  parent:  { color: '#D97706', dashed: true,  label: 'Guardian' },
+  sibling: { color: '#0E7490', dashed: true,  bidirectional: true, label: 'Sibling' },
   course:  { color: '#f97316', dashed: true,  label: 'Enrolled' },
+  subject: { color: '#0F766E', dashed: true,  label: 'Studying' },
 };
 
 interface NodeData {
