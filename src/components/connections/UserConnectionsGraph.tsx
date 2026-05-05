@@ -598,7 +598,7 @@ function GraphInner({ userId, userType, roleFilter = 'all', compact = false, cla
               <div className="rounded-md border bg-white/95 backdrop-blur px-3 py-2 shadow-sm space-y-1.5">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Legend</p>
                 <LegendRow color="#6366F1" dashed={false} label="Teaching" />
-                <LegendRow color="#7C3AED" dashed label="Sibling" bidirectional />
+                <LegendRow color="#0E7490" dashed label="Sibling" bidirectional />
                 <LegendRow color="#D97706" dashed label="Guardian" />
               </div>
             </Panel>
