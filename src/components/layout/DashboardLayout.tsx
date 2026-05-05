@@ -112,6 +112,15 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
             ],
           },
           {
+            label: "Exam & Report Cards",
+            icon: Award,
+            children: [
+              { label: "Report Card Templates", href: "/report-card-templates" },
+              { label: "Generate Report Card", href: "/generate-report-card" },
+              { label: "Student Reports", href: "/student-reports" },
+            ],
+          },
+          {
             label: "People",
             icon: Users,
             children: [
@@ -155,15 +164,6 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
               { label: "Activity Logs", href: "/reports?view=activity-logs" },
               { label: "Alerts & Automation", href: "/reports?view=alerts" },
               { label: "Custom Report Builder", href: "/reports?view=custom" },
-            ],
-          },
-          {
-            label: "Exam & Report Cards",
-            icon: Award,
-            children: [
-              { label: "Report Card Templates", href: "/report-card-templates" },
-              { label: "Generate Report Card", href: "/generate-report-card" },
-              { label: "Student Reports", href: "/student-reports" },
             ],
           },
         ],
