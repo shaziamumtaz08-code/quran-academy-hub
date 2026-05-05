@@ -251,8 +251,11 @@ interface UserWithRoles {
   archived_at: string | null;
   registration_id: string | null;
   roles: AppRole[];
+  roleStatuses: Partial<Record<AppRole, 'active' | 'paused' | 'left' | 'completed' | 'inactive'>>;
   exceptions: Array<{ permission: string; is_granted: boolean }>;
 }
+
+export type RoleStatus = 'active' | 'paused' | 'left' | 'completed' | 'inactive';
 
 export default function UserManagement() {
   const { isSuperAdmin, hasPermission, user: currentUser, session, activeRole } = useAuth();
@@ -377,13 +380,18 @@ export default function UserManagement() {
         (profiles || []).map(async (profile) => {
           const { data: rolesData } = await supabase
             .from('user_roles')
-            .select('role')
+            .select('role, status')
             .eq('user_id', profile.id);
 
           const { data: exceptions } = await supabase
             .from('permission_exceptions')
             .select('permission, is_granted')
             .eq('user_id', profile.id);
+
+          const roleStatuses: Partial<Record<AppRole, RoleStatus>> = {};
+          (rolesData || []).forEach((r: any) => {
+            roleStatuses[r.role as AppRole] = (r.status || 'active') as RoleStatus;
+          });
 
           return {
             id: profile.id,
@@ -397,7 +405,8 @@ export default function UserManagement() {
             created_at: profile.created_at,
             archived_at: profile.archived_at,
             registration_id: (profile as any).registration_id ?? null,
-            roles: (rolesData || []).map(r => r.role as AppRole),
+            roles: (rolesData || []).map((r: any) => r.role as AppRole),
+            roleStatuses,
             exceptions: exceptions || [],
           };
         })
@@ -878,6 +887,26 @@ export default function UserManagement() {
       });
     },
   });
+
+  // Update per-role status
+  const updateRoleStatusMutation = useMutation({
+    mutationFn: async ({ userId, role, status }: { userId: string; role: AppRole; status: RoleStatus }) => {
+      const { error } = await supabase
+        .from('user_roles')
+        .update({ status })
+        .eq('user_id', userId)
+        .eq('role', role);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users-with-roles'] });
+      toast({ title: 'Status updated' });
+    },
+    onError: (e) => {
+      toast({ title: 'Failed', description: e instanceof Error ? e.message : 'Could not update status', variant: 'destructive' });
+    },
+  });
+
   // Fetch divisions for filter dropdown
   const { data: allDivisions = [] } = useQuery({
     queryKey: ['all-divisions-list'],
@@ -1901,6 +1930,7 @@ export default function UserManagement() {
                         <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
                           <span className="inline-flex items-center gap-1">ID <span className="opacity-50">&amp;</span> ROLES</span>
                         </TableHead>
+                        <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Status</TableHead>
                         <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Phone</TableHead>
                         <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Location</TableHead>
                         <TableHead className="h-11 text-right text-[10px] uppercase tracking-wider font-semibold text-muted-foreground pr-4">Actions</TableHead>
@@ -2029,20 +2059,11 @@ export default function UserManagement() {
                                              const ut = r.includes('teacher') ? 'teacher' : r.includes('student') ? 'student' : r.includes('parent') ? 'parent' : 'student';
                                              return (
                                                <span className="inline-flex items-center gap-1 border-l border-slate-200 pl-2" style={{ width: 'calc(8 * 14px + 7 * 4px + 22px)' }}>
-                                                  {slots.map((it, i) => {
-                                                    const dot = it?.status === 'active' ? 'bg-emerald-500'
-                                                      : it?.status === 'paused' ? 'bg-amber-500'
-                                                      : it?.status === 'left' ? 'bg-rose-500'
-                                                      : it?.status === 'completed' ? 'bg-sky-500'
-                                                      : it?.status === 'inactive' ? 'bg-slate-400'
-                                                      : null;
-                                                    return (
-                                                      <span key={i} className="relative inline-flex items-center justify-center" style={{ width: 14, height: 14 }} title={it?.title}>
-                                                        {it ? <it.Icon className={`h-3.5 w-3.5 ${it.color}`} /> : null}
-                                                        {dot && <span className={`absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full ring-1 ring-white ${dot}`} />}
-                                                      </span>
-                                                    );
-                                                  })}
+                                                   {slots.map((it, i) => (
+                                                     <span key={i} className="relative inline-flex items-center justify-center" style={{ width: 14, height: 14 }} title={it?.title}>
+                                                       {it ? <it.Icon className={`h-3.5 w-3.5 ${it.color}`} /> : null}
+                                                     </span>
+                                                   ))}
                                                  <span
                                                    role="button"
                                                    tabIndex={0}
@@ -2069,6 +2090,48 @@ export default function UserManagement() {
                                 </TooltipProvider>
                               );
                             })()}
+                          </TableCell>
+                          <TableCell className="py-3" onClick={(e) => e.stopPropagation()}>
+                            {user.roles.length === 0 ? (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            ) : (
+                              <div className="flex flex-wrap gap-1">
+                                {user.roles.map((role) => {
+                                  const st = (user.roleStatuses?.[role] || 'active') as RoleStatus;
+                                  const colors: Record<RoleStatus, string> = {
+                                    active: 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100',
+                                    paused: 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100',
+                                    left: 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100',
+                                    completed: 'bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100',
+                                    inactive: 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200',
+                                  };
+                                  const roleLabel = role.replace(/_/g, ' ');
+                                  return (
+                                    <Select
+                                      key={role}
+                                      value={st}
+                                      onValueChange={(v) => updateRoleStatusMutation.mutate({ userId: user.id, role, status: v as RoleStatus })}
+                                    >
+                                      <SelectTrigger
+                                        className={`h-6 px-2 py-0 rounded-full border text-[10px] font-medium uppercase tracking-wide w-auto gap-1 ${colors[st]}`}
+                                        title={`${roleLabel} • ${st}`}
+                                      >
+                                        <span className="capitalize">{roleLabel}</span>
+                                        <span className="opacity-60">·</span>
+                                        <span className="capitalize">{st}</span>
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="active">Active</SelectItem>
+                                        <SelectItem value="paused">Paused</SelectItem>
+                                        <SelectItem value="completed">Completed</SelectItem>
+                                        <SelectItem value="left">Left</SelectItem>
+                                        <SelectItem value="inactive">Inactive</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </TableCell>
                           <TableCell className="py-3">
                             {user.whatsapp_number ? (
