@@ -175,6 +175,22 @@ function ConnectedNode({ data }: NodeProps<NodeData>) {
 
 const nodeTypes = { center: CenterNode, connected: ConnectedNode };
 
+/* ---------- Legend row ---------- */
+function LegendRow({ color, dashed, label, bidirectional }: { color: string; dashed?: boolean; label: string; bidirectional?: boolean }) {
+  return (
+    <div className="flex items-center gap-2">
+      <svg width="38" height="10" className="shrink-0">
+        {bidirectional && (
+          <polygon points="0,5 6,2 6,8" fill={color} />
+        )}
+        <line x1={bidirectional ? 6 : 0} y1="5" x2={32} y2="5" stroke={color} strokeWidth="2" strokeDasharray={dashed ? '5 3' : undefined} />
+        <polygon points="38,5 32,2 32,8" fill={color} />
+      </svg>
+      <span className="text-[10px] font-medium text-gray-700">{label}</span>
+    </div>
+  );
+}
+
 /* ---------- Test data filter ---------- */
 function isTestProfile(p: { full_name?: string | null; email?: string | null } | null | undefined): boolean {
   if (!p) return false;
