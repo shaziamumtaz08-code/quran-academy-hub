@@ -59,7 +59,7 @@ const REL_STYLE: Record<Exclude<RelKind, 'self'>, {
   teacher: { bgClass: 'bg-[#EEF2FF] dark:bg-indigo-950/30', borderClass: 'border-l-[#6366F1]', headerClass: 'text-[#4F46E5] dark:text-indigo-300', header: 'Teaching Me', icon: GraduationCap },
   student: { bgClass: 'bg-[#F5F3FF] dark:bg-purple-950/30', borderClass: 'border-l-[#7C3AED]', headerClass: 'text-[#7C3AED] dark:text-purple-300', header: 'Student',     icon: Users },
   parent:  { bgClass: 'bg-[#FFFBEB] dark:bg-amber-950/30',  borderClass: 'border-l-[#D97706]', headerClass: 'text-[#D97706] dark:text-amber-300',  header: 'Guardian',    icon: Heart },
-  sibling: { bgClass: 'bg-[#F5F3FF] dark:bg-purple-950/30', borderClass: 'border-l-[#7C3AED]', headerClass: 'text-[#7C3AED] dark:text-purple-300', header: 'Sibling',     icon: Baby },
+  sibling: { bgClass: 'bg-[#ECFEFF] dark:bg-cyan-950/30',   borderClass: 'border-l-[#0E7490]', headerClass: 'text-[#0E7490] dark:text-cyan-300',   header: 'Sibling',     icon: Baby },
   course:  { bgClass: 'bg-orange-50 dark:bg-orange-950/30', borderClass: 'border-l-orange-500', headerClass: 'text-orange-600 dark:text-orange-400', header: 'Enrolled Course', icon: BookOpen },
 };
 
@@ -74,10 +74,10 @@ const STATUS_DOT: Record<string, string> = {
 
 /* ---------- Edge colors per relationship ---------- */
 const EDGE_STYLE: Record<Exclude<RelKind, 'self'>, { color: string; dashed: boolean; bidirectional?: boolean; label?: string }> = {
-  teacher: { color: '#6366F1', dashed: false, label: 'Teaching' },        // solid indigo/blue
-  student: { color: '#6366F1', dashed: false, label: 'Teaching' },        // solid blue (teacher→student)
+  teacher: { color: '#6366F1', dashed: false, label: 'Teaching' },        // solid indigo (focus ↔ teacher)
+  student: { color: '#6366F1', dashed: false, label: 'Teaching' },        // solid indigo (teacher → student)
   parent:  { color: '#D97706', dashed: true,  label: 'Guardian' },        // dashed gold
-  sibling: { color: '#7C3AED', dashed: true,  bidirectional: true, label: 'Sibling' }, // dashed purple, double-headed
+  sibling: { color: '#0E7490', dashed: true,  bidirectional: true, label: 'Sibling' }, // dashed teal, double-headed
   course:  { color: '#f97316', dashed: true,  label: 'Enrolled' },
 };
 
@@ -102,14 +102,14 @@ function CenterNode({ data }: NodeProps<NodeData>) {
   });
   return (
     <div className="rounded-2xl shadow-2xl ring-2 ring-slate-700/50 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-5 py-4 min-w-[280px] max-w-[340px]">
-      <Handle type="target" position={Position.Top}    className="!opacity-0" />
-      <Handle type="target" position={Position.Bottom} className="!opacity-0" />
-      <Handle type="target" position={Position.Left}   className="!opacity-0" />
-      <Handle type="target" position={Position.Right}  className="!opacity-0" />
-      <Handle type="source" position={Position.Top}    className="!opacity-0" />
-      <Handle type="source" position={Position.Bottom} className="!opacity-0" />
-      <Handle type="source" position={Position.Left}   className="!opacity-0" />
-      <Handle type="source" position={Position.Right}  className="!opacity-0" />
+      <Handle id="t-top"    type="target" position={Position.Top}    className="!opacity-0" />
+      <Handle id="t-bottom" type="target" position={Position.Bottom} className="!opacity-0" />
+      <Handle id="t-left"   type="target" position={Position.Left}   className="!opacity-0" />
+      <Handle id="t-right"  type="target" position={Position.Right}  className="!opacity-0" />
+      <Handle id="s-top"    type="source" position={Position.Top}    className="!opacity-0" />
+      <Handle id="s-bottom" type="source" position={Position.Bottom} className="!opacity-0" />
+      <Handle id="s-left"   type="source" position={Position.Left}   className="!opacity-0" />
+      <Handle id="s-right"  type="source" position={Position.Right}  className="!opacity-0" />
       <div className="flex items-center gap-3">
         <div className="w-12 h-12 rounded-full bg-gradient-to-br from-slate-600 to-slate-700 ring-2 ring-white/20 flex items-center justify-center shrink-0">
           <span className="text-white font-bold text-base">{initials}</span>
@@ -150,14 +150,14 @@ function ConnectedNode({ data }: NodeProps<NodeData>) {
         style.bgClass, style.borderClass,
       )}
     >
-      <Handle type="target" position={Position.Top}    className="!opacity-0" />
-      <Handle type="target" position={Position.Bottom} className="!opacity-0" />
-      <Handle type="target" position={Position.Left}   className="!opacity-0" />
-      <Handle type="target" position={Position.Right}  className="!opacity-0" />
-      <Handle type="source" position={Position.Top}    className="!opacity-0" />
-      <Handle type="source" position={Position.Bottom} className="!opacity-0" />
-      <Handle type="source" position={Position.Left}   className="!opacity-0" />
-      <Handle type="source" position={Position.Right}  className="!opacity-0" />
+      <Handle id="t-top"    type="target" position={Position.Top}    className="!opacity-0" />
+      <Handle id="t-bottom" type="target" position={Position.Bottom} className="!opacity-0" />
+      <Handle id="t-left"   type="target" position={Position.Left}   className="!opacity-0" />
+      <Handle id="t-right"  type="target" position={Position.Right}  className="!opacity-0" />
+      <Handle id="s-top"    type="source" position={Position.Top}    className="!opacity-0" />
+      <Handle id="s-bottom" type="source" position={Position.Bottom} className="!opacity-0" />
+      <Handle id="s-left"   type="source" position={Position.Left}   className="!opacity-0" />
+      <Handle id="s-right"  type="source" position={Position.Right}  className="!opacity-0" />
       <div className="flex items-center gap-1.5">
         <Icon className={cn('h-3 w-3', style.headerClass)} />
         <span className={cn('text-[9px] font-bold uppercase tracking-wider', style.headerClass)}>{style.header}</span>
@@ -437,13 +437,30 @@ function buildGraph(
     draggable: false,
   });
 
-  const allSpokes = [...aboveLaid, ...belowLaid, ...leftLaid, ...rightLaid];
-  allSpokes.forEach((s) => {
+  const quadrantHandles = (q: 'above' | 'below' | 'left' | 'right') => {
+    switch (q) {
+      case 'above': return { source: 's-top',    target: 't-bottom' };
+      case 'below': return { source: 's-bottom', target: 't-top' };
+      case 'left':  return { source: 's-left',   target: 't-right' };
+      case 'right': return { source: 's-right',  target: 't-left' };
+    }
+  };
+
+  const tagged: Array<{ spoke: Spoke; quadrant: 'above' | 'below' | 'left' | 'right' }> = [
+    ...aboveLaid.map((s) => ({ spoke: s, quadrant: 'above' as const })),
+    ...belowLaid.map((s) => ({ spoke: s, quadrant: 'below' as const })),
+    ...leftLaid.map((s)  => ({ spoke: s, quadrant: 'left'  as const })),
+    ...rightLaid.map((s) => ({ spoke: s, quadrant: 'right' as const })),
+  ];
+  tagged.forEach(({ spoke: s, quadrant }) => {
     const style = EDGE_STYLE[s.rel];
+    const h = quadrantHandles(quadrant);
     edges.push({
       id: `e-${s.id}`,
       source: selfId,
       target: s.id,
+      sourceHandle: h.source,
+      targetHandle: h.target,
       type: 'smoothstep',
       animated: false,
       label: style.label,
@@ -581,7 +598,7 @@ function GraphInner({ userId, userType, roleFilter = 'all', compact = false, cla
               <div className="rounded-md border bg-white/95 backdrop-blur px-3 py-2 shadow-sm space-y-1.5">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Legend</p>
                 <LegendRow color="#6366F1" dashed={false} label="Teaching" />
-                <LegendRow color="#7C3AED" dashed label="Sibling" bidirectional />
+                <LegendRow color="#0E7490" dashed label="Sibling" bidirectional />
                 <LegendRow color="#D97706" dashed label="Guardian" />
               </div>
             </Panel>
