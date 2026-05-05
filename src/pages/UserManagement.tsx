@@ -888,7 +888,7 @@ export default function UserManagement() {
     },
   });
 
-  // Update per-role status
+  // Update per-role status (auto-archive on left/completed)
   const updateRoleStatusMutation = useMutation({
     mutationFn: async ({ userId, role, status }: { userId: string; role: AppRole; status: RoleStatus }) => {
       const { error } = await supabase
@@ -897,10 +897,20 @@ export default function UserManagement() {
         .eq('user_id', userId)
         .eq('role', role);
       if (error) throw error;
+
+      // Auto-archive when role status becomes 'left' or 'completed'
+      if (status === 'left' || status === 'completed') {
+        await supabase
+          .from('profiles')
+          .update({ archived_at: new Date().toISOString() })
+          .eq('id', userId)
+          .is('archived_at', null);
+      }
     },
-    onSuccess: () => {
+    onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['users-with-roles'] });
-      toast({ title: 'Status updated' });
+      const archived = vars.status === 'left' || vars.status === 'completed';
+      toast({ title: archived ? 'Status updated & archived' : 'Status updated' });
     },
     onError: (e) => {
       toast({ title: 'Failed', description: e instanceof Error ? e.message : 'Could not update status', variant: 'destructive' });
@@ -2092,44 +2102,97 @@ export default function UserManagement() {
                             })()}
                           </TableCell>
                           <TableCell className="py-3" onClick={(e) => e.stopPropagation()}>
-                            {user.roles.length === 0 ? (
-                              <span className="text-xs text-muted-foreground">—</span>
-                            ) : (
-                              <div className="flex flex-wrap gap-1">
-                                {user.roles.map((role) => {
-                                  const st = (user.roleStatuses?.[role] || 'active') as RoleStatus;
-                                  const colors: Record<RoleStatus, string> = {
-                                    active: 'bg-white text-emerald-700 border-emerald-500 hover:bg-emerald-50',
-                                    paused: 'bg-white text-amber-700 border-amber-500 hover:bg-amber-50',
-                                    left: 'bg-white text-rose-700 border-rose-500 hover:bg-rose-50',
-                                    completed: 'bg-white text-sky-700 border-sky-500 hover:bg-sky-50',
-                                    inactive: 'bg-white text-slate-600 border-slate-400 hover:bg-slate-50',
-                                  };
-                                  const roleLabel = role.replace(/_/g, ' ');
-                                  return (
-                                    <Select
-                                      key={role}
-                                      value={st}
-                                      onValueChange={(v) => updateRoleStatusMutation.mutate({ userId: user.id, role, status: v as RoleStatus })}
-                                    >
-                                      <SelectTrigger
-                                        className={`h-6 px-2 py-0 rounded-none border text-[10px] font-medium uppercase tracking-wide w-auto gap-1 ${colors[st]}`}
-                                        title={`${roleLabel} • ${st}`}
-                                      >
-                                        <span className="capitalize">{st}</span>
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="active">Active</SelectItem>
-                                        <SelectItem value="paused">Paused</SelectItem>
-                                        <SelectItem value="completed">Completed</SelectItem>
-                                        <SelectItem value="left">Left</SelectItem>
-                                        <SelectItem value="inactive">Inactive</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  );
-                                })}
-                              </div>
-                            )}
+                            {(() => {
+                              const colors: Record<string, string> = {
+                                active: 'bg-white text-emerald-700 border-emerald-500 hover:bg-emerald-50',
+                                paused: 'bg-white text-amber-700 border-amber-500 hover:bg-amber-50',
+                                left: 'bg-white text-rose-700 border-rose-500 hover:bg-rose-50',
+                                completed: 'bg-white text-sky-700 border-sky-500 hover:bg-sky-50',
+                                inactive: 'bg-white text-slate-600 border-slate-400 hover:bg-slate-50',
+                                archived: 'bg-white text-amber-700 border-amber-500 hover:bg-amber-50',
+                              };
+                              const renderPill = (value: string, onChange: (v: string) => void, title: string) => (
+                                <Select value={value} onValueChange={onChange}>
+                                  <SelectTrigger
+                                    className={`h-6 px-2 py-0 rounded-none border text-[10px] font-medium uppercase tracking-wide w-auto gap-1 ${colors[value] || colors.inactive}`}
+                                    title={title}
+                                  >
+                                    <span className="capitalize">{value}</span>
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="active">Active</SelectItem>
+                                    <SelectItem value="paused">Paused</SelectItem>
+                                    <SelectItem value="completed">Completed</SelectItem>
+                                    <SelectItem value="left">Left</SelectItem>
+                                    <SelectItem value="inactive">Inactive</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              );
+                              // Archived users → single Archived pill (restoring sets active)
+                              if (user.archived_at) {
+                                return (
+                                  <Select
+                                    value="archived"
+                                    onValueChange={(v) => {
+                                      if (v === 'active') {
+                                        archiveMutation.mutate({ userId: user.id, archive: false });
+                                      } else if (v === 'left' || v === 'completed') {
+                                        // already archived; just update first role if any
+                                        if (user.roles[0]) updateRoleStatusMutation.mutate({ userId: user.id, role: user.roles[0], status: v as RoleStatus });
+                                      } else if (user.roles[0]) {
+                                        // Restore + set new status
+                                        archiveMutation.mutate({ userId: user.id, archive: false });
+                                        updateRoleStatusMutation.mutate({ userId: user.id, role: user.roles[0], status: v as RoleStatus });
+                                      }
+                                    }}
+                                  >
+                                    <SelectTrigger className={`h-6 px-2 py-0 rounded-none border text-[10px] font-medium uppercase tracking-wide w-auto gap-1 ${colors.archived}`} title="Archived user">
+                                      <span>Archived</span>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="active">Restore → Active</SelectItem>
+                                      <SelectItem value="paused">Restore → Paused</SelectItem>
+                                      <SelectItem value="inactive">Restore → Inactive</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                );
+                              }
+                              // No roles assigned → single "Unassigned" pill
+                              if (user.roles.length === 0) {
+                                return (
+                                  <Select
+                                    value="inactive"
+                                    onValueChange={(v) => {
+                                      if (v === 'left' || v === 'completed') {
+                                        archiveMutation.mutate({ userId: user.id, archive: true });
+                                      }
+                                    }}
+                                  >
+                                    <SelectTrigger className={`h-6 px-2 py-0 rounded-none border text-[10px] font-medium uppercase tracking-wide w-auto gap-1 ${colors.inactive}`} title="No role assigned">
+                                      <span>Unassigned</span>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="completed">Mark Completed (Archive)</SelectItem>
+                                      <SelectItem value="left">Mark Left (Archive)</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                );
+                              }
+                              // Per-role pills
+                              return (
+                                <div className="flex flex-wrap gap-1">
+                                  {user.roles.map((role) => {
+                                    const st = (user.roleStatuses?.[role] || 'active') as RoleStatus;
+                                    const roleLabel = role.replace(/_/g, ' ');
+                                    return (
+                                      <React.Fragment key={role}>
+                                        {renderPill(st, (v) => updateRoleStatusMutation.mutate({ userId: user.id, role, status: v as RoleStatus }), `${roleLabel} • ${st}`)}
+                                      </React.Fragment>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })()}
                           </TableCell>
                           <TableCell className="py-3">
                             {user.whatsapp_number ? (
