@@ -1930,6 +1930,7 @@ export default function UserManagement() {
                         <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
                           <span className="inline-flex items-center gap-1">ID <span className="opacity-50">&amp;</span> ROLES</span>
                         </TableHead>
+                        <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Status</TableHead>
                         <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Phone</TableHead>
                         <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Location</TableHead>
                         <TableHead className="h-11 text-right text-[10px] uppercase tracking-wider font-semibold text-muted-foreground pr-4">Actions</TableHead>
