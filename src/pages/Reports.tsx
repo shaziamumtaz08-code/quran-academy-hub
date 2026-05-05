@@ -3,6 +3,7 @@ import { Navigate, useSearchParams } from "react-router-dom";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PageShell } from "@/components/layout/PageShell";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDivision } from "@/contexts/DivisionContext";
 import ExecutiveDashboard from "@/components/reports/ExecutiveDashboard";
 import AttendanceReports from "@/components/reports/AttendanceReports";
 import FeeReports from "@/components/reports/FeeReports";
@@ -27,7 +28,7 @@ const allViews = [
   { label: 'Custom', value: 'custom' },
 ] as const;
 
-const descriptions: Record<string, string> = {
+const baseDescriptions: Record<string, string> = {
   executive: 'High-level overview of academy performance.',
   attendance: 'Daily attendance summaries, absence detection, and streak tracking.',
   fees: 'Revenue tracking, pending dues, and payment analysis.',
