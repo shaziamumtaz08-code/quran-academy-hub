@@ -380,13 +380,18 @@ export default function UserManagement() {
         (profiles || []).map(async (profile) => {
           const { data: rolesData } = await supabase
             .from('user_roles')
-            .select('role')
+            .select('role, status')
             .eq('user_id', profile.id);
 
           const { data: exceptions } = await supabase
             .from('permission_exceptions')
             .select('permission, is_granted')
             .eq('user_id', profile.id);
+
+          const roleStatuses: Partial<Record<AppRole, RoleStatus>> = {};
+          (rolesData || []).forEach((r: any) => {
+            roleStatuses[r.role as AppRole] = (r.status || 'active') as RoleStatus;
+          });
 
           return {
             id: profile.id,
@@ -400,7 +405,8 @@ export default function UserManagement() {
             created_at: profile.created_at,
             archived_at: profile.archived_at,
             registration_id: (profile as any).registration_id ?? null,
-            roles: (rolesData || []).map(r => r.role as AppRole),
+            roles: (rolesData || []).map((r: any) => r.role as AppRole),
+            roleStatuses,
             exceptions: exceptions || [],
           };
         })
