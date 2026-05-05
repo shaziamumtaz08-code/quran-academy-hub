@@ -888,7 +888,7 @@ export default function UserManagement() {
     },
   });
 
-  // Update per-role status
+  // Update per-role status (auto-archive on left/completed)
   const updateRoleStatusMutation = useMutation({
     mutationFn: async ({ userId, role, status }: { userId: string; role: AppRole; status: RoleStatus }) => {
       const { error } = await supabase
@@ -897,10 +897,20 @@ export default function UserManagement() {
         .eq('user_id', userId)
         .eq('role', role);
       if (error) throw error;
+
+      // Auto-archive when role status becomes 'left' or 'completed'
+      if (status === 'left' || status === 'completed') {
+        await supabase
+          .from('profiles')
+          .update({ archived_at: new Date().toISOString() })
+          .eq('id', userId)
+          .is('archived_at', null);
+      }
     },
-    onSuccess: () => {
+    onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['users-with-roles'] });
-      toast({ title: 'Status updated' });
+      const archived = vars.status === 'left' || vars.status === 'completed';
+      toast({ title: archived ? 'Status updated & archived' : 'Status updated' });
     },
     onError: (e) => {
       toast({ title: 'Failed', description: e instanceof Error ? e.message : 'Could not update status', variant: 'destructive' });
