@@ -59,7 +59,7 @@ const REL_STYLE: Record<Exclude<RelKind, 'self'>, {
   teacher: { bgClass: 'bg-[#EEF2FF] dark:bg-indigo-950/30', borderClass: 'border-l-[#6366F1]', headerClass: 'text-[#4F46E5] dark:text-indigo-300', header: 'Teaching Me', icon: GraduationCap },
   student: { bgClass: 'bg-[#F5F3FF] dark:bg-purple-950/30', borderClass: 'border-l-[#7C3AED]', headerClass: 'text-[#7C3AED] dark:text-purple-300', header: 'Student',     icon: Users },
   parent:  { bgClass: 'bg-[#FFFBEB] dark:bg-amber-950/30',  borderClass: 'border-l-[#D97706]', headerClass: 'text-[#D97706] dark:text-amber-300',  header: 'Guardian',    icon: Heart },
-  sibling: { bgClass: 'bg-[#F5F3FF] dark:bg-purple-950/30', borderClass: 'border-l-[#7C3AED]', headerClass: 'text-[#7C3AED] dark:text-purple-300', header: 'Sibling',     icon: Baby },
+  sibling: { bgClass: 'bg-[#ECFEFF] dark:bg-cyan-950/30',   borderClass: 'border-l-[#0E7490]', headerClass: 'text-[#0E7490] dark:text-cyan-300',   header: 'Sibling',     icon: Baby },
   course:  { bgClass: 'bg-orange-50 dark:bg-orange-950/30', borderClass: 'border-l-orange-500', headerClass: 'text-orange-600 dark:text-orange-400', header: 'Enrolled Course', icon: BookOpen },
 };
 
@@ -74,10 +74,10 @@ const STATUS_DOT: Record<string, string> = {
 
 /* ---------- Edge colors per relationship ---------- */
 const EDGE_STYLE: Record<Exclude<RelKind, 'self'>, { color: string; dashed: boolean; bidirectional?: boolean; label?: string }> = {
-  teacher: { color: '#6366F1', dashed: false, label: 'Teaching' },        // solid indigo/blue
-  student: { color: '#6366F1', dashed: false, label: 'Teaching' },        // solid blue (teacher→student)
+  teacher: { color: '#6366F1', dashed: false, label: 'Teaching' },        // solid indigo (focus ↔ teacher)
+  student: { color: '#6366F1', dashed: false, label: 'Teaching' },        // solid indigo (teacher → student)
   parent:  { color: '#D97706', dashed: true,  label: 'Guardian' },        // dashed gold
-  sibling: { color: '#7C3AED', dashed: true,  bidirectional: true, label: 'Sibling' }, // dashed purple, double-headed
+  sibling: { color: '#0E7490', dashed: true,  bidirectional: true, label: 'Sibling' }, // dashed teal, double-headed
   course:  { color: '#f97316', dashed: true,  label: 'Enrolled' },
 };
 
