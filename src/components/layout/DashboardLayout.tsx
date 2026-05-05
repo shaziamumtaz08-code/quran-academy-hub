@@ -15,6 +15,7 @@ import {
   GraduationCap,
   Landmark,
   LayoutDashboard,
+  Megaphone,
   Menu,
   MessageSquare,
   UserCog,
