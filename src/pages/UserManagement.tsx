@@ -97,7 +97,8 @@ import { SearchableCitySelect } from '@/components/ui/searchable-city-select';
 import { useDivisionMembership, getDivisionShortName, getDivisionBadgeClass, formatRoleLabel } from '@/hooks/useDivisionMembership';
 import { useDivision } from '@/contexts/DivisionContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Copy, ChevronDown, ChevronRight, ChevronUp, AlertTriangle, Video, Presentation, ClipboardCheck, UserCircle2 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Copy, ChevronDown, ChevronRight, ChevronUp, AlertTriangle, Video, Presentation, ClipboardCheck, UserCircle2, Activity } from 'lucide-react';
 
 const ALL_PERMISSIONS = [
   { group: 'Users', permissions: ['users.view', 'users.create', 'users.edit', 'users.delete', 'users.assign_roles'] },
@@ -160,6 +161,130 @@ const RolePill = ({ role, prefix }: { role: AppRole; prefix?: string }) => {
       {prefix && <><span className="font-semibold">{prefix}</span><span className="opacity-50">·</span></>}
       <span>{formatRoleLabel(role)}</span>
     </span>
+  );
+};
+
+const STATUS_OPTIONS: Array<{ value: 'active' | 'paused' | 'completed' | 'left' | 'inactive'; label: string }> = [
+  { value: 'active', label: 'Active' },
+  { value: 'paused', label: 'Paused' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'left', label: 'Left' },
+  { value: 'inactive', label: 'Inactive' },
+];
+
+const STATUS_PILL_COLOR: Record<string, string> = {
+  active: 'bg-white text-emerald-700 border-emerald-500',
+  paused: 'bg-white text-amber-700 border-amber-500',
+  left: 'bg-white text-rose-700 border-rose-500',
+  completed: 'bg-white text-sky-700 border-sky-500',
+  inactive: 'bg-white text-slate-600 border-slate-400',
+  archived: 'bg-white text-amber-700 border-amber-500',
+};
+
+const STATUS_ICON_COLOR: Record<string, string> = {
+  active: 'text-emerald-600',
+  paused: 'text-amber-600',
+  left: 'text-rose-600',
+  completed: 'text-sky-600',
+  inactive: 'text-slate-500',
+  archived: 'text-amber-600',
+  unassigned: 'text-amber-600',
+};
+
+const UserStatusPopover: React.FC<{
+  user: { id: string; archived_at: string | null; roles: AppRole[]; roleStatuses: Partial<Record<AppRole, 'active' | 'paused' | 'left' | 'completed' | 'inactive'>> };
+  onChangeStatus: (role: AppRole, status: 'active' | 'paused' | 'left' | 'completed' | 'inactive') => void;
+  onArchive: (archive: boolean) => void;
+}> = ({ user, onChangeStatus, onArchive }) => {
+  const [open, setOpen] = React.useState(false);
+  const archived = !!user.archived_at;
+  const noRoles = user.roles.length === 0;
+  const overall: keyof typeof STATUS_ICON_COLOR = archived
+    ? 'archived'
+    : noRoles
+    ? 'unassigned'
+    : (user.roleStatuses?.[user.roles[0]] || 'active');
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          title={`Status: ${overall}`}
+          onClick={(e) => e.stopPropagation()}
+          className={STATUS_ICON_COLOR[overall]}
+        >
+          <Activity className="h-4 w-4" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-72 p-3" onClick={(e) => e.stopPropagation()}>
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Status</div>
+
+        {archived && (
+          <div className="space-y-2">
+            <div className={`inline-flex items-center justify-center px-2 py-1 text-[10px] font-medium uppercase border ${STATUS_PILL_COLOR.archived}`}>Archived</div>
+            <Button size="sm" variant="outline" className="w-full" onClick={() => { onArchive(false); setOpen(false); }}>
+              Restore user
+            </Button>
+          </div>
+        )}
+
+        {!archived && noRoles && (
+          <div className="space-y-2">
+            <div className={`inline-flex items-center justify-center px-2 py-1 text-[10px] font-medium uppercase border ${STATUS_PILL_COLOR.inactive}`}>Unassigned</div>
+            <p className="text-xs text-muted-foreground">No roles assigned. Assign a role first, or archive the user.</p>
+            <Button size="sm" variant="outline" className="w-full" onClick={() => { onArchive(true); setOpen(false); }}>
+              Archive user
+            </Button>
+          </div>
+        )}
+
+        {!archived && !noRoles && (
+          <div className="space-y-3">
+            {user.roles.map((role) => {
+              const st = (user.roleStatuses?.[role] || 'active') as 'active' | 'paused' | 'left' | 'completed' | 'inactive';
+              return (
+                <div key={role} className="flex items-center justify-between gap-2">
+                  <div className="text-xs font-medium capitalize">{role.replace(/_/g, ' ')}</div>
+                  <Select value={st} onValueChange={(v) => onChangeStatus(role, v as any)}>
+                    <SelectTrigger className={`h-7 px-2 py-0 border text-[10px] font-medium uppercase tracking-wide w-32 ${STATUS_PILL_COLOR[st] || STATUS_PILL_COLOR.inactive}`}>
+                      <span className="capitalize">{st}</span>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STATUS_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              );
+            })}
+
+            {user.roles.length > 1 && (
+              <div className="border-t pt-2 mt-1">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Apply to all roles</div>
+                <div className="flex flex-wrap gap-1">
+                  {STATUS_OPTIONS.map((o) => (
+                    <Button
+                      key={o.value}
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-[10px] uppercase"
+                      onClick={() => {
+                        user.roles.forEach((r) => onChangeStatus(r, o.value));
+                      }}
+                    >
+                      {o.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 };
 
@@ -1940,7 +2065,7 @@ export default function UserManagement() {
                         <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
                           <span className="inline-flex items-center gap-1">ID <span className="opacity-50">&amp;</span> ROLES</span>
                         </TableHead>
-                        <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Status</TableHead>
+                        
                         <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Phone</TableHead>
                         <TableHead className="h-11 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Location</TableHead>
                         <TableHead className="h-11 text-right text-[10px] uppercase tracking-wider font-semibold text-muted-foreground pr-4">Actions</TableHead>
@@ -2101,99 +2226,6 @@ export default function UserManagement() {
                               );
                             })()}
                           </TableCell>
-                          <TableCell className="py-3" onClick={(e) => e.stopPropagation()}>
-                            {(() => {
-                              const colors: Record<string, string> = {
-                                active: 'bg-white text-emerald-700 border-emerald-500 hover:bg-emerald-50',
-                                paused: 'bg-white text-amber-700 border-amber-500 hover:bg-amber-50',
-                                left: 'bg-white text-rose-700 border-rose-500 hover:bg-rose-50',
-                                completed: 'bg-white text-sky-700 border-sky-500 hover:bg-sky-50',
-                                inactive: 'bg-white text-slate-600 border-slate-400 hover:bg-slate-50',
-                                archived: 'bg-white text-amber-700 border-amber-500 hover:bg-amber-50',
-                              };
-                              const renderPill = (value: string, onChange: (v: string) => void, title: string) => (
-                                <Select value={value} onValueChange={onChange}>
-                                  <SelectTrigger
-                                    className={`h-6 px-2 py-0 rounded-none border text-[10px] font-medium uppercase tracking-wide w-auto gap-1 ${colors[value] || colors.inactive}`}
-                                    title={title}
-                                  >
-                                    <span className="capitalize">{value}</span>
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="active">Active</SelectItem>
-                                    <SelectItem value="paused">Paused</SelectItem>
-                                    <SelectItem value="completed">Completed</SelectItem>
-                                    <SelectItem value="left">Left</SelectItem>
-                                    <SelectItem value="inactive">Inactive</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              );
-                              // Archived users → single Archived pill (restoring sets active)
-                              if (user.archived_at) {
-                                return (
-                                  <Select
-                                    value="archived"
-                                    onValueChange={(v) => {
-                                      if (v === 'active') {
-                                        archiveMutation.mutate({ userId: user.id, archive: false });
-                                      } else if (v === 'left' || v === 'completed') {
-                                        // already archived; just update first role if any
-                                        if (user.roles[0]) updateRoleStatusMutation.mutate({ userId: user.id, role: user.roles[0], status: v as RoleStatus });
-                                      } else if (user.roles[0]) {
-                                        // Restore + set new status
-                                        archiveMutation.mutate({ userId: user.id, archive: false });
-                                        updateRoleStatusMutation.mutate({ userId: user.id, role: user.roles[0], status: v as RoleStatus });
-                                      }
-                                    }}
-                                  >
-                                    <SelectTrigger className={`h-6 px-2 py-0 rounded-none border text-[10px] font-medium uppercase tracking-wide w-auto gap-1 ${colors.archived}`} title="Archived user">
-                                      <span>Archived</span>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="active">Restore → Active</SelectItem>
-                                      <SelectItem value="paused">Restore → Paused</SelectItem>
-                                      <SelectItem value="inactive">Restore → Inactive</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                );
-                              }
-                              // No roles assigned → single "Unassigned" pill
-                              if (user.roles.length === 0) {
-                                return (
-                                  <Select
-                                    value="inactive"
-                                    onValueChange={(v) => {
-                                      if (v === 'left' || v === 'completed') {
-                                        archiveMutation.mutate({ userId: user.id, archive: true });
-                                      }
-                                    }}
-                                  >
-                                    <SelectTrigger className={`h-6 px-2 py-0 rounded-none border text-[10px] font-medium uppercase tracking-wide w-auto gap-1 ${colors.inactive}`} title="No role assigned">
-                                      <span>Unassigned</span>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="completed">Mark Completed (Archive)</SelectItem>
-                                      <SelectItem value="left">Mark Left (Archive)</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                );
-                              }
-                              // Per-role pills
-                              return (
-                                <div className="flex flex-wrap gap-1">
-                                  {user.roles.map((role) => {
-                                    const st = (user.roleStatuses?.[role] || 'active') as RoleStatus;
-                                    const roleLabel = role.replace(/_/g, ' ');
-                                    return (
-                                      <React.Fragment key={role}>
-                                        {renderPill(st, (v) => updateRoleStatusMutation.mutate({ userId: user.id, role, status: v as RoleStatus }), `${roleLabel} • ${st}`)}
-                                      </React.Fragment>
-                                    );
-                                  })}
-                                </div>
-                              );
-                            })()}
-                          </TableCell>
                           <TableCell className="py-3">
                             {user.whatsapp_number ? (
                               <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground tabular-nums">
@@ -2216,7 +2248,13 @@ export default function UserManagement() {
                           </TableCell>
                           <TableCell className="py-3 text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="flex justify-end gap-1">
-                              {/* Connections moved into the ID/roles pill */}
+                              {/* Status — icon button opens popover with per-role status (and Apply to all) */}
+                              <UserStatusPopover
+                                user={user}
+                                onChangeStatus={(role, status) => updateRoleStatusMutation.mutate({ userId: user.id, role, status })}
+                                onArchive={(archive) => archiveMutation.mutate({ userId: user.id, archive })}
+                              />
+
 
                               {/* Assign Role — super_admin & admin_division */}
                               {(activeRole === 'super_admin' || activeRole === 'admin_division') && (
