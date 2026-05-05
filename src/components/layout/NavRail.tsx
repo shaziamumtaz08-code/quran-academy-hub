@@ -23,6 +23,7 @@ export function buildRailNav(role: AppRole | null): RailItem[] {
   if (role && (adminRoles.includes(role) || role?.startsWith('admin_'))) {
     return [
       { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
+      { label: 'Leads', href: '/leads', icon: Megaphone },
       { label: 'Teaching', href: '/teaching', icon: BookOpen },
       { label: 'People', href: '/people', icon: Users },
       { label: 'Finance', href: '/finance', icon: DollarSign },
