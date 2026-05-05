@@ -3,6 +3,7 @@ import { Navigate, useSearchParams } from "react-router-dom";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PageShell } from "@/components/layout/PageShell";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDivision } from "@/contexts/DivisionContext";
 import ExecutiveDashboard from "@/components/reports/ExecutiveDashboard";
 import AttendanceReports from "@/components/reports/AttendanceReports";
 import FeeReports from "@/components/reports/FeeReports";
@@ -27,7 +28,7 @@ const allViews = [
   { label: 'Custom', value: 'custom' },
 ] as const;
 
-const descriptions: Record<string, string> = {
+const baseDescriptions: Record<string, string> = {
   executive: 'High-level overview of academy performance.',
   attendance: 'Daily attendance summaries, absence detection, and streak tracking.',
   fees: 'Revenue tracking, pending dues, and payment analysis.',
@@ -42,8 +43,10 @@ const descriptions: Record<string, string> = {
 
 export default function Reports() {
   const { activeRole } = useAuth();
+  const { activeModelType } = useDivision();
   const [searchParams] = useSearchParams();
   const isAdmin = activeRole === 'super_admin' || activeRole === 'admin' || activeRole?.startsWith('admin_');
+  const isOneToOne = activeModelType === 'one_to_one';
   const availableViews = useMemo(
     () => allViews.filter((view) => isAdmin || !['activity-logs', 'alerts', 'custom', 'teachers', 'accountability'].includes(view.value)),
     [isAdmin],
@@ -69,8 +72,13 @@ export default function Reports() {
     }
   };
 
+  const description =
+    activeView === 'course-batch' && isOneToOne
+      ? 'Teacher and subject load: active assignments, paused, left, and drop-off analysis.'
+      : baseDescriptions[activeView];
+
   return (
-    <PageShell title="Reports" description={descriptions[activeView]}>
+    <PageShell title="Reports" description={description}>
       <div className="animate-fade-in">
         <ErrorBoundary>{renderSection()}</ErrorBoundary>
       </div>
