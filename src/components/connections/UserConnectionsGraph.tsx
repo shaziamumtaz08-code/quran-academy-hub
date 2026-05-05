@@ -150,14 +150,14 @@ function ConnectedNode({ data }: NodeProps<NodeData>) {
         style.bgClass, style.borderClass,
       )}
     >
-      <Handle type="target" position={Position.Top}    className="!opacity-0" />
-      <Handle type="target" position={Position.Bottom} className="!opacity-0" />
-      <Handle type="target" position={Position.Left}   className="!opacity-0" />
-      <Handle type="target" position={Position.Right}  className="!opacity-0" />
-      <Handle type="source" position={Position.Top}    className="!opacity-0" />
-      <Handle type="source" position={Position.Bottom} className="!opacity-0" />
-      <Handle type="source" position={Position.Left}   className="!opacity-0" />
-      <Handle type="source" position={Position.Right}  className="!opacity-0" />
+      <Handle id="t-top"    type="target" position={Position.Top}    className="!opacity-0" />
+      <Handle id="t-bottom" type="target" position={Position.Bottom} className="!opacity-0" />
+      <Handle id="t-left"   type="target" position={Position.Left}   className="!opacity-0" />
+      <Handle id="t-right"  type="target" position={Position.Right}  className="!opacity-0" />
+      <Handle id="s-top"    type="source" position={Position.Top}    className="!opacity-0" />
+      <Handle id="s-bottom" type="source" position={Position.Bottom} className="!opacity-0" />
+      <Handle id="s-left"   type="source" position={Position.Left}   className="!opacity-0" />
+      <Handle id="s-right"  type="source" position={Position.Right}  className="!opacity-0" />
       <div className="flex items-center gap-1.5">
         <Icon className={cn('h-3 w-3', style.headerClass)} />
         <span className={cn('text-[9px] font-bold uppercase tracking-wider', style.headerClass)}>{style.header}</span>
