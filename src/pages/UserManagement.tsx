@@ -2029,11 +2029,20 @@ export default function UserManagement() {
                                              const ut = r.includes('teacher') ? 'teacher' : r.includes('student') ? 'student' : r.includes('parent') ? 'parent' : 'student';
                                              return (
                                                <span className="inline-flex items-center gap-1 border-l border-slate-200 pl-2" style={{ width: 'calc(8 * 14px + 7 * 4px + 22px)' }}>
-                                                 {slots.map((it, i) => (
-                                                   <span key={i} className="inline-flex items-center justify-center" style={{ width: 14, height: 14 }} title={it?.title}>
-                                                     {it ? <it.Icon className={`h-3.5 w-3.5 ${it.color}`} /> : null}
-                                                   </span>
-                                                 ))}
+                                                  {slots.map((it, i) => {
+                                                    const dot = it?.status === 'active' ? 'bg-emerald-500'
+                                                      : it?.status === 'paused' ? 'bg-amber-500'
+                                                      : it?.status === 'left' ? 'bg-rose-500'
+                                                      : it?.status === 'completed' ? 'bg-sky-500'
+                                                      : it?.status === 'inactive' ? 'bg-slate-400'
+                                                      : null;
+                                                    return (
+                                                      <span key={i} className="relative inline-flex items-center justify-center" style={{ width: 14, height: 14 }} title={it?.title}>
+                                                        {it ? <it.Icon className={`h-3.5 w-3.5 ${it.color}`} /> : null}
+                                                        {dot && <span className={`absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full ring-1 ring-white ${dot}`} />}
+                                                      </span>
+                                                    );
+                                                  })}
                                                  <span
                                                    role="button"
                                                    tabIndex={0}
