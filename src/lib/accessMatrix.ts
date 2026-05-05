@@ -54,7 +54,7 @@ export const ACCESS_MATRIX: ModuleAccess[] = [
   { id:'user_management',     route:'/user-management',        roles:{super_admin:ADMIN_FULL, admin:ADMIN_FULL, admin_division:ADMIN_FULL, admin_admissions:['view','create','edit'], admin_academic:VIEW_ONLY}, group:'people' },
   { id:'leads',               route:'/leads',                  roles:{...adminFull}, divisions:['one_to_one'], group:'people' },
   { id:'identity',            route:'/identity',               roles:{super_admin:ADMIN_FULL, admin:ADMIN_FULL, admin_division:ADMIN_FULL}, group:'people' },
-  { id:'finance',             route:'/finance',                roles:{super_admin:ADMIN_FULL, admin:ADMIN_FULL, admin_division:ADMIN_FULL, admin_fees:ADMIN_FULL, admin_academic:VIEW_ONLY, admin_admissions:VIEW_ONLY}, group:'finance' },
+  { id:'finance',             route:'/finance',                roles:{super_admin:ADMIN_FULL, admin:ADMIN_FULL, admin_division:ADMIN_FULL, admin_fees:ADMIN_FULL, admin_academic:VIEW_ONLY, admin_admissions:VIEW_ONLY, student:VIEW_ONLY, parent:VIEW_ONLY}, group:'finance' },
   { id:'finance_setup',       route:'/finance-setup',          roles:{super_admin:ADMIN_FULL, admin:ADMIN_FULL, admin_division:ADMIN_FULL, admin_fees:ADMIN_FULL}, group:'finance' },
   { id:'salary',              route:'/salary',                 roles:{super_admin:ADMIN_FULL, admin:ADMIN_FULL, admin_division:ADMIN_FULL, admin_fees:ADMIN_FULL, teacher:VIEW_ONLY}, group:'finance' },
   { id:'staff_salaries',      route:'/staff-salaries',         roles:{super_admin:ADMIN_FULL, admin:ADMIN_FULL, admin_division:ADMIN_FULL, admin_fees:ADMIN_FULL}, group:'finance' },
