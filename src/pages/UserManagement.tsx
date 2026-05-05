@@ -2119,6 +2119,19 @@ export default function UserManagement() {
                                 </Button>
                               )}
 
+                              {/* Archive / Restore */}
+                              {(activeRole === 'super_admin' || activeRole === 'admin_division' || activeRole === 'admin') && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => archiveMutation.mutate({ userId: user.id, archive: !user.archived_at })}
+                                  title={user.archived_at ? 'Restore user' : 'Archive user'}
+                                  className={user.archived_at ? 'text-emerald-600 hover:text-emerald-700' : 'text-amber-600 hover:text-amber-700'}
+                                >
+                                  {user.archived_at ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                                </Button>
+                              )}
+
                               {/* Delete — super_admin & admin_division only; never for current user */}
                               {(activeRole === 'super_admin' || activeRole === 'admin_division' || activeRole === 'admin') &&
                                 user.id !== currentUser?.id && (
