@@ -1996,13 +1996,13 @@ export default function UserManagement() {
                                               super_admin: Crown,
                                             };
 
-                                            const items: { Icon: React.ComponentType<{ className?: string }>; color: string; title: string }[] = [];
+                                            const items: { Icon: React.ComponentType<{ className?: string }>; color: string; title: string; status?: string }[] = [];
                                             const pushed = new Set<string>();
-                                            const push = (kind: RoleIconKind, color: string, divLabel: string) => {
+                                            const push = (kind: RoleIconKind, color: string, divLabel: string, status?: string) => {
                                               const key = `${kind}|${color}`;
                                               if (pushed.has(key)) return;
                                               pushed.add(key);
-                                              items.push({ Icon: ROLE_ICON[kind], color, title: `${kind.replace('_', ' ')} · ${divLabel}` });
+                                              items.push({ Icon: ROLE_ICON[kind], color, title: `${kind.replace('_', ' ')} · ${divLabel}${status ? ' · ' + status : ''}`, status });
                                             };
 
                                             // Per-division role icons
@@ -2011,9 +2011,10 @@ export default function UserManagement() {
                                               const colorKey = dKind === 'division-1to1' ? '1to1' : dKind === 'division-recorded' ? 'recorded' : 'group';
                                               const color = DIVISION_COLOR[colorKey];
                                               (m.roles || []).forEach(r => {
-                                                if (r === 'student') push('student', color, m.divisionName);
-                                                else if (r === 'teacher' || r === 'moderator' || r === 'supervisor') push('teacher', color, m.divisionName);
-                                                else if (r === 'parent') push('parent', color, m.divisionName);
+                                                const st = (m as any).statusByRole?.[r] || (m as any).status || 'active';
+                                                if (r === 'student') push('student', color, m.divisionName, st);
+                                                else if (r === 'teacher' || r === 'moderator' || r === 'supervisor') push('teacher', color, m.divisionName, st);
+                                                else if (r === 'parent') push('parent', color, m.divisionName, st);
                                               });
                                             });
 
