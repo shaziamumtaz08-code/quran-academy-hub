@@ -429,13 +429,21 @@ function buildGraph(
       source: selfId,
       target: s.id,
       type: 'smoothstep',
-      animated: true,
+      animated: false,
+      label: style.label,
+      labelStyle: { fill: style.color, fontSize: 10, fontWeight: 600 },
+      labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
+      labelBgPadding: [4, 2],
+      labelBgBorderRadius: 4,
       style: {
         stroke: style.color,
-        strokeWidth: 2,
+        strokeWidth: 1.75,
         strokeDasharray: style.dashed ? '6 4' : undefined,
       },
-      markerEnd: { type: MarkerType.ArrowClosed, color: style.color, width: 18, height: 18 },
+      markerEnd: { type: MarkerType.ArrowClosed, color: style.color, width: 16, height: 16 },
+      markerStart: style.bidirectional
+        ? { type: MarkerType.ArrowClosed, color: style.color, width: 16, height: 16 }
+        : undefined,
     });
   });
 
