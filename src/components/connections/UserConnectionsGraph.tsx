@@ -56,10 +56,10 @@ type RelKind = 'self' | 'teacher' | 'student' | 'parent' | 'sibling' | 'course';
 const REL_STYLE: Record<Exclude<RelKind, 'self'>, {
   bgClass: string; borderClass: string; headerClass: string; header: string; icon: React.ComponentType<any>;
 }> = {
-  teacher: { bgClass: 'bg-blue-50 dark:bg-blue-950/30',     borderClass: 'border-l-blue-500',   headerClass: 'text-blue-600 dark:text-blue-400',     header: 'Teaching Me',     icon: GraduationCap },
-  student: { bgClass: 'bg-green-50 dark:bg-green-950/30',   borderClass: 'border-l-green-500',  headerClass: 'text-green-600 dark:text-green-400',   header: 'My Student',      icon: Users },
-  parent:  { bgClass: 'bg-amber-50 dark:bg-amber-950/30',   borderClass: 'border-l-amber-500',  headerClass: 'text-amber-600 dark:text-amber-400',   header: 'Guardian',        icon: Heart },
-  sibling: { bgClass: 'bg-purple-50 dark:bg-purple-950/30', borderClass: 'border-l-purple-500', headerClass: 'text-purple-600 dark:text-purple-400', header: 'Sibling',         icon: Baby },
+  teacher: { bgClass: 'bg-[#EEF2FF] dark:bg-indigo-950/30', borderClass: 'border-l-[#6366F1]', headerClass: 'text-[#4F46E5] dark:text-indigo-300', header: 'Teaching Me', icon: GraduationCap },
+  student: { bgClass: 'bg-[#F5F3FF] dark:bg-purple-950/30', borderClass: 'border-l-[#7C3AED]', headerClass: 'text-[#7C3AED] dark:text-purple-300', header: 'Student',     icon: Users },
+  parent:  { bgClass: 'bg-[#FFFBEB] dark:bg-amber-950/30',  borderClass: 'border-l-[#D97706]', headerClass: 'text-[#D97706] dark:text-amber-300',  header: 'Guardian',    icon: Heart },
+  sibling: { bgClass: 'bg-[#F5F3FF] dark:bg-purple-950/30', borderClass: 'border-l-[#7C3AED]', headerClass: 'text-[#7C3AED] dark:text-purple-300', header: 'Sibling',     icon: Baby },
   course:  { bgClass: 'bg-orange-50 dark:bg-orange-950/30', borderClass: 'border-l-orange-500', headerClass: 'text-orange-600 dark:text-orange-400', header: 'Enrolled Course', icon: BookOpen },
 };
 
