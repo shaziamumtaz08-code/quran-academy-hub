@@ -113,7 +113,6 @@ function getPeopleSidebar(isOneToOne?: boolean, role?: string | null): { title: 
     subtitle: '',
     items: [
       { label: 'User Management', href: '/user-management', icon: UserCog },
-      ...(canLeads ? [{ label: 'Leads', href: '/leads', icon: Megaphone }] : []),
       ...(can(r, 'students', 'view') ? [{ label: 'Students', href: '/students' }] : []),
       ...(can(r, 'teachers', 'view') ? [{ label: 'Teachers', href: '/teachers' }] : []),
       ...(canStaff ? [{ label: 'Staff', href: '/user-management?mode=staff' }] : []),
