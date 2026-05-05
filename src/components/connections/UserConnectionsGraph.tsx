@@ -418,6 +418,19 @@ function buildGraph(
         },
       });
     });
+    // Subject cards (1:1 student "what am I studying")
+    (data.studentData!.subjects || []).forEach((sub: any) => {
+      below.push({
+        id: `s-subj-${sub.key}`,
+        rel: 'subject',
+        data: {
+          kind: 'subject',
+          title: sub.name,
+          subtitle: sub.teachers?.length ? `with ${sub.teachers.join(', ')}` : undefined,
+          status: sub.status,
+        },
+      });
+    });
     (data.siblings || []).forEach((s: any) => {
       right.push({ id: `s-sib-${s.id}`, rel: 'sibling', data: { kind: 'sibling', title: s.full_name, navUserId: s.id, navUserType: 'student' } });
     });
