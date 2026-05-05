@@ -102,14 +102,14 @@ function CenterNode({ data }: NodeProps<NodeData>) {
   });
   return (
     <div className="rounded-2xl shadow-2xl ring-2 ring-slate-700/50 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-5 py-4 min-w-[280px] max-w-[340px]">
-      <Handle type="target" position={Position.Top}    className="!opacity-0" />
-      <Handle type="target" position={Position.Bottom} className="!opacity-0" />
-      <Handle type="target" position={Position.Left}   className="!opacity-0" />
-      <Handle type="target" position={Position.Right}  className="!opacity-0" />
-      <Handle type="source" position={Position.Top}    className="!opacity-0" />
-      <Handle type="source" position={Position.Bottom} className="!opacity-0" />
-      <Handle type="source" position={Position.Left}   className="!opacity-0" />
-      <Handle type="source" position={Position.Right}  className="!opacity-0" />
+      <Handle id="t-top"    type="target" position={Position.Top}    className="!opacity-0" />
+      <Handle id="t-bottom" type="target" position={Position.Bottom} className="!opacity-0" />
+      <Handle id="t-left"   type="target" position={Position.Left}   className="!opacity-0" />
+      <Handle id="t-right"  type="target" position={Position.Right}  className="!opacity-0" />
+      <Handle id="s-top"    type="source" position={Position.Top}    className="!opacity-0" />
+      <Handle id="s-bottom" type="source" position={Position.Bottom} className="!opacity-0" />
+      <Handle id="s-left"   type="source" position={Position.Left}   className="!opacity-0" />
+      <Handle id="s-right"  type="source" position={Position.Right}  className="!opacity-0" />
       <div className="flex items-center gap-3">
         <div className="w-12 h-12 rounded-full bg-gradient-to-br from-slate-600 to-slate-700 ring-2 ring-white/20 flex items-center justify-center shrink-0">
           <span className="text-white font-bold text-base">{initials}</span>
