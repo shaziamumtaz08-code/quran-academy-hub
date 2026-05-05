@@ -220,15 +220,46 @@ async function fetchAsStudent(studentId: string) {
   const [assignmentsRes, enrollmentsRes, classMembershipsRes] = await Promise.all([
     supabase
       .from('student_teacher_assignments')
-      .select('id, status, teacher:profiles!student_teacher_assignments_teacher_id_fkey(id, full_name, email), subject:subjects(name)')
+      .select('id, status, teacher:profiles!student_teacher_assignments_teacher_id_fkey(id, full_name, email), subject:subjects(id, name)')
       .eq('student_id', studentId),
     supabase.from('course_enrollments').select('status, course:courses(id, name)').eq('student_id', studentId),
     supabase.from('course_class_students').select('status, class:course_classes(id, name, course:courses(id, name))').eq('student_id', studentId),
   ]);
+
+  const teachers = (assignmentsRes.data || [])
+    .filter((a: any) => a.teacher && !isTestProfile(a.teacher))
+    .map((a: any) => ({ id: a.teacher.id, name: a.teacher.full_name || 'Unknown', subject: a.subject?.name || null, status: a.status }));
+
+  // Distinct subjects from 1:1 assignments — what the student is studying.
+  const subjectMap = new Map<string, { name: string; teachers: Set<string>; status: string }>();
+  (assignmentsRes.data || []).forEach((a: any) => {
+    if (!a.subject) return;
+    const key = a.subject.id || a.subject.name;
+    if (!key) return;
+    const existing = subjectMap.get(key);
+    const teacherName = a.teacher?.full_name;
+    if (existing) {
+      if (teacherName) existing.teachers.add(teacherName);
+      // Prefer active over other statuses
+      if (a.status === 'active') existing.status = 'active';
+    } else {
+      subjectMap.set(key, {
+        name: a.subject.name,
+        teachers: new Set(teacherName ? [teacherName] : []),
+        status: a.status || 'active',
+      });
+    }
+  });
+  const subjects = Array.from(subjectMap.entries()).map(([key, v]) => ({
+    key,
+    name: v.name,
+    teachers: Array.from(v.teachers),
+    status: v.status,
+  }));
+
   return {
-    teachers: (assignmentsRes.data || [])
-      .filter((a: any) => a.teacher && !isTestProfile(a.teacher))
-      .map((a: any) => ({ id: a.teacher.id, name: a.teacher.full_name || 'Unknown', subject: a.subject?.name || null, status: a.status })),
+    teachers,
+    subjects,
     courses: (enrollmentsRes.data || [])
       .map((e: any) => ({ id: e.course?.id, name: e.course?.name, klass: null as string | null, status: e.status }))
       .filter((c: any) => c.id),
