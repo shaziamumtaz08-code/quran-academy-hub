@@ -17,7 +17,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, GraduationCap, Users, BookOpen, Heart, Baby, Download, Maximize2 } from 'lucide-react';
+import { Loader2, GraduationCap, Users, BookOpen, Heart, Baby, Download, Maximize2, BookMarked } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import dagre from 'dagre';
