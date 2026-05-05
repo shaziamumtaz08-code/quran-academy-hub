@@ -15,6 +15,7 @@ import {
   GraduationCap,
   Landmark,
   LayoutDashboard,
+  Megaphone,
   Menu,
   MessageSquare,
   UserCog,
@@ -88,6 +89,7 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
         label: "MENU",
         items: [
           { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+          { label: "Leads", href: "/leads", icon: Megaphone },
           {
             label: "Teaching",
             icon: BookOpen,
