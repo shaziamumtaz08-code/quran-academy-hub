@@ -1,12 +1,26 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+export type EnrollmentStatus = 'active' | 'paused' | 'left' | 'completed' | 'inactive';
+
 export interface DivisionMembership {
   divisionId: string;
   divisionName: string;
   modelType: string;
   /** Roles this user holds inside this specific division (e.g. ['student'], ['teacher','moderator']) */
   roles: string[];
+  /** Aggregate status across this user's role(s) in this division. Worst-case wins for visibility. */
+  status: EnrollmentStatus;
+  /** Per-role status breakdown for tooltips */
+  statusByRole?: Record<string, EnrollmentStatus>;
+}
+
+// Priority: active > paused > completed > left > inactive (most relevant first)
+const STATUS_PRIORITY: Record<EnrollmentStatus, number> = {
+  active: 0, paused: 1, completed: 2, left: 3, inactive: 4,
+};
+function pickStatus(a: EnrollmentStatus, b: EnrollmentStatus): EnrollmentStatus {
+  return STATUS_PRIORITY[a] <= STATUS_PRIORITY[b] ? a : b;
 }
 
 /**
