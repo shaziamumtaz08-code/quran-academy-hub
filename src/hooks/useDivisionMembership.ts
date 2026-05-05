@@ -107,13 +107,32 @@ export function useDivisionMembership(userIds: string[], enabled = true) {
         if (divId) addMembership(row.user_id, divId, row.staff_role || 'teacher', 'active');
       });
 
-      // user_context is the canonical division-assignment source for ALL roles
-      // (students, teachers, parents, admins). Trust every row with a division_id —
-      // gating by role here caused users without an active roster row to appear
-      // as "unassigned to any division" even though they had a valid context.
+      // user_context fallback:
+      //  - Admin-style roles are always added (admins are not on rosters).
+      //  - Student/teacher/parent roles only fill in divisions where the user
+      //    has NO roster-derived role at all. This avoids stamping a phantom
+      //    Teacher icon on a user who is genuinely only a Student in that
+      //    division (or vice versa) when stale user_context rows exist —
+      //    while still preserving the "no roster row" fallback so users
+      //    aren't shown as unassigned.
+      const ADMIN_CTX_ROLES = new Set([
+        'super_admin', 'admin', 'admin_division',
+        'admin_admissions', 'admin_fees', 'admin_academic',
+        'examiner', 'moderator', 'supervisor',
+      ]);
       (ctxRows || []).forEach((row: any) => {
         if (!row.division_id) return;
-        addMembership(row.user_id, row.division_id, row.primary_role || 'member', 'active');
+        const role = row.primary_role || 'member';
+        if (ADMIN_CTX_ROLES.has(role)) {
+          addMembership(row.user_id, row.division_id, role, 'active');
+          return;
+        }
+        // Roster-overlap guard: only add if user has no roster role in this division.
+        const existingDivs = membershipMap.get(row.user_id);
+        const hasRoster = existingDivs?.get(row.division_id)?.size;
+        if (!hasRoster) {
+          addMembership(row.user_id, row.division_id, role, 'active');
+        }
       });
 
       // Parent memberships from children
