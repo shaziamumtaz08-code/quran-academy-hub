@@ -73,12 +73,12 @@ const STATUS_DOT: Record<string, string> = {
 };
 
 /* ---------- Edge colors per relationship ---------- */
-const EDGE_STYLE: Record<Exclude<RelKind, 'self'>, { color: string; dashed: boolean }> = {
-  teacher: { color: '#3b82f6', dashed: true  }, // blue dashed
-  student: { color: '#22c55e', dashed: false }, // green solid
-  parent:  { color: '#f59e0b', dashed: false }, // amber solid
-  sibling: { color: '#a855f7', dashed: false }, // purple solid
-  course:  { color: '#f97316', dashed: true  }, // orange dashed
+const EDGE_STYLE: Record<Exclude<RelKind, 'self'>, { color: string; dashed: boolean; bidirectional?: boolean; label?: string }> = {
+  teacher: { color: '#6366F1', dashed: false, label: 'Teaching' },        // solid indigo/blue
+  student: { color: '#6366F1', dashed: false, label: 'Teaching' },        // solid blue (teacher→student)
+  parent:  { color: '#D97706', dashed: true,  label: 'Guardian' },        // dashed gold
+  sibling: { color: '#7C3AED', dashed: true,  bidirectional: true, label: 'Sibling' }, // dashed purple, double-headed
+  course:  { color: '#f97316', dashed: true,  label: 'Enrolled' },
 };
 
 interface NodeData {
