@@ -2124,7 +2124,13 @@ export default function UserManagement() {
                           </TableCell>
                           <TableCell className="py-3 text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="flex justify-end gap-1">
-                              {/* Connections moved into the ID/roles pill */}
+                              {/* Status — icon button opens popover with per-role status (and Apply to all) */}
+                              <UserStatusPopover
+                                user={user}
+                                onChangeStatus={(role, status) => updateRoleStatusMutation.mutate({ userId: user.id, role, status })}
+                                onArchive={(archive) => archiveMutation.mutate({ userId: user.id, archive })}
+                              />
+
 
                               {/* Assign Role — super_admin & admin_division */}
                               {(activeRole === 'super_admin' || activeRole === 'admin_division') && (
