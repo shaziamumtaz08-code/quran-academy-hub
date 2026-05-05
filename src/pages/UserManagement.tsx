@@ -2116,9 +2116,7 @@ export default function UserManagement() {
                             {(() => {
                               const personNo = personNumberMap.get(user.id);
                               const fullUrn = user.registration_id;
-                              if (!personNo) {
-                                return <span className="text-muted-foreground text-xs">—</span>;
-                              }
+                              const displayId = personNo || fullUrn || '—';
                               return (
                                 <TooltipProvider delayDuration={150}>
                                   <Tooltip>
@@ -2128,10 +2126,12 @@ export default function UserManagement() {
                                         className="inline-flex items-center gap-1.5 group/id"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          navigator.clipboard.writeText(fullUrn || personNo);
-                                          toast({ title: 'Copied', description: fullUrn || personNo });
+                                          if (personNo || fullUrn) {
+                                            navigator.clipboard.writeText(fullUrn || personNo!);
+                                            toast({ title: 'Copied', description: fullUrn || personNo! });
+                                          }
                                         }}
-                                        title="Click to copy"
+                                        title={personNo || fullUrn ? 'Click to copy' : 'No ID assigned yet'}
                                       >
                                         <span
                                           className="font-mono text-xs bg-white text-slate-800 border border-slate-300 px-2 py-1 inline-flex items-center gap-2"
@@ -2139,7 +2139,7 @@ export default function UserManagement() {
                                             boxShadow: '0 1px 0 rgba(255,255,255,0.6) inset, 0 1px 2px rgba(15,23,42,0.12), 0 2px 4px rgba(15,23,42,0.08)',
                                           }}
                                         >
-                                          <span className="tabular-nums truncate text-left" style={{ width: '12ch' }}>{personNo}</span>
+                                          <span className="tabular-nums truncate text-left" style={{ width: '12ch' }}>{displayId}</span>
                                           {(() => {
                                             // Render ROLE icons colored by DIVISION.
                                             // For each division the user belongs to (parents inherit from their kids),
@@ -2213,13 +2213,19 @@ export default function UserManagement() {
                                              );
                                           })()}
                                         </span>
-                                        <Copy className="h-3 w-3 text-muted-foreground opacity-0 group-hover/id:opacity-100 transition-opacity" />
+                                        {(personNo || fullUrn) && (
+                                          <Copy className="h-3 w-3 text-muted-foreground opacity-0 group-hover/id:opacity-100 transition-opacity" />
+                                        )}
                                       </button>
                                     </TooltipTrigger>
                                     <TooltipContent side="right" className="text-xs">
-                                      <div className="font-medium">Universal ID: {personNo}</div>
+                                      <div className="font-medium">Universal ID: {personNo || '—'}</div>
                                       {fullUrn && <div className="text-muted-foreground mt-1">URN: {fullUrn}</div>}
-                                      <div className="text-muted-foreground mt-1 italic">Click to copy</div>
+                                      {(personNo || fullUrn) ? (
+                                        <div className="text-muted-foreground mt-1 italic">Click to copy</div>
+                                      ) : (
+                                        <div className="text-muted-foreground mt-1 italic">No role/division assigned yet</div>
+                                      )}
                                     </TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
