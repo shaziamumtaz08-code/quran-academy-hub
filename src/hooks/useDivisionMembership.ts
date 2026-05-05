@@ -1,12 +1,26 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+export type EnrollmentStatus = 'active' | 'paused' | 'left' | 'completed' | 'inactive';
+
 export interface DivisionMembership {
   divisionId: string;
   divisionName: string;
   modelType: string;
   /** Roles this user holds inside this specific division (e.g. ['student'], ['teacher','moderator']) */
   roles: string[];
+  /** Aggregate status across this user's role(s) in this division. Worst-case wins for visibility. */
+  status: EnrollmentStatus;
+  /** Per-role status breakdown for tooltips */
+  statusByRole?: Record<string, EnrollmentStatus>;
+}
+
+// Priority: active > paused > completed > left > inactive (most relevant first)
+const STATUS_PRIORITY: Record<EnrollmentStatus, number> = {
+  active: 0, paused: 1, completed: 2, left: 3, inactive: 4,
+};
+function pickStatus(a: EnrollmentStatus, b: EnrollmentStatus): EnrollmentStatus {
+  return STATUS_PRIORITY[a] <= STATUS_PRIORITY[b] ? a : b;
 }
 
 /**
@@ -27,17 +41,15 @@ export function useDivisionMembership(userIds: string[], enabled = true) {
         .eq('is_active', true);
       const divMap = new Map((divisions || []).map(d => [d.id, { name: d.name, model_type: d.model_type }]));
 
-      // 1:1 memberships via student_teacher_assignments (students AND teachers)
+      // 1:1 memberships via student_teacher_assignments — include all statuses
       const { data: staData } = await supabase
         .from('student_teacher_assignments')
-        .select('student_id, teacher_id, division_id')
-        .eq('status', 'active');
+        .select('student_id, teacher_id, division_id, status');
 
-      // Group memberships: students via course_class_students → course_classes → courses
+      // Group student memberships — include all statuses
       const { data: ccsData } = await supabase
         .from('course_class_students')
-        .select('student_id, class:course_classes!inner(courses:courses!inner(division_id))')
-        .eq('status', 'active');
+        .select('student_id, status, class:course_classes!inner(courses:courses!inner(division_id))');
 
       // Group memberships: staff via course_class_staff → course_classes → courses
       const { data: staffData } = await supabase
@@ -49,49 +61,52 @@ export function useDivisionMembership(userIds: string[], enabled = true) {
         .from('student_parent_links')
         .select('parent_id, student_id');
 
-      // Admin / staff memberships from user_context (covers admin_division and any role
-      // whose division binding is recorded directly in user_context rather than via assignments)
+      // Admin / staff memberships from user_context
       const { data: ctxRows } = await supabase
         .from('user_context')
         .select('user_id, division_id, primary_role')
         .in('user_id', userIds);
 
-      // Map<userId, Map<divisionId, Set<role>>>
-      const membershipMap = new Map<string, Map<string, Set<string>>>();
+      // Map<userId, Map<divisionId, Map<role, status>>>
+      const membershipMap = new Map<string, Map<string, Map<string, EnrollmentStatus>>>();
       const userIdSet = new Set(userIds);
 
-      const addMembership = (userId: string, divisionId: string, role: string) => {
+      const addMembership = (userId: string, divisionId: string, role: string, status: EnrollmentStatus = 'active') => {
         if (!divisionId || !userIdSet.has(userId)) return;
         if (!membershipMap.has(userId)) membershipMap.set(userId, new Map());
         const divs = membershipMap.get(userId)!;
-        if (!divs.has(divisionId)) divs.set(divisionId, new Set());
-        divs.get(divisionId)!.add(role);
+        if (!divs.has(divisionId)) divs.set(divisionId, new Map());
+        const roleMap = divs.get(divisionId)!;
+        const existing = roleMap.get(role);
+        roleMap.set(role, existing ? pickStatus(existing, status) : status);
       };
 
-      // 1:1 assignments: student → 'student', teacher → 'teacher'
+      const normalizeStatus = (s: any): EnrollmentStatus => {
+        const v = String(s || 'active').toLowerCase();
+        if (v === 'active' || v === 'paused' || v === 'left' || v === 'completed' || v === 'inactive') return v;
+        return 'inactive';
+      };
+
+      // 1:1 assignments
       (staData || []).forEach(a => {
         if (!a.division_id) return;
-        addMembership(a.student_id, a.division_id, 'student');
-        addMembership(a.teacher_id, a.division_id, 'teacher');
+        const st = normalizeStatus(a.status);
+        addMembership(a.student_id, a.division_id, 'student', st);
+        addMembership(a.teacher_id, a.division_id, 'teacher', st);
       });
 
       // Group student memberships
       (ccsData || []).forEach((row: any) => {
         const divId = row.class?.courses?.division_id;
-        if (divId) addMembership(row.student_id, divId, 'student');
+        if (divId) addMembership(row.student_id, divId, 'student', normalizeStatus(row.status));
       });
 
-      // Group staff memberships — use staff_role if present (teacher/moderator/supervisor)
+      // Group staff memberships
       (staffData || []).forEach((row: any) => {
         const divId = row.class?.courses?.division_id;
-        if (divId) addMembership(row.user_id, divId, row.staff_role || 'teacher');
+        if (divId) addMembership(row.user_id, divId, row.staff_role || 'teacher', 'active');
       });
 
-      // user_context-driven memberships — ONLY for admin-style roles.
-      // Teacher/student/parent roles must come from real assignments
-      // (course_class_staff, student_teacher_assignments, course_class_students,
-      // student_parent_links). Trusting user_context.primary_role for these
-      // produces ghost roles when a user is reclassified across divisions.
       const ADMIN_CTX_ROLES = new Set([
         'admin', 'admin_division', 'admin_admissions', 'admin_fees',
         'admin_academic', 'super_admin', 'examiner', 'moderator', 'supervisor'
@@ -99,22 +114,10 @@ export function useDivisionMembership(userIds: string[], enabled = true) {
       (ctxRows || []).forEach((row: any) => {
         if (!row.division_id || !row.primary_role) return;
         if (!ADMIN_CTX_ROLES.has(row.primary_role)) return;
-        addMembership(row.user_id, row.division_id, row.primary_role);
+        addMembership(row.user_id, row.division_id, row.primary_role, 'active');
       });
 
-      // Parent memberships: each parent inherits division membership from each linked child.
-      // Skip self-links (defensive — these exist as data corruption).
-      const childDivisions = new Map<string, Set<string>>(); // studentId → Set<divisionId>
-      membershipMap.forEach((divs, uid) => {
-        // Only collect for users present as students anywhere (1:1 or group)
-        const studentDivs = new Set<string>();
-        divs.forEach((roleSet, divId) => {
-          if (roleSet.has('student')) studentDivs.add(divId);
-        });
-        if (studentDivs.size > 0) childDivisions.set(uid, studentDivs);
-      });
-      // Also need to consider students NOT in userIds (membershipMap is filtered).
-      // Re-derive from raw data so parents in userIds get full coverage:
+      // Parent memberships from children
       const allStudentDivs = new Map<string, Set<string>>();
       const addStudentDiv = (sid: string, did: string) => {
         if (!sid || !did) return;
@@ -128,20 +131,30 @@ export function useDivisionMembership(userIds: string[], enabled = true) {
         if (!link.parent_id || link.parent_id === link.student_id) return;
         const divs = allStudentDivs.get(link.student_id);
         if (!divs) return;
-        divs.forEach(divId => addMembership(link.parent_id, divId, 'parent'));
+        divs.forEach(divId => addMembership(link.parent_id, divId, 'parent', 'active'));
       });
 
       const result = new Map<string, DivisionMembership[]>();
       userIds.forEach(uid => {
         const divs = membershipMap.get(uid);
         if (divs && divs.size > 0) {
-          result.set(uid, [...divs.entries()].map(([did, roleSet]) => {
+          result.set(uid, [...divs.entries()].map(([did, roleMap]) => {
             const info = divMap.get(did);
+            const statusByRole: Record<string, EnrollmentStatus> = {};
+            let agg: EnrollmentStatus = 'inactive';
+            let first = true;
+            roleMap.forEach((st, r) => {
+              statusByRole[r] = st;
+              agg = first ? st : pickStatus(agg, st);
+              first = false;
+            });
             return {
               divisionId: did,
               divisionName: info?.name || 'Unknown',
               modelType: info?.model_type || 'unknown',
-              roles: [...roleSet],
+              roles: [...roleMap.keys()],
+              status: agg,
+              statusByRole,
             };
           }));
         } else {

@@ -1996,13 +1996,13 @@ export default function UserManagement() {
                                               super_admin: Crown,
                                             };
 
-                                            const items: { Icon: React.ComponentType<{ className?: string }>; color: string; title: string }[] = [];
+                                            const items: { Icon: React.ComponentType<{ className?: string }>; color: string; title: string; status?: string }[] = [];
                                             const pushed = new Set<string>();
-                                            const push = (kind: RoleIconKind, color: string, divLabel: string) => {
+                                            const push = (kind: RoleIconKind, color: string, divLabel: string, status?: string) => {
                                               const key = `${kind}|${color}`;
                                               if (pushed.has(key)) return;
                                               pushed.add(key);
-                                              items.push({ Icon: ROLE_ICON[kind], color, title: `${kind.replace('_', ' ')} · ${divLabel}` });
+                                              items.push({ Icon: ROLE_ICON[kind], color, title: `${kind.replace('_', ' ')} · ${divLabel}${status ? ' · ' + status : ''}`, status });
                                             };
 
                                             // Per-division role icons
@@ -2011,9 +2011,10 @@ export default function UserManagement() {
                                               const colorKey = dKind === 'division-1to1' ? '1to1' : dKind === 'division-recorded' ? 'recorded' : 'group';
                                               const color = DIVISION_COLOR[colorKey];
                                               (m.roles || []).forEach(r => {
-                                                if (r === 'student') push('student', color, m.divisionName);
-                                                else if (r === 'teacher' || r === 'moderator' || r === 'supervisor') push('teacher', color, m.divisionName);
-                                                else if (r === 'parent') push('parent', color, m.divisionName);
+                                                const st = (m as any).statusByRole?.[r] || (m as any).status || 'active';
+                                                if (r === 'student') push('student', color, m.divisionName, st);
+                                                else if (r === 'teacher' || r === 'moderator' || r === 'supervisor') push('teacher', color, m.divisionName, st);
+                                                else if (r === 'parent') push('parent', color, m.divisionName, st);
                                               });
                                             });
 
@@ -2028,11 +2029,20 @@ export default function UserManagement() {
                                              const ut = r.includes('teacher') ? 'teacher' : r.includes('student') ? 'student' : r.includes('parent') ? 'parent' : 'student';
                                              return (
                                                <span className="inline-flex items-center gap-1 border-l border-slate-200 pl-2" style={{ width: 'calc(8 * 14px + 7 * 4px + 22px)' }}>
-                                                 {slots.map((it, i) => (
-                                                   <span key={i} className="inline-flex items-center justify-center" style={{ width: 14, height: 14 }} title={it?.title}>
-                                                     {it ? <it.Icon className={`h-3.5 w-3.5 ${it.color}`} /> : null}
-                                                   </span>
-                                                 ))}
+                                                  {slots.map((it, i) => {
+                                                    const dot = it?.status === 'active' ? 'bg-emerald-500'
+                                                      : it?.status === 'paused' ? 'bg-amber-500'
+                                                      : it?.status === 'left' ? 'bg-rose-500'
+                                                      : it?.status === 'completed' ? 'bg-sky-500'
+                                                      : it?.status === 'inactive' ? 'bg-slate-400'
+                                                      : null;
+                                                    return (
+                                                      <span key={i} className="relative inline-flex items-center justify-center" style={{ width: 14, height: 14 }} title={it?.title}>
+                                                        {it ? <it.Icon className={`h-3.5 w-3.5 ${it.color}`} /> : null}
+                                                        {dot && <span className={`absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full ring-1 ring-white ${dot}`} />}
+                                                      </span>
+                                                    );
+                                                  })}
                                                  <span
                                                    role="button"
                                                    tabIndex={0}
@@ -2106,6 +2116,19 @@ export default function UserManagement() {
                                   title="Open full profile"
                                 >
                                   <Edit className="h-4 w-4" />
+                                </Button>
+                              )}
+
+                              {/* Archive / Restore */}
+                              {(activeRole === 'super_admin' || activeRole === 'admin_division' || activeRole === 'admin') && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => archiveMutation.mutate({ userId: user.id, archive: !user.archived_at })}
+                                  title={user.archived_at ? 'Restore user' : 'Archive user'}
+                                  className={user.archived_at ? 'text-emerald-600 hover:text-emerald-700' : 'text-amber-600 hover:text-amber-700'}
+                                >
+                                  {user.archived_at ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
                                 </Button>
                               )}
 
