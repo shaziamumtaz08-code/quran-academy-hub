@@ -2091,8 +2091,49 @@ export default function UserManagement() {
                               );
                             })()}
                           </TableCell>
+                          <TableCell className="py-3" onClick={(e) => e.stopPropagation()}>
+                            {user.roles.length === 0 ? (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            ) : (
+                              <div className="flex flex-wrap gap-1">
+                                {user.roles.map((role) => {
+                                  const st = (user.roleStatuses?.[role] || 'active') as RoleStatus;
+                                  const colors: Record<RoleStatus, string> = {
+                                    active: 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100',
+                                    paused: 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100',
+                                    left: 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100',
+                                    completed: 'bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100',
+                                    inactive: 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200',
+                                  };
+                                  const roleLabel = role.replace(/_/g, ' ');
+                                  return (
+                                    <Select
+                                      key={role}
+                                      value={st}
+                                      onValueChange={(v) => updateRoleStatusMutation.mutate({ userId: user.id, role, status: v as RoleStatus })}
+                                    >
+                                      <SelectTrigger
+                                        className={`h-6 px-2 py-0 rounded-full border text-[10px] font-medium uppercase tracking-wide w-auto gap-1 ${colors[st]}`}
+                                        title={`${roleLabel} • ${st}`}
+                                      >
+                                        <span className="capitalize">{roleLabel}</span>
+                                        <span className="opacity-60">·</span>
+                                        <span className="capitalize">{st}</span>
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="active">Active</SelectItem>
+                                        <SelectItem value="paused">Paused</SelectItem>
+                                        <SelectItem value="completed">Completed</SelectItem>
+                                        <SelectItem value="left">Left</SelectItem>
+                                        <SelectItem value="inactive">Inactive</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </TableCell>
                           <TableCell className="py-3">
-                            {user.whatsapp_number ? (
                               <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground tabular-nums">
                                 <span className="text-base leading-none">{dialCodeToFlag(user.whatsapp_number) || '🌐'}</span>
                                 {user.whatsapp_number}
