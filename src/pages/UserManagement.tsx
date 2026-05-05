@@ -98,7 +98,7 @@ import { useDivisionMembership, getDivisionShortName, getDivisionBadgeClass, for
 import { useDivision } from '@/contexts/DivisionContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Copy, ChevronDown, ChevronRight, ChevronUp, AlertTriangle, Video, Presentation, ClipboardCheck, UserCircle2, Activity } from 'lucide-react';
+import { Copy, ChevronDown, ChevronRight, ChevronUp, AlertTriangle, Video, Presentation, ClipboardCheck, UserCircle2, Power } from 'lucide-react';
 
 const ALL_PERMISSIONS = [
   { group: 'Users', permissions: ['users.view', 'users.create', 'users.edit', 'users.delete', 'users.assign_roles'] },
@@ -215,7 +215,7 @@ const UserStatusPopover: React.FC<{
           onClick={(e) => e.stopPropagation()}
           className={STATUS_ICON_COLOR[overall]}
         >
-          <Activity className="h-4 w-4" />
+          <Power className="h-4 w-4" />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72 p-3" onClick={(e) => e.stopPropagation()}>
