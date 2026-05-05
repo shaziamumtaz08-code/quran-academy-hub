@@ -548,18 +548,28 @@ function GraphInner({ userId, userType, roleFilter = 'all', compact = false, cla
         maxZoom={2}
       >
         <Background variant={BackgroundVariant.Dots} gap={18} size={1.2} color="#e5e7eb" />
-        <Controls position="bottom-left" showInteractive={false} className="!shadow-md" />
+        <Controls position="top-left" showInteractive={false} className="!shadow-md" />
         {!compact && (
-          <Panel position="top-right" className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => fitView({ padding: 0.2, duration: 400 })} className="h-8 gap-1.5 bg-white">
-              <Maximize2 className="h-3.5 w-3.5" />
-              <span className="text-xs">Fit</span>
-            </Button>
-            <Button size="sm" variant="outline" onClick={exportPng} className="h-8 gap-1.5 bg-white">
-              <Download className="h-3.5 w-3.5" />
-              <span className="text-xs">Export PNG</span>
-            </Button>
-          </Panel>
+          <>
+            <Panel position="top-right" className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => fitView({ padding: 0.2, duration: 400 })} className="h-8 gap-1.5 bg-white">
+                <Maximize2 className="h-3.5 w-3.5" />
+                <span className="text-xs">Fit</span>
+              </Button>
+              <Button size="sm" variant="outline" onClick={exportPng} className="h-8 gap-1.5 bg-white">
+                <Download className="h-3.5 w-3.5" />
+                <span className="text-xs">Export PNG</span>
+              </Button>
+            </Panel>
+            <Panel position="bottom-left" className="!m-3">
+              <div className="rounded-md border bg-white/95 backdrop-blur px-3 py-2 shadow-sm space-y-1.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Legend</p>
+                <LegendRow color="#6366F1" dashed={false} label="Teaching" />
+                <LegendRow color="#7C3AED" dashed label="Sibling" bidirectional />
+                <LegendRow color="#D97706" dashed label="Guardian" />
+              </div>
+            </Panel>
+          </>
         )}
       </ReactFlow>
     </div>
