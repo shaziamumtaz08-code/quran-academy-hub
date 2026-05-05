@@ -2134,6 +2134,7 @@ export default function UserManagement() {
                             )}
                           </TableCell>
                           <TableCell className="py-3">
+                            {user.whatsapp_number ? (
                               <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground tabular-nums">
                                 <span className="text-base leading-none">{dialCodeToFlag(user.whatsapp_number) || '🌐'}</span>
                                 {user.whatsapp_number}
