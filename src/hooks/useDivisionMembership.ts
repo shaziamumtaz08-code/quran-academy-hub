@@ -107,14 +107,13 @@ export function useDivisionMembership(userIds: string[], enabled = true) {
         if (divId) addMembership(row.user_id, divId, row.staff_role || 'teacher', 'active');
       });
 
-      const ADMIN_CTX_ROLES = new Set([
-        'admin', 'admin_division', 'admin_admissions', 'admin_fees',
-        'admin_academic', 'super_admin', 'examiner', 'moderator', 'supervisor'
-      ]);
+      // user_context is the canonical division-assignment source for ALL roles
+      // (students, teachers, parents, admins). Trust every row with a division_id —
+      // gating by role here caused users without an active roster row to appear
+      // as "unassigned to any division" even though they had a valid context.
       (ctxRows || []).forEach((row: any) => {
-        if (!row.division_id || !row.primary_role) return;
-        if (!ADMIN_CTX_ROLES.has(row.primary_role)) return;
-        addMembership(row.user_id, row.division_id, row.primary_role, 'active');
+        if (!row.division_id) return;
+        addMembership(row.user_id, row.division_id, row.primary_role || 'member', 'active');
       });
 
       // Parent memberships from children
