@@ -251,8 +251,11 @@ interface UserWithRoles {
   archived_at: string | null;
   registration_id: string | null;
   roles: AppRole[];
+  roleStatuses: Partial<Record<AppRole, 'active' | 'paused' | 'left' | 'completed' | 'inactive'>>;
   exceptions: Array<{ permission: string; is_granted: boolean }>;
 }
+
+export type RoleStatus = 'active' | 'paused' | 'left' | 'completed' | 'inactive';
 
 export default function UserManagement() {
   const { isSuperAdmin, hasPermission, user: currentUser, session, activeRole } = useAuth();
