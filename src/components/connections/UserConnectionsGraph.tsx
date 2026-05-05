@@ -17,7 +17,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, GraduationCap, Users, BookOpen, Heart, Baby, Download, Maximize2 } from 'lucide-react';
+import { Loader2, GraduationCap, Users, BookOpen, Heart, Baby, Download, Maximize2, BookMarked } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import dagre from 'dagre';
@@ -51,7 +51,7 @@ const ROLE_PILL: Record<string, { bg: string; label: string }> = {
 const ROLE_PRIORITY = ['super_admin', 'admin', 'admin_academic', 'admin_admissions', 'admin_fees', 'teacher', 'examiner', 'student', 'parent'];
 
 /* ---------- Relationship type → card colors ---------- */
-type RelKind = 'self' | 'teacher' | 'student' | 'parent' | 'sibling' | 'course';
+type RelKind = 'self' | 'teacher' | 'student' | 'parent' | 'sibling' | 'course' | 'subject';
 
 const REL_STYLE: Record<Exclude<RelKind, 'self'>, {
   bgClass: string; borderClass: string; headerClass: string; header: string; icon: React.ComponentType<any>;
@@ -61,6 +61,7 @@ const REL_STYLE: Record<Exclude<RelKind, 'self'>, {
   parent:  { bgClass: 'bg-[#FFFBEB] dark:bg-amber-950/30',  borderClass: 'border-l-[#D97706]', headerClass: 'text-[#D97706] dark:text-amber-300',  header: 'Guardian',    icon: Heart },
   sibling: { bgClass: 'bg-[#ECFEFF] dark:bg-cyan-950/30',   borderClass: 'border-l-[#0E7490]', headerClass: 'text-[#0E7490] dark:text-cyan-300',   header: 'Sibling',     icon: Baby },
   course:  { bgClass: 'bg-orange-50 dark:bg-orange-950/30', borderClass: 'border-l-orange-500', headerClass: 'text-orange-600 dark:text-orange-400', header: 'Enrolled Course', icon: BookOpen },
+  subject: { bgClass: 'bg-[#F0FDFA] dark:bg-teal-950/30',   borderClass: 'border-l-[#0F766E]', headerClass: 'text-[#0F766E] dark:text-teal-300',   header: 'Studying',    icon: BookMarked },
 };
 
 const STATUS_DOT: Record<string, string> = {
@@ -74,11 +75,12 @@ const STATUS_DOT: Record<string, string> = {
 
 /* ---------- Edge colors per relationship ---------- */
 const EDGE_STYLE: Record<Exclude<RelKind, 'self'>, { color: string; dashed: boolean; bidirectional?: boolean; label?: string }> = {
-  teacher: { color: '#6366F1', dashed: false, label: 'Teaching' },        // solid indigo (focus ↔ teacher)
-  student: { color: '#6366F1', dashed: false, label: 'Teaching' },        // solid indigo (teacher → student)
-  parent:  { color: '#D97706', dashed: true,  label: 'Guardian' },        // dashed gold
-  sibling: { color: '#0E7490', dashed: true,  bidirectional: true, label: 'Sibling' }, // dashed teal, double-headed
+  teacher: { color: '#6366F1', dashed: false, label: 'Teaching' },
+  student: { color: '#6366F1', dashed: false, label: 'Teaching' },
+  parent:  { color: '#D97706', dashed: true,  label: 'Guardian' },
+  sibling: { color: '#0E7490', dashed: true,  bidirectional: true, label: 'Sibling' },
   course:  { color: '#f97316', dashed: true,  label: 'Enrolled' },
+  subject: { color: '#0F766E', dashed: true,  label: 'Studying' },
 };
 
 interface NodeData {
@@ -218,15 +220,46 @@ async function fetchAsStudent(studentId: string) {
   const [assignmentsRes, enrollmentsRes, classMembershipsRes] = await Promise.all([
     supabase
       .from('student_teacher_assignments')
-      .select('id, status, teacher:profiles!student_teacher_assignments_teacher_id_fkey(id, full_name, email), subject:subjects(name)')
+      .select('id, status, teacher:profiles!student_teacher_assignments_teacher_id_fkey(id, full_name, email), subject:subjects(id, name)')
       .eq('student_id', studentId),
     supabase.from('course_enrollments').select('status, course:courses(id, name)').eq('student_id', studentId),
     supabase.from('course_class_students').select('status, class:course_classes(id, name, course:courses(id, name))').eq('student_id', studentId),
   ]);
+
+  const teachers = (assignmentsRes.data || [])
+    .filter((a: any) => a.teacher && !isTestProfile(a.teacher))
+    .map((a: any) => ({ id: a.teacher.id, name: a.teacher.full_name || 'Unknown', subject: a.subject?.name || null, status: a.status }));
+
+  // Distinct subjects from 1:1 assignments — what the student is studying.
+  const subjectMap = new Map<string, { name: string; teachers: Set<string>; status: string }>();
+  (assignmentsRes.data || []).forEach((a: any) => {
+    if (!a.subject) return;
+    const key = a.subject.id || a.subject.name;
+    if (!key) return;
+    const existing = subjectMap.get(key);
+    const teacherName = a.teacher?.full_name;
+    if (existing) {
+      if (teacherName) existing.teachers.add(teacherName);
+      // Prefer active over other statuses
+      if (a.status === 'active') existing.status = 'active';
+    } else {
+      subjectMap.set(key, {
+        name: a.subject.name,
+        teachers: new Set(teacherName ? [teacherName] : []),
+        status: a.status || 'active',
+      });
+    }
+  });
+  const subjects = Array.from(subjectMap.entries()).map(([key, v]) => ({
+    key,
+    name: v.name,
+    teachers: Array.from(v.teachers),
+    status: v.status,
+  }));
+
   return {
-    teachers: (assignmentsRes.data || [])
-      .filter((a: any) => a.teacher && !isTestProfile(a.teacher))
-      .map((a: any) => ({ id: a.teacher.id, name: a.teacher.full_name || 'Unknown', subject: a.subject?.name || null, status: a.status })),
+    teachers,
+    subjects,
     courses: (enrollmentsRes.data || [])
       .map((e: any) => ({ id: e.course?.id, name: e.course?.name, klass: null as string | null, status: e.status }))
       .filter((c: any) => c.id),
@@ -382,6 +415,19 @@ function buildGraph(
           title: v.name,
           subtitle: v.classes.length ? v.classes.join(' · ') : undefined,
           status: v.status,
+        },
+      });
+    });
+    // Subject cards (1:1 student "what am I studying")
+    (data.studentData!.subjects || []).forEach((sub: any) => {
+      below.push({
+        id: `s-subj-${sub.key}`,
+        rel: 'subject',
+        data: {
+          kind: 'subject',
+          title: sub.name,
+          subtitle: sub.teachers?.length ? `with ${sub.teachers.join(', ')}` : undefined,
+          status: sub.status,
         },
       });
     });
@@ -598,6 +644,8 @@ function GraphInner({ userId, userType, roleFilter = 'all', compact = false, cla
               <div className="rounded-md border bg-white/95 backdrop-blur px-3 py-2 shadow-sm space-y-1.5">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Legend</p>
                 <LegendRow color="#6366F1" dashed={false} label="Teaching" />
+                <LegendRow color="#0F766E" dashed label="Studying (Subject)" />
+                <LegendRow color="#f97316" dashed label="Enrolled (Course)" />
                 <LegendRow color="#0E7490" dashed label="Sibling" bidirectional />
                 <LegendRow color="#D97706" dashed label="Guardian" />
               </div>
