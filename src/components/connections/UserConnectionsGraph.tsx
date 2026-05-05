@@ -56,10 +56,10 @@ type RelKind = 'self' | 'teacher' | 'student' | 'parent' | 'sibling' | 'course';
 const REL_STYLE: Record<Exclude<RelKind, 'self'>, {
   bgClass: string; borderClass: string; headerClass: string; header: string; icon: React.ComponentType<any>;
 }> = {
-  teacher: { bgClass: 'bg-blue-50 dark:bg-blue-950/30',     borderClass: 'border-l-blue-500',   headerClass: 'text-blue-600 dark:text-blue-400',     header: 'Teaching Me',     icon: GraduationCap },
-  student: { bgClass: 'bg-green-50 dark:bg-green-950/30',   borderClass: 'border-l-green-500',  headerClass: 'text-green-600 dark:text-green-400',   header: 'My Student',      icon: Users },
-  parent:  { bgClass: 'bg-amber-50 dark:bg-amber-950/30',   borderClass: 'border-l-amber-500',  headerClass: 'text-amber-600 dark:text-amber-400',   header: 'Guardian',        icon: Heart },
-  sibling: { bgClass: 'bg-purple-50 dark:bg-purple-950/30', borderClass: 'border-l-purple-500', headerClass: 'text-purple-600 dark:text-purple-400', header: 'Sibling',         icon: Baby },
+  teacher: { bgClass: 'bg-[#EEF2FF] dark:bg-indigo-950/30', borderClass: 'border-l-[#6366F1]', headerClass: 'text-[#4F46E5] dark:text-indigo-300', header: 'Teaching Me', icon: GraduationCap },
+  student: { bgClass: 'bg-[#F5F3FF] dark:bg-purple-950/30', borderClass: 'border-l-[#7C3AED]', headerClass: 'text-[#7C3AED] dark:text-purple-300', header: 'Student',     icon: Users },
+  parent:  { bgClass: 'bg-[#FFFBEB] dark:bg-amber-950/30',  borderClass: 'border-l-[#D97706]', headerClass: 'text-[#D97706] dark:text-amber-300',  header: 'Guardian',    icon: Heart },
+  sibling: { bgClass: 'bg-[#F5F3FF] dark:bg-purple-950/30', borderClass: 'border-l-[#7C3AED]', headerClass: 'text-[#7C3AED] dark:text-purple-300', header: 'Sibling',     icon: Baby },
   course:  { bgClass: 'bg-orange-50 dark:bg-orange-950/30', borderClass: 'border-l-orange-500', headerClass: 'text-orange-600 dark:text-orange-400', header: 'Enrolled Course', icon: BookOpen },
 };
 
@@ -73,12 +73,12 @@ const STATUS_DOT: Record<string, string> = {
 };
 
 /* ---------- Edge colors per relationship ---------- */
-const EDGE_STYLE: Record<Exclude<RelKind, 'self'>, { color: string; dashed: boolean }> = {
-  teacher: { color: '#3b82f6', dashed: true  }, // blue dashed
-  student: { color: '#22c55e', dashed: false }, // green solid
-  parent:  { color: '#f59e0b', dashed: false }, // amber solid
-  sibling: { color: '#a855f7', dashed: false }, // purple solid
-  course:  { color: '#f97316', dashed: true  }, // orange dashed
+const EDGE_STYLE: Record<Exclude<RelKind, 'self'>, { color: string; dashed: boolean; bidirectional?: boolean; label?: string }> = {
+  teacher: { color: '#6366F1', dashed: false, label: 'Teaching' },        // solid indigo/blue
+  student: { color: '#6366F1', dashed: false, label: 'Teaching' },        // solid blue (teacher→student)
+  parent:  { color: '#D97706', dashed: true,  label: 'Guardian' },        // dashed gold
+  sibling: { color: '#7C3AED', dashed: true,  bidirectional: true, label: 'Sibling' }, // dashed purple, double-headed
+  course:  { color: '#f97316', dashed: true,  label: 'Enrolled' },
 };
 
 interface NodeData {
@@ -174,6 +174,22 @@ function ConnectedNode({ data }: NodeProps<NodeData>) {
 }
 
 const nodeTypes = { center: CenterNode, connected: ConnectedNode };
+
+/* ---------- Legend row ---------- */
+function LegendRow({ color, dashed, label, bidirectional }: { color: string; dashed?: boolean; label: string; bidirectional?: boolean }) {
+  return (
+    <div className="flex items-center gap-2">
+      <svg width="38" height="10" className="shrink-0">
+        {bidirectional && (
+          <polygon points="0,5 6,2 6,8" fill={color} />
+        )}
+        <line x1={bidirectional ? 6 : 0} y1="5" x2={32} y2="5" stroke={color} strokeWidth="2" strokeDasharray={dashed ? '5 3' : undefined} />
+        <polygon points="38,5 32,2 32,8" fill={color} />
+      </svg>
+      <span className="text-[10px] font-medium text-gray-700">{label}</span>
+    </div>
+  );
+}
 
 /* ---------- Test data filter ---------- */
 function isTestProfile(p: { full_name?: string | null; email?: string | null } | null | undefined): boolean {
@@ -429,13 +445,21 @@ function buildGraph(
       source: selfId,
       target: s.id,
       type: 'smoothstep',
-      animated: true,
+      animated: false,
+      label: style.label,
+      labelStyle: { fill: style.color, fontSize: 10, fontWeight: 600 },
+      labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
+      labelBgPadding: [4, 2],
+      labelBgBorderRadius: 4,
       style: {
         stroke: style.color,
-        strokeWidth: 2,
+        strokeWidth: 1.75,
         strokeDasharray: style.dashed ? '6 4' : undefined,
       },
-      markerEnd: { type: MarkerType.ArrowClosed, color: style.color, width: 18, height: 18 },
+      markerEnd: { type: MarkerType.ArrowClosed, color: style.color, width: 16, height: 16 },
+      markerStart: style.bidirectional
+        ? { type: MarkerType.ArrowClosed, color: style.color, width: 16, height: 16 }
+        : undefined,
     });
   });
 
@@ -540,18 +564,28 @@ function GraphInner({ userId, userType, roleFilter = 'all', compact = false, cla
         maxZoom={2}
       >
         <Background variant={BackgroundVariant.Dots} gap={18} size={1.2} color="#e5e7eb" />
-        <Controls position="bottom-left" showInteractive={false} className="!shadow-md" />
+        <Controls position="top-left" showInteractive={false} className="!shadow-md" />
         {!compact && (
-          <Panel position="top-right" className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => fitView({ padding: 0.2, duration: 400 })} className="h-8 gap-1.5 bg-white">
-              <Maximize2 className="h-3.5 w-3.5" />
-              <span className="text-xs">Fit</span>
-            </Button>
-            <Button size="sm" variant="outline" onClick={exportPng} className="h-8 gap-1.5 bg-white">
-              <Download className="h-3.5 w-3.5" />
-              <span className="text-xs">Export PNG</span>
-            </Button>
-          </Panel>
+          <>
+            <Panel position="top-right" className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => fitView({ padding: 0.2, duration: 400 })} className="h-8 gap-1.5 bg-white">
+                <Maximize2 className="h-3.5 w-3.5" />
+                <span className="text-xs">Fit</span>
+              </Button>
+              <Button size="sm" variant="outline" onClick={exportPng} className="h-8 gap-1.5 bg-white">
+                <Download className="h-3.5 w-3.5" />
+                <span className="text-xs">Export PNG</span>
+              </Button>
+            </Panel>
+            <Panel position="bottom-left" className="!m-3">
+              <div className="rounded-md border bg-white/95 backdrop-blur px-3 py-2 shadow-sm space-y-1.5">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Legend</p>
+                <LegendRow color="#6366F1" dashed={false} label="Teaching" />
+                <LegendRow color="#7C3AED" dashed label="Sibling" bidirectional />
+                <LegendRow color="#D97706" dashed label="Guardian" />
+              </div>
+            </Panel>
+          </>
         )}
       </ReactFlow>
     </div>
