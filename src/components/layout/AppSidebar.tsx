@@ -116,7 +116,6 @@ function getPeopleSidebar(isOneToOne?: boolean, role?: string | null): { title: 
       ...(can(r, 'students', 'view') ? [{ label: 'Students', href: '/students' }] : []),
       ...(can(r, 'teachers', 'view') ? [{ label: 'Teachers', href: '/teachers' }] : []),
       ...(canStaff ? [{ label: 'Staff', href: '/user-management?mode=staff' }] : []),
-      ...(isOneToOne && canLeads ? [{ label: 'Leads', href: '/leads', badge: 0, badgeType: 'alert' as const }] : []),
     ],
     showSearch: true,
   };
