@@ -437,13 +437,30 @@ function buildGraph(
     draggable: false,
   });
 
-  const allSpokes = [...aboveLaid, ...belowLaid, ...leftLaid, ...rightLaid];
-  allSpokes.forEach((s) => {
+  const quadrantHandles = (q: 'above' | 'below' | 'left' | 'right') => {
+    switch (q) {
+      case 'above': return { source: 's-top',    target: 't-bottom' };
+      case 'below': return { source: 's-bottom', target: 't-top' };
+      case 'left':  return { source: 's-left',   target: 't-right' };
+      case 'right': return { source: 's-right',  target: 't-left' };
+    }
+  };
+
+  const tagged: Array<{ spoke: Spoke; quadrant: 'above' | 'below' | 'left' | 'right' }> = [
+    ...aboveLaid.map((s) => ({ spoke: s, quadrant: 'above' as const })),
+    ...belowLaid.map((s) => ({ spoke: s, quadrant: 'below' as const })),
+    ...leftLaid.map((s)  => ({ spoke: s, quadrant: 'left'  as const })),
+    ...rightLaid.map((s) => ({ spoke: s, quadrant: 'right' as const })),
+  ];
+  tagged.forEach(({ spoke: s, quadrant }) => {
     const style = EDGE_STYLE[s.rel];
+    const h = quadrantHandles(quadrant);
     edges.push({
       id: `e-${s.id}`,
       source: selfId,
       target: s.id,
+      sourceHandle: h.source,
+      targetHandle: h.target,
       type: 'smoothstep',
       animated: false,
       label: style.label,
