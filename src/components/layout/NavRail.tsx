@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   LayoutDashboard, BookOpen, Users, DollarSign, BarChart3,
   MessageSquare, Cog, ClipboardCheck, Target,
-  Award, FileText, FolderOpen, LogOut, Activity,
+  Award, FileText, FolderOpen, LogOut, Activity, Megaphone,
 } from 'lucide-react';
 import logoDark from '@/assets/logo-dark.jpg';
 
