@@ -3,7 +3,7 @@
   "name": "AlQuran Time Academy LMS",
   "short_name": "AQT Academy",
   "description": "AlQuran Time Academy — Learning Management System for students, teachers and parents.",
-  "start_url": "/login/aqt?source=pwa",
+  "start_url": "/login?source=pwa",
   "scope": "/",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
