@@ -80,8 +80,8 @@ function isAdminRole(role: AppRole | null) {
 }
 
 function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "group" | "recorded" | null): DrawerSection[] {
-  const isOneToOne = modelType === "one_to_one";
-  const isGroupStyleModel = !isOneToOne;
+  const isGroupStyleModel = modelType === "group" || modelType === "recorded";
+  const isOneToOne = !isGroupStyleModel;
 
   if (isAdminRole(role)) {
     return [
