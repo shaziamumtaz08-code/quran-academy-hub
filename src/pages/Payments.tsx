@@ -429,6 +429,23 @@ export default function Payments() {
     enabled: !!branchId,
   });
 
+  // Active billing plans count for summary card
+  const { data: activePlansCount = 0 } = useQuery({
+    queryKey: ['active-plans-count', branchId, divisionId],
+    queryFn: async () => {
+      let q = supabase
+        .from('student_billing_plans')
+        .select('id', { count: 'exact', head: true })
+        .eq('is_active', true);
+      if (branchId) q = q.eq('branch_id', branchId);
+      if (divisionId) q = q.eq('division_id', divisionId);
+      const { count, error } = await q;
+      if (error) return 0;
+      return count || 0;
+    },
+    enabled: !!branchId && !isReadOnlyView,
+  });
+
   const familyGroups = useMemo(() => {
     const map: Record<string, { parentName: string; studentIds: string[] }> = {};
     parentLinks.forEach(link => {
