@@ -519,7 +519,7 @@ export default function Teachers() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTeachers.map((teacher) => (
+                {filteredTeachers.map((teacher, idx) => (
                   <React.Fragment key={teacher.id}>
                     <TableRow 
                       className={cn(
@@ -539,6 +539,7 @@ export default function Teachers() {
                           </Button>
                         )}
                       </TableCell>
+                      <TableCell className="text-xs text-muted-foreground tabular-nums">{idx + 1}</TableCell>
                       <TableCell>
                         <EntityLink
                           to="#"
