@@ -1471,48 +1471,84 @@ export default function Payments() {
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="font-serif text-3xl font-bold text-foreground">
-              {isParentView ? 'Family Fees' : isStudentView ? 'My Fees' : 'Fee Management'}
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div className="min-w-0">
+            <h1 className="font-serif text-2xl md:text-3xl font-bold text-foreground tracking-tight">
+              {isParentView ? 'Family Fees' : isStudentView ? 'My Fees' : 'Payments & Billing'}
             </h1>
-            <p className="text-muted-foreground mt-1">
-              {isParentView ? 'View and pay fees for your children' : isStudentView ? 'View your fee invoices' : 'Billing plans, invoices & payments'}
+            <p className="text-sm text-muted-foreground mt-1">
+              {isParentView
+                ? 'View and pay fees for your children'
+                : isStudentView
+                  ? 'View your fee invoices'
+                  : (
+                    <>Manage invoices and fee plans{activeDivision?.name ? <> · <span className="text-foreground/70">{activeDivision.name}</span></> : null}</>
+                  )}
             </p>
           </div>
           {!isReadOnlyView && (
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => { resetFeeForm(); setSetupOpen(true); }} className="gap-2">
-                <Plus className="h-4 w-4" /> Set Up Student Fee
-              </Button>
-              <Button onClick={() => generateMutation.mutate()} disabled={generateMutation.isPending} className="gap-2">
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => generateMutation.mutate()}
+                disabled={generateMutation.isPending}
+                className="gap-2"
+              >
                 {generateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-                Generate Monthly Invoices
+                <span className="hidden sm:inline">Generate Invoices</span>
+                <span className="sm:hidden">Generate</span>
+              </Button>
+              <Button onClick={() => { resetFeeForm(); setSetupOpen(true); }} size="sm" className="gap-2">
+                <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Set Up Fee Plan</span><span className="sm:hidden">Plan</span>
               </Button>
             </div>
           )}
         </div>
 
-        {/* Summary Cards — per-currency native totals */}
+        {/* Summary Cards — clean 4-card layout, no currency mixing */}
         <PaymentsSummaryCards
           localTotalPKR={localTotalPKR}
           lcyCollected={lcyCollected}
           lcyPending={lcyPending}
           fcyCurrencyBreakdown={fcyCurrencyBreakdown}
+          pkrCollectedMonth={lcyCollected}
+          pendingCount={pendingCount}
+          overdueCount={overdueCount}
+          activePlansCount={activePlansCount}
         />
 
-        {/* Tabs: Invoices | Billing Plans */}
+        {/* Tabs: underline style with count badges */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          {!isReadOnlyView ? (
-            <TabsList className="grid w-full max-w-md grid-cols-2">
-              <TabsTrigger value="invoices" className="gap-2"><Receipt className="h-4 w-4" /> Invoices</TabsTrigger>
-              <TabsTrigger value="plans" className="gap-2"><ListChecks className="h-4 w-4" /> Billing Plans</TabsTrigger>
+          <div className="border-b border-border">
+            <TabsList className="h-auto bg-transparent p-0 gap-6 rounded-none">
+              <TabsTrigger
+                value="invoices"
+                className="rounded-none border-b-2 border-transparent bg-transparent px-0 pb-3 pt-2 font-medium text-muted-foreground data-[state=active]:border-[hsl(var(--navy,222_47%_20%))] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none gap-2"
+              >
+                <Receipt className="h-4 w-4" /> Invoices
+                {(pendingCount + overdueCount) > 0 && (
+                  <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-[10px]">
+                    {pendingCount + overdueCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              {!isReadOnlyView && (
+                <TabsTrigger
+                  value="plans"
+                  className="rounded-none border-b-2 border-transparent bg-transparent px-0 pb-3 pt-2 font-medium text-muted-foreground data-[state=active]:border-[hsl(var(--navy,222_47%_20%))] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none gap-2"
+                >
+                  <ListChecks className="h-4 w-4" /> Billing Plans
+                  {activePlansCount > 0 && (
+                    <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-[10px]">
+                      {activePlansCount}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+              )}
             </TabsList>
-          ) : (
-            <TabsList className="grid w-full max-w-xs grid-cols-1">
-              <TabsTrigger value="invoices" className="gap-2"><Receipt className="h-4 w-4" /> Invoices</TabsTrigger>
-            </TabsList>
-          )}
+          </div>
+
 
           <TabsContent value="invoices" className="mt-4 space-y-4">
             {/* Filters + Bulk Action */}
