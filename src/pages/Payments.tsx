@@ -39,6 +39,7 @@ import { PaymentsSummaryCards } from '@/components/finance/PaymentsSummaryCards'
 import { MonthStatusBanner } from '@/components/finance/MonthStatusBanner';
 import { MonthPillNav } from '@/components/finance/MonthPillNav';
 import { BulkActionBar } from '@/components/finance/BulkActionBar';
+import { PaymentHistoryTable } from '@/components/finance/PaymentHistoryTable';
 import { cn } from '@/lib/utils';
 
 // ─── Constants ───────────────────────────────────────────────────────
