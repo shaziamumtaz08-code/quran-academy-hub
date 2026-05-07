@@ -1553,7 +1553,7 @@ export default function Payments() {
         />
 
         {/* Sidebar drives view selection — no in-page tabs */}
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'invoices' | 'payments' | 'plans')}>
+        <Tabs value={activeTab}>
           <TabsContent value="invoices" className="mt-4 space-y-4">
             {/* Month Pill Navigator */}
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
