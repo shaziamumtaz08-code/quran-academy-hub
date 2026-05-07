@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { useDivision } from '@/contexts/DivisionContext';
 import { ExportDialog } from '@/components/export/ExportDialog';
 import { TeacherDetailDrawer } from '@/components/teachers/TeacherDetailDrawer';
+import { HolisticUserProfileDrawer } from '@/components/users/HolisticUserProfileDrawer';
 import { EntityLink } from '@/components/shared/EntityLink';
 import { useDivisionMembership, getDivisionShortName, getDivisionBadgeClass } from '@/hooks/useDivisionMembership';
 
