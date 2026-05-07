@@ -40,6 +40,7 @@ import { MonthStatusBanner } from '@/components/finance/MonthStatusBanner';
 import { MonthPillNav } from '@/components/finance/MonthPillNav';
 import { BulkActionBar } from '@/components/finance/BulkActionBar';
 import { PaymentHistoryTable } from '@/components/finance/PaymentHistoryTable';
+import { StudentFeePortal } from '@/components/finance/StudentFeePortal';
 import { cn } from '@/lib/utils';
 import { useLocation } from 'react-router-dom';
 
