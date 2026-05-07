@@ -37,6 +37,8 @@ import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { PaymentsSummaryCards } from '@/components/finance/PaymentsSummaryCards';
 import { MonthStatusBanner } from '@/components/finance/MonthStatusBanner';
+import { MonthPillNav } from '@/components/finance/MonthPillNav';
+import { BulkActionBar } from '@/components/finance/BulkActionBar';
 import { cn } from '@/lib/utils';
 
 // ─── Constants ───────────────────────────────────────────────────────
@@ -427,6 +429,23 @@ export default function Payments() {
     enabled: !!branchId,
   });
 
+  // Active billing plans count for summary card
+  const { data: activePlansCount = 0 } = useQuery({
+    queryKey: ['active-plans-count', branchId, divisionId],
+    queryFn: async () => {
+      let q = supabase
+        .from('student_billing_plans')
+        .select('id', { count: 'exact', head: true })
+        .eq('is_active', true);
+      if (branchId) q = q.eq('branch_id', branchId);
+      if (divisionId) q = q.eq('division_id', divisionId);
+      const { count, error } = await q;
+      if (error) return 0;
+      return count || 0;
+    },
+    enabled: !!branchId && !isReadOnlyView,
+  });
+
   const familyGroups = useMemo(() => {
     const map: Record<string, { parentName: string; studentIds: string[] }> = {};
     parentLinks.forEach(link => {
@@ -697,6 +716,10 @@ export default function Payments() {
     });
     return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0]));
   }, [fcyInvoicesAll, ledgerPaidMap]);
+
+  // Counts for summary card 3 (Pending) + tab badges
+  const overdueCount = useMemo(() => invoices.filter(i => i.status === 'overdue').length, [invoices]);
+  const pendingCount = useMemo(() => invoices.filter(i => i.status === 'pending' || i.status === 'partially_paid').length, [invoices]);
 
   const monthOptions = Array.from({ length: 12 }, (_, i) => {
     const m = String(i + 1).padStart(2, '0');
@@ -1448,140 +1471,162 @@ export default function Payments() {
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="font-serif text-3xl font-bold text-foreground">
-              {isParentView ? 'Family Fees' : isStudentView ? 'My Fees' : 'Fee Management'}
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div className="min-w-0">
+            <h1 className="font-serif text-2xl md:text-3xl font-bold text-foreground tracking-tight">
+              {isParentView ? 'Family Fees' : isStudentView ? 'My Fees' : 'Payments & Billing'}
             </h1>
-            <p className="text-muted-foreground mt-1">
-              {isParentView ? 'View and pay fees for your children' : isStudentView ? 'View your fee invoices' : 'Billing plans, invoices & payments'}
+            <p className="text-sm text-muted-foreground mt-1">
+              {isParentView
+                ? 'View and pay fees for your children'
+                : isStudentView
+                  ? 'View your fee invoices'
+                  : (
+                    <>Manage invoices and fee plans{activeDivision?.name ? <> · <span className="text-foreground/70">{activeDivision.name}</span></> : null}</>
+                  )}
             </p>
           </div>
           {!isReadOnlyView && (
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => { resetFeeForm(); setSetupOpen(true); }} className="gap-2">
-                <Plus className="h-4 w-4" /> Set Up Student Fee
-              </Button>
-              <Button onClick={() => generateMutation.mutate()} disabled={generateMutation.isPending} className="gap-2">
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => generateMutation.mutate()}
+                disabled={generateMutation.isPending}
+                className="gap-2"
+              >
                 {generateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-                Generate Monthly Invoices
+                <span className="hidden sm:inline">Generate Invoices</span>
+                <span className="sm:hidden">Generate</span>
+              </Button>
+              <Button onClick={() => { resetFeeForm(); setSetupOpen(true); }} size="sm" className="gap-2">
+                <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Set Up Fee Plan</span><span className="sm:hidden">Plan</span>
               </Button>
             </div>
           )}
         </div>
 
-        {/* Summary Cards — per-currency native totals */}
+        {/* Summary Cards — clean 4-card layout, no currency mixing */}
         <PaymentsSummaryCards
           localTotalPKR={localTotalPKR}
           lcyCollected={lcyCollected}
           lcyPending={lcyPending}
           fcyCurrencyBreakdown={fcyCurrencyBreakdown}
+          pkrCollectedMonth={lcyCollected}
+          pendingCount={pendingCount}
+          overdueCount={overdueCount}
+          activePlansCount={activePlansCount}
         />
 
-        {/* Tabs: Invoices | Billing Plans */}
+        {/* Tabs: underline style with count badges */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          {!isReadOnlyView ? (
-            <TabsList className="grid w-full max-w-md grid-cols-2">
-              <TabsTrigger value="invoices" className="gap-2"><Receipt className="h-4 w-4" /> Invoices</TabsTrigger>
-              <TabsTrigger value="plans" className="gap-2"><ListChecks className="h-4 w-4" /> Billing Plans</TabsTrigger>
+          <div className="border-b border-border">
+            <TabsList className="h-auto bg-transparent p-0 gap-6 rounded-none">
+              <TabsTrigger
+                value="invoices"
+                className="rounded-none border-b-2 border-transparent bg-transparent px-0 pb-3 pt-2 font-medium text-muted-foreground data-[state=active]:border-[hsl(var(--navy,222_47%_20%))] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none gap-2"
+              >
+                <Receipt className="h-4 w-4" /> Invoices
+                {(pendingCount + overdueCount) > 0 && (
+                  <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-[10px]">
+                    {pendingCount + overdueCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              {!isReadOnlyView && (
+                <TabsTrigger
+                  value="plans"
+                  className="rounded-none border-b-2 border-transparent bg-transparent px-0 pb-3 pt-2 font-medium text-muted-foreground data-[state=active]:border-[hsl(var(--navy,222_47%_20%))] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none gap-2"
+                >
+                  <ListChecks className="h-4 w-4" /> Billing Plans
+                  {activePlansCount > 0 && (
+                    <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-[10px]">
+                      {activePlansCount}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+              )}
             </TabsList>
-          ) : (
-            <TabsList className="grid w-full max-w-xs grid-cols-1">
-              <TabsTrigger value="invoices" className="gap-2"><Receipt className="h-4 w-4" /> Invoices</TabsTrigger>
-            </TabsList>
-          )}
+          </div>
+
 
           <TabsContent value="invoices" className="mt-4 space-y-4">
-            {/* Filters + Bulk Action */}
-            <div className="flex flex-wrap items-center gap-4">
-              <Select value={monthFilter} onValueChange={setMonthFilter}>
-                <SelectTrigger className="w-[180px]"><SelectValue placeholder="Billing Month" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Months</SelectItem>
-                  {monthOptions.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="paid">Paid</SelectItem>
-                  <SelectItem value="partially_paid">Partially Paid</SelectItem>
-                  <SelectItem value="overdue">Overdue</SelectItem>
-                  <SelectItem value="waived">Waived</SelectItem>
-                  <SelectItem value="adjusted">Adjusted</SelectItem>
-                </SelectContent>
-              </Select>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <GraduationCap className="h-4 w-4" />
-                <span>{invoices.length} invoice(s)</span>
+            {/* Month Pill Navigator */}
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <div className="flex-1 min-w-0">
+                <MonthPillNav
+                  value={monthFilter === 'all' ? currentBillingMonth : monthFilter}
+                  onChange={setMonthFilter}
+                />
               </div>
-              {!isReadOnlyView && familyGroups.length > 0 && (
-                <Select onValueChange={openFamilyPay}>
-                  <SelectTrigger className="w-[180px]"><SelectValue placeholder="Pay Family..." /></SelectTrigger>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant={monthFilter === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-9 rounded-full"
+                  onClick={() => setMonthFilter('all')}
+                >
+                  All Months
+                </Button>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="h-9 w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
                   <SelectContent>
-                    {familyGroups.map(([pid, fam]) => (
-                      <SelectItem key={pid} value={pid}>
-                        <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {fam.parentName}</span>
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="paid">Paid</SelectItem>
+                    <SelectItem value="partially_paid">Partially Paid</SelectItem>
+                    <SelectItem value="overdue">Overdue</SelectItem>
+                    <SelectItem value="waived">Waived</SelectItem>
+                    <SelectItem value="adjusted">Adjusted</SelectItem>
                   </SelectContent>
                 </Select>
-              )}
-              {isParentView && (() => {
-                const unpaidInvoices = invoices.filter(i => i.status !== 'paid' && i.status !== 'waived');
-                const unpaidTotal = unpaidInvoices.reduce((s, i) => s + Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0)), 0);
-                if (unpaidInvoices.length === 0) return null;
-                return (
-                  <Button
-                    className="gap-2"
-                    onClick={() => {
-                      selectedInvoiceCacheRef.current.clear();
-                      unpaidInvoices.forEach(inv => selectedInvoiceCacheRef.current.set(inv.id, inv));
-                      setSelectedIds(new Set(unpaidInvoices.map(i => i.id)));
-                      const months = [...new Set(unpaidInvoices.map(i => i.billing_month))].sort();
-                      const earliest = getDefaultPeriodDates(months[0]);
-                      const latest = getDefaultPeriodDates(months[months.length - 1]);
-                      setPayForm({
-                        amount_foreign: unpaidTotal.toString(), amount_local: '', resolution: 'full', notes: '',
-                        payment_date: new Date().toISOString().split('T')[0],
-                        period_from: earliest.from, period_to: latest.to, payment_method: '',
-                      });
-                      setReceiptFile(null);
-                      setBulkPayOpen(true);
-                    }}
-                  >
-                    <Users className="h-4 w-4" /> Pay All ({unpaidInvoices.length}) — {unpaidInvoices[0]?.currency} {unpaidTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                  </Button>
-                );
-              })()}
-              <div className="flex-1" />
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                  {invoices.length} invoice{invoices.length === 1 ? '' : 's'}
+                </span>
+                {!isReadOnlyView && familyGroups.length > 0 && (
+                  <Select onValueChange={openFamilyPay}>
+                    <SelectTrigger className="h-9 w-[170px]"><SelectValue placeholder="Pay Family..." /></SelectTrigger>
+                    <SelectContent>
+                      {familyGroups.map(([pid, fam]) => (
+                        <SelectItem key={pid} value={pid}>
+                          <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {fam.parentName}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {isParentView && (() => {
+                  const unpaidInvoices = invoices.filter(i => i.status !== 'paid' && i.status !== 'waived');
+                  const unpaidTotal = unpaidInvoices.reduce((s, i) => s + Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0)), 0);
+                  if (unpaidInvoices.length === 0) return null;
+                  return (
+                    <Button
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => {
+                        selectedInvoiceCacheRef.current.clear();
+                        unpaidInvoices.forEach(inv => selectedInvoiceCacheRef.current.set(inv.id, inv));
+                        setSelectedIds(new Set(unpaidInvoices.map(i => i.id)));
+                        const months = [...new Set(unpaidInvoices.map(i => i.billing_month))].sort();
+                        const earliest = getDefaultPeriodDates(months[0]);
+                        const latest = getDefaultPeriodDates(months[months.length - 1]);
+                        setPayForm({
+                          amount_foreign: unpaidTotal.toString(), amount_local: '', resolution: 'full', notes: '',
+                          payment_date: new Date().toISOString().split('T')[0],
+                          period_from: earliest.from, period_to: latest.to, payment_method: '',
+                        });
+                        setReceiptFile(null);
+                        setBulkPayOpen(true);
+                      }}
+                    >
+                      <Users className="h-4 w-4" /> Pay All ({unpaidInvoices.length}) — {unpaidInvoices[0]?.currency} {unpaidTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    </Button>
+                  );
+                })()}
+              </div>
             </div>
 
-            {/* Cross-month selection bar */}
-            {selectedIds.size > 0 && (() => {
-              const currentVisibleIds = new Set(invoices.map(i => i.id));
-              const crossMonthCount = Array.from(selectedIds).filter(id => !currentVisibleIds.has(id)).length;
-              const months = [...new Set(selectedInvoices.map(i => i.billing_month))].sort();
-              return (
-                <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-lg px-4 py-2.5 animate-fade-in">
-                  <CheckCircle className="h-4 w-4 text-primary shrink-0" />
-                  <span className="text-sm font-medium text-foreground">
-                    {selectedIds.size} invoice{selectedIds.size > 1 ? 's' : ''} selected
-                    {months.length > 1 && <span className="text-muted-foreground"> across {months.length} months ({months.map(formatBillingMonth).join(', ')})</span>}
-                    {crossMonthCount > 0 && <span className="text-muted-foreground"> • {crossMonthCount} from other month{crossMonthCount > 1 ? 's' : ''}</span>}
-                  </span>
-                  <div className="flex-1" />
-                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { selectedInvoiceCacheRef.current.clear(); setSelectedIds(new Set()); }}>
-                    <X className="h-3 w-3 mr-1" /> Clear All
-                  </Button>
-                  <Button size="sm" className="h-7 text-xs gap-1.5" onClick={openBulkPay} disabled={unpaidSelected.length === 0}>
-                    <Receipt className="h-3 w-3" /> Record Payment ({unpaidSelected.length})
-                  </Button>
-                </div>
-              );
-            })()}
+
 
             {/* Month Status Banner */}
             {monthStatusData && monthFilter !== 'all' && !isReadOnlyView && (
@@ -1909,6 +1954,17 @@ export default function Payments() {
             </TabsContent>
           )}
         </Tabs>
+
+        {/* Floating Bulk Action Bar */}
+        {!isReadOnlyView && (
+          <BulkActionBar
+            count={selectedIds.size}
+            payDisabled={unpaidSelected.length === 0}
+            onPay={openBulkPay}
+            onClear={() => { selectedInvoiceCacheRef.current.clear(); setSelectedIds(new Set()); }}
+          />
+        )}
+
 
         {/* ─── Set Up Student Fee Modal ──────────── */}
         <Dialog open={setupOpen} onOpenChange={setSetupOpen}>
