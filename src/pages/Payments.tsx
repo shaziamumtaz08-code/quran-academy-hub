@@ -382,7 +382,37 @@ export default function Payments() {
     enabled: invoices.length > 0,
   });
 
-  // Live exchange rates (API + cache + fallback)
+  // All transactions for the Payments tab (history view)
+  const { data: allTransactions = [] } = useQuery({
+    queryKey: ['all-payment-transactions', branchId, divisionId],
+    queryFn: async () => {
+      const invoiceIds = invoices.map(i => i.id);
+      if (invoiceIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from('payment_transactions')
+        .select('*')
+        .in('invoice_id', invoiceIds)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: invoices.length > 0 && activeTab === 'payments',
+  });
+
+  const invoiceMapForHistory = useMemo(() => {
+    const m: Record<string, any> = {};
+    invoices.forEach(inv => {
+      m[inv.id] = {
+        id: inv.id,
+        billing_month: inv.billing_month,
+        amount: Number(inv.amount || 0),
+        currency: inv.currency,
+        status: inv.status,
+        student_name: inv.profiles?.full_name || '—',
+      };
+    });
+    return m;
+  }, [invoices]);
   const { rates: liveRates, isLive: ratesAreLive, lastUpdated: ratesLastUpdated, error: ratesError, getRate } = useExchangeRates();
 
   // Derived maps for backward-compat
