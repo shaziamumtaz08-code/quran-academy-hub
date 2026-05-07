@@ -39,6 +39,7 @@ import { PaymentsSummaryCards } from '@/components/finance/PaymentsSummaryCards'
 import { MonthStatusBanner } from '@/components/finance/MonthStatusBanner';
 import { MonthPillNav } from '@/components/finance/MonthPillNav';
 import { BulkActionBar } from '@/components/finance/BulkActionBar';
+import { PaymentHistoryTable } from '@/components/finance/PaymentHistoryTable';
 import { cn } from '@/lib/utils';
 
 // ─── Constants ───────────────────────────────────────────────────────
@@ -209,14 +210,16 @@ export default function Payments() {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const receiptInputRef = useRef<HTMLInputElement>(null);
 
-  // Active tab
-  const initialTab = (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('view') === 'fee-plans') ? 'plans' : 'invoices';
-  const [activeTab, setActiveTab] = useState(initialTab);
+  // Active tab — maps sidebar `view` param to internal tab
+  const viewToTab = (v: string | null): 'invoices' | 'payments' | 'plans' => {
+    if (v === 'fee-plans') return 'plans';
+    if (v === 'payments') return 'payments';
+    return 'invoices';
+  };
+  const initialTab = viewToTab(typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('view') : null);
+  const [activeTab, setActiveTab] = useState<'invoices' | 'payments' | 'plans'>(initialTab);
   useEffect(() => {
-    const onPop = () => {
-      const v = new URLSearchParams(window.location.search).get('view');
-      setActiveTab(v === 'fee-plans' ? 'plans' : 'invoices');
-    };
+    const onPop = () => setActiveTab(viewToTab(new URLSearchParams(window.location.search).get('view')));
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
@@ -379,7 +382,37 @@ export default function Payments() {
     enabled: invoices.length > 0,
   });
 
-  // Live exchange rates (API + cache + fallback)
+  // All transactions for the Payments tab (history view)
+  const { data: allTransactions = [] } = useQuery({
+    queryKey: ['all-payment-transactions', branchId, divisionId],
+    queryFn: async () => {
+      const invoiceIds = invoices.map(i => i.id);
+      if (invoiceIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from('payment_transactions')
+        .select('*')
+        .in('invoice_id', invoiceIds)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: invoices.length > 0 && activeTab === 'payments',
+  });
+
+  const invoiceMapForHistory = useMemo(() => {
+    const m: Record<string, any> = {};
+    invoices.forEach(inv => {
+      m[inv.id] = {
+        id: inv.id,
+        billing_month: inv.billing_month,
+        amount: Number(inv.amount || 0),
+        currency: inv.currency,
+        status: inv.status,
+        student_name: inv.profiles?.full_name || '—',
+      };
+    });
+    return m;
+  }, [invoices]);
   const { rates: liveRates, isLive: ratesAreLive, lastUpdated: ratesLastUpdated, error: ratesError, getRate } = useExchangeRates();
 
   // Derived maps for backward-compat
@@ -1528,7 +1561,7 @@ export default function Payments() {
         />
 
         {/* Tabs: underline style with count badges */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'invoices' | 'payments' | 'plans')}>
           <div className="border-b border-border">
             <TabsList className="h-auto bg-transparent p-0 gap-6 rounded-none">
               <TabsTrigger
@@ -1541,6 +1574,12 @@ export default function Payments() {
                     {pendingCount + overdueCount}
                   </Badge>
                 )}
+              </TabsTrigger>
+              <TabsTrigger
+                value="payments"
+                className="rounded-none border-b-2 border-transparent bg-transparent px-0 pb-3 pt-2 font-medium text-muted-foreground data-[state=active]:border-[hsl(var(--navy,222_47%_20%))] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none gap-2"
+              >
+                <DollarSign className="h-4 w-4" /> Payments
               </TabsTrigger>
               {!isReadOnlyView && (
                 <TabsTrigger
@@ -1955,6 +1994,17 @@ export default function Payments() {
                 </Table>
               )}
             </div>
+          </TabsContent>
+
+          <TabsContent value="payments" className="mt-4">
+            <PaymentHistoryTable
+              transactions={allTransactions as any}
+              invoiceMap={invoiceMapForHistory}
+              onViewReceipt={(tx) => {
+                const inv = invoices.find(i => i.id === tx.invoice_id);
+                if (inv) { setReceiptTransactions([tx]); setReceiptViewInvoice(inv); }
+              }}
+            />
           </TabsContent>
 
           {!isReadOnlyView && (
