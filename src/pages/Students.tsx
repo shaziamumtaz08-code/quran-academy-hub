@@ -742,6 +742,7 @@ export default function Students() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[50px] text-xs text-muted-foreground">#</TableHead>
                     <TableHead 
                       className="cursor-pointer select-none hover:bg-muted/50"
                       onClick={() => handleSort('name')}
@@ -787,8 +788,9 @@ export default function Students() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredStudents.map((student) => (
+                  {filteredStudents.map((student, idx) => (
                     <TableRow key={student.id}>
+                      <TableCell className="text-xs text-muted-foreground tabular-nums">{idx + 1}</TableCell>
                       <TableCell>
                         <div className="flex flex-col">
                           <div className="flex items-center gap-2">

@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { useDivision } from '@/contexts/DivisionContext';
 import { ExportDialog } from '@/components/export/ExportDialog';
 import { TeacherDetailDrawer } from '@/components/teachers/TeacherDetailDrawer';
+import { HolisticUserProfileDrawer } from '@/components/users/HolisticUserProfileDrawer';
 import { EntityLink } from '@/components/shared/EntityLink';
 import { useDivisionMembership, getDivisionShortName, getDivisionBadgeClass } from '@/hooks/useDivisionMembership';
 
@@ -51,6 +52,7 @@ export default function Teachers() {
   const [formData, setFormData] = useState({ name: '', email: '', bank_name: '', bank_account_title: '', bank_account_number: '', bank_iban: '' });
   const [expandedTeachers, setExpandedTeachers] = useState<Set<string>>(new Set());
   const [drawerTeacher, setDrawerTeacher] = useState<{ id: string; full_name: string; email: string | null } | null>(null);
+  const [drawerStudentId, setDrawerStudentId] = useState<string | null>(null);
   
   // Sorting & Filtering
   const [sortField, setSortField] = useState<SortField>('name');
@@ -483,6 +485,7 @@ export default function Teachers() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[40px]"></TableHead>
+                  <TableHead className="w-[50px] text-xs text-muted-foreground">#</TableHead>
                   <TableHead 
                     className="cursor-pointer select-none hover:bg-muted/50"
                     onClick={() => handleSort('name')}
@@ -518,7 +521,7 @@ export default function Teachers() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTeachers.map((teacher) => (
+                {filteredTeachers.map((teacher, idx) => (
                   <React.Fragment key={teacher.id}>
                     <TableRow 
                       className={cn(
@@ -538,6 +541,7 @@ export default function Teachers() {
                           </Button>
                         )}
                       </TableCell>
+                      <TableCell className="text-xs text-muted-foreground tabular-nums">{idx + 1}</TableCell>
                       <TableCell>
                         <EntityLink
                           to="#"
@@ -618,7 +622,7 @@ export default function Teachers() {
                                     <User className="h-4 w-4 text-primary" />
                                   </div>
                                   <div className="min-w-0 flex-1">
-                                    <EntityLink to={`/students?search=${encodeURIComponent(student.full_name)}`} variant="name" className="text-sm">{student.full_name}</EntityLink>
+                                    <EntityLink to="#" variant="name" className="text-sm" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDrawerStudentId(student.id); }}>{student.full_name}</EntityLink>
                                     <p className="text-xs text-muted-foreground">
                                       {student.age && `Age ${student.age}`}
                                       {student.age && student.gender && ' • '}
@@ -673,6 +677,11 @@ export default function Teachers() {
           open={!!drawerTeacher}
           onOpenChange={(open) => !open && setDrawerTeacher(null)}
           teacher={drawerTeacher}
+        />
+        <HolisticUserProfileDrawer
+          open={!!drawerStudentId}
+          onOpenChange={(open) => !open && setDrawerStudentId(null)}
+          userId={drawerStudentId}
         />
       </div>
     </DashboardLayout>
