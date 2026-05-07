@@ -40,6 +40,7 @@ import { MonthStatusBanner } from '@/components/finance/MonthStatusBanner';
 import { MonthPillNav } from '@/components/finance/MonthPillNav';
 import { BulkActionBar } from '@/components/finance/BulkActionBar';
 import { PaymentHistoryTable } from '@/components/finance/PaymentHistoryTable';
+import { StudentFeePortal } from '@/components/finance/StudentFeePortal';
 import { cn } from '@/lib/utils';
 import { useLocation } from 'react-router-dom';
 
@@ -1541,6 +1542,18 @@ export default function Payments() {
           )}
         </div>
 
+        {/* Student / Parent fee portal — clean read-only view */}
+        {isReadOnlyView ? (
+          <StudentFeePortal
+            invoices={invoices as any}
+            isLoading={isLoading}
+            ledgerPaidMap={ledgerPaidMap}
+            getRate={getRate}
+            isParentView={isParentView}
+            currentUserId={user?.id}
+          />
+        ) : (
+        <>
         {/* Summary Cards — clean 4-card layout, no currency mixing */}
         <PaymentsSummaryCards
           localTotalPKR={localTotalPKR}
@@ -1970,6 +1983,8 @@ export default function Payments() {
             </TabsContent>
           )}
         </Tabs>
+        </>
+        )}
 
         {/* Floating Bulk Action Bar */}
         {!isReadOnlyView && (
