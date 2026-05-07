@@ -52,6 +52,7 @@ export default function Teachers() {
   const [formData, setFormData] = useState({ name: '', email: '', bank_name: '', bank_account_title: '', bank_account_number: '', bank_iban: '' });
   const [expandedTeachers, setExpandedTeachers] = useState<Set<string>>(new Set());
   const [drawerTeacher, setDrawerTeacher] = useState<{ id: string; full_name: string; email: string | null } | null>(null);
+  const [drawerStudentId, setDrawerStudentId] = useState<string | null>(null);
   
   // Sorting & Filtering
   const [sortField, setSortField] = useState<SortField>('name');
