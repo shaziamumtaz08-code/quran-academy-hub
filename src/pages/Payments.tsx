@@ -1551,96 +1551,82 @@ export default function Payments() {
 
 
           <TabsContent value="invoices" className="mt-4 space-y-4">
-            {/* Filters + Bulk Action */}
-            <div className="flex flex-wrap items-center gap-4">
-              <Select value={monthFilter} onValueChange={setMonthFilter}>
-                <SelectTrigger className="w-[180px]"><SelectValue placeholder="Billing Month" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Months</SelectItem>
-                  {monthOptions.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="paid">Paid</SelectItem>
-                  <SelectItem value="partially_paid">Partially Paid</SelectItem>
-                  <SelectItem value="overdue">Overdue</SelectItem>
-                  <SelectItem value="waived">Waived</SelectItem>
-                  <SelectItem value="adjusted">Adjusted</SelectItem>
-                </SelectContent>
-              </Select>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <GraduationCap className="h-4 w-4" />
-                <span>{invoices.length} invoice(s)</span>
+            {/* Month Pill Navigator */}
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <div className="flex-1 min-w-0">
+                <MonthPillNav
+                  value={monthFilter === 'all' ? currentBillingMonth : monthFilter}
+                  onChange={setMonthFilter}
+                />
               </div>
-              {!isReadOnlyView && familyGroups.length > 0 && (
-                <Select onValueChange={openFamilyPay}>
-                  <SelectTrigger className="w-[180px]"><SelectValue placeholder="Pay Family..." /></SelectTrigger>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant={monthFilter === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-9 rounded-full"
+                  onClick={() => setMonthFilter('all')}
+                >
+                  All Months
+                </Button>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="h-9 w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
                   <SelectContent>
-                    {familyGroups.map(([pid, fam]) => (
-                      <SelectItem key={pid} value={pid}>
-                        <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {fam.parentName}</span>
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="paid">Paid</SelectItem>
+                    <SelectItem value="partially_paid">Partially Paid</SelectItem>
+                    <SelectItem value="overdue">Overdue</SelectItem>
+                    <SelectItem value="waived">Waived</SelectItem>
+                    <SelectItem value="adjusted">Adjusted</SelectItem>
                   </SelectContent>
                 </Select>
-              )}
-              {isParentView && (() => {
-                const unpaidInvoices = invoices.filter(i => i.status !== 'paid' && i.status !== 'waived');
-                const unpaidTotal = unpaidInvoices.reduce((s, i) => s + Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0)), 0);
-                if (unpaidInvoices.length === 0) return null;
-                return (
-                  <Button
-                    className="gap-2"
-                    onClick={() => {
-                      selectedInvoiceCacheRef.current.clear();
-                      unpaidInvoices.forEach(inv => selectedInvoiceCacheRef.current.set(inv.id, inv));
-                      setSelectedIds(new Set(unpaidInvoices.map(i => i.id)));
-                      const months = [...new Set(unpaidInvoices.map(i => i.billing_month))].sort();
-                      const earliest = getDefaultPeriodDates(months[0]);
-                      const latest = getDefaultPeriodDates(months[months.length - 1]);
-                      setPayForm({
-                        amount_foreign: unpaidTotal.toString(), amount_local: '', resolution: 'full', notes: '',
-                        payment_date: new Date().toISOString().split('T')[0],
-                        period_from: earliest.from, period_to: latest.to, payment_method: '',
-                      });
-                      setReceiptFile(null);
-                      setBulkPayOpen(true);
-                    }}
-                  >
-                    <Users className="h-4 w-4" /> Pay All ({unpaidInvoices.length}) — {unpaidInvoices[0]?.currency} {unpaidTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                  </Button>
-                );
-              })()}
-              <div className="flex-1" />
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                  {invoices.length} invoice{invoices.length === 1 ? '' : 's'}
+                </span>
+                {!isReadOnlyView && familyGroups.length > 0 && (
+                  <Select onValueChange={openFamilyPay}>
+                    <SelectTrigger className="h-9 w-[170px]"><SelectValue placeholder="Pay Family..." /></SelectTrigger>
+                    <SelectContent>
+                      {familyGroups.map(([pid, fam]) => (
+                        <SelectItem key={pid} value={pid}>
+                          <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {fam.parentName}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {isParentView && (() => {
+                  const unpaidInvoices = invoices.filter(i => i.status !== 'paid' && i.status !== 'waived');
+                  const unpaidTotal = unpaidInvoices.reduce((s, i) => s + Math.max(0, Number(i.amount) - (ledgerPaidMap[i.id] || 0) - Number(i.forgiven_amount || 0)), 0);
+                  if (unpaidInvoices.length === 0) return null;
+                  return (
+                    <Button
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => {
+                        selectedInvoiceCacheRef.current.clear();
+                        unpaidInvoices.forEach(inv => selectedInvoiceCacheRef.current.set(inv.id, inv));
+                        setSelectedIds(new Set(unpaidInvoices.map(i => i.id)));
+                        const months = [...new Set(unpaidInvoices.map(i => i.billing_month))].sort();
+                        const earliest = getDefaultPeriodDates(months[0]);
+                        const latest = getDefaultPeriodDates(months[months.length - 1]);
+                        setPayForm({
+                          amount_foreign: unpaidTotal.toString(), amount_local: '', resolution: 'full', notes: '',
+                          payment_date: new Date().toISOString().split('T')[0],
+                          period_from: earliest.from, period_to: latest.to, payment_method: '',
+                        });
+                        setReceiptFile(null);
+                        setBulkPayOpen(true);
+                      }}
+                    >
+                      <Users className="h-4 w-4" /> Pay All ({unpaidInvoices.length}) — {unpaidInvoices[0]?.currency} {unpaidTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    </Button>
+                  );
+                })()}
+              </div>
             </div>
 
-            {/* Cross-month selection bar */}
-            {selectedIds.size > 0 && (() => {
-              const currentVisibleIds = new Set(invoices.map(i => i.id));
-              const crossMonthCount = Array.from(selectedIds).filter(id => !currentVisibleIds.has(id)).length;
-              const months = [...new Set(selectedInvoices.map(i => i.billing_month))].sort();
-              return (
-                <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-lg px-4 py-2.5 animate-fade-in">
-                  <CheckCircle className="h-4 w-4 text-primary shrink-0" />
-                  <span className="text-sm font-medium text-foreground">
-                    {selectedIds.size} invoice{selectedIds.size > 1 ? 's' : ''} selected
-                    {months.length > 1 && <span className="text-muted-foreground"> across {months.length} months ({months.map(formatBillingMonth).join(', ')})</span>}
-                    {crossMonthCount > 0 && <span className="text-muted-foreground"> • {crossMonthCount} from other month{crossMonthCount > 1 ? 's' : ''}</span>}
-                  </span>
-                  <div className="flex-1" />
-                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { selectedInvoiceCacheRef.current.clear(); setSelectedIds(new Set()); }}>
-                    <X className="h-3 w-3 mr-1" /> Clear All
-                  </Button>
-                  <Button size="sm" className="h-7 text-xs gap-1.5" onClick={openBulkPay} disabled={unpaidSelected.length === 0}>
-                    <Receipt className="h-3 w-3" /> Record Payment ({unpaidSelected.length})
-                  </Button>
-                </div>
-              );
-            })()}
+
 
             {/* Month Status Banner */}
             {monthStatusData && monthFilter !== 'all' && !isReadOnlyView && (
