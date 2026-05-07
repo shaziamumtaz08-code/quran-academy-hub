@@ -1560,44 +1560,8 @@ export default function Payments() {
           activePlansCount={activePlansCount}
         />
 
-        {/* Tabs: underline style with count badges */}
+        {/* Sidebar drives view selection — no in-page tabs */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'invoices' | 'payments' | 'plans')}>
-          <div className="border-b border-border">
-            <TabsList className="h-auto bg-transparent p-0 gap-6 rounded-none">
-              <TabsTrigger
-                value="invoices"
-                className="rounded-none border-b-2 border-transparent bg-transparent px-0 pb-3 pt-2 font-medium text-muted-foreground data-[state=active]:border-[hsl(var(--navy,222_47%_20%))] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none gap-2"
-              >
-                <Receipt className="h-4 w-4" /> Invoices
-                {(pendingCount + overdueCount) > 0 && (
-                  <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-[10px]">
-                    {pendingCount + overdueCount}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger
-                value="payments"
-                className="rounded-none border-b-2 border-transparent bg-transparent px-0 pb-3 pt-2 font-medium text-muted-foreground data-[state=active]:border-[hsl(var(--navy,222_47%_20%))] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none gap-2"
-              >
-                <DollarSign className="h-4 w-4" /> Payments
-              </TabsTrigger>
-              {!isReadOnlyView && (
-                <TabsTrigger
-                  value="plans"
-                  className="rounded-none border-b-2 border-transparent bg-transparent px-0 pb-3 pt-2 font-medium text-muted-foreground data-[state=active]:border-[hsl(var(--navy,222_47%_20%))] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none gap-2"
-                >
-                  <ListChecks className="h-4 w-4" /> Billing Plans
-                  {activePlansCount > 0 && (
-                    <Badge variant="secondary" className="h-5 min-w-5 px-1.5 text-[10px]">
-                      {activePlansCount}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-              )}
-            </TabsList>
-          </div>
-
-
           <TabsContent value="invoices" className="mt-4 space-y-4">
             {/* Month Pill Navigator */}
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
