@@ -1530,7 +1530,7 @@ export default function Payments() {
         />
 
         {/* Tabs: underline style with count badges */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'invoices' | 'payments' | 'plans')}>
           <div className="border-b border-border">
             <TabsList className="h-auto bg-transparent p-0 gap-6 rounded-none">
               <TabsTrigger
