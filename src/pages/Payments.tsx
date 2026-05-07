@@ -1996,6 +1996,17 @@ export default function Payments() {
             </div>
           </TabsContent>
 
+          <TabsContent value="payments" className="mt-4">
+            <PaymentHistoryTable
+              transactions={allTransactions as any}
+              invoiceMap={invoiceMapForHistory}
+              onViewReceipt={(tx) => {
+                const inv = invoices.find(i => i.id === tx.invoice_id);
+                if (inv) { setReceiptTransactions([tx]); setReceiptViewInvoice(inv); }
+              }}
+            />
+          </TabsContent>
+
           {!isReadOnlyView && (
             <TabsContent value="plans" className="mt-4">
               <BillingPlansTable onEditPlan={handleEditPlan} onViewPlan={(plan: any) => setViewingPlan(plan)} />
