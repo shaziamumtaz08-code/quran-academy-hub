@@ -31,7 +31,7 @@ export default function FinanceLanding() {
   const contentMap: Record<string, React.ReactNode> = useMemo(() => ({
     invoices: <Suspense fallback={<Loading />}><Payments /></Suspense>,
     payments: <Suspense fallback={<Loading />}><Payments /></Suspense>,
-    'fee-plans': <Suspense fallback={<Loading />}><FinanceSetup /></Suspense>,
+    'fee-plans': <Suspense fallback={<Loading />}><Payments /></Suspense>,
     salaries: <Suspense fallback={<Loading />}><SalaryEngine /></Suspense>,
     expenses: <Suspense fallback={<Loading />}><Expenses /></Suspense>,
     'cash-advances': <Suspense fallback={<Loading />}><CashAdvances /></Suspense>,
