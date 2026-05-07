@@ -622,7 +622,7 @@ export default function Teachers() {
                                     <User className="h-4 w-4 text-primary" />
                                   </div>
                                   <div className="min-w-0 flex-1">
-                                    <EntityLink to={`/students?search=${encodeURIComponent(student.full_name)}`} variant="name" className="text-sm">{student.full_name}</EntityLink>
+                                    <EntityLink to="#" variant="name" className="text-sm" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDrawerStudentId(student.id); }}>{student.full_name}</EntityLink>
                                     <p className="text-xs text-muted-foreground">
                                       {student.age && `Age ${student.age}`}
                                       {student.age && student.gender && ' • '}
