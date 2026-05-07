@@ -37,6 +37,8 @@ import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { PaymentsSummaryCards } from '@/components/finance/PaymentsSummaryCards';
 import { MonthStatusBanner } from '@/components/finance/MonthStatusBanner';
+import { MonthPillNav } from '@/components/finance/MonthPillNav';
+import { BulkActionBar } from '@/components/finance/BulkActionBar';
 import { cn } from '@/lib/utils';
 
 // ─── Constants ───────────────────────────────────────────────────────
