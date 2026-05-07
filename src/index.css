@@ -608,3 +608,5 @@
   .salary-sheet-print { position: absolute; left: 0; top: 0; width: 100%; }
   .print\\:hidden { display: none !important; }
 }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
