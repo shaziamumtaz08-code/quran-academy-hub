@@ -41,6 +41,7 @@ import { MonthPillNav } from '@/components/finance/MonthPillNav';
 import { BulkActionBar } from '@/components/finance/BulkActionBar';
 import { PaymentHistoryTable } from '@/components/finance/PaymentHistoryTable';
 import { cn } from '@/lib/utils';
+import { useLocation } from 'react-router-dom';
 
 // ─── Constants ───────────────────────────────────────────────────────
 const MONTHS = [
@@ -210,19 +211,11 @@ export default function Payments() {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const receiptInputRef = useRef<HTMLInputElement>(null);
 
-  // Active tab — maps sidebar `view` param to internal tab
-  const viewToTab = (v: string | null): 'invoices' | 'payments' | 'plans' => {
-    if (v === 'fee-plans') return 'plans';
-    if (v === 'payments') return 'payments';
-    return 'invoices';
-  };
-  const initialTab = viewToTab(typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('view') : null);
-  const [activeTab, setActiveTab] = useState<'invoices' | 'payments' | 'plans'>(initialTab);
-  useEffect(() => {
-    const onPop = () => setActiveTab(viewToTab(new URLSearchParams(window.location.search).get('view')));
-    window.addEventListener('popstate', onPop);
-    return () => window.removeEventListener('popstate', onPop);
-  }, []);
+  // Active tab — derived directly from sidebar `view` URL param (react-router)
+  const location = useLocation();
+  const viewParam = new URLSearchParams(location.search).get('view');
+  const activeTab: 'invoices' | 'payments' | 'plans' =
+    viewParam === 'fee-plans' ? 'plans' : viewParam === 'payments' ? 'payments' : 'invoices';
   const [invoiceTab, setInvoiceTab] = useState<'lcy' | 'fcy'>('lcy');
 
   // Invoice search & filter state
@@ -1561,7 +1554,7 @@ export default function Payments() {
         />
 
         {/* Sidebar drives view selection — no in-page tabs */}
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'invoices' | 'payments' | 'plans')}>
+        <Tabs value={activeTab}>
           <TabsContent value="invoices" className="mt-4 space-y-4">
             {/* Month Pill Navigator */}
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
