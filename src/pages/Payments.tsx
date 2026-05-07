@@ -1983,6 +1983,8 @@ export default function Payments() {
             </TabsContent>
           )}
         </Tabs>
+        </>
+        )}
 
         {/* Floating Bulk Action Bar */}
         {!isReadOnlyView && (
