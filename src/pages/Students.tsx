@@ -742,6 +742,7 @@ export default function Students() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[50px] text-xs text-muted-foreground">#</TableHead>
                     <TableHead 
                       className="cursor-pointer select-none hover:bg-muted/50"
                       onClick={() => handleSort('name')}
