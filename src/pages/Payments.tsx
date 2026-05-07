@@ -717,6 +717,10 @@ export default function Payments() {
     return Object.entries(map).sort((a, b) => a[0].localeCompare(b[0]));
   }, [fcyInvoicesAll, ledgerPaidMap]);
 
+  // Counts for summary card 3 (Pending) + tab badges
+  const overdueCount = useMemo(() => invoices.filter(i => i.status === 'overdue').length, [invoices]);
+  const pendingCount = useMemo(() => invoices.filter(i => i.status === 'pending' || i.status === 'partially_paid').length, [invoices]);
+
   const monthOptions = Array.from({ length: 12 }, (_, i) => {
     const m = String(i + 1).padStart(2, '0');
     return { value: `${now.getFullYear()}-${m}`, label: `${MONTHS[i].label} ${now.getFullYear()}` };
