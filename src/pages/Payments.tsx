@@ -209,14 +209,16 @@ export default function Payments() {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const receiptInputRef = useRef<HTMLInputElement>(null);
 
-  // Active tab
-  const initialTab = (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('view') === 'fee-plans') ? 'plans' : 'invoices';
-  const [activeTab, setActiveTab] = useState(initialTab);
+  // Active tab — maps sidebar `view` param to internal tab
+  const viewToTab = (v: string | null): 'invoices' | 'payments' | 'plans' => {
+    if (v === 'fee-plans') return 'plans';
+    if (v === 'payments') return 'payments';
+    return 'invoices';
+  };
+  const initialTab = viewToTab(typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('view') : null);
+  const [activeTab, setActiveTab] = useState<'invoices' | 'payments' | 'plans'>(initialTab);
   useEffect(() => {
-    const onPop = () => {
-      const v = new URLSearchParams(window.location.search).get('view');
-      setActiveTab(v === 'fee-plans' ? 'plans' : 'invoices');
-    };
+    const onPop = () => setActiveTab(viewToTab(new URLSearchParams(window.location.search).get('view')));
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
