@@ -1545,6 +1545,12 @@ export default function Payments() {
                   </Badge>
                 )}
               </TabsTrigger>
+              <TabsTrigger
+                value="payments"
+                className="rounded-none border-b-2 border-transparent bg-transparent px-0 pb-3 pt-2 font-medium text-muted-foreground data-[state=active]:border-[hsl(var(--navy,222_47%_20%))] data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none gap-2"
+              >
+                <DollarSign className="h-4 w-4" /> Payments
+              </TabsTrigger>
               {!isReadOnlyView && (
                 <TabsTrigger
                   value="plans"
