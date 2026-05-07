@@ -678,6 +678,11 @@ export default function Teachers() {
           onOpenChange={(open) => !open && setDrawerTeacher(null)}
           teacher={drawerTeacher}
         />
+        <HolisticUserProfileDrawer
+          open={!!drawerStudentId}
+          onOpenChange={(open) => !open && setDrawerStudentId(null)}
+          userId={drawerStudentId}
+        />
       </div>
     </DashboardLayout>
   );
