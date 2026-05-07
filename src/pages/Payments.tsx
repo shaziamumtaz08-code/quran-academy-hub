@@ -1542,6 +1542,18 @@ export default function Payments() {
           )}
         </div>
 
+        {/* Student / Parent fee portal — clean read-only view */}
+        {isReadOnlyView ? (
+          <StudentFeePortal
+            invoices={invoices as any}
+            isLoading={isLoading}
+            ledgerPaidMap={ledgerPaidMap}
+            getRate={getRate}
+            isParentView={isParentView}
+            currentUserId={user?.id}
+          />
+        ) : (
+        <>
         {/* Summary Cards — clean 4-card layout, no currency mixing */}
         <PaymentsSummaryCards
           localTotalPKR={localTotalPKR}
