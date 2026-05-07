@@ -210,7 +210,16 @@ export default function Payments() {
   const receiptInputRef = useRef<HTMLInputElement>(null);
 
   // Active tab
-  const [activeTab, setActiveTab] = useState('invoices');
+  const initialTab = (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('view') === 'fee-plans') ? 'plans' : 'invoices';
+  const [activeTab, setActiveTab] = useState(initialTab);
+  useEffect(() => {
+    const onPop = () => {
+      const v = new URLSearchParams(window.location.search).get('view');
+      setActiveTab(v === 'fee-plans' ? 'plans' : 'invoices');
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
   const [invoiceTab, setInvoiceTab] = useState<'lcy' | 'fcy'>('lcy');
 
   // Invoice search & filter state

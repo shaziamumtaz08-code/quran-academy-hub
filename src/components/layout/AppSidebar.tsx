@@ -136,13 +136,14 @@ function getFinanceSidebar(isOneToOne?: boolean, role?: string | null): { title:
     title: 'Finance',
     subtitle: '',
     items: [
-      ...(can(r, 'finance', 'view') ? [{ label: 'Overview', href: '/finance' }] : []),
-      ...(can(r, 'finance_setup', 'view') ? [{ label: 'Fee Plans', href: '/finance?section=fee-setup' }] : []),
-      ...(can(r, 'finance', 'view') ? [{ label: 'Payments', href: '/finance?section=payments' }] : []),
-      ...(isOneToOne && can(r, 'salary', 'view') ? [{ label: 'Salaries', href: '/finance?section=salaries' }] : []),
-      ...(!isOneToOne && can(r, 'staff_salaries', 'view') ? [{ label: 'Teacher Payouts', href: '/finance?section=teacher-payouts' }] : []),
-      ...(can(r, 'expenses', 'view') ? [{ label: 'Expenses', href: '/finance?section=expenses' }] : []),
-      ...(isOneToOne && can(r, 'cash_advances', 'view') ? [{ label: 'Cash Advances', href: '/finance?section=advances' }] : []),
+      ...(can(r, 'finance', 'view') ? [{ label: 'Invoices', href: '/finance?view=invoices' }] : []),
+      ...(can(r, 'finance', 'view') ? [{ label: 'Payments', href: '/finance?view=payments' }] : []),
+      ...(can(r, 'finance_setup', 'view') ? [{ label: 'Fee Plans', href: '/finance?view=fee-plans' }] : []),
+      ...(can(r, 'finance_setup', 'view') ? [{ label: 'Setup', href: '/finance?view=setup' }] : []),
+      ...(isOneToOne && can(r, 'salary', 'view') ? [{ label: 'Salaries', href: '/finance?view=salaries' }] : []),
+      ...(!isOneToOne && can(r, 'staff_salaries', 'view') ? [{ label: 'Teacher Payouts', href: '/finance?view=payouts' }] : []),
+      ...(can(r, 'expenses', 'view') ? [{ label: 'Expenses', href: '/finance?view=expenses' }] : []),
+      ...(isOneToOne && can(r, 'cash_advances', 'view') ? [{ label: 'Cash Advances', href: '/finance?view=cash-advances' }] : []),
     ],
   };
 }
