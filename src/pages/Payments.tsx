@@ -1955,6 +1955,17 @@ export default function Payments() {
           )}
         </Tabs>
 
+        {/* Floating Bulk Action Bar */}
+        {!isReadOnlyView && (
+          <BulkActionBar
+            count={selectedIds.size}
+            payDisabled={unpaidSelected.length === 0}
+            onPay={openBulkPay}
+            onClear={() => { selectedInvoiceCacheRef.current.clear(); setSelectedIds(new Set()); }}
+          />
+        )}
+
+
         {/* ─── Set Up Student Fee Modal ──────────── */}
         <Dialog open={setupOpen} onOpenChange={setSetupOpen}>
           <DialogContent className="sm:max-w-3xl p-0 overflow-hidden">
