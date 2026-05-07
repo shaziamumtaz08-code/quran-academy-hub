@@ -486,7 +486,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         <item.icon
           className={cn(
             "h-4 w-4 shrink-0 transition-colors",
-            parentIsExactActive ? "text-[#3B82F6]" : parentHasActiveChild ? "text-white/80" : "text-white/60",
+            parentIsExactActive || parentHasActiveChild ? "text-[#3B82F6]" : "text-white/60",
           )}
         />
         {!collapsed ? <span className="flex-1 text-left">{item.label}</span> : null}
