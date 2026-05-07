@@ -5,6 +5,7 @@ import { FunctionsFetchError, FunctionsHttpError, FunctionsRelayError } from '@s
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth, AppRole } from '@/contexts/AuthContext';
 import { ConditionalDashboardLayout as DashboardLayout } from '@/components/layout/ConditionalDashboardLayout';
+import { PageBreadcrumb } from '@/components/layout/PageBreadcrumb';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
