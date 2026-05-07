@@ -1,0 +1,1 @@
+UPDATE storage.buckets SET public = true WHERE id IN ('payment-receipts','salary-receipts','expense-receipts','receipts');
