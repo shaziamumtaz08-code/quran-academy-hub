@@ -1996,6 +1996,11 @@ export default function UserManagement() {
                           </TableCell>
                           <TableCell className="py-3 text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="flex justify-end gap-1">
+                              <UserStatusPopover
+                                user={user}
+                                onChangeStatus={(role, status) => updateRoleStatusMutation.mutate({ userId: user.id, role, status })}
+                                onArchive={(archive) => archiveMutation.mutate({ userId: user.id, archive })}
+                              />
                               <Button
                                 variant="ghost"
                                 size="sm"
