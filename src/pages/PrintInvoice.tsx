@@ -45,7 +45,7 @@ export default function PrintInvoice() {
         .order('created_at');
       return data || [];
     },
-    enabled: !!invoiceId && mode === 'receipt',
+    enabled: !!invoiceId,
   });
 
   const { data: org } = useQuery({
