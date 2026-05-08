@@ -50,6 +50,8 @@ const statusDot = (status: string) => {
     case 'partially_paid': return 'bg-amber-500';
     case 'overdue': return 'bg-rose-500';
     case 'waived': return 'bg-muted-foreground';
+    case 'future': return 'bg-transparent border border-muted-foreground/40';
+    case 'pending': return 'bg-slate-400';
     default: return 'bg-muted';
   }
 };
