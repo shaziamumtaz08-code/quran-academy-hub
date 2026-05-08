@@ -25,8 +25,14 @@ interface InvoiceLite {
   forgiven_amount: number;
   period_from: string | null;
   period_to: string | null;
+  paid_at?: string | null;
   profiles: { full_name: string } | null;
 }
+
+const currentBillingMonth = () => {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`;
+};
 
 interface Props {
   invoices: InvoiceLite[];
