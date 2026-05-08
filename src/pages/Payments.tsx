@@ -326,8 +326,11 @@ export default function Payments() {
         if (branchId) q = q.eq('branch_id', branchId);
         if (divisionId) q = q.eq('division_id', divisionId);
       }
-      if (monthFilter !== 'all') q = q.eq('billing_month', monthFilter);
-      if (statusFilter !== 'all') q = q.eq('status', statusFilter as any);
+      // Student/Parent portal needs full history (all months, all statuses)
+      if (!isReadOnlyView) {
+        if (monthFilter !== 'all') q = q.eq('billing_month', monthFilter);
+        if (statusFilter !== 'all') q = q.eq('status', statusFilter as any);
+      }
 
       const { data, error } = await q;
       if (error) throw error;
