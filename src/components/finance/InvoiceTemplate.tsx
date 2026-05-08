@@ -155,8 +155,44 @@ export function InvoiceTemplate({ invoice, invoiceNumber, orgName = 'Al-Quran Ti
             <span style={{ fontFamily: "'JetBrains Mono', monospace", color: outstanding < 0 ? '#059669' : '#0a192f' }}>
               {outstanding < 0 ? `−${invoice.currency} ${Math.abs(outstanding).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : `${invoice.currency} ${outstanding.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
             </span>
+        </div>
+      </div>
+
+      {/* Payment Information */}
+      {(invoice.paid_at || invoice.receipt_url) && (
+        <div style={{ padding: '0 48px 24px' }}>
+          <p style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.15em', color: '#9ca3af', fontWeight: 700, marginBottom: 8 }}>Payment Information</p>
+          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+            {invoice.paid_at && (
+              <div>
+                <p style={{ fontSize: 10, color: '#15803d', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>Date of Payment</p>
+                <p style={{ fontSize: 14, fontWeight: 700, color: '#0a192f', margin: '2px 0 0' }}>{format(parseISO(invoice.paid_at), 'dd MMM yyyy')}</p>
+              </div>
+            )}
+            {invoice.receipt_url && (
+              <a
+                href={invoice.receipt_url}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '8px 16px', borderRadius: 8,
+                  background: '#0a192f', color: '#fff', fontSize: 12, fontWeight: 600,
+                  textDecoration: 'none',
+                }}
+                className="print:hidden"
+              >
+                View Payment Proof ↗
+              </a>
+            )}
+            {invoice.receipt_url && (
+              <p style={{ fontSize: 10, color: '#6b7280', margin: 0, wordBreak: 'break-all', maxWidth: '100%', display: 'none' }} className="only-print">
+                Proof: {invoice.receipt_url}
+              </p>
+            )}
           </div>
         </div>
+      )}
       </div>
 
       {/* Notes */}
