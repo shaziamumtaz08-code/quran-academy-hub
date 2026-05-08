@@ -45,7 +45,7 @@ export default function PrintInvoice() {
         .order('created_at');
       return data || [];
     },
-    enabled: !!invoiceId && mode === 'receipt',
+    enabled: !!invoiceId,
   });
 
   const { data: org } = useQuery({
@@ -137,6 +137,8 @@ export default function PrintInvoice() {
           period_to: (invoice as any).period_to,
           subjects: subjectName ? [subjectName] : undefined,
           teacher_name: teacherName || undefined,
+          paid_at: (transactions as any[]).filter(t => t.payment_date).sort((a, b) => (b.payment_date > a.payment_date ? 1 : -1))[0]?.payment_date || null,
+          receipt_url: (transactions as any[]).find(t => t.receipt_url)?.receipt_url || null,
         }}
         invoiceNumber={invoiceNumber}
         orgName={org?.name}
