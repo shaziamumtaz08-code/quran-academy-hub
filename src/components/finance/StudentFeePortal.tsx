@@ -25,8 +25,14 @@ interface InvoiceLite {
   forgiven_amount: number;
   period_from: string | null;
   period_to: string | null;
+  paid_at?: string | null;
   profiles: { full_name: string } | null;
 }
+
+const currentBillingMonth = () => {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`;
+};
 
 interface Props {
   invoices: InvoiceLite[];
@@ -44,6 +50,8 @@ const statusDot = (status: string) => {
     case 'partially_paid': return 'bg-amber-500';
     case 'overdue': return 'bg-rose-500';
     case 'waived': return 'bg-muted-foreground';
+    case 'future': return 'bg-transparent border border-muted-foreground/40';
+    case 'pending': return 'bg-slate-400';
     default: return 'bg-muted';
   }
 };
@@ -111,7 +119,9 @@ export function StudentFeePortal({
     enabled: invoiceIds.length > 0,
   });
 
-  // Compute outstanding balance
+  const cbm = currentBillingMonth();
+
+  // Compute outstanding balance (only current/past unpaid)
   const outstanding = useMemo(() => {
     const today = startOfDay(new Date());
     let totalDue = 0;
@@ -119,10 +129,12 @@ export function StudentFeePortal({
     let hasOverdue = false;
     let earliestDue: string | null = null;
     studentInvoices.forEach(inv => {
+      if (inv.billing_month > cbm) return; // exclude future
+      if (!['pending', 'overdue', 'partially_paid'].includes(inv.status)) return;
       const paid = ledgerPaidMap[inv.id] || 0;
       const forgiven = Number(inv.forgiven_amount || 0);
       const remaining = Math.max(0, Number(inv.amount) - paid - forgiven);
-      if (remaining > 0.01 && inv.status !== 'waived') {
+      if (remaining > 0.01) {
         totalDue += remaining;
         currency = inv.currency;
         if (inv.due_date && isBefore(parseISO(inv.due_date), today)) hasOverdue = true;
@@ -130,25 +142,41 @@ export function StudentFeePortal({
       }
     });
     return { totalDue, currency, hasOverdue, earliestDue };
-  }, [studentInvoices, ledgerPaidMap]);
+  }, [studentInvoices, ledgerPaidMap, cbm]);
 
-  // Last 6 months strip
+  // Month strip — derive dynamically from invoices, always include current month
   const monthsStrip = useMemo(() => {
-    const result: { bm: string; status: string }[] = [];
-    const now = new Date();
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const bm = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-      const inv = studentInvoices.find(x => x.billing_month === bm);
-      result.push({ bm, status: inv?.status || 'none' });
-    }
-    return result;
-  }, [studentInvoices]);
+    const today = startOfDay(new Date());
+    const monthSet = new Set<string>(studentInvoices.map(i => i.billing_month));
+    monthSet.add(cbm);
+    const months = Array.from(monthSet).sort();
+    return months.map(bm => {
+      const invs = studentInvoices.filter(x => x.billing_month === bm);
+      if (invs.length === 0) return { bm, status: 'none' as const };
+      const allPaid = invs.every(i => i.status === 'paid' || i.status === 'waived');
+      if (allPaid) return { bm, status: 'paid' as const };
+      const anyOverdue = invs.some(i =>
+        ['pending', 'overdue', 'partially_paid'].includes(i.status) &&
+        i.due_date && isBefore(parseISO(i.due_date), today)
+      );
+      if (anyOverdue) return { bm, status: 'overdue' as const };
+      const anyPartial = invs.some(i => i.status === 'partially_paid');
+      if (anyPartial) return { bm, status: 'partially_paid' as const };
+      if (bm > cbm) return { bm, status: 'future' as const };
+      return { bm, status: 'pending' as const };
+    });
+  }, [studentInvoices, cbm]);
 
-  const [activeMonth, setActiveMonth] = useState<string>(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  });
+  const [activeMonth, setActiveMonth] = useState<string>(cbm);
+
+  // Auto-scroll to current month on load
+  const stripRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (!stripRef.current) return;
+    const el = stripRef.current.querySelector(`[data-bm="${cbm}"]`) as HTMLElement | null;
+    el?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }, [cbm, monthsStrip.length]);
+
 
   const activeInvoice = useMemo(
     () => studentInvoices.find(i => i.billing_month === activeMonth) || null,
@@ -270,7 +298,7 @@ export function StudentFeePortal({
       </div>
 
       {/* MONTH HISTORY STRIP */}
-      <div className="overflow-x-auto scrollbar-hide -mx-1 px-1">
+      <div ref={stripRef} className="overflow-x-auto scrollbar-hide -mx-1 px-1">
         <div className="flex gap-2 min-w-max">
           {monthsStrip.map(m => {
             const isActive = m.bm === activeMonth;
@@ -278,6 +306,7 @@ export function StudentFeePortal({
             return (
               <button
                 key={m.bm}
+                data-bm={m.bm}
                 onClick={() => exists && setActiveMonth(m.bm)}
                 disabled={!exists}
                 className={cn(
@@ -286,7 +315,7 @@ export function StudentFeePortal({
                   !exists && 'opacity-40 cursor-not-allowed'
                 )}
               >
-                <span className={cn('h-2 w-2 rounded-full', exists ? statusDot(m.status) : 'bg-muted')} />
+                {exists && <span className={cn('h-2 w-2 rounded-full', statusDot(m.status))} />}
                 <span className="font-medium">{shortBM(m.bm)}</span>
               </button>
             );
@@ -295,16 +324,28 @@ export function StudentFeePortal({
       </div>
 
       {/* CURRENT MONTH DETAIL CARD */}
-      {activeInvoice ? (
+      {activeInvoice ? (() => {
+        const isFuture = activeInvoice.billing_month > cbm;
+        const txn = transactions.find((t: any) => t.invoice_id === activeInvoice.id);
+        return (
         <div className="bg-card rounded-2xl border border-border shadow-sm p-6">
+          {isFuture && (
+            <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 text-blue-800 px-4 py-3 text-sm">
+              This invoice is for a future billing period and is not yet due.
+            </div>
+          )}
           <div className="flex items-start justify-between gap-4 mb-5">
             <div>
               <h3 className="text-lg font-semibold">{formatBM(activeInvoice.billing_month)} Invoice</h3>
               <p className="text-xs text-muted-foreground mt-0.5">Invoice #{activeInvoice.id.slice(0, 8).toUpperCase()}</p>
             </div>
-            <Badge className={cn('text-xs px-3 py-1', statusBadgeClass(activeInvoice.status))}>
-              {statusLabel(activeInvoice.status)}
-            </Badge>
+            {isFuture ? (
+              <Badge className="text-xs px-3 py-1 bg-blue-100 text-blue-800 border-blue-200">Upcoming</Badge>
+            ) : (
+              <Badge className={cn('text-xs px-3 py-1', statusBadgeClass(activeInvoice.status))}>
+                {statusLabel(activeInvoice.status)}
+              </Badge>
+            )}
           </div>
 
           <div className="space-y-3 divide-y divide-border/50">
@@ -332,6 +373,31 @@ export function StudentFeePortal({
             />
             {activeInvoice.due_date && (
               <Row label="Due Date" value={format(parseISO(activeInvoice.due_date), 'dd MMM yyyy')} />
+            )}
+            {(activeInvoice.status === 'paid' || activeInvoice.status === 'partially_paid') && (
+              <>
+                <Row
+                  label="Paid On"
+                  value={activeInvoice.paid_at ? format(parseISO(activeInvoice.paid_at), 'dd MMM yyyy') : '—'}
+                />
+                <Row
+                  label="Proof of Payment"
+                  value={
+                    txn?.receipt_url ? (
+                      <a
+                        href={txn.receipt_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-primary hover:underline inline-flex items-center gap-1"
+                      >
+                        View Receipt <ExternalLink className="h-3 w-3" />
+                      </a>
+                    ) : (
+                      <span className="text-muted-foreground">No receipt uploaded</span>
+                    )
+                  }
+                />
+              </>
             )}
           </div>
 
@@ -373,7 +439,8 @@ export function StudentFeePortal({
             </Button>
           </div>
         </div>
-      ) : (
+        );
+      })() : (
         <div className="bg-card rounded-2xl border border-dashed border-border p-10 text-center">
           <Calendar className="h-8 w-8 text-muted-foreground/50 mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">No invoice for {formatBM(activeMonth)}</p>
