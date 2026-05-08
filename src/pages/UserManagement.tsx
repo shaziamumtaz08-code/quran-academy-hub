@@ -234,8 +234,11 @@ const UserStatusPopover: React.FC<{
         {!archived && noRoles && (
           <div className="space-y-2">
             <div className={`inline-flex items-center justify-center px-2 py-1 text-[10px] font-medium uppercase border ${STATUS_PILL_COLOR.inactive}`}>Unassigned</div>
-            <p className="text-xs text-muted-foreground">No roles assigned. Assign a role first, or archive the user.</p>
+            <p className="text-xs text-muted-foreground">No roles assigned. Mark as inactive to hide from active lists, or assign a role.</p>
             <Button size="sm" variant="outline" className="w-full" onClick={() => { onArchive(true); setOpen(false); }}>
+              Mark Inactive
+            </Button>
+            <Button size="sm" variant="ghost" className="w-full text-amber-700" onClick={() => { onArchive(true); setOpen(false); }}>
               Archive user
             </Button>
           </div>
@@ -1993,6 +1996,11 @@ export default function UserManagement() {
                           </TableCell>
                           <TableCell className="py-3 text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="flex justify-end gap-1">
+                              <UserStatusPopover
+                                user={user}
+                                onChangeStatus={(role, status) => updateRoleStatusMutation.mutate({ userId: user.id, role, status })}
+                                onArchive={(archive) => archiveMutation.mutate({ userId: user.id, archive })}
+                              />
                               <Button
                                 variant="ghost"
                                 size="sm"
