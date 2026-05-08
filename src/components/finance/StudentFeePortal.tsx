@@ -298,7 +298,7 @@ export function StudentFeePortal({
       </div>
 
       {/* MONTH HISTORY STRIP */}
-      <div className="overflow-x-auto scrollbar-hide -mx-1 px-1">
+      <div ref={stripRef} className="overflow-x-auto scrollbar-hide -mx-1 px-1">
         <div className="flex gap-2 min-w-max">
           {monthsStrip.map(m => {
             const isActive = m.bm === activeMonth;
@@ -306,6 +306,7 @@ export function StudentFeePortal({
             return (
               <button
                 key={m.bm}
+                data-bm={m.bm}
                 onClick={() => exists && setActiveMonth(m.bm)}
                 disabled={!exists}
                 className={cn(
@@ -314,7 +315,7 @@ export function StudentFeePortal({
                   !exists && 'opacity-40 cursor-not-allowed'
                 )}
               >
-                <span className={cn('h-2 w-2 rounded-full', exists ? statusDot(m.status) : 'bg-muted')} />
+                {exists && <span className={cn('h-2 w-2 rounded-full', statusDot(m.status))} />}
                 <span className="font-medium">{shortBM(m.bm)}</span>
               </button>
             );
@@ -323,16 +324,28 @@ export function StudentFeePortal({
       </div>
 
       {/* CURRENT MONTH DETAIL CARD */}
-      {activeInvoice ? (
+      {activeInvoice ? (() => {
+        const isFuture = activeInvoice.billing_month > cbm;
+        const txn = transactions.find((t: any) => t.invoice_id === activeInvoice.id);
+        return (
         <div className="bg-card rounded-2xl border border-border shadow-sm p-6">
+          {isFuture && (
+            <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 text-blue-800 px-4 py-3 text-sm">
+              This invoice is for a future billing period and is not yet due.
+            </div>
+          )}
           <div className="flex items-start justify-between gap-4 mb-5">
             <div>
               <h3 className="text-lg font-semibold">{formatBM(activeInvoice.billing_month)} Invoice</h3>
               <p className="text-xs text-muted-foreground mt-0.5">Invoice #{activeInvoice.id.slice(0, 8).toUpperCase()}</p>
             </div>
-            <Badge className={cn('text-xs px-3 py-1', statusBadgeClass(activeInvoice.status))}>
-              {statusLabel(activeInvoice.status)}
-            </Badge>
+            {isFuture ? (
+              <Badge className="text-xs px-3 py-1 bg-blue-100 text-blue-800 border-blue-200">Upcoming</Badge>
+            ) : (
+              <Badge className={cn('text-xs px-3 py-1', statusBadgeClass(activeInvoice.status))}>
+                {statusLabel(activeInvoice.status)}
+              </Badge>
+            )}
           </div>
 
           <div className="space-y-3 divide-y divide-border/50">
