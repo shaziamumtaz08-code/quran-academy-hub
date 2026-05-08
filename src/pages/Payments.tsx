@@ -30,6 +30,7 @@ import { useDivision } from '@/contexts/DivisionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { trackActivity } from '@/lib/activityLogger';
 import BillingPlansTable from '@/components/finance/BillingPlansTable';
+import BillingPlansAuditPanel from '@/components/finance/BillingPlansAuditPanel';
 import { PlanHistorySection } from '@/components/finance/PlanHistorySection';
 import { ViewPlanDialog } from '@/components/finance/ViewPlanDialog';
 import { AttachmentPreview } from '@/components/shared/FileUploadField';
@@ -1979,6 +1980,14 @@ export default function Payments() {
 
           {!isReadOnlyView && (
             <TabsContent value="plans" className="mt-4">
+              <BillingPlansAuditPanel
+                onSetupForStudent={(sid) => {
+                  resetFeeForm();
+                  setSelectedStudentIds([sid]);
+                  setSelectionMode('individual');
+                  setSetupOpen(true);
+                }}
+              />
               <BillingPlansTable onEditPlan={handleEditPlan} onViewPlan={(plan: any) => setViewingPlan(plan)} />
             </TabsContent>
           )}
