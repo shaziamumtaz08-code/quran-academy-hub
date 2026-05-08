@@ -439,7 +439,8 @@ export function StudentFeePortal({
             </Button>
           </div>
         </div>
-      ) : (
+        );
+      })() : (
         <div className="bg-card rounded-2xl border border-dashed border-border p-10 text-center">
           <Calendar className="h-8 w-8 text-muted-foreground/50 mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">No invoice for {formatBM(activeMonth)}</p>
