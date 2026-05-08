@@ -117,7 +117,9 @@ export function StudentFeePortal({
     enabled: invoiceIds.length > 0,
   });
 
-  // Compute outstanding balance
+  const cbm = currentBillingMonth();
+
+  // Compute outstanding balance (only current/past unpaid)
   const outstanding = useMemo(() => {
     const today = startOfDay(new Date());
     let totalDue = 0;
@@ -125,10 +127,12 @@ export function StudentFeePortal({
     let hasOverdue = false;
     let earliestDue: string | null = null;
     studentInvoices.forEach(inv => {
+      if (inv.billing_month > cbm) return; // exclude future
+      if (!['pending', 'overdue', 'partially_paid'].includes(inv.status)) return;
       const paid = ledgerPaidMap[inv.id] || 0;
       const forgiven = Number(inv.forgiven_amount || 0);
       const remaining = Math.max(0, Number(inv.amount) - paid - forgiven);
-      if (remaining > 0.01 && inv.status !== 'waived') {
+      if (remaining > 0.01) {
         totalDue += remaining;
         currency = inv.currency;
         if (inv.due_date && isBefore(parseISO(inv.due_date), today)) hasOverdue = true;
@@ -136,25 +140,41 @@ export function StudentFeePortal({
       }
     });
     return { totalDue, currency, hasOverdue, earliestDue };
-  }, [studentInvoices, ledgerPaidMap]);
+  }, [studentInvoices, ledgerPaidMap, cbm]);
 
-  // Last 6 months strip
+  // Month strip — derive dynamically from invoices, always include current month
   const monthsStrip = useMemo(() => {
-    const result: { bm: string; status: string }[] = [];
-    const now = new Date();
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const bm = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-      const inv = studentInvoices.find(x => x.billing_month === bm);
-      result.push({ bm, status: inv?.status || 'none' });
-    }
-    return result;
-  }, [studentInvoices]);
+    const today = startOfDay(new Date());
+    const monthSet = new Set<string>(studentInvoices.map(i => i.billing_month));
+    monthSet.add(cbm);
+    const months = Array.from(monthSet).sort();
+    return months.map(bm => {
+      const invs = studentInvoices.filter(x => x.billing_month === bm);
+      if (invs.length === 0) return { bm, status: 'none' as const };
+      const allPaid = invs.every(i => i.status === 'paid' || i.status === 'waived');
+      if (allPaid) return { bm, status: 'paid' as const };
+      const anyOverdue = invs.some(i =>
+        ['pending', 'overdue', 'partially_paid'].includes(i.status) &&
+        i.due_date && isBefore(parseISO(i.due_date), today)
+      );
+      if (anyOverdue) return { bm, status: 'overdue' as const };
+      const anyPartial = invs.some(i => i.status === 'partially_paid');
+      if (anyPartial) return { bm, status: 'partially_paid' as const };
+      if (bm > cbm) return { bm, status: 'future' as const };
+      return { bm, status: 'pending' as const };
+    });
+  }, [studentInvoices, cbm]);
 
-  const [activeMonth, setActiveMonth] = useState<string>(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  });
+  const [activeMonth, setActiveMonth] = useState<string>(cbm);
+
+  // Auto-scroll to current month on load
+  const stripRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (!stripRef.current) return;
+    const el = stripRef.current.querySelector(`[data-bm="${cbm}"]`) as HTMLElement | null;
+    el?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }, [cbm, monthsStrip.length]);
+
 
   const activeInvoice = useMemo(
     () => studentInvoices.find(i => i.billing_month === activeMonth) || null,
