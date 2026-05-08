@@ -19,6 +19,8 @@ interface InvoiceTemplateProps {
     teacher_name?: string;
     period_from?: string | null;
     period_to?: string | null;
+    paid_at?: string | null;
+    receipt_url?: string | null;
   };
   invoiceNumber: string;
   orgName?: string;
