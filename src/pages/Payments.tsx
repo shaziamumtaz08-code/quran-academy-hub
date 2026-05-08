@@ -1979,6 +1979,14 @@ export default function Payments() {
 
           {!isReadOnlyView && (
             <TabsContent value="plans" className="mt-4">
+              <BillingPlansAuditPanel
+                onSetupForStudent={(sid) => {
+                  resetFeeForm();
+                  setSelectedStudentIds([sid]);
+                  setSelectionMode('individual');
+                  setSetupOpen(true);
+                }}
+              />
               <BillingPlansTable onEditPlan={handleEditPlan} onViewPlan={(plan: any) => setViewingPlan(plan)} />
             </TabsContent>
           )}
