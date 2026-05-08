@@ -374,6 +374,31 @@ export function StudentFeePortal({
             {activeInvoice.due_date && (
               <Row label="Due Date" value={format(parseISO(activeInvoice.due_date), 'dd MMM yyyy')} />
             )}
+            {(activeInvoice.status === 'paid' || activeInvoice.status === 'partially_paid') && (
+              <>
+                <Row
+                  label="Paid On"
+                  value={activeInvoice.paid_at ? format(parseISO(activeInvoice.paid_at), 'dd MMM yyyy') : '—'}
+                />
+                <Row
+                  label="Proof of Payment"
+                  value={
+                    txn?.receipt_url ? (
+                      <a
+                        href={txn.receipt_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-primary hover:underline inline-flex items-center gap-1"
+                      >
+                        View Receipt <ExternalLink className="h-3 w-3" />
+                      </a>
+                    ) : (
+                      <span className="text-muted-foreground">No receipt uploaded</span>
+                    )
+                  }
+                />
+              </>
+            )}
           </div>
 
           {/* Progress bar for partial */}
