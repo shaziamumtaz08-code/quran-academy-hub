@@ -1147,6 +1147,9 @@ export default function Assignments() {
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-1">
+                            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setDetailAssignmentId(assignment.id); }} title="View details">
+                              <Eye className="h-4 w-4 text-primary" />
+                            </Button>
                             <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleEditAssignment(assignment); }}>
                               <Pencil className="h-4 w-4 text-muted-foreground" />
                             </Button>
