@@ -1988,7 +1988,6 @@ export default function UserManagement() {
                               <div className="flex flex-col min-w-0">
                                 <div className="flex items-center gap-2">
                                   <span className="truncate text-sm font-semibold text-foreground">{user.full_name}</span>
-                                  <Badge variant="outline" className="text-[10px] border-amber-300/70 text-amber-700 dark:text-amber-300 bg-transparent">Unassigned</Badge>
                                 </div>
                                 {user.email && <span className="truncate text-xs text-muted-foreground">{user.email}</span>}
                               </div>
