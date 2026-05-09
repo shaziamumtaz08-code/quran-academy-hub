@@ -268,16 +268,17 @@ const UserStatusPopover: React.FC<{
         {!archived && !noRoles && (
           <div className="space-y-3">
             {user.roles.map((role) => {
-              const st = (user.roleStatuses?.[role] || 'active') as 'active' | 'paused' | 'on_hold' | 'left' | 'completed' | 'inactive';
+              const st = (user.roleStatuses?.[role] || 'active') as RoleStatusValue;
+              const opts = getStatusOptionsForRole(role);
               return (
                 <div key={role} className="flex items-center justify-between gap-2">
                   <div className="text-xs font-medium capitalize">{role.replace(/_/g, ' ')}</div>
                   <Select value={st} onValueChange={(v) => onChangeStatus(role, v as any)}>
                     <SelectTrigger className={`h-7 px-2 py-0 border text-[10px] font-medium uppercase tracking-wide w-32 ${STATUS_PILL_COLOR[st] || STATUS_PILL_COLOR.inactive}`}>
-                      <span className="capitalize">{st}</span>
+                      <span className="capitalize">{st.replace('_', ' ')}</span>
                     </SelectTrigger>
                     <SelectContent>
-                      {STATUS_OPTIONS.map((o) => (
+                      {opts.map((o) => (
                         <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
                       ))}
                     </SelectContent>
