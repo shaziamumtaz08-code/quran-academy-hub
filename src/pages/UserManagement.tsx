@@ -195,6 +195,7 @@ const getStatusOptionsForRole = (role: AppRole) => {
 const STATUS_PILL_COLOR: Record<string, string> = {
   active: 'bg-white text-emerald-700 border-emerald-500',
   paused: 'bg-white text-amber-700 border-amber-500',
+  on_hold: 'bg-white text-orange-700 border-orange-500',
   left: 'bg-white text-rose-700 border-rose-500',
   completed: 'bg-white text-sky-700 border-sky-500',
   inactive: 'bg-white text-slate-600 border-slate-400',
@@ -204,6 +205,7 @@ const STATUS_PILL_COLOR: Record<string, string> = {
 const STATUS_ICON_COLOR: Record<string, string> = {
   active: 'text-emerald-600',
   paused: 'text-amber-600',
+  on_hold: 'text-orange-600',
   left: 'text-rose-600',
   completed: 'text-sky-600',
   inactive: 'text-slate-500',
