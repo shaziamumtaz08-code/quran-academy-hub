@@ -165,13 +165,32 @@ const RolePill = ({ role, prefix }: { role: AppRole; prefix?: string }) => {
   );
 };
 
-const STATUS_OPTIONS: Array<{ value: 'active' | 'paused' | 'completed' | 'left' | 'inactive'; label: string }> = [
+type RoleStatusValue = 'active' | 'paused' | 'on_hold' | 'completed' | 'left' | 'inactive';
+
+const STATUS_OPTIONS: Array<{ value: RoleStatusValue; label: string }> = [
   { value: 'active', label: 'Active' },
   { value: 'paused', label: 'Paused' },
+  { value: 'on_hold', label: 'On Hold' },
   { value: 'completed', label: 'Completed' },
   { value: 'left', label: 'Left' },
   { value: 'inactive', label: 'Inactive' },
 ];
+
+// Per-role allowed statuses.
+//  - Teacher: Active / Paused / On Hold while assignments exist; Left when off-platform.
+//    Inactive is auto-derived (no active assignments) — admins may still set it manually.
+//  - Student: Active / Paused / On Hold / Completed / Left manually picked.
+//  - Other roles (admin, examiner, parent, …): just Active / Inactive / Left.
+const STATUS_OPTIONS_BY_ROLE: Partial<Record<AppRole, RoleStatusValue[]>> = {
+  teacher: ['active', 'paused', 'on_hold', 'left', 'inactive'],
+  student: ['active', 'paused', 'on_hold', 'completed', 'left', 'inactive'],
+};
+const DEFAULT_ROLE_STATUSES: RoleStatusValue[] = ['active', 'inactive', 'left'];
+
+const getStatusOptionsForRole = (role: AppRole) => {
+  const allowed = STATUS_OPTIONS_BY_ROLE[role] ?? DEFAULT_ROLE_STATUSES;
+  return STATUS_OPTIONS.filter((o) => allowed.includes(o.value));
+};
 
 const STATUS_PILL_COLOR: Record<string, string> = {
   active: 'bg-white text-emerald-700 border-emerald-500',
