@@ -27,6 +27,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { handleSupabaseError } from '@/lib/handleSupabaseError';
 import { useDivision } from '@/contexts/DivisionContext';
 import { BulkAssignmentImportDialog } from '@/components/assignments/BulkAssignmentImportDialog';
+import { AssignmentDetailDialog } from '@/components/assignments/AssignmentDetailDialog';
 import { Textarea } from '@/components/ui/textarea';
 import { formatDisplayDate } from '@/lib/dateFormat';
 import { cn } from '@/lib/utils';
@@ -115,6 +116,7 @@ export default function Assignments() {
   const [effectiveToDate, setEffectiveToDate] = useState('');
   // Billing plan detail dialog
   const [billingDetailAssignmentId, setBillingDetailAssignmentId] = useState<string | null>(null);
+  const [detailAssignmentId, setDetailAssignmentId] = useState<string | null>(null);
 
   // Fetch teachers
   const { data: teachers = [], isLoading: loadingTeachers } = useQuery({
@@ -1147,6 +1149,9 @@ export default function Assignments() {
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-1">
+                            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setDetailAssignmentId(assignment.id); }} title="View details">
+                              <Eye className="h-4 w-4 text-primary" />
+                            </Button>
                             <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleEditAssignment(assignment); }}>
                               <Pencil className="h-4 w-4 text-muted-foreground" />
                             </Button>
@@ -1423,6 +1428,8 @@ export default function Assignments() {
             })()}
           </DialogContent>
         </Dialog>
+
+        <AssignmentDetailDialog assignmentId={detailAssignmentId} onClose={() => setDetailAssignmentId(null)} />
       </div>
     </DashboardLayout>
   );
