@@ -1428,6 +1428,8 @@ export default function Assignments() {
             })()}
           </DialogContent>
         </Dialog>
+
+        <AssignmentDetailDialog assignmentId={detailAssignmentId} onClose={() => setDetailAssignmentId(null)} />
       </div>
     </DashboardLayout>
   );
