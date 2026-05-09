@@ -28,7 +28,10 @@ export type ActionType =
   | 'fee_package_deleted'
   | 'discount_created'
   | 'discount_updated'
-  | 'discount_deleted';
+  | 'discount_deleted'
+  | 'assignment_status_changed'
+  | 'profile_archived'
+  | 'profile_restored';
 
 export type EntityType = 
   | 'attendance'

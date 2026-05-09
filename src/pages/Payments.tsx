@@ -992,9 +992,9 @@ export default function Payments() {
         if (p.net_recurring_fee > 0) {
           // Resolve assignment: direct link first, then fallback by student_id
           const assign = p.assignment_id ? planAssignmentMap[p.assignment_id] : studentAssignmentMap[p.student_id] || null;
-          
-          // Skip paused assignments entirely - frozen students don't get invoices
-          if (assign?.status === 'paused') return;
+
+          // Skip frozen-billing statuses entirely. Active + paused continue billing per matrix.
+          if (assign && !['active', 'paused'].includes(assign.status)) return;
           
           const startDate = assign?.effective_from_date || null;
           const endDate = (assign?.status === 'active') ? null : (assign?.effective_to_date || null);
@@ -1020,7 +1020,7 @@ export default function Payments() {
       // 2) Legacy assignments (no billing plan)
       let aq = supabase.from('student_teacher_assignments')
         .select('id, student_id, calculated_monthly_fee, effective_from_date, effective_to_date, status, fee_packages!student_teacher_assignments_fee_package_id_fkey(currency), branch_id, division_id')
-        .in('status', ['active', 'completed']);
+        .in('status', ['active', 'paused']);
       if (branchId) aq = aq.eq('branch_id', branchId);
       if (divisionId) aq = aq.eq('division_id', divisionId);
       const { data: assignments } = await aq;

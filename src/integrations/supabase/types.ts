@@ -7552,6 +7552,9 @@ export type Database = {
           requires_schedule: boolean
           start_date: string | null
           status: Database["public"]["Enums"]["assignment_status"]
+          status_change_reason: string | null
+          status_changed_at: string | null
+          status_changed_by: string | null
           status_effective_date: string | null
           student_id: string
           student_timezone: string | null
@@ -7583,6 +7586,9 @@ export type Database = {
           requires_schedule?: boolean
           start_date?: string | null
           status?: Database["public"]["Enums"]["assignment_status"]
+          status_change_reason?: string | null
+          status_changed_at?: string | null
+          status_changed_by?: string | null
           status_effective_date?: string | null
           student_id: string
           student_timezone?: string | null
@@ -7614,6 +7620,9 @@ export type Database = {
           requires_schedule?: boolean
           start_date?: string | null
           status?: Database["public"]["Enums"]["assignment_status"]
+          status_change_reason?: string | null
+          status_changed_at?: string | null
+          status_changed_by?: string | null
           status_effective_date?: string | null
           student_id?: string
           student_timezone?: string | null
@@ -9418,7 +9427,7 @@ export type Database = {
         | "admin_fees"
         | "admin_academic"
         | "admin_division"
-      assignment_status: "active" | "paused" | "completed" | "left"
+      assignment_status: "active" | "paused" | "completed" | "left" | "on_hold"
       attendance_action: "join_intent" | "leave"
       billing_cycle: "monthly" | "quarterly" | "one_time"
       branch_type: "online" | "onsite"
@@ -9623,7 +9632,7 @@ export const Constants = {
         "admin_academic",
         "admin_division",
       ],
-      assignment_status: ["active", "paused", "completed", "left"],
+      assignment_status: ["active", "paused", "completed", "left", "on_hold"],
       attendance_action: ["join_intent", "leave"],
       billing_cycle: ["monthly", "quarterly", "one_time"],
       branch_type: ["online", "onsite"],

@@ -1,54 +1,94 @@
-# Connections Graph — Subject Card for 1:1 + Fix Abida's Stale Role Icons
 
-Two distinct fixes in this loop.
+## Goal
+Standardise the student/teacher assignment lifecycle around the matrix below. No history is ever dropped; "Left" archives the profile only. "Inactive" is auto-derived, never stored.
 
----
+## Status Matrix (source of truth)
 
-## 1. Show a "Subject / Programme" card for 1:1 students
+| Status | Source | Attendance / Planning / Exam | Invoice | Salary | History |
+|---|---|---|---|---|---|
+| **Active** | Default on creation | ✅ live | ✅ generate | ✅ accrue | ✅ kept |
+| **Paused** | Admin pick | ❌ frozen | ✅ continues | ✅ continues | ✅ kept |
+| **On Hold** | Admin pick | ❌ frozen | ❌ suspended | ❌ suspended | ✅ kept |
+| **Completed** | Admin pick | ❌ frozen | ❌ final bill, no new | ✅ history retained | ✅ kept |
+| **Left** | Admin pick | ❌ frozen | ❌ final bill, no new | ✅ history retained | ✅ kept + profile archived |
+| **Inactive** | Auto (no assignments at all) | n/a | n/a | n/a | ✅ kept |
 
-Right now the graph builds `course` (orange, bottom row) cards only from `course_enrollments` and `course_class_students` — which are Group/Recorded data sources. A pure 1:1 student therefore has nothing in the bottom quadrant, while a Group student gets a nice course card.
+"Freeze" means: attendance rows, planning markers, exam entries, and Zoom join intents will NOT be generated or accepted for that assignment.
 
-For 1:1 students the equivalent of "what am I studying" is the **subject of their active `student_teacher_assignments`** (e.g. Nazra, Hifz, Tajweed). We currently expose subject only as the small subtitle under the Teacher card.
+## What already exists (no rework)
+- `assignment_status` enum: `active`, `paused`, `completed`, `left` ✅
+- `profiles.archived_at` + global archive filtering ✅
+- `StatusIndicator` already supports all colours incl. `inactive` ✅
+- Salary/invoice queries identified at `SalaryEngine.tsx:196` and `Payments.tsx:1023, 962`
+- Billing-plan `is_active` toggle already drives invoice generation
 
-### Change in `src/components/connections/UserConnectionsGraph.tsx`
-- Extend `fetchAsStudent` to also return a `subjects` array built from `student_teacher_assignments`:
-  - `{ key: subject_id||subject_name, name: subject.name, teacherName, status }`
-  - One entry per **distinct subject** (de-dupe across multiple assignments of the same subject).
-- In `buildGraph`, push these into the `below` quadrant as a new `RelKind = 'subject'` card:
-  - Style: warm teal (e.g. `#F0FDFA` bg / `#0F766E` left border) with a `BookMarked` (or `GraduationCap`) icon and header **"Studying"**.
-  - Subtitle = teacher name(s) joined; meta = subject status.
-- Add `EDGE_STYLE.subject` = `{ color: '#0F766E', dashed: true, label: 'Studying' }`.
-- Add a corresponding `LegendRow` entry.
-- Keep existing `course` cards for Group/Recorded students unchanged. A user holding both 1:1 and Group will see both kinds in the bottom row.
+## Changes required
 
-No schema, no RLS, no query restructuring — purely graph composition.
+### 1. Database migration
+- `ALTER TYPE assignment_status ADD VALUE 'on_hold'`
+- Add to `student_teacher_assignments`: `status_changed_at`, `status_changed_by`, `status_change_reason`
+- Trigger `fn_validate_assignment_status` to stamp `status_changed_at/by` on UPDATE
+- Trigger `guard_assignment_delete` BEFORE DELETE — blocks if any `attendance`, `fee_invoices`, or `salary_payouts` reference this assignment/teacher pair. Forces admin to use status transitions instead.
 
----
+### 2. New file `src/lib/assignmentStatusRules.ts`
+Single source of truth: label, colour, and 4 booleans per status (`freezeAcademic`, `invoice`, `salary`, `scheduleVisible`) plus description. Used by every guard and dropdown.
 
-## 2. Fix Abida's three role icons (User Management table)
+### 3. Invoice generation guard (`Payments.tsx` ~L962)
+Join `student_billing_plans` with `student_teacher_assignments` and filter `sta.status IN ('active','paused')`. On_hold/completed/left silently skipped. If any pending invoices already exist for skipped assignments, show a one-line banner: "X students have pending invoices on suspended assignments — review manually." No auto-delete.
 
-Screenshot shows Abida (`AQT-000025`) with **Teacher · Student · Teacher**, but per the user she is **Teacher in 1:1 only** (and Student in a Recorded course — that one is correct per image-466 showing TAFSEER-E-QURAN enrollment). The third "Teacher" icon is stale.
+### 4. Salary engine guard (`SalaryEngine.tsx:196`, `Payments.tsx:1023`)
+Change `['active','completed']` → `['active','paused','completed']`. Excludes `on_hold` and `left`. Matches matrix.
 
-### Root cause
-`useDivisionMembership` was previously fixed to trust **every** `user_context` row as the user's role in that division. That re-introduced stale teacher rows: when a user has a `user_context` entry with `primary_role = 'teacher'` for a division they no longer staff (no `course_class_staff` and no `student_teacher_assignments`), we still emit a Teacher icon there.
+### 5. Attendance / planning / exam freeze
+Add status check at the existing entry points:
+- `UnifiedAttendanceForm.tsx` — block save if assignment status ∉ `active`
+- `MissingAttendanceSection.tsx` — exclude non-active assignments from "missing" list
+- `MonthlyPlanning.tsx` — hide planning rows for non-active
+- Exam creation in `Assignments.tsx` — same gate
+All driven by `assignmentStatusRules.ts` so behaviour is uniform.
 
-### Fix in `src/hooks/useDivisionMembership.ts`
-Tighten the `user_context` fallback so it only **fills in** divisions where we have no roster signal, instead of additively asserting roles:
+### 6. Status-change UI (smart selector + confirmation)
+Replace plain status changes in:
+- `Students.tsx`, `Teachers.tsx`, `Assignments.tsx`, `TransferAssignmentDialog.tsx`, `HolisticUserProfileDrawer.tsx`
 
-1. Build all roster-derived memberships first (1:1 STA, group `course_class_students`, group `course_class_staff`).
-2. Then, for `user_context` rows:
-   - If `primary_role` is an admin-style role (`super_admin`, `admin`, `admin_division`, `admin_admissions`, `admin_fees`, `admin_academic`, `examiner`, `moderator`, `supervisor`) → add as today (admins are not on rosters).
-   - If `primary_role` is `student` / `teacher` / `parent` → only add when that user has **no roster-derived role of any kind** in that specific division. This preserves the earlier "26 unassigned" fix (users with zero roster rows still get their context-derived division) **without** stamping a phantom Teacher on top of someone who is genuinely only a Student in that division.
+Each option in dropdown shows label + 1-line description from rules file.
 
-This will collapse Abida's icons to the correct two: **Teacher (1:1)** and **Student (Recorded)**, matching her actual roster.
+Confirmation modal (shadcn Dialog) required for: **On Hold**, **Completed**, **Left**. Each requires a reason text input → stored in `status_change_reason`. "Active" / "Paused" save directly with toast.
 
-### Verification
-After deploy, the User Management ID & Roles cell for `AQT-000025` should show exactly two icons (Presentation in 1:1 color + GraduationCap in Recorded color), and the previously-fixed "unassigned users" banner count should remain stable (re-check before/after).
+Modal copy uses the descriptions from the matrix verbatim. Left modal warns: "Profile will be archived. All history preserved. Reversible from User Management."
 
----
+### 7. Cascade behaviour on save
+On status set:
+- **Completed / Left** → `student_billing_plans.is_active = false` for that assignment_id only (not all of student's plans)
+- **Active** (resume from paused/on_hold) → `is_active = true` for that assignment's plan
+- **Left** → also set `profiles.archived_at = now()` **only if the person has no other assignment in `active`/`paused`/`on_hold`**. (Multi-student teachers stay active until last assignment is gone.)
+- Insert audit row in `system_logs` with `action = 'assignment_status_changed'`, from/to status, reason, names
+
+### 8. Auto-derived "Inactive" badge (frontend only)
+In `Students.tsx`, `Teachers.tsx`, `User Management`, assignment-creation dropdowns:
+```ts
+const isInactive = assignments.every(a => ['completed','left'].includes(a.status))
+                  || assignments.length === 0
+```
+Render gray "Inactive — Available" badge with tooltip. Inactive users sort first in assignment-creation pickers.
+
+### 9. Archived banner + restore
+On profile drawer (`HolisticUserProfileDrawer.tsx`), if `archived_at` set show amber banner: "Archived on [date] · Reason: [last status_change_reason]" with "Restore Profile" button (sets `archived_at = null`, does NOT touch assignment statuses).
+
+### 10. History views
+Assignment history tabs (Student/Teacher drawers) show ALL past assignments with status badge per row — never hide completed/left. Already mostly there; verify.
+
+## Out of scope (deliberately)
+- Hard-deleting any historical row, anywhere
+- Auto-waiving existing invoices on status change (admin reviews manually)
+- Changing `user_roles.status` semantics (separate layer)
+- Rewriting salary proration logic — engine just gains/loses rows from the WHERE clause
 
 ## Files touched
-- `src/components/connections/UserConnectionsGraph.tsx` — add Subject card kind + edge style + legend; extend `fetchAsStudent`.
-- `src/hooks/useDivisionMembership.ts` — tighten `user_context` merge for non-admin roles.
+**New:** `src/lib/assignmentStatusRules.ts`, `src/components/assignments/StatusChangeDialog.tsx`, one migration file.
+**Edited:** `Payments.tsx`, `SalaryEngine.tsx`, `Students.tsx`, `Teachers.tsx`, `Assignments.tsx`, `TransferAssignmentDialog.tsx`, `HolisticUserProfileDrawer.tsx`, `UnifiedAttendanceForm.tsx`, `MissingAttendanceSection.tsx`, `MonthlyPlanning.tsx`, `StatusIndicator.tsx` (add `on_hold` colour), `lib/activityLogger.ts` (add `assignment_status_changed` action).
 
-No DB migrations. No route changes.
+## Risk notes
+- Adding `paused` to salary lookups is a behaviour change but harmless: paused assignments have no attendance rows, so payout will compute as zero unless manual adjustments exist.
+- Delete-guard trigger will throw on any code path that currently `DELETE`s assignments. Pre-flight scan will replace those with status transitions.
+- Existing `on_hold` consumers (none today) safely fall through string checks until rules file is wired.

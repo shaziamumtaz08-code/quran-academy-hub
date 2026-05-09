@@ -30,10 +30,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { formatDisplayDate } from '@/lib/dateFormat';
 import { cn } from '@/lib/utils';
 
+import { ASSIGNMENT_STATUS_RULES, getStatusRule, shouldArchiveOnLeft, type AssignmentStatus as RuleAssignmentStatus } from '@/lib/assignmentStatusRules';
+import { trackActivity } from '@/lib/activityLogger';
+
 const STATUS_CONFIG = {
   active: { label: 'Active', color: 'bg-emerald-500', badgeClass: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' },
   paused: { label: 'Paused', color: 'bg-amber-500', badgeClass: 'bg-amber-500/10 text-amber-600 border-amber-500/20' },
-  completed: { label: 'Completed', color: 'bg-slate-400', badgeClass: 'bg-slate-400/10 text-slate-600 border-slate-400/20' },
+  on_hold: { label: 'On Hold', color: 'bg-orange-500', badgeClass: 'bg-orange-500/10 text-orange-600 border-orange-500/20' },
+  completed: { label: 'Completed', color: 'bg-blue-500', badgeClass: 'bg-blue-500/10 text-blue-600 border-blue-500/20' },
   left: { label: 'Left', color: 'bg-rose-600', badgeClass: 'bg-rose-600/10 text-rose-600 border-rose-600/20' },
 } as const;
 
@@ -47,7 +51,7 @@ interface Subject {
   name: string;
 }
 
-type AssignmentStatus = 'active' | 'paused' | 'completed' | 'left';
+type AssignmentStatus = RuleAssignmentStatus;
 
 interface Assignment {
   id: string;
@@ -102,6 +106,7 @@ export default function Assignments() {
   // Status change dialog
   const [statusChangeDialog, setStatusChangeDialog] = useState<{ assignment: Assignment; newStatus: AssignmentStatus } | null>(null);
   const [statusEffectiveDate, setStatusEffectiveDate] = useState(new Date().toISOString().split('T')[0]);
+  const [statusChangeReason, setStatusChangeReason] = useState('');
   // Payout fields
   const [payoutAmount, setPayoutAmount] = useState('');
   const [payoutType, setPayoutType] = useState('monthly');
@@ -349,15 +354,17 @@ export default function Assignments() {
 
   // Update status mutation
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status, effectiveDate }: { id: string; status: AssignmentStatus; effectiveDate?: string }) => {
+    mutationFn: async ({ id, status, effectiveDate, reason }: { id: string; status: AssignmentStatus; effectiveDate?: string; reason?: string }) => {
+      const assignment = assignments.find(a => a.id === id);
+      const fromStatus = assignment?.status;
+
       const updatePayload: any = { status };
+      if (reason) updatePayload.status_change_reason = reason;
       if (effectiveDate) {
         updatePayload.status_effective_date = effectiveDate;
-        // For left/completed, also set effective_to_date for salary calculation
         if (status === 'left' || status === 'completed') {
           updatePayload.effective_to_date = effectiveDate;
         }
-        // For reactivation (active), reset billing start date to reactivation date
         if (status === 'active') {
           updatePayload.effective_from_date = effectiveDate;
         }
@@ -368,7 +375,22 @@ export default function Assignments() {
         .eq('id', id);
       if (error) throw error;
 
-      // If marking as 'left', also clear schedules and close assignment history
+      // Cascade: billing plan activation reflects the matrix
+      // - completed/left   → deactivate plan for THIS assignment only
+      // - on_hold          → leave plan as-is, invoice guard skips by status
+      // - active (resume)  → reactivate plan
+      // - paused           → leave plan active (billing continues per matrix)
+      if (status === 'completed' || status === 'left') {
+        await supabase.from('student_billing_plans')
+          .update({ is_active: false, updated_at: new Date().toISOString() })
+          .eq('assignment_id', id);
+      } else if (status === 'active' && (fromStatus === 'paused' || fromStatus === 'on_hold' || fromStatus === 'completed')) {
+        await supabase.from('student_billing_plans')
+          .update({ is_active: true, updated_at: new Date().toISOString() })
+          .eq('assignment_id', id);
+      }
+
+      // Left → clear future schedules and close history
       if (status === 'left') {
         await supabase.from('schedules').delete().eq('assignment_id', id);
         await supabase
@@ -376,12 +398,55 @@ export default function Assignments() {
           .update({ ended_at: effectiveDate ? new Date(effectiveDate).toISOString() : new Date().toISOString() })
           .eq('assignment_id', id)
           .is('ended_at', null);
+
+        // Archive the student profile if they have NO other non-terminal assignment
+        if (assignment) {
+          const { data: studentAssigns } = await supabase
+            .from('student_teacher_assignments')
+            .select('id, status')
+            .eq('student_id', assignment.student_id);
+          if (shouldArchiveOnLeft((studentAssigns as any) || [], id)) {
+            await supabase
+              .from('profiles')
+              .update({ archived_at: new Date().toISOString() })
+              .eq('id', assignment.student_id);
+            await trackActivity({
+              action: 'profile_archived',
+              entityType: 'user',
+              entityId: assignment.student_id,
+              details: { reason: reason || 'Marked as Left', via: 'assignment_status_change' },
+            });
+          }
+        }
       }
+
+      // Audit log
+      await trackActivity({
+        action: 'assignment_status_changed',
+        entityType: 'assignment',
+        entityId: id,
+        details: {
+          student_name: assignment?.student_name,
+          teacher_name: assignment?.teacher_name,
+          from_status: fromStatus,
+          to_status: status,
+          reason: reason || null,
+          effective_date: effectiveDate || null,
+        },
+      });
     },
     onSuccess: (_, { status }) => {
       queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
-      toast({ title: 'Updated', description: status === 'left' ? 'Assignment marked as Left. Schedules cleared.' : 'Assignment status updated' });
+      queryClient.invalidateQueries({ queryKey: ['billing-plans'] });
+      const rule = getStatusRule(status);
+      toast({
+        title: 'Status updated',
+        description: status === 'left'
+          ? 'Marked as Left. Schedules cleared, profile archived if no other active assignments.'
+          : `${rule.label} — ${rule.description}`,
+      });
       setStatusChangeDialog(null);
+      setStatusChangeReason('');
     },
     onError: (error: any) => {
       handleSupabaseError(error, 'save changes');
@@ -604,6 +669,7 @@ export default function Assignments() {
   const statusCounts = {
     active: assignments.filter(a => a.status === 'active').length,
     paused: assignments.filter(a => a.status === 'paused').length,
+    on_hold: assignments.filter(a => a.status === 'on_hold').length,
     completed: assignments.filter(a => a.status === 'completed').length,
     left: assignments.filter(a => a.status === 'left').length,
   };
@@ -885,6 +951,7 @@ export default function Assignments() {
                   <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="active">Active ({statusCounts.active})</SelectItem>
                   <SelectItem value="paused">Paused ({statusCounts.paused})</SelectItem>
+                  <SelectItem value="on_hold">On Hold ({statusCounts.on_hold})</SelectItem>
                   <SelectItem value="completed">Completed ({statusCounts.completed})</SelectItem>
                   <SelectItem value="left">Left ({statusCounts.left})</SelectItem>
                 </SelectContent>
@@ -1015,39 +1082,36 @@ export default function Assignments() {
                           <Select
                             value={assignment.status}
                             onValueChange={(value: AssignmentStatus) => {
-                              if (value !== 'active' && value !== assignment.status) {
+                              if (value === assignment.status) return;
+                              const rule = getStatusRule(value);
+                              if (rule.requiresConfirmation) {
                                 setStatusChangeDialog({ assignment, newStatus: value });
                                 setStatusEffectiveDate(new Date().toISOString().split('T')[0]);
-                              } else if (value === 'active') {
+                                setStatusChangeReason('');
+                              } else {
                                 updateStatusMutation.mutate({ id: assignment.id, status: value });
                               }
                             }}
                             disabled={updateStatusMutation.isPending}
                           >
-                            <SelectTrigger className="w-[120px] h-8">
+                            <SelectTrigger className="w-[140px] h-8">
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="active">
-                                <span className="flex items-center gap-2">
-                                  <span className="h-2 w-2 rounded-full bg-emerald-500" /> Active
-                                </span>
-                              </SelectItem>
-                              <SelectItem value="paused">
-                                <span className="flex items-center gap-2">
-                                  <span className="h-2 w-2 rounded-full bg-amber-500" /> Paused
-                                </span>
-                              </SelectItem>
-                              <SelectItem value="completed">
-                                <span className="flex items-center gap-2">
-                                  <span className="h-2 w-2 rounded-full bg-slate-400" /> Completed
-                                </span>
-                              </SelectItem>
-                              <SelectItem value="left">
-                                <span className="flex items-center gap-2">
-                                  <span className="h-2 w-2 rounded-full bg-rose-600" /> Left
-                                </span>
-                              </SelectItem>
+                            <SelectContent className="w-[280px]">
+                              {(Object.keys(ASSIGNMENT_STATUS_RULES) as AssignmentStatus[]).map((key) => {
+                                const r = ASSIGNMENT_STATUS_RULES[key];
+                                return (
+                                  <SelectItem key={key} value={key}>
+                                    <span className="flex flex-col items-start gap-0.5 py-0.5">
+                                      <span className="flex items-center gap-2 font-medium">
+                                        <span className={cn('h-2 w-2 rounded-full', r.dotClass)} />
+                                        {r.label}
+                                      </span>
+                                      <span className="text-[10px] text-muted-foreground leading-tight">{r.description}</span>
+                                    </span>
+                                  </SelectItem>
+                                );
+                              })}
                             </SelectContent>
                           </Select>
                         </TableCell>
@@ -1240,46 +1304,82 @@ export default function Assignments() {
         </Dialog>
 
         {/* Status Change Confirmation Dialog */}
-        <Dialog open={!!statusChangeDialog} onOpenChange={(open) => { if (!open) setStatusChangeDialog(null); }}>
-          <DialogContent className="sm:max-w-sm">
-            <DialogHeader>
-              <DialogTitle>Confirm Status Change</DialogTitle>
-              <DialogDescription>
-                Change <strong>{statusChangeDialog?.assignment.student_name}</strong>'s assignment status to <strong className="capitalize">{statusChangeDialog?.newStatus}</strong>.
-                {statusChangeDialog?.newStatus === 'left' && ' This will also clear all schedules.'}
-                {statusChangeDialog?.newStatus === 'active' && ' The effective date will be used as the new billing start date (fees prorated from this date).'}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Effective Date *</Label>
-                <Input
-                  type="date"
-                  value={statusEffectiveDate}
-                  onChange={(e) => setStatusEffectiveDate(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">This date will be used for salary calculations.</p>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setStatusChangeDialog(null)}>Cancel</Button>
-              <Button
-                variant={statusChangeDialog?.newStatus === 'left' ? 'destructive' : 'default'}
-                onClick={() => {
-                  if (statusChangeDialog) {
-                    updateStatusMutation.mutate({
-                      id: statusChangeDialog.assignment.id,
-                      status: statusChangeDialog.newStatus,
-                      effectiveDate: statusEffectiveDate,
-                    });
-                  }
-                }}
-                disabled={!statusEffectiveDate || updateStatusMutation.isPending}
-              >
-                {updateStatusMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Confirm
-              </Button>
-            </DialogFooter>
+        <Dialog open={!!statusChangeDialog} onOpenChange={(open) => { if (!open) { setStatusChangeDialog(null); setStatusChangeReason(''); } }}>
+          <DialogContent className="sm:max-w-md">
+            {statusChangeDialog && (() => {
+              const rule = getStatusRule(statusChangeDialog.newStatus);
+              const isLeft = statusChangeDialog.newStatus === 'left';
+              return (
+                <>
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <span className={cn('h-2.5 w-2.5 rounded-full', rule.dotClass)} />
+                      {isLeft ? '⚠️ ' : ''}Switch to {rule.label}?
+                    </DialogTitle>
+                    <DialogDescription className="pt-2">
+                      <strong>{statusChangeDialog.assignment.student_name}</strong> with{' '}
+                      <strong>{statusChangeDialog.assignment.teacher_name}</strong>
+                      <span className="block mt-2 text-foreground">{rule.description}.</span>
+                      {isLeft && (
+                        <span className="block mt-2 text-amber-700 dark:text-amber-400 text-xs">
+                          The student profile will be archived if no other active assignments remain.
+                          All historical attendance, invoices and salary data are preserved.
+                          Reversible by restoring the profile from User Management.
+                        </span>
+                      )}
+                      {statusChangeDialog.newStatus === 'completed' && (
+                        <span className="block mt-2 text-xs text-muted-foreground">
+                          No future invoices or attendance. Salary history retained.
+                        </span>
+                      )}
+                      {statusChangeDialog.newStatus === 'on_hold' && (
+                        <span className="block mt-2 text-xs text-muted-foreground">
+                          Invoice and salary generation will stop from next cycle.
+                          Pending invoices already generated are not deleted — review manually.
+                        </span>
+                      )}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-2">
+                    <div className="space-y-2">
+                      <Label>Effective Date *</Label>
+                      <Input
+                        type="date"
+                        value={statusEffectiveDate}
+                        onChange={(e) => setStatusEffectiveDate(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Reason *</Label>
+                      <Textarea
+                        value={statusChangeReason}
+                        onChange={(e) => setStatusChangeReason(e.target.value)}
+                        placeholder="Why is this status changing? (recorded for audit)"
+                        rows={2}
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => { setStatusChangeDialog(null); setStatusChangeReason(''); }}>Cancel</Button>
+                    <Button
+                      variant={isLeft ? 'destructive' : 'default'}
+                      onClick={() => {
+                        updateStatusMutation.mutate({
+                          id: statusChangeDialog.assignment.id,
+                          status: statusChangeDialog.newStatus,
+                          effectiveDate: statusEffectiveDate,
+                          reason: statusChangeReason.trim(),
+                        });
+                      }}
+                      disabled={!statusEffectiveDate || !statusChangeReason.trim() || updateStatusMutation.isPending}
+                    >
+                      {updateStatusMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      {isLeft ? 'Confirm — Mark as Left' : `Confirm ${rule.label}`}
+                    </Button>
+                  </DialogFooter>
+                </>
+              );
+            })()}
           </DialogContent>
         </Dialog>
 
