@@ -212,8 +212,8 @@ const STATUS_ICON_COLOR: Record<string, string> = {
 };
 
 const UserStatusPopover: React.FC<{
-  user: { id: string; archived_at: string | null; roles: AppRole[]; roleStatuses: Partial<Record<AppRole, 'active' | 'paused' | 'left' | 'completed' | 'inactive'>> };
-  onChangeStatus: (role: AppRole, status: 'active' | 'paused' | 'left' | 'completed' | 'inactive') => void;
+  user: { id: string; archived_at: string | null; roles: AppRole[]; roleStatuses: Partial<Record<AppRole, 'active' | 'paused' | 'on_hold' | 'left' | 'completed' | 'inactive'>> };
+  onChangeStatus: (role: AppRole, status: 'active' | 'paused' | 'on_hold' | 'left' | 'completed' | 'inactive') => void;
   onArchive: (archive: boolean) => void;
 }> = ({ user, onChangeStatus, onArchive }) => {
   const [open, setOpen] = React.useState(false);
@@ -266,7 +266,7 @@ const UserStatusPopover: React.FC<{
         {!archived && !noRoles && (
           <div className="space-y-3">
             {user.roles.map((role) => {
-              const st = (user.roleStatuses?.[role] || 'active') as 'active' | 'paused' | 'left' | 'completed' | 'inactive';
+              const st = (user.roleStatuses?.[role] || 'active') as 'active' | 'paused' | 'on_hold' | 'left' | 'completed' | 'inactive';
               return (
                 <div key={role} className="flex items-center justify-between gap-2">
                   <div className="text-xs font-medium capitalize">{role.replace(/_/g, ' ')}</div>
@@ -399,11 +399,11 @@ interface UserWithRoles {
   archived_at: string | null;
   registration_id: string | null;
   roles: AppRole[];
-  roleStatuses: Partial<Record<AppRole, 'active' | 'paused' | 'left' | 'completed' | 'inactive'>>;
+  roleStatuses: Partial<Record<AppRole, 'active' | 'paused' | 'on_hold' | 'left' | 'completed' | 'inactive'>>;
   exceptions: Array<{ permission: string; is_granted: boolean }>;
 }
 
-export type RoleStatus = 'active' | 'paused' | 'left' | 'completed' | 'inactive';
+export type RoleStatus = 'active' | 'paused' | 'on_hold' | 'left' | 'completed' | 'inactive';
 
 export default function UserManagement() {
   const { isSuperAdmin, hasPermission, user: currentUser, session, activeRole } = useAuth();
