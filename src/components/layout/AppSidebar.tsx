@@ -80,7 +80,10 @@ function getTeachingSidebar(courseCount: number, isOneToOne?: boolean, role?: st
     };
   }
   const items: SidebarNavItem[] = isOneToOne
-    ? []
+    ? [
+        { label: 'AI Teaching OS', href: '/teaching-os', badgeText: 'AI' },
+        { label: 'Quiz Engine', href: '/quiz-engine', badgeText: 'AI' },
+      ]
     : [
         { label: 'All Courses', href: '/teaching?section=courses' },
         { label: 'AI Teaching OS', href: '/teaching-os', badgeText: 'AI' },
