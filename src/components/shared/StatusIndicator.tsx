@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 
 type StatusVariant = 'paid' | 'partially_paid' | 'pending' | 'overdue' | 'waived' | 'adjusted' |
   'present' | 'student_absent' | 'student_leave' | 'teacher_absent' | 'teacher_leave' | 'rescheduled' | 'student_rescheduled' | 'holiday' |
-  'active' | 'paused' | 'completed' | 'left' | 'inactive' |
+  'active' | 'paused' | 'on_hold' | 'completed' | 'left' | 'inactive' |
   'live' | 'scheduled' | 'cooldown';
 
 const STATUS_MAP: Record<StatusVariant, { label: string; icon: typeof CheckCircle; className: string }> = {
@@ -27,7 +27,8 @@ const STATUS_MAP: Record<StatusVariant, { label: string; icon: typeof CheckCircl
   // Assignment statuses
   active: { label: 'Active', icon: CheckCircle, className: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20' },
   paused: { label: 'Paused', icon: Pause, className: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20' },
-  completed: { label: 'Completed', icon: CheckCircle, className: 'bg-muted text-muted-foreground border-border' },
+  on_hold: { label: 'On Hold', icon: Pause, className: 'bg-orange-500/10 text-orange-700 dark:text-orange-300 border-orange-500/20' },
+  completed: { label: 'Completed', icon: CheckCircle, className: 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20' },
   left: { label: 'Left', icon: XCircle, className: 'bg-destructive/10 text-destructive border-destructive/20' },
   inactive: { label: 'Inactive', icon: Pause, className: 'bg-muted text-muted-foreground border-border' },
   // Zoom statuses
