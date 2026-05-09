@@ -203,14 +203,14 @@ const STATUS_PILL_COLOR: Record<string, string> = {
 };
 
 const STATUS_ICON_COLOR: Record<string, string> = {
-  active: 'text-emerald-600',
-  paused: 'text-amber-600',
-  on_hold: 'text-orange-600',
-  left: 'text-rose-600',
-  completed: 'text-sky-600',
-  inactive: 'text-slate-500',
-  archived: 'text-amber-600',
-  unassigned: 'text-amber-600',
+  active: 'text-emerald-600',     // 🟢 Green — engaged
+  paused: 'text-amber-500',       // 🟡 Amber — temporary halt
+  on_hold: 'text-orange-600',     // 🟠 Orange — admin block
+  completed: 'text-sky-600',      // 🔵 Blue — finished successfully
+  left: 'text-rose-700',          // 🔴 Dark Red — gone
+  inactive: 'text-red-500',       // 🔴 Red — no active assignments
+  archived: 'text-slate-500',     // ⚫ Gray — removed from active lists
+  unassigned: 'text-amber-600',   // 🟡 Amber — needs attention
 };
 
 const UserStatusPopover: React.FC<{
