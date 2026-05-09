@@ -1080,39 +1080,36 @@ export default function Assignments() {
                           <Select
                             value={assignment.status}
                             onValueChange={(value: AssignmentStatus) => {
-                              if (value !== 'active' && value !== assignment.status) {
+                              if (value === assignment.status) return;
+                              const rule = getStatusRule(value);
+                              if (rule.requiresConfirmation) {
                                 setStatusChangeDialog({ assignment, newStatus: value });
                                 setStatusEffectiveDate(new Date().toISOString().split('T')[0]);
-                              } else if (value === 'active') {
+                                setStatusChangeReason('');
+                              } else {
                                 updateStatusMutation.mutate({ id: assignment.id, status: value });
                               }
                             }}
                             disabled={updateStatusMutation.isPending}
                           >
-                            <SelectTrigger className="w-[120px] h-8">
+                            <SelectTrigger className="w-[140px] h-8">
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="active">
-                                <span className="flex items-center gap-2">
-                                  <span className="h-2 w-2 rounded-full bg-emerald-500" /> Active
-                                </span>
-                              </SelectItem>
-                              <SelectItem value="paused">
-                                <span className="flex items-center gap-2">
-                                  <span className="h-2 w-2 rounded-full bg-amber-500" /> Paused
-                                </span>
-                              </SelectItem>
-                              <SelectItem value="completed">
-                                <span className="flex items-center gap-2">
-                                  <span className="h-2 w-2 rounded-full bg-slate-400" /> Completed
-                                </span>
-                              </SelectItem>
-                              <SelectItem value="left">
-                                <span className="flex items-center gap-2">
-                                  <span className="h-2 w-2 rounded-full bg-rose-600" /> Left
-                                </span>
-                              </SelectItem>
+                            <SelectContent className="w-[280px]">
+                              {(Object.keys(ASSIGNMENT_STATUS_RULES) as AssignmentStatus[]).map((key) => {
+                                const r = ASSIGNMENT_STATUS_RULES[key];
+                                return (
+                                  <SelectItem key={key} value={key}>
+                                    <span className="flex flex-col items-start gap-0.5 py-0.5">
+                                      <span className="flex items-center gap-2 font-medium">
+                                        <span className={cn('h-2 w-2 rounded-full', r.dotClass)} />
+                                        {r.label}
+                                      </span>
+                                      <span className="text-[10px] text-muted-foreground leading-tight">{r.description}</span>
+                                    </span>
+                                  </SelectItem>
+                                );
+                              })}
                             </SelectContent>
                           </Select>
                         </TableCell>
