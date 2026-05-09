@@ -165,17 +165,37 @@ const RolePill = ({ role, prefix }: { role: AppRole; prefix?: string }) => {
   );
 };
 
-const STATUS_OPTIONS: Array<{ value: 'active' | 'paused' | 'completed' | 'left' | 'inactive'; label: string }> = [
+type RoleStatusValue = 'active' | 'paused' | 'on_hold' | 'completed' | 'left' | 'inactive';
+
+const STATUS_OPTIONS: Array<{ value: RoleStatusValue; label: string }> = [
   { value: 'active', label: 'Active' },
   { value: 'paused', label: 'Paused' },
+  { value: 'on_hold', label: 'On Hold' },
   { value: 'completed', label: 'Completed' },
   { value: 'left', label: 'Left' },
   { value: 'inactive', label: 'Inactive' },
 ];
 
+// Per-role allowed statuses.
+//  - Teacher: Active / Paused / On Hold while assignments exist; Left when off-platform.
+//    Inactive is auto-derived (no active assignments) — admins may still set it manually.
+//  - Student: Active / Paused / On Hold / Completed / Left manually picked.
+//  - Other roles (admin, examiner, parent, …): just Active / Inactive / Left.
+const STATUS_OPTIONS_BY_ROLE: Partial<Record<AppRole, RoleStatusValue[]>> = {
+  teacher: ['active', 'paused', 'on_hold', 'left', 'inactive'],
+  student: ['active', 'paused', 'on_hold', 'completed', 'left', 'inactive'],
+};
+const DEFAULT_ROLE_STATUSES: RoleStatusValue[] = ['active', 'inactive', 'left'];
+
+const getStatusOptionsForRole = (role: AppRole) => {
+  const allowed = STATUS_OPTIONS_BY_ROLE[role] ?? DEFAULT_ROLE_STATUSES;
+  return STATUS_OPTIONS.filter((o) => allowed.includes(o.value));
+};
+
 const STATUS_PILL_COLOR: Record<string, string> = {
   active: 'bg-white text-emerald-700 border-emerald-500',
   paused: 'bg-white text-amber-700 border-amber-500',
+  on_hold: 'bg-white text-orange-700 border-orange-500',
   left: 'bg-white text-rose-700 border-rose-500',
   completed: 'bg-white text-sky-700 border-sky-500',
   inactive: 'bg-white text-slate-600 border-slate-400',
@@ -185,6 +205,7 @@ const STATUS_PILL_COLOR: Record<string, string> = {
 const STATUS_ICON_COLOR: Record<string, string> = {
   active: 'text-emerald-600',
   paused: 'text-amber-600',
+  on_hold: 'text-orange-600',
   left: 'text-rose-600',
   completed: 'text-sky-600',
   inactive: 'text-slate-500',
@@ -193,8 +214,8 @@ const STATUS_ICON_COLOR: Record<string, string> = {
 };
 
 const UserStatusPopover: React.FC<{
-  user: { id: string; archived_at: string | null; roles: AppRole[]; roleStatuses: Partial<Record<AppRole, 'active' | 'paused' | 'left' | 'completed' | 'inactive'>> };
-  onChangeStatus: (role: AppRole, status: 'active' | 'paused' | 'left' | 'completed' | 'inactive') => void;
+  user: { id: string; archived_at: string | null; roles: AppRole[]; roleStatuses: Partial<Record<AppRole, 'active' | 'paused' | 'on_hold' | 'left' | 'completed' | 'inactive'>> };
+  onChangeStatus: (role: AppRole, status: 'active' | 'paused' | 'on_hold' | 'left' | 'completed' | 'inactive') => void;
   onArchive: (archive: boolean) => void;
 }> = ({ user, onChangeStatus, onArchive }) => {
   const [open, setOpen] = React.useState(false);
@@ -247,16 +268,17 @@ const UserStatusPopover: React.FC<{
         {!archived && !noRoles && (
           <div className="space-y-3">
             {user.roles.map((role) => {
-              const st = (user.roleStatuses?.[role] || 'active') as 'active' | 'paused' | 'left' | 'completed' | 'inactive';
+              const st = (user.roleStatuses?.[role] || 'active') as RoleStatusValue;
+              const opts = getStatusOptionsForRole(role);
               return (
                 <div key={role} className="flex items-center justify-between gap-2">
                   <div className="text-xs font-medium capitalize">{role.replace(/_/g, ' ')}</div>
                   <Select value={st} onValueChange={(v) => onChangeStatus(role, v as any)}>
                     <SelectTrigger className={`h-7 px-2 py-0 border text-[10px] font-medium uppercase tracking-wide w-32 ${STATUS_PILL_COLOR[st] || STATUS_PILL_COLOR.inactive}`}>
-                      <span className="capitalize">{st}</span>
+                      <span className="capitalize">{st.replace('_', ' ')}</span>
                     </SelectTrigger>
                     <SelectContent>
-                      {STATUS_OPTIONS.map((o) => (
+                      {opts.map((o) => (
                         <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
                       ))}
                     </SelectContent>
@@ -380,11 +402,11 @@ interface UserWithRoles {
   archived_at: string | null;
   registration_id: string | null;
   roles: AppRole[];
-  roleStatuses: Partial<Record<AppRole, 'active' | 'paused' | 'left' | 'completed' | 'inactive'>>;
+  roleStatuses: Partial<Record<AppRole, 'active' | 'paused' | 'on_hold' | 'left' | 'completed' | 'inactive'>>;
   exceptions: Array<{ permission: string; is_granted: boolean }>;
 }
 
-export type RoleStatus = 'active' | 'paused' | 'left' | 'completed' | 'inactive';
+export type RoleStatus = 'active' | 'paused' | 'on_hold' | 'left' | 'completed' | 'inactive';
 
 export default function UserManagement() {
   const { isSuperAdmin, hasPermission, user: currentUser, session, activeRole } = useAuth();
