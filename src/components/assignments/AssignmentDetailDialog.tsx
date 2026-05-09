@@ -142,12 +142,17 @@ export function AssignmentDetailDialog({ assignmentId, onClose }: Props) {
                 )}
               </div>
               <InfoRow icon={<FileText className="h-4 w-4" />} label="Enrollment Ref" value={data.a.enrollment_ref || '—'} />
-              {data.a.parent_assignment && (
-                <div className="md:col-span-2 text-xs text-amber-700 bg-amber-50 rounded-md p-2 border border-amber-200">
-                  Substitute of: <strong>{data.a.parent_assignment.teacher?.full_name}</strong>
-                  {data.a.substitute_end_date && ` (until ${formatDisplayDate(data.a.substitute_end_date)})`}
-                </div>
-              )}
+              {(() => {
+                const pa: any = Array.isArray(data.a.parent_assignment) ? data.a.parent_assignment[0] : data.a.parent_assignment;
+                if (!pa) return null;
+                const pt = Array.isArray(pa.teacher) ? pa.teacher[0] : pa.teacher;
+                return (
+                  <div className="md:col-span-2 text-xs text-amber-700 bg-amber-50 rounded-md p-2 border border-amber-200">
+                    Substitute of: <strong>{pt?.full_name}</strong>
+                    {data.a.substitute_end_date && ` (until ${formatDisplayDate(data.a.substitute_end_date)})`}
+                  </div>
+                );
+              })()}
               {data.a.status_change_reason && (
                 <div className="md:col-span-2 text-xs text-muted-foreground italic">Reason: {data.a.status_change_reason}</div>
               )}
