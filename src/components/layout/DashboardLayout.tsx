@@ -103,12 +103,8 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
                 { label: "Subjects", href: "/teaching?view=subjects" },
               ] : []),
               
-              ...(isGroupStyleModel
-                ? [
-                    { label: "AI Teaching OS", href: "/teaching-os" },
-                    { label: "Quiz Engine", href: "/quiz-engine" },
-                  ]
-                : []),
+              { label: "AI Teaching OS", href: "/teaching-os" },
+              { label: "Quiz Engine", href: "/quiz-engine" },
             ],
           },
           {
