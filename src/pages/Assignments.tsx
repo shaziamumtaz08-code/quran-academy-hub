@@ -1302,46 +1302,82 @@ export default function Assignments() {
         </Dialog>
 
         {/* Status Change Confirmation Dialog */}
-        <Dialog open={!!statusChangeDialog} onOpenChange={(open) => { if (!open) setStatusChangeDialog(null); }}>
-          <DialogContent className="sm:max-w-sm">
-            <DialogHeader>
-              <DialogTitle>Confirm Status Change</DialogTitle>
-              <DialogDescription>
-                Change <strong>{statusChangeDialog?.assignment.student_name}</strong>'s assignment status to <strong className="capitalize">{statusChangeDialog?.newStatus}</strong>.
-                {statusChangeDialog?.newStatus === 'left' && ' This will also clear all schedules.'}
-                {statusChangeDialog?.newStatus === 'active' && ' The effective date will be used as the new billing start date (fees prorated from this date).'}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Effective Date *</Label>
-                <Input
-                  type="date"
-                  value={statusEffectiveDate}
-                  onChange={(e) => setStatusEffectiveDate(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">This date will be used for salary calculations.</p>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setStatusChangeDialog(null)}>Cancel</Button>
-              <Button
-                variant={statusChangeDialog?.newStatus === 'left' ? 'destructive' : 'default'}
-                onClick={() => {
-                  if (statusChangeDialog) {
-                    updateStatusMutation.mutate({
-                      id: statusChangeDialog.assignment.id,
-                      status: statusChangeDialog.newStatus,
-                      effectiveDate: statusEffectiveDate,
-                    });
-                  }
-                }}
-                disabled={!statusEffectiveDate || updateStatusMutation.isPending}
-              >
-                {updateStatusMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Confirm
-              </Button>
-            </DialogFooter>
+        <Dialog open={!!statusChangeDialog} onOpenChange={(open) => { if (!open) { setStatusChangeDialog(null); setStatusChangeReason(''); } }}>
+          <DialogContent className="sm:max-w-md">
+            {statusChangeDialog && (() => {
+              const rule = getStatusRule(statusChangeDialog.newStatus);
+              const isLeft = statusChangeDialog.newStatus === 'left';
+              return (
+                <>
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <span className={cn('h-2.5 w-2.5 rounded-full', rule.dotClass)} />
+                      {isLeft ? '⚠️ ' : ''}Switch to {rule.label}?
+                    </DialogTitle>
+                    <DialogDescription className="pt-2">
+                      <strong>{statusChangeDialog.assignment.student_name}</strong> with{' '}
+                      <strong>{statusChangeDialog.assignment.teacher_name}</strong>
+                      <span className="block mt-2 text-foreground">{rule.description}.</span>
+                      {isLeft && (
+                        <span className="block mt-2 text-amber-700 dark:text-amber-400 text-xs">
+                          The student profile will be archived if no other active assignments remain.
+                          All historical attendance, invoices and salary data are preserved.
+                          Reversible by restoring the profile from User Management.
+                        </span>
+                      )}
+                      {statusChangeDialog.newStatus === 'completed' && (
+                        <span className="block mt-2 text-xs text-muted-foreground">
+                          No future invoices or attendance. Salary history retained.
+                        </span>
+                      )}
+                      {statusChangeDialog.newStatus === 'on_hold' && (
+                        <span className="block mt-2 text-xs text-muted-foreground">
+                          Invoice and salary generation will stop from next cycle.
+                          Pending invoices already generated are not deleted — review manually.
+                        </span>
+                      )}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-2">
+                    <div className="space-y-2">
+                      <Label>Effective Date *</Label>
+                      <Input
+                        type="date"
+                        value={statusEffectiveDate}
+                        onChange={(e) => setStatusEffectiveDate(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Reason *</Label>
+                      <Textarea
+                        value={statusChangeReason}
+                        onChange={(e) => setStatusChangeReason(e.target.value)}
+                        placeholder="Why is this status changing? (recorded for audit)"
+                        rows={2}
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => { setStatusChangeDialog(null); setStatusChangeReason(''); }}>Cancel</Button>
+                    <Button
+                      variant={isLeft ? 'destructive' : 'default'}
+                      onClick={() => {
+                        updateStatusMutation.mutate({
+                          id: statusChangeDialog.assignment.id,
+                          status: statusChangeDialog.newStatus,
+                          effectiveDate: statusEffectiveDate,
+                          reason: statusChangeReason.trim(),
+                        });
+                      }}
+                      disabled={!statusEffectiveDate || !statusChangeReason.trim() || updateStatusMutation.isPending}
+                    >
+                      {updateStatusMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      {isLeft ? 'Confirm — Mark as Left' : `Confirm ${rule.label}`}
+                    </Button>
+                  </DialogFooter>
+                </>
+              );
+            })()}
           </DialogContent>
         </Dialog>
 
