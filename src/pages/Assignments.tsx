@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -1094,9 +1095,19 @@ export default function Assignments() {
                             }}
                             disabled={updateStatusMutation.isPending}
                           >
-                            <SelectTrigger className="w-[140px] h-8">
-                              <SelectValue />
-                            </SelectTrigger>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <SelectTrigger className="w-[130px] h-8">
+                                  <span className="flex items-center gap-2 truncate">
+                                    <span className={cn('h-2 w-2 rounded-full shrink-0', getStatusRule(assignment.status).dotClass)} />
+                                    <span className="truncate">{getStatusRule(assignment.status).label}</span>
+                                  </span>
+                                </SelectTrigger>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-[240px]">
+                                {getStatusRule(assignment.status).description}
+                              </TooltipContent>
+                            </Tooltip>
                             <SelectContent className="w-[280px]">
                               {(Object.keys(ASSIGNMENT_STATUS_RULES) as AssignmentStatus[]).map((key) => {
                                 const r = ASSIGNMENT_STATUS_RULES[key];
