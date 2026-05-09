@@ -27,6 +27,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { handleSupabaseError } from '@/lib/handleSupabaseError';
 import { useDivision } from '@/contexts/DivisionContext';
 import { BulkAssignmentImportDialog } from '@/components/assignments/BulkAssignmentImportDialog';
+import { AssignmentDetailDialog } from '@/components/assignments/AssignmentDetailDialog';
 import { Textarea } from '@/components/ui/textarea';
 import { formatDisplayDate } from '@/lib/dateFormat';
 import { cn } from '@/lib/utils';
