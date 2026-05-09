@@ -669,6 +669,7 @@ export default function Assignments() {
   const statusCounts = {
     active: assignments.filter(a => a.status === 'active').length,
     paused: assignments.filter(a => a.status === 'paused').length,
+    on_hold: assignments.filter(a => a.status === 'on_hold').length,
     completed: assignments.filter(a => a.status === 'completed').length,
     left: assignments.filter(a => a.status === 'left').length,
   };
@@ -950,6 +951,7 @@ export default function Assignments() {
                   <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="active">Active ({statusCounts.active})</SelectItem>
                   <SelectItem value="paused">Paused ({statusCounts.paused})</SelectItem>
+                  <SelectItem value="on_hold">On Hold ({statusCounts.on_hold})</SelectItem>
                   <SelectItem value="completed">Completed ({statusCounts.completed})</SelectItem>
                   <SelectItem value="left">Left ({statusCounts.left})</SelectItem>
                 </SelectContent>
