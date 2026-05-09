@@ -115,6 +115,7 @@ export default function Assignments() {
   const [effectiveToDate, setEffectiveToDate] = useState('');
   // Billing plan detail dialog
   const [billingDetailAssignmentId, setBillingDetailAssignmentId] = useState<string | null>(null);
+  const [detailAssignmentId, setDetailAssignmentId] = useState<string | null>(null);
 
   // Fetch teachers
   const { data: teachers = [], isLoading: loadingTeachers } = useQuery({
