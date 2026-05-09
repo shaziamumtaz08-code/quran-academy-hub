@@ -354,15 +354,17 @@ export default function Assignments() {
 
   // Update status mutation
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status, effectiveDate }: { id: string; status: AssignmentStatus; effectiveDate?: string }) => {
+    mutationFn: async ({ id, status, effectiveDate, reason }: { id: string; status: AssignmentStatus; effectiveDate?: string; reason?: string }) => {
+      const assignment = assignments.find(a => a.id === id);
+      const fromStatus = assignment?.status;
+
       const updatePayload: any = { status };
+      if (reason) updatePayload.status_change_reason = reason;
       if (effectiveDate) {
         updatePayload.status_effective_date = effectiveDate;
-        // For left/completed, also set effective_to_date for salary calculation
         if (status === 'left' || status === 'completed') {
           updatePayload.effective_to_date = effectiveDate;
         }
-        // For reactivation (active), reset billing start date to reactivation date
         if (status === 'active') {
           updatePayload.effective_from_date = effectiveDate;
         }
@@ -373,7 +375,22 @@ export default function Assignments() {
         .eq('id', id);
       if (error) throw error;
 
-      // If marking as 'left', also clear schedules and close assignment history
+      // Cascade: billing plan activation reflects the matrix
+      // - completed/left   → deactivate plan for THIS assignment only
+      // - on_hold          → leave plan as-is, invoice guard skips by status
+      // - active (resume)  → reactivate plan
+      // - paused           → leave plan active (billing continues per matrix)
+      if (status === 'completed' || status === 'left') {
+        await supabase.from('student_billing_plans')
+          .update({ is_active: false, updated_at: new Date().toISOString() })
+          .eq('assignment_id', id);
+      } else if (status === 'active' && (fromStatus === 'paused' || fromStatus === 'on_hold' || fromStatus === 'completed')) {
+        await supabase.from('student_billing_plans')
+          .update({ is_active: true, updated_at: new Date().toISOString() })
+          .eq('assignment_id', id);
+      }
+
+      // Left → clear future schedules and close history
       if (status === 'left') {
         await supabase.from('schedules').delete().eq('assignment_id', id);
         await supabase
@@ -381,12 +398,55 @@ export default function Assignments() {
           .update({ ended_at: effectiveDate ? new Date(effectiveDate).toISOString() : new Date().toISOString() })
           .eq('assignment_id', id)
           .is('ended_at', null);
+
+        // Archive the student profile if they have NO other non-terminal assignment
+        if (assignment) {
+          const { data: studentAssigns } = await supabase
+            .from('student_teacher_assignments')
+            .select('id, status')
+            .eq('student_id', assignment.student_id);
+          if (shouldArchiveOnLeft((studentAssigns as any) || [], id)) {
+            await supabase
+              .from('profiles')
+              .update({ archived_at: new Date().toISOString() })
+              .eq('id', assignment.student_id);
+            await trackActivity({
+              action: 'profile_archived',
+              entityType: 'user',
+              entityId: assignment.student_id,
+              details: { reason: reason || 'Marked as Left', via: 'assignment_status_change' },
+            });
+          }
+        }
       }
+
+      // Audit log
+      await trackActivity({
+        action: 'assignment_status_changed',
+        entityType: 'assignment',
+        entityId: id,
+        details: {
+          student_name: assignment?.student_name,
+          teacher_name: assignment?.teacher_name,
+          from_status: fromStatus,
+          to_status: status,
+          reason: reason || null,
+          effective_date: effectiveDate || null,
+        },
+      });
     },
     onSuccess: (_, { status }) => {
       queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
-      toast({ title: 'Updated', description: status === 'left' ? 'Assignment marked as Left. Schedules cleared.' : 'Assignment status updated' });
+      queryClient.invalidateQueries({ queryKey: ['billing-plans'] });
+      const rule = getStatusRule(status);
+      toast({
+        title: 'Status updated',
+        description: status === 'left'
+          ? 'Marked as Left. Schedules cleared, profile archived if no other active assignments.'
+          : `${rule.label} — ${rule.description}`,
+      });
       setStatusChangeDialog(null);
+      setStatusChangeReason('');
     },
     onError: (error: any) => {
       handleSupabaseError(error, 'save changes');
