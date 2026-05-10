@@ -397,6 +397,42 @@ export default function Payments() {
     enabled: invoices.length > 0 && activeTab === 'payments',
   });
 
+  // Fetch profile names for `recorded_by` so the Payments tab can show who recorded each payment
+  const recorderIds = useMemo(
+    () => Array.from(new Set((allTransactions as any[]).map((t) => t.recorded_by).filter(Boolean))),
+    [allTransactions],
+  );
+  const { data: recorderProfiles = [] } = useQuery({
+    queryKey: ['payment-recorders', recorderIds],
+    queryFn: async () => {
+      if (recorderIds.length === 0) return [];
+      const { data } = await supabase.from('profiles').select('id, full_name').in('id', recorderIds);
+      return data || [];
+    },
+    enabled: recorderIds.length > 0 && activeTab === 'payments',
+  });
+  const recorderMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    (recorderProfiles as any[]).forEach((p) => { m[p.id] = p.full_name; });
+    return m;
+  }, [recorderProfiles]);
+
+  // Payments tab — filter transactions by payment_date within the selected month
+  const paymentsTabTxns = useMemo(() => {
+    if (monthFilter === 'all') return allTransactions as any[];
+    const start = `${monthFilter}-01`;
+    let end: string;
+    try {
+      end = format(endOfMonth(parseISO(start)), 'yyyy-MM-dd');
+    } catch {
+      return allTransactions as any[];
+    }
+    return (allTransactions as any[]).filter((t) => {
+      if (!t.payment_date) return false;
+      return t.payment_date >= start && t.payment_date <= end;
+    });
+  }, [allTransactions, monthFilter]);
+
   const invoiceMapForHistory = useMemo(() => {
     const m: Record<string, any> = {};
     invoices.forEach(inv => {
