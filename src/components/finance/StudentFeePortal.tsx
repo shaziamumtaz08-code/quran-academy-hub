@@ -333,56 +333,42 @@ export function StudentFeePortal({
         </div>
       </div>
 
-      {/* MONTH PILL TOGGLE — small outlined */}
-      <div ref={stripRef} className="overflow-x-auto scrollbar-hide -mx-1 px-1">
-        <div className="flex gap-1.5 min-w-max">
-          {monthsStrip.map(m => {
-            const isActive = m.bm === activeMonth;
-            const exists = m.status !== 'none';
-            return (
-              <button
-                key={m.bm}
-                data-bm={m.bm}
-                onClick={() => exists && setActiveMonth(m.bm)}
-                disabled={!exists}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs whitespace-nowrap transition-all',
-                  isActive
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-transparent border-border text-foreground hover:bg-muted',
-                  !exists && 'opacity-40 cursor-not-allowed'
-                )}
-              >
-                {exists && <span className={cn('h-1.5 w-1.5 rounded-full', statusDot(m.status))} />}
-                <span className="font-medium">{shortBM(m.bm)}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* PAYMENT HISTORY — combined invoice + payment rows */}
+      {/* PAYMENT HISTORY — one row per month (invoice + payment combined) */}
       {(() => {
         const today = startOfDay(new Date());
-        // Build one row per invoice (past + current), newest first
-        const rows = studentInvoices
+        // Group invoices by billing_month
+        const byMonth = new Map<string, typeof studentInvoices>();
+        studentInvoices
           .filter(inv => inv.billing_month <= cbm)
-          .slice()
-          .sort((a, b) => b.billing_month.localeCompare(a.billing_month))
-          .map(inv => {
-            const txns = (transactions as any[])
-              .filter(t => t.invoice_id === inv.id)
+          .forEach(inv => {
+            const arr = byMonth.get(inv.billing_month) || [];
+            arr.push(inv);
+            byMonth.set(inv.billing_month, arr);
+          });
+        const rows = Array.from(byMonth.entries())
+          .sort((a, b) => b[0].localeCompare(a[0]))
+          .map(([bm, invs]) => {
+            const totalAmount = invs.reduce((s, i) => s + Number(i.amount || 0), 0);
+            const totalPaid = invs.reduce((s, i) => s + (ledgerPaidMap[i.id] || 0), 0);
+            const totalForgiven = invs.reduce((s, i) => s + Number(i.forgiven_amount || 0), 0);
+            const remaining = Math.max(0, totalAmount - totalPaid - totalForgiven);
+            const currency = invs[0]?.currency || 'PKR';
+            const dueDates = invs.map(i => i.due_date).filter(Boolean) as string[];
+            const earliestDue = dueDates.sort()[0] || null;
+            const monthTxns = (transactions as any[])
+              .filter(t => invs.some(i => i.id === t.invoice_id))
               .sort((a, b) => (b.payment_date || '').localeCompare(a.payment_date || ''));
-            const latest = txns[0] || null;
-            const isOverdue =
-              ['pending', 'overdue', 'partially_paid'].includes(inv.status) &&
-              inv.due_date && isBefore(parseISO(inv.due_date), today);
+            const lastPaidDate = monthTxns[0]?.payment_date || null;
+            const allPaid = invs.every(i => i.status === 'paid' || i.status === 'waived');
+            const anyPartial = invs.some(i => i.status === 'partially_paid') || (totalPaid > 0 && remaining > 0.01);
+            const anyOverdue = !allPaid && earliestDue && isBefore(parseISO(earliestDue), today);
             const effectiveStatus =
-              inv.status === 'paid' ? 'paid'
-              : inv.status === 'partially_paid' ? 'partially_paid'
-              : isOverdue ? 'overdue'
-              : inv.status;
-            return { inv, latest, effectiveStatus };
+              allPaid ? 'paid'
+              : anyPartial ? 'partially_paid'
+              : anyOverdue ? 'overdue'
+              : 'pending';
+            const primaryInvoice = invs[0];
+            return { bm, invs, totalAmount, totalPaid, remaining, currency, earliestDue, lastPaidDate, effectiveStatus, primaryInvoice };
           });
         const visible = showAllTxns ? rows : rows.slice(0, 12);
 
@@ -398,55 +384,53 @@ export function StudentFeePortal({
               <div className="relative pl-5">
                 <div className="absolute left-[7px] top-2 bottom-2 w-px bg-border" />
                 <div className="space-y-2.5">
-                  {visible.map(({ inv, latest, effectiveStatus }) => {
-                    const isHighlight = inv.billing_month === activeMonth;
-                    return (
-                      <div key={inv.id} className="relative">
-                        <div className={cn(
-                          'absolute -left-[18px] top-3.5 h-3 w-3 rounded-full ring-4 ring-background',
-                          statusDot(effectiveStatus)
-                        )} />
-                        <div className={cn(
-                          'bg-card rounded-lg border px-3.5 py-2.5 hover:shadow-sm transition-shadow',
-                          isHighlight ? 'border-primary/60 shadow-sm' : 'border-border'
-                        )}>
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0 flex-1">
-                              <div className="text-sm font-semibold truncate">
-                                {formatBM(inv.billing_month)}
-                              </div>
-                              <div className="text-[11px] text-muted-foreground mt-0.5 truncate">
-                                <span className="font-medium tabular-nums">
-                                  {(latest ? latest.currency_foreign : inv.currency)}{' '}
-                                  {Number(latest ? latest.amount_foreign : inv.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  {visible.map(({ bm, totalAmount, totalPaid, remaining, currency, earliestDue, lastPaidDate, effectiveStatus, primaryInvoice }) => (
+                    <div key={bm} className="relative">
+                      <div className={cn(
+                        'absolute -left-[18px] top-3.5 h-3 w-3 rounded-full ring-4 ring-background',
+                        statusDot(effectiveStatus)
+                      )} />
+                      <div className="bg-card rounded-lg border border-border px-3.5 py-2.5 hover:shadow-sm transition-shadow">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-semibold truncate">{formatBM(bm)}</div>
+                            <div className="text-[11px] text-muted-foreground mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5">
+                              <span className="font-medium tabular-nums text-foreground/80">
+                                {currency} {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                              </span>
+                              {earliestDue && (
+                                <span><span className="text-muted-foreground/40">·</span> Due {format(parseISO(earliestDue), 'dd MMM yyyy')}</span>
+                              )}
+                              {totalPaid > 0 && (
+                                <span className="text-emerald-700">
+                                  <span className="text-muted-foreground/40">·</span> Paid {currency} {totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                  {lastPaidDate && <> on {format(parseISO(lastPaidDate), 'dd MMM yyyy')}</>}
                                 </span>
-                                {latest?.payment_method && (
-                                  <> <span className="text-muted-foreground/40">·</span> {latest.payment_method}</>
-                                )}
-                                {latest?.payment_date && (
-                                  <> <span className="text-muted-foreground/40">·</span> Paid {format(parseISO(latest.payment_date), 'dd MMM yyyy')}</>
-                                )}
-                                {!latest && inv.due_date && (
-                                  <> <span className="text-muted-foreground/40">·</span> Due {format(parseISO(inv.due_date), 'dd MMM yyyy')}</>
-                                )}
-                              </div>
+                              )}
+                              {remaining > 0.01 && effectiveStatus !== 'paid' && (
+                                <span className="text-rose-700">
+                                  <span className="text-muted-foreground/40">·</span> Balance {currency} {remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </span>
+                              )}
                             </div>
-                            <div className="flex flex-col items-end gap-1.5 shrink-0">
-                              <Badge className={cn('text-[10px] px-2 py-0.5', statusBadgeClass(effectiveStatus))}>
-                                {statusLabel(effectiveStatus)}
-                              </Badge>
+                          </div>
+                          <div className="flex flex-col items-end gap-1.5 shrink-0">
+                            <Badge className={cn('text-[10px] px-2 py-0.5', statusBadgeClass(effectiveStatus))}>
+                              {statusLabel(effectiveStatus)}
+                            </Badge>
+                            {primaryInvoice && (
                               <button
-                                onClick={() => window.open(`/finance/print/invoice/${inv.id}`, '_blank')}
+                                onClick={() => window.open(`/finance/print/invoice/${primaryInvoice.id}`, '_blank')}
                                 className="text-[11px] text-primary hover:underline inline-flex items-center gap-0.5 font-medium"
                               >
                                 Invoice <ArrowRight className="h-3 w-3" />
                               </button>
-                            </div>
+                            )}
                           </div>
                         </div>
                       </div>
-                    );
-                  })}
+                    </div>
+                  ))}
                 </div>
                 {!showAllTxns && rows.length > 12 && (
                   <button
