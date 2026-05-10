@@ -1038,12 +1038,12 @@ export default function UserManagement() {
     },
   });
 
-  // Update per-role status (auto-archive on left/completed)
+  // Update per-role status (auto-archive on left/completed) with effective date
   const updateRoleStatusMutation = useMutation({
-    mutationFn: async ({ userId, role, status }: { userId: string; role: AppRole; status: RoleStatus }) => {
+    mutationFn: async ({ userId, role, status, effectiveDate }: { userId: string; role: AppRole; status: RoleStatus; effectiveDate: string }) => {
       const { error } = await supabase
         .from('user_roles')
-        .update({ status })
+        .update({ status, status_changed_at: effectiveDate })
         .eq('user_id', userId)
         .eq('role', role);
       if (error) throw error;
@@ -1052,7 +1052,7 @@ export default function UserManagement() {
       if (status === 'left' || status === 'completed') {
         await supabase
           .from('profiles')
-          .update({ archived_at: new Date().toISOString() })
+          .update({ archived_at: effectiveDate })
           .eq('id', userId)
           .is('archived_at', null);
       }
@@ -1066,6 +1066,10 @@ export default function UserManagement() {
       toast({ title: 'Failed', description: e instanceof Error ? e.message : 'Could not update status', variant: 'destructive' });
     },
   });
+
+  // Pending status change requiring effective date confirmation
+  const [pendingStatusChange, setPendingStatusChange] = useState<{ userId: string; userName: string; role: AppRole; status: RoleStatus } | null>(null);
+  const [statusEffectiveDate, setStatusEffectiveDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
 
   // Fetch divisions for filter dropdown
   const { data: allDivisions = [] } = useQuery({
