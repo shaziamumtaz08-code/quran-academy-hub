@@ -4,106 +4,110 @@ import { supabase } from '@/integrations/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Skeleton } from '@/components/ui/skeleton';
-import { formatDisplayDate } from '@/lib/dateFormat';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { formatDisplayDate, formatDisplayDateTime } from '@/lib/dateFormat';
 import { getStatusRule } from '@/lib/assignmentStatusRules';
 import { cn } from '@/lib/utils';
-import { Calendar, User, GraduationCap, BookOpen, Banknote, Clock, History, FileText, ArrowRight, Activity } from 'lucide-react';
+import {
+  Calendar, User, GraduationCap, BookOpen, Banknote, Clock, History, FileText,
+  ArrowRight, Loader2, AlertCircle, MapPin, Mail, Globe, Phone,
+} from 'lucide-react';
 
 interface Props {
   assignmentId: string | null;
   onClose: () => void;
 }
 
-const SELECT = `
-  *,
-  teacher:profiles!student_teacher_assignments_teacher_id_fkey(id, full_name, email),
-  student:profiles!student_teacher_assignments_student_id_fkey(id, full_name, email),
-  subject:subjects(id, name),
-  division:divisions(id, name),
-  parent_assignment:student_teacher_assignments!student_teacher_assignments_parent_assignment_id_fkey(id, teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name))
-`;
-
-const FIELD_LABELS: Record<string, string> = {
-  status: 'Status',
-  payout_amount: 'Payout',
-  payout_type: 'Payout Type',
-  effective_from_date: 'Effective From',
-  effective_to_date: 'Effective To',
-  teacher_id: 'Teacher',
-  subject_id: 'Subject',
-  duration_minutes: 'Duration (min)',
-  transfer_type: 'Transfer Type',
-  start_date: 'Start Date',
-};
-
 export function AssignmentDetailDialog({ assignmentId, onClose }: Props) {
   const open = !!assignmentId;
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['assignment-detail', assignmentId],
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['assignment-detail-v2', assignmentId],
     enabled: open,
     queryFn: async () => {
       if (!assignmentId) return null;
 
-      const { data: a } = await supabase
+      // 1. Assignment row
+      const { data: a, error: aErr } = await supabase
         .from('student_teacher_assignments')
-        .select(SELECT)
+        .select('*')
         .eq('id', assignmentId)
         .maybeSingle();
-      if (!a) return null;
+      if (aErr) throw aErr;
+      if (!a) throw new Error('Assignment not found');
 
-      const { data: siblings } = await supabase
-        .from('student_teacher_assignments')
-        .select(SELECT)
-        .eq('student_id', (a as any).student_id)
-        .order('created_at', { ascending: false });
+      // 2-6. Parallel independent fetches
+      const [studentRes, teacherRes, subjectRes, divisionRes, historyRes, schedulesRes, auditRes] =
+        await Promise.all([
+          a.student_id
+            ? supabase.from('profiles').select('id, full_name, email, whatsapp_number, timezone, country, city').eq('id', a.student_id).maybeSingle()
+            : Promise.resolve({ data: null, error: null }),
+          a.teacher_id
+            ? supabase.from('profiles').select('id, full_name, email, whatsapp_number, timezone').eq('id', a.teacher_id).maybeSingle()
+            : Promise.resolve({ data: null, error: null }),
+          a.subject_id
+            ? supabase.from('subjects').select('id, name').eq('id', a.subject_id).maybeSingle()
+            : Promise.resolve({ data: null, error: null }),
+          a.division_id
+            ? supabase.from('divisions').select('id, name').eq('id', a.division_id).maybeSingle()
+            : Promise.resolve({ data: null, error: null }),
+          supabase.from('assignment_history').select('*').eq('assignment_id', assignmentId).order('created_at', { ascending: false }),
+          supabase.from('schedules').select('*').eq('assignment_id', assignmentId),
+          supabase.from('assignment_audit_log' as any).select('*').eq('assignment_id', assignmentId).order('changed_at', { ascending: false }),
+        ]);
 
-      const allIds = ((siblings as any[]) || [a]).map((s: any) => s.id);
-      const { data: logs } = await supabase
-        .from('assignment_audit_log' as any)
-        .select('*')
-        .in('assignment_id', allIds)
-        .order('changed_at', { ascending: false });
+      // Resolve teacher names referenced inside history rows
+      const histRows = (historyRes.data as any[]) || [];
+      const teacherIds = Array.from(new Set(histRows.map((h) => h.teacher_id).filter(Boolean)));
+      const subjectIds = Array.from(new Set(histRows.map((h) => h.subject_id).filter(Boolean)));
 
-      // Hydrate teacher/subject names referenced in old/new values
-      const refIds = new Set<string>();
-      (logs || []).forEach((l: any) => {
-        if (l.field_name === 'teacher_id' || l.field_name === 'subject_id') {
-          if (l.old_value) refIds.add(l.old_value);
-          if (l.new_value) refIds.add(l.new_value);
+      // Also pull names for audit_log changed_by + teacher_id field changes
+      const auditRows = (auditRes.data as any[]) || [];
+      const auditPersonIds = new Set<string>();
+      auditRows.forEach((r) => {
+        if (r.changed_by) auditPersonIds.add(r.changed_by);
+        if (r.field_name === 'teacher_id') {
+          if (r.old_value) auditPersonIds.add(r.old_value);
+          if (r.new_value) auditPersonIds.add(r.new_value);
         }
-        if (l.changed_by) refIds.add(l.changed_by);
       });
-      const refIdsArr = Array.from(refIds);
-      const [{ data: profs }, { data: subs }] = await Promise.all([
-        refIdsArr.length
-          ? supabase.from('profiles').select('id, full_name').in('id', refIdsArr)
+      const auditSubjectIds = new Set<string>();
+      auditRows.forEach((r) => {
+        if (r.field_name === 'subject_id') {
+          if (r.old_value) auditSubjectIds.add(r.old_value);
+          if (r.new_value) auditSubjectIds.add(r.new_value);
+        }
+      });
+
+      const allProfileIds = Array.from(new Set([...teacherIds, ...Array.from(auditPersonIds)]));
+      const allSubjectIds = Array.from(new Set([...subjectIds, ...Array.from(auditSubjectIds)]));
+
+      const [profilesRes, subjectsRes] = await Promise.all([
+        allProfileIds.length
+          ? supabase.from('profiles').select('id, full_name').in('id', allProfileIds)
           : Promise.resolve({ data: [] as any[] }),
-        refIdsArr.length
-          ? supabase.from('subjects').select('id, name').in('id', refIdsArr)
+        allSubjectIds.length
+          ? supabase.from('subjects').select('id, name').in('id', allSubjectIds)
           : Promise.resolve({ data: [] as any[] }),
       ]);
-      const pMap = new Map((profs || []).map((p: any) => [p.id, p.full_name]));
-      const sMap = new Map((subs || []).map((s: any) => [s.id, s.name]));
 
-      const logsByAssignment = new Map<string, any[]>();
-      (logs || []).forEach((l: any) => {
-        const arr = logsByAssignment.get(l.assignment_id) || [];
-        arr.push({
-          ...l,
-          changed_by_name: l.changed_by ? pMap.get(l.changed_by) : null,
-          old_label: resolveLabel(l.field_name, l.old_value, pMap, sMap),
-          new_label: resolveLabel(l.field_name, l.new_value, pMap, sMap),
-        });
-        logsByAssignment.set(l.assignment_id, arr);
-      });
+      const pMap = new Map(((profilesRes.data as any[]) || []).map((p) => [p.id, p.full_name]));
+      const sMap = new Map(((subjectsRes.data as any[]) || []).map((s) => [s.id, s.name]));
 
-      return { a: a as any, siblings: (siblings as any[]) || [], logsByAssignment };
+      return {
+        a,
+        student: studentRes.data,
+        teacher: teacherRes.data,
+        subject: subjectRes.data,
+        division: divisionRes.data,
+        history: histRows,
+        schedules: (schedulesRes.data as any[]) || [],
+        audit: auditRows,
+        pMap,
+        sMap,
+      };
     },
   });
-
-  const previous = (data?.siblings || []).filter((s: any) => s.id !== data?.a.id);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -113,59 +117,40 @@ export function AssignmentDetailDialog({ assignmentId, onClose }: Props) {
             <FileText className="h-5 w-5" />
             Assignment Details
           </DialogTitle>
-          <DialogDescription>Full assignment details with dated status and field change history.</DialogDescription>
+          <DialogDescription>Full assignment record with status, payout, schedule, and complete change history.</DialogDescription>
         </DialogHeader>
 
-        {isLoading || !data ? (
-          <div className="space-y-3 py-4">
-            <Skeleton className="h-40 w-full" />
-            <Skeleton className="h-32 w-full" />
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <p className="text-sm">Loading assignment details...</p>
           </div>
-        ) : (
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-12 gap-3 text-destructive">
+            <AlertCircle className="h-8 w-8" />
+            <p className="text-sm font-medium">Failed to load assignment</p>
+            <p className="text-xs text-muted-foreground">{(error as any)?.message || 'Unknown error'}</p>
+          </div>
+        ) : data ? (
           <div className="space-y-6">
-            <AssignmentCard a={data.a} logs={data.logsByAssignment.get(data.a.id) || []} current />
-
-            <div className="space-y-2">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <History className="h-3.5 w-3.5" />
-                Previous Assignments & Reassignments ({previous.length})
-              </h4>
-              <Separator />
-              {previous.length === 0 ? (
-                <p className="text-sm text-muted-foreground italic py-3 text-center">No previous assignments for this student.</p>
-              ) : (
-                <div className="space-y-3">
-                  {previous.map((s: any) => (
-                    <AssignmentCard key={s.id} a={s} logs={data.logsByAssignment.get(s.id) || []} />
-                  ))}
-                </div>
-              )}
-            </div>
+            <DetailsPanel data={data} />
+            <HistoryPanel data={data} />
           </div>
-        )}
+        ) : null}
       </DialogContent>
     </Dialog>
   );
 }
 
-function resolveLabel(field: string, value: string | null, pMap: Map<string, any>, sMap: Map<string, any>) {
-  if (value === null || value === undefined || value === '') return '—';
-  if (field === 'teacher_id') return pMap.get(value) || value;
-  if (field === 'subject_id') return sMap.get(value) || value;
-  if (field === 'payout_amount') return Number(value).toLocaleString();
-  return value;
-}
-
-function AssignmentCard({ a, logs, current = false }: { a: any; logs: any[]; current?: boolean }) {
+function DetailsPanel({ data }: { data: any }) {
+  const { a, student, teacher, subject, division } = data;
   const rule = getStatusRule(a.status as any);
-  const pa: any = Array.isArray(a.parent_assignment) ? a.parent_assignment[0] : a.parent_assignment;
-  const pt = pa ? (Array.isArray(pa.teacher) ? pa.teacher[0] : pa.teacher) : null;
 
   return (
-    <div className={cn('rounded-xl border p-4 space-y-3', current ? 'bg-primary/5 border-primary/30' : 'bg-muted/20')}>
-      <div className="flex items-center justify-between gap-2 flex-wrap">
+    <section className="rounded-xl border bg-card p-5 space-y-4">
+      <header className="flex items-center justify-between gap-2 flex-wrap">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Assignment</h3>
         <div className="flex items-center gap-2">
-          {current && <Badge className="text-[10px]">Current</Badge>}
           <Badge variant="outline" className="gap-1.5">
             <span className={cn('h-2 w-2 rounded-full', rule.dotClass)} />
             {rule.label}
@@ -173,39 +158,44 @@ function AssignmentCard({ a, logs, current = false }: { a: any; logs: any[]; cur
           {a.transfer_type && a.transfer_type !== 'permanent' && (
             <Badge variant="outline" className="text-[10px] capitalize">{a.transfer_type}</Badge>
           )}
-          {a.status_changed_at && (
-            <span className="text-[11px] text-muted-foreground">since {formatDisplayDate(a.status_changed_at)}</span>
-          )}
         </div>
-        <span className="text-[11px] text-muted-foreground">Created {formatDisplayDate(a.created_at)}</span>
+      </header>
+
+      <Separator />
+
+      {/* People */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <PersonCard icon={<GraduationCap className="h-4 w-4" />} title="Student" person={student} showLocation />
+        <PersonCard icon={<User className="h-4 w-4" />} title="Teacher" person={teacher} />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 text-sm">
-        <InfoRow icon={<GraduationCap className="h-4 w-4" />} label="Student" value={a.student?.full_name} />
-        <InfoRow icon={<User className="h-4 w-4" />} label="Teacher" value={a.teacher?.full_name} />
-        <InfoRow icon={<BookOpen className="h-4 w-4" />} label="Subject" value={a.subject?.name || '—'} />
-        <InfoRow icon={<FileText className="h-4 w-4" />} label="Division" value={a.division?.name || '—'} />
-        <InfoRow
-          icon={<Banknote className="h-4 w-4" />}
-          label="Payout"
-          value={`${Number(a.payout_amount || 0).toLocaleString()} / ${a.payout_type === 'per_class' ? 'class' : 'month'}`}
-        />
-        <InfoRow icon={<Clock className="h-4 w-4" />} label="Duration" value={`${a.duration_minutes} min`} />
-        <InfoRow icon={<Calendar className="h-4 w-4" />} label="Start Date" value={a.start_date ? formatDisplayDate(a.start_date) : '—'} />
+      <Separator />
+
+      {/* Core fields */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2.5 text-sm">
+        <InfoRow icon={<BookOpen className="h-4 w-4" />} label="Subject" value={subject?.name} />
+        <InfoRow icon={<FileText className="h-4 w-4" />} label="Division" value={division?.name} />
+        <InfoRow icon={<Clock className="h-4 w-4" />} label="Duration" value={a.duration_minutes ? `${a.duration_minutes} min` : null} />
+        <InfoRow icon={<FileText className="h-4 w-4" />} label="Enrollment Ref" value={a.enrollment_ref} />
+        <InfoRow icon={<Calendar className="h-4 w-4" />} label="Start Date" value={a.start_date ? formatDisplayDate(a.start_date) : null} />
         <InfoRow
           icon={<ArrowRight className="h-4 w-4" />}
           label="Effective"
           value={
             a.effective_from_date || a.effective_to_date
               ? `${a.effective_from_date ? formatDisplayDate(a.effective_from_date) : '—'} → ${a.effective_to_date ? formatDisplayDate(a.effective_to_date) : 'ongoing'}`
-              : '—'
+              : null
           }
         />
-        <InfoRow icon={<FileText className="h-4 w-4" />} label="Enrollment Ref" value={a.enrollment_ref || '—'} />
+        <InfoRow
+          icon={<Banknote className="h-4 w-4" />}
+          label="Payout"
+          value={`${Number(a.payout_amount || 0).toLocaleString()} / ${a.payout_type === 'per_class' ? 'class' : 'month'}`}
+        />
         <InfoRow
           icon={<Banknote className="h-4 w-4" />}
           label="Monthly Fee"
-          value={a.calculated_monthly_fee ? Number(a.calculated_monthly_fee).toLocaleString() : '—'}
+          value={a.calculated_monthly_fee ? Number(a.calculated_monthly_fee).toLocaleString() : null}
         />
         {a.first_month_prorated_fee ? (
           <InfoRow
@@ -214,64 +204,171 @@ function AssignmentCard({ a, logs, current = false }: { a: any; logs: any[]; cur
             value={Number(a.first_month_prorated_fee).toLocaleString()}
           />
         ) : null}
-        {a.is_custom_override && (
-          <div className="md:col-span-2">
-            <Badge variant="outline" className="text-[10px]">Custom Payout Override</Badge>
-          </div>
-        )}
       </div>
 
-      {pt && (
-        <div className="text-xs text-amber-700 bg-amber-50 rounded-md p-2 border border-amber-200">
-          Substitute of: <strong>{pt.full_name}</strong>
-          {a.substitute_end_date && ` (until ${formatDisplayDate(a.substitute_end_date)})`}
-        </div>
-      )}
+      {/* Toggles */}
+      <div className="flex flex-wrap gap-2 pt-1">
+        {a.requires_schedule && <Badge variant="outline" className="text-[10px]">Requires Schedule</Badge>}
+        {a.requires_planning && <Badge variant="outline" className="text-[10px]">Requires Planning</Badge>}
+        {a.requires_attendance && <Badge variant="outline" className="text-[10px]">Requires Attendance</Badge>}
+        {a.is_custom_override && <Badge variant="outline" className="text-[10px]">Custom Payout Override</Badge>}
+      </div>
 
       {a.status_change_reason && (
-        <div className="text-xs text-muted-foreground italic border-l-2 border-muted pl-2">
-          Reason: {a.status_change_reason}
+        <div className="text-xs text-muted-foreground italic border-l-2 border-muted pl-3 py-1">
+          Status reason: {a.status_change_reason}
         </div>
       )}
 
-      {/* Activity timeline */}
-      <div className="pt-2 border-t border-dashed">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground mb-2">
-          <Activity className="h-3.5 w-3.5" />
-          Activity Log ({logs.length})
+      {/* Schedules */}
+      {data.schedules.length > 0 && (
+        <>
+          <Separator />
+          <div>
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+              Schedules ({data.schedules.length})
+            </h4>
+            <div className="flex flex-wrap gap-2">
+              {data.schedules.map((s: any) => (
+                <Badge key={s.id} variant="outline" className="text-[11px] gap-1.5">
+                  <Calendar className="h-3 w-3" />
+                  <span className="capitalize">{s.day_of_week}</span> · {s.student_local_time?.slice(0, 5)}
+                  {!s.is_active && <span className="text-muted-foreground">(inactive)</span>}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+function HistoryPanel({ data }: { data: any }) {
+  const { history, audit, pMap, sMap } = data;
+  const FIELD_LABELS: Record<string, string> = {
+    status: 'Status',
+    payout_amount: 'Payout',
+    payout_type: 'Payout Type',
+    effective_from_date: 'Effective From',
+    effective_to_date: 'Effective To',
+    teacher_id: 'Teacher',
+    subject_id: 'Subject',
+    duration_minutes: 'Duration (min)',
+    transfer_type: 'Transfer Type',
+    start_date: 'Start Date',
+  };
+
+  const resolveLabel = (field: string, value: string | null) => {
+    if (value === null || value === undefined || value === '') return '—';
+    if (field === 'teacher_id') return pMap.get(value) || value;
+    if (field === 'subject_id') return sMap.get(value) || value;
+    if (field === 'payout_amount') return Number(value).toLocaleString();
+    return value;
+  };
+
+  const totalRows = history.length + audit.length;
+
+  return (
+    <section className="rounded-xl border bg-card p-5 space-y-3">
+      <header className="flex items-center gap-2">
+        <History className="h-4 w-4 text-muted-foreground" />
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          Change History ({totalRows})
+        </h3>
+      </header>
+
+      {totalRows === 0 ? (
+        <div className="flex flex-col items-center justify-center py-10 gap-2 text-muted-foreground">
+          <History className="h-8 w-8 opacity-40" />
+          <p className="text-sm">No history recorded yet</p>
         </div>
-        {logs.length === 0 ? (
-          <p className="text-xs text-muted-foreground italic">No activity recorded.</p>
-        ) : (
-          <ol className="relative border-l border-muted pl-4 space-y-2">
-            {logs.map((l: any) => (
-              <li key={l.id} className="relative">
-                <span className="absolute -left-[21px] top-1.5 h-2 w-2 rounded-full bg-primary" />
-                <div className="text-xs flex flex-wrap items-baseline gap-1.5">
-                  <span className="text-muted-foreground">{formatDisplayDate(l.changed_at)}</span>
-                  <span className="text-muted-foreground">·</span>
-                  {l.event_type === 'created' ? (
-                    <span className="font-medium">Assignment created with status <code className="px-1 rounded bg-muted text-[11px]">{l.new_label}</code></span>
-                  ) : (
-                    <span className="font-medium">
-                      {FIELD_LABELS[l.field_name] || l.field_name} changed:{' '}
-                      <code className="px-1 rounded bg-muted text-[11px]">{l.old_label ?? '—'}</code>
-                      {' → '}
-                      <code className="px-1 rounded bg-muted text-[11px]">{l.new_label ?? '—'}</code>
-                    </span>
-                  )}
-                  {l.changed_by_name && (
-                    <span className="text-muted-foreground">by {l.changed_by_name}</span>
-                  )}
-                </div>
-                {l.reason && (
-                  <div className="text-[11px] text-muted-foreground italic mt-0.5">Reason: {l.reason}</div>
-                )}
-              </li>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[180px]">Date</TableHead>
+              <TableHead>Change</TableHead>
+              <TableHead>Previous</TableHead>
+              <TableHead>New</TableHead>
+              <TableHead>By / Reason</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {audit.map((r: any) => (
+              <TableRow key={`a-${r.id}`}>
+                <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                  {r.changed_at ? formatDisplayDateTime(r.changed_at) : '—'}
+                </TableCell>
+                <TableCell className="text-sm font-medium">
+                  {r.event_type === 'created' ? 'Assignment created' : (FIELD_LABELS[r.field_name] || r.field_name)}
+                </TableCell>
+                <TableCell className="text-xs"><code className="px-1 rounded bg-muted">{resolveLabel(r.field_name, r.old_value)}</code></TableCell>
+                <TableCell className="text-xs"><code className="px-1 rounded bg-muted">{resolveLabel(r.field_name, r.new_value)}</code></TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {r.changed_by ? pMap.get(r.changed_by) || '—' : '—'}
+                  {r.reason && <div className="italic mt-0.5">{r.reason}</div>}
+                </TableCell>
+              </TableRow>
             ))}
-          </ol>
-        )}
+            {history.map((h: any) => (
+              <TableRow key={`h-${h.id}`}>
+                <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                  {h.created_at ? formatDisplayDateTime(h.created_at) : '—'}
+                </TableCell>
+                <TableCell className="text-sm font-medium">Assignment period</TableCell>
+                <TableCell className="text-xs">
+                  {h.started_at ? formatDisplayDate(h.started_at) : '—'}
+                </TableCell>
+                <TableCell className="text-xs">
+                  {h.ended_at ? formatDisplayDate(h.ended_at) : 'ongoing'}
+                </TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {h.teacher_id ? pMap.get(h.teacher_id) || '—' : '—'}
+                  {h.reason && <div className="italic mt-0.5">{h.reason}</div>}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </section>
+  );
+}
+
+function PersonCard({
+  icon, title, person, showLocation,
+}: { icon: React.ReactNode; title: string; person: any; showLocation?: boolean }) {
+  if (!person) {
+    return (
+      <div className="rounded-lg border border-dashed bg-muted/20 p-3">
+        <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
+          {icon}{title}
+        </div>
+        <p className="text-sm italic text-muted-foreground mt-2">Not available</p>
       </div>
+    );
+  }
+  return (
+    <div className="rounded-lg border bg-muted/10 p-3 space-y-1.5">
+      <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
+        {icon}{title}
+      </div>
+      <p className="text-sm font-semibold">{person.full_name || '—'}</p>
+      {person.email && (
+        <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Mail className="h-3 w-3" />{person.email}</p>
+      )}
+      {person.whatsapp_number && (
+        <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Phone className="h-3 w-3" />{person.whatsapp_number}</p>
+      )}
+      {person.timezone && (
+        <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Globe className="h-3 w-3" />{person.timezone}</p>
+      )}
+      {showLocation && (person.city || person.country) && (
+        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+          <MapPin className="h-3 w-3" />{[person.city, person.country].filter(Boolean).join(', ')}
+        </p>
+      )}
     </div>
   );
 }
