@@ -1293,15 +1293,20 @@ export default function UserManagement() {
     [users, divMembershipMap]
   );
 
-  const hasActiveFilters = !!filterCountry || !!filterCity || !!filterRole || !!filterDivision || showArchived;
+  const hasActiveFilters = !!filterCountry || !!filterCity || !!filterRole || !!filterStatus || !!filterGender || !!filterDivision || showArchived || !!searchTerm;
 
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const resetFilters = () => {
     setFilterCountry('');
     setFilterCity('');
     setFilterRole('');
+    setFilterStatus('');
+    setFilterGender('');
     setFilterDivision('');
     setSearchTerm('');
     setShowArchived(false);
+    // Auto-focus the search input after reset
+    setTimeout(() => searchInputRef.current?.focus(), 0);
   };
 
   const getRoleTemplate = (role: AppRole | null) => {
