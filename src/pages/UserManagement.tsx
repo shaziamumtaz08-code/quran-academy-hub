@@ -2062,7 +2062,7 @@ export default function UserManagement() {
                             <div className="flex justify-end gap-1">
                               <UserStatusPopover
                                 user={user}
-                                onChangeStatus={(role, status) => updateRoleStatusMutation.mutate({ userId: user.id, role, status })}
+                                onChangeStatus={(role, status) => { setStatusEffectiveDate(new Date().toISOString().slice(0,10)); setPendingStatusChange({ userId: user.id, userName: user.full_name || user.email || 'User', role, status }); }}
                                 onArchive={(archive) => archiveMutation.mutate({ userId: user.id, archive })}
                               />
                               <Button
