@@ -796,12 +796,12 @@ export default function Assignments() {
         </div>
 
         {/* Status Summary */}
-        {(statusCounts.paused > 0 || statusCounts.completed > 0) && (
+        {(statusCounts.on_hold > 0 || statusCounts.completed > 0) && (
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            {statusCounts.paused > 0 && (
+            {statusCounts.on_hold > 0 && (
               <span className="flex items-center gap-1.5">
                 <span className="h-2 w-2 rounded-full bg-amber-500" />
-                {statusCounts.paused} paused
+                {statusCounts.on_hold} on hold
               </span>
             )}
             {statusCounts.completed > 0 && (
