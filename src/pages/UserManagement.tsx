@@ -1778,7 +1778,7 @@ export default function UserManagement() {
                 </div>
 
                 {/* Role */}
-                <Select value={filterRole || 'all'} onValueChange={(v) => setFilterRole(v === 'all' ? '' : v)}>
+                <Select value={filterRole || 'all'} onValueChange={(v) => { const newRole = v === 'all' ? '' : v; setFilterRole(newRole); const map: Record<string, string[]> = { student: ['active','on_hold','completed','left','inactive'], teacher: ['active','inactive','left'], parent: ['active','inactive'], __admins__: ['active','inactive'], examiner: ['active','inactive'] }; if (filterStatus && newRole && map[newRole] && !map[newRole].includes(filterStatus)) setFilterStatus(''); }}>
                   <SelectTrigger className="w-[130px] h-9 rounded-lg bg-card text-sm">
                     <SelectValue placeholder="Role" />
                   </SelectTrigger>
