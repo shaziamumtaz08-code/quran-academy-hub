@@ -952,7 +952,6 @@ export default function Assignments() {
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="active">Active ({statusCounts.active})</SelectItem>
-                  <SelectItem value="paused">Paused ({statusCounts.paused})</SelectItem>
                   <SelectItem value="on_hold">On Hold ({statusCounts.on_hold})</SelectItem>
                   <SelectItem value="completed">Completed ({statusCounts.completed})</SelectItem>
                   <SelectItem value="left">Left ({statusCounts.left})</SelectItem>
