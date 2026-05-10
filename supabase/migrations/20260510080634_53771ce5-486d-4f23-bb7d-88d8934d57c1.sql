@@ -1,0 +1,1 @@
+ALTER TABLE public.student_teacher_assignments DROP CONSTRAINT IF EXISTS student_teacher_assignments_status_check;
