@@ -796,12 +796,12 @@ export default function Assignments() {
         </div>
 
         {/* Status Summary */}
-        {(statusCounts.paused > 0 || statusCounts.completed > 0) && (
+        {(statusCounts.on_hold > 0 || statusCounts.completed > 0) && (
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            {statusCounts.paused > 0 && (
+            {statusCounts.on_hold > 0 && (
               <span className="flex items-center gap-1.5">
                 <span className="h-2 w-2 rounded-full bg-amber-500" />
-                {statusCounts.paused} paused
+                {statusCounts.on_hold} on hold
               </span>
             )}
             {statusCounts.completed > 0 && (
@@ -952,7 +952,6 @@ export default function Assignments() {
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="active">Active ({statusCounts.active})</SelectItem>
-                  <SelectItem value="paused">Paused ({statusCounts.paused})</SelectItem>
                   <SelectItem value="on_hold">On Hold ({statusCounts.on_hold})</SelectItem>
                   <SelectItem value="completed">Completed ({statusCounts.completed})</SelectItem>
                   <SelectItem value="left">Left ({statusCounts.left})</SelectItem>

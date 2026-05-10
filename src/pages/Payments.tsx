@@ -397,6 +397,42 @@ export default function Payments() {
     enabled: invoices.length > 0 && activeTab === 'payments',
   });
 
+  // Fetch profile names for `recorded_by` so the Payments tab can show who recorded each payment
+  const recorderIds = useMemo(
+    () => Array.from(new Set((allTransactions as any[]).map((t) => t.recorded_by).filter(Boolean))),
+    [allTransactions],
+  );
+  const { data: recorderProfiles = [] } = useQuery({
+    queryKey: ['payment-recorders', recorderIds],
+    queryFn: async () => {
+      if (recorderIds.length === 0) return [];
+      const { data } = await supabase.from('profiles').select('id, full_name').in('id', recorderIds);
+      return data || [];
+    },
+    enabled: recorderIds.length > 0 && activeTab === 'payments',
+  });
+  const recorderMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    (recorderProfiles as any[]).forEach((p) => { m[p.id] = p.full_name; });
+    return m;
+  }, [recorderProfiles]);
+
+  // Payments tab — filter transactions by payment_date within the selected month
+  const paymentsTabTxns = useMemo(() => {
+    if (monthFilter === 'all') return allTransactions as any[];
+    const start = `${monthFilter}-01`;
+    let end: string;
+    try {
+      end = format(endOfMonth(parseISO(start)), 'yyyy-MM-dd');
+    } catch {
+      return allTransactions as any[];
+    }
+    return (allTransactions as any[]).filter((t) => {
+      if (!t.payment_date) return false;
+      return t.payment_date >= start && t.payment_date <= end;
+    });
+  }, [allTransactions, monthFilter]);
+
   const invoiceMapForHistory = useMemo(() => {
     const m: Record<string, any> = {};
     invoices.forEach(inv => {
@@ -1521,10 +1557,17 @@ export default function Payments() {
                 ? 'View and pay fees for your children'
                 : isStudentView
                   ? 'View your fee invoices'
-                  : (
-                    <>Manage invoices and fee plans{activeDivision?.name ? <> · <span className="text-foreground/70">{activeDivision.name}</span></> : null}</>
-                  )}
+                  : activeTab === 'payments'
+                    ? 'All received payment transactions across students'
+                    : (
+                      <>Manage invoices and fee plans{activeDivision?.name ? <> · <span className="text-foreground/70">{activeDivision.name}</span></> : null}</>
+                    )}
             </p>
+            {!isReadOnlyView && (activeTab === 'invoices' || activeTab === 'payments') && (
+              <p className="text-xs text-muted-foreground/80 mt-1">
+                Invoices = what is owed · Payments = what was received
+              </p>
+            )}
           </div>
           {!isReadOnlyView && (
             <div className="flex items-center gap-2 shrink-0">
@@ -1970,10 +2013,31 @@ export default function Payments() {
             </div>
           </TabsContent>
 
-          <TabsContent value="payments" className="mt-4">
+          <TabsContent value="payments" className="mt-4 space-y-4">
+            {/* Month Pill Navigator — same selector as Invoices tab */}
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <div className="flex-1 min-w-0">
+                <MonthPillNav
+                  value={monthFilter === 'all' ? currentBillingMonth : monthFilter}
+                  onChange={setMonthFilter}
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant={monthFilter === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-9 rounded-full"
+                  onClick={() => setMonthFilter('all')}
+                >
+                  All Months
+                </Button>
+              </div>
+            </div>
+
             <PaymentHistoryTable
-              transactions={allTransactions as any}
+              transactions={paymentsTabTxns as any}
               invoiceMap={invoiceMapForHistory}
+              profileMap={recorderMap}
               onViewReceipt={(tx) => {
                 const inv = invoices.find(i => i.id === tx.invoice_id);
                 if (inv) { setReceiptTransactions([tx]); setReceiptViewInvoice(inv); }
@@ -2776,7 +2840,7 @@ export default function Payments() {
         <Dialog open={!!receiptViewInvoice} onOpenChange={() => { setReceiptViewInvoice(null); setReceiptTransactions([]); }}>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2"><Eye className="h-5 w-5" /> Payment Receipt</DialogTitle>
+              <DialogTitle className="flex items-center gap-2"><Receipt className="h-5 w-5" /> Payment Record</DialogTitle>
               <DialogDescription>
                 {receiptViewInvoice?.profiles?.full_name} — {receiptViewInvoice && formatBillingMonth(receiptViewInvoice.billing_month)} • Invoice: {receiptViewInvoice?.currency} {Number(receiptViewInvoice?.amount || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
               </DialogDescription>
@@ -2791,14 +2855,12 @@ export default function Payments() {
                       {receiptTransactions.length > 1 && <p className="text-xs font-semibold text-muted-foreground">Transaction #{idx + 1}</p>}
                       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
                         <div><span className="text-muted-foreground">Payment Date:</span></div>
-                        <div className="font-medium">{tx.payment_date || '—'}</div>
+                        <div className="font-medium">{tx.payment_date ? format(parseISO(tx.payment_date), 'dd MMM yyyy') : '—'}</div>
                         <div><span className="text-muted-foreground">Receiving Channel:</span></div>
                         <div className="font-medium">{tx.payment_method || '—'}</div>
                         <div><span className="text-muted-foreground">Amount ({tx.currency_foreign}):</span></div>
                         <div className="font-mono font-semibold">{Number(tx.amount_foreign).toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
-                        <div><span className="text-muted-foreground">Realised (PKR):</span></div>
-                        <div className="font-mono font-semibold">{Number(tx.amount_local).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-                        {tx.effective_rate && (
+                        {tx.effective_rate && tx.currency_foreign !== 'PKR' && (
                           <>
                             <div><span className="text-muted-foreground">Exchange Rate:</span></div>
                             <div className="font-mono">1 {tx.currency_foreign} = {Number(tx.effective_rate).toFixed(2)} PKR</div>
@@ -2822,7 +2884,14 @@ export default function Payments() {
                 </div>
               )}
             </ScrollArea>
-            <DialogFooter>
+            <DialogFooter className="sm:justify-between gap-2">
+              {receiptViewInvoice && (
+                <Button asChild variant="outline" size="sm" className="gap-1.5">
+                  <a href={`/finance/print/invoice/${receiptViewInvoice.id}`} target="_blank" rel="noreferrer">
+                    Invoice <ChevronRight className="h-3.5 w-3.5" />
+                  </a>
+                </Button>
+              )}
               <Button variant="outline" onClick={() => { setReceiptViewInvoice(null); setReceiptTransactions([]); }}>Close</Button>
             </DialogFooter>
           </DialogContent>
