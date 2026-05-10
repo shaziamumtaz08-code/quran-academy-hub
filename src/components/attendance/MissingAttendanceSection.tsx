@@ -159,7 +159,7 @@ export function MissingAttendanceSection({
             )
           `)
           .eq('is_active', true)
-          .in('student_teacher_assignments.status', ['active', 'paused', 'left', 'completed'])
+          .in('student_teacher_assignments.status', ['active', 'left', 'completed'])
           .eq('student_teacher_assignments.requires_attendance', true);
 
       if (teacherId) {
@@ -620,7 +620,7 @@ export function useMissingAttendanceCount(
             )
           `)
           .eq('is_active', true)
-          .in('student_teacher_assignments.status', ['active', 'paused', 'left', 'completed'])
+          .in('student_teacher_assignments.status', ['active', 'left', 'completed'])
           .eq('student_teacher_assignments.requires_attendance', true);
 
       if (teacherId) {
