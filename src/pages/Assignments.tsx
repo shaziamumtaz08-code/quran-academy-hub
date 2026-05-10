@@ -387,7 +387,7 @@ export default function Assignments() {
         await supabase.from('student_billing_plans')
           .update({ is_active: false, updated_at: new Date().toISOString() })
           .eq('assignment_id', id);
-      } else if (status === 'active' && (fromStatus === 'paused' || fromStatus === 'on_hold' || fromStatus === 'completed')) {
+      } else if (status === 'active' && (fromStatus === 'on_hold' || fromStatus === 'completed')) {
         await supabase.from('student_billing_plans')
           .update({ is_active: true, updated_at: new Date().toISOString() })
           .eq('assignment_id', id);
@@ -671,7 +671,6 @@ export default function Assignments() {
 
   const statusCounts = {
     active: assignments.filter(a => a.status === 'active').length,
-    paused: assignments.filter(a => a.status === 'paused').length,
     on_hold: assignments.filter(a => a.status === 'on_hold').length,
     completed: assignments.filter(a => a.status === 'completed').length,
     left: assignments.filter(a => a.status === 'left').length,

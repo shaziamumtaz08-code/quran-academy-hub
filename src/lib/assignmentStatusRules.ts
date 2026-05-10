@@ -36,7 +36,6 @@ export const ASSIGNMENT_STATUS_RULES: Record<AssignmentStatus, StatusRule> = {
     terminal: false,
   },
   on_hold: {
-    long: 'On Hold',
     label: 'On Hold',
     dotClass: 'bg-orange-500',
     indicatorKey: 'on_hold',
@@ -47,7 +46,7 @@ export const ASSIGNMENT_STATUS_RULES: Record<AssignmentStatus, StatusRule> = {
     scheduleVisible: true,
     requiresConfirmation: true,
     terminal: false,
-  } as StatusRule,
+  },
   completed: {
     label: 'Completed',
     dotClass: 'bg-blue-500',
