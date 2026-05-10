@@ -120,7 +120,7 @@ export function AssignmentDetailDialog({ assignmentId, onClose }: Props) {
           .limit(10),
       ]);
 
-      return { a, history: history || [], siblings: siblings || [], plan, schedules: schedules || [], attendance: attendance || [], invoices: invoices || [], payouts: payouts || [] };
+      return { a, history: hydratedHistory, siblings: siblings || [], plan, schedules: schedules || [], attendance: attendance || [], invoices: invoices || [], payouts: payouts || [] };
     },
   });
 
