@@ -1111,15 +1111,7 @@ export default function UserManagement() {
     return () => clearInterval(t);
   }, [searchTerm]);
 
-  // Quick-category filter pills — maps to existing filterRole
-  type CategoryPill = 'all' | 'student' | 'teacher' | 'staff';
-  const activeCategory: CategoryPill = useMemo(() => {
-    if (!filterRole) return 'all';
-    if (filterRole === 'student') return 'student';
-    if (filterRole === 'teacher') return 'teacher';
-    if (['admin', 'super_admin', 'admin_division', 'admin_admissions', 'admin_fees', 'admin_academic', 'examiner'].includes(filterRole)) return 'staff';
-    return 'all';
-  }, [filterRole]);
+  // (Quick-category pill helper removed — replaced by compact Role dropdown)
 
   // One-click "Assign to current filtered division" mutation
   const assignDivisionMutation = useMutation({
