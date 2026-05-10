@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { formatDisplayDate } from '@/lib/dateFormat';
 import { getStatusRule } from '@/lib/assignmentStatusRules';
 import { cn } from '@/lib/utils';
-import { Calendar, User, GraduationCap, BookOpen, Banknote, Clock, History, FileText, ArrowRight } from 'lucide-react';
+import { Calendar, User, GraduationCap, BookOpen, Banknote, Clock, History, FileText, ArrowRight, Activity } from 'lucide-react';
 
 interface Props {
   assignmentId: string | null;
@@ -24,6 +24,19 @@ const SELECT = `
   parent_assignment:student_teacher_assignments!student_teacher_assignments_parent_assignment_id_fkey(id, teacher:profiles!student_teacher_assignments_teacher_id_fkey(full_name))
 `;
 
+const FIELD_LABELS: Record<string, string> = {
+  status: 'Status',
+  payout_amount: 'Payout',
+  payout_type: 'Payout Type',
+  effective_from_date: 'Effective From',
+  effective_to_date: 'Effective To',
+  teacher_id: 'Teacher',
+  subject_id: 'Subject',
+  duration_minutes: 'Duration (min)',
+  transfer_type: 'Transfer Type',
+  start_date: 'Start Date',
+};
+
 export function AssignmentDetailDialog({ assignmentId, onClose }: Props) {
   const open = !!assignmentId;
 
@@ -38,7 +51,6 @@ export function AssignmentDetailDialog({ assignmentId, onClose }: Props) {
         .select(SELECT)
         .eq('id', assignmentId)
         .maybeSingle();
-
       if (!a) return null;
 
       const { data: siblings } = await supabase
@@ -47,7 +59,47 @@ export function AssignmentDetailDialog({ assignmentId, onClose }: Props) {
         .eq('student_id', (a as any).student_id)
         .order('created_at', { ascending: false });
 
-      return { a: a as any, siblings: (siblings as any[]) || [] };
+      const allIds = ((siblings as any[]) || [a]).map((s: any) => s.id);
+      const { data: logs } = await supabase
+        .from('assignment_audit_log' as any)
+        .select('*')
+        .in('assignment_id', allIds)
+        .order('changed_at', { ascending: false });
+
+      // Hydrate teacher/subject names referenced in old/new values
+      const refIds = new Set<string>();
+      (logs || []).forEach((l: any) => {
+        if (l.field_name === 'teacher_id' || l.field_name === 'subject_id') {
+          if (l.old_value) refIds.add(l.old_value);
+          if (l.new_value) refIds.add(l.new_value);
+        }
+        if (l.changed_by) refIds.add(l.changed_by);
+      });
+      const refIdsArr = Array.from(refIds);
+      const [{ data: profs }, { data: subs }] = await Promise.all([
+        refIdsArr.length
+          ? supabase.from('profiles').select('id, full_name').in('id', refIdsArr)
+          : Promise.resolve({ data: [] as any[] }),
+        refIdsArr.length
+          ? supabase.from('subjects').select('id, name').in('id', refIdsArr)
+          : Promise.resolve({ data: [] as any[] }),
+      ]);
+      const pMap = new Map((profs || []).map((p: any) => [p.id, p.full_name]));
+      const sMap = new Map((subs || []).map((s: any) => [s.id, s.name]));
+
+      const logsByAssignment = new Map<string, any[]>();
+      (logs || []).forEach((l: any) => {
+        const arr = logsByAssignment.get(l.assignment_id) || [];
+        arr.push({
+          ...l,
+          changed_by_name: l.changed_by ? pMap.get(l.changed_by) : null,
+          old_label: resolveLabel(l.field_name, l.old_value, pMap, sMap),
+          new_label: resolveLabel(l.field_name, l.new_value, pMap, sMap),
+        });
+        logsByAssignment.set(l.assignment_id, arr);
+      });
+
+      return { a: a as any, siblings: (siblings as any[]) || [], logsByAssignment };
     },
   });
 
@@ -61,7 +113,7 @@ export function AssignmentDetailDialog({ assignmentId, onClose }: Props) {
             <FileText className="h-5 w-5" />
             Assignment Details
           </DialogTitle>
-          <DialogDescription>Full current assignment record and full history of previous assignments / reassignments.</DialogDescription>
+          <DialogDescription>Full assignment record with complete activity log of every change.</DialogDescription>
         </DialogHeader>
 
         {isLoading || !data ? (
@@ -71,7 +123,7 @@ export function AssignmentDetailDialog({ assignmentId, onClose }: Props) {
           </div>
         ) : (
           <div className="space-y-6">
-            <AssignmentCard a={data.a} current />
+            <AssignmentCard a={data.a} logs={data.logsByAssignment.get(data.a.id) || []} current />
 
             <div className="space-y-2">
               <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
@@ -83,7 +135,9 @@ export function AssignmentDetailDialog({ assignmentId, onClose }: Props) {
                 <p className="text-sm text-muted-foreground italic py-3 text-center">No previous assignments for this student.</p>
               ) : (
                 <div className="space-y-3">
-                  {previous.map((s: any) => <AssignmentCard key={s.id} a={s} />)}
+                  {previous.map((s: any) => (
+                    <AssignmentCard key={s.id} a={s} logs={data.logsByAssignment.get(s.id) || []} />
+                  ))}
                 </div>
               )}
             </div>
@@ -94,7 +148,15 @@ export function AssignmentDetailDialog({ assignmentId, onClose }: Props) {
   );
 }
 
-function AssignmentCard({ a, current = false }: { a: any; current?: boolean }) {
+function resolveLabel(field: string, value: string | null, pMap: Map<string, any>, sMap: Map<string, any>) {
+  if (value === null || value === undefined || value === '') return '—';
+  if (field === 'teacher_id') return pMap.get(value) || value;
+  if (field === 'subject_id') return sMap.get(value) || value;
+  if (field === 'payout_amount') return Number(value).toLocaleString();
+  return value;
+}
+
+function AssignmentCard({ a, logs, current = false }: { a: any; logs: any[]; current?: boolean }) {
   const rule = getStatusRule(a.status as any);
   const pa: any = Array.isArray(a.parent_assignment) ? a.parent_assignment[0] : a.parent_assignment;
   const pt = pa ? (Array.isArray(pa.teacher) ? pa.teacher[0] : pa.teacher) : null;
@@ -171,6 +233,45 @@ function AssignmentCard({ a, current = false }: { a: any; current?: boolean }) {
           Reason: {a.status_change_reason}
         </div>
       )}
+
+      {/* Activity timeline */}
+      <div className="pt-2 border-t border-dashed">
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground mb-2">
+          <Activity className="h-3.5 w-3.5" />
+          Activity Log ({logs.length})
+        </div>
+        {logs.length === 0 ? (
+          <p className="text-xs text-muted-foreground italic">No activity recorded.</p>
+        ) : (
+          <ol className="relative border-l border-muted pl-4 space-y-2">
+            {logs.map((l: any) => (
+              <li key={l.id} className="relative">
+                <span className="absolute -left-[21px] top-1.5 h-2 w-2 rounded-full bg-primary" />
+                <div className="text-xs flex flex-wrap items-baseline gap-1.5">
+                  <span className="text-muted-foreground">{formatDisplayDate(l.changed_at)}</span>
+                  <span className="text-muted-foreground">·</span>
+                  {l.event_type === 'created' ? (
+                    <span className="font-medium">Assignment created with status <code className="px-1 rounded bg-muted text-[11px]">{l.new_label}</code></span>
+                  ) : (
+                    <span className="font-medium">
+                      {FIELD_LABELS[l.field_name] || l.field_name} changed:{' '}
+                      <code className="px-1 rounded bg-muted text-[11px]">{l.old_label ?? '—'}</code>
+                      {' → '}
+                      <code className="px-1 rounded bg-muted text-[11px]">{l.new_label ?? '—'}</code>
+                    </span>
+                  )}
+                  {l.changed_by_name && (
+                    <span className="text-muted-foreground">by {l.changed_by_name}</span>
+                  )}
+                </div>
+                {l.reason && (
+                  <div className="text-[11px] text-muted-foreground italic mt-0.5">Reason: {l.reason}</div>
+                )}
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
     </div>
   );
 }
