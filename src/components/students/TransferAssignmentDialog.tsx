@@ -132,7 +132,7 @@ export function TransferAssignmentDialog({
         await sb
           .from('student_teacher_assignments')
           .update({
-            status: 'paused',
+            status: 'on_hold',
             status_effective_date: effectiveDate,
           })
           .eq('id', assignmentId);
@@ -188,7 +188,7 @@ export function TransferAssignmentDialog({
         title: transferType === 'permanent' ? 'Student Transferred' : 'Substitute Assigned',
         description: transferType === 'permanent'
           ? `${studentName} has been permanently transferred. Previous teacher's records are preserved.`
-          : `${studentName} has a temporary substitute. Original assignment is paused and will resume after the substitute period.`,
+          : `${studentName} has a temporary substitute. Original assignment is on hold and will resume after the substitute period.`,
       });
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
       queryClient.invalidateQueries({ queryKey: ['students'] });
@@ -255,7 +255,7 @@ export function TransferAssignmentDialog({
               >
                 <p className="text-sm font-bold">Temporary</p>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Original teacher paused. Resumes after substitute period.
+                  Original teacher on hold. Resumes after substitute period.
                 </p>
               </button>
             </div>
@@ -322,7 +322,7 @@ export function TransferAssignmentDialog({
               {transferType === 'permanent' ? (
                 <>All attendance, lesson history, and salary records under {currentTeacherName} are <strong>preserved</strong>. The old assignment will be marked as completed.</>
               ) : (
-                <>{currentTeacherName}'s assignment will be <strong>paused</strong> (not deleted). When the substitute period ends, you can reactivate it from the assignments page.</>
+                <>{currentTeacherName}'s assignment will be <strong>placed on hold</strong> (not deleted). When the substitute period ends, you can reactivate it from the assignments page.</>
               )}
             </div>
           </div>

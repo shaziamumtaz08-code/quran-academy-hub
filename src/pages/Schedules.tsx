@@ -83,7 +83,7 @@ const getCountryCode = (country: string | null | undefined) => {
   return c.slice(0, 2).toUpperCase();
 };
 
-type AssignmentStatus = 'active' | 'paused' | 'completed';
+type AssignmentStatus = 'active' | 'on_hold' | 'completed';
 
 interface Assignment {
   id: string;

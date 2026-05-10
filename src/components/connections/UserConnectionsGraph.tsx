@@ -67,7 +67,7 @@ const REL_STYLE: Record<Exclude<RelKind, 'self'>, {
 const STATUS_DOT: Record<string, string> = {
   active: 'bg-green-500',
   completed: 'bg-blue-500',
-  paused: 'bg-gray-400',
+  on_hold: 'bg-gray-400',
   ended: 'bg-red-400',
   cancelled: 'bg-red-400',
   withdrawn: 'bg-red-400',

@@ -511,7 +511,6 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="paused">Paused</SelectItem>
                       <SelectItem value="left">Left</SelectItem>
                     </SelectContent>
                   </Select>

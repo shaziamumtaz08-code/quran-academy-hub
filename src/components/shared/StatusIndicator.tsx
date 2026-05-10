@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 
 type StatusVariant = 'paid' | 'partially_paid' | 'pending' | 'overdue' | 'waived' | 'adjusted' |
   'present' | 'student_absent' | 'student_leave' | 'teacher_absent' | 'teacher_leave' | 'rescheduled' | 'student_rescheduled' | 'holiday' |
-  'active' | 'paused' | 'on_hold' | 'completed' | 'left' | 'inactive' |
+  'active' | 'on_hold' | 'completed' | 'left' | 'inactive' |
   'live' | 'scheduled' | 'cooldown';
 
 const STATUS_MAP: Record<StatusVariant, { label: string; icon: typeof CheckCircle; className: string }> = {
