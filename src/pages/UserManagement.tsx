@@ -1038,12 +1038,12 @@ export default function UserManagement() {
     },
   });
 
-  // Update per-role status (auto-archive on left/completed)
+  // Update per-role status (auto-archive on left/completed) with effective date
   const updateRoleStatusMutation = useMutation({
-    mutationFn: async ({ userId, role, status }: { userId: string; role: AppRole; status: RoleStatus }) => {
+    mutationFn: async ({ userId, role, status, effectiveDate }: { userId: string; role: AppRole; status: RoleStatus; effectiveDate: string }) => {
       const { error } = await supabase
         .from('user_roles')
-        .update({ status })
+        .update({ status, status_changed_at: effectiveDate })
         .eq('user_id', userId)
         .eq('role', role);
       if (error) throw error;
@@ -1052,7 +1052,7 @@ export default function UserManagement() {
       if (status === 'left' || status === 'completed') {
         await supabase
           .from('profiles')
-          .update({ archived_at: new Date().toISOString() })
+          .update({ archived_at: effectiveDate })
           .eq('id', userId)
           .is('archived_at', null);
       }
@@ -1066,6 +1066,10 @@ export default function UserManagement() {
       toast({ title: 'Failed', description: e instanceof Error ? e.message : 'Could not update status', variant: 'destructive' });
     },
   });
+
+  // Pending status change requiring effective date confirmation
+  const [pendingStatusChange, setPendingStatusChange] = useState<{ userId: string; userName: string; role: AppRole; status: RoleStatus } | null>(null);
+  const [statusEffectiveDate, setStatusEffectiveDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
 
   // Fetch divisions for filter dropdown
   const { data: allDivisions = [] } = useQuery({
@@ -2058,7 +2062,7 @@ export default function UserManagement() {
                             <div className="flex justify-end gap-1">
                               <UserStatusPopover
                                 user={user}
-                                onChangeStatus={(role, status) => updateRoleStatusMutation.mutate({ userId: user.id, role, status })}
+                                onChangeStatus={(role, status) => { setStatusEffectiveDate(new Date().toISOString().slice(0,10)); setPendingStatusChange({ userId: user.id, userName: user.full_name || user.email || 'User', role, status }); }}
                                 onArchive={(archive) => archiveMutation.mutate({ userId: user.id, archive })}
                               />
                               <Button
@@ -2340,7 +2344,7 @@ export default function UserManagement() {
                               {/* Status — icon button opens popover with per-role status (and Apply to all) */}
                               <UserStatusPopover
                                 user={user}
-                                onChangeStatus={(role, status) => updateRoleStatusMutation.mutate({ userId: user.id, role, status })}
+                                onChangeStatus={(role, status) => { setStatusEffectiveDate(new Date().toISOString().slice(0,10)); setPendingStatusChange({ userId: user.id, userName: user.full_name || user.email || 'User', role, status }); }}
                                 onArchive={(archive) => archiveMutation.mutate({ userId: user.id, archive })}
                               />
 
@@ -3145,6 +3149,48 @@ export default function UserManagement() {
           onOpenChange={(o) => !o && setHolisticUserId(null)}
           userId={holisticUserId}
         />
+
+        {/* Status Change — Effective Date Dialog */}
+        <Dialog open={!!pendingStatusChange} onOpenChange={(o) => !o && setPendingStatusChange(null)}>
+          <DialogContent className="sm:max-w-[420px]">
+            <DialogHeader>
+              <DialogTitle>Change Status</DialogTitle>
+              <DialogDescription>
+                {pendingStatusChange && (
+                  <>Set <span className="font-medium text-foreground">{pendingStatusChange.userName}</span>'s <span className="font-medium text-foreground capitalize">{pendingStatusChange.role}</span> status to <span className="font-medium text-foreground capitalize">{pendingStatusChange.status.replace('_',' ')}</span>. Choose the effective date.</>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 py-2">
+              <label className="text-sm font-medium">Effective date</label>
+              <Input
+                type="date"
+                value={statusEffectiveDate}
+                max={new Date().toISOString().slice(0,10)}
+                onChange={(e) => setStatusEffectiveDate(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">Defaults to today. Use a past date for back-dated changes.</p>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setPendingStatusChange(null)}>Cancel</Button>
+              <Button
+                onClick={() => {
+                  if (!pendingStatusChange || !statusEffectiveDate) return;
+                  updateRoleStatusMutation.mutate({
+                    userId: pendingStatusChange.userId,
+                    role: pendingStatusChange.role,
+                    status: pendingStatusChange.status,
+                    effectiveDate: new Date(statusEffectiveDate).toISOString(),
+                  });
+                  setPendingStatusChange(null);
+                }}
+                disabled={!statusEffectiveDate || updateRoleStatusMutation.isPending}
+              >
+                Confirm
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
