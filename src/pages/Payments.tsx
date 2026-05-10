@@ -1521,10 +1521,17 @@ export default function Payments() {
                 ? 'View and pay fees for your children'
                 : isStudentView
                   ? 'View your fee invoices'
-                  : (
-                    <>Manage invoices and fee plans{activeDivision?.name ? <> · <span className="text-foreground/70">{activeDivision.name}</span></> : null}</>
-                  )}
+                  : activeTab === 'payments'
+                    ? 'All received payment transactions across students'
+                    : (
+                      <>Manage invoices and fee plans{activeDivision?.name ? <> · <span className="text-foreground/70">{activeDivision.name}</span></> : null}</>
+                    )}
             </p>
+            {!isReadOnlyView && (activeTab === 'invoices' || activeTab === 'payments') && (
+              <p className="text-xs text-muted-foreground/80 mt-1">
+                Invoices = what is owed · Payments = what was received
+              </p>
+            )}
           </div>
           {!isReadOnlyView && (
             <div className="flex items-center gap-2 shrink-0">
