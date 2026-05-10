@@ -361,158 +361,106 @@ export function StudentFeePortal({
         </div>
       </div>
 
-      {/* INVOICE CARD — clean 2-col grid */}
-      {activeInvoice ? (() => {
-        const isFuture = activeInvoice.billing_month > cbm;
+      {/* PAYMENT HISTORY — combined invoice + payment rows */}
+      {(() => {
+        const today = startOfDay(new Date());
+        // Build one row per invoice (past + current), newest first
+        const rows = studentInvoices
+          .filter(inv => inv.billing_month <= cbm)
+          .slice()
+          .sort((a, b) => b.billing_month.localeCompare(a.billing_month))
+          .map(inv => {
+            const txns = (transactions as any[])
+              .filter(t => t.invoice_id === inv.id)
+              .sort((a, b) => (b.payment_date || '').localeCompare(a.payment_date || ''));
+            const latest = txns[0] || null;
+            const isOverdue =
+              ['pending', 'overdue', 'partially_paid'].includes(inv.status) &&
+              inv.due_date && isBefore(parseISO(inv.due_date), today);
+            const effectiveStatus =
+              inv.status === 'paid' ? 'paid'
+              : inv.status === 'partially_paid' ? 'partially_paid'
+              : isOverdue ? 'overdue'
+              : inv.status;
+            return { inv, latest, effectiveStatus };
+          });
+        const visible = showAllTxns ? rows : rows.slice(0, 12);
+
         return (
-          <div className="bg-card rounded-2xl border border-border shadow-sm p-5">
-            <div className="flex items-start justify-between gap-3 mb-4">
-              <div className="min-w-0">
-                <h3 className="text-base font-semibold">{formatBM(activeInvoice.billing_month)} Invoice</h3>
-                <p className="text-[11px] text-muted-foreground mt-0.5">#{activeInvoice.id.slice(0, 8).toUpperCase()}</p>
+          <div>
+            <h3 className="text-base font-semibold mb-3">Payment History</h3>
+            {rows.length === 0 ? (
+              <div className="bg-card rounded-xl border border-dashed border-border p-6 text-center">
+                <Receipt className="h-6 w-6 text-muted-foreground/50 mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">No invoices yet</p>
               </div>
-              {isFuture ? (
-                <Badge className="text-[10px] px-2 py-0.5 bg-blue-100 text-blue-800 border-blue-200">Upcoming</Badge>
-              ) : (
-                <Badge className={cn('text-[10px] px-2 py-0.5', statusBadgeClass(activeInvoice.status))}>
-                  {statusLabel(activeInvoice.status)}
-                </Badge>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-              <div className="text-xs text-muted-foreground">Description</div>
-              <div className="text-sm font-semibold text-right">Monthly Tuition Fee</div>
-
-              {activeInvoice.period_from && activeInvoice.period_to && (
-                <>
-                  <div className="text-xs text-muted-foreground">Period</div>
-                  <div className="text-sm font-semibold text-right">
-                    {format(parseISO(activeInvoice.period_from), 'dd MMM')} – {format(parseISO(activeInvoice.period_to), 'dd MMM yyyy')}
-                  </div>
-                </>
-              )}
-
-              <div className="text-xs text-muted-foreground">Amount</div>
-              <div className="text-right">
-                <div className="text-sm font-bold tabular-nums">
-                  {activeInvoice.currency} {Number(activeInvoice.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                </div>
-                {activeInvoice.currency !== 'PKR' && (
-                  <div className="text-[11px] text-muted-foreground tabular-nums">
-                    ≈ PKR {(Number(activeInvoice.amount) * (getRate(activeInvoice.currency) || 1)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                  </div>
-                )}
-              </div>
-
-              {activeInvoice.due_date && (
-                <>
-                  <div className="text-xs text-muted-foreground">Due Date</div>
-                  <div className="text-sm font-semibold text-right">{format(parseISO(activeInvoice.due_date), 'dd MMM yyyy')}</div>
-                </>
-              )}
-
-              {(activeInvoice.status === 'paid' || activeInvoice.status === 'partially_paid') && activeInvoice.paid_at && (
-                <>
-                  <div className="text-xs text-muted-foreground">Paid On</div>
-                  <div className="text-sm font-semibold text-right">{format(parseISO(activeInvoice.paid_at), 'dd MMM yyyy')}</div>
-                </>
-              )}
-            </div>
-
-            {activeInvoice.status === 'partially_paid' && (() => {
-              const paid = ledgerPaidMap[activeInvoice.id] || 0;
-              const total = Number(activeInvoice.amount);
-              const remaining = Math.max(0, total - paid);
-              const pct = total > 0 ? Math.min(100, (paid / total) * 100) : 0;
-              return (
-                <div className="mt-4 pt-3 border-t border-border/50">
-                  <div className="flex justify-between text-[11px] mb-1">
-                    <span className="text-muted-foreground">{activeInvoice.currency} {paid.toLocaleString(undefined, { minimumFractionDigits: 2 })} paid</span>
-                    <span className="font-medium">of {activeInvoice.currency} {total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                  </div>
-                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                    <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
-                  </div>
-                  <p className="text-xs font-semibold text-amber-700 mt-1.5">
-                    Remaining: {activeInvoice.currency} {remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                  </p>
-                </div>
-              );
-            })()}
-
-            <div className="mt-4 pt-3 border-t border-border/50 flex justify-end">
-              <button
-                onClick={() => window.open(`/finance/print/invoice/${activeInvoice.id}`, '_blank')}
-                className="text-xs text-primary hover:underline inline-flex items-center gap-1 font-medium"
-              >
-                Open Invoice <ArrowRight className="h-3 w-3" />
-              </button>
-            </div>
-          </div>
-        );
-      })() : (
-        <div className="bg-card rounded-2xl border border-dashed border-border p-8 text-center">
-          <Calendar className="h-7 w-7 text-muted-foreground/50 mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">No invoice for {formatBM(activeMonth)}</p>
-        </div>
-      )}
-
-      {/* PAYMENT HISTORY */}
-      <div>
-        <h3 className="text-base font-semibold mb-3">Payment History</h3>
-        {transactions.length === 0 ? (
-          <div className="bg-card rounded-xl border border-dashed border-border p-6 text-center">
-            <Receipt className="h-6 w-6 text-muted-foreground/50 mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">No payments recorded yet</p>
-          </div>
-        ) : (
-          <div className="relative pl-5">
-            <div className="absolute left-[7px] top-2 bottom-2 w-px bg-border" />
-            <div className="space-y-2.5">
-              {visibleTxns.map((tx: any) => {
-                const inv = studentInvoices.find(i => i.id === tx.invoice_id);
-                const isPartial = inv?.status === 'partially_paid';
-                return (
-                  <div key={tx.id} className="relative">
-                    <div className={cn(
-                      'absolute -left-[18px] top-3 h-3 w-3 rounded-full ring-4 ring-background',
-                      isPartial ? 'bg-amber-500' : 'bg-emerald-500'
-                    )} />
-                    <div className="bg-card rounded-lg border border-border px-3.5 py-2.5 hover:shadow-sm transition-shadow">
-                      <div className="flex items-center justify-between gap-3 flex-wrap">
-                        <div className="flex items-center gap-3 flex-wrap text-sm min-w-0">
-                          <span className="font-medium tabular-nums whitespace-nowrap">
-                            {tx.payment_date ? format(parseISO(tx.payment_date), 'dd MMM yyyy') : '—'}
-                          </span>
-                          <span className="text-muted-foreground/40">·</span>
-                          <span className="font-bold tabular-nums whitespace-nowrap">
-                            {tx.currency_foreign} {Number(tx.amount_foreign).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                          </span>
-                          {tx.payment_method && (
-                            <>
-                              <span className="text-muted-foreground/40">·</span>
-                              <span className="text-xs text-muted-foreground">{tx.payment_method}</span>
-                            </>
-                          )}
+            ) : (
+              <div className="relative pl-5">
+                <div className="absolute left-[7px] top-2 bottom-2 w-px bg-border" />
+                <div className="space-y-2.5">
+                  {visible.map(({ inv, latest, effectiveStatus }) => {
+                    const isHighlight = inv.billing_month === activeMonth;
+                    return (
+                      <div key={inv.id} className="relative">
+                        <div className={cn(
+                          'absolute -left-[18px] top-3.5 h-3 w-3 rounded-full ring-4 ring-background',
+                          statusDot(effectiveStatus)
+                        )} />
+                        <div className={cn(
+                          'bg-card rounded-lg border px-3.5 py-2.5 hover:shadow-sm transition-shadow',
+                          isHighlight ? 'border-primary/60 shadow-sm' : 'border-border'
+                        )}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm font-semibold truncate">
+                                {formatBM(inv.billing_month)}
+                              </div>
+                              <div className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                                <span className="font-medium tabular-nums">
+                                  {(latest ? latest.currency_foreign : inv.currency)}{' '}
+                                  {Number(latest ? latest.amount_foreign : inv.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </span>
+                                {latest?.payment_method && (
+                                  <> <span className="text-muted-foreground/40">·</span> {latest.payment_method}</>
+                                )}
+                                {latest?.payment_date && (
+                                  <> <span className="text-muted-foreground/40">·</span> Paid {format(parseISO(latest.payment_date), 'dd MMM yyyy')}</>
+                                )}
+                                {!latest && inv.due_date && (
+                                  <> <span className="text-muted-foreground/40">·</span> Due {format(parseISO(inv.due_date), 'dd MMM yyyy')}</>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end gap-1.5 shrink-0">
+                              <Badge className={cn('text-[10px] px-2 py-0.5', statusBadgeClass(effectiveStatus))}>
+                                {statusLabel(effectiveStatus)}
+                              </Badge>
+                              <button
+                                onClick={() => window.open(`/finance/print/invoice/${inv.id}`, '_blank')}
+                                className="text-[11px] text-primary hover:underline inline-flex items-center gap-0.5 font-medium"
+                              >
+                                Invoice <ArrowRight className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            {!showAllTxns && transactions.length > 12 && (
-              <button
-                onClick={() => setShowAllTxns(true)}
-                className="mt-3 text-xs text-primary hover:underline ml-1"
-              >
-                Load more ({transactions.length - 12} more)
-              </button>
+                    );
+                  })}
+                </div>
+                {!showAllTxns && rows.length > 12 && (
+                  <button
+                    onClick={() => setShowAllTxns(true)}
+                    className="mt-3 text-xs text-primary hover:underline ml-1"
+                  >
+                    Load more ({rows.length - 12} more)
+                  </button>
+                )}
+              </div>
             )}
           </div>
-        )}
-      </div>
+        );
+      })()}
     </div>
   );
 }
