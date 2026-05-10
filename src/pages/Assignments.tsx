@@ -37,8 +37,7 @@ import { trackActivity } from '@/lib/activityLogger';
 
 const STATUS_CONFIG = {
   active: { label: 'Active', color: 'bg-emerald-500', badgeClass: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' },
-  paused: { label: 'Paused', color: 'bg-amber-500', badgeClass: 'bg-amber-500/10 text-amber-600 border-amber-500/20' },
-  on_hold: { label: 'On Hold', color: 'bg-orange-500', badgeClass: 'bg-orange-500/10 text-orange-600 border-orange-500/20' },
+  on_hold: { label: 'On Hold', color: 'bg-amber-500', badgeClass: 'bg-amber-500/10 text-amber-600 border-amber-500/20' },
   completed: { label: 'Completed', color: 'bg-blue-500', badgeClass: 'bg-blue-500/10 text-blue-600 border-blue-500/20' },
   left: { label: 'Left', color: 'bg-rose-600', badgeClass: 'bg-rose-600/10 text-rose-600 border-rose-600/20' },
 } as const;
