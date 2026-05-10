@@ -83,7 +83,8 @@ export function useDivisionMembership(userIds: string[], enabled = true) {
 
       const normalizeStatus = (s: any): EnrollmentStatus => {
         const v = String(s || 'active').toLowerCase();
-        if (v === 'active' || v === 'paused' || v === 'left' || v === 'completed' || v === 'inactive') return v;
+        if (v === 'paused') return 'on_hold';
+        if (v === 'active' || v === 'on_hold' || v === 'left' || v === 'completed' || v === 'inactive') return v;
         return 'inactive';
       };
 
