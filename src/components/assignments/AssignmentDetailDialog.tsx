@@ -113,7 +113,7 @@ export function AssignmentDetailDialog({ assignmentId, onClose }: Props) {
             <FileText className="h-5 w-5" />
             Assignment Details
           </DialogTitle>
-          <DialogDescription>Full assignment record with complete activity log of every change.</DialogDescription>
+          <DialogDescription>Full assignment details with dated status and field change history.</DialogDescription>
         </DialogHeader>
 
         {isLoading || !data ? (
