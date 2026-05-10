@@ -1936,21 +1936,21 @@ export default function UserManagement() {
             )}
 
             {/* Users Table — premium redesign */}
-            {(activeRole === 'super_admin' || activeRole === 'admin_division' || activeRole === 'admin') && unassignedUsers.length > 0 && !showNoRoleOnly && (
-              <Card className="border-amber-300/60 bg-amber-50/40 dark:bg-amber-950/10 dark:border-amber-800/60 shadow-sm">
+            {(activeRole === 'super_admin' || activeRole === 'admin_division' || activeRole === 'admin') && unassignedUsers.length > 0 && !showNoRoleOnly && !activeDivision && (
+              <Card className="border-border/60 bg-muted/30 shadow-sm">
                 <CardContent className="py-3">
                   <button
                     type="button"
                     onClick={() => setShowUnassigned(s => !s)}
                     className="flex w-full items-center justify-between gap-3 text-left"
                   >
-                    <div className="flex items-center gap-3 text-amber-800 dark:text-amber-300">
-                      <AlertTriangle className="h-5 w-5" />
-                      <span className="text-sm font-medium">
-                        {unassignedUsers.length} user{unassignedUsers.length === 1 ? '' : 's'} are unassigned to any division
+                    <div className="flex items-center gap-3 text-muted-foreground">
+                      <Info className="h-5 w-5" />
+                      <span className="text-sm font-medium text-foreground/80">
+                        {unassignedUsers.length} user{unassignedUsers.length === 1 ? '' : 's'} without an active assignment (inactive by default until explicitly marked Left or Completed)
                       </span>
                     </div>
-                    <span className="text-xs text-amber-800/80 dark:text-amber-300/80 underline">
+                    <span className="text-xs text-muted-foreground underline">
                       {showUnassigned ? 'Hide users' : 'Show users'}
                     </span>
                   </button>
