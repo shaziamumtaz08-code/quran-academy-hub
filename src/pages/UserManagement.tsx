@@ -1188,7 +1188,15 @@ export default function UserManagement() {
         user.email?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCountry = !filterCountry || user.country === filterCountry;
       const matchesCity = !filterCity || user.city === filterCity;
+      const matchesGender = !filterGender || (user.gender || '').toLowerCase() === filterGender;
       const matchesStaffMode = !staffMode || (user.roles && user.roles.some(r => !TEACHING_ROLES.includes(r)));
+
+      // Status filter — match if ANY of the user's role-statuses equals the selected status
+      let matchesStatus = true;
+      if (filterStatus) {
+        const statuses = Object.values(user.roleStatuses || {}) as string[];
+        matchesStatus = statuses.includes(filterStatus);
+      }
 
       // Role filter is division-aware:
       // - If a division is in scope, the user must hold that role inside that division.
@@ -1212,7 +1220,7 @@ export default function UserManagement() {
         }
       }
 
-      return matchesArchive && matchesSearch && matchesCountry && matchesCity && matchesRole && matchesStaffMode;
+      return matchesArchive && matchesSearch && matchesCountry && matchesCity && matchesGender && matchesStatus && matchesRole && matchesStaffMode;
     })
     ?.sort((a, b) => {
       let comparison = 0;
