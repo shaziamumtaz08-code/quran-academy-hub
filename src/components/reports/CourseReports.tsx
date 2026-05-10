@@ -58,15 +58,15 @@ export default function CourseReports() {
       const { data } = await q;
       if (!data?.length) return [];
 
-      const map: Record<string, { teacher_id: string; teacher_name: string; subjects: Set<string>; active: number; paused: number; left: number; completed: number; total: number }> = {};
+      const map: Record<string, { teacher_id: string; teacher_name: string; subjects: Set<string>; active: number; on_hold: number; left: number; completed: number; total: number }> = {};
       (data as any[]).forEach((a) => {
         const key = a.teacher_id || "unassigned";
-        if (!map[key]) map[key] = { teacher_id: key, teacher_name: a.teacher?.full_name || "Unassigned", subjects: new Set(), active: 0, paused: 0, left: 0, completed: 0, total: 0 };
+        if (!map[key]) map[key] = { teacher_id: key, teacher_name: a.teacher?.full_name || "Unassigned", subjects: new Set(), active: 0, on_hold: 0, left: 0, completed: 0, total: 0 };
         if (a.subject?.name) map[key].subjects.add(a.subject.name);
         map[key].total++;
         const s = String(a.status || "").toLowerCase();
         if (s === "active") map[key].active++;
-        else if (s === "paused") map[key].paused++;
+        else if (s === "on_hold" || s === "paused") map[key].on_hold++;
         else if (s === "left") map[key].left++;
         else if (s === "completed") map[key].completed++;
       });
@@ -83,8 +83,8 @@ export default function CourseReports() {
 
   const exportCsv = () => {
     if (isOneToOne) {
-      const rows = [["Teacher", "Subjects", "Active", "Paused", "Left", "Completed", "Total", "Drop-off %"]];
-      (teacherLoad || []).forEach((r: any) => rows.push([r.teacher_name, r.subjectsList, r.active, r.paused, r.left, r.completed, r.total, r.dropoffRate + "%"]));
+      const rows = [["Teacher", "Subjects", "Active", "On Hold", "Left", "Completed", "Total", "Drop-off %"]];
+      (teacherLoad || []).forEach((r: any) => rows.push([r.teacher_name, r.subjectsList, r.active, r.on_hold, r.left, r.completed, r.total, r.dropoffRate + "%"]));
       const csv = rows.map(r => r.join(",")).join("\n");
       const blob = new Blob([csv], { type: "text/csv" });
       const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "teacher_load_report.csv"; a.click();
@@ -136,7 +136,7 @@ export default function CourseReports() {
                       <td className="p-3 font-medium">{r.teacher_name}</td>
                       <td className="p-3 text-muted-foreground">{r.subjectsList || "—"}</td>
                       <td className="p-3 text-center">{r.active}</td>
-                      <td className="p-3 text-center">{r.paused}</td>
+                      <td className="p-3 text-center">{r.on_hold}</td>
                       <td className="p-3 text-center">{r.left}</td>
                       <td className="p-3 text-center">{r.completed}</td>
                       <td className="p-3 text-center font-medium">{r.total}</td>
