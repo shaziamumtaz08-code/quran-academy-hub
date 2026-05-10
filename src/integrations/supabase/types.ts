@@ -251,6 +251,50 @@ export type Database = {
           },
         ]
       }
+      assignment_audit_log: {
+        Row: {
+          assignment_id: string
+          changed_at: string
+          changed_by: string | null
+          event_type: string
+          field_name: string | null
+          id: string
+          new_value: string | null
+          old_value: string | null
+          reason: string | null
+        }
+        Insert: {
+          assignment_id: string
+          changed_at?: string
+          changed_by?: string | null
+          event_type: string
+          field_name?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          reason?: string | null
+        }
+        Update: {
+          assignment_id?: string
+          changed_at?: string
+          changed_by?: string | null
+          event_type?: string
+          field_name?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignment_audit_log_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "student_teacher_assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assignment_history: {
         Row: {
           assignment_id: string
