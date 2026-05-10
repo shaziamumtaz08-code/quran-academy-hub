@@ -15,9 +15,9 @@ export interface DivisionMembership {
   statusByRole?: Record<string, EnrollmentStatus>;
 }
 
-// Priority: active > paused > completed > left > inactive (most relevant first)
+// Priority: active > on_hold > completed > left > inactive (most relevant first)
 const STATUS_PRIORITY: Record<EnrollmentStatus, number> = {
-  active: 0, paused: 1, completed: 2, left: 3, inactive: 4,
+  active: 0, on_hold: 1, completed: 2, left: 3, inactive: 4,
 };
 function pickStatus(a: EnrollmentStatus, b: EnrollmentStatus): EnrollmentStatus {
   return STATUS_PRIORITY[a] <= STATUS_PRIORITY[b] ? a : b;
