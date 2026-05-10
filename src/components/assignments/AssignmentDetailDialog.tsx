@@ -44,12 +44,31 @@ export function AssignmentDetailDialog({ assignmentId, onClose }: Props) {
           .maybeSingle(),
         supabase
           .from('assignment_history')
-          .select('*, teacher:profiles!assignment_history_teacher_id_fkey(full_name), subject:subjects(name)')
+          .select('*')
           .eq('assignment_id', assignmentId)
           .order('started_at', { ascending: false }),
       ]);
 
       if (!a) return null;
+
+      // Hydrate history with teacher/subject names (no FK in DB)
+      const teacherIds = Array.from(new Set((history || []).map((h: any) => h.teacher_id).filter(Boolean)));
+      const subjectIds = Array.from(new Set((history || []).map((h: any) => h.subject_id).filter(Boolean)));
+      const [{ data: hTeachers }, { data: hSubjects }] = await Promise.all([
+        teacherIds.length
+          ? supabase.from('profiles').select('id, full_name').in('id', teacherIds)
+          : Promise.resolve({ data: [] as any[] }),
+        subjectIds.length
+          ? supabase.from('subjects').select('id, name').in('id', subjectIds)
+          : Promise.resolve({ data: [] as any[] }),
+      ]);
+      const tMap = new Map((hTeachers || []).map((t: any) => [t.id, t]));
+      const sMap = new Map((hSubjects || []).map((s: any) => [s.id, s]));
+      const hydratedHistory = (history || []).map((h: any) => ({
+        ...h,
+        teacher: tMap.get(h.teacher_id) || null,
+        subject: sMap.get(h.subject_id) || null,
+      }));
 
       // Sibling assignments (same student) for full lifecycle
       const { data: siblings } = await supabase
