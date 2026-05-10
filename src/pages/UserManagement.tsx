@@ -472,6 +472,8 @@ export default function UserManagement() {
   const [filterCountry, setFilterCountry] = useState<string>('');
   const [filterCity, setFilterCity] = useState<string>('');
   const [filterRole, setFilterRole] = useState<string>('');
+  const [filterStatus, setFilterStatus] = useState<string>('');
+  const [filterGender, setFilterGender] = useState<string>('');
   const [filterDivision, setFilterDivision] = useState<string>('');
   const [showArchived, setShowArchived] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
