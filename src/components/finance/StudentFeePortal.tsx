@@ -396,7 +396,7 @@ export function StudentFeePortal({
                             <div className="text-sm font-semibold truncate">{formatBM(bm)}</div>
                             <div className="text-[11px] text-muted-foreground mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5">
                               <span className="font-medium tabular-nums text-foreground/80">
-                                {currency} {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                Fee {currency} {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                               </span>
                               {earliestDue && (
                                 <span><span className="text-muted-foreground/40">·</span> Due {format(parseISO(earliestDue), 'dd MMM yyyy')}</span>
