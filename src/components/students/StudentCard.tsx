@@ -7,11 +7,11 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { UnifiedAttendanceForm, type StudentInfo } from '@/components/attendance/UnifiedAttendanceForm';
 
-type AssignmentStatus = 'active' | 'paused' | 'completed' | 'left';
+type AssignmentStatus = 'active' | 'on_hold' | 'completed' | 'left';
 
 const STATUS_CONFIG = {
   active: { label: 'Active', badgeClass: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' },
-  paused: { label: 'Paused', badgeClass: 'bg-amber-500/10 text-amber-600 border-amber-500/20' },
+  on_hold: { label: 'On Hold', badgeClass: 'bg-amber-500/10 text-amber-600 border-amber-500/20' },
   completed: { label: 'Completed', badgeClass: 'bg-slate-400/10 text-slate-600 border-slate-400/20' },
   left: { label: 'Left', badgeClass: 'bg-red-500/10 text-red-600 border-red-500/20' },
 } as const;
@@ -43,7 +43,7 @@ interface StudentCardProps {
 export function StudentCard({ student, onViewHistory, onViewSchedule }: StudentCardProps) {
   const [attendanceOpen, setAttendanceOpen] = useState(false);
   const status = student.assignment_status || 'active';
-  const isPaused = status === 'paused';
+  const isPaused = status === 'on_hold';
   const isCompleted = status === 'completed';
   const isLeft = status === 'left';
   const isInactive = isPaused || isCompleted || isLeft;
@@ -66,7 +66,7 @@ export function StudentCard({ student, onViewHistory, onViewSchedule }: StudentC
           <div className="mb-3 p-2 rounded-md bg-amber-500/10 border border-amber-500/20 flex items-center gap-2">
             <Pause className="h-4 w-4 text-amber-600" />
             <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
-              Assignment paused – actions disabled
+              Assignment on hold – actions disabled
             </span>
           </div>
         )}

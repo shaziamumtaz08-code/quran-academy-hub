@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-export type EnrollmentStatus = 'active' | 'paused' | 'left' | 'completed' | 'inactive';
+export type EnrollmentStatus = 'active' | 'on_hold' | 'left' | 'completed' | 'inactive';
 
 export interface DivisionMembership {
   divisionId: string;
@@ -15,9 +15,9 @@ export interface DivisionMembership {
   statusByRole?: Record<string, EnrollmentStatus>;
 }
 
-// Priority: active > paused > completed > left > inactive (most relevant first)
+// Priority: active > on_hold > completed > left > inactive (most relevant first)
 const STATUS_PRIORITY: Record<EnrollmentStatus, number> = {
-  active: 0, paused: 1, completed: 2, left: 3, inactive: 4,
+  active: 0, on_hold: 1, completed: 2, left: 3, inactive: 4,
 };
 function pickStatus(a: EnrollmentStatus, b: EnrollmentStatus): EnrollmentStatus {
   return STATUS_PRIORITY[a] <= STATUS_PRIORITY[b] ? a : b;
@@ -83,7 +83,8 @@ export function useDivisionMembership(userIds: string[], enabled = true) {
 
       const normalizeStatus = (s: any): EnrollmentStatus => {
         const v = String(s || 'active').toLowerCase();
-        if (v === 'active' || v === 'paused' || v === 'left' || v === 'completed' || v === 'inactive') return v;
+        if (v === 'paused') return 'on_hold';
+        if (v === 'active' || v === 'on_hold' || v === 'left' || v === 'completed' || v === 'inactive') return v;
         return 'inactive';
       };
 

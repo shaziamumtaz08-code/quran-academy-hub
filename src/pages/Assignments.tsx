@@ -37,8 +37,7 @@ import { trackActivity } from '@/lib/activityLogger';
 
 const STATUS_CONFIG = {
   active: { label: 'Active', color: 'bg-emerald-500', badgeClass: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' },
-  paused: { label: 'Paused', color: 'bg-amber-500', badgeClass: 'bg-amber-500/10 text-amber-600 border-amber-500/20' },
-  on_hold: { label: 'On Hold', color: 'bg-orange-500', badgeClass: 'bg-orange-500/10 text-orange-600 border-orange-500/20' },
+  on_hold: { label: 'On Hold', color: 'bg-amber-500', badgeClass: 'bg-amber-500/10 text-amber-600 border-amber-500/20' },
   completed: { label: 'Completed', color: 'bg-blue-500', badgeClass: 'bg-blue-500/10 text-blue-600 border-blue-500/20' },
   left: { label: 'Left', color: 'bg-rose-600', badgeClass: 'bg-rose-600/10 text-rose-600 border-rose-600/20' },
 } as const;
@@ -245,7 +244,7 @@ export default function Assignments() {
         await sb.from('student_teacher_assignments')
           .update({ status: 'active', status_effective_date: sub.substitute_end_date })
           .eq('id', sub.parent_assignment_id)
-          .eq('status', 'paused');
+          .eq('status', 'on_hold');
       }
       queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
     })();
@@ -382,7 +381,7 @@ export default function Assignments() {
       // - completed/left   → deactivate plan for THIS assignment only
       // - on_hold          → leave plan as-is, invoice guard skips by status
       // - active (resume)  → reactivate plan
-      // - paused           → leave plan active (billing continues per matrix)
+      
       if (status === 'completed' || status === 'left') {
         await supabase.from('student_billing_plans')
           .update({ is_active: false, updated_at: new Date().toISOString() })
@@ -500,7 +499,7 @@ export default function Assignments() {
         if (!substituteEndDate) throw new Error('Substitute end date is required');
 
         await sb.from('student_teacher_assignments')
-          .update({ status: 'paused', status_effective_date: effDate })
+          .update({ status: 'on_hold', status_effective_date: effDate })
           .eq('id', id);
 
         // Get full original assignment for cloning fields
@@ -553,7 +552,7 @@ export default function Assignments() {
         title: vars.transferType === 'permanent' ? 'Permanently Reassigned' : 'Substitute Assigned',
         description: vars.transferType === 'permanent'
           ? 'Teacher reassigned. History recorded.'
-          : 'Original teacher paused. Will auto-resume after substitute period.',
+          : 'Original teacher on hold. Will auto-resume after substitute period.',
       });
       setReassignDialog(null);
       setReassignTeacherId('');
@@ -1199,7 +1198,7 @@ export default function Assignments() {
                     }`}
                   >
                     <p className="text-sm font-bold">Temporary</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Original paused. Auto-reverts after end date.</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">On hold. Auto-reverts after end date.</p>
                   </button>
                 </div>
               </div>

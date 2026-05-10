@@ -359,7 +359,7 @@ async function validateAssignmentRow(
   const rawEffectiveFrom = row.effective_from?.trim();
 
   // Validate new fields
-  const validStatuses = ["active", "paused", "completed", "left"];
+  const validStatuses = ["active", "on_hold", "completed", "left"];
   let parsedStatus: string | null = null;
   if (rawStatus && rawStatus !== "" && rawStatus !== "nan") {
     if (validStatuses.includes(rawStatus)) {

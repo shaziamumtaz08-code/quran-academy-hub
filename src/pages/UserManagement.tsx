@@ -165,11 +165,10 @@ const RolePill = ({ role, prefix }: { role: AppRole; prefix?: string }) => {
   );
 };
 
-type RoleStatusValue = 'active' | 'paused' | 'on_hold' | 'completed' | 'left' | 'inactive';
+type RoleStatusValue = 'active' | 'on_hold' | 'completed' | 'left' | 'inactive';
 
 const STATUS_OPTIONS: Array<{ value: RoleStatusValue; label: string }> = [
   { value: 'active', label: 'Active' },
-  { value: 'paused', label: 'Paused' },
   { value: 'on_hold', label: 'On Hold' },
   { value: 'completed', label: 'Completed' },
   { value: 'left', label: 'Left' },
@@ -177,13 +176,13 @@ const STATUS_OPTIONS: Array<{ value: RoleStatusValue; label: string }> = [
 ];
 
 // Per-role allowed statuses.
-//  - Teacher: Active / Paused / On Hold while assignments exist; Left when off-platform.
+//  - Teacher: Active / On Hold while assignments exist; Left when off-platform.
 //    Inactive is auto-derived (no active assignments) — admins may still set it manually.
-//  - Student: Active / Paused / On Hold / Completed / Left manually picked.
+//  - Student: Active / On Hold / Completed / Left manually picked.
 //  - Other roles (admin, examiner, parent, …): just Active / Inactive / Left.
 const STATUS_OPTIONS_BY_ROLE: Partial<Record<AppRole, RoleStatusValue[]>> = {
-  teacher: ['active', 'paused', 'on_hold', 'left', 'inactive'],
-  student: ['active', 'paused', 'on_hold', 'completed', 'left', 'inactive'],
+  teacher: ['active', 'on_hold', 'left', 'inactive'],
+  student: ['active', 'on_hold', 'completed', 'left', 'inactive'],
 };
 const DEFAULT_ROLE_STATUSES: RoleStatusValue[] = ['active', 'inactive', 'left'];
 
@@ -194,8 +193,7 @@ const getStatusOptionsForRole = (role: AppRole) => {
 
 const STATUS_PILL_COLOR: Record<string, string> = {
   active: 'bg-white text-emerald-700 border-emerald-500',
-  paused: 'bg-white text-amber-700 border-amber-500',
-  on_hold: 'bg-white text-orange-700 border-orange-500',
+  on_hold: 'bg-white text-amber-700 border-amber-500',
   left: 'bg-white text-rose-700 border-rose-500',
   completed: 'bg-white text-sky-700 border-sky-500',
   inactive: 'bg-white text-slate-600 border-slate-400',
@@ -204,8 +202,7 @@ const STATUS_PILL_COLOR: Record<string, string> = {
 
 const STATUS_ICON_COLOR: Record<string, string> = {
   active: 'text-emerald-600',     // 🟢 Green — engaged
-  paused: 'text-amber-500',       // 🟡 Amber — temporary halt
-  on_hold: 'text-orange-600',     // 🟠 Orange — admin block
+  on_hold: 'text-amber-500',      // 🟡 Amber — temporary halt
   completed: 'text-sky-600',      // 🔵 Blue — finished successfully
   left: 'text-rose-700',          // 🔴 Dark Red — gone
   inactive: 'text-red-500',       // 🔴 Red — no active assignments
@@ -214,8 +211,8 @@ const STATUS_ICON_COLOR: Record<string, string> = {
 };
 
 const UserStatusPopover: React.FC<{
-  user: { id: string; archived_at: string | null; roles: AppRole[]; roleStatuses: Partial<Record<AppRole, 'active' | 'paused' | 'on_hold' | 'left' | 'completed' | 'inactive'>> };
-  onChangeStatus: (role: AppRole, status: 'active' | 'paused' | 'on_hold' | 'left' | 'completed' | 'inactive') => void;
+  user: { id: string; archived_at: string | null; roles: AppRole[]; roleStatuses: Partial<Record<AppRole, 'active' | 'on_hold' | 'left' | 'completed' | 'inactive'>> };
+  onChangeStatus: (role: AppRole, status: 'active' | 'on_hold' | 'left' | 'completed' | 'inactive') => void;
   onArchive: (archive: boolean) => void;
 }> = ({ user, onChangeStatus, onArchive }) => {
   const [open, setOpen] = React.useState(false);
@@ -402,11 +399,11 @@ interface UserWithRoles {
   archived_at: string | null;
   registration_id: string | null;
   roles: AppRole[];
-  roleStatuses: Partial<Record<AppRole, 'active' | 'paused' | 'on_hold' | 'left' | 'completed' | 'inactive'>>;
+  roleStatuses: Partial<Record<AppRole, 'active' | 'on_hold' | 'left' | 'completed' | 'inactive'>>;
   exceptions: Array<{ permission: string; is_granted: boolean }>;
 }
 
-export type RoleStatus = 'active' | 'paused' | 'on_hold' | 'left' | 'completed' | 'inactive';
+export type RoleStatus = 'active' | 'on_hold' | 'left' | 'completed' | 'inactive';
 
 export default function UserManagement() {
   const { isSuperAdmin, hasPermission, user: currentUser, session, activeRole } = useAuth();
