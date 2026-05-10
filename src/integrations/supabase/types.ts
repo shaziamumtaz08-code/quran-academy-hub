@@ -9471,7 +9471,7 @@ export type Database = {
         | "admin_fees"
         | "admin_academic"
         | "admin_division"
-      assignment_status: "active" | "paused" | "completed" | "left" | "on_hold"
+      assignment_status: "active" | "on_hold" | "completed" | "left"
       attendance_action: "join_intent" | "leave"
       billing_cycle: "monthly" | "quarterly" | "one_time"
       branch_type: "online" | "onsite"
@@ -9676,7 +9676,7 @@ export const Constants = {
         "admin_academic",
         "admin_division",
       ],
-      assignment_status: ["active", "paused", "completed", "left", "on_hold"],
+      assignment_status: ["active", "on_hold", "completed", "left"],
       attendance_action: ["join_intent", "leave"],
       billing_cycle: ["monthly", "quarterly", "one_time"],
       branch_type: ["online", "onsite"],
