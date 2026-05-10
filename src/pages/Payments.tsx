@@ -2013,10 +2013,31 @@ export default function Payments() {
             </div>
           </TabsContent>
 
-          <TabsContent value="payments" className="mt-4">
+          <TabsContent value="payments" className="mt-4 space-y-4">
+            {/* Month Pill Navigator — same selector as Invoices tab */}
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <div className="flex-1 min-w-0">
+                <MonthPillNav
+                  value={monthFilter === 'all' ? currentBillingMonth : monthFilter}
+                  onChange={setMonthFilter}
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant={monthFilter === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-9 rounded-full"
+                  onClick={() => setMonthFilter('all')}
+                >
+                  All Months
+                </Button>
+              </div>
+            </div>
+
             <PaymentHistoryTable
-              transactions={allTransactions as any}
+              transactions={paymentsTabTxns as any}
               invoiceMap={invoiceMapForHistory}
+              profileMap={recorderMap}
               onViewReceipt={(tx) => {
                 const inv = invoices.find(i => i.id === tx.invoice_id);
                 if (inv) { setReceiptTransactions([tx]); setReceiptViewInvoice(inv); }
