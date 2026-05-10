@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-export type EnrollmentStatus = 'active' | 'paused' | 'left' | 'completed' | 'inactive';
+export type EnrollmentStatus = 'active' | 'on_hold' | 'left' | 'completed' | 'inactive';
 
 export interface DivisionMembership {
   divisionId: string;
