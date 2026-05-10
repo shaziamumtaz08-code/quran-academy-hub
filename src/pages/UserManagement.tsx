@@ -1792,20 +1792,42 @@ export default function UserManagement() {
                   </SelectContent>
                 </Select>
 
-                {/* Status */}
-                <Select value={filterStatus || 'all'} onValueChange={(v) => setFilterStatus(v === 'all' ? '' : v)}>
-                  <SelectTrigger className="w-[130px] h-9 rounded-lg bg-card text-sm">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all"><span className="inline-flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" /> All Status</span></SelectItem>
-                    <SelectItem value="active"><span className="inline-flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Active</span></SelectItem>
-                    <SelectItem value="on_hold"><span className="inline-flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> On Hold</span></SelectItem>
-                    <SelectItem value="completed"><span className="inline-flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-sky-500" /> Completed</span></SelectItem>
-                    <SelectItem value="left"><span className="inline-flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-rose-500" /> Left</span></SelectItem>
-                    <SelectItem value="inactive"><span className="inline-flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-slate-400" /> Inactive</span></SelectItem>
-                  </SelectContent>
-                </Select>
+                {/* Status — role-aware options */}
+                {(() => {
+                  const ALL_STATUS = [
+                    { v: 'active', label: 'Active', dot: 'bg-emerald-500' },
+                    { v: 'on_hold', label: 'On Hold', dot: 'bg-amber-500' },
+                    { v: 'completed', label: 'Completed', dot: 'bg-sky-500' },
+                    { v: 'left', label: 'Left', dot: 'bg-rose-500' },
+                    { v: 'inactive', label: 'Inactive', dot: 'bg-slate-400' },
+                  ];
+                  const roleStatusMap: Record<string, string[]> = {
+                    student: ['active', 'on_hold', 'completed', 'left', 'inactive'],
+                    teacher: ['active', 'inactive', 'left'],
+                    parent: ['active', 'inactive'],
+                    __admins__: ['active', 'inactive'],
+                    examiner: ['active', 'inactive'],
+                  };
+                  const allowed = filterRole && roleStatusMap[filterRole]
+                    ? roleStatusMap[filterRole]
+                    : ALL_STATUS.map(s => s.v);
+                  const opts = ALL_STATUS.filter(s => allowed.includes(s.v));
+                  return (
+                    <Select value={filterStatus || 'all'} onValueChange={(v) => setFilterStatus(v === 'all' ? '' : v)}>
+                      <SelectTrigger className="w-[130px] h-9 rounded-lg bg-card text-sm">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all"><span className="inline-flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" /> All Status</span></SelectItem>
+                        {opts.map(o => (
+                          <SelectItem key={o.v} value={o.v}>
+                            <span className="inline-flex items-center gap-2"><span className={`h-1.5 w-1.5 rounded-full ${o.dot}`} /> {o.label}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  );
+                })()}
 
                 {/* Gender */}
                 <Select value={filterGender || 'all'} onValueChange={(v) => setFilterGender(v === 'all' ? '' : v)}>
