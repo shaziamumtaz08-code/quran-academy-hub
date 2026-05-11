@@ -132,6 +132,7 @@ function ClassChatTabInner({ courseId, mode }: ClassChatTabProps) {
         content: content || null,
         attachment_url: attachmentUrl || null,
         reply_to: replyTo?.id || null,
+        ...actorStamp,
       });
       if (error) throw error;
     },
