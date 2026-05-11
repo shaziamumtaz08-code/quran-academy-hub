@@ -296,6 +296,7 @@ const UserStatusPopover: React.FC<{
                       className="h-7 text-[10px] uppercase"
                       onClick={() => {
                         user.roles.forEach((r) => onChangeStatus(r, o.value));
+                        setOpen(false);
                       }}
                     >
                       {o.label}
