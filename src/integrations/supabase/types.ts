@@ -954,6 +954,8 @@ export type Database = {
       }
       chat_messages: {
         Row: {
+          acted_for_student_id: string | null
+          actor_role: string | null
           attachment_url: string | null
           content: string | null
           created_at: string
@@ -969,6 +971,8 @@ export type Database = {
           sender_id: string
         }
         Insert: {
+          acted_for_student_id?: string | null
+          actor_role?: string | null
           attachment_url?: string | null
           content?: string | null
           created_at?: string
@@ -984,6 +988,8 @@ export type Database = {
           sender_id: string
         }
         Update: {
+          acted_for_student_id?: string | null
+          actor_role?: string | null
           attachment_url?: string | null
           content?: string | null
           created_at?: string
@@ -999,6 +1005,13 @@ export type Database = {
           sender_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "chat_messages_acted_for_student_id_fkey"
+            columns: ["acted_for_student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "chat_messages_group_id_fkey"
             columns: ["group_id"]
@@ -8424,6 +8437,8 @@ export type Database = {
       }
       ticket_comments: {
         Row: {
+          acted_for_student_id: string | null
+          actor_role: string | null
           attachment_url: string | null
           author_id: string
           created_at: string
@@ -8435,6 +8450,8 @@ export type Database = {
           ticket_id: string
         }
         Insert: {
+          acted_for_student_id?: string | null
+          actor_role?: string | null
           attachment_url?: string | null
           author_id: string
           created_at?: string
@@ -8446,6 +8463,8 @@ export type Database = {
           ticket_id: string
         }
         Update: {
+          acted_for_student_id?: string | null
+          actor_role?: string | null
           attachment_url?: string | null
           author_id?: string
           created_at?: string
@@ -8457,6 +8476,13 @@ export type Database = {
           ticket_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "ticket_comments_acted_for_student_id_fkey"
+            columns: ["acted_for_student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ticket_comments_ticket_id_fkey"
             columns: ["ticket_id"]
@@ -8530,6 +8556,8 @@ export type Database = {
       }
       tickets: {
         Row: {
+          acted_for_student_id: string | null
+          actor_role: string | null
           assignee_id: string
           attachment_url: string | null
           branch_id: string | null
@@ -8557,6 +8585,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          acted_for_student_id?: string | null
+          actor_role?: string | null
           assignee_id: string
           attachment_url?: string | null
           branch_id?: string | null
@@ -8584,6 +8614,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          acted_for_student_id?: string | null
+          actor_role?: string | null
           assignee_id?: string
           attachment_url?: string | null
           branch_id?: string | null
@@ -8611,6 +8643,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "tickets_acted_for_student_id_fkey"
+            columns: ["acted_for_student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tickets_branch_id_fkey"
             columns: ["branch_id"]
