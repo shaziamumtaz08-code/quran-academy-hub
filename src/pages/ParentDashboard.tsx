@@ -766,7 +766,7 @@ const ParentDashboard = () => {
           {/* Section nav */}
           <div className="px-3 flex-1">
             <div style={{ fontSize: 10, fontWeight: 600, color: '#aab0bc', letterSpacing: 0.5, marginBottom: 6 }}>
-              {activeChild.name.split(' ')[0].toUpperCase()}
+              {(activeChild?.name || '').split(' ')[0].toUpperCase()}
             </div>
             {sidebarNav.map(n => (
               <button key={n.key} onClick={() => n.key === 'messages' ? navigate('/communication') : setSection(n.key)}
