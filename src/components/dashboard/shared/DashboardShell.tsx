@@ -19,9 +19,11 @@ interface DashboardShellProps {
   rightContent: React.ReactNode;
   /** Brand label in top bar */
   brandLabel?: string;
+  /** When true, the built-in greeting + Islamic + Prayer rows are not rendered (caller provides its own header). */
+  hideHeader?: boolean;
 }
 
-export function DashboardShell({ topContent, leftContent, rightContent, brandLabel }: DashboardShellProps) {
+export function DashboardShell({ topContent, leftContent, rightContent, brandLabel, hideHeader = false }: DashboardShellProps) {
   const { profile, user } = useAuth();
   const [islamicDate, setIslamicDate] = useState<IslamicDateData | null>(null);
   const [timezone, setTimezone] = useState<string>('Asia/Karachi');
@@ -44,30 +46,27 @@ export function DashboardShell({ topContent, leftContent, rightContent, brandLab
 
   return (
     <div className="relative font-sans">
-      {/* Scrollable content */}
       <div className="space-y-2 max-w-[1100px] mx-auto">
-        {/* Greeting */}
-        <div className="hidden md:flex items-center justify-between bg-white border border-lms-border rounded-md px-3 py-1.5">
-          <p className="text-[13px] font-medium text-lms-navy truncate">Assalamu Alaikum, {firstName} 👋</p>
-          <button className="relative bg-lms-surface border border-lms-border rounded-md w-9 h-9 flex items-center justify-center text-lms-text-1 shrink-0">
-            <Bell className="h-4 w-4" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-lms-danger text-white text-[10px] font-medium flex items-center justify-center leading-none">
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </span>
-            )}
-          </button>
-        </div>
-
-        {/* Islamic header */}
-        <IslamicDateCard onIslamicDateLoaded={setIslamicDate} onTimezoneResolved={setTimezone} />
-
-        {/* Prayer widget */}
-        <PrayerTimesWidget islamicDate={islamicDate} timezone={timezone} />
+        {!hideHeader && (
+          <>
+            <div className="hidden md:flex items-center justify-between bg-white border border-lms-border rounded-md px-3 py-1.5">
+              <p className="text-[13px] font-medium text-lms-navy truncate">Assalamu Alaikum, {firstName} 👋</p>
+              <button className="relative bg-lms-surface border border-lms-border rounded-md w-9 h-9 flex items-center justify-center text-lms-text-1 shrink-0">
+                <Bell className="h-4 w-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-lms-danger text-white text-[10px] font-medium flex items-center justify-center leading-none">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </button>
+            </div>
+            <IslamicDateCard onIslamicDateLoaded={setIslamicDate} onTimezoneResolved={setTimezone} />
+            <PrayerTimesWidget islamicDate={islamicDate} timezone={timezone} />
+          </>
+        )}
 
         {topContent}
 
-        {/* 2-col grid: left flex, right fixed 320px sidebar */}
         <div className="md:grid md:grid-cols-1 lg:grid-cols-[1fr_320px] md:gap-6">
           <div className="space-y-2 md:space-y-4 min-w-0">
             {leftContent}
