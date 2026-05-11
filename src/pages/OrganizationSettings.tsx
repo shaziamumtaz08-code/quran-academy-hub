@@ -371,7 +371,12 @@ export default function OrganizationSettings() {
             <TabsTrigger value="holidays">📅 Holidays</TabsTrigger>
             <TabsTrigger value="payouts">💰 Payouts</TabsTrigger>
             <TabsTrigger value="classroom">🖥️ Classroom</TabsTrigger>
+            <TabsTrigger value="spotlight">✨ Spotlight</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="spotlight">
+            <SpotlightSettingsSection />
+          </TabsContent>
 
           {/* ── Tab 1: Identity ── */}
           <TabsContent value="identity">
