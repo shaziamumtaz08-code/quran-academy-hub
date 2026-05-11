@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { StudentLiveAndActions } from '@/components/dashboard/StudentLiveAndActions';
 import {
   Home, FileText, Calendar, FolderOpen, CreditCard, MessageSquare,
   Bell, Download, ChevronRight, Star, CheckCircle2, AlertTriangle,
@@ -135,9 +138,48 @@ const MOCK_MESSAGES = [
 
 const ParentDashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
+  const { user, profile, activeRole } = useAuth();
+  const isStudentSelf = activeRole === 'student';
+
+  // Real children for parents (fallback to mock if none)
+  const { data: realChildren = [] } = useQuery({
+    queryKey: ['parent-children', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data: links } = await supabase
+        .from('student_parent_links')
+        .select('student_id, profile:student_id(id, full_name)')
+        .eq('parent_id', user.id);
+      return (links || [])
+        .filter((l: any) => l.profile)
+        .map((l: any) => ({
+          id: l.profile.id,
+          name: l.profile.full_name || 'Student',
+          initials: (l.profile.full_name || 'S').split(' ').map((p: string) => p[0]).join('').slice(0, 2).toUpperCase(),
+          course: '',
+          score: 0,
+          courseId: '',
+        }));
+    },
+    enabled: !!user?.id && !isStudentSelf,
+  });
+
+  // Children list for sidebar
+  const children: any[] = isStudentSelf
+    ? [{
+        id: user?.id || '',
+        name: profile?.full_name || 'You',
+        initials: (profile?.full_name || 'U').split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase(),
+        course: '',
+        score: 0,
+        courseId: '',
+      }]
+    : (realChildren.length ? realChildren : MOCK_CHILDREN);
+
   const [lang, setLang] = useState<Lang>('en');
-  const [activeChild, setActiveChild] = useState(MOCK_CHILDREN[0]);
+  const [activeChild, setActiveChild] = useState<any>(children[0]);
   const [msgInput, setMsgInput] = useState('');
   const [draftIntent, setDraftIntent] = useState('');
   const [showDraft, setShowDraft] = useState(false);
@@ -145,14 +187,22 @@ const ParentDashboard = () => {
   const [generatingReport, setGeneratingReport] = useState(false);
   const [aiReport, setAiReport] = useState<any>(null);
 
-  // URL-driven section state
+  useEffect(() => {
+    if (children.length && (!activeChild || !children.find((c: any) => c.id === activeChild.id))) {
+      setActiveChild(children[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [children.length, isStudentSelf, user?.id]);
+
+  // URL-driven section state — uses current pathname so it works for /parent and /dashboard
   const sectionParam = searchParams.get('section') as Section | null;
   const section: Section = sectionParam && ['overview', 'ai-report', 'sessions', 'materials', 'fees', 'messages'].includes(sectionParam) ? sectionParam : 'overview';
   const setSection = (s: Section) => {
+    const path = location.pathname;
     if (s === 'overview') {
-      navigate('/parent', { replace: true });
+      navigate(path, { replace: true });
     } else {
-      navigate(`/parent?section=${s}`, { replace: true });
+      navigate(`${path}?section=${s}`, { replace: true });
     }
   };
 
@@ -234,9 +284,14 @@ const ParentDashboard = () => {
 
   const renderOverview = () => (
     <div className="space-y-4 sm:space-y-5">
+      {/* Real-data: live class + quick actions */}
+      {activeChild?.id && (
+        <StudentLiveAndActions studentId={activeChild.id} studentName={activeChild.name} />
+      )}
+
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label={t.latestAssessment} value="74%" sub={`${activeChild.course} · Session 2`} color={scoreColor(74)} />
+        <StatCard label={t.latestAssessment} value="74%" sub={`${activeChild?.course || ''} · Session 2`} color={scoreColor(74)} />
         <StatCard label={t.attendanceRate} value="75%" sub="3 of 4 sessions" />
         <StatCard label={t.speakingScore} value="68%" sub={t.needsImprovement} color="#8a5c00" />
         <StatCard label={t.progressTrend} value="-4%" sub={t.declining} color="#b42a2a" border="#b42a2a" />
@@ -648,7 +703,7 @@ const ParentDashboard = () => {
         <div className="flex items-center gap-1.5" style={{ fontSize: 12, color: '#7a7f8a' }}>
           <button onClick={() => setSection('overview')} className="hover:underline cursor-pointer">{t.portal}</button>
           <span>›</span>
-          <button onClick={() => setSection('overview')} className="hover:underline cursor-pointer" style={{ color: '#0f2044' }}>{activeChild.name}</button>
+          <button onClick={() => setSection('overview')} className="hover:underline cursor-pointer" style={{ color: '#0f2044' }}>{activeChild?.name || ''}</button>
           {section !== 'overview' && (
             <>
               <span>›</span>
@@ -675,39 +730,45 @@ const ParentDashboard = () => {
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar - desktop */}
         <div className="hidden md:flex flex-col shrink-0" style={{ width: 220, background: '#fff', borderRight: isRtl ? 'none' : '0.5px solid #e8e9eb', borderLeft: isRtl ? '0.5px solid #e8e9eb' : 'none' }}>
-          {/* Parent header */}
+          {/* Header */}
           <div className="p-3 flex items-center gap-2.5" style={{ borderBottom: '0.5px solid #f0f1f3' }}>
-            <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: '#eef2fa', color: '#1a56b0', fontSize: 12, fontWeight: 600 }}>FM</div>
+            <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: '#eef2fa', color: '#1a56b0', fontSize: 12, fontWeight: 600 }}>
+              {(profile?.full_name || 'U').split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase()}
+            </div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 500, color: '#0f2044' }}>Fatima Mumtaz</div>
-              <div style={{ fontSize: 10, color: '#aab0bc' }}>{t.portal}</div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: '#0f2044' }}>{profile?.full_name || 'You'}</div>
+              <div style={{ fontSize: 10, color: '#aab0bc' }}>{isStudentSelf ? 'Student portal' : t.portal}</div>
             </div>
           </div>
 
-          {/* Children */}
-          <div className="p-3">
-            <div style={{ fontSize: 10, fontWeight: 600, color: '#aab0bc', letterSpacing: 0.5, marginBottom: 8 }}>{t.myChildren}</div>
-            {MOCK_CHILDREN.map(c => (
-              <button key={c.id} onClick={() => setActiveChild(c)}
-                className="w-full flex items-center gap-2 rounded-lg px-2.5 py-2 mb-1 transition-colors"
-                style={{ background: activeChild.id === c.id ? '#eef2fa' : 'transparent' }}>
-                <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{
-                  background: activeChild.id === c.id ? '#1a56b0' : '#f0f1f3',
-                  color: activeChild.id === c.id ? '#fff' : '#7a7f8a', fontSize: 10, fontWeight: 600
-                }}>{c.initials}</div>
-                <div className="flex-1 text-left min-w-0">
-                  <div style={{ fontSize: 12, fontWeight: 500, color: '#0f2044' }}>{c.name}</div>
-                  <div style={{ fontSize: 10, color: '#aab0bc' }}>{c.course}</div>
-                </div>
-                <span style={{ fontSize: 12, fontWeight: 600, color: scoreColor(c.score) }}>{c.score}%</span>
-              </button>
-            ))}
-          </div>
+          {/* Children — hidden in student-self mode */}
+          {!isStudentSelf && (
+            <div className="p-3">
+              <div style={{ fontSize: 10, fontWeight: 600, color: '#aab0bc', letterSpacing: 0.5, marginBottom: 8 }}>{t.myChildren}</div>
+              {children.map((c: any) => (
+                <button key={c.id} onClick={() => setActiveChild(c)}
+                  className="w-full flex items-center gap-2 rounded-lg px-2.5 py-2 mb-1 transition-colors"
+                  style={{ background: activeChild?.id === c.id ? '#eef2fa' : 'transparent' }}>
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{
+                    background: activeChild?.id === c.id ? '#1a56b0' : '#f0f1f3',
+                    color: activeChild?.id === c.id ? '#fff' : '#7a7f8a', fontSize: 10, fontWeight: 600
+                  }}>{c.initials}</div>
+                  <div className="flex-1 text-left min-w-0">
+                    <div style={{ fontSize: 12, fontWeight: 500, color: '#0f2044' }}>{c.name}</div>
+                    <div style={{ fontSize: 10, color: '#aab0bc' }}>{c.course}</div>
+                  </div>
+                  {c.score > 0 && (
+                    <span style={{ fontSize: 12, fontWeight: 600, color: scoreColor(c.score) }}>{c.score}%</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Section nav */}
           <div className="px-3 flex-1">
             <div style={{ fontSize: 10, fontWeight: 600, color: '#aab0bc', letterSpacing: 0.5, marginBottom: 6 }}>
-              {activeChild.name.split(' ')[0].toUpperCase()}
+              {(activeChild?.name || '').split(' ')[0].toUpperCase()}
             </div>
             {sidebarNav.map(n => (
               <button key={n.key} onClick={() => n.key === 'messages' ? navigate('/communication') : setSection(n.key)}
@@ -748,17 +809,21 @@ const ParentDashboard = () => {
           </div>
         </div>
 
-        {/* Mobile child selector */}
-        <div className="md:hidden absolute top-12 left-0 right-0 z-10 bg-white px-3 py-2 flex items-center gap-2" style={{ borderBottom: '0.5px solid #e8e9eb' }}>
-          {MOCK_CHILDREN.map(c => (
-            <button key={c.id} onClick={() => setActiveChild(c)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full"
-              style={{ border: '0.5px solid #e8e9eb', background: activeChild.id === c.id ? '#eef2fa' : '#fff', fontSize: 12 }}>
-              <span style={{ fontWeight: 500, color: '#0f2044' }}>{c.name.split(' ')[0]}</span>
-              <span style={{ fontWeight: 600, color: scoreColor(c.score) }}>{c.score}%</span>
-            </button>
-          ))}
-        </div>
+        {/* Mobile child selector — hidden in student-self mode */}
+        {!isStudentSelf && (
+          <div className="md:hidden absolute top-12 left-0 right-0 z-10 bg-white px-3 py-2 flex items-center gap-2" style={{ borderBottom: '0.5px solid #e8e9eb' }}>
+            {children.map((c: any) => (
+              <button key={c.id} onClick={() => setActiveChild(c)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full"
+                style={{ border: '0.5px solid #e8e9eb', background: activeChild?.id === c.id ? '#eef2fa' : '#fff', fontSize: 12 }}>
+                <span style={{ fontWeight: 500, color: '#0f2044' }}>{c.name.split(' ')[0]}</span>
+                {c.score > 0 && (
+                  <span style={{ fontWeight: 600, color: scoreColor(c.score) }}>{c.score}%</span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Main content */}
         <div className="flex-1 overflow-y-auto" style={{ background: '#f4f5f7' }}>

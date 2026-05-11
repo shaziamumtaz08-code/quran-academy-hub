@@ -64,12 +64,13 @@ export default function Resources() {
   const activeTab = tabParam || "all";
 
   const { data: resources = [], isLoading } = useQuery({
-    queryKey: ["resources-all", isAdmin, user?.id],
+    queryKey: ["resources-all", user?.id],
     queryFn: async () => {
-      let q = supabase.from("resources").select("*").order("created_at", { ascending: false });
-      // Non-admins only see their OWN personal uploads. Shared folder access is admin-only for now.
-      if (!isAdmin && user?.id) q = q.eq("uploaded_by", user.id);
-      const { data, error } = await q;
+      const { data, error } = await supabase
+        .from("resources")
+        .select("*, folder:folder_id(id, name)")
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return (data || []) as Resource[];
     },
