@@ -270,7 +270,7 @@ const UserStatusPopover: React.FC<{
               return (
                 <div key={role} className="flex items-center justify-between gap-2">
                   <div className="text-xs font-medium capitalize">{role.replace(/_/g, ' ')}</div>
-                  <Select value={st} onValueChange={(v) => onChangeStatus(role, v as any)}>
+                  <Select value={st} onValueChange={(v) => { onChangeStatus(role, v as any); setOpen(false); }}>
                     <SelectTrigger className={`h-7 px-2 py-0 border text-[10px] font-medium uppercase tracking-wide w-32 ${STATUS_PILL_COLOR[st] || STATUS_PILL_COLOR.inactive}`}>
                       <span className="capitalize">{st.replace('_', ' ')}</span>
                     </SelectTrigger>
@@ -296,6 +296,7 @@ const UserStatusPopover: React.FC<{
                       className="h-7 text-[10px] uppercase"
                       onClick={() => {
                         user.roles.forEach((r) => onChangeStatus(r, o.value));
+                        setOpen(false);
                       }}
                     >
                       {o.label}
