@@ -703,7 +703,7 @@ const ParentDashboard = () => {
         <div className="flex items-center gap-1.5" style={{ fontSize: 12, color: '#7a7f8a' }}>
           <button onClick={() => setSection('overview')} className="hover:underline cursor-pointer">{t.portal}</button>
           <span>›</span>
-          <button onClick={() => setSection('overview')} className="hover:underline cursor-pointer" style={{ color: '#0f2044' }}>{activeChild.name}</button>
+          <button onClick={() => setSection('overview')} className="hover:underline cursor-pointer" style={{ color: '#0f2044' }}>{activeChild?.name || ''}</button>
           {section !== 'overview' && (
             <>
               <span>›</span>
