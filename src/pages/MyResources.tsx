@@ -2,6 +2,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useKidContext } from '@/contexts/KidContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,17 +20,19 @@ const typeIcons: Record<string, React.ReactNode> = {
 
 export default function MyResources() {
   const { user, activeRole } = useAuth();
+  const { activeKidId } = useKidContext();
+  const studentId = activeKidId || user?.id || null;
 
   const { data: resources = [], isLoading } = useQuery({
-    queryKey: ['my-resources', user?.id],
+    queryKey: ['my-resources', studentId],
     queryFn: async () => {
-      if (!user?.id) return [];
+      if (!studentId) return [];
 
       // Get assigned resources
       const { data: assignments } = await supabase
         .from('resource_assignments')
         .select('id, resource_id, assigned_by, created_at, notes')
-        .eq('assigned_to', user.id);
+        .eq('assigned_to', studentId);
 
       // Fetch the actual resources for assignments
       const resourceIds = (assignments || []).map(a => a.resource_id);
@@ -55,7 +58,7 @@ export default function MyResources() {
       const visibleGlobal = (globalResources || []).filter(r => {
         if (r.visibility === 'all') return true;
         if (r.visibility === 'teachers' && activeRole === 'teacher') return true;
-        if (r.visibility === 'students' && activeRole === 'student') return true;
+        if (r.visibility === 'students' && (activeRole === 'student' || activeRole === 'parent')) return true;
         if (r.visible_to_roles?.includes(activeRole || '')) return true;
         return false;
       });
@@ -67,7 +70,7 @@ export default function MyResources() {
 
       return [...assignedResources, ...globalItems];
     },
-    enabled: !!user?.id,
+    enabled: !!studentId,
   });
 
   if (isLoading) {

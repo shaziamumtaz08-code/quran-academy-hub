@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDivision } from '@/contexts/DivisionContext';
+import { useKidContext } from '@/contexts/KidContext';
 import CourseThumbnailCard from '@/components/courses/CourseThumbnailCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -12,12 +13,14 @@ import { BookOpen } from 'lucide-react';
 export default function MyCourses() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { activeKidId } = useKidContext();
   const { activeDivision } = useDivision();
+  const studentId = activeKidId || user?.id || null;
 
   const { data: enrollments = [], isLoading } = useQuery({
-    queryKey: ['my-courses-page', user?.id, activeDivision?.id],
+    queryKey: ['my-courses-page', studentId, activeDivision?.id],
     queryFn: async () => {
-      if (!user?.id) return [];
+      if (!studentId) return [];
 
       let query = supabase
         .from('course_enrollments')
@@ -37,7 +40,7 @@ export default function MyCourses() {
             subject:subjects!courses_subject_id_fkey(name)
           )
         `)
-        .eq('student_id', user.id)
+        .eq('student_id', studentId)
         .in('status', ['active', 'completed']);
 
       if (activeDivision?.id) {
@@ -48,7 +51,7 @@ export default function MyCourses() {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user?.id,
+    enabled: !!studentId,
   });
 
   const groupedCourses = useMemo(() => {
