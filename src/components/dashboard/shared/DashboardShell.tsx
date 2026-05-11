@@ -47,7 +47,7 @@ export function DashboardShell({ topContent, leftContent, rightContent, brandLab
       {/* Scrollable content */}
       <div className="space-y-2 max-w-[1100px] mx-auto">
         {/* Greeting */}
-        <div className="hidden md:flex items-center justify-between bg-white border border-lms-border rounded-[10px] px-3 py-1.5">
+        <div className="hidden md:flex items-center justify-between bg-white border border-lms-border rounded-md px-3 py-1.5">
           <p className="text-[13px] font-medium text-lms-navy truncate">Assalamu Alaikum, {firstName} 👋</p>
           <button className="relative bg-lms-surface border border-lms-border rounded-lg w-9 h-9 flex items-center justify-center text-lms-text-1 shrink-0">
             <Bell className="h-4 w-4" />
