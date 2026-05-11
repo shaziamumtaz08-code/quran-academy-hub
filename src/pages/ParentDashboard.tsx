@@ -138,9 +138,48 @@ const MOCK_MESSAGES = [
 
 const ParentDashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
+  const { user, profile, activeRole } = useAuth();
+  const isStudentSelf = activeRole === 'student';
+
+  // Real children for parents (fallback to mock if none)
+  const { data: realChildren = [] } = useQuery({
+    queryKey: ['parent-children', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data: links } = await supabase
+        .from('student_parent_links')
+        .select('student_id, profile:student_id(id, full_name)')
+        .eq('parent_id', user.id);
+      return (links || [])
+        .filter((l: any) => l.profile)
+        .map((l: any) => ({
+          id: l.profile.id,
+          name: l.profile.full_name || 'Student',
+          initials: (l.profile.full_name || 'S').split(' ').map((p: string) => p[0]).join('').slice(0, 2).toUpperCase(),
+          course: '',
+          score: 0,
+          courseId: '',
+        }));
+    },
+    enabled: !!user?.id && !isStudentSelf,
+  });
+
+  // Children list for sidebar
+  const children: any[] = isStudentSelf
+    ? [{
+        id: user?.id || '',
+        name: profile?.full_name || 'You',
+        initials: (profile?.full_name || 'U').split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase(),
+        course: '',
+        score: 0,
+        courseId: '',
+      }]
+    : (realChildren.length ? realChildren : MOCK_CHILDREN);
+
   const [lang, setLang] = useState<Lang>('en');
-  const [activeChild, setActiveChild] = useState(MOCK_CHILDREN[0]);
+  const [activeChild, setActiveChild] = useState<any>(children[0]);
   const [msgInput, setMsgInput] = useState('');
   const [draftIntent, setDraftIntent] = useState('');
   const [showDraft, setShowDraft] = useState(false);
@@ -148,14 +187,22 @@ const ParentDashboard = () => {
   const [generatingReport, setGeneratingReport] = useState(false);
   const [aiReport, setAiReport] = useState<any>(null);
 
-  // URL-driven section state
+  useEffect(() => {
+    if (children.length && (!activeChild || !children.find((c: any) => c.id === activeChild.id))) {
+      setActiveChild(children[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [children.length, isStudentSelf, user?.id]);
+
+  // URL-driven section state — uses current pathname so it works for /parent and /dashboard
   const sectionParam = searchParams.get('section') as Section | null;
   const section: Section = sectionParam && ['overview', 'ai-report', 'sessions', 'materials', 'fees', 'messages'].includes(sectionParam) ? sectionParam : 'overview';
   const setSection = (s: Section) => {
+    const path = location.pathname;
     if (s === 'overview') {
-      navigate('/parent', { replace: true });
+      navigate(path, { replace: true });
     } else {
-      navigate(`/parent?section=${s}`, { replace: true });
+      navigate(`${path}?section=${s}`, { replace: true });
     }
   };
 
