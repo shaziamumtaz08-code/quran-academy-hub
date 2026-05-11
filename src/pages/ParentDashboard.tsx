@@ -284,9 +284,14 @@ const ParentDashboard = () => {
 
   const renderOverview = () => (
     <div className="space-y-4 sm:space-y-5">
+      {/* Real-data: live class + quick actions */}
+      {activeChild?.id && (
+        <StudentLiveAndActions studentId={activeChild.id} studentName={activeChild.name} />
+      )}
+
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label={t.latestAssessment} value="74%" sub={`${activeChild.course} · Session 2`} color={scoreColor(74)} />
+        <StatCard label={t.latestAssessment} value="74%" sub={`${activeChild?.course || ''} · Session 2`} color={scoreColor(74)} />
         <StatCard label={t.attendanceRate} value="75%" sub="3 of 4 sessions" />
         <StatCard label={t.speakingScore} value="68%" sub={t.needsImprovement} color="#8a5c00" />
         <StatCard label={t.progressTrend} value="-4%" sub={t.declining} color="#b42a2a" border="#b42a2a" />
