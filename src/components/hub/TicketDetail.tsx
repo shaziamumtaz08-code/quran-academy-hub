@@ -227,13 +227,14 @@ export function TicketDetail({ ticketId, open, onOpenChange }: TicketDetailProps
                 </Avatar>
                 <div>
                   <p className="text-[10px] text-muted-foreground">From</p>
-                  <p className="text-xs font-medium">
+                  <p className="text-xs font-medium flex items-center">
                     {ticket.is_anonymous && !isAdmin
                       ? 'Anonymous'
                       : ticket.creator?.full_name}
                     {ticket.is_anonymous && isAdmin && (
                       <Badge variant="outline" className="ml-1 text-[9px] px-1 py-0">Anon</Badge>
                     )}
+                    <ActorBadge actorRole={(ticket as any).actor_role} />
                   </p>
                 </div>
               </div>
@@ -371,10 +372,11 @@ export function TicketDetail({ ticketId, open, onOpenChange }: TicketDetailProps
                         )}
                       </div>
                       <div className={`flex items-center gap-1.5 mt-0.5 px-1 ${isMe ? 'flex-row-reverse' : ''}`}>
-                        <span className="text-[10px] text-muted-foreground font-medium">
+                        <span className="text-[10px] text-muted-foreground font-medium flex items-center">
                           {isMe ? 'You' : (ticket.is_anonymous && comment.author_id === ticket.creator_id && !isAdmin)
                             ? 'Anonymous'
                             : comment.author?.full_name || 'Unknown'}
+                          <ActorBadge actorRole={(comment as any).actor_role} />
                         </span>
                         <span className="text-[10px] text-muted-foreground">
                           {format(new Date(comment.created_at), 'HH:mm')}

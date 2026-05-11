@@ -2,6 +2,7 @@ import React from 'react';
 import { format } from 'date-fns';
 import { Paperclip, ClipboardList, Copy, Reply, ExternalLink, FileText, Image as ImageIcon, Mic, Forward, ArrowRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { ActorBadge } from '@/components/shared/ActingAsBanner';
 
 interface ChatMessageBubbleProps {
   msg: any;
@@ -45,7 +46,12 @@ export function ChatMessageBubble({ msg, isMe, onConvertToTask, onReply, onForwa
             ? 'bg-primary text-primary-foreground rounded-br-md'
             : 'bg-muted border border-border rounded-bl-md'
         }`}>
-          {!isMe && <p className="text-[10px] font-bold opacity-70 mb-0.5">{msg.senderName}</p>}
+          {!isMe && (
+            <p className="text-[10px] font-bold opacity-70 mb-0.5 flex items-center">
+              {msg.senderName}
+              <ActorBadge actorRole={msg.actor_role} />
+            </p>
+          )}
           {msg.content && <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>}
 
           {/* Attachment preview */}

@@ -216,9 +216,9 @@ export function TicketList({ view, userId }: TicketListProps) {
                     </div>
                     <h4 className="font-medium text-sm mt-1 truncate">{ticket.subject}</h4>
                     <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                      <span>
+                      <span className="inline-flex items-center">
                       {view === 'inbox'
-                        ? `From: ${ticket.creator_name}${ticket.is_anonymous && isAdmin ? ' (Anon)' : ''}`
+                        ? <>From: {ticket.creator_name}{ticket.is_anonymous && isAdmin ? ' (Anon)' : ''}{(ticket as any).actor_role === 'parent' && <span className="ml-1 inline-flex items-center rounded border border-accent/30 bg-accent/10 px-1 text-[9px] font-bold text-accent">Parent</span>}</>
                         : `To: ${ticket.assignee_name}`}
                       </span>
                       <span>•</span>
