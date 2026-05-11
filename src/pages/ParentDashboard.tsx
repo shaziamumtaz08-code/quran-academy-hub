@@ -730,12 +730,14 @@ const ParentDashboard = () => {
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar - desktop */}
         <div className="hidden md:flex flex-col shrink-0" style={{ width: 220, background: '#fff', borderRight: isRtl ? 'none' : '0.5px solid #e8e9eb', borderLeft: isRtl ? '0.5px solid #e8e9eb' : 'none' }}>
-          {/* Parent header */}
+          {/* Header */}
           <div className="p-3 flex items-center gap-2.5" style={{ borderBottom: '0.5px solid #f0f1f3' }}>
-            <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: '#eef2fa', color: '#1a56b0', fontSize: 12, fontWeight: 600 }}>FM</div>
+            <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: '#eef2fa', color: '#1a56b0', fontSize: 12, fontWeight: 600 }}>
+              {(profile?.full_name || 'U').split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase()}
+            </div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 500, color: '#0f2044' }}>Fatima Mumtaz</div>
-              <div style={{ fontSize: 10, color: '#aab0bc' }}>{t.portal}</div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: '#0f2044' }}>{profile?.full_name || 'You'}</div>
+              <div style={{ fontSize: 10, color: '#aab0bc' }}>{isStudentSelf ? 'Student portal' : t.portal}</div>
             </div>
           </div>
 
