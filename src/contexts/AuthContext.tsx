@@ -183,17 +183,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        setActiveRoleState(null);
-        setActiveRolePermissions([]);
+        // On a fresh sign-in, gate downstream guards until profile is loaded
+        // to avoid redirect races (LoginRedirect → RouteGuard → /login loop).
+        if (event === 'SIGNED_IN') {
+          setIsLoading(true);
+          setActiveRoleState(null);
+          setActiveRolePermissions([]);
+        }
 
         // Defer to avoid Supabase deadlock on rapid state changes
         setTimeout(() => {
           fetchProfile(session.user.id).finally(() => {
-            // Ensure isLoading is resolved even if getSession didn't fire yet
-            if (!initialised) {
-              initialised = true;
-              setIsLoading(false);
-            }
+            initialised = true;
+            setIsLoading(false);
           });
         }, 0);
       } else if (event === 'SIGNED_OUT') {

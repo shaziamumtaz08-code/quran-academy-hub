@@ -293,7 +293,7 @@ function TeacherRoute({ children }: { children: React.ReactNode }) {
 }
 
 function LoginRedirect() {
-  const { isAuthenticated, activeRole } = useAuth();
+  const { isAuthenticated, activeRole, isLoading, profile } = useAuth();
   const location = useLocation();
   const from = (location.state as any)?.from;
 
@@ -306,6 +306,16 @@ function LoginRedirect() {
     if (activeRole === 'parent') return '/parent';
     return '/dashboard';
   };
+
+  // Wait for profile/activeRole to resolve before redirecting,
+  // otherwise we bounce to a guarded route that kicks us back to /login.
+  if (isAuthenticated && (isLoading || !profile || !activeRole)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+      </div>
+    );
+  }
 
   if (isAuthenticated) {
     return <Navigate to={from || getDefaultRoute()} replace />;
