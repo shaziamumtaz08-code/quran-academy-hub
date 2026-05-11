@@ -47,7 +47,7 @@ export const ACCESS_MATRIX: ModuleAccess[] = [
   { id:'attendance',          route:'/attendance',             roles:{...adminFull, teacher:['view','create','edit'], examiner:VIEW_ONLY, student:VIEW_ONLY, parent:VIEW_ONLY}, group:'teaching' },
   { id:'monthly_planning',    route:'/monthly-planning',       roles:{...adminFull, teacher:['view','create','edit']}, group:'teaching' },
   { id:'quiz_engine',         route:'/quiz-engine',            roles:{...adminFull, teacher:['view','create','edit']}, group:'teaching' },
-  { id:'my_quizzes',          route:'/my-quizzes',             roles:{...adminFull, teacher:VIEW_ONLY, student:VIEW_ONLY}, group:'teaching' },
+  { id:'my_quizzes',          route:'/my-quizzes',             roles:{...adminFull, teacher:VIEW_ONLY, student:VIEW_ONLY, parent:VIEW_ONLY}, group:'teaching' },
   { id:'people',              route:'/people',                 roles:{...adminFull}, group:'people' },
   { id:'students',            route:'/students',               roles:{...adminFull, teacher:VIEW_ONLY, examiner:VIEW_ONLY, parent:VIEW_ONLY}, group:'people' },
   { id:'teachers',            route:'/teachers',               roles:{...adminFull, teacher:VIEW_ONLY, examiner:VIEW_ONLY}, group:'people' },
