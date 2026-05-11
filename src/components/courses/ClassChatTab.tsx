@@ -24,6 +24,7 @@ interface ClassChatTabProps {
 
 function ClassChatTabInner({ courseId, mode }: ClassChatTabProps) {
   const { user, activeRole } = useAuth();
+  const actorStamp = useActorStamp();
   const queryClient = useQueryClient();
   const { palette } = useCommTheme();
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
