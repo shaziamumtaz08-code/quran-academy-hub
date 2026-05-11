@@ -122,7 +122,7 @@ export function StudentLiveAndActions({ studentId, studentName }: Props) {
       // findOrCreateCourseDM requires courseId; do a lightweight search/create here instead.
       const { data: existing } = await supabase
         .from('chat_groups')
-        .select('id, chat_members:chat_members(user_id)')
+        .select('id, chat_members(user_id)')
         .eq('is_dm', true)
         .is('course_id', null);
 
