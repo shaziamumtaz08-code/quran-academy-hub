@@ -470,9 +470,11 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <DivisionProvider>
-            <Suspense fallback={<AppShellLoader />}>
-              <AppRoutes />
-            </Suspense>
+            <KidContextProvider>
+              <Suspense fallback={<AppShellLoader />}>
+                <AppRoutes />
+              </Suspense>
+            </KidContextProvider>
           </DivisionProvider>
         </AuthProvider>
       </BrowserRouter>
