@@ -9425,6 +9425,10 @@ export type Database = {
         Args: { _student_id: string }
         Returns: string[]
       }
+      get_student_dashboard_context: {
+        Args: { _student_id: string }
+        Returns: Json
+      }
       get_student_division_ids: {
         Args: { _student_id: string }
         Returns: string[]
