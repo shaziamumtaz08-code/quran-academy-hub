@@ -807,17 +807,21 @@ const ParentDashboard = () => {
           </div>
         </div>
 
-        {/* Mobile child selector */}
-        <div className="md:hidden absolute top-12 left-0 right-0 z-10 bg-white px-3 py-2 flex items-center gap-2" style={{ borderBottom: '0.5px solid #e8e9eb' }}>
-          {MOCK_CHILDREN.map(c => (
-            <button key={c.id} onClick={() => setActiveChild(c)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full"
-              style={{ border: '0.5px solid #e8e9eb', background: activeChild.id === c.id ? '#eef2fa' : '#fff', fontSize: 12 }}>
-              <span style={{ fontWeight: 500, color: '#0f2044' }}>{c.name.split(' ')[0]}</span>
-              <span style={{ fontWeight: 600, color: scoreColor(c.score) }}>{c.score}%</span>
-            </button>
-          ))}
-        </div>
+        {/* Mobile child selector — hidden in student-self mode */}
+        {!isStudentSelf && (
+          <div className="md:hidden absolute top-12 left-0 right-0 z-10 bg-white px-3 py-2 flex items-center gap-2" style={{ borderBottom: '0.5px solid #e8e9eb' }}>
+            {children.map((c: any) => (
+              <button key={c.id} onClick={() => setActiveChild(c)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full"
+                style={{ border: '0.5px solid #e8e9eb', background: activeChild?.id === c.id ? '#eef2fa' : '#fff', fontSize: 12 }}>
+                <span style={{ fontWeight: 500, color: '#0f2044' }}>{c.name.split(' ')[0]}</span>
+                {c.score > 0 && (
+                  <span style={{ fontWeight: 600, color: scoreColor(c.score) }}>{c.score}%</span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Main content */}
         <div className="flex-1 overflow-y-auto" style={{ background: '#f4f5f7' }}>
