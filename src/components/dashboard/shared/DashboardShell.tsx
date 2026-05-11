@@ -67,12 +67,12 @@ export function DashboardShell({ topContent, leftContent, rightContent, brandLab
 
         {topContent}
 
-        {/* 2-col grid */}
-        <div className="md:grid md:grid-cols-[55%_45%] md:gap-6">
-          <div className="space-y-2 md:space-y-4">
+        {/* 2-col grid: left flex, right fixed 320px sidebar */}
+        <div className="md:grid md:grid-cols-1 lg:grid-cols-[1fr_320px] md:gap-6">
+          <div className="space-y-2 md:space-y-4 min-w-0">
             {leftContent}
           </div>
-          <div className="space-y-2 md:space-y-4 mt-2 md:mt-0 md:sticky md:top-[80px] md:self-start">
+          <div className="space-y-2 md:space-y-4 mt-2 md:mt-0 lg:sticky lg:top-[80px] lg:self-start">
             {rightContent}
           </div>
         </div>
