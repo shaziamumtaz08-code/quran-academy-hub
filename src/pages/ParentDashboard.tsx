@@ -739,25 +739,29 @@ const ParentDashboard = () => {
             </div>
           </div>
 
-          {/* Children */}
-          <div className="p-3">
-            <div style={{ fontSize: 10, fontWeight: 600, color: '#aab0bc', letterSpacing: 0.5, marginBottom: 8 }}>{t.myChildren}</div>
-            {MOCK_CHILDREN.map(c => (
-              <button key={c.id} onClick={() => setActiveChild(c)}
-                className="w-full flex items-center gap-2 rounded-lg px-2.5 py-2 mb-1 transition-colors"
-                style={{ background: activeChild.id === c.id ? '#eef2fa' : 'transparent' }}>
-                <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{
-                  background: activeChild.id === c.id ? '#1a56b0' : '#f0f1f3',
-                  color: activeChild.id === c.id ? '#fff' : '#7a7f8a', fontSize: 10, fontWeight: 600
-                }}>{c.initials}</div>
-                <div className="flex-1 text-left min-w-0">
-                  <div style={{ fontSize: 12, fontWeight: 500, color: '#0f2044' }}>{c.name}</div>
-                  <div style={{ fontSize: 10, color: '#aab0bc' }}>{c.course}</div>
-                </div>
-                <span style={{ fontSize: 12, fontWeight: 600, color: scoreColor(c.score) }}>{c.score}%</span>
-              </button>
-            ))}
-          </div>
+          {/* Children — hidden in student-self mode */}
+          {!isStudentSelf && (
+            <div className="p-3">
+              <div style={{ fontSize: 10, fontWeight: 600, color: '#aab0bc', letterSpacing: 0.5, marginBottom: 8 }}>{t.myChildren}</div>
+              {children.map((c: any) => (
+                <button key={c.id} onClick={() => setActiveChild(c)}
+                  className="w-full flex items-center gap-2 rounded-lg px-2.5 py-2 mb-1 transition-colors"
+                  style={{ background: activeChild?.id === c.id ? '#eef2fa' : 'transparent' }}>
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{
+                    background: activeChild?.id === c.id ? '#1a56b0' : '#f0f1f3',
+                    color: activeChild?.id === c.id ? '#fff' : '#7a7f8a', fontSize: 10, fontWeight: 600
+                  }}>{c.initials}</div>
+                  <div className="flex-1 text-left min-w-0">
+                    <div style={{ fontSize: 12, fontWeight: 500, color: '#0f2044' }}>{c.name}</div>
+                    <div style={{ fontSize: 10, color: '#aab0bc' }}>{c.course}</div>
+                  </div>
+                  {c.score > 0 && (
+                    <span style={{ fontSize: 12, fontWeight: 600, color: scoreColor(c.score) }}>{c.score}%</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Section nav */}
           <div className="px-3 flex-1">
