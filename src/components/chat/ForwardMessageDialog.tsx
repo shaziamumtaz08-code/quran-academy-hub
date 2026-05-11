@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { Forward, Users, User, ClipboardList, Search } from 'lucide-react';
+import { useActorStamp } from '@/contexts/KidContext';
 
 interface ForwardMessageDialogProps {
   open: boolean;
@@ -19,6 +20,7 @@ interface ForwardMessageDialogProps {
 
 export function ForwardMessageDialog({ open, onOpenChange, message, currentGroupName }: ForwardMessageDialogProps) {
   const { user } = useAuth();
+  const stamp = useActorStamp();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState('groups');
@@ -59,7 +61,8 @@ export function ForwardMessageDialog({ open, onOpenChange, message, currentGroup
         is_forwarded: true,
         forwarded_from: message.senderName || 'Unknown',
         forwarded_source_group: currentGroupName || '',
-      });
+        ...stamp,
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -117,7 +120,8 @@ export function ForwardMessageDialog({ open, onOpenChange, message, currentGroup
         is_forwarded: true,
         forwarded_from: message.senderName || 'Unknown',
         forwarded_source_group: currentGroupName || '',
-      });
+        ...stamp,
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {

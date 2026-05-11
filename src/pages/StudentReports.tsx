@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Eye, Filter, FileText, AlertCircle, X, TrendingUp, Trash2, ArrowUpDown, ArrowUp, ArrowDown, RotateCcw, Loader2, Pencil } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useKidContext } from '@/contexts/KidContext';
 import { supabase } from '@/integrations/supabase/client';
 import { handleSupabaseError } from '@/lib/handleSupabaseError';
 import { TemplateStructure, StoredCriteriaEntry } from '@/types/reportCard';
@@ -58,6 +59,7 @@ type SortOrder = 'asc' | 'desc';
 
 export default function StudentReports() {
   const { profile, user, activeRole } = useAuth();
+  const { activeKidId } = useKidContext();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -112,7 +114,7 @@ export default function StudentReports() {
 
   // Fetch reports (always exclude soft-deleted)
   const { data: reports, isLoading, error } = useQuery({
-    queryKey: ['student-reports', user?.id, activeRole],
+    queryKey: ['student-reports', user?.id, activeRole, activeKidId],
     queryFn: async () => {
       let query = supabase
         .from('exams')
@@ -148,6 +150,9 @@ export default function StudentReports() {
         return [];
       } else if (activeRole === 'student') {
         query = query.eq('student_id', user?.id);
+      } else if (activeRole === 'parent' && activeKidId) {
+        // Scope to currently selected child via parent kid toggle
+        query = query.eq('student_id', activeKidId);
       } else if (activeRole === 'parent' && parentChildrenIds && parentChildrenIds.length > 0) {
         query = query.in('student_id', parentChildrenIds);
       } else if (activeRole === 'parent' && (!parentChildrenIds || parentChildrenIds.length === 0)) {

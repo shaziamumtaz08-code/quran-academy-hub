@@ -10,6 +10,7 @@ import { Loader2, Send, User, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useActorStamp } from '@/contexts/KidContext';
 
 const FLAGGED_KEYWORDS = ['phone', 'whatsapp', 'number', 'meet', 'address', 'snapchat', 'instagram', 'contact'];
 
@@ -29,6 +30,7 @@ interface DMChatSheetProps {
 
 export function DMChatSheet({ open, onOpenChange, groupId, recipientName, showFlaggedHighlight = false }: DMChatSheetProps) {
   const { user } = useAuth();
+  const stamp = useActorStamp();
   const queryClient = useQueryClient();
   const [message, setMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -82,7 +84,8 @@ export function DMChatSheet({ open, onOpenChange, groupId, recipientName, showFl
         sender_id: user.id,
         content,
         is_flagged: isFlagged,
-      });
+        ...stamp,
+      } as any);
       if (error) throw error;
 
       if (isFlagged) {
