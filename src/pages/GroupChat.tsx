@@ -243,6 +243,7 @@ function GroupChatInner() {
         group_id: activeGroupId, sender_id: user.id,
         content: content || null, attachment_url: attachmentUrl || null,
         reply_to: replyTo?.id || null,
+        ...actorStamp,
       });
       if (error) throw error;
     },
