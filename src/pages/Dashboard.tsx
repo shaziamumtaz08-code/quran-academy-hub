@@ -5,7 +5,7 @@ import { useDivision } from '@/contexts/DivisionContext';
 import { AdminDashboard } from '@/components/dashboard/AdminDashboard';
 import { TeacherDashboard } from '@/components/dashboard/TeacherDashboard';
 import { StudentDashboard } from '@/components/dashboard/StudentDashboard';
-import { ParentDashboard } from '@/components/dashboard/ParentDashboard';
+import ParentDashboardPage from '@/pages/ParentDashboard';
 import { SuperAdminDashboard } from '@/components/dashboard/SuperAdminDashboard';
 import { FeesAdminDashboard } from '@/components/dashboard/FeesAdminDashboard';
 import { AdmissionsAdminDashboard } from '@/components/dashboard/AdmissionsAdminDashboard';
