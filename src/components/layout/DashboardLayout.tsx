@@ -261,19 +261,23 @@ function buildDrawerSections(role: AppRole | null, modelType?: "one_to_one" | "g
   }
 
   if (role === "parent") {
-    return [
-      {
-        label: "MENU",
-        items: [
-          { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-          { label: "My Children's Reports", href: "/student-reports", icon: FileText },
-          { label: "Fees", href: "/finance?view=payments", icon: Landmark },
-          { label: "Communication", href: "/communication", icon: MessageSquare },
-          { label: "Resources", href: "/resources", icon: FolderOpen },
-          { label: "Work Hub", href: "/work-hub", icon: Briefcase },
-        ],
-      },
+    // Parent menu mirrors the student menu exactly so the experience is
+    // identical when a parent is acting on behalf of a child.
+    const items: DrawerItem[] = [
+      { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     ];
+    if (isGroupStyleModel) {
+      items.push({ label: "My Courses", href: "/my-courses", icon: GraduationCap });
+    }
+    items.push(
+      { label: "Attendance", href: "/attendance", icon: BarChart3 },
+      { label: "Reports", href: "/student-reports", icon: FileText },
+      { label: "Fees", href: "/finance?view=payments", icon: Landmark },
+      { label: "Resources", href: "/resources", icon: FolderOpen },
+      { label: "Communication", href: "/communication", icon: MessageSquare },
+      { label: "Work Hub", href: "/work-hub", icon: Briefcase },
+    );
+    return [{ label: "MENU", items }];
   }
 
   if (role === "examiner") {
