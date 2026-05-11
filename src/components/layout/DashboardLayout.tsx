@@ -42,6 +42,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils";
 import { preloadRouteModule, preloadRouteModules } from "@/lib/routePreload";
 import logoDark from "@/assets/logo-dark.jpg";
+import { ActingAsBanner } from "@/components/shared/ActingAsBanner";
 
 const DashboardLayoutContext = createContext(false);
 export const useIsInsideDashboard = () => useContext(DashboardLayoutContext);
