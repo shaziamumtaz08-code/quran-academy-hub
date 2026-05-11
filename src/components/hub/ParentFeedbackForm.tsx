@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Star } from 'lucide-react';
 import { toast } from 'sonner';
+import { useActorStamp } from '@/contexts/KidContext';
 
 interface ParentFeedbackFormProps {
   ticketId: string;
@@ -37,6 +38,7 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
 
 export function ParentFeedbackForm({ ticketId, onSubmitted }: ParentFeedbackFormProps) {
   const { profile } = useAuth();
+  const stamp = useActorStamp();
   const [ratings, setRatings] = useState<Record<string, number>>({});
   const [wouldRecommend, setWouldRecommend] = useState<boolean | null>(null);
   const [comments, setComments] = useState('');
@@ -53,7 +55,8 @@ export function ParentFeedbackForm({ ticketId, onSubmitted }: ParentFeedbackForm
         author_id: profile!.id,
         message: comments || 'Feedback submitted',
         metadata,
-      });
+        ...stamp,
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {

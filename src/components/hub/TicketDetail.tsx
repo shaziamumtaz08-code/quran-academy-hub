@@ -14,6 +14,8 @@ import { TATIndicator } from './TATIndicator';
 import { toast } from 'sonner';
 import { ParentFeedbackForm } from './ParentFeedbackForm';
 import { supabase as sb } from '@/integrations/supabase/client';
+import { useActorStamp } from '@/contexts/KidContext';
+import { ActorBadge } from '@/components/shared/ActingAsBanner';
 
 interface TicketDetailProps {
   ticketId: string;
@@ -32,6 +34,7 @@ const STATUS_DOT: Record<string, string> = {
 
 export function TicketDetail({ ticketId, open, onOpenChange }: TicketDetailProps) {
   const { profile, activeRole } = useAuth();
+  const stamp = useActorStamp();
   const queryClient = useQueryClient();
   const [newComment, setNewComment] = useState('');
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -89,6 +92,7 @@ export function TicketDetail({ ticketId, open, onOpenChange }: TicketDetailProps
         author_id: profile!.id,
         message,
         attachment_url: attachment || null,
+        ...stamp,
       } as any);
       if (error) throw error;
     },

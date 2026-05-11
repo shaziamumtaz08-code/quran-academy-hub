@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
 import { LeaveRequestFields } from './LeaveRequestFields';
 import { FileUploadField } from '@/components/shared/FileUploadField';
+import { useActorStamp } from '@/contexts/KidContext';
 
 interface CreateTicketDialogProps {
   open: boolean;
@@ -44,6 +45,7 @@ export function CreateTicketDialog({
   sourceType, sourceId, onLinkSource,
 }: CreateTicketDialogProps) {
   const { profile, activeRole } = useAuth();
+  const stamp = useActorStamp();
   const isAdmin = !!activeRole && ['super_admin','admin','admin_division','admin_admissions','admin_fees','admin_academic'].includes(activeRole);
   const { activeDivision, activeBranch } = useDivision();
   const queryClient = useQueryClient();
@@ -183,6 +185,7 @@ export function CreateTicketDialog({
         branch_id: activeBranch?.id || null,
         division_id: activeDivision?.id || null,
         attachment_url: attachmentUrl || null,
+        ...stamp,
       } as any).select('id').single();
       if (error) throw error;
       if (created?.id && onLinkSource) {
