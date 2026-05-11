@@ -27,6 +27,7 @@ import {
 
 function GroupChatInner() {
   const { user, activeRole } = useAuth();
+  const actorStamp = useActorStamp();
   const isAdmin = (activeRole && ['super_admin', 'admin', 'admin_admissions', 'admin_fees', 'admin_academic'].includes(activeRole)) || activeRole?.startsWith('admin_');
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
