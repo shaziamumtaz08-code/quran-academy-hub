@@ -65,9 +65,9 @@ export default function Dashboard() {
     case 'teacher':
       return <TeacherDashboard />;
     case 'student':
-      return activeDivision?.model_type === 'group' ? <UnifiedDashboard /> : <StudentDashboard />;
+      return <ParentDashboardPage />;
     case 'parent':
-      return <ParentDashboard />;
+      return <ParentDashboardPage />;
     case 'examiner':
       return <ExaminerDashboard />;
     default:
