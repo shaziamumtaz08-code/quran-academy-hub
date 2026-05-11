@@ -47,9 +47,9 @@ export function DashboardShell({ topContent, leftContent, rightContent, brandLab
       {/* Scrollable content */}
       <div className="space-y-2 max-w-[1100px] mx-auto">
         {/* Greeting */}
-        <div className="hidden md:flex items-center justify-between bg-white border border-lms-border rounded-[10px] px-3 py-1.5">
+        <div className="hidden md:flex items-center justify-between bg-white border border-lms-border rounded-md px-3 py-1.5">
           <p className="text-[13px] font-medium text-lms-navy truncate">Assalamu Alaikum, {firstName} 👋</p>
-          <button className="relative bg-lms-surface border border-lms-border rounded-lg w-9 h-9 flex items-center justify-center text-lms-text-1 shrink-0">
+          <button className="relative bg-lms-surface border border-lms-border rounded-md w-9 h-9 flex items-center justify-center text-lms-text-1 shrink-0">
             <Bell className="h-4 w-4" />
             {unreadCount > 0 && (
               <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-lms-danger text-white text-[10px] font-medium flex items-center justify-center leading-none">
@@ -67,12 +67,12 @@ export function DashboardShell({ topContent, leftContent, rightContent, brandLab
 
         {topContent}
 
-        {/* 2-col grid */}
-        <div className="md:grid md:grid-cols-[55%_45%] md:gap-6">
-          <div className="space-y-2 md:space-y-4">
+        {/* 2-col grid: left flex, right fixed 320px sidebar */}
+        <div className="md:grid md:grid-cols-1 lg:grid-cols-[1fr_320px] md:gap-6">
+          <div className="space-y-2 md:space-y-4 min-w-0">
             {leftContent}
           </div>
-          <div className="space-y-2 md:space-y-4 mt-2 md:mt-0 md:sticky md:top-[80px] md:self-start">
+          <div className="space-y-2 md:space-y-4 mt-2 md:mt-0 lg:sticky lg:top-[80px] lg:self-start">
             {rightContent}
           </div>
         </div>
