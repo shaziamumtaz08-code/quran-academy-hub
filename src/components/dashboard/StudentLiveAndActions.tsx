@@ -6,7 +6,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { CalendarOff, MessageSquare, Video, User as UserIcon } from 'lucide-react';
 import { CreateTicketDialog } from '@/components/hub/CreateTicketDialog';
-import { findOrCreateCourseDM } from '@/lib/messaging';
 import { toast } from 'sonner';
 
 interface Props {
