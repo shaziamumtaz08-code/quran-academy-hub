@@ -44,20 +44,20 @@ export function buildRailNav(role: AppRole | null): RailItem[] {
       { label: 'Communication', href: '/communication', icon: MessageSquare },
     ];
   }
-  if (role === 'student') {
-    return [
+  // Student & parent share the same menu. Difference: parent sees a kid toggle (rendered
+  // inside dashboards) and an extra Family link for managing children.
+  if (role === 'student' || role === 'parent') {
+    const items: RailItem[] = [
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { label: 'My Courses', href: '/my-courses', icon: BookOpen },
+      { label: 'Reports', href: '/student-reports', icon: BarChart3 },
       { label: 'Resources', href: '/resources', icon: FolderOpen },
       { label: 'Communication', href: '/communication', icon: MessageSquare },
     ];
-  }
-  if (role === 'parent') {
-    return [
-      { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
-      { label: 'Reports', href: '/student-reports', icon: BarChart3 },
-      { label: 'Communication', href: '/communication', icon: MessageSquare },
-    ];
+    if (role === 'parent') {
+      items.push({ label: 'Family', href: '/parent', icon: Users });
+    }
+    return items;
   }
   if (role === 'examiner') {
     return [
