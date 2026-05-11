@@ -685,7 +685,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
           </header>
 
-          <main className="flex-1 overflow-y-auto overflow-x-hidden bg-background">{children}</main>
+          <main className="flex-1 overflow-y-auto overflow-x-hidden bg-background">
+            <ActingAsBanner />
+            {children}
+          </main>
         </div>
       </div>
     </DashboardLayoutContext.Provider>
