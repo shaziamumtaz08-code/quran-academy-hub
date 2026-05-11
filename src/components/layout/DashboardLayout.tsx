@@ -42,6 +42,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils";
 import { preloadRouteModule, preloadRouteModules } from "@/lib/routePreload";
 import logoDark from "@/assets/logo-dark.jpg";
+import { ActingAsBanner } from "@/components/shared/ActingAsBanner";
 
 const DashboardLayoutContext = createContext(false);
 export const useIsInsideDashboard = () => useContext(DashboardLayoutContext);
@@ -684,7 +685,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
           </header>
 
-          <main className="flex-1 overflow-y-auto overflow-x-hidden bg-background">{children}</main>
+          <main className="flex-1 overflow-y-auto overflow-x-hidden bg-background">
+            <ActingAsBanner />
+            {children}
+          </main>
         </div>
       </div>
     </DashboardLayoutContext.Provider>

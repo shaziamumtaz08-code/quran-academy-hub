@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useActorStamp } from '@/contexts/KidContext';
 import { ConditionalDashboardLayout as DashboardLayout } from '@/components/layout/ConditionalDashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +27,7 @@ import {
 
 function GroupChatInner() {
   const { user, activeRole } = useAuth();
+  const actorStamp = useActorStamp();
   const isAdmin = (activeRole && ['super_admin', 'admin', 'admin_admissions', 'admin_fees', 'admin_academic'].includes(activeRole)) || activeRole?.startsWith('admin_');
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
@@ -241,6 +243,7 @@ function GroupChatInner() {
         group_id: activeGroupId, sender_id: user.id,
         content: content || null, attachment_url: attachmentUrl || null,
         reply_to: replyTo?.id || null,
+        ...actorStamp,
       });
       if (error) throw error;
     },

@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { DivisionProvider, useDivision } from "@/contexts/DivisionContext";
+import { KidContextProvider } from "@/contexts/KidContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -469,9 +470,11 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <DivisionProvider>
-            <Suspense fallback={<AppShellLoader />}>
-              <AppRoutes />
-            </Suspense>
+            <KidContextProvider>
+              <Suspense fallback={<AppShellLoader />}>
+                <AppRoutes />
+              </Suspense>
+            </KidContextProvider>
           </DivisionProvider>
         </AuthProvider>
       </BrowserRouter>

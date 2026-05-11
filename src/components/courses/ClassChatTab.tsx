@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useActorStamp } from '@/contexts/KidContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -23,6 +24,7 @@ interface ClassChatTabProps {
 
 function ClassChatTabInner({ courseId, mode }: ClassChatTabProps) {
   const { user, activeRole } = useAuth();
+  const actorStamp = useActorStamp();
   const queryClient = useQueryClient();
   const { palette } = useCommTheme();
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
@@ -130,6 +132,7 @@ function ClassChatTabInner({ courseId, mode }: ClassChatTabProps) {
         content: content || null,
         attachment_url: attachmentUrl || null,
         reply_to: replyTo?.id || null,
+        ...actorStamp,
       });
       if (error) throw error;
     },
