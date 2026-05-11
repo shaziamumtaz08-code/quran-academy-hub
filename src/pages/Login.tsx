@@ -61,18 +61,9 @@ export default function Login() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    if (isAuthenticated && profile) {
-      const role = profile.role;
-      if (role === 'super_admin' || role === 'admin' || role?.startsWith('admin_')) {
-        navigate('/admin');
-      } else if (role === 'teacher' || role === 'examiner') {
-        navigate('/teacher');
-      } else {
-        navigate('/dashboard');
-      }
-    }
-  }, [isAuthenticated, profile, navigate]);
+  // Redirect after login is handled centrally by <LoginRedirect /> in App.tsx,
+  // which waits for profile + activeRole to fully resolve before navigating.
+  // Avoid a duplicate navigate() here — on mobile it raced and left a blank screen.
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
