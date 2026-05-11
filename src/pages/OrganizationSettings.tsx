@@ -108,6 +108,66 @@ function DefaultPayoutRatesSection() {
   );
 }
 
+// ── Spotlight Settings (super_admin sets the featured spotlight shown on dashboards) ──
+function SpotlightSettingsSection() {
+  const { toast: t } = useToast();
+  const queryClient = useQueryClient();
+  const { data: row } = useQuery({
+    queryKey: ['spotlight-setting'],
+    queryFn: async () => {
+      const { data } = await supabase.from('app_settings').select('*').eq('setting_key', 'featured_spotlight').maybeSingle();
+      return data;
+    },
+  });
+  const [form, setForm] = useState({ title: '', description: '', image_url: '', link: '' });
+  const [init, setInit] = useState(false);
+  if (row && !init) {
+    const v: any = (row as any).setting_value || {};
+    setForm({ title: v.title || '', description: v.description || '', image_url: v.image_url || '', link: v.link || '' });
+    setInit(true);
+  }
+  const save = useMutation({
+    mutationFn: async () => {
+      const payload = { setting_key: 'featured_spotlight', setting_value: form as any };
+      if (row) {
+        const { error } = await supabase.from('app_settings').update(payload).eq('id', (row as any).id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('app_settings').insert(payload);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['spotlight-setting'] }); queryClient.invalidateQueries({ queryKey: ['dashboard-spotlight'] }); t({ title: 'Spotlight saved' }); },
+    onError: (e: any) => t({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+  const clear = useMutation({
+    mutationFn: async () => {
+      if (!row) return;
+      const { error } = await supabase.from('app_settings').delete().eq('id', (row as any).id);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['spotlight-setting'] }); queryClient.invalidateQueries({ queryKey: ['dashboard-spotlight'] }); setForm({ title: '', description: '', image_url: '', link: '' }); t({ title: 'Spotlight cleared' }); },
+  });
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>✨ Featured Spotlight</CardTitle>
+        <CardDescription>Shown to all students and parents at the bottom of their dashboards. Leave blank to hide.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="space-y-1.5"><Label>Title</Label><Input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} /></div>
+        <div className="space-y-1.5"><Label>Description</Label><Input value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} /></div>
+        <div className="space-y-1.5"><Label>Image URL</Label><Input value={form.image_url} onChange={e => setForm(p => ({ ...p, image_url: e.target.value }))} placeholder="https://..." /></div>
+        <div className="space-y-1.5"><Label>Link</Label><Input value={form.link} onChange={e => setForm(p => ({ ...p, link: e.target.value }))} placeholder="https://..." /></div>
+        <div className="flex gap-2">
+          <Button onClick={() => save.mutate()} disabled={save.isPending || !form.title}>{save.isPending ? 'Saving...' : 'Save Spotlight'}</Button>
+          {row && <Button variant="outline" onClick={() => clear.mutate()} disabled={clear.isPending}>Clear</Button>}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function OrganizationSettings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
