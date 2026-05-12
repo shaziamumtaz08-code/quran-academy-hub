@@ -587,24 +587,32 @@ export function StudentDashboard() {
     </div>
   );
 
-  const SpotlightCard = spotlight ? (
+  const SpotlightCard = (
     <div className="p-0 border rounded-md bg-card overflow-hidden">
-      {spotlight.image_url && (
-        <img src={spotlight.image_url} alt={spotlight.title || 'Spotlight'} className="w-full h-28 object-cover" />
+      {spotlight?.image_url ? (
+        <img src={spotlight.image_url} alt={spotlight.title || 'Spotlight'} className="w-full h-32 object-cover" />
+      ) : (
+        <div className="w-full h-32 bg-gradient-to-br from-cyan-50 to-slate-100 flex items-center justify-center text-xs text-muted-foreground">
+          Spotlight
+        </div>
       )}
       <div className="p-3">
-        {spotlight.title && <div className="font-semibold text-sm">{spotlight.title}</div>}
-        {spotlight.description && (
+        <div className="font-semibold text-sm">{spotlight?.title || 'Featured'}</div>
+        {spotlight?.description && (
           <div className="text-xs text-muted-foreground line-clamp-2 mt-1">{spotlight.description}</div>
         )}
-        {spotlight.link && (
+        {spotlight?.link ? (
           <Button asChild className="w-full bg-[hsl(var(--navy))] hover:bg-[hsl(var(--navy-dark))] text-white mt-2 text-xs h-8">
-            <a href={spotlight.link} target="_blank" rel="noreferrer">Open</a>
+            <a href={spotlight.link} target="_blank" rel="noreferrer">{spotlight?.cta || 'Open'}</a>
+          </Button>
+        ) : (
+          <Button disabled className="w-full bg-[hsl(var(--navy))] text-white mt-2 text-xs h-8 opacity-70">
+            Coming Soon
           </Button>
         )}
       </div>
     </div>
-  ) : null;
+  );
 
   return (
     <div className="flex flex-col gap-3 lg:gap-4 p-3 lg:p-4">
@@ -624,10 +632,9 @@ export function StudentDashboard() {
           {QuickLinksCard}
           {FeeStatusCard}
         </div>
-        {/* Middle column: Recent Lessons + Recent Results */}
+        {/* Middle column: combined Lessons + Results */}
         <div className="flex flex-col gap-4">
-          {RecentLessonsCard}
-          {RecentResultsCard}
+          {LessonsAndResultsCard}
         </div>
         {/* Right column: Action Center + Spotlight */}
         <div className="flex flex-col gap-4">
@@ -643,9 +650,8 @@ export function StudentDashboard() {
         {QuickLinksCard}
         {PriorityInboxCard}
         {ActionCenterCard}
-        {RecentLessonsCard}
+        {LessonsAndResultsCard}
         {FeeStatusCard}
-        {RecentResultsCard}
         {SpotlightCard}
       </div>
     </div>
