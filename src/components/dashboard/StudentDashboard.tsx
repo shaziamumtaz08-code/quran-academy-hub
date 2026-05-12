@@ -374,7 +374,7 @@ export function StudentDashboard() {
   const QuickLinksCard = (
     <div className="p-4 border rounded-md bg-card">
       <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Quick Links</div>
-      <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
+      <div className="grid grid-cols-3 gap-2">
         {quickLinks.map(q => {
           const Icon = q.icon;
           return (
@@ -427,7 +427,7 @@ export function StudentDashboard() {
   const FeeStatusCard = (
     <div className="p-4 border rounded-md bg-card">
       <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Fee Status</div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x">
+      <div className="grid grid-cols-2 divide-x">
         <div className="text-center py-3 lg:py-0 lg:pr-4">
           <div className="text-xs text-muted-foreground mb-1">Last Payment</div>
           {lastPayment ? (
@@ -581,33 +581,44 @@ export function StudentDashboard() {
   return (
     <div className="flex flex-col gap-3 lg:gap-4 p-3 lg:p-4">
       {Header}
-      <div className="lg:grid lg:grid-cols-[1fr_300px] gap-4 flex flex-col">
-        {/* Left column */}
-        <div className="flex flex-col gap-4 order-2 lg:order-1">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {NextClassCard}
-            {PerformanceCard}
-          </div>
-          {QuickLinksCard}
-          {/* Mobile order: Inbox + Action between QuickLinks and Recent Lessons */}
-          <div className="lg:hidden flex flex-col gap-4">
-            {PriorityInboxCard}
-            {ActionCenterCard}
-          </div>
-          {RecentLessonsCard}
-          {FeeStatusCard}
-          <div className="lg:hidden flex flex-col gap-4">
-            {RecentResultsCard}
-            {SpotlightCard}
-          </div>
+
+      {/* Desktop: 3-column layout matching reference */}
+      <div className="hidden lg:grid lg:grid-cols-[280px_1fr_300px] gap-4">
+        {/* TOP ROW spans all three columns */}
+        <div className="lg:col-span-2 grid grid-cols-[1fr_280px] gap-4">
+          {NextClassCard}
+          {PerformanceCard}
         </div>
-        {/* Right column (desktop only) */}
-        <div className="hidden lg:flex flex-col gap-4 order-1 lg:order-2">
-          {PriorityInboxCard}
-          {ActionCenterCard}
+        {PriorityInboxCard}
+
+        {/* SECOND ROW — left column: Quick Links + Fee Status */}
+        <div className="flex flex-col gap-4">
+          {QuickLinksCard}
+          {FeeStatusCard}
+        </div>
+        {/* Middle column: Recent Lessons + Recent Results */}
+        <div className="flex flex-col gap-4">
+          {RecentLessonsCard}
           {RecentResultsCard}
+        </div>
+        {/* Right column: Action Center + Spotlight */}
+        <div className="flex flex-col gap-4">
+          {ActionCenterCard}
           {SpotlightCard}
         </div>
+      </div>
+
+      {/* Mobile: stacked single column */}
+      <div className="flex flex-col gap-3 lg:hidden">
+        {NextClassCard}
+        {PerformanceCard}
+        {QuickLinksCard}
+        {PriorityInboxCard}
+        {ActionCenterCard}
+        {RecentLessonsCard}
+        {FeeStatusCard}
+        {RecentResultsCard}
+        {SpotlightCard}
       </div>
     </div>
   );
