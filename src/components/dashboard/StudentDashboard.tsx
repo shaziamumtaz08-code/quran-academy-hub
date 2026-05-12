@@ -65,7 +65,7 @@ export function StudentDashboard() {
     },
   });
 
-  const tz = studentProfile?.timezone || profile?.timezone || 'Asia/Karachi';
+  const tz = studentProfile?.timezone || (profile as any)?.timezone || 'Asia/Karachi';
   const displayName = profile?.full_name || studentProfile?.full_name || 'Student';
 
   // Hijri + prayer times
