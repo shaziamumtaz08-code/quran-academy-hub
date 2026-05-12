@@ -538,11 +538,34 @@ export function StudentDashboard() {
     </div>
   );
 
-  const RecentResultsCard = (
-    <div className="p-4 border rounded-md bg-card">
-      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Recent Results</div>
+  const LessonsAndResultsCard = (
+    <div className="p-4 border rounded-md bg-card flex flex-col">
+      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Recent Lessons</div>
+      {recentLessons.length === 0 ? (
+        <div className="text-xs text-muted-foreground text-center py-3">No lessons recorded yet</div>
+      ) : (
+        recentLessons.map((l: any) => {
+          const present = l.status === 'present';
+          return (
+            <div key={l.id} className="flex items-center justify-between py-2 border-b last:border-0 gap-3">
+              <div className="flex items-start gap-2 min-w-0 flex-1">
+                {present
+                  ? <CheckCircle2 size={16} className="text-emerald-500 mt-0.5 shrink-0" />
+                  : <XCircle size={16} className="text-red-400 mt-0.5 shrink-0" />}
+                <div className="min-w-0">
+                  <div className="text-sm truncate">{l.lesson_covered || <span className="text-muted-foreground">No lesson recorded</span>}</div>
+                  <div className="text-xs text-muted-foreground truncate">{l.homework || 'No homework'}</div>
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground shrink-0">{format(parseISO(l.class_date), 'd MMM')}</div>
+            </div>
+          );
+        })
+      )}
+
+      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 mt-4 pt-3 border-t">Recent Results</div>
       {exams.length === 0 ? (
-        <div className="text-xs text-muted-foreground text-center py-4">No results yet</div>
+        <div className="text-xs text-muted-foreground text-center py-3">No results yet</div>
       ) : (
         exams.map((e: any) => {
           const passed = (e.percentage || 0) >= 50;
