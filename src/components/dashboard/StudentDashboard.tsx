@@ -641,17 +641,18 @@ export function StudentDashboard() {
         </div>
       </div>
 
-      {/* Mobile: stacked single column */}
+      {/* Mobile: stacked single column (Quick Links shown as fixed bottom bar) */}
       <div className="flex flex-col gap-3 lg:hidden">
         {NextClassCard}
         {PerformanceCard}
-        {QuickLinksCard}
         {PriorityInboxCard}
         {ActionCenterCard}
         {LessonsAndResultsCard}
         {FeeStatusCard}
         {SpotlightCard}
       </div>
+
+      {MobileQuickLinksBar}
     </div>
   );
 }
