@@ -374,7 +374,7 @@ export function StudentDashboard() {
   const QuickLinksCard = (
     <div className="p-4 border rounded-md bg-card">
       <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Quick Links</div>
-      <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
+      <div className="grid grid-cols-3 gap-2">
         {quickLinks.map(q => {
           const Icon = q.icon;
           return (
