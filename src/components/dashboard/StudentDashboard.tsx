@@ -145,7 +145,7 @@ export function StudentDashboard() {
     return { total, present, pct };
   }, [attendance]);
 
-  const recentLessons = attendance.slice(0, 4);
+  const recentLessons = attendance.slice(0, 3);
 
   // Last payment + next pending invoice
   const { data: lastPayment } = useQuery({
@@ -303,11 +303,12 @@ export function StudentDashboard() {
   const teacherInitial = teacherName?.charAt(0)?.toUpperCase() || 'T';
   const meetingLink = (liveSession as any)?.license?.meeting_link;
 
+  const isLive = !!(liveSession && meetingLink);
   const NextClassCard = (
     <div className="p-4 border rounded-md bg-card">
       <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Next Class</div>
       <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-full bg-[hsl(var(--navy))] text-white font-bold flex items-center justify-center">
+        <div className="w-12 h-12 rounded-full bg-[hsl(var(--navy))] text-white font-bold flex items-center justify-center shrink-0">
           {teacherInitial}
         </div>
         <div className="flex-1 min-w-0">
@@ -317,20 +318,24 @@ export function StudentDashboard() {
             {assignment?.subject?.name || 'No subject assigned'}
           </div>
         </div>
-        <div>
-          {liveSession && meetingLink ? (
-            <a
-              href={meetingLink} target="_blank" rel="noreferrer"
-              className="inline-flex items-center gap-1.5 bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 rounded-md text-sm font-medium"
-            >
-              Join Now <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-          ) : sched ? (
-            <div className="text-xs text-muted-foreground inline-flex items-center gap-1">
-              <Clock className="h-3.5 w-3.5" /> Next: {sched.day_of_week} {fmtTime12(sched.student_local_time)}
+        <div className="flex flex-col items-end gap-1.5 shrink-0">
+          <a
+            href={isLive ? meetingLink : '#'}
+            target={isLive ? '_blank' : undefined}
+            rel="noreferrer"
+            onClick={(e) => { if (!isLive) e.preventDefault(); }}
+            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium text-white ${
+              isLive
+                ? 'bg-emerald-500 hover:bg-emerald-600 animate-pulse'
+                : 'bg-cyan-500 hover:bg-cyan-600 opacity-60 cursor-not-allowed'
+            }`}
+          >
+            {isLive ? 'Join Now' : 'Join Class'} <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+          {sched && !isLive && (
+            <div className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
+              <Clock className="h-3 w-3" /> {sched.day_of_week} {fmtTime12(sched.student_local_time)}
             </div>
-          ) : (
-            <div className="text-xs text-muted-foreground">No upcoming class</div>
           )}
         </div>
       </div>
@@ -392,32 +397,7 @@ export function StudentDashboard() {
     </div>
   );
 
-  const RecentLessonsCard = (
-    <div className="p-4 border rounded-md bg-card">
-      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Recent Lessons</div>
-      {recentLessons.length === 0 ? (
-        <div className="text-xs text-muted-foreground text-center py-4">No lessons recorded yet</div>
-      ) : (
-        recentLessons.map((l: any) => {
-          const present = l.status === 'present';
-          return (
-            <div key={l.id} className="flex items-center justify-between py-2 border-b last:border-0 gap-3">
-              <div className="flex items-start gap-2 min-w-0 flex-1">
-                {present
-                  ? <CheckCircle2 size={16} className="text-emerald-500 mt-0.5 shrink-0" />
-                  : <XCircle size={16} className="text-red-400 mt-0.5 shrink-0" />}
-                <div className="min-w-0">
-                  <div className="text-sm truncate">{l.lesson_covered || <span className="text-muted-foreground">No lesson recorded</span>}</div>
-                  <div className="text-xs text-muted-foreground truncate">{l.homework || 'No homework'}</div>
-                </div>
-              </div>
-              <div className="text-xs text-muted-foreground shrink-0">{format(parseISO(l.class_date), 'd MMM')}</div>
-            </div>
-          );
-        })
-      )}
-    </div>
-  );
+  // (Recent Lessons rendered inside LessonsAndResultsCard)
 
   const dueDays = nextInvoice?.due_date ? differenceInDays(parseISO(nextInvoice.due_date), new Date()) : null;
   const dueColor =
@@ -533,11 +513,34 @@ export function StudentDashboard() {
     </div>
   );
 
-  const RecentResultsCard = (
-    <div className="p-4 border rounded-md bg-card">
-      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Recent Results</div>
+  const LessonsAndResultsCard = (
+    <div className="p-4 border rounded-md bg-card flex flex-col">
+      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Recent Lessons</div>
+      {recentLessons.length === 0 ? (
+        <div className="text-xs text-muted-foreground text-center py-3">No lessons recorded yet</div>
+      ) : (
+        recentLessons.map((l: any) => {
+          const present = l.status === 'present';
+          return (
+            <div key={l.id} className="flex items-center justify-between py-2 border-b last:border-0 gap-3">
+              <div className="flex items-start gap-2 min-w-0 flex-1">
+                {present
+                  ? <CheckCircle2 size={16} className="text-emerald-500 mt-0.5 shrink-0" />
+                  : <XCircle size={16} className="text-red-400 mt-0.5 shrink-0" />}
+                <div className="min-w-0">
+                  <div className="text-sm truncate">{l.lesson_covered || <span className="text-muted-foreground">No lesson recorded</span>}</div>
+                  <div className="text-xs text-muted-foreground truncate">{l.homework || 'No homework'}</div>
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground shrink-0">{format(parseISO(l.class_date), 'd MMM')}</div>
+            </div>
+          );
+        })
+      )}
+
+      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 mt-4 pt-3 border-t">Recent Results</div>
       {exams.length === 0 ? (
-        <div className="text-xs text-muted-foreground text-center py-4">No results yet</div>
+        <div className="text-xs text-muted-foreground text-center py-3">No results yet</div>
       ) : (
         exams.map((e: any) => {
           const passed = (e.percentage || 0) >= 50;
@@ -559,24 +562,32 @@ export function StudentDashboard() {
     </div>
   );
 
-  const SpotlightCard = spotlight ? (
+  const SpotlightCard = (
     <div className="p-0 border rounded-md bg-card overflow-hidden">
-      {spotlight.image_url && (
-        <img src={spotlight.image_url} alt={spotlight.title || 'Spotlight'} className="w-full h-28 object-cover" />
+      {spotlight?.image_url ? (
+        <img src={spotlight.image_url} alt={spotlight.title || 'Spotlight'} className="w-full h-32 object-cover" />
+      ) : (
+        <div className="w-full h-32 bg-gradient-to-br from-cyan-50 to-slate-100 flex items-center justify-center text-xs text-muted-foreground">
+          Spotlight
+        </div>
       )}
       <div className="p-3">
-        {spotlight.title && <div className="font-semibold text-sm">{spotlight.title}</div>}
-        {spotlight.description && (
+        <div className="font-semibold text-sm">{spotlight?.title || 'Featured'}</div>
+        {spotlight?.description && (
           <div className="text-xs text-muted-foreground line-clamp-2 mt-1">{spotlight.description}</div>
         )}
-        {spotlight.link && (
+        {spotlight?.link ? (
           <Button asChild className="w-full bg-[hsl(var(--navy))] hover:bg-[hsl(var(--navy-dark))] text-white mt-2 text-xs h-8">
-            <a href={spotlight.link} target="_blank" rel="noreferrer">Open</a>
+            <a href={spotlight.link} target="_blank" rel="noreferrer">{spotlight?.cta || 'Open'}</a>
+          </Button>
+        ) : (
+          <Button disabled className="w-full bg-[hsl(var(--navy))] text-white mt-2 text-xs h-8 opacity-70">
+            Coming Soon
           </Button>
         )}
       </div>
     </div>
-  ) : null;
+  );
 
   return (
     <div className="flex flex-col gap-3 lg:gap-4 p-3 lg:p-4">
@@ -596,10 +607,9 @@ export function StudentDashboard() {
           {QuickLinksCard}
           {FeeStatusCard}
         </div>
-        {/* Middle column: Recent Lessons + Recent Results */}
+        {/* Middle column: combined Lessons + Results */}
         <div className="flex flex-col gap-4">
-          {RecentLessonsCard}
-          {RecentResultsCard}
+          {LessonsAndResultsCard}
         </div>
         {/* Right column: Action Center + Spotlight */}
         <div className="flex flex-col gap-4">
@@ -615,9 +625,8 @@ export function StudentDashboard() {
         {QuickLinksCard}
         {PriorityInboxCard}
         {ActionCenterCard}
-        {RecentLessonsCard}
+        {LessonsAndResultsCard}
         {FeeStatusCard}
-        {RecentResultsCard}
         {SpotlightCard}
       </div>
     </div>
