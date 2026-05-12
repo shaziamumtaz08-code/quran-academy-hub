@@ -427,7 +427,7 @@ export function StudentDashboard() {
   const FeeStatusCard = (
     <div className="p-4 border rounded-md bg-card">
       <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Fee Status</div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x">
+      <div className="grid grid-cols-2 divide-x">
         <div className="text-center py-3 lg:py-0 lg:pr-4">
           <div className="text-xs text-muted-foreground mb-1">Last Payment</div>
           {lastPayment ? (
