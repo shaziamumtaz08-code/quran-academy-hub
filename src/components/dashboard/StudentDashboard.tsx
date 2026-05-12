@@ -589,8 +589,31 @@ export function StudentDashboard() {
     </div>
   );
 
+  const MobileQuickLinksBar = (
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-[150] lg:hidden bg-card border-t border-border shadow-[0_-2px_8px_rgba(0,0,0,0.04)]"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
+      <div className="grid grid-cols-6">
+        {quickLinks.map(q => {
+          const Icon = q.icon;
+          return (
+            <button
+              key={q.label}
+              onClick={() => navigate(q.to)}
+              className="flex flex-col items-center justify-center gap-0.5 py-2 px-1 active:opacity-60 transition-opacity"
+            >
+              <Icon size={18} className={q.icCol} />
+              <span className={`text-[9px] font-medium ${q.txCol} text-center leading-tight truncate w-full`}>{q.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
+
   return (
-    <div className="flex flex-col gap-3 lg:gap-4 p-3 lg:p-4">
+    <div className="flex flex-col gap-3 lg:gap-4 p-3 lg:p-4 pb-24 lg:pb-4">
       {Header}
 
       {/* Desktop: 3-column layout matching reference */}
