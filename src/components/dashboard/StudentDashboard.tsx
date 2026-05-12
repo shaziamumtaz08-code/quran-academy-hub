@@ -145,7 +145,7 @@ export function StudentDashboard() {
     return { total, present, pct };
   }, [attendance]);
 
-  const recentLessons = attendance.slice(0, 4);
+  const recentLessons = attendance.slice(0, 3);
 
   // Last payment + next pending invoice
   const { data: lastPayment } = useQuery({
