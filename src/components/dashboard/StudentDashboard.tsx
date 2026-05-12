@@ -303,11 +303,12 @@ export function StudentDashboard() {
   const teacherInitial = teacherName?.charAt(0)?.toUpperCase() || 'T';
   const meetingLink = (liveSession as any)?.license?.meeting_link;
 
+  const isLive = !!(liveSession && meetingLink);
   const NextClassCard = (
     <div className="p-4 border rounded-md bg-card">
       <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Next Class</div>
       <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-full bg-[hsl(var(--navy))] text-white font-bold flex items-center justify-center">
+        <div className="w-12 h-12 rounded-full bg-[hsl(var(--navy))] text-white font-bold flex items-center justify-center shrink-0">
           {teacherInitial}
         </div>
         <div className="flex-1 min-w-0">
@@ -317,20 +318,24 @@ export function StudentDashboard() {
             {assignment?.subject?.name || 'No subject assigned'}
           </div>
         </div>
-        <div>
-          {liveSession && meetingLink ? (
-            <a
-              href={meetingLink} target="_blank" rel="noreferrer"
-              className="inline-flex items-center gap-1.5 bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 rounded-md text-sm font-medium"
-            >
-              Join Now <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-          ) : sched ? (
-            <div className="text-xs text-muted-foreground inline-flex items-center gap-1">
-              <Clock className="h-3.5 w-3.5" /> Next: {sched.day_of_week} {fmtTime12(sched.student_local_time)}
+        <div className="flex flex-col items-end gap-1.5 shrink-0">
+          <a
+            href={isLive ? meetingLink : '#'}
+            target={isLive ? '_blank' : undefined}
+            rel="noreferrer"
+            onClick={(e) => { if (!isLive) e.preventDefault(); }}
+            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium text-white ${
+              isLive
+                ? 'bg-emerald-500 hover:bg-emerald-600 animate-pulse'
+                : 'bg-cyan-500 hover:bg-cyan-600 opacity-60 cursor-not-allowed'
+            }`}
+          >
+            {isLive ? 'Join Now' : 'Join Class'} <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+          {sched && !isLive && (
+            <div className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
+              <Clock className="h-3 w-3" /> {sched.day_of_week} {fmtTime12(sched.student_local_time)}
             </div>
-          ) : (
-            <div className="text-xs text-muted-foreground">No upcoming class</div>
           )}
         </div>
       </div>
