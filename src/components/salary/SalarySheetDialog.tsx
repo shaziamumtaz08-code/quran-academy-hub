@@ -164,6 +164,7 @@ export function SalarySheetDialog({
   const [topUpAmount, setTopUpAmount] = useState<string>("");
   const [topUpNotes, setTopUpNotes] = useState("");
   const [topUpReceipts, setTopUpReceipts] = useState<string[]>([]);
+  const [isReceiptUploading, setIsReceiptUploading] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -255,6 +256,8 @@ export function SalarySheetDialog({
   };
 
   const handleUpdateProofs = () => {
+    if (isReceiptUploading) return;
+    if (!receiptUrls.length) return;
     if (onUpdateProofs) {
       onUpdateProofs(receiptUrls, displayInvoice);
     }
