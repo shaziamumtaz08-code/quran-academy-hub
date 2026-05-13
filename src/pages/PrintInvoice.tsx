@@ -161,6 +161,12 @@ export default function PrintInvoice() {
         orgName={org?.name}
         orgLogo={org?.logo_url || logoDark}
       />
+      <div style={{ width: 794, margin: '0 auto', background: '#fff' }}>
+        <InvoicePaymentInstructions
+          accounts={(invoice as any).payment_instructions || liveOrgAccounts || []}
+          studentAccountSnapshot={(invoice as any).student_account_snapshot}
+        />
+      </div>
     </div>
   );
 }
