@@ -3513,12 +3513,14 @@ export type Database = {
           forgiven_amount: number
           id: string
           paid_at: string | null
+          payment_instructions: Json | null
           payment_method: string | null
           period_from: string | null
           period_to: string | null
           plan_id: string | null
           remark: string | null
           status: Database["public"]["Enums"]["invoice_status"]
+          student_account_snapshot: Json | null
           student_id: string
           updated_at: string
         }
@@ -3535,12 +3537,14 @@ export type Database = {
           forgiven_amount?: number
           id?: string
           paid_at?: string | null
+          payment_instructions?: Json | null
           payment_method?: string | null
           period_from?: string | null
           period_to?: string | null
           plan_id?: string | null
           remark?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
+          student_account_snapshot?: Json | null
           student_id: string
           updated_at?: string
         }
@@ -3557,12 +3561,14 @@ export type Database = {
           forgiven_amount?: number
           id?: string
           paid_at?: string | null
+          payment_instructions?: Json | null
           payment_method?: string | null
           period_from?: string | null
           period_to?: string | null
           plan_id?: string | null
           remark?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
+          student_account_snapshot?: Json | null
           student_id?: string
           updated_at?: string
         }
@@ -4671,6 +4677,87 @@ export type Database = {
           },
         ]
       }
+      organization_payment_accounts: {
+        Row: {
+          account_number: string | null
+          account_title: string
+          account_type: Database["public"]["Enums"]["payment_account_type"]
+          bank_branch: string | null
+          bank_name: string | null
+          bank_swift: string | null
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          display_label: string
+          iban: string | null
+          id: string
+          is_active: boolean
+          notes: string | null
+          org_id: string | null
+          purpose: Database["public"]["Enums"]["payment_account_purpose"]
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          account_number?: string | null
+          account_title: string
+          account_type: Database["public"]["Enums"]["payment_account_type"]
+          bank_branch?: string | null
+          bank_name?: string | null
+          bank_swift?: string | null
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          display_label: string
+          iban?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          org_id?: string | null
+          purpose?: Database["public"]["Enums"]["payment_account_purpose"]
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          account_number?: string | null
+          account_title?: string
+          account_type?: Database["public"]["Enums"]["payment_account_type"]
+          bank_branch?: string | null
+          bank_name?: string | null
+          bank_swift?: string | null
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          display_label?: string
+          iban?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          org_id?: string | null
+          purpose?: Database["public"]["Enums"]["payment_account_purpose"]
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_payment_accounts_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_payment_accounts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           code: string | null
@@ -4920,6 +5007,7 @@ export type Database = {
           currency_local: string
           division_id: string | null
           effective_rate: number | null
+          from_account_ref: string | null
           id: string
           invoice_id: string
           notes: string | null
@@ -4932,6 +5020,8 @@ export type Database = {
           resolution_type: string
           shortfall_amount: number
           student_id: string
+          to_account_ref: string | null
+          transaction_reference: string | null
         }
         Insert: {
           amount_foreign?: number
@@ -4942,6 +5032,7 @@ export type Database = {
           currency_local?: string
           division_id?: string | null
           effective_rate?: number | null
+          from_account_ref?: string | null
           id?: string
           invoice_id: string
           notes?: string | null
@@ -4954,6 +5045,8 @@ export type Database = {
           resolution_type?: string
           shortfall_amount?: number
           student_id: string
+          to_account_ref?: string | null
+          transaction_reference?: string | null
         }
         Update: {
           amount_foreign?: number
@@ -4964,6 +5057,7 @@ export type Database = {
           currency_local?: string
           division_id?: string | null
           effective_rate?: number | null
+          from_account_ref?: string | null
           id?: string
           invoice_id?: string
           notes?: string | null
@@ -4976,6 +5070,8 @@ export type Database = {
           resolution_type?: string
           shortfall_amount?: number
           student_id?: string
+          to_account_ref?: string | null
+          transaction_reference?: string | null
         }
         Relationships: [
           {
@@ -5262,6 +5358,122 @@ export type Database = {
             columns: ["division_id"]
             isOneToOne: false
             referencedRelation: "divisions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_payment_account_history: {
+        Row: {
+          account_id: string
+          change_type: Database["public"]["Enums"]["payment_account_change_type"]
+          changed_at: string
+          changed_by: string | null
+          id: string
+          new_values: Json | null
+          previous_values: Json | null
+          profile_id: string
+          reason: string | null
+        }
+        Insert: {
+          account_id: string
+          change_type: Database["public"]["Enums"]["payment_account_change_type"]
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          new_values?: Json | null
+          previous_values?: Json | null
+          profile_id: string
+          reason?: string | null
+        }
+        Update: {
+          account_id?: string
+          change_type?: Database["public"]["Enums"]["payment_account_change_type"]
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          new_values?: Json | null
+          previous_values?: Json | null
+          profile_id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_payment_account_history_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_payment_accounts: {
+        Row: {
+          account_number: string | null
+          account_title: string
+          account_type: Database["public"]["Enums"]["payment_account_type"]
+          bank_branch: string | null
+          bank_name: string | null
+          bank_swift: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          iban: string | null
+          id: string
+          is_active: boolean
+          is_primary: boolean
+          notes: string | null
+          profile_id: string
+          updated_at: string
+        }
+        Insert: {
+          account_number?: string | null
+          account_title: string
+          account_type: Database["public"]["Enums"]["payment_account_type"]
+          bank_branch?: string | null
+          bank_name?: string | null
+          bank_swift?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          iban?: string | null
+          id?: string
+          is_active?: boolean
+          is_primary?: boolean
+          notes?: string | null
+          profile_id: string
+          updated_at?: string
+        }
+        Update: {
+          account_number?: string | null
+          account_title?: string
+          account_type?: Database["public"]["Enums"]["payment_account_type"]
+          bank_branch?: string | null
+          bank_name?: string | null
+          bank_swift?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          iban?: string | null
+          id?: string
+          is_active?: boolean
+          is_primary?: boolean
+          notes?: string | null
+          profile_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_payment_accounts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_payment_accounts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -6313,10 +6525,12 @@ export type Database = {
           paid_at: string | null
           paid_by: string | null
           partial_notes: string | null
+          payment_channel: string | null
           payment_method: string | null
           payment_reference: string | null
           receipt_url: string | null
           receipt_urls: string[] | null
+          recipient_account_snapshot: Json | null
           revert_reason: string | null
           reverted_at: string | null
           reverted_by: string | null
@@ -6344,10 +6558,12 @@ export type Database = {
           paid_at?: string | null
           paid_by?: string | null
           partial_notes?: string | null
+          payment_channel?: string | null
           payment_method?: string | null
           payment_reference?: string | null
           receipt_url?: string | null
           receipt_urls?: string[] | null
+          recipient_account_snapshot?: Json | null
           revert_reason?: string | null
           reverted_at?: string | null
           reverted_by?: string | null
@@ -6375,10 +6591,12 @@ export type Database = {
           paid_at?: string | null
           paid_by?: string | null
           partial_notes?: string | null
+          payment_channel?: string | null
           payment_method?: string | null
           payment_reference?: string | null
           receipt_url?: string | null
           receipt_urls?: string[] | null
+          recipient_account_snapshot?: Json | null
           revert_reason?: string | null
           reverted_at?: string | null
           reverted_by?: string | null
@@ -9535,6 +9753,23 @@ export type Database = {
         | "waived"
         | "adjusted"
         | "voided"
+      payment_account_change_type:
+        | "created"
+        | "updated"
+        | "deactivated"
+        | "reactivated"
+      payment_account_purpose: "inward" | "outward" | "both"
+      payment_account_type:
+        | "bank_local"
+        | "bank_international"
+        | "easypaisa"
+        | "jazzcash"
+        | "sadapay"
+        | "nayapay"
+        | "wise"
+        | "payoneer"
+        | "crypto"
+        | "other"
       permission_type:
         | "users.view"
         | "users.create"
@@ -9741,6 +9976,25 @@ export const Constants = {
         "waived",
         "adjusted",
         "voided",
+      ],
+      payment_account_change_type: [
+        "created",
+        "updated",
+        "deactivated",
+        "reactivated",
+      ],
+      payment_account_purpose: ["inward", "outward", "both"],
+      payment_account_type: [
+        "bank_local",
+        "bank_international",
+        "easypaisa",
+        "jazzcash",
+        "sadapay",
+        "nayapay",
+        "wise",
+        "payoneer",
+        "crypto",
+        "other",
       ],
       permission_type: [
         "users.view",
