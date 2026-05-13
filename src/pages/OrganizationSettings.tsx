@@ -431,6 +431,7 @@ export default function OrganizationSettings() {
             <TabsTrigger value="divisions">📦 Divisions</TabsTrigger>
             <TabsTrigger value="holidays">📅 Holidays</TabsTrigger>
             <TabsTrigger value="payouts">💰 Payouts</TabsTrigger>
+            <TabsTrigger value="payment_channels"><Wallet className="h-3.5 w-3.5 mr-1" /> Payment Channels</TabsTrigger>
             <TabsTrigger value="classroom">🖥️ Classroom</TabsTrigger>
             <TabsTrigger value="spotlight">✨ Spotlight</TabsTrigger>
           </TabsList>
