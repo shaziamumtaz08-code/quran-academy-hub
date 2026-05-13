@@ -17,9 +17,10 @@ import { useToast } from '@/hooks/use-toast';
 import {
   User, Mail, Shield, Users as UsersIcon, GraduationCap, FileText,
   Activity, KeyRound, Loader2, Upload, Download, CheckCircle2, XCircle,
-  AlertTriangle, Calendar, Save, RefreshCw, Link2, Unlink, Eye,
+  AlertTriangle, Calendar, Save, RefreshCw, Link2, Unlink, Eye, Wallet,
 } from 'lucide-react';
 import { LinkGuardianDialog } from './LinkGuardianDialog';
+import { PaymentAccountsList } from '@/components/payment-accounts/PaymentAccountsList';
 import type { AppRole } from '@/contexts/AuthContext';
 
 /* ── Per-tab access matrix. V=view, C=create, E=edit, D=delete (we treat C/E/D collectively as "write"). ── */
