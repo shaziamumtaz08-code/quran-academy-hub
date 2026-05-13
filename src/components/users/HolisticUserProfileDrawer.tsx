@@ -706,6 +706,15 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
               )}
             </TabsContent>
 
+            {/* PAYMENTS */}
+            <TabsContent value="payments" className="space-y-3">
+              {userId ? (
+                <PaymentAccountsList profileId={userId} readOnly={!canSaveCurrentTab} />
+              ) : (
+                <p className="text-sm text-muted-foreground">No user selected.</p>
+              )}
+            </TabsContent>
+
             {/* ACTIVITY */}
             <TabsContent value="activity" className="space-y-3">
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
