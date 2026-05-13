@@ -324,6 +324,7 @@ export function HolisticUserProfileDrawer({ open, onOpenChange, userId }: Props)
     { key: 'guardian',  label: 'Guardian',  Icon: UsersIcon },
     { key: 'academic',  label: 'Academic',  Icon: GraduationCap },
     { key: 'documents', label: 'Docs',      Icon: FileText },
+    { key: 'payments',  label: 'Payments',  Icon: Wallet },
     { key: 'activity',  label: 'Activity',  Icon: Activity },
     { key: 'password',  label: 'Password',  Icon: KeyRound },
   ];
