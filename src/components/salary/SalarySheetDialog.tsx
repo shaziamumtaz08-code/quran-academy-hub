@@ -879,10 +879,12 @@ export function SalarySheetDialog({
                           </div>
                         ))}
                       </div>
-                      <Button size="sm" onClick={handleUpdateProofs} disabled={isUpdatingProofs} className="mt-2">
+                      <Button size="sm" onClick={handleUpdateProofs} disabled={isUpdatingProofs || isReceiptUploading || receiptUrls.length === 0} className="mt-2">
                         {isUpdatingProofs && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
                         <Upload className="h-4 w-4 mr-1" /> Update Proofs
                       </Button>
+                      {isReceiptUploading && <p className="text-xs text-muted-foreground">Uploading proof… please wait before saving.</p>}
+                      {!isReceiptUploading && receiptUrls.length === 0 && <p className="text-xs text-muted-foreground">Add at least one proof before updating.</p>}
                     </div>
                   )}
 
@@ -923,10 +925,12 @@ export function SalarySheetDialog({
                           </div>
                         ))}
                       </div>
-                      <Button size="sm" onClick={handleUpdateProofs} disabled={isUpdatingProofs} className="mt-2">
+                      <Button size="sm" onClick={handleUpdateProofs} disabled={isUpdatingProofs || isReceiptUploading || receiptUrls.length === 0} className="mt-2">
                         {isUpdatingProofs && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
                         <Upload className="h-4 w-4 mr-1" /> Update Proofs
                       </Button>
+                      {isReceiptUploading && <p className="text-xs text-muted-foreground">Uploading proof… please wait before saving.</p>}
+                      {!isReceiptUploading && receiptUrls.length === 0 && <p className="text-xs text-muted-foreground">Add at least one proof before updating.</p>}
                     </div>
                   )}
                   
