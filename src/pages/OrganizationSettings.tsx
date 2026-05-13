@@ -628,6 +628,11 @@ export default function OrganizationSettings() {
             <DefaultPayoutRatesSection />
           </TabsContent>
 
+          {/* ── Payment Channels ── */}
+          <TabsContent value="payment_channels">
+            <OrgPaymentAccountsTab />
+          </TabsContent>
+
           {/* ── Tab 6: Virtual Classroom ── */}
           <TabsContent value="classroom">
             <Card>
