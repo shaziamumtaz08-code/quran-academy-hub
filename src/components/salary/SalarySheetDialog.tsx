@@ -658,7 +658,7 @@ export function SalarySheetDialog({
                                   </Button>
                                 </div>
                               ) : (
-                                <FileUploadField label="" bucket="salary-receipts" value="" onChange={(url) => handleReceiptUpload(url, idx)} hint={`Proof ${idx + 1}`} />
+                                <FileUploadField label="" bucket="salary-receipts" value="" onChange={(url) => handleReceiptUpload(url, idx)} onUploadStateChange={setIsReceiptUploading} hint={`Proof ${idx + 1}`} />
                               )}
                             </div>
                           </div>
@@ -737,7 +737,7 @@ export function SalarySheetDialog({
                               </Button>
                             </div>
                           ) : (
-                            <FileUploadField label="" bucket="salary-receipts" value="" onChange={(url) => setPartialReceipts([url])} hint="Upload receipt" />
+                            <FileUploadField label="" bucket="salary-receipts" value="" onChange={(url) => setPartialReceipts([url])} onUploadStateChange={setIsReceiptUploading} hint="Upload receipt" />
                           )}
                         </div>
                       </div>
@@ -834,7 +834,7 @@ export function SalarySheetDialog({
                             </Button>
                           </div>
                         ) : (
-                          <FileUploadField label="" bucket="salary-receipts" value="" onChange={(url) => setTopUpReceipts([url])} hint="Upload receipt" />
+                          <FileUploadField label="" bucket="salary-receipts" value="" onChange={(url) => setTopUpReceipts([url])} onUploadStateChange={setIsReceiptUploading} hint="Upload receipt" />
                         )}
                       </div>
                       <Button
@@ -873,7 +873,7 @@ export function SalarySheetDialog({
                                   </Button>
                                 </div>
                               ) : (
-                                <FileUploadField label="" bucket="salary-receipts" value="" onChange={(url) => handleReceiptUpload(url, idx)} hint={`Add proof ${idx + 1}`} />
+                                <FileUploadField label="" bucket="salary-receipts" value="" onChange={(url) => handleReceiptUpload(url, idx)} onUploadStateChange={setIsReceiptUploading} hint={`Add proof ${idx + 1}`} />
                               )}
                             </div>
                           </div>
@@ -917,7 +917,7 @@ export function SalarySheetDialog({
                                   </Button>
                                 </div>
                               ) : (
-                                <FileUploadField label="" bucket="salary-receipts" value="" onChange={(url) => handleReceiptUpload(url, idx)} hint={`Add proof ${idx + 1}`} />
+                                <FileUploadField label="" bucket="salary-receipts" value="" onChange={(url) => handleReceiptUpload(url, idx)} onUploadStateChange={setIsReceiptUploading} hint={`Add proof ${idx + 1}`} />
                               )}
                             </div>
                           </div>
