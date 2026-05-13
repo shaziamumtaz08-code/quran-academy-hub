@@ -14,6 +14,7 @@ interface FileUploadFieldProps {
   accept?: string;
   disabled?: boolean;
   hint?: string;
+  onUploadStateChange?: (uploading: boolean) => void;
 }
 
 export function FileUploadField({
@@ -21,9 +22,10 @@ export function FileUploadField({
   bucket,
   value,
   onChange,
-  accept = 'image/jpeg,image/png,image/webp,application/pdf',
+  accept = 'image/*,application/pdf',
   disabled = false,
   hint = 'JPEG, PNG or PDF',
+  onUploadStateChange,
 }: FileUploadFieldProps) {
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -33,12 +35,13 @@ export function FileUploadField({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast({ title: 'File too large', description: 'Max 5MB allowed', variant: 'destructive' });
+    if (file.size > 20 * 1024 * 1024) {
+      toast({ title: 'File too large', description: 'Max 20MB allowed', variant: 'destructive' });
       return;
     }
 
     setUploading(true);
+    onUploadStateChange?.(true);
     try {
       const ext = file.name.split('.').pop();
       const path = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
@@ -52,6 +55,7 @@ export function FileUploadField({
       toast({ title: 'Upload failed', description: err.message, variant: 'destructive' });
     } finally {
       setUploading(false);
+      onUploadStateChange?.(false);
       if (fileRef.current) fileRef.current.value = '';
     }
   };
