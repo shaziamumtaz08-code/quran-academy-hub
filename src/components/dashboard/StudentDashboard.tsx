@@ -625,19 +625,13 @@ export function StudentDashboard() {
         </div>
         {PriorityInboxCard}
 
-        {/* SECOND ROW — left column: Quick Links + Fee Status */}
-        <div className="flex flex-col gap-4">
-          {QuickLinksCard}
-          {FeeStatusCard}
-        </div>
-        {/* Middle column: combined Lessons + Results */}
-        <div className="flex flex-col gap-4">
-          {LessonsAndResultsCard}
-        </div>
-        {/* Right column: Action Center + Spotlight */}
-        <div className="flex flex-col gap-4">
-          {ActionCenterCard}
-          {SpotlightCard}
+        {/* SECOND ROW — aligned 3x2 grid: left/right rows match, middle spans both */}
+        <div className="lg:col-span-3 grid grid-cols-[280px_1fr_300px] grid-rows-[auto_1fr] gap-4">
+          <div className="row-start-1 col-start-1">{QuickLinksCard}</div>
+          <div className="row-start-2 col-start-1">{FeeStatusCard}</div>
+          <div className="row-span-2 col-start-2 [&>div]:h-full">{LessonsAndResultsCard}</div>
+          <div className="row-start-1 col-start-3">{ActionCenterCard}</div>
+          <div className="row-start-2 col-start-3">{SpotlightCard}</div>
         </div>
       </div>
 
