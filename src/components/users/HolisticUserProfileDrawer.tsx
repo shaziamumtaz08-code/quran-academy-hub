@@ -25,7 +25,7 @@ import type { AppRole } from '@/contexts/AuthContext';
 
 /* ── Per-tab access matrix. V=view, C=create, E=edit, D=delete (we treat C/E/D collectively as "write"). ── */
 type TabAccess = 'none' | 'view' | 'write';
-type TabKey = 'personal' | 'contact' | 'identity' | 'guardian' | 'academic' | 'documents' | 'activity' | 'password';
+type TabKey = 'personal' | 'contact' | 'identity' | 'guardian' | 'academic' | 'documents' | 'payments' | 'activity' | 'password';
 
 const TAB_ACCESS: Record<TabKey, Partial<Record<AppRole, TabAccess>>> = {
   personal:  { super_admin: 'write', admin: 'write', admin_division: 'write', admin_admissions: 'view', admin_academic: 'view' },
@@ -34,6 +34,7 @@ const TAB_ACCESS: Record<TabKey, Partial<Record<AppRole, TabAccess>>> = {
   guardian:  { super_admin: 'write', admin: 'write', admin_division: 'write', admin_admissions: 'write' },
   academic:  { super_admin: 'write', admin: 'write', admin_division: 'write', admin_admissions: 'view', admin_academic: 'write' },
   documents: { super_admin: 'write', admin: 'write', admin_division: 'write', admin_admissions: 'view' },
+  payments:  { super_admin: 'write', admin: 'write', admin_division: 'write', admin_fees: 'write' },
   activity:  { super_admin: 'write', admin: 'write', admin_division: 'write' },
   password:  { super_admin: 'write' },
 };
