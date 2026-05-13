@@ -16,7 +16,7 @@ export default function PrintSalary() {
       if (!payoutId) throw new Error('No payout ID');
       const { data, error } = await supabase
         .from('salary_payouts')
-        .select('*')
+        .select('*, recipient_account_snapshot, payment_channel')
         .eq('id', payoutId)
         .single();
       if (error) throw error;
@@ -36,6 +36,24 @@ export default function PrintSalary() {
       return data;
     },
     enabled: !!payout?.teacher_id,
+  });
+
+  // Live primary payment account (used only when payout has no snapshot)
+  const { data: livePrimaryAccount } = useQuery({
+    queryKey: ['print-salary-primary-account', payout?.teacher_id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('profile_payment_accounts')
+        .select('*')
+        .eq('profile_id', payout!.teacher_id)
+        .eq('is_active', true)
+        .eq('is_primary', true)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!payout?.teacher_id && !(payout as any)?.recipient_account_snapshot,
   });
 
   const { data: org } = useQuery({
