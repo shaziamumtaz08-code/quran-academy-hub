@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { InvoiceTemplate } from '@/components/finance/InvoiceTemplate';
 import { ReceiptTemplate } from '@/components/finance/ReceiptTemplate';
+import { InvoicePaymentInstructions } from '@/components/payment-accounts/InvoicePaymentInstructions';
 import { Button } from '@/components/ui/button';
 import { Printer, Download, ArrowLeft } from 'lucide-react';
 import logoDark from '@/assets/logo-dark.jpg';
@@ -21,6 +22,7 @@ export default function PrintInvoice() {
         .select(`
           id, student_id, amount, currency, billing_month, due_date, status,
           amount_paid, forgiven_amount, remark, payment_method, period_from, period_to,
+          payment_instructions, student_account_snapshot,
           profiles!fee_invoices_student_id_fkey(full_name),
           student_teacher_assignments!fee_invoices_assignment_id_fkey(
             subjects!student_teacher_assignments_subject_id_fkey(name),
@@ -33,6 +35,21 @@ export default function PrintInvoice() {
       return data;
     },
     enabled: !!invoiceId,
+  });
+
+  // Fall back to live org accounts if invoice has no snapshot (legacy invoices)
+  const { data: liveOrgAccounts } = useQuery({
+    queryKey: ['print-invoice-org-accounts'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('organization_payment_accounts')
+        .select('*')
+        .in('purpose', ['inward', 'both'])
+        .eq('is_active', true)
+        .order('sort_order');
+      return data || [];
+    },
+    enabled: !!invoice && !(invoice as any)?.payment_instructions,
   });
 
   const { data: transactions = [] } = useQuery({
@@ -144,6 +161,12 @@ export default function PrintInvoice() {
         orgName={org?.name}
         orgLogo={org?.logo_url || logoDark}
       />
+      <div style={{ width: 794, margin: '0 auto', background: '#fff' }}>
+        <InvoicePaymentInstructions
+          accounts={(invoice as any).payment_instructions || liveOrgAccounts || []}
+          studentAccountSnapshot={(invoice as any).student_account_snapshot}
+        />
+      </div>
     </div>
   );
 }

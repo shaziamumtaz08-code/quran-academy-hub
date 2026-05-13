@@ -11,7 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building2, Plus, Pencil, Trash2, Globe, MapPin, Layers, Loader2, Save, CalendarOff } from 'lucide-react';
+import { Building2, Plus, Pencil, Trash2, Globe, MapPin, Layers, Loader2, Save, CalendarOff, Wallet } from 'lucide-react';
+import { OrgPaymentAccountsTab } from '@/components/payment-accounts/OrgPaymentAccountsTab';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -430,6 +431,7 @@ export default function OrganizationSettings() {
             <TabsTrigger value="divisions">📦 Divisions</TabsTrigger>
             <TabsTrigger value="holidays">📅 Holidays</TabsTrigger>
             <TabsTrigger value="payouts">💰 Payouts</TabsTrigger>
+            <TabsTrigger value="payment_channels"><Wallet className="h-3.5 w-3.5 mr-1" /> Payment Channels</TabsTrigger>
             <TabsTrigger value="classroom">🖥️ Classroom</TabsTrigger>
             <TabsTrigger value="spotlight">✨ Spotlight</TabsTrigger>
           </TabsList>
@@ -624,6 +626,11 @@ export default function OrganizationSettings() {
           {/* ── Tab 5: Default Payout Rates ── */}
           <TabsContent value="payouts">
             <DefaultPayoutRatesSection />
+          </TabsContent>
+
+          {/* ── Payment Channels ── */}
+          <TabsContent value="payment_channels">
+            <OrgPaymentAccountsTab />
           </TabsContent>
 
           {/* ── Tab 6: Virtual Classroom ── */}

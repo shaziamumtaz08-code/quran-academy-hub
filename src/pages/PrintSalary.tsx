@@ -16,7 +16,7 @@ export default function PrintSalary() {
       if (!payoutId) throw new Error('No payout ID');
       const { data, error } = await supabase
         .from('salary_payouts')
-        .select('*')
+        .select('*, recipient_account_snapshot, payment_channel')
         .eq('id', payoutId)
         .single();
       if (error) throw error;
@@ -36,6 +36,24 @@ export default function PrintSalary() {
       return data;
     },
     enabled: !!payout?.teacher_id,
+  });
+
+  // Live primary payment account (used only when payout has no snapshot)
+  const { data: livePrimaryAccount } = useQuery({
+    queryKey: ['print-salary-primary-account', payout?.teacher_id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('profile_payment_accounts')
+        .select('*')
+        .eq('profile_id', payout!.teacher_id)
+        .eq('is_active', true)
+        .eq('is_primary', true)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!payout?.teacher_id && !(payout as any)?.recipient_account_snapshot,
   });
 
   const { data: org } = useQuery({
@@ -105,39 +123,53 @@ export default function PrintSalary() {
           </Button>
         </div>
       </div>
-      <SalaryStatementTemplate
-        teacherName={teacherProfile?.full_name || 'Unknown'}
-        teacherId={payout.teacher_id}
-        email={teacherProfile?.email}
-        phone={teacherProfile?.whatsapp_number}
-        location={[teacherProfile?.city, teacherProfile?.country].filter(Boolean).join(', ') || null}
-        bankName={teacherProfile?.bank_name}
-        bankAccountTitle={teacherProfile?.bank_account_title}
-        bankAccountNumber={teacherProfile?.bank_account_number}
-        bankIban={teacherProfile?.bank_iban}
-        monthLabel={monthLabel}
-        invoiceNumber={invoiceNumber}
-        students={students}
-        roleSalaries={roleSalaries}
-        extraClassAmount={Number(payout.extra_class_amount)}
-        adjustments={adjustments.map((a: any) => ({
-          adjustment_type: a.adjustment_type,
-          adjustment_mode: a.adjustment_mode || 'flat',
-          amount: Number(a.amount),
-          percentage_value: a.percentage_value,
-          resolved_amount: a.resolved_amount,
-          reason: a.reason,
-        }))}
-        baseSalary={Number(payout.base_salary)}
-        additions={Number(payout.extra_class_amount) + Number(payout.adjustment_amount)}
-        deductions={Number(payout.deductions)}
-        netSalary={Number(payout.net_salary)}
-        paymentDate={payout.paid_at ? format(parseISO(payout.paid_at), 'dd MMM yyyy') : null}
-        paymentMethod={payout.payment_method}
-        receiptUrl={payout.receipt_url}
-        orgName={org?.name}
-        orgLogo={org?.logo_url || logoDark}
-      />
+      {(() => {
+        const snap: any = (payout as any).recipient_account_snapshot;
+        const live: any = livePrimaryAccount;
+        const account = snap || live;
+        const accountAtPayment = !!snap && !!payout.paid_at;
+        const channel = (payout as any).payment_channel || account?.account_type;
+        return (
+          <SalaryStatementTemplate
+            teacherName={teacherProfile?.full_name || 'Unknown'}
+            teacherId={payout.teacher_id}
+            email={teacherProfile?.email}
+            phone={teacherProfile?.whatsapp_number}
+            location={[teacherProfile?.city, teacherProfile?.country].filter(Boolean).join(', ') || null}
+            bankName={account?.bank_name || teacherProfile?.bank_name}
+            bankAccountTitle={account?.account_title || teacherProfile?.bank_account_title}
+            bankAccountNumber={account?.account_number || teacherProfile?.bank_account_number}
+            bankIban={account?.iban || teacherProfile?.bank_iban}
+            monthLabel={monthLabel}
+            invoiceNumber={invoiceNumber}
+            students={students}
+            roleSalaries={roleSalaries}
+            extraClassAmount={Number(payout.extra_class_amount)}
+            adjustments={adjustments.map((a: any) => ({
+              adjustment_type: a.adjustment_type,
+              adjustment_mode: a.adjustment_mode || 'flat',
+              amount: Number(a.amount),
+              percentage_value: a.percentage_value,
+              resolved_amount: a.resolved_amount,
+              reason: a.reason,
+            }))}
+            baseSalary={Number(payout.base_salary)}
+            additions={Number(payout.extra_class_amount) + Number(payout.adjustment_amount)}
+            deductions={Number(payout.deductions)}
+            netSalary={Number(payout.net_salary)}
+            paymentDate={payout.paid_at ? format(parseISO(payout.paid_at), 'dd MMM yyyy') : null}
+            paymentMethod={channel || payout.payment_method}
+            receiptUrl={payout.receipt_url}
+            orgName={org?.name}
+            orgLogo={org?.logo_url || logoDark}
+          />
+        );
+      })()}
+      {(payout as any).recipient_account_snapshot && payout.paid_at && (
+        <div style={{ width: 794, margin: '0 auto', padding: '0 48px 16px', fontSize: 10, color: '#92400e', fontStyle: 'italic' }}>
+          * Account details shown reflect the recipient account at time of payment ({format(parseISO(payout.paid_at), 'dd MMM yyyy')}).
+        </div>
+      )}
     </div>
   );
 }
