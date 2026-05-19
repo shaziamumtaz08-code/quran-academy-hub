@@ -533,6 +533,7 @@ export function UnifiedAttendanceForm({
       };
 
       let savedId: string | undefined;
+      let leaveSummary: { inserted: number; skipped: number; total: number } | null = null;
 
       if (isEdit && existingRecord) {
         const { error } = await supabase
@@ -541,6 +542,45 @@ export function UnifiedAttendanceForm({
           .eq('id', existingRecord.id);
         if (error) throw error;
         savedId = existingRecord.id;
+      } else if (isLeave && leaveEndDate && leaveEndDate > classDate) {
+        // Multi-day leave — expand into one row per date (cap 31 days)
+        const start = parseISO(classDate);
+        const end = parseISO(leaveEndDate);
+        const dates: string[] = [];
+        const cursor = new Date(start);
+        while (cursor <= end && dates.length < 31) {
+          dates.push(format(cursor, 'yyyy-MM-dd'));
+          cursor.setDate(cursor.getDate() + 1);
+        }
+
+        // Dedupe against existing attendance for this student in the range
+        const { data: existingRows } = await supabase
+          .from('attendance')
+          .select('class_date')
+          .eq('student_id', resolvedStudentId)
+          .gte('class_date', dates[0])
+          .lte('class_date', dates[dates.length - 1]);
+        const taken = new Set((existingRows || []).map((r: any) => r.class_date));
+        const newDates = dates.filter(d => !taken.has(d));
+
+        if (newDates.length > 0) {
+          const rows = newDates.map(d => {
+            const info = getScheduledInfoForDay(d);
+            return {
+              student_id: resolvedStudentId,
+              teacher_id: effectiveTeacherId,
+              ...basePayload,
+              ...phaseAPayload,
+              class_date: d,
+              class_time: info?.time?.substring(0, 5) || '00:00',
+              duration_minutes: info?.duration || parseInt(duration) || 30,
+            };
+          });
+          const { data, error } = await supabase.from('attendance').insert(rows).select('id');
+          if (error) throw error;
+          savedId = data?.[0]?.id;
+        }
+        leaveSummary = { inserted: newDates.length, skipped: dates.length - newDates.length, total: dates.length };
       } else {
         const insertPayload: any = {
           student_id: resolvedStudentId,
