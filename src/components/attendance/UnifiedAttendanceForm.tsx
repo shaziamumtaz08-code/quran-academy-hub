@@ -628,13 +628,17 @@ export function UnifiedAttendanceForm({
 
   const isTeacherOnlyStatus = ['teacher_absent', 'teacher_leave', 'holiday'].includes(selectedStatus);
   const needsStudent = !isTeacherOnlyStatus;
+  const isLeaveStatus = selectedStatus === 'student_leave' || selectedStatus === 'teacher_leave';
 
   const isFormValid = useMemo(() => {
-    if (!classTime || !classDate) return false;
+    if (!classDate) return false;
+    // Leave statuses don't require a slot time — they cover whole days
+    if (!isLeaveStatus && !classTime) return false;
     if (isFutureDate) return false;
     if (needsStudent && !student.id) return false;
-    if (hasDuplicateAttendance) return false;
-    if (!isScheduledDay) return false;
+    // Leave can be marked even when the day isn't scheduled or already has a record
+    if (!isLeaveStatus && hasDuplicateAttendance) return false;
+    if (!isLeaveStatus && !isScheduledDay) return false;
     if (requiresReason(selectedStatus) && !reasonCategory) return false;
     if (requiresReason(selectedStatus) && reasonCategory === 'other' && !reasonText.trim()) return false;
     if (requiresReschedule(selectedStatus) && !rescheduleDate) return false;
@@ -642,7 +646,7 @@ export function UnifiedAttendanceForm({
     if (requiresReschedule(selectedStatus) && rescheduleReason === 'other' && !reasonText.trim()) return false;
     if (lessonRequired && !hasLessonDetails) return false;
     return true;
-  }, [selectedStatus, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleReason, hasDuplicateAttendance, isScheduledDay, isFutureDate, lessonRequired, hasLessonDetails, needsStudent, student.id]);
+  }, [selectedStatus, isLeaveStatus, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleReason, hasDuplicateAttendance, isScheduledDay, isFutureDate, lessonRequired, hasLessonDetails, needsStudent, student.id]);
 
   const studentTzAbbr = getTimezoneAbbr(student.timezone);
   const teacherTzAbbr = getTimezoneAbbr(effectiveTeacherTz);
