@@ -926,6 +926,7 @@ export default function QuizEngine() {
                               <TableHead className="text-xs cursor-pointer" onClick={() => toggleSort('pass')}>Pass/Fail<SortIcon k="pass" /></TableHead>
                               <TableHead className="text-xs cursor-pointer" onClick={() => toggleSort('time')}>Time<SortIcon k="time" /></TableHead>
                               <TableHead className="text-xs cursor-pointer" onClick={() => toggleSort('date')}>Date &amp; Time<SortIcon k="date" /></TableHead>
+                              <TableHead className="text-xs w-[50px] text-right">View</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
