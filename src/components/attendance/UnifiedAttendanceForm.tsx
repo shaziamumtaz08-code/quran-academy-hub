@@ -486,10 +486,13 @@ export function UnifiedAttendanceForm({
       const isHifzOrNazra = currentSubjectType === 'hifz' || currentSubjectType === 'nazra';
       const isQaida = currentSubjectType === 'qaida';
 
+      const isLeave = selectedStatus === 'student_leave' || selectedStatus === 'teacher_leave';
+      const effectiveClassTime = classTime || (isLeave ? '00:00' : classTime);
+
       const basePayload: Record<string, any> = {
         class_date: classDate,
-        class_time: classTime,
-        duration_minutes: parseInt(duration),
+        class_time: effectiveClassTime,
+        duration_minutes: parseInt(duration) || 30,
         status: selectedStatus,
         reason: finalReason || null,
         lesson_covered: lessonCoveredText || null,
@@ -530,6 +533,7 @@ export function UnifiedAttendanceForm({
       };
 
       let savedId: string | undefined;
+      let leaveSummary: { inserted: number; skipped: number; total: number } | null = null;
 
       if (isEdit && existingRecord) {
         const { error } = await supabase
@@ -538,6 +542,45 @@ export function UnifiedAttendanceForm({
           .eq('id', existingRecord.id);
         if (error) throw error;
         savedId = existingRecord.id;
+      } else if (isLeave && leaveEndDate && leaveEndDate > classDate) {
+        // Multi-day leave — expand into one row per date (cap 31 days)
+        const start = parseISO(classDate);
+        const end = parseISO(leaveEndDate);
+        const dates: string[] = [];
+        const cursor = new Date(start);
+        while (cursor <= end && dates.length < 31) {
+          dates.push(format(cursor, 'yyyy-MM-dd'));
+          cursor.setDate(cursor.getDate() + 1);
+        }
+
+        // Dedupe against existing attendance for this student in the range
+        const { data: existingRows } = await supabase
+          .from('attendance')
+          .select('class_date')
+          .eq('student_id', resolvedStudentId)
+          .gte('class_date', dates[0])
+          .lte('class_date', dates[dates.length - 1]);
+        const taken = new Set((existingRows || []).map((r: any) => r.class_date));
+        const newDates = dates.filter(d => !taken.has(d));
+
+        if (newDates.length > 0) {
+          const rows = newDates.map(d => {
+            const info = getScheduledInfoForDay(d);
+            return {
+              student_id: resolvedStudentId,
+              teacher_id: effectiveTeacherId,
+              ...basePayload,
+              ...phaseAPayload,
+              class_date: d,
+              class_time: info?.time?.substring(0, 5) || '00:00',
+              duration_minutes: info?.duration || parseInt(duration) || 30,
+            };
+          });
+          const { data, error } = await supabase.from('attendance').insert(rows as any).select('id');
+          if (error) throw error;
+          savedId = data?.[0]?.id;
+        }
+        leaveSummary = { inserted: newDates.length, skipped: dates.length - newDates.length, total: dates.length };
       } else {
         const insertPayload: any = {
           student_id: resolvedStudentId,
@@ -584,15 +627,23 @@ export function UnifiedAttendanceForm({
         }
       });
 
-      return { id: savedId };
+      return { id: savedId, leaveSummary };
     },
-    onSuccess: () => {
-      toast({
-        title: isEdit ? 'Attendance Updated' : 'Attendance Marked',
-        description: isEdit
-          ? `Updated record for ${student.full_name}`
-          : `Attendance recorded for ${student.full_name}`,
-      });
+    onSuccess: (result) => {
+      if (result?.leaveSummary) {
+        const { inserted, skipped, total } = result.leaveSummary;
+        toast({
+          title: 'Leave Recorded',
+          description: `${inserted} of ${total} day(s) marked${skipped ? ` — ${skipped} already had attendance` : ''}.`,
+        });
+      } else {
+        toast({
+          title: isEdit ? 'Attendance Updated' : 'Attendance Marked',
+          description: isEdit
+            ? `Updated record for ${student.full_name}`
+            : `Attendance recorded for ${student.full_name}`,
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['attendance'] });
       queryClient.invalidateQueries({ queryKey: ['teacher-students-detailed'] });
       onSuccess?.();
@@ -628,13 +679,17 @@ export function UnifiedAttendanceForm({
 
   const isTeacherOnlyStatus = ['teacher_absent', 'teacher_leave', 'holiday'].includes(selectedStatus);
   const needsStudent = !isTeacherOnlyStatus;
+  const isLeaveStatus = selectedStatus === 'student_leave' || selectedStatus === 'teacher_leave';
 
   const isFormValid = useMemo(() => {
-    if (!classTime || !classDate) return false;
+    if (!classDate) return false;
+    // Leave statuses don't require a slot time — they cover whole days
+    if (!isLeaveStatus && !classTime) return false;
     if (isFutureDate) return false;
     if (needsStudent && !student.id) return false;
-    if (hasDuplicateAttendance) return false;
-    if (!isScheduledDay) return false;
+    // Leave can be marked even when the day isn't scheduled or already has a record
+    if (!isLeaveStatus && hasDuplicateAttendance) return false;
+    if (!isLeaveStatus && !isScheduledDay) return false;
     if (requiresReason(selectedStatus) && !reasonCategory) return false;
     if (requiresReason(selectedStatus) && reasonCategory === 'other' && !reasonText.trim()) return false;
     if (requiresReschedule(selectedStatus) && !rescheduleDate) return false;
@@ -642,7 +697,7 @@ export function UnifiedAttendanceForm({
     if (requiresReschedule(selectedStatus) && rescheduleReason === 'other' && !reasonText.trim()) return false;
     if (lessonRequired && !hasLessonDetails) return false;
     return true;
-  }, [selectedStatus, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleReason, hasDuplicateAttendance, isScheduledDay, isFutureDate, lessonRequired, hasLessonDetails, needsStudent, student.id]);
+  }, [selectedStatus, isLeaveStatus, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleReason, hasDuplicateAttendance, isScheduledDay, isFutureDate, lessonRequired, hasLessonDetails, needsStudent, student.id]);
 
   const studentTzAbbr = getTimezoneAbbr(student.timezone);
   const teacherTzAbbr = getTimezoneAbbr(effectiveTeacherTz);
@@ -722,8 +777,8 @@ export function UnifiedAttendanceForm({
             </Alert>
           )}
 
-          {/* Non-Scheduled Day Warning */}
-          {!isScheduledDay && !hasDuplicateAttendance && !isFutureDate && (
+          {/* Non-Scheduled Day Warning — hidden for leave (leave can be any day) */}
+          {!isScheduledDay && !hasDuplicateAttendance && !isFutureDate && !isLeaveStatus && (
             <Alert className="bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
@@ -784,15 +839,16 @@ export function UnifiedAttendanceForm({
               </div>
               <div className="space-y-2">
                 <Label className="text-foreground">
-                  Scheduled Time ({teacherTzAbbr}) <span className="text-destructive">*</span>
+                  Scheduled Time ({teacherTzAbbr}){!isLeaveStatus && <span className="text-destructive"> *</span>}
                 </Label>
                 <Input
                   type="time"
                   value={classTime}
                   onChange={(e) => setClassTime(e.target.value)}
-                  readOnly={!allowTimeEdit}
-                  disabled={!allowTimeEdit}
-                  className={allowTimeEdit
+                  readOnly={!allowTimeEdit && !isLeaveStatus}
+                  disabled={!allowTimeEdit && !isLeaveStatus}
+                  placeholder={isLeaveStatus ? 'Optional for leave' : undefined}
+                  className={(allowTimeEdit || isLeaveStatus)
                     ? "[ [&::-webkit-calendar-picker-indicator]:opacity-0::-webkit-calendar-picker-indicator]:opacity-0"
                     : "bg-muted cursor-not-allowed [&::-webkit-calendar-picker-indicator]:opacity-0"}
                 />
@@ -870,20 +926,22 @@ export function UnifiedAttendanceForm({
             </div>
           )}
 
-          {/* Duration — fixed position, always visible. Editable when reschedule (off-roster). */}
-          <div className="space-y-2">
-            <Label className="text-foreground">Duration (minutes)</Label>
-            <Input
-              type="number"
-              value={duration}
-              onChange={(e) => setDuration(e.target.value)}
-              readOnly={!requiresReschedule(selectedStatus) && !isEdit}
-              disabled={!requiresReschedule(selectedStatus) && !isEdit}
-              className={(requiresReschedule(selectedStatus) || isEdit)
-                ? ""
-                : "bg-muted cursor-not-allowed"}
-            />
-          </div>
+          {/* Duration — fixed position. Hidden for leave (irrelevant for a day-off). */}
+          {!isLeaveStatus && (
+            <div className="space-y-2">
+              <Label className="text-foreground">Duration (minutes)</Label>
+              <Input
+                type="number"
+                value={duration}
+                onChange={(e) => setDuration(e.target.value)}
+                readOnly={!requiresReschedule(selectedStatus) && !isEdit}
+                disabled={!requiresReschedule(selectedStatus) && !isEdit}
+                className={(requiresReschedule(selectedStatus) || isEdit)
+                  ? ""
+                  : "bg-muted cursor-not-allowed"}
+              />
+            </div>
+          )}
 
           {/* Reason fields for absent status */}
           {requiresReason(selectedStatus) && (
