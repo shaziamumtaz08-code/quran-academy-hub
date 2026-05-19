@@ -875,20 +875,22 @@ export function UnifiedAttendanceForm({
             </div>
           )}
 
-          {/* Duration — fixed position, always visible. Editable when reschedule (off-roster). */}
-          <div className="space-y-2">
-            <Label className="text-foreground">Duration (minutes)</Label>
-            <Input
-              type="number"
-              value={duration}
-              onChange={(e) => setDuration(e.target.value)}
-              readOnly={!requiresReschedule(selectedStatus) && !isEdit}
-              disabled={!requiresReschedule(selectedStatus) && !isEdit}
-              className={(requiresReschedule(selectedStatus) || isEdit)
-                ? ""
-                : "bg-muted cursor-not-allowed"}
-            />
-          </div>
+          {/* Duration — fixed position. Hidden for leave (irrelevant for a day-off). */}
+          {!isLeaveStatus && (
+            <div className="space-y-2">
+              <Label className="text-foreground">Duration (minutes)</Label>
+              <Input
+                type="number"
+                value={duration}
+                onChange={(e) => setDuration(e.target.value)}
+                readOnly={!requiresReschedule(selectedStatus) && !isEdit}
+                disabled={!requiresReschedule(selectedStatus) && !isEdit}
+                className={(requiresReschedule(selectedStatus) || isEdit)
+                  ? ""
+                  : "bg-muted cursor-not-allowed"}
+              />
+            </div>
+          )}
 
           {/* Reason fields for absent status */}
           {requiresReason(selectedStatus) && (
