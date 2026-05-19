@@ -23,6 +23,7 @@ import {
   ChevronDown, ChevronRight, ChevronUp, ArrowUp, ArrowDown, ArrowUpDown, AlertTriangle, Search,
 } from 'lucide-react';
 import { ExportDialog } from '@/components/export/ExportDialog';
+import AttemptDetailDialog from '@/components/quiz/AttemptDetailDialog';
 import * as pdfjsLib from 'pdfjs-dist';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
