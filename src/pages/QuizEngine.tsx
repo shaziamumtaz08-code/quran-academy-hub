@@ -151,15 +151,15 @@ export default function QuizEngine() {
     },
   });
 
-  // Load attempts
+  // Load attempts (ALL rows, no DISTINCT — each row = one attempt)
   const { data: attempts = [] } = useQuery({
     queryKey: ['quiz-attempts'],
     queryFn: async () => {
       const { data } = await (supabase.from('quiz_attempts') as any)
-        .select('*, session:quiz_sessions(title, access_token)')
+        .select('*, session:quiz_sessions(title, access_token, quiz_bank_id, created_at), quiz_bank:quiz_banks(id, name, passing_percentage)')
         .eq('status', 'completed')
-        .order('created_at', { ascending: false })
-        .limit(200);
+        .order('created_at', { ascending: true })
+        .limit(2000);
       return data || [];
     },
   });
