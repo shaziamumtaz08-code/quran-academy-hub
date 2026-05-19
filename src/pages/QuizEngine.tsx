@@ -242,8 +242,12 @@ export default function QuizEngine() {
 
   const toggleSession = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const closing = status === 'live';
       const { error } = await (supabase.from('quiz_sessions') as any)
-        .update({ status: status === 'live' ? 'closed' : 'live' })
+        .update({
+          status: closing ? 'closed' : 'live',
+          closes_at: closing ? new Date().toISOString() : null,
+        })
         .eq('id', id);
       if (error) throw error;
     },
