@@ -486,10 +486,13 @@ export function UnifiedAttendanceForm({
       const isHifzOrNazra = currentSubjectType === 'hifz' || currentSubjectType === 'nazra';
       const isQaida = currentSubjectType === 'qaida';
 
+      const isLeave = selectedStatus === 'student_leave' || selectedStatus === 'teacher_leave';
+      const effectiveClassTime = classTime || (isLeave ? '00:00' : classTime);
+
       const basePayload: Record<string, any> = {
         class_date: classDate,
-        class_time: classTime,
-        duration_minutes: parseInt(duration),
+        class_time: effectiveClassTime,
+        duration_minutes: parseInt(duration) || 30,
         status: selectedStatus,
         reason: finalReason || null,
         lesson_covered: lessonCoveredText || null,
