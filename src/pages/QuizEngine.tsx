@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,15 +15,32 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Plus, Loader2, Copy, Share2, Trash2, Eye, FileText, Pencil,
-  ClipboardCheck, Trophy, Link as LinkIcon, Globe, Lock, Play, Square, Upload, X, Download
+  ClipboardCheck, Trophy, Link as LinkIcon, Globe, Lock, Play, Square, Upload, X, Download,
+  ChevronDown, ChevronRight, ChevronUp, ArrowUp, ArrowDown, ArrowUpDown, AlertTriangle, Search,
 } from 'lucide-react';
 import { ExportDialog } from '@/components/export/ExportDialog';
 import * as pdfjsLib from 'pdfjs-dist';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-import { format } from 'date-fns';
+import { format, formatDistanceStrict, differenceInMilliseconds } from 'date-fns';
+
+function formatDuration(start: string, end?: string | null): string {
+  const s = new Date(start);
+  const e = end ? new Date(end) : new Date();
+  const ms = Math.max(0, differenceInMilliseconds(e, s));
+  const mins = Math.floor(ms / 60000);
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  const rem = mins % 60;
+  if (hrs < 24) return rem ? `${hrs}h ${rem}m` : `${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  const hRem = hrs % 24;
+  return hRem ? `${days}d ${hRem}h` : `${days}d`;
+}
 
 export default function QuizEngine() {
   const { user } = useAuth();
@@ -49,6 +66,23 @@ export default function QuizEngine() {
   const [extractingPdf, setExtractingPdf] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<{ name: string; text: string }[]>([]);
   const [exportOpen, setExportOpen] = useState(false);
+
+  // Sessions tab filters
+  const [sessFilterBank, setSessFilterBank] = useState<string>('all');
+  const [sessFilterStatus, setSessFilterStatus] = useState<string>('all');
+  const [sessSort, setSessSort] = useState<'newest' | 'submissions' | 'duration'>('newest');
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+
+  // Results tab filters
+  const [resQuiz, setResQuiz] = useState<string>('all');
+  const [resSession, setResSession] = useState<string>('all');
+  const [resSearch, setResSearch] = useState('');
+  const [resFrom, setResFrom] = useState('');
+  const [resTo, setResTo] = useState('');
+  const [resScoreRange, setResScoreRange] = useState<[number, number]>([0, 100]);
+  const [resPassFilter, setResPassFilter] = useState<'all' | 'pass' | 'fail'>('all');
+  const [resSort, setResSort] = useState<{ key: string; dir: 'asc' | 'desc' }>({ key: 'date', dir: 'desc' });
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
   // Form state
   const [form, setForm] = useState({
@@ -134,18 +168,71 @@ export default function QuizEngine() {
     },
   });
 
-  // Load attempts
+  // Load attempts (ALL rows, no DISTINCT — each row = one attempt)
   const { data: attempts = [] } = useQuery({
     queryKey: ['quiz-attempts'],
     queryFn: async () => {
       const { data } = await (supabase.from('quiz_attempts') as any)
-        .select('*, session:quiz_sessions(title, access_token)')
+        .select('*, session:quiz_sessions(title, access_token, quiz_bank_id, created_at), quiz_bank:quiz_banks(id, name, passing_percentage)')
         .eq('status', 'completed')
-        .order('created_at', { ascending: false })
-        .limit(200);
+        .order('created_at', { ascending: true })
+        .limit(2000);
       return data || [];
     },
   });
+
+  // Derived: session # per bank (ordered by created_at asc)
+  const sessionNumberMap = useMemo(() => {
+    const map = new Map<string, number>();
+    const byBank: Record<string, any[]> = {};
+    sessions.forEach((s: any) => {
+      (byBank[s.quiz_bank_id] ||= []).push(s);
+    });
+    Object.values(byBank).forEach((list) => {
+      list.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+        .forEach((s, i) => map.set(s.id, i + 1));
+    });
+    return map;
+  }, [sessions]);
+
+  // Derived: attempts grouped by session
+  const attemptsBySession = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    attempts.forEach((a: any) => { (map[a.session_id] ||= []).push(a); });
+    return map;
+  }, [attempts]);
+
+  // Derived: bank-level metrics (live sessions count, total sessions)
+  const bankSessionStats = useMemo(() => {
+    const map: Record<string, { total: number; live: number }> = {};
+    sessions.forEach((s: any) => {
+      const m = map[s.quiz_bank_id] ||= { total: 0, live: 0 };
+      m.total++;
+      if (s.status === 'live') m.live++;
+    });
+    return map;
+  }, [sessions]);
+
+  // Derived: attempt # per (student identity, quiz_bank_id), ranked by created_at asc
+  const attemptNumberMap = useMemo(() => {
+    const map = new Map<string, number>();
+    const groups: Record<string, any[]> = {};
+    [...attempts].forEach((a: any) => {
+      const ident = a.student_id || a.guest_email || a.guest_name || 'unknown';
+      const key = `${ident}::${a.quiz_bank_id}`;
+      (groups[key] ||= []).push(a);
+    });
+    Object.values(groups).forEach((list) => {
+      list.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+        .forEach((a, i) => map.set(a.id, i + 1));
+    });
+    return map;
+  }, [attempts]);
+
+  // Identify attempts (for grouping in expand)
+  const attemptIdentity = (a: any) =>
+    a.student_id || a.guest_email || a.guest_name || 'unknown';
+
 
   const createBank = useMutation({
     mutationFn: async () => {
@@ -225,14 +312,36 @@ export default function QuizEngine() {
 
   const toggleSession = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const closing = status === 'live';
       const { error } = await (supabase.from('quiz_sessions') as any)
-        .update({ status: status === 'live' ? 'closed' : 'live' })
+        .update({
+          status: closing ? 'closed' : 'live',
+          closes_at: closing ? new Date().toISOString() : null,
+        })
         .eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['quiz-sessions'] });
       toast({ title: 'Session updated' });
+    },
+  });
+
+  const bulkCloseEmpty = useMutation({
+    mutationFn: async () => {
+      const empty = sessions.filter((s: any) =>
+        s.status === 'live' && !attempts.some((a: any) => a.session_id === s.id)
+      );
+      if (empty.length === 0) return 0;
+      const { error } = await (supabase.from('quiz_sessions') as any)
+        .update({ status: 'closed', closes_at: new Date().toISOString() })
+        .in('id', empty.map((s: any) => s.id));
+      if (error) throw error;
+      return empty.length;
+    },
+    onSuccess: (n) => {
+      queryClient.invalidateQueries({ queryKey: ['quiz-sessions'] });
+      toast({ title: `Closed ${n} empty session${n === 1 ? '' : 's'}` });
     },
   });
 
@@ -354,181 +463,598 @@ export default function QuizEngine() {
           </Button>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid grid-cols-3 w-full max-w-md">
-            <TabsTrigger value="banks" className="gap-1 text-xs">
-              <FileText className="h-3.5 w-3.5" /> Banks
-            </TabsTrigger>
-            <TabsTrigger value="sessions" className="gap-1 text-xs">
-              <LinkIcon className="h-3.5 w-3.5" /> Sessions
-            </TabsTrigger>
-            <TabsTrigger value="results" className="gap-1 text-xs">
-              <Trophy className="h-3.5 w-3.5" /> Results
-            </TabsTrigger>
-          </TabsList>
+        {(() => {
+          // ====== Sessions: filter + group ======
+          const filteredSessions = sessions.filter((s: any) => {
+            if (sessFilterBank !== 'all' && s.quiz_bank_id !== sessFilterBank) return false;
+            if (sessFilterStatus !== 'all' && s.status !== sessFilterStatus) return false;
+            return true;
+          });
+          const sortedSessions = [...filteredSessions].sort((a: any, b: any) => {
+            if (sessSort === 'submissions') {
+              return (attemptsBySession[b.id]?.length || 0) - (attemptsBySession[a.id]?.length || 0);
+            }
+            if (sessSort === 'duration') {
+              const aEnd = a.closes_at || a.updated_at || new Date().toISOString();
+              const bEnd = b.closes_at || b.updated_at || new Date().toISOString();
+              const aDur = new Date(aEnd).getTime() - new Date(a.created_at).getTime();
+              const bDur = new Date(bEnd).getTime() - new Date(b.created_at).getTime();
+              return bDur - aDur;
+            }
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          });
+          const groupedSessions: Record<string, { name: string; items: any[] }> = {};
+          sortedSessions.forEach((s: any) => {
+            const key = s.quiz_bank_id;
+            const name = s.quiz_bank?.name || s.title || 'Untitled';
+            (groupedSessions[key] ||= { name, items: [] }).items.push(s);
+          });
+          const emptyLiveCount = sessions.filter((s: any) =>
+            s.status === 'live' && !attempts.some((a: any) => a.session_id === s.id)
+          ).length;
 
-          {/* Banks Tab */}
-          <TabsContent value="banks" className="mt-4 space-y-3">
-            {banksLoading ? (
-              <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-            ) : banks.length === 0 ? (
-              <Card><CardContent className="p-8 text-center">
-                <ClipboardCheck className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                <p className="text-muted-foreground">No quiz banks yet. Create one to get started.</p>
-              </CardContent></Card>
-            ) : (
-              <div className="grid gap-3">
-                {banks.map((bank: any) => (
-                  <Card key={bank.id} className="border-border">
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-1 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="text-sm font-medium">{bank.name}</h4>
-                            <Badge variant={bank.status === 'published' ? 'default' : 'secondary'} className="text-xs">{bank.status}</Badge>
-                            <Badge variant="outline" className="text-xs gap-1">
-                              {bank.mode === 'public' ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
-                              {bank.mode}
-                            </Badge>
-                            {bank.course?.name && <Badge variant="outline" className="text-xs">{bank.course.name}</Badge>}
-                          </div>
-                          {bank.description && <p className="text-xs text-muted-foreground">{bank.description}</p>}
-                          <div className="flex gap-3 text-xs text-muted-foreground">
-                            <span>{getQuestionCount(bank)} Qs</span>
-                            <span>{bank.language?.toUpperCase()}</span>
-                            {bank.time_limit_minutes ? <span>⏱ {bank.time_limit_minutes}min</span> : <span>No timer</span>}
-                            <span>{bank.max_attempts || 1} attempt{(bank.max_attempts || 1) > 1 ? 's' : ''}</span>
-                            <span>Pass: {bank.passing_percentage}%</span>
-                          </div>
-                        </div>
-                        <div className="flex gap-1">
-                          <Button size="sm" variant="outline" className="text-xs h-7"
-                            onClick={() => createSession.mutate(bank.id)}
-                            disabled={getQuestionCount(bank) === 0}>
-                            <Play className="h-3 w-3 mr-1" /> Go Live
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0"
-                            onClick={() => openEdit(bank)}>
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive"
-                            onClick={() => deleteBank.mutate(bank.id)}>
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </TabsContent>
+          // ====== Results: filter + sort ======
+          let filteredResults = attempts.filter((a: any) => {
+            if (resQuiz !== 'all' && a.quiz_bank_id !== resQuiz) return false;
+            if (resSession !== 'all' && a.session_id !== resSession) return false;
+            if (resSearch) {
+              const q = resSearch.toLowerCase();
+              const name = (a.guest_name || '').toLowerCase();
+              const email = (a.guest_email || '').toLowerCase();
+              if (!name.includes(q) && !email.includes(q)) return false;
+            }
+            if (resFrom && new Date(a.created_at) < new Date(resFrom)) return false;
+            if (resTo && new Date(a.created_at) > new Date(resTo + 'T23:59:59')) return false;
+            const pct = Number(a.percentage) || 0;
+            if (pct < resScoreRange[0] || pct > resScoreRange[1]) return false;
+            const pass = pct >= (a.quiz_bank?.passing_percentage ?? 50);
+            if (resPassFilter === 'pass' && !pass) return false;
+            if (resPassFilter === 'fail' && pass) return false;
+            return true;
+          });
+          filteredResults = [...filteredResults].sort((a: any, b: any) => {
+            const dir = resSort.dir === 'asc' ? 1 : -1;
+            const va = (() => {
+              switch (resSort.key) {
+                case 'name': return (a.guest_name || '').toLowerCase();
+                case 'email': return (a.guest_email || '').toLowerCase();
+                case 'quiz': return (a.quiz_bank?.name || '').toLowerCase();
+                case 'score': return Number(a.score) || 0;
+                case 'pct': return Number(a.percentage) || 0;
+                case 'time': return Number(a.time_taken_seconds) || 0;
+                case 'sessionNum': return sessionNumberMap.get(a.session_id) || 0;
+                case 'attempt': return attemptNumberMap.get(a.id) || 0;
+                case 'pass': return (Number(a.percentage) || 0) >= (a.quiz_bank?.passing_percentage ?? 50) ? 1 : 0;
+                case 'date':
+                default: return new Date(a.created_at).getTime();
+              }
+            })();
+            const vb = (() => {
+              switch (resSort.key) {
+                case 'name': return (b.guest_name || '').toLowerCase();
+                case 'email': return (b.guest_email || '').toLowerCase();
+                case 'quiz': return (b.quiz_bank?.name || '').toLowerCase();
+                case 'score': return Number(b.score) || 0;
+                case 'pct': return Number(b.percentage) || 0;
+                case 'time': return Number(b.time_taken_seconds) || 0;
+                case 'sessionNum': return sessionNumberMap.get(b.session_id) || 0;
+                case 'attempt': return attemptNumberMap.get(b.id) || 0;
+                case 'pass': return (Number(b.percentage) || 0) >= (b.quiz_bank?.passing_percentage ?? 50) ? 1 : 0;
+                case 'date':
+                default: return new Date(b.created_at).getTime();
+              }
+            })();
+            if (va < vb) return -1 * dir;
+            if (va > vb) return 1 * dir;
+            return 0;
+          });
 
-          {/* Sessions Tab */}
-          <TabsContent value="sessions" className="mt-4 space-y-3">
-            {sessions.length === 0 ? (
-              <Card><CardContent className="p-8 text-center">
-                <LinkIcon className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                <p className="text-muted-foreground">No active sessions. Go Live on a quiz bank to create one.</p>
-              </CardContent></Card>
-            ) : (
-              <div className="grid gap-3">
-                {sessions.map((s: any) => {
-                  const sessionAttempts = attempts.filter((a: any) => a.session_id === s.id);
-                  return (
-                    <Card key={s.id} className="border-border">
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <h4 className="text-sm font-medium">{s.title || s.quiz_bank?.name}</h4>
-                              <Badge variant={s.status === 'live' ? 'default' : 'secondary'} className="text-xs">
-                                {s.status}
-                              </Badge>
-                              <Badge variant="outline" className="text-xs">
-                                {s.quiz_bank?.mode === 'public' ? '🌐 Public' : '🔒 Auth'}
-                              </Badge>
+          const toggleSort = (key: string) => {
+            setResSort((s) => s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' });
+          };
+          const SortIcon = ({ k }: { k: string }) => {
+            if (resSort.key !== k) return <ArrowUpDown className="h-3 w-3 inline ml-1 opacity-50" />;
+            return resSort.dir === 'asc'
+              ? <ArrowUp className="h-3 w-3 inline ml-1" />
+              : <ArrowDown className="h-3 w-3 inline ml-1" />;
+          };
+
+          // Per-quiz summary (when single quiz selected)
+          const quizSummary = resQuiz !== 'all' ? (() => {
+            const bank = banks.find((b: any) => b.id === resQuiz);
+            const all = attempts.filter((a: any) => a.quiz_bank_id === resQuiz);
+            const total = all.length;
+            const unique = new Set(all.map((a: any) => attemptIdentity(a))).size;
+            const avg = total ? Math.round(all.reduce((s: number, a: any) => s + (Number(a.percentage) || 0), 0) / total) : 0;
+            const passed = all.filter((a: any) => (Number(a.percentage) || 0) >= (bank?.passing_percentage ?? 50)).length;
+            const passRate = total ? Math.round((passed / total) * 100) : 0;
+            return { bank, total, unique, avg, passRate, passed };
+          })() : null;
+
+          return (
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid grid-cols-3 w-full max-w-md">
+                <TabsTrigger value="banks" className="gap-1 text-xs">
+                  <FileText className="h-3.5 w-3.5" /> Banks ({banks.length})
+                </TabsTrigger>
+                <TabsTrigger value="sessions" className="gap-1 text-xs">
+                  <LinkIcon className="h-3.5 w-3.5" /> Sessions ({sessions.length})
+                </TabsTrigger>
+                <TabsTrigger value="results" className="gap-1 text-xs">
+                  <Trophy className="h-3.5 w-3.5" /> Results ({attempts.length})
+                </TabsTrigger>
+              </TabsList>
+
+              {/* ===== Banks Tab ===== */}
+              <TabsContent value="banks" className="mt-4 space-y-3">
+                {banksLoading ? (
+                  <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+                ) : banks.length === 0 ? (
+                  <Card><CardContent className="p-8 text-center">
+                    <ClipboardCheck className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+                    <p className="text-muted-foreground">No quiz banks yet. Create one to get started.</p>
+                  </CardContent></Card>
+                ) : (
+                  <div className="grid gap-3">
+                    {banks.map((bank: any) => {
+                      const stats = bankSessionStats[bank.id] || { total: 0, live: 0 };
+                      const hasLive = stats.live > 0;
+                      const bankAttempts = attempts.filter((a: any) => a.quiz_bank_id === bank.id).length;
+                      return (
+                        <Card key={bank.id} className="border-border">
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between">
+                              <div className="space-y-1 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h4 className="text-sm font-medium">{bank.name}</h4>
+                                  {hasLive ? (
+                                    <Badge className="text-xs gap-1 bg-green-600 hover:bg-green-600 text-white border-transparent">
+                                      <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                      Live
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant={bank.status === 'published' ? 'default' : 'secondary'} className="text-xs">{bank.status}</Badge>
+                                  )}
+                                  <Badge variant="outline" className="text-xs gap-1">
+                                    {bank.mode === 'public' ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+                                    {bank.mode}
+                                  </Badge>
+                                  {bank.course?.name && <Badge variant="outline" className="text-xs">{bank.course.name}</Badge>}
+                                </div>
+                                {bank.description && <p className="text-xs text-muted-foreground">{bank.description}</p>}
+                                <div className="flex gap-3 text-xs text-muted-foreground flex-wrap">
+                                  <span>{getQuestionCount(bank)} Qs</span>
+                                  <span>{bank.language?.toUpperCase()}</span>
+                                  {bank.time_limit_minutes ? <span>⏱ {bank.time_limit_minutes}min</span> : <span>No timer</span>}
+                                  <span>{bank.max_attempts || 1} attempt{(bank.max_attempts || 1) > 1 ? 's' : ''}</span>
+                                  <span>Pass: {bank.passing_percentage}%</span>
+                                  <span>{bankAttempts} submission{bankAttempts === 1 ? '' : 's'}</span>
+                                  <button
+                                    className="underline hover:text-foreground"
+                                    onClick={() => { setSessFilterBank(bank.id); setActiveTab('sessions'); }}
+                                  >
+                                    {stats.live} active / {stats.total} session{stats.total === 1 ? '' : 's'}
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="flex gap-1">
+                                <Button
+                                  size="sm"
+                                  variant={hasLive ? 'secondary' : 'outline'}
+                                  className="text-xs h-7"
+                                  onClick={() => createSession.mutate(bank.id)}
+                                  disabled={getQuestionCount(bank) === 0}
+                                >
+                                  <Play className="h-3 w-3 mr-1" /> {hasLive ? 'New Session' : 'Go Live'}
+                                </Button>
+                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0"
+                                  onClick={() => openEdit(bank)}>
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive"
+                                  onClick={() => deleteBank.mutate(bank.id)}>
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
                             </div>
-                            <div className="flex gap-3 text-xs text-muted-foreground">
-                              <span>{sessionAttempts.length} submissions</span>
-                              <span>Created {format(new Date(s.created_at), 'MMM d, yyyy')}</span>
-                            </div>
-                          </div>
-                          <div className="flex gap-1">
-                            {s.quiz_bank?.mode === 'public' && (
-                              <Button size="sm" variant="outline" className="text-xs h-7 gap-1"
-                                onClick={() => copyLink(s.access_token)}>
-                                <Copy className="h-3 w-3" /> Copy Link
-                              </Button>
-                            )}
-                            <Button size="sm" variant="ghost" className="text-xs h-7"
-                              onClick={() => toggleSession.mutate({ id: s.id, status: s.status })}>
-                              {s.status === 'live' ? <><Square className="h-3 w-3 mr-1" /> Close</> : <><Play className="h-3 w-3 mr-1" /> Reopen</>}
-                            </Button>
-                          </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* ===== Sessions Tab ===== */}
+              <TabsContent value="sessions" className="mt-4 space-y-3">
+                {sessions.length === 0 ? (
+                  <Card><CardContent className="p-8 text-center">
+                    <LinkIcon className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+                    <p className="text-muted-foreground">No active sessions. Go Live on a quiz bank to create one.</p>
+                  </CardContent></Card>
+                ) : (
+                  <>
+                    {/* Filter bar */}
+                    <Card>
+                      <CardContent className="p-3 flex flex-wrap items-center gap-2">
+                        <Select value={sessFilterBank} onValueChange={setSessFilterBank}>
+                          <SelectTrigger className="h-8 text-xs w-[180px]"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Quizzes</SelectItem>
+                            {banks.map((b: any) => (
+                              <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Select value={sessFilterStatus} onValueChange={setSessFilterStatus}>
+                          <SelectTrigger className="h-8 text-xs w-[120px]"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Status</SelectItem>
+                            <SelectItem value="live">Live</SelectItem>
+                            <SelectItem value="closed">Closed</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Select value={sessSort} onValueChange={(v: any) => setSessSort(v)}>
+                          <SelectTrigger className="h-8 text-xs w-[160px]"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="newest">Sort: Newest</SelectItem>
+                            <SelectItem value="submissions">Sort: Most Submissions</SelectItem>
+                            <SelectItem value="duration">Sort: Duration</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <div className="ml-auto flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">
+                            Showing {sortedSessions.length} of {sessions.length}
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs h-8"
+                            disabled={emptyLiveCount === 0}
+                            onClick={() => bulkCloseEmpty.mutate()}
+                          >
+                            Bulk Close {emptyLiveCount} Empty
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>
-                  );
-                })}
-              </div>
-            )}
-          </TabsContent>
 
-          {/* Results Tab */}
-          <TabsContent value="results" className="mt-4">
-            <Card>
-              <CardHeader className="py-3 px-4 flex flex-row items-center justify-between">
-                <CardTitle className="text-sm">All Results ({attempts.length})</CardTitle>
-                <Button size="sm" variant="outline" onClick={() => setExportOpen(true)} disabled={attempts.length === 0}>
-                  <Download className="h-3.5 w-3.5 mr-1" /> Export CSV
-                </Button>
-              </CardHeader>
-              <CardContent className="px-4 pb-3">
-                {attempts.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-6">No submissions yet</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="text-xs">Name</TableHead>
-                          <TableHead className="text-xs">Email</TableHead>
-                          <TableHead className="text-xs">Quiz</TableHead>
-                          <TableHead className="text-xs">Score</TableHead>
-                          <TableHead className="text-xs">%</TableHead>
-                          <TableHead className="text-xs">Time</TableHead>
-                          <TableHead className="text-xs">Date</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {attempts.map((a: any) => (
-                          <TableRow key={a.id}>
-                            <TableCell className="text-sm">{a.guest_name || a.student?.full_name || '-'}</TableCell>
-                            <TableCell className="text-sm">{a.guest_email || a.student?.email || '-'}</TableCell>
-                            <TableCell className="text-sm">{a.session?.title || '-'}</TableCell>
-                            <TableCell className="text-sm">{a.score}/{a.max_score}</TableCell>
-                            <TableCell>
-                              <Badge variant={a.percentage >= 70 ? 'default' : a.percentage >= 50 ? 'secondary' : 'destructive'} className="text-xs">
-                                {a.percentage}%
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-xs text-muted-foreground">
-                              {a.time_taken_seconds ? `${Math.floor(a.time_taken_seconds / 60)}m ${a.time_taken_seconds % 60}s` : '-'}
-                            </TableCell>
-                            <TableCell className="text-xs text-muted-foreground">
-                              {format(new Date(a.created_at), 'MMM d, HH:mm')}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                    {Object.entries(groupedSessions).map(([bankId, group]) => {
+                      const isCollapsed = collapsedGroups[bankId];
+                      return (
+                        <Collapsible
+                          key={bankId}
+                          open={!isCollapsed}
+                          onOpenChange={(open) => setCollapsedGroups((m) => ({ ...m, [bankId]: !open }))}
+                        >
+                          <CollapsibleTrigger asChild>
+                            <button className="w-full flex items-center gap-2 px-3 py-2 bg-muted/40 hover:bg-muted/60 rounded-md text-left">
+                              {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                              <span className="text-sm font-medium">{group.name}</span>
+                              <span className="text-xs text-muted-foreground">({group.items.length} session{group.items.length === 1 ? '' : 's'})</span>
+                            </button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="space-y-2 mt-2">
+                            {group.items.map((s: any) => {
+                              const sessionAttempts = attemptsBySession[s.id] || [];
+                              const sessNum = sessionNumberMap.get(s.id);
+                              const ageHours = (Date.now() - new Date(s.created_at).getTime()) / 3600000;
+                              const showStale = sessionAttempts.length === 0 && ageHours > 24 && s.status === 'live';
+                              return (
+                                <Card key={s.id} className="border-border">
+                                  <CardContent className="p-4">
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div className="space-y-1 flex-1">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <Badge variant="outline" className="text-xs">Session #{sessNum}</Badge>
+                                          <h4 className="text-sm font-medium">{s.title || s.quiz_bank?.name}</h4>
+                                          {s.status === 'live' ? (
+                                            <Badge className="text-xs gap-1 bg-green-600 hover:bg-green-600 text-white border-transparent">
+                                              <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" /> Live
+                                            </Badge>
+                                          ) : (
+                                            <Badge variant="secondary" className="text-xs">Closed</Badge>
+                                          )}
+                                          <Badge variant="outline" className="text-xs">
+                                            {s.quiz_bank?.mode === 'public' ? '🌐 Public' : '🔒 Auth'}
+                                          </Badge>
+                                          {showStale && (
+                                            <Badge className="text-xs gap-1 bg-amber-500 hover:bg-amber-500 text-white border-transparent">
+                                              <AlertTriangle className="h-3 w-3" /> 0 submissions
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        <div className="flex gap-3 text-xs text-muted-foreground flex-wrap">
+                                          <button
+                                            className="underline hover:text-foreground"
+                                            onClick={() => { setResSession(s.id); setResQuiz('all'); setActiveTab('results'); }}
+                                          >
+                                            {sessionAttempts.length} submission{sessionAttempts.length === 1 ? '' : 's'}
+                                          </button>
+                                          <span>Created: {format(new Date(s.created_at), 'MMM d, yyyy')} at {format(new Date(s.created_at), 'HH:mm')}</span>
+                                          {s.status === 'closed' && s.closes_at && (
+                                            <span>Closed: {format(new Date(s.closes_at), 'MMM d, yyyy')} at {format(new Date(s.closes_at), 'HH:mm')}</span>
+                                          )}
+                                          <span>Active for {formatDuration(s.created_at, s.status === 'closed' ? s.closes_at : null)}</span>
+                                        </div>
+                                      </div>
+                                      <div className="flex gap-1">
+                                        {s.quiz_bank?.mode === 'public' && (
+                                          <Button size="sm" variant="outline" className="text-xs h-7 gap-1"
+                                            onClick={() => copyLink(s.access_token)}>
+                                            <Copy className="h-3 w-3" /> Copy Link
+                                          </Button>
+                                        )}
+                                        {s.status === 'live' ? (
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="text-xs h-7 border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                            onClick={() => toggleSession.mutate({ id: s.id, status: s.status })}
+                                          >
+                                            <Square className="h-3 w-3 mr-1" /> Close Session
+                                          </Button>
+                                        ) : (
+                                          <Button size="sm" variant="ghost" className="text-xs h-7"
+                                            onClick={() => toggleSession.mutate({ id: s.id, status: s.status })}>
+                                            <Play className="h-3 w-3 mr-1" /> Reopen
+                                          </Button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              );
+                            })}
+                          </CollapsibleContent>
+                        </Collapsible>
+                      );
+                    })}
+                  </>
                 )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+              </TabsContent>
+
+              {/* ===== Results Tab ===== */}
+              <TabsContent value="results" className="mt-4 space-y-3">
+                <Card>
+                  <CardContent className="p-3 space-y-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Select value={resQuiz} onValueChange={(v) => { setResQuiz(v); setResSession('all'); }}>
+                        <SelectTrigger className="h-8 text-xs w-[200px]"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Quizzes</SelectItem>
+                          {banks.map((b: any) => (
+                            <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select value={resSession} onValueChange={setResSession}>
+                        <SelectTrigger className="h-8 text-xs w-[180px]"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Sessions</SelectItem>
+                          {sessions
+                            .filter((s: any) => resQuiz === 'all' || s.quiz_bank_id === resQuiz)
+                            .map((s: any) => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {s.quiz_bank?.name || s.title} — Session #{sessionNumberMap.get(s.id)}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      <div className="relative">
+                        <Search className="h-3.5 w-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          value={resSearch}
+                          onChange={(e) => setResSearch(e.target.value)}
+                          placeholder="Search name or email"
+                          className="h-8 text-xs pl-7 w-[200px]"
+                        />
+                      </div>
+                      <Input type="date" value={resFrom} onChange={(e) => setResFrom(e.target.value)} className="h-8 text-xs w-[140px]" />
+                      <Input type="date" value={resTo} onChange={(e) => setResTo(e.target.value)} className="h-8 text-xs w-[140px]" />
+                      <div className="flex gap-1">
+                        <Button size="sm" variant={resPassFilter === 'all' ? 'default' : 'outline'} className="h-8 text-xs" onClick={() => setResPassFilter('all')}>All</Button>
+                        <Button size="sm" variant={resPassFilter === 'pass' ? 'default' : 'outline'} className="h-8 text-xs" onClick={() => setResPassFilter('pass')}>Pass</Button>
+                        <Button size="sm" variant={resPassFilter === 'fail' ? 'default' : 'outline'} className="h-8 text-xs" onClick={() => setResPassFilter('fail')}>Fail</Button>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">Score: {resScoreRange[0]}%–{resScoreRange[1]}%</span>
+                      <Slider
+                        min={0} max={100} step={1}
+                        value={resScoreRange}
+                        onValueChange={(v) => setResScoreRange([v[0], v[1]] as [number, number])}
+                        className="max-w-xs"
+                      />
+                      <Button
+                        size="sm" variant="ghost" className="h-8 text-xs"
+                        onClick={() => {
+                          setResQuiz('all'); setResSession('all'); setResSearch(''); setResFrom(''); setResTo('');
+                          setResScoreRange([0, 100]); setResPassFilter('all');
+                        }}
+                      >
+                        Clear filters
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {quizSummary && quizSummary.bank && (
+                  <Card>
+                    <CardContent className="p-4 space-y-2">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div><p className="text-xs text-muted-foreground">Total attempts</p><p className="text-lg font-semibold">{quizSummary.total}</p></div>
+                        <div><p className="text-xs text-muted-foreground">Unique students</p><p className="text-lg font-semibold">{quizSummary.unique}</p></div>
+                        <div><p className="text-xs text-muted-foreground">Avg score</p><p className="text-lg font-semibold">{quizSummary.avg}%</p></div>
+                        <div><p className="text-xs text-muted-foreground">Pass rate</p><p className="text-lg font-semibold">{quizSummary.passRate}%</p></div>
+                      </div>
+                      <div className="h-2 w-full rounded-full overflow-hidden bg-destructive/30 flex">
+                        <div className="bg-green-600 h-full" style={{ width: `${quizSummary.passRate}%` }} />
+                        <div className="bg-destructive h-full" style={{ width: `${100 - quizSummary.passRate}%` }} />
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">{quizSummary.passed} pass / {quizSummary.total - quizSummary.passed} fail</p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                <Card>
+                  <CardHeader className="py-3 px-4 flex flex-row items-center justify-between">
+                    <CardTitle className="text-sm">Showing {filteredResults.length} of {attempts.length} results</CardTitle>
+                    <Button size="sm" variant="outline" onClick={() => setExportOpen(true)} disabled={filteredResults.length === 0}>
+                      <Download className="h-3.5 w-3.5 mr-1" /> Export CSV
+                    </Button>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-3">
+                    {filteredResults.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-6">No results match the filters.</p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="text-xs w-[40px]"></TableHead>
+                              <TableHead className="text-xs">#</TableHead>
+                              <TableHead className="text-xs cursor-pointer" onClick={() => toggleSort('sessionNum')}>Session<SortIcon k="sessionNum" /></TableHead>
+                              <TableHead className="text-xs cursor-pointer" onClick={() => toggleSort('attempt')}>Attempt<SortIcon k="attempt" /></TableHead>
+                              <TableHead className="text-xs cursor-pointer" onClick={() => toggleSort('name')}>Name<SortIcon k="name" /></TableHead>
+                              <TableHead className="text-xs cursor-pointer" onClick={() => toggleSort('email')}>Email<SortIcon k="email" /></TableHead>
+                              <TableHead className="text-xs cursor-pointer" onClick={() => toggleSort('quiz')}>Quiz<SortIcon k="quiz" /></TableHead>
+                              <TableHead className="text-xs cursor-pointer" onClick={() => toggleSort('score')}>Score<SortIcon k="score" /></TableHead>
+                              <TableHead className="text-xs cursor-pointer" onClick={() => toggleSort('pct')}>%<SortIcon k="pct" /></TableHead>
+                              <TableHead className="text-xs cursor-pointer" onClick={() => toggleSort('pass')}>Pass/Fail<SortIcon k="pass" /></TableHead>
+                              <TableHead className="text-xs cursor-pointer" onClick={() => toggleSort('time')}>Time<SortIcon k="time" /></TableHead>
+                              <TableHead className="text-xs cursor-pointer" onClick={() => toggleSort('date')}>Date &amp; Time<SortIcon k="date" /></TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredResults.map((a: any, idx: number) => {
+                              const passThreshold = a.quiz_bank?.passing_percentage ?? 50;
+                              const isPass = (Number(a.percentage) || 0) >= passThreshold;
+                              const ident = attemptIdentity(a);
+                              const rowKey = `${ident}::${a.quiz_bank_id}`;
+                              const isExpanded = expandedRow === rowKey;
+                              const studentAttempts = attempts
+                                .filter((x: any) => attemptIdentity(x) === ident && x.quiz_bank_id === a.quiz_bank_id)
+                                .sort((x: any, y: any) => new Date(x.created_at).getTime() - new Date(y.created_at).getTime());
+                              return (
+                                <React.Fragment key={a.id}>
+                                  <TableRow className="cursor-pointer" onClick={() => setExpandedRow(isExpanded ? null : rowKey)}>
+                                    <TableCell>
+                                      {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                                    </TableCell>
+                                    <TableCell className="text-xs text-muted-foreground">{idx + 1}</TableCell>
+                                    <TableCell className="text-xs">#{sessionNumberMap.get(a.session_id) || '—'}</TableCell>
+                                    <TableCell className="text-xs">#{attemptNumberMap.get(a.id) || 1}</TableCell>
+                                    <TableCell className="text-sm">{a.guest_name || '-'}</TableCell>
+                                    <TableCell className="text-sm">{a.guest_email || '-'}</TableCell>
+                                    <TableCell className="text-sm">{a.quiz_bank?.name || a.session?.title || '-'}</TableCell>
+                                    <TableCell className="text-sm">{a.score}/{a.max_score}</TableCell>
+                                    <TableCell>
+                                      <Badge variant={a.percentage >= 70 ? 'default' : a.percentage >= 50 ? 'secondary' : 'destructive'} className="text-xs">
+                                        {a.percentage}%
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge className={`text-xs ${isPass ? 'bg-green-600 hover:bg-green-600' : 'bg-destructive hover:bg-destructive'} text-white border-transparent`}>
+                                        {isPass ? 'Pass' : 'Fail'}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-xs text-muted-foreground">
+                                      {a.time_taken_seconds ? `${Math.floor(a.time_taken_seconds / 60)}m ${a.time_taken_seconds % 60}s` : '-'}
+                                    </TableCell>
+                                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                                      {format(new Date(a.created_at), 'MMM d, yyyy HH:mm')}
+                                    </TableCell>
+                                  </TableRow>
+                                  {isExpanded && (
+                                    <TableRow>
+                                      <TableCell colSpan={12} className="bg-muted/30">
+                                        <div className="space-y-2 py-2">
+                                          <p className="text-xs font-medium">All attempts for this student on this quiz ({studentAttempts.length}):</p>
+                                          <div className="flex items-end gap-1 h-16">
+                                            {studentAttempts.map((sa: any) => {
+                                              const pct = Number(sa.percentage) || 0;
+                                              const pass = pct >= passThreshold;
+                                              return (
+                                                <div key={sa.id} className="flex flex-col items-center gap-1" style={{ width: 28 }}>
+                                                  <div
+                                                    className={`w-full rounded-sm ${pass ? 'bg-green-600' : 'bg-destructive'}`}
+                                                    style={{ height: `${Math.max(4, pct * 0.5)}px` }}
+                                                    title={`${pct}% on ${format(new Date(sa.created_at), 'MMM d HH:mm')}`}
+                                                  />
+                                                  <span className="text-[9px] text-muted-foreground">#{attemptNumberMap.get(sa.id)}</span>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                          <div className="text-xs text-muted-foreground space-y-0.5">
+                                            {studentAttempts.map((sa: any) => (
+                                              <div key={sa.id} className="flex gap-3">
+                                                <span>#{attemptNumberMap.get(sa.id)}</span>
+                                                <span>{format(new Date(sa.created_at), 'MMM d, yyyy HH:mm')}</span>
+                                                <span>{sa.score}/{sa.max_score} ({sa.percentage}%)</span>
+                                                <span className={(Number(sa.percentage) || 0) >= passThreshold ? 'text-green-600' : 'text-destructive'}>
+                                                  {(Number(sa.percentage) || 0) >= passThreshold ? 'Pass' : 'Fail'}
+                                                </span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      </TableCell>
+                                    </TableRow>
+                                  )}
+                                </React.Fragment>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Export uses filtered set */}
+                <ExportDialog
+                  open={exportOpen}
+                  onOpenChange={setExportOpen}
+                  title="Quiz Results"
+                  filename="quiz-results"
+                  fields={[
+                    { key: 'row', label: '#' },
+                    { key: 'session_num', label: 'Session #' },
+                    { key: 'attempt_num', label: 'Attempt No.' },
+                    { key: 'name', label: 'Name' },
+                    { key: 'email', label: 'Email' },
+                    { key: 'quiz', label: 'Quiz' },
+                    { key: 'score', label: 'Score' },
+                    { key: 'max_score', label: 'Max Score' },
+                    { key: 'percentage', label: 'Percentage' },
+                    { key: 'pass_fail', label: 'Pass/Fail' },
+                    { key: 'time_taken', label: 'Time Taken' },
+                    { key: 'submitted_at', label: 'Date & Time' },
+                  ]}
+                  data={filteredResults.map((a: any, idx: number) => {
+                    const isPass = (Number(a.percentage) || 0) >= (a.quiz_bank?.passing_percentage ?? 50);
+                    return {
+                      row: idx + 1,
+                      session_num: sessionNumberMap.get(a.session_id) || '',
+                      attempt_num: attemptNumberMap.get(a.id) || '',
+                      name: a.guest_name || '',
+                      email: a.guest_email || '',
+                      quiz: a.quiz_bank?.name || a.session?.title || '',
+                      score: a.score,
+                      max_score: a.max_score,
+                      percentage: `${a.percentage}%`,
+                      pass_fail: isPass ? 'Pass' : 'Fail',
+                      time_taken: a.time_taken_seconds ? `${Math.floor(a.time_taken_seconds / 60)}m ${a.time_taken_seconds % 60}s` : '',
+                      submitted_at: format(new Date(a.created_at), 'yyyy-MM-dd HH:mm'),
+                    };
+                  })}
+                />
+              </TabsContent>
+            </Tabs>
+          );
+        })()}
 
         {/* Create Quiz Bank Dialog */}
         <Dialog open={createOpen} onOpenChange={c => { if (!generating) { setCreateOpen(c); if (!c) resetForm(); } }}>
@@ -847,35 +1373,6 @@ export default function QuizEngine() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-
-        <ExportDialog
-          open={exportOpen}
-          onOpenChange={setExportOpen}
-          title="Quiz Results"
-          filename="quiz-results"
-          fields={[
-            { key: 'name', label: 'Name' },
-            { key: 'email', label: 'Email' },
-            { key: 'quiz', label: 'Quiz' },
-            { key: 'score', label: 'Score' },
-            { key: 'max_score', label: 'Max Score' },
-            { key: 'percentage', label: 'Percentage' },
-            { key: 'time_taken', label: 'Time Taken' },
-            { key: 'status', label: 'Status' },
-            { key: 'submitted_at', label: 'Submitted At' },
-          ]}
-          data={attempts.map((a: any) => ({
-            name: a.guest_name || a.student?.full_name || '',
-            email: a.guest_email || a.student?.email || '',
-            quiz: a.session?.title || '',
-            score: a.score,
-            max_score: a.max_score,
-            percentage: `${a.percentage}%`,
-            time_taken: a.time_taken_seconds ? `${Math.floor(a.time_taken_seconds / 60)}m ${a.time_taken_seconds % 60}s` : '',
-            status: a.percentage >= (a.passing_percentage || 50) ? 'Pass' : 'Fail',
-            submitted_at: format(new Date(a.created_at), 'yyyy-MM-dd HH:mm'),
-          }))}
-        />
       </div>
     </DashboardLayout>
   );
