@@ -788,15 +788,16 @@ export function UnifiedAttendanceForm({
               </div>
               <div className="space-y-2">
                 <Label className="text-foreground">
-                  Scheduled Time ({teacherTzAbbr}) <span className="text-destructive">*</span>
+                  Scheduled Time ({teacherTzAbbr}){!isLeaveStatus && <span className="text-destructive"> *</span>}
                 </Label>
                 <Input
                   type="time"
                   value={classTime}
                   onChange={(e) => setClassTime(e.target.value)}
-                  readOnly={!allowTimeEdit}
-                  disabled={!allowTimeEdit}
-                  className={allowTimeEdit
+                  readOnly={!allowTimeEdit && !isLeaveStatus}
+                  disabled={!allowTimeEdit && !isLeaveStatus}
+                  placeholder={isLeaveStatus ? 'Optional for leave' : undefined}
+                  className={(allowTimeEdit || isLeaveStatus)
                     ? "[ [&::-webkit-calendar-picker-indicator]:opacity-0::-webkit-calendar-picker-indicator]:opacity-0"
                     : "bg-muted cursor-not-allowed [&::-webkit-calendar-picker-indicator]:opacity-0"}
                 />
