@@ -1,54 +1,58 @@
-## My understanding (in plain language)
+## Problem
 
-You want the **student portal and parent portal to look and behave exactly the same** — same menu items, same pages, same dashboard layout. The only real difference is:
+Marking **Student Leave** / **Teacher Leave** from the Attendance page fails — the "Mark Attendance" button stays disabled. Root causes:
 
-- **Student login** = sees only themselves.
-- **Parent login** = sees a kid toggle at the top to switch between their children, and the dashboard/pages then act as if "viewing as that child".
+1. **`classTime` is empty** when the leave dialog opens without a specific class slot, and the form validator hard-requires it.
+2. **`isScheduledDay` check** blocks leave on any non-scheduled day — but leave is by nature a day-off, not a class slot.
+3. **The "Leave From / Leave To" range is cosmetic.** Only the start date is persisted; the rest of the range is dropped.
 
-For **read-only things** (dashboard, reports, fees view, resources, attendance history) → no difference, parent just sees the selected child's data.
+The user clarified: leave is **not** a reschedule. The scheduled time should just **auto-fill from the student's schedule** when one exists for that day, and otherwise gracefully stay blank — never block the submit.
 
-For **active things the parent can do on the child's behalf** (apply for leave, send a DM, post a comment in class circle, raise a Work Hub ticket, mark something, reply to a teacher) → the action goes through, but it must be **stamped as the parent**, not the child. So teachers/admins seeing the message/ticket/comment know it came from the parent — typically shown as something like *"Ayesha's mother (Bushra Naseer)"* or a small **"by Parent"** badge next to the name.
+## Fix
 
-This keeps accountability honest (we never pretend the child wrote something the parent wrote) while still letting the parent fully operate the child's portal from a single login.
+### 1. Auto-fetch `classTime` from the student's schedule (`UnifiedAttendanceForm.tsx`)
 
----
+When the dialog opens (or `classDate` / `student.id` changes) and `classTime` is empty:
+- Query `schedules` for the student on the weekday of `classDate` (lowercase day string, scoped to active assignment if available).
+- If exactly one slot matches → prefill `classTime` from it.
+- If multiple slots match → prefill the earliest, leave the field editable.
+- If none match → leave `classTime` empty (no error).
 
-## What I'll change
+This benefits **all** statuses, not just leave — the "Scheduled Time" field will rarely be blank again.
 
-### 1. Unify the menu (NavRail) for student and parent
-Today the parent sees only Home / Reports / Communication. Student sees Dashboard / My Courses / Resources / Communication.
-→ Both will get the **same set of menu items**: Dashboard, My Courses, Resources, Communication, Fees, Work Hub (and any others a student already gets). Plus the access matrix entries that currently exclude parent from a student-side page will be opened up to parent (view + create where appropriate).
+### 2. Relax validation for leave statuses
 
-### 2. Active "kid context" for parent
-A small piece of shared state ("currently viewing kid X") will be set by the kid toggle at the top of the dashboard and **persist across all menu pages**. So when a parent opens *My Courses*, *Resources*, *Fees*, *Work Hub*, etc., those pages load data for the selected child — not for the parent themselves.
+In `isFormValid`, when `selectedStatus` is `student_leave` or `teacher_leave`:
+- Skip the `classTime` requirement (fallback to `'00:00'` on submit if still empty).
+- Skip the `isScheduledDay` check (leave can cover any day, including weekends/off-days).
+- Keep `classDate`, `reasonCategory`, and (if `other`) `reasonText` required.
 
-For students, this context is just "themselves" and the toggle is hidden.
+Other statuses keep their current strict validation.
 
-### 3. "Acted by parent" stamping on every write
-Anywhere the portal lets you create something — leave request, DM, class-circle comment, work hub ticket/comment, reply, reaction — the saved row will record:
-- **subject_student_id** = the child the action is *about* (so it shows up in the child's history)
-- **acted_by_user_id** = the actually-logged-in user (parent or student)
-- **acted_by_role** = `parent` or `student`
+### 3. Persist the leave date range as multiple rows
 
-In the UI, wherever that item is displayed (teacher's inbox, admin's work hub, class chat), the author label will read **"Parent of [Child Name]"** or show a small **"(Parent)"** badge when the actor is the parent. Student-authored items show normally.
+On submit, when status is a leave status and `leaveEndDate > classDate`:
+- Expand `classDate` → `leaveEndDate` into individual dates (cap 31 days for safety).
+- For each date, re-run the schedule lookup so each row gets the correct slot time (fallback `'00:00'`).
+- Skip dates that already have an attendance row for that student.
+- Insert one `attendance` row per date with the same `status`, `reason`, `reason_category`, `reason_text`, `voice_note_url`, `reason` (remarks).
+- Toast: *"Recorded leave for N days (X inserted, Y already existed)"*.
+- Single-day leave keeps the existing single-insert path.
 
-### 4. Visual confirmation for the parent
-While the parent is acting on a child's behalf, a small persistent banner at the top of the page will read something like:
-> *Acting as parent of **Ayesha Khan** — your name will be shown on anything you post.*
+### 4. Minor UX polish
 
-This avoids accidental "I thought I was posting as my kid" confusion.
+- Hide the "Duration (minutes)" field for leave statuses (irrelevant for a day-off).
+- Hide the "not scheduled on this day" warning banner for leave statuses.
+- Keep the "Scheduled Time" field visible but optional for leave (so the user can still see/override it if the auto-fetch found a slot).
 
-### 5. No data duplication
-We're not copying menus or pages. Parent will literally render the same student pages, just with the kid-context applied. One source of truth for both portals.
+## Out of scope
 
----
+- No new `leave_end_date` column — multi-day leave is expanded into per-day rows so all downstream reports keep working.
+- No changes to non-leave statuses' validation or submit logic.
+- No backend / edge function changes, no schema migrations.
 
-## What I'll need from you before coding
+## Files touched
 
-A couple of decisions that change the implementation:
+- `src/components/attendance/UnifiedAttendanceForm.tsx` — schedule auto-fetch effect, validation relaxation, multi-day leave insert loop, conditional rendering.
 
-1. **Label style** for parent-authored items in teacher/admin views — do you want **"Bushra Naseer (Parent of Ayesha)"** (full transparency) or just a small **"(Parent)"** badge after the child's name?
-2. **Fees page** — when parent is in kid-context, should it show *only that child's* invoices, or stay as the existing family-wide "Pay All" view? (Currently family-bulk-payment is a separate parent feature.)
-3. Any pages you explicitly want to **stay parent-only** (e.g. Family Management / linking new children / resetting kid PIN) that students should NOT see — I'll keep those hidden from students.
-
-Once you answer those three, I'll implement in one pass.
+No other files.
