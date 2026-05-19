@@ -174,7 +174,7 @@ export default function QuizEngine() {
     queryKey: ['quiz-attempts'],
     queryFn: async () => {
       const { data } = await (supabase.from('quiz_attempts') as any)
-        .select('*, session:quiz_sessions(title, access_token, quiz_bank_id, created_at), quiz_bank:quiz_banks(id, name, passing_percentage)')
+        .select('*, session:quiz_sessions(title, access_token, quiz_bank_id, created_at), quiz_bank:quiz_banks(id, name, language, passing_percentage)')
         .eq('status', 'completed')
         .order('created_at', { ascending: true })
         .limit(2000);
