@@ -576,7 +576,7 @@ export function UnifiedAttendanceForm({
               duration_minutes: info?.duration || parseInt(duration) || 30,
             };
           });
-          const { data, error } = await supabase.from('attendance').insert(rows).select('id');
+          const { data, error } = await supabase.from('attendance').insert(rows as any).select('id');
           if (error) throw error;
           savedId = data?.[0]?.id;
         }
