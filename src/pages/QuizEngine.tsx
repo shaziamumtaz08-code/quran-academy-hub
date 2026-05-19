@@ -253,6 +253,24 @@ export default function QuizEngine() {
     },
   });
 
+  const bulkCloseEmpty = useMutation({
+    mutationFn: async () => {
+      const empty = sessions.filter((s: any) =>
+        s.status === 'live' && !attempts.some((a: any) => a.session_id === s.id)
+      );
+      if (empty.length === 0) return 0;
+      const { error } = await (supabase.from('quiz_sessions') as any)
+        .update({ status: 'closed' })
+        .in('id', empty.map((s: any) => s.id));
+      if (error) throw error;
+      return empty.length;
+    },
+    onSuccess: (n) => {
+      queryClient.invalidateQueries({ queryKey: ['quiz-sessions'] });
+      toast({ title: `Closed ${n} empty session${n === 1 ? '' : 's'}` });
+    },
+  });
+
   const deleteBank = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await (supabase.from('quiz_banks') as any).delete().eq('id', id);
