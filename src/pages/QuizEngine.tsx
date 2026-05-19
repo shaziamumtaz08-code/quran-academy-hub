@@ -968,10 +968,21 @@ export default function QuizEngine() {
                                     <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                                       {format(new Date(a.created_at), 'MMM d, yyyy HH:mm')}
                                     </TableCell>
+                                    <TableCell className="text-right">
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-7 w-7 p-0"
+                                        onClick={(e) => { e.stopPropagation(); setDetailAttemptId(a.id); }}
+                                        title="View per-question detail"
+                                      >
+                                        <Eye className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </TableCell>
                                   </TableRow>
                                   {isExpanded && (
                                     <TableRow>
-                                      <TableCell colSpan={12} className="bg-muted/30">
+                                      <TableCell colSpan={13} className="bg-muted/30">
                                         <div className="space-y-2 py-2">
                                           <p className="text-xs font-medium">All attempts for this student on this quiz ({studentAttempts.length}):</p>
                                           <div className="flex items-end gap-1 h-16">
