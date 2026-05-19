@@ -993,7 +993,7 @@ export default function QuizEngine() {
                                                 <span>#{attemptNumberMap.get(sa.id)}</span>
                                                 <span>{format(new Date(sa.created_at), 'MMM d, yyyy HH:mm')}</span>
                                                 <span>{sa.score}/{sa.max_score} ({sa.percentage}%)</span>
-                                                <span className={pct => (Number(sa.percentage) || 0) >= passThreshold ? 'text-green-600' : 'text-destructive'}>
+                                                <span className={(Number(sa.percentage) || 0) >= passThreshold ? 'text-green-600' : 'text-destructive'}>
                                                   {(Number(sa.percentage) || 0) >= passThreshold ? 'Pass' : 'Fail'}
                                                 </span>
                                               </div>
