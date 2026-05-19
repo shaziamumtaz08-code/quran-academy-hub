@@ -819,9 +819,9 @@ export function UnifiedAttendanceForm({
               <SelectContent>
                 {STATUS_OPTIONS
                   .filter((opt) => {
-                    // Only admins/super_admins can mark leave statuses
-                    const isLeaveOpt = opt.value === 'student_leave' || opt.value === 'teacher_leave';
-                    if (!isLeaveOpt) return true;
+                    // Leave + Holiday are admin-only bulk tools; teachers mark day-by-day attendance only
+                    const adminOnly = opt.value === 'student_leave' || opt.value === 'teacher_leave' || opt.value === 'holiday';
+                    if (!adminOnly) return true;
                     return profile?.roles?.some((r) => r === 'admin' || r === 'super_admin') ?? false;
                   })
                   .map((opt) => (
