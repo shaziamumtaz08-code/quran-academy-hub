@@ -67,6 +67,23 @@ export default function QuizEngine() {
   const [uploadedFiles, setUploadedFiles] = useState<{ name: string; text: string }[]>([]);
   const [exportOpen, setExportOpen] = useState(false);
 
+  // Sessions tab filters
+  const [sessFilterBank, setSessFilterBank] = useState<string>('all');
+  const [sessFilterStatus, setSessFilterStatus] = useState<string>('all');
+  const [sessSort, setSessSort] = useState<'newest' | 'submissions' | 'duration'>('newest');
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+
+  // Results tab filters
+  const [resQuiz, setResQuiz] = useState<string>('all');
+  const [resSession, setResSession] = useState<string>('all');
+  const [resSearch, setResSearch] = useState('');
+  const [resFrom, setResFrom] = useState('');
+  const [resTo, setResTo] = useState('');
+  const [resScoreRange, setResScoreRange] = useState<[number, number]>([0, 100]);
+  const [resPassFilter, setResPassFilter] = useState<'all' | 'pass' | 'fail'>('all');
+  const [resSort, setResSort] = useState<{ key: string; dir: 'asc' | 'desc' }>({ key: 'date', dir: 'desc' });
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
+
   // Form state
   const [form, setForm] = useState({
     name: '', description: '', language: 'en',
