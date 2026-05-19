@@ -726,8 +726,8 @@ export function UnifiedAttendanceForm({
             </Alert>
           )}
 
-          {/* Non-Scheduled Day Warning */}
-          {!isScheduledDay && !hasDuplicateAttendance && !isFutureDate && (
+          {/* Non-Scheduled Day Warning — hidden for leave (leave can be any day) */}
+          {!isScheduledDay && !hasDuplicateAttendance && !isFutureDate && !isLeaveStatus && (
             <Alert className="bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
