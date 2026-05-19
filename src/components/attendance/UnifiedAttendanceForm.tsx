@@ -817,9 +817,16 @@ export function UnifiedAttendanceForm({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {STATUS_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                ))}
+                {STATUS_OPTIONS
+                  .filter((opt) => {
+                    // Only admins/super_admins can mark leave statuses
+                    const isLeaveOpt = opt.value === 'student_leave' || opt.value === 'teacher_leave';
+                    if (!isLeaveOpt) return true;
+                    return profile?.roles?.some((r) => r === 'admin' || r === 'super_admin') ?? false;
+                  })
+                  .map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>
