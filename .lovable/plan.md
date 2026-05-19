@@ -1,58 +1,75 @@
-## Problem
+## Goal
+Let admins click any quiz result row to see the **full per-question breakdown** for that single attempt — what was asked, what the student answered, what was correct, and why.
 
-Marking **Student Leave** / **Teacher Leave** from the Attendance page fails — the "Mark Attendance" button stays disabled. Root causes:
+## Where it goes
+`src/pages/QuizEngine.tsx` → Results tab table. Add a small **"View" (eye icon) button** on each row. The existing row click (which expands the student's attempt-history bars) stays as-is.
 
-1. **`classTime` is empty** when the leave dialog opens without a specific class slot, and the form validator hard-requires it.
-2. **`isScheduledDay` check** blocks leave on any non-scheduled day — but leave is by nature a day-off, not a class slot.
-3. **The "Leave From / Leave To" range is cosmetic.** Only the start date is persisted; the rest of the range is dropped.
+Clicking "View" opens a new `<AttemptDetailDialog />` component.
 
-The user clarified: leave is **not** a reschedule. The scheduled time should just **auto-fill from the student's schedule** when one exists for that day, and otherwise gracefully stay blank — never block the submit.
+## New component: `src/components/quiz/AttemptDetailDialog.tsx`
 
-## Fix
+Reads everything from the already-loaded attempt row (`questions` + `answers` jsonb are stored per attempt — no extra query needed).
 
-### 1. Auto-fetch `classTime` from the student's schedule (`UnifiedAttendanceForm.tsx`)
+### Header
+- Student name + email
+- Quiz name · Session #N · Attempt #N
+- Score `X/Y` · Percentage badge · **Pass/Fail** badge (uses `quiz_bank.passing_percentage`)
+- Date+time submitted · Time taken
+- Optional: difficulty mix summary (e.g. `5 easy · 3 medium · 2 hard`)
 
-When the dialog opens (or `classDate` / `student.id` changes) and `classTime` is empty:
-- Query `schedules` for the student on the weekday of `classDate` (lowercase day string, scoped to active assignment if available).
-- If exactly one slot matches → prefill `classTime` from it.
-- If multiple slots match → prefill the earliest, leave the field editable.
-- If none match → leave `classTime` empty (no error).
+### Body — per-question list
+For each question in `attempt.questions[i]`:
 
-This benefits **all** statuses, not just leave — the "Scheduled Time" field will rarely be blank again.
+- Question number + difficulty chip + type chip (`MCQ` / `True/False` / `Fill-in`)
+- Question text (RTL-aware: if quiz language is `ar` or `ur`, render with `dir="rtl"` and the project's Arabic/Urdu font class)
+- **Correct / Incorrect** badge (green check / red X) computed by comparing `answers[i]` to `correctIndex` (for mcq/tf) or to the expected text for fib
+- Options list (mcq / tf): each option row marks:
+  - ✓ green ring = correct answer
+  - ✗ red ring = student's wrong pick
+  - ✓ green filled = student's correct pick
+  - neutral = other options
+- Fill-in: show "Your answer: …" and "Expected: …" side-by-side
+- Explanation block (collapsible) if `question.explanation` exists
+- "Not answered" tag if `answers[i]` is `undefined`
 
-### 2. Relax validation for leave statuses
+### Footer
+- Summary strip: `✓ Correct: N  ✗ Wrong: M  — Not answered: K`
+- Buttons:
+  - **Previous / Next attempt** — navigates within the currently filtered results list (so admin can sweep through a session quickly)
+  - **Print** (`window.print()` with print-styled dialog content)
+  - **Close**
 
-In `isFormValid`, when `selectedStatus` is `student_leave` or `teacher_leave`:
-- Skip the `classTime` requirement (fallback to `'00:00'` on submit if still empty).
-- Skip the `isScheduledDay` check (leave can cover any day, including weekends/off-days).
-- Keep `classDate`, `reasonCategory`, and (if `other`) `reasonText` required.
+## Wire-up in `QuizEngine.tsx`
 
-Other statuses keep their current strict validation.
+1. Add state: `const [detailAttemptId, setDetailAttemptId] = useState<string | null>(null)`.
+2. In the Results table, add a leading icon-button column:
+   ```
+   <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setDetailAttemptId(a.id); }}>
+     <Eye className="h-3.5 w-3.5" />
+   </Button>
+   ```
+   `stopPropagation` so it doesn't toggle the existing expand row.
+3. At the bottom of the Results tab, render:
+   ```
+   <AttemptDetailDialog
+     open={!!detailAttemptId}
+     onOpenChange={(o) => !o && setDetailAttemptId(null)}
+     attempts={filteredResults}       // for Prev/Next nav
+     attemptId={detailAttemptId}
+     sessionNumberMap={sessionNumberMap}
+     attemptNumberMap={attemptNumberMap}
+   />
+   ```
 
-### 3. Persist the leave date range as multiple rows
+## Access control
+The component is rendered only inside `QuizEngine.tsx`, which is already an admin/staff page (RLS on `quiz_attempts` already restricts row visibility to admins + course staff via existing policies). No new RLS work needed.
 
-On submit, when status is a leave status and `leaveEndDate > classDate`:
-- Expand `classDate` → `leaveEndDate` into individual dates (cap 31 days for safety).
-- For each date, re-run the schedule lookup so each row gets the correct slot time (fallback `'00:00'`).
-- Skip dates that already have an attendance row for that student.
-- Insert one `attendance` row per date with the same `status`, `reason`, `reason_category`, `reason_text`, `voice_note_url`, `reason` (remarks).
-- Toast: *"Recorded leave for N days (X inserted, Y already existed)"*.
-- Single-day leave keeps the existing single-insert path.
+## Out of scope (call out, not building)
+- Editing scores / overriding pass-fail
+- Adding examiner comments per question
+- Student-side review (this is admin-only)
 
-### 4. Minor UX polish
-
-- Hide the "Duration (minutes)" field for leave statuses (irrelevant for a day-off).
-- Hide the "not scheduled on this day" warning banner for leave statuses.
-- Keep the "Scheduled Time" field visible but optional for leave (so the user can still see/override it if the auto-fetch found a slot).
-
-## Out of scope
-
-- No new `leave_end_date` column — multi-day leave is expanded into per-day rows so all downstream reports keep working.
-- No changes to non-leave statuses' validation or submit logic.
-- No backend / edge function changes, no schema migrations.
-
-## Files touched
-
-- `src/components/attendance/UnifiedAttendanceForm.tsx` — schedule auto-fetch effect, validation relaxation, multi-day leave insert loop, conditional rendering.
-
-No other files.
+## Technical notes
+- No new dependencies. Uses existing shadcn `Dialog`, `Badge`, `Button`, lucide icons (`Eye`, `Check`, `X`, `Printer`, `ChevronLeft`, `ChevronRight`).
+- RTL detection: read `attempt.quiz_bank?.language` (already joined in the existing query — but we currently only select `id, name, passing_percentage`). I'll extend that select to also pull `language`.
+- Single-file new component (~180 lines) + ~15-line wiring change in `QuizEngine.tsx`. Existing tab structure, filters, and bulk actions stay untouched.
