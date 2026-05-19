@@ -264,7 +264,7 @@ export default function QuizEngine() {
       );
       if (empty.length === 0) return 0;
       const { error } = await (supabase.from('quiz_sessions') as any)
-        .update({ status: 'closed' })
+        .update({ status: 'closed', closes_at: new Date().toISOString() })
         .in('id', empty.map((s: any) => s.id));
       if (error) throw error;
       return empty.length;
