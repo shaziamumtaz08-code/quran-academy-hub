@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,15 +15,32 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Plus, Loader2, Copy, Share2, Trash2, Eye, FileText, Pencil,
-  ClipboardCheck, Trophy, Link as LinkIcon, Globe, Lock, Play, Square, Upload, X, Download
+  ClipboardCheck, Trophy, Link as LinkIcon, Globe, Lock, Play, Square, Upload, X, Download,
+  ChevronDown, ChevronRight, ChevronUp, ArrowUp, ArrowDown, ArrowUpDown, AlertTriangle, Search,
 } from 'lucide-react';
 import { ExportDialog } from '@/components/export/ExportDialog';
 import * as pdfjsLib from 'pdfjs-dist';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-import { format } from 'date-fns';
+import { format, formatDistanceStrict, differenceInMilliseconds } from 'date-fns';
+
+function formatDuration(start: string, end?: string | null): string {
+  const s = new Date(start);
+  const e = end ? new Date(end) : new Date();
+  const ms = Math.max(0, differenceInMilliseconds(e, s));
+  const mins = Math.floor(ms / 60000);
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  const rem = mins % 60;
+  if (hrs < 24) return rem ? `${hrs}h ${rem}m` : `${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  const hRem = hrs % 24;
+  return hRem ? `${days}d ${hRem}h` : `${days}d`;
+}
 
 export default function QuizEngine() {
   const { user } = useAuth();
