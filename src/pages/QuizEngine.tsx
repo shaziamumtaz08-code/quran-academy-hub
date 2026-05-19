@@ -23,6 +23,7 @@ import {
   ChevronDown, ChevronRight, ChevronUp, ArrowUp, ArrowDown, ArrowUpDown, AlertTriangle, Search,
 } from 'lucide-react';
 import { ExportDialog } from '@/components/export/ExportDialog';
+import AttemptDetailDialog from '@/components/quiz/AttemptDetailDialog';
 import * as pdfjsLib from 'pdfjs-dist';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -83,6 +84,7 @@ export default function QuizEngine() {
   const [resPassFilter, setResPassFilter] = useState<'all' | 'pass' | 'fail'>('all');
   const [resSort, setResSort] = useState<{ key: string; dir: 'asc' | 'desc' }>({ key: 'date', dir: 'desc' });
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [detailAttemptId, setDetailAttemptId] = useState<string | null>(null);
 
   // Form state
   const [form, setForm] = useState({
@@ -173,7 +175,7 @@ export default function QuizEngine() {
     queryKey: ['quiz-attempts'],
     queryFn: async () => {
       const { data } = await (supabase.from('quiz_attempts') as any)
-        .select('*, session:quiz_sessions(title, access_token, quiz_bank_id, created_at), quiz_bank:quiz_banks(id, name, passing_percentage)')
+        .select('*, session:quiz_sessions(title, access_token, quiz_bank_id, created_at), quiz_bank:quiz_banks(id, name, language, passing_percentage)')
         .eq('status', 'completed')
         .order('created_at', { ascending: true })
         .limit(2000);
@@ -924,6 +926,7 @@ export default function QuizEngine() {
                               <TableHead className="text-xs cursor-pointer" onClick={() => toggleSort('pass')}>Pass/Fail<SortIcon k="pass" /></TableHead>
                               <TableHead className="text-xs cursor-pointer" onClick={() => toggleSort('time')}>Time<SortIcon k="time" /></TableHead>
                               <TableHead className="text-xs cursor-pointer" onClick={() => toggleSort('date')}>Date &amp; Time<SortIcon k="date" /></TableHead>
+                              <TableHead className="text-xs w-[50px] text-right">View</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -965,10 +968,21 @@ export default function QuizEngine() {
                                     <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                                       {format(new Date(a.created_at), 'MMM d, yyyy HH:mm')}
                                     </TableCell>
+                                    <TableCell className="text-right">
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-7 w-7 p-0"
+                                        onClick={(e) => { e.stopPropagation(); setDetailAttemptId(a.id); }}
+                                        title="View per-question detail"
+                                      >
+                                        <Eye className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </TableCell>
                                   </TableRow>
                                   {isExpanded && (
                                     <TableRow>
-                                      <TableCell colSpan={12} className="bg-muted/30">
+                                      <TableCell colSpan={13} className="bg-muted/30">
                                         <div className="space-y-2 py-2">
                                           <p className="text-xs font-medium">All attempts for this student on this quiz ({studentAttempts.length}):</p>
                                           <div className="flex items-end gap-1 h-16">
@@ -1050,6 +1064,16 @@ export default function QuizEngine() {
                       submitted_at: format(new Date(a.created_at), 'yyyy-MM-dd HH:mm'),
                     };
                   })}
+                />
+
+                <AttemptDetailDialog
+                  open={!!detailAttemptId}
+                  onOpenChange={(o) => !o && setDetailAttemptId(null)}
+                  attempts={filteredResults}
+                  attemptId={detailAttemptId}
+                  setAttemptId={setDetailAttemptId}
+                  sessionNumberMap={sessionNumberMap}
+                  attemptNumberMap={attemptNumberMap}
                 />
               </TabsContent>
             </Tabs>
