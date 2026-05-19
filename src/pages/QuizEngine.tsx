@@ -1065,6 +1065,16 @@ export default function QuizEngine() {
                     };
                   })}
                 />
+
+                <AttemptDetailDialog
+                  open={!!detailAttemptId}
+                  onOpenChange={(o) => !o && setDetailAttemptId(null)}
+                  attempts={filteredResults}
+                  attemptId={detailAttemptId}
+                  setAttemptId={setDetailAttemptId}
+                  sessionNumberMap={sessionNumberMap}
+                  attemptNumberMap={attemptNumberMap}
+                />
               </TabsContent>
             </Tabs>
           );
