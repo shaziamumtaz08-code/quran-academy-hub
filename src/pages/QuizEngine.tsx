@@ -181,6 +181,59 @@ export default function QuizEngine() {
     },
   });
 
+  // Derived: session # per bank (ordered by created_at asc)
+  const sessionNumberMap = useMemo(() => {
+    const map = new Map<string, number>();
+    const byBank: Record<string, any[]> = {};
+    sessions.forEach((s: any) => {
+      (byBank[s.quiz_bank_id] ||= []).push(s);
+    });
+    Object.values(byBank).forEach((list) => {
+      list.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+        .forEach((s, i) => map.set(s.id, i + 1));
+    });
+    return map;
+  }, [sessions]);
+
+  // Derived: attempts grouped by session
+  const attemptsBySession = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    attempts.forEach((a: any) => { (map[a.session_id] ||= []).push(a); });
+    return map;
+  }, [attempts]);
+
+  // Derived: bank-level metrics (live sessions count, total sessions)
+  const bankSessionStats = useMemo(() => {
+    const map: Record<string, { total: number; live: number }> = {};
+    sessions.forEach((s: any) => {
+      const m = map[s.quiz_bank_id] ||= { total: 0, live: 0 };
+      m.total++;
+      if (s.status === 'live') m.live++;
+    });
+    return map;
+  }, [sessions]);
+
+  // Derived: attempt # per (student identity, quiz_bank_id), ranked by created_at asc
+  const attemptNumberMap = useMemo(() => {
+    const map = new Map<string, number>();
+    const groups: Record<string, any[]> = {};
+    [...attempts].forEach((a: any) => {
+      const ident = a.student_id || a.guest_email || a.guest_name || 'unknown';
+      const key = `${ident}::${a.quiz_bank_id}`;
+      (groups[key] ||= []).push(a);
+    });
+    Object.values(groups).forEach((list) => {
+      list.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+        .forEach((a, i) => map.set(a.id, i + 1));
+    });
+    return map;
+  }, [attempts]);
+
+  // Identify attempts (for grouping in expand)
+  const attemptIdentity = (a: any) =>
+    a.student_id || a.guest_email || a.guest_name || 'unknown';
+
+
   const createBank = useMutation({
     mutationFn: async () => {
       setGenerating(true);
