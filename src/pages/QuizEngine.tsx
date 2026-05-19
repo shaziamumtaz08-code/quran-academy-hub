@@ -83,6 +83,7 @@ export default function QuizEngine() {
   const [resPassFilter, setResPassFilter] = useState<'all' | 'pass' | 'fail'>('all');
   const [resSort, setResSort] = useState<{ key: string; dir: 'asc' | 'desc' }>({ key: 'date', dir: 'desc' });
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [detailAttemptId, setDetailAttemptId] = useState<string | null>(null);
 
   // Form state
   const [form, setForm] = useState({
