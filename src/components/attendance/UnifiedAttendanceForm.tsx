@@ -627,15 +627,23 @@ export function UnifiedAttendanceForm({
         }
       });
 
-      return { id: savedId };
+      return { id: savedId, leaveSummary };
     },
-    onSuccess: () => {
-      toast({
-        title: isEdit ? 'Attendance Updated' : 'Attendance Marked',
-        description: isEdit
-          ? `Updated record for ${student.full_name}`
-          : `Attendance recorded for ${student.full_name}`,
-      });
+    onSuccess: (result) => {
+      if (result?.leaveSummary) {
+        const { inserted, skipped, total } = result.leaveSummary;
+        toast({
+          title: 'Leave Recorded',
+          description: `${inserted} of ${total} day(s) marked${skipped ? ` — ${skipped} already had attendance` : ''}.`,
+        });
+      } else {
+        toast({
+          title: isEdit ? 'Attendance Updated' : 'Attendance Marked',
+          description: isEdit
+            ? `Updated record for ${student.full_name}`
+            : `Attendance recorded for ${student.full_name}`,
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['attendance'] });
       queryClient.invalidateQueries({ queryKey: ['teacher-students-detailed'] });
       onSuccess?.();
