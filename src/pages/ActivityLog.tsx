@@ -29,8 +29,8 @@ const ENTITY_TYPES = [
 ];
 
 export default function ActivityLog() {
-  const { role } = useAuth();
-  const isSuperAdmin = role === 'super_admin';
+  const { profile } = useAuth();
+  const isSuperAdmin = profile?.role === 'super_admin';
 
   const [search, setSearch] = useState('');
   const [actionFilter, setActionFilter] = useState<string>('all');
@@ -58,7 +58,7 @@ export default function ActivityLog() {
     queryKey: ['actor-roles', logs?.length],
     enabled: !!logs && logs.length > 0,
     queryFn: async () => {
-      const ids = Array.from(new Set((logs || []).map((l: any) => l.user_id).filter(Boolean)));
+      const ids = Array.from(new Set((logs || []).map((l: any) => l.user_id).filter(Boolean))) as string[];
       if (ids.length === 0) return {} as Record<string, string>;
       const { data } = await supabase.from('user_roles').select('user_id, role').in('user_id', ids);
       const map: Record<string, string> = {};
