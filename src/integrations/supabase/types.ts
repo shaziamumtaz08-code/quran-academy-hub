@@ -8129,36 +8129,51 @@ export type Database = {
       system_logs: {
         Row: {
           action: string
+          branch_id: string | null
           created_at: string
           details: Json | null
+          division_id: string | null
           entity_id: string | null
+          entity_label: string | null
           entity_type: string
           id: string
           ip_address: string | null
+          new_values: Json | null
+          old_values: Json | null
           user_email: string | null
           user_full_name: string
           user_id: string | null
         }
         Insert: {
           action: string
+          branch_id?: string | null
           created_at?: string
           details?: Json | null
+          division_id?: string | null
           entity_id?: string | null
+          entity_label?: string | null
           entity_type: string
           id?: string
           ip_address?: string | null
+          new_values?: Json | null
+          old_values?: Json | null
           user_email?: string | null
           user_full_name: string
           user_id?: string | null
         }
         Update: {
           action?: string
+          branch_id?: string | null
           created_at?: string
           details?: Json | null
+          division_id?: string | null
           entity_id?: string | null
+          entity_label?: string | null
           entity_type?: string
           id?: string
           ip_address?: string | null
+          new_values?: Json | null
+          old_values?: Json | null
           user_email?: string | null
           user_full_name?: string
           user_id?: string | null
