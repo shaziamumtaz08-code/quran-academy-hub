@@ -694,7 +694,7 @@ export function useMissingAttendanceCount(
       const cutoffStr: string | null = assignment.status !== 'active'
         ? (assignment.status_effective_date
             ? String(assignment.status_effective_date).substring(0, 10)
-            : (assignment.ended_at ? format(parseISO(assignment.ended_at), 'yyyy-MM-dd') : null))
+            : (assignment.effective_to_date ? String(assignment.effective_to_date).substring(0, 10) : null))
         : null;
       if (assignment.status !== 'active' && !cutoffStr) continue;
 
