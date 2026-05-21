@@ -246,7 +246,7 @@ export function MissingAttendanceSection({
       const cutoffStr: string | null = assignment.status !== 'active'
         ? (assignment.status_effective_date
             ? String(assignment.status_effective_date).substring(0, 10)
-            : (assignment.ended_at ? format(parseISO(assignment.ended_at), 'yyyy-MM-dd') : null))
+            : (assignment.effective_to_date ? String(assignment.effective_to_date).substring(0, 10) : null))
         : null;
       // If assignment is parked but has no cutoff recorded, skip entirely (treat as fully parked).
       if (assignment.status !== 'active' && !cutoffStr) continue;
