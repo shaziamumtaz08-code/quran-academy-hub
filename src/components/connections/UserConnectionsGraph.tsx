@@ -441,7 +441,7 @@ function buildGraph(
 
   if (showP) {
     data.parentData!.children.forEach((c) => {
-      right.push({ id: `p-ch-${c.id}`, rel: 'student', data: { kind: 'student', title: c.name, subtitle: 'My Child', navUserId: c.id, navUserType: 'student' } });
+      right.push({ id: `p-ch-${c.id}`, rel: 'parent', data: { kind: 'student', title: c.name, subtitle: 'My Child', navUserId: c.id, navUserType: 'student' } });
     });
   }
 
