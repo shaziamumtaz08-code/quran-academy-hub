@@ -1582,11 +1582,11 @@ export default function Payments() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => generateMutation.mutate()}
-                disabled={generateMutation.isPending}
+                onClick={() => previewMutation.mutate()}
+                disabled={previewMutation.isPending || generateMutation.isPending}
                 className="gap-2"
               >
-                {generateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                {(previewMutation.isPending || generateMutation.isPending) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
                 <span className="hidden sm:inline">Generate Invoices</span>
                 <span className="sm:hidden">Generate</span>
               </Button>
