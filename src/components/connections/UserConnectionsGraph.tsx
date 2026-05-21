@@ -144,12 +144,15 @@ function ConnectedNode({ data }: NodeProps<NodeData>) {
   const style = REL_STYLE[data.kind];
   const Icon = style.icon;
   const dot = data.status ? STATUS_DOT[data.status] || 'bg-gray-300' : null;
+  const isInactive = data.status && ['completed', 'left', 'cancelled', 'paused', 'inactive'].includes(data.status);
   return (
     <div
       className={cn(
         'rounded-lg shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer',
         'border border-border/40 border-l-4 px-3 py-2.5 min-w-[200px] max-w-[240px]',
-        style.bgClass, style.borderClass,
+        isInactive
+          ? 'bg-muted/40 border-muted-foreground/30 border-l-muted-foreground/50 opacity-70 grayscale-[40%]'
+          : cn(style.bgClass, style.borderClass),
       )}
     >
       <Handle id="t-top"    type="target" position={Position.Top}    className="!opacity-0" />
