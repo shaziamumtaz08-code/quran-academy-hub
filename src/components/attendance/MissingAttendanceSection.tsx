@@ -149,7 +149,7 @@ export function MissingAttendanceSection({
               teacher_id,
               status,
               status_effective_date,
-              ended_at,
+              effective_to_date,
               requires_attendance,
               division_id,
               subject:subjects(name),
