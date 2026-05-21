@@ -889,7 +889,15 @@ export default function Attendance() {
 
   const filteredRecords = useMemo(() => {
     if (!attendanceRecords) return [];
-    let records = filter === 'all' ? attendanceRecords : attendanceRecords.filter(r => r.status === filter);
+    const filterGroups: Record<string, string[]> = {
+      teacher_absent: ['teacher_absent', 'teacher_leave'],
+      rescheduled: ['rescheduled', 'student_rescheduled'],
+    };
+    let records = filter === 'all'
+      ? attendanceRecords
+      : attendanceRecords.filter(r =>
+          (filterGroups[filter] ?? [filter]).includes(r.status)
+        );
     
     // Apply search filter
     if (searchQuery.trim()) {
