@@ -164,10 +164,10 @@ function ConnectedNode({ data }: NodeProps<NodeData>) {
       <Handle id="s-left"   type="source" position={Position.Left}   className="!opacity-0" />
       <Handle id="s-right"  type="source" position={Position.Right}  className="!opacity-0" />
       <div className="flex items-center gap-1.5">
-        <Icon className={cn('h-3 w-3', style.headerClass)} />
-        <span className={cn('text-[9px] font-bold uppercase tracking-wider', style.headerClass)}>{style.header}</span>
+        <Icon className={cn('h-3 w-3', isInactive ? 'text-muted-foreground' : style.headerClass)} />
+        <span className={cn('text-[9px] font-bold uppercase tracking-wider', isInactive ? 'text-muted-foreground' : style.headerClass)}>{style.header}</span>
       </div>
-      <p className="font-semibold text-sm text-foreground mt-1 leading-tight truncate">{data.title}</p>
+      <p className={cn('font-semibold text-sm mt-1 leading-tight truncate', isInactive ? 'text-muted-foreground line-through decoration-1' : 'text-foreground')}>{data.title}</p>
       {data.subtitle && <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{data.subtitle}</p>}
       <div className="flex items-center gap-2 mt-1.5">
         {dot && <span className={cn('w-1.5 h-1.5 rounded-full', dot)} />}
