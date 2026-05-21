@@ -80,7 +80,7 @@ export function MissingAttendanceSection({
         status_effective_date: input.date,
       };
       if (input.status === 'left' || input.status === 'completed') {
-        updatePayload.ended_at = new Date(input.date).toISOString();
+        updatePayload.effective_to_date = input.date;
       }
       const { error } = await supabase
         .from('student_teacher_assignments')
@@ -92,9 +92,8 @@ export function MissingAttendanceSection({
       if (input.status === 'left') {
         await supabase
           .from('schedules')
-          .update({ is_active: false, ended_at: new Date(input.date).toISOString() })
-          .eq('assignment_id', input.assignmentId)
-          .is('ended_at', null);
+          .update({ is_active: false })
+          .eq('assignment_id', input.assignmentId);
       }
     },
     onSuccess: (_data, vars) => {
@@ -150,7 +149,7 @@ export function MissingAttendanceSection({
               teacher_id,
               status,
               status_effective_date,
-              ended_at,
+              effective_to_date,
               requires_attendance,
               division_id,
               subject:subjects(name),
@@ -247,7 +246,7 @@ export function MissingAttendanceSection({
       const cutoffStr: string | null = assignment.status !== 'active'
         ? (assignment.status_effective_date
             ? String(assignment.status_effective_date).substring(0, 10)
-            : (assignment.ended_at ? format(parseISO(assignment.ended_at), 'yyyy-MM-dd') : null))
+            : (assignment.effective_to_date ? String(assignment.effective_to_date).substring(0, 10) : null))
         : null;
       // If assignment is parked but has no cutoff recorded, skip entirely (treat as fully parked).
       if (assignment.status !== 'active' && !cutoffStr) continue;
@@ -614,7 +613,7 @@ export function useMissingAttendanceCount(
               teacher_id,
               status,
               status_effective_date,
-              ended_at,
+              effective_to_date,
               requires_attendance,
               division_id
             )
@@ -695,7 +694,7 @@ export function useMissingAttendanceCount(
       const cutoffStr: string | null = assignment.status !== 'active'
         ? (assignment.status_effective_date
             ? String(assignment.status_effective_date).substring(0, 10)
-            : (assignment.ended_at ? format(parseISO(assignment.ended_at), 'yyyy-MM-dd') : null))
+            : (assignment.effective_to_date ? String(assignment.effective_to_date).substring(0, 10) : null))
         : null;
       if (assignment.status !== 'active' && !cutoffStr) continue;
 
