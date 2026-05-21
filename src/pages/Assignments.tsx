@@ -386,6 +386,66 @@ export default function Assignments() {
         await supabase.from('student_billing_plans')
           .update({ is_active: false, updated_at: new Date().toISOString() })
           .eq('assignment_id', id);
+
+        // Cascade to existing UNPAID invoices for this student tied to this assignment
+        // (directly or via plan). Paid/partially_paid invoices are immutable.
+        if (effectiveDate && assignment) {
+          const effDate = effectiveDate; // 'YYYY-MM-DD'
+          // Plans linked to this assignment
+          const { data: linkedPlans } = await supabase
+            .from('student_billing_plans')
+            .select('id')
+            .eq('assignment_id', id);
+          const planIds = (linkedPlans || []).map((p: any) => p.id);
+
+          // Fetch all pending invoices for this student that could be affected
+          let invQ = supabase
+            .from('fee_invoices')
+            .select('id, billing_month, amount, currency, period_from, period_to, plan_id, assignment_id, status')
+            .eq('student_id', assignment.student_id)
+            .eq('status', 'pending')
+            .gte('period_to', effDate);
+          const { data: candidateInvs } = await invQ;
+
+          const targets = (candidateInvs || []).filter((inv: any) => {
+            if (inv.assignment_id === id) return true;
+            if (inv.plan_id && planIds.includes(inv.plan_id)) return true;
+            // If the assignment is the student's ONLY active assignment, fallback-attribute the invoice
+            return false;
+          });
+
+          // Also include invoices that match planIds but had assignment_id null
+          for (const inv of targets) {
+            const periodFrom = new Date(inv.period_from);
+            const effective = new Date(effDate);
+            if (periodFrom >= effective) {
+              // Entire period is after the leave date → waive (zero out)
+              await supabase.from('fee_invoices').update({
+                amount: 0,
+                status: 'waived',
+                remark: `Auto-waived: assignment marked ${status} eff. ${effDate}`,
+                updated_at: new Date().toISOString(),
+              }).eq('id', inv.id);
+            } else {
+              // Period straddles the leave date → reprorate to active days only
+              const periodTo = new Date(inv.period_to);
+              const monthFirst = new Date(periodFrom.getFullYear(), periodFrom.getMonth(), 1);
+              const monthLast = new Date(periodFrom.getFullYear(), periodFrom.getMonth() + 1, 0);
+              const daysInMonth = monthLast.getDate();
+              const fullMonthRate = (inv.amount * daysInMonth) / (Math.floor((periodTo.getTime() - periodFrom.getTime()) / 86400000) + 1);
+              const newTo = new Date(effective.getTime() - 86400000); // day before leave date
+              if (newTo < periodFrom) continue;
+              const activeDays = Math.floor((newTo.getTime() - periodFrom.getTime()) / 86400000) + 1;
+              const newAmount = Math.round((fullMonthRate / daysInMonth) * activeDays * 100) / 100;
+              await supabase.from('fee_invoices').update({
+                amount: newAmount,
+                period_to: newTo.toISOString().slice(0, 10),
+                remark: `Reprorated: assignment ${status} eff. ${effDate}`,
+                updated_at: new Date().toISOString(),
+              }).eq('id', inv.id);
+            }
+          }
+        }
       } else if (status === 'active' && (fromStatus === 'on_hold' || fromStatus === 'completed')) {
         await supabase.from('student_billing_plans')
           .update({ is_active: true, updated_at: new Date().toISOString() })
