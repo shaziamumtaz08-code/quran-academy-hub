@@ -943,168 +943,176 @@ export default function Payments() {
     setEffectiveFrom(currentBillingMonth);
   };
 
-  const generateMutation = useMutation({
-    mutationFn: async () => {
-      const targetMonth = monthFilter;
-      const targetLabel = MONTHS.find(m => m.value === targetMonth)?.label || targetMonth;
-      const { data: existing } = await supabase.from('fee_invoices').select('id, plan_id, assignment_id, amount, currency, status, period_from, period_to').eq('billing_month', targetMonth);
-      const existingPlanMap = new Map((existing || []).filter(e => e.plan_id).map(e => [e.plan_id, e]));
-      const existingAssignmentMap = new Map((existing || []).filter(e => e.assignment_id).map(e => [e.assignment_id, e]));
-      const newInvoices: any[] = [];
-      const updatedInvoices: { id: string; amount: number; currency: string; period_from: string; period_to: string }[] = [];
+  // ─── Invoice generation: preview → confirm → commit ─────────────────
+  type UpdatePlan = { id: string; student_id: string; oldAmount: number; oldCurrency: string; oldPeriodFrom: string; oldPeriodTo: string; amount: number; currency: string; period_from: string; period_to: string };
+  type GenerationPlan = {
+    targetMonth: string;
+    label: string;
+    newInvoices: any[];
+    updatedInvoices: UpdatePlan[];
+    unchangedCount: number;
+    lockedCount: number;
+    studentNames: Record<string, string>;
+  };
+  const [genPreview, setGenPreview] = useState<GenerationPlan | null>(null);
+  const [genPreviewOpen, setGenPreviewOpen] = useState(false);
 
-      // Proration helper
-      const computeProration = (monthlyFee: number, assignmentStartDate: string | null, assignmentEndDate: string | null, billingMonth: string) => {
-        const monthFirstDay = parseISO(billingMonth + '-01');
-        const monthLastDay = endOfMonth(monthFirstDay);
-        const daysInMonth = monthLastDay.getDate();
-        
-        const activeFrom = assignmentStartDate && parseISO(assignmentStartDate) > monthFirstDay
-          ? parseISO(assignmentStartDate) : monthFirstDay;
-        const activeTo = assignmentEndDate && parseISO(assignmentEndDate) < monthLastDay
-          ? parseISO(assignmentEndDate) : monthLastDay;
-        
-        // Assignment doesn't overlap this month
-        if (activeFrom > monthLastDay || activeTo < monthFirstDay) return null;
-        
-        const activeDays = Math.floor((activeTo.getTime() - activeFrom.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-        const proratedAmount = Math.round(((monthlyFee / daysInMonth) * activeDays) * 100) / 100;
-        
-        return {
-          amount: proratedAmount,
-          period_from: format(activeFrom, 'yyyy-MM-dd'),
-          period_to: format(activeTo, 'yyyy-MM-dd'),
-        };
-      };
+  const buildGenerationPlan = async (): Promise<GenerationPlan> => {
+    const targetMonth = monthFilter;
+    const targetLabel = MONTHS.find(m => m.value === targetMonth.slice(-2))?.label
+      ? `${MONTHS.find(m => m.value === targetMonth.slice(-2))?.label} ${targetMonth.slice(0,4)}`
+      : targetMonth;
+    const { data: existing } = await supabase.from('fee_invoices').select('id, plan_id, assignment_id, student_id, amount, currency, status, period_from, period_to').eq('billing_month', targetMonth);
+    const existingPlanMap = new Map((existing || []).filter(e => e.plan_id).map(e => [e.plan_id, e]));
+    const existingAssignmentMap = new Map((existing || []).filter(e => e.assignment_id).map(e => [e.assignment_id, e]));
+    const newInvoices: any[] = [];
+    const updatedInvoices: UpdatePlan[] = [];
+    let unchangedCount = 0;
+    let lockedCount = 0;
 
-      // Helper to check if existing invoice needs updating
-      const checkAndQueueUpdate = (existingInv: any, prorated: { amount: number; period_from: string; period_to: string }, currency: string) => {
-        if (!existingInv) return false;
-        // CRITICAL: Never update paid or partially_paid invoices — past invoices are immutable
-        if (existingInv.status === 'paid' || existingInv.status === 'partially_paid') return false;
-        
-        const amountChanged = Math.abs(existingInv.amount - prorated.amount) > 0.01;
-        const periodChanged = existingInv.period_from !== prorated.period_from || existingInv.period_to !== prorated.period_to;
-        const currencyChanged = existingInv.currency !== currency;
-        
-        if (existingInv.status === 'pending' && (amountChanged || periodChanged || currencyChanged)) {
-          updatedInvoices.push({ id: existingInv.id, amount: prorated.amount, currency, period_from: prorated.period_from, period_to: prorated.period_to });
-          return true;
-        }
-        return false;
-      };
+    const computeProration = (monthlyFee: number, assignmentStartDate: string | null, assignmentEndDate: string | null, billingMonth: string) => {
+      const monthFirstDay = parseISO(billingMonth + '-01');
+      const monthLastDay = endOfMonth(monthFirstDay);
+      const daysInMonth = monthLastDay.getDate();
+      const activeFrom = assignmentStartDate && parseISO(assignmentStartDate) > monthFirstDay ? parseISO(assignmentStartDate) : monthFirstDay;
+      const activeTo = assignmentEndDate && parseISO(assignmentEndDate) < monthLastDay ? parseISO(assignmentEndDate) : monthLastDay;
+      if (activeFrom > monthLastDay || activeTo < monthFirstDay) return null;
+      const activeDays = Math.floor((activeTo.getTime() - activeFrom.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      const proratedAmount = Math.round(((monthlyFee / daysInMonth) * activeDays) * 100) / 100;
+      return { amount: proratedAmount, period_from: format(activeFrom, 'yyyy-MM-dd'), period_to: format(activeTo, 'yyyy-MM-dd') };
+    };
 
-      // 1) Billing plans
-      let pq = supabase.from('student_billing_plans').select('id, student_id, assignment_id, net_recurring_fee, currency, branch_id, division_id').eq('is_active', true);
-      if (branchId) pq = pq.eq('branch_id', branchId);
-      if (divisionId) pq = pq.eq('division_id', divisionId);
-      const { data: plans } = await pq;
-
-      // Get assignment dates for plans that have assignment_id
-      const planAssignmentIds = (plans || []).filter(p => (p as any).assignment_id).map(p => (p as any).assignment_id);
-      let planAssignmentMap: Record<string, any> = {};
-      if (planAssignmentIds.length > 0) {
-        const { data: planAssigns } = await supabase.from('student_teacher_assignments')
-          .select('id, student_id, effective_from_date, effective_to_date, status')
-          .in('id', planAssignmentIds);
-        (planAssigns || []).forEach((a: any) => { planAssignmentMap[a.id] = a; });
+    const evaluateExisting = (existingInv: any, prorated: { amount: number; period_from: string; period_to: string }, currency: string) => {
+      if (existingInv.status === 'paid' || existingInv.status === 'partially_paid') { lockedCount++; return; }
+      const amountChanged = Math.abs(existingInv.amount - prorated.amount) > 0.01;
+      const periodChanged = existingInv.period_from !== prorated.period_from || existingInv.period_to !== prorated.period_to;
+      const currencyChanged = existingInv.currency !== currency;
+      if (existingInv.status === 'pending' && (amountChanged || periodChanged || currencyChanged)) {
+        updatedInvoices.push({
+          id: existingInv.id, student_id: existingInv.student_id,
+          oldAmount: existingInv.amount, oldCurrency: existingInv.currency,
+          oldPeriodFrom: existingInv.period_from, oldPeriodTo: existingInv.period_to,
+          amount: prorated.amount, currency, period_from: prorated.period_from, period_to: prorated.period_to,
+        });
+      } else {
+        unchangedCount++;
       }
+    };
 
-      // Fallback: for plans without assignment_id, look up by student_id
-      const plansWithoutAssignment = (plans || []).filter(p => !(p as any).assignment_id);
-      const fallbackStudentIds = plansWithoutAssignment.map(p => (p as any).student_id);
-      let studentAssignmentMap: Record<string, any> = {};
-      if (fallbackStudentIds.length > 0) {
-        const { data: studentAssigns } = await supabase.from('student_teacher_assignments')
-          .select('id, student_id, effective_from_date, effective_to_date, status')
-          .in('student_id', fallbackStudentIds)
-          .in('status', ['active']);
-        (studentAssigns || []).forEach((a: any) => {
-          if (!studentAssignmentMap[a.student_id]) studentAssignmentMap[a.student_id] = a;
+    // 1) Billing plans
+    let pq = supabase.from('student_billing_plans').select('id, student_id, assignment_id, net_recurring_fee, currency, branch_id, division_id').eq('is_active', true);
+    if (branchId) pq = pq.eq('branch_id', branchId);
+    if (divisionId) pq = pq.eq('division_id', divisionId);
+    const { data: plans } = await pq;
+
+    const planAssignmentIds = (plans || []).filter(p => (p as any).assignment_id).map(p => (p as any).assignment_id);
+    let planAssignmentMap: Record<string, any> = {};
+    if (planAssignmentIds.length > 0) {
+      const { data: planAssigns } = await supabase.from('student_teacher_assignments')
+        .select('id, student_id, effective_from_date, effective_to_date, status').in('id', planAssignmentIds);
+      (planAssigns || []).forEach((a: any) => { planAssignmentMap[a.id] = a; });
+    }
+    const plansWithoutAssignment = (plans || []).filter(p => !(p as any).assignment_id);
+    const fallbackStudentIds = plansWithoutAssignment.map(p => (p as any).student_id);
+    let studentAssignmentMap: Record<string, any> = {};
+    if (fallbackStudentIds.length > 0) {
+      const { data: studentAssigns } = await supabase.from('student_teacher_assignments')
+        .select('id, student_id, effective_from_date, effective_to_date, status')
+        .in('student_id', fallbackStudentIds).in('status', ['active']);
+      (studentAssigns || []).forEach((a: any) => { if (!studentAssignmentMap[a.student_id]) studentAssignmentMap[a.student_id] = a; });
+    }
+
+    (plans || []).forEach((p: any) => {
+      if (p.net_recurring_fee > 0) {
+        const assign = p.assignment_id ? planAssignmentMap[p.assignment_id] : studentAssignmentMap[p.student_id] || null;
+        if (assign && !['active'].includes(assign.status)) return;
+        const startDate = assign?.effective_from_date || null;
+        const endDate = (assign?.status === 'active') ? null : (assign?.effective_to_date || null);
+        const prorated = computeProration(p.net_recurring_fee, startDate, endDate, targetMonth);
+        if (!prorated) return;
+        const existingInv = existingPlanMap.get(p.id);
+        if (existingInv) { evaluateExisting(existingInv, prorated, p.currency); return; }
+        newInvoices.push({
+          plan_id: p.id, student_id: p.student_id,
+          amount: prorated.amount, currency: p.currency, billing_month: targetMonth,
+          due_date: `${targetMonth}-10`, branch_id: p.branch_id, division_id: p.division_id,
+          period_from: prorated.period_from, period_to: prorated.period_to,
         });
       }
+    });
 
-      (plans || []).forEach((p: any) => {
-        if (p.net_recurring_fee > 0) {
-          // Resolve assignment: direct link first, then fallback by student_id
-          const assign = p.assignment_id ? planAssignmentMap[p.assignment_id] : studentAssignmentMap[p.student_id] || null;
+    // 2) Legacy assignments
+    let aq = supabase.from('student_teacher_assignments')
+      .select('id, student_id, calculated_monthly_fee, effective_from_date, effective_to_date, status, fee_packages!student_teacher_assignments_fee_package_id_fkey(currency), branch_id, division_id')
+      .in('status', ['active']);
+    if (branchId) aq = aq.eq('branch_id', branchId);
+    if (divisionId) aq = aq.eq('division_id', divisionId);
+    const { data: assignments } = await aq;
+    const planStudentIds = new Set([...(plans || []).map((p: any) => p.student_id)]);
+    (assignments || []).forEach((a: any) => {
+      if (a.calculated_monthly_fee && !planStudentIds.has(a.student_id)) {
+        const startDate = a.effective_from_date || null;
+        const endDate = (a.status === 'active') ? null : (a.effective_to_date || null);
+        const prorated = computeProration(Number(a.calculated_monthly_fee), startDate, endDate, targetMonth);
+        if (!prorated) return;
+        const existingInv = existingAssignmentMap.get(a.id);
+        if (existingInv) { evaluateExisting(existingInv, prorated, a.fee_packages?.currency || 'USD'); return; }
+        newInvoices.push({
+          assignment_id: a.id, student_id: a.student_id,
+          amount: prorated.amount, currency: a.fee_packages?.currency || 'USD',
+          billing_month: targetMonth, due_date: `${targetMonth}-10`,
+          branch_id: a.branch_id, division_id: a.division_id,
+          period_from: prorated.period_from, period_to: prorated.period_to,
+        });
+      }
+    });
 
-          // Skip frozen-billing statuses entirely. Active + paused continue billing per matrix.
-          if (assign && !['active'].includes(assign.status)) return;
-          
-          const startDate = assign?.effective_from_date || null;
-          const endDate = (assign?.status === 'active') ? null : (assign?.effective_to_date || null);
-          
-          const prorated = computeProration(p.net_recurring_fee, startDate, endDate, targetMonth);
-          if (!prorated) return;
+    // Resolve student names for affected rows
+    const affectedIds = Array.from(new Set([
+      ...newInvoices.map(n => n.student_id),
+      ...updatedInvoices.map(u => u.student_id),
+    ].filter(Boolean)));
+    const studentNames: Record<string, string> = {};
+    if (affectedIds.length > 0) {
+      const { data: profs } = await supabase.from('profiles').select('id, full_name').in('id', affectedIds);
+      (profs || []).forEach((p: any) => { studentNames[p.id] = p.full_name; });
+    }
 
-          const existingInv = existingPlanMap.get(p.id);
-          if (existingInv) {
-            checkAndQueueUpdate(existingInv, prorated, p.currency);
-            return; // skip insert
-          }
+    return { targetMonth, label: targetLabel, newInvoices, updatedInvoices, unchangedCount, lockedCount, studentNames };
+  };
 
-          newInvoices.push({
-            plan_id: p.id, student_id: p.student_id,
-            amount: prorated.amount, currency: p.currency, billing_month: targetMonth,
-            due_date: `${targetMonth}-10`, branch_id: p.branch_id, division_id: p.division_id,
-            period_from: prorated.period_from, period_to: prorated.period_to,
-          });
-        }
-      });
+  const previewMutation = useMutation({
+    mutationFn: buildGenerationPlan,
+    onSuccess: (plan) => {
+      setGenPreview(plan);
+      setGenPreviewOpen(true);
+    },
+    onError: (e: any) => toast({ title: 'Preview failed', description: e.message, variant: 'destructive' }),
+  });
 
-      // 2) Legacy assignments (no billing plan)
-      let aq = supabase.from('student_teacher_assignments')
-        .select('id, student_id, calculated_monthly_fee, effective_from_date, effective_to_date, status, fee_packages!student_teacher_assignments_fee_package_id_fkey(currency), branch_id, division_id')
-        .in('status', ['active']);
-      if (branchId) aq = aq.eq('branch_id', branchId);
-      if (divisionId) aq = aq.eq('division_id', divisionId);
-      const { data: assignments } = await aq;
-      const planStudentIds = new Set([...(plans || []).map((p: any) => p.student_id)]);
-      (assignments || []).forEach((a: any) => {
-        if (a.calculated_monthly_fee && !planStudentIds.has(a.student_id)) {
-          const startDate = a.effective_from_date || null;
-          const endDate = (a.status === 'active') ? null : (a.effective_to_date || null);
-          
-          const prorated = computeProration(Number(a.calculated_monthly_fee), startDate, endDate, targetMonth);
-          if (!prorated) return;
-
-          const existingInv = existingAssignmentMap.get(a.id);
-          if (existingInv) {
-            checkAndQueueUpdate(existingInv, prorated, a.fee_packages?.currency || 'USD');
-            return;
-          }
-
-          newInvoices.push({
-            assignment_id: a.id, student_id: a.student_id,
-            amount: prorated.amount, currency: a.fee_packages?.currency || 'USD',
-            billing_month: targetMonth, due_date: `${targetMonth}-10`,
-            branch_id: a.branch_id, division_id: a.division_id,
-            period_from: prorated.period_from, period_to: prorated.period_to,
-          });
-        }
-      });
-
-      // Update existing pending invoices with corrected proration
+  const generateMutation = useMutation({
+    mutationFn: async (plan: GenerationPlan) => {
+      const { newInvoices, updatedInvoices, label } = plan;
+      if (newInvoices.length === 0 && updatedInvoices.length === 0) throw new Error('Nothing to generate or update');
       for (const upd of updatedInvoices) {
         await supabase.from('fee_invoices').update({
           amount: upd.amount, currency: upd.currency, period_from: upd.period_from, period_to: upd.period_to, updated_at: new Date().toISOString(),
         }).eq('id', upd.id);
       }
-
-      if (newInvoices.length === 0 && updatedInvoices.length === 0) throw new Error('All invoices for this month already exist and are up to date');
       if (newInvoices.length > 0) {
         const { error } = await supabase.from('fee_invoices').insert(newInvoices);
         if (error) throw error;
       }
-      return { count: newInvoices.length, updated: updatedInvoices.length, label: targetLabel };
+      return { count: newInvoices.length, updated: updatedInvoices.length, label };
     },
     onSuccess: ({ count, updated, label }) => {
       queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
       const parts = [];
       if (count > 0) parts.push(`${count} new`);
       if (updated > 0) parts.push(`${updated} updated`);
-      toast({ title: `${parts.join(' + ')} invoice(s) for ${label}.` });
+      toast({ title: `${parts.join(' + ') || 'No'} invoice(s) for ${label}.` });
+      setGenPreviewOpen(false);
+      setGenPreview(null);
     },
     onError: (e: any) => toast({ title: 'Generation failed', description: e.message, variant: 'destructive' }),
   });
