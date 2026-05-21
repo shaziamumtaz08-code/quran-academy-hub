@@ -249,6 +249,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!error && data?.user?.id) {
         // Don't await - update timezone in background
         updateUserTimezone(data.user.id);
+        // Fire-and-forget activity log
+        import('@/lib/activityLogger').then(({ trackActivity }) =>
+          trackActivity({
+            action: 'login_success', entityType: 'auth', entityLabel: email,
+          })
+        ).catch(() => {});
+      } else if (error) {
+        // Log failed attempts (best-effort; will only persist if a session exists)
+        console.warn('Login failed for', email);
       }
 
       return { error: error ? new Error(error.message) : null };
