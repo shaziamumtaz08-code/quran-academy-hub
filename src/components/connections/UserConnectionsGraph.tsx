@@ -144,12 +144,15 @@ function ConnectedNode({ data }: NodeProps<NodeData>) {
   const style = REL_STYLE[data.kind];
   const Icon = style.icon;
   const dot = data.status ? STATUS_DOT[data.status] || 'bg-gray-300' : null;
+  const isInactive = data.status && ['completed', 'left', 'cancelled', 'paused', 'inactive'].includes(data.status);
   return (
     <div
       className={cn(
         'rounded-lg shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer',
         'border border-border/40 border-l-4 px-3 py-2.5 min-w-[200px] max-w-[240px]',
-        style.bgClass, style.borderClass,
+        isInactive
+          ? 'bg-muted/40 border-muted-foreground/30 border-l-muted-foreground/50 opacity-70 grayscale-[40%]'
+          : cn(style.bgClass, style.borderClass),
       )}
     >
       <Handle id="t-top"    type="target" position={Position.Top}    className="!opacity-0" />
@@ -161,10 +164,10 @@ function ConnectedNode({ data }: NodeProps<NodeData>) {
       <Handle id="s-left"   type="source" position={Position.Left}   className="!opacity-0" />
       <Handle id="s-right"  type="source" position={Position.Right}  className="!opacity-0" />
       <div className="flex items-center gap-1.5">
-        <Icon className={cn('h-3 w-3', style.headerClass)} />
-        <span className={cn('text-[9px] font-bold uppercase tracking-wider', style.headerClass)}>{style.header}</span>
+        <Icon className={cn('h-3 w-3', isInactive ? 'text-muted-foreground' : style.headerClass)} />
+        <span className={cn('text-[9px] font-bold uppercase tracking-wider', isInactive ? 'text-muted-foreground' : style.headerClass)}>{style.header}</span>
       </div>
-      <p className="font-semibold text-sm text-foreground mt-1 leading-tight truncate">{data.title}</p>
+      <p className={cn('font-semibold text-sm mt-1 leading-tight truncate', isInactive ? 'text-muted-foreground line-through decoration-1' : 'text-foreground')}>{data.title}</p>
       {data.subtitle && <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{data.subtitle}</p>}
       <div className="flex items-center gap-2 mt-1.5">
         {dot && <span className={cn('w-1.5 h-1.5 rounded-full', dot)} />}
