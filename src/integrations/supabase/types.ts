@@ -5747,6 +5747,7 @@ export type Database = {
           percentage: number
           questions: Json
           quiz_bank_id: string
+          results: Json | null
           score: number
           session_id: string
           started_at: string
@@ -5765,6 +5766,7 @@ export type Database = {
           percentage?: number
           questions?: Json
           quiz_bank_id: string
+          results?: Json | null
           score?: number
           session_id: string
           started_at?: string
@@ -5783,6 +5785,7 @@ export type Database = {
           percentage?: number
           questions?: Json
           quiz_bank_id?: string
+          results?: Json | null
           score?: number
           session_id?: string
           started_at?: string
