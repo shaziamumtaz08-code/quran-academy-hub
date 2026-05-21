@@ -11,6 +11,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { trackActivity } from '@/lib/activityLogger';
 
 interface TransferAssignmentDialogProps {
   open: boolean;
@@ -76,6 +77,15 @@ export function TransferAssignmentDialog({
             status_effective_date: effectiveDate,
           })
           .eq('id', assignmentId);
+        trackActivity({
+          action: 'assignment_status_changed',
+          entityType: 'assignment',
+          entityId: assignmentId,
+          entityLabel: `${studentName} → ${currentTeacherName}`,
+          oldValues: { status: 'active' },
+          newValues: { status: 'completed', effective_to_date: effectiveDate },
+          details: { reason: reason || 'Permanent transfer', transfer_type: 'permanent' },
+        });
 
         // 2. Log to assignment_history
         await sb
@@ -136,6 +146,15 @@ export function TransferAssignmentDialog({
             status_effective_date: effectiveDate,
           })
           .eq('id', assignmentId);
+        trackActivity({
+          action: 'assignment_status_changed',
+          entityType: 'assignment',
+          entityId: assignmentId,
+          entityLabel: `${studentName} → ${currentTeacherName}`,
+          oldValues: { status: 'active' },
+          newValues: { status: 'on_hold' },
+          details: { reason: reason || 'Substitute', transfer_type: 'substitute' },
+        });
 
         // 2. Get old assignment details
         const { data: oldAssign } = await sb
