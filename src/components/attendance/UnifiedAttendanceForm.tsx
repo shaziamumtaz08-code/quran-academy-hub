@@ -853,12 +853,8 @@ export function UnifiedAttendanceForm({
                   type="time"
                   value={classTime}
                   onChange={(e) => setClassTime(e.target.value)}
-                  readOnly={!allowTimeEdit && !isLeaveStatus}
-                  disabled={!allowTimeEdit && !isLeaveStatus}
-                  placeholder={isLeaveStatus ? 'Optional for leave' : undefined}
-                  className={(allowTimeEdit || isLeaveStatus)
-                    ? "[ [&::-webkit-calendar-picker-indicator]:opacity-0::-webkit-calendar-picker-indicator]:opacity-0"
-                    : "bg-muted cursor-not-allowed [&::-webkit-calendar-picker-indicator]:opacity-0"}
+                  placeholder={isLeaveStatus ? 'Optional for leave' : 'HH:MM'}
+                  className="[&::-webkit-calendar-picker-indicator]:opacity-0"
                 />
               </div>
             </div>
