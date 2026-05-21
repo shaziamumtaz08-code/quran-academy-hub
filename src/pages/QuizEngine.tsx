@@ -910,11 +910,10 @@ export default function QuizEngine() {
                     {filteredResults.length === 0 ? (
                       <p className="text-sm text-muted-foreground text-center py-6">No results match the filters.</p>
                     ) : (
-                      <div className="overflow-x-auto">
+                      <div className="overflow-x-auto rounded-md border">
                         <Table>
                           <TableHeader>
-                            <TableRow>
-                              <TableHead className="text-xs w-[40px]"></TableHead>
+                            <TableRow className="bg-muted/40 hover:bg-muted/40">
                               <TableHead className="text-xs">#</TableHead>
                               <TableHead className="text-xs cursor-pointer" onClick={() => toggleSort('sessionNum')}>Session<SortIcon k="sessionNum" /></TableHead>
                               <TableHead className="text-xs cursor-pointer" onClick={() => toggleSort('attempt')}>Attempt<SortIcon k="attempt" /></TableHead>
@@ -923,101 +922,58 @@ export default function QuizEngine() {
                               <TableHead className="text-xs cursor-pointer" onClick={() => toggleSort('quiz')}>Quiz<SortIcon k="quiz" /></TableHead>
                               <TableHead className="text-xs cursor-pointer" onClick={() => toggleSort('score')}>Score<SortIcon k="score" /></TableHead>
                               <TableHead className="text-xs cursor-pointer" onClick={() => toggleSort('pct')}>%<SortIcon k="pct" /></TableHead>
-                              <TableHead className="text-xs cursor-pointer" onClick={() => toggleSort('pass')}>Pass/Fail<SortIcon k="pass" /></TableHead>
+                              <TableHead className="text-xs cursor-pointer" onClick={() => toggleSort('pass')}>Result<SortIcon k="pass" /></TableHead>
                               <TableHead className="text-xs cursor-pointer" onClick={() => toggleSort('time')}>Time<SortIcon k="time" /></TableHead>
                               <TableHead className="text-xs cursor-pointer" onClick={() => toggleSort('date')}>Date &amp; Time<SortIcon k="date" /></TableHead>
-                              <TableHead className="text-xs w-[50px] text-right">View</TableHead>
+                              <TableHead className="text-xs w-[60px] text-right">Review</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {filteredResults.map((a: any, idx: number) => {
                               const passThreshold = a.quiz_bank?.passing_percentage ?? 50;
-                              const isPass = (Number(a.percentage) || 0) >= passThreshold;
-                              const ident = attemptIdentity(a);
-                              const rowKey = `${ident}::${a.quiz_bank_id}`;
-                              const isExpanded = expandedRow === rowKey;
-                              const studentAttempts = attempts
-                                .filter((x: any) => attemptIdentity(x) === ident && x.quiz_bank_id === a.quiz_bank_id)
-                                .sort((x: any, y: any) => new Date(x.created_at).getTime() - new Date(y.created_at).getTime());
+                              const pctVal = Number(a.percentage) || 0;
+                              const isPass = pctVal >= passThreshold;
                               return (
-                                <React.Fragment key={a.id}>
-                                  <TableRow className="cursor-pointer" onClick={() => setExpandedRow(isExpanded ? null : rowKey)}>
-                                    <TableCell>
-                                      {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                                    </TableCell>
-                                    <TableCell className="text-xs text-muted-foreground">{idx + 1}</TableCell>
-                                    <TableCell className="text-xs">#{sessionNumberMap.get(a.session_id) || '—'}</TableCell>
-                                    <TableCell className="text-xs">#{attemptNumberMap.get(a.id) || 1}</TableCell>
-                                    <TableCell className="text-sm">{a.guest_name || '-'}</TableCell>
-                                    <TableCell className="text-sm">{a.guest_email || '-'}</TableCell>
-                                    <TableCell className="text-sm">{a.quiz_bank?.name || a.session?.title || '-'}</TableCell>
-                                    <TableCell className="text-sm">{a.score}/{a.max_score}</TableCell>
-                                    <TableCell>
-                                      <Badge variant={a.percentage >= 70 ? 'default' : a.percentage >= 50 ? 'secondary' : 'destructive'} className="text-xs">
-                                        {a.percentage}%
-                                      </Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                      <Badge className={`text-xs ${isPass ? 'bg-green-600 hover:bg-green-600' : 'bg-destructive hover:bg-destructive'} text-white border-transparent`}>
-                                        {isPass ? 'Pass' : 'Fail'}
-                                      </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-xs text-muted-foreground">
-                                      {a.time_taken_seconds ? `${Math.floor(a.time_taken_seconds / 60)}m ${a.time_taken_seconds % 60}s` : '-'}
-                                    </TableCell>
-                                    <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                                      {format(new Date(a.created_at), 'MMM d, yyyy HH:mm')}
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-7 w-7 p-0"
-                                        onClick={(e) => { e.stopPropagation(); setDetailAttemptId(a.id); }}
-                                        title="View per-question detail"
-                                      >
-                                        <Eye className="h-3.5 w-3.5" />
-                                      </Button>
-                                    </TableCell>
-                                  </TableRow>
-                                  {isExpanded && (
-                                    <TableRow>
-                                      <TableCell colSpan={13} className="bg-muted/30">
-                                        <div className="space-y-2 py-2">
-                                          <p className="text-xs font-medium">All attempts for this student on this quiz ({studentAttempts.length}):</p>
-                                          <div className="flex items-end gap-1 h-16">
-                                            {studentAttempts.map((sa: any) => {
-                                              const pct = Number(sa.percentage) || 0;
-                                              const pass = pct >= passThreshold;
-                                              return (
-                                                <div key={sa.id} className="flex flex-col items-center gap-1" style={{ width: 28 }}>
-                                                  <div
-                                                    className={`w-full rounded-sm ${pass ? 'bg-green-600' : 'bg-destructive'}`}
-                                                    style={{ height: `${Math.max(4, pct * 0.5)}px` }}
-                                                    title={`${pct}% on ${format(new Date(sa.created_at), 'MMM d HH:mm')}`}
-                                                  />
-                                                  <span className="text-[9px] text-muted-foreground">#{attemptNumberMap.get(sa.id)}</span>
-                                                </div>
-                                              );
-                                            })}
-                                          </div>
-                                          <div className="text-xs text-muted-foreground space-y-0.5">
-                                            {studentAttempts.map((sa: any) => (
-                                              <div key={sa.id} className="flex gap-3">
-                                                <span>#{attemptNumberMap.get(sa.id)}</span>
-                                                <span>{format(new Date(sa.created_at), 'MMM d, yyyy HH:mm')}</span>
-                                                <span>{sa.score}/{sa.max_score} ({sa.percentage}%)</span>
-                                                <span className={(Number(sa.percentage) || 0) >= passThreshold ? 'text-green-600' : 'text-destructive'}>
-                                                  {(Number(sa.percentage) || 0) >= passThreshold ? 'Pass' : 'Fail'}
-                                                </span>
-                                              </div>
-                                            ))}
-                                          </div>
-                                        </div>
-                                      </TableCell>
-                                    </TableRow>
-                                  )}
-                                </React.Fragment>
+                                <TableRow
+                                  key={a.id}
+                                  className="cursor-pointer transition-colors hover:bg-primary/5"
+                                  onClick={() => setDetailAttemptId(a.id)}
+                                >
+                                  <TableCell className="text-xs text-muted-foreground">{idx + 1}</TableCell>
+                                  <TableCell className="text-xs font-mono">#{sessionNumberMap.get(a.session_id) || '—'}</TableCell>
+                                  <TableCell className="text-xs font-mono">#{attemptNumberMap.get(a.id) || 1}</TableCell>
+                                  <TableCell className="text-sm font-medium">{a.guest_name || '—'}</TableCell>
+                                  <TableCell className="text-sm text-muted-foreground">{a.guest_email || '—'}</TableCell>
+                                  <TableCell className="text-sm">{a.quiz_bank?.name || a.session?.title || '—'}</TableCell>
+                                  <TableCell className="text-sm font-mono">{a.score}/{a.max_score}</TableCell>
+                                  <TableCell>
+                                    <Badge variant={pctVal >= 70 ? 'default' : pctVal >= 50 ? 'secondary' : 'destructive'} className="text-xs">
+                                      {pctVal}%
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge className={`text-xs ${isPass ? 'bg-green-600 hover:bg-green-600' : 'bg-destructive hover:bg-destructive'} text-white border-transparent`}>
+                                      {isPass ? 'Pass' : 'Fail'}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                                    {a.time_taken_seconds ? `${Math.floor(a.time_taken_seconds / 60)}m ${a.time_taken_seconds % 60}s` : '—'}
+                                  </TableCell>
+                                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                                    {format(new Date(a.created_at), 'MMM d, yyyy HH:mm')}
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-7 w-7 p-0"
+                                      onClick={(e) => { e.stopPropagation(); setDetailAttemptId(a.id); }}
+                                      title="View full quiz review"
+                                    >
+                                      <Eye className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
                               );
                             })}
                           </TableBody>
@@ -1026,6 +982,7 @@ export default function QuizEngine() {
                     )}
                   </CardContent>
                 </Card>
+
 
                 {/* Export uses filtered set */}
                 <ExportDialog
