@@ -690,7 +690,8 @@ export function UnifiedAttendanceForm({
     if (needsStudent && !student.id) return false;
     // Leave can be marked even when the day isn't scheduled or already has a record
     if (!isLeaveStatus && hasDuplicateAttendance) return false;
-    if (!isLeaveStatus && !isScheduledDay) return false;
+    // Non-scheduled day is shown as a soft warning only — teachers can still mark
+    // attendance (covers make-ups, ad-hoc lessons, and teachers without schedules).
     if (requiresReason(selectedStatus) && !reasonCategory) return false;
     if (requiresReason(selectedStatus) && reasonCategory === 'other' && !reasonText.trim()) return false;
     if (requiresReschedule(selectedStatus) && !rescheduleDate) return false;
