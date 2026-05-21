@@ -178,6 +178,7 @@ function getSettingsSidebar(role?: string | null): { title: string; subtitle: st
       ...(can(r, 'finance_setup', 'view') ? [{ label: 'Finance Setup', href: '/finance-setup' }] : []),
       ...(can(r, 'identity', 'view') ? [{ label: 'Identity', href: '/identity' }] : []),
       ...(can(r, 'integrity_audit', 'view') ? [{ label: 'Integrity Audit', href: '/integrity-audit' }] : []),
+      ...(can(r, 'activity_log', 'view') ? [{ label: 'Activity Log', href: '/activity-log' }] : []),
     ],
   };
 }
@@ -229,7 +230,7 @@ function getSidebarForRoute(pathname: string, isOneToOne?: boolean, role?: strin
   if (!isStudent && (pathname.startsWith('/communication') || pathname.startsWith('/chat') || pathname.startsWith('/whatsapp') || pathname.startsWith('/notifications') || pathname.startsWith('/zoom') || pathname.startsWith('/hub'))) {
     return getCommunicationSidebar(role);
   }
-  if (pathname.startsWith('/settings') || pathname.startsWith('/organization') || pathname.startsWith('/finance-setup') || pathname.startsWith('/identity') || pathname.startsWith('/integrity')) {
+  if (pathname.startsWith('/settings') || pathname.startsWith('/organization') || pathname.startsWith('/finance-setup') || pathname.startsWith('/identity') || pathname.startsWith('/integrity') || pathname.startsWith('/activity-log')) {
     return getSettingsSidebar(role);
   }
   if (pathname.startsWith('/reports') || pathname.startsWith('/student-reports') || pathname.startsWith('/kpi') || pathname.startsWith('/report-card')) {

@@ -51,6 +51,7 @@ const TeacherPerformance = lazy(() => import("./pages/TeacherPerformance"));
 const Subjects = lazy(() => import("./pages/Subjects"));
 const ZoomManagement = lazy(() => import("./pages/ZoomManagement"));
 const IntegrityAudit = lazy(() => import("./pages/IntegrityAudit"));
+const ActivityLog = lazy(() => import("./pages/ActivityLog"));
 const Courses = lazy(() => import("./pages/Courses"));
 const CourseBuilder = lazy(() => import("./pages/CourseBuilder"));
 const PublicCoursePage = lazy(() => import("./pages/PublicCoursePage"));
@@ -414,6 +415,7 @@ function AppRoutes() {
       <Route path="/my-schedule" element={<ProtectedRoute><RouteGuard moduleId="my_schedule"><DashboardLayout><MySchedule /></DashboardLayout></RouteGuard></ProtectedRoute>} />
       <Route path="/zoom-management" element={<ProtectedRoute><RouteGuard moduleId="zoom_management"><ZoomManagement /></RouteGuard></ProtectedRoute>} />
       <Route path="/integrity-audit" element={<ProtectedRoute><RouteGuard moduleId="integrity_audit"><IntegrityAudit /></RouteGuard></ProtectedRoute>} />
+      <Route path="/activity-log" element={<ProtectedRoute><RouteGuard moduleId="activity_log"><DashboardLayout><ActivityLog /></DashboardLayout></RouteGuard></ProtectedRoute>} />
       <Route path="/courses" element={<ProtectedRoute><RouteGuard moduleId="courses_admin"><Courses /></RouteGuard></ProtectedRoute>} />
       <Route path="/courses/:id" element={<ProtectedRoute><RouteGuard moduleId="courses_admin"><DashboardLayout><CourseBuilder /></DashboardLayout></RouteGuard></ProtectedRoute>} />
       <Route path="/academics/courses/:id" element={<ProtectedRoute><RouteGuard moduleId="courses_admin"><DashboardLayout><CourseBuilder /></DashboardLayout></RouteGuard></ProtectedRoute>} />
