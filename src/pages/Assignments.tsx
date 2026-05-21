@@ -500,6 +500,7 @@ export default function Assignments() {
     onSuccess: (_, { status }) => {
       queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
       queryClient.invalidateQueries({ queryKey: ['billing-plans'] });
+      queryClient.invalidateQueries({ queryKey: ['fee-invoices'] });
       const rule = getStatusRule(status);
       toast({
         title: 'Status updated',
