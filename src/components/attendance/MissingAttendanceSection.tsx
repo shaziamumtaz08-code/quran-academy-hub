@@ -80,7 +80,7 @@ export function MissingAttendanceSection({
         status_effective_date: input.date,
       };
       if (input.status === 'left' || input.status === 'completed') {
-        updatePayload.ended_at = new Date(input.date).toISOString();
+        updatePayload.effective_to_date = input.date;
       }
       const { error } = await supabase
         .from('student_teacher_assignments')
@@ -92,9 +92,8 @@ export function MissingAttendanceSection({
       if (input.status === 'left') {
         await supabase
           .from('schedules')
-          .update({ is_active: false, ended_at: new Date(input.date).toISOString() })
-          .eq('assignment_id', input.assignmentId)
-          .is('ended_at', null);
+          .update({ is_active: false })
+          .eq('assignment_id', input.assignmentId);
       }
     },
     onSuccess: (_data, vars) => {
