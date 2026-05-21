@@ -2081,6 +2081,98 @@ export default function Payments() {
         )}
 
 
+        {/* ─── Generate Invoices Preview ──────────── */}
+        <Dialog open={genPreviewOpen} onOpenChange={(o) => { if (!o) { setGenPreviewOpen(false); setGenPreview(null); } }}>
+          <DialogContent className="sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="font-serif text-xl">Review invoice generation</DialogTitle>
+              <DialogDescription>
+                Preview for <strong>{genPreview?.label}</strong>. Paid & partially-paid invoices are never touched.
+              </DialogDescription>
+            </DialogHeader>
+            {genPreview && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="rounded-lg border bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900 p-3">
+                    <div className="text-xs text-emerald-700 dark:text-emerald-300 uppercase tracking-wide">New</div>
+                    <div className="text-2xl font-semibold text-emerald-700 dark:text-emerald-200">{genPreview.newInvoices.length}</div>
+                  </div>
+                  <div className="rounded-lg border bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900 p-3">
+                    <div className="text-xs text-amber-700 dark:text-amber-300 uppercase tracking-wide">To Update</div>
+                    <div className="text-2xl font-semibold text-amber-700 dark:text-amber-200">{genPreview.updatedInvoices.length}</div>
+                  </div>
+                  <div className="rounded-lg border bg-muted/40 p-3">
+                    <div className="text-xs text-muted-foreground uppercase tracking-wide">Unchanged</div>
+                    <div className="text-2xl font-semibold">{genPreview.unchangedCount}</div>
+                  </div>
+                  <div className="rounded-lg border bg-muted/40 p-3">
+                    <div className="text-xs text-muted-foreground uppercase tracking-wide">Locked (Paid)</div>
+                    <div className="text-2xl font-semibold">{genPreview.lockedCount}</div>
+                  </div>
+                </div>
+
+                {genPreview.updatedInvoices.length > 0 && (
+                  <div>
+                    <div className="text-sm font-medium mb-2">Invoices that will be updated</div>
+                    <ScrollArea className="h-48 rounded-md border">
+                      <div className="divide-y">
+                        {genPreview.updatedInvoices.map((u) => (
+                          <div key={u.id} className="px-3 py-2 text-sm flex items-center justify-between gap-3">
+                            <span className="font-medium truncate">{genPreview.studentNames[u.student_id] || u.student_id.slice(0, 8)}</span>
+                            <span className="text-xs flex items-center gap-2">
+                              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-300">
+                                {u.oldCurrency} {u.oldAmount}
+                              </Badge>
+                              <span className="text-muted-foreground">→</span>
+                              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300">
+                                {u.currency} {u.amount}
+                              </Badge>
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                )}
+
+                {genPreview.newInvoices.length > 0 && (
+                  <div>
+                    <div className="text-sm font-medium mb-2">New invoices to create</div>
+                    <ScrollArea className="h-32 rounded-md border">
+                      <div className="divide-y">
+                        {genPreview.newInvoices.map((n, i) => (
+                          <div key={i} className="px-3 py-2 text-sm flex items-center justify-between">
+                            <span className="font-medium truncate">{genPreview.studentNames[n.student_id] || n.student_id?.slice(0, 8)}</span>
+                            <Badge variant="outline">{n.currency} {n.amount}</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                )}
+
+                {genPreview.newInvoices.length === 0 && genPreview.updatedInvoices.length === 0 && (
+                  <div className="text-sm text-muted-foreground rounded-md border bg-muted/30 p-4 text-center">
+                    Everything is up to date. Nothing to generate or update.
+                  </div>
+                )}
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setGenPreviewOpen(false); setGenPreview(null); }}>Cancel</Button>
+              <Button
+                onClick={() => genPreview && generateMutation.mutate(genPreview)}
+                disabled={!genPreview || generateMutation.isPending || (genPreview.newInvoices.length === 0 && genPreview.updatedInvoices.length === 0)}
+                className="gap-2"
+              >
+                {generateMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                Proceed
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+
         {/* ─── Set Up Student Fee Modal ──────────── */}
         <Dialog open={setupOpen} onOpenChange={setSetupOpen}>
           <DialogContent className="sm:max-w-3xl p-0 overflow-hidden">
