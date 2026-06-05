@@ -5,11 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Download, Search } from "lucide-react";
+import { AlertTriangle, Download, Search, FileText, Send } from "lucide-react";
 import { format, subDays } from "date-fns";
 import { useState } from "react";
 import { useDivision } from "@/contexts/DivisionContext";
 import { useAuth } from "@/contexts/AuthContext";
+import SendAttendanceReportDialog from "./SendAttendanceReportDialog";
 
 export default function AttendanceReports() {
   const { user } = useAuth();
@@ -19,6 +20,7 @@ export default function AttendanceReports() {
   const [dateTo, setDateTo] = useState(format(new Date(), "yyyy-MM-dd"));
   const [searchName, setSearchName] = useState("");
   const [filterTeacher, setFilterTeacher] = useState("all");
+  const [sendOpen, setSendOpen] = useState(false);
 
   // Teachers for filter
   const { data: teachers } = useQuery({
@@ -54,7 +56,7 @@ export default function AttendanceReports() {
     queryFn: async () => {
       let query = supabase
         .from("attendance")
-        .select("id, status, class_date, student_id, teacher_id, student:profiles!attendance_student_id_fkey(full_name), teacher:profiles!attendance_teacher_id_fkey(full_name)")
+        .select("id, status, class_date, student_id, teacher_id, lesson_covered, student:profiles!attendance_student_id_fkey(full_name), teacher:profiles!attendance_teacher_id_fkey(full_name)")
         .gte("class_date", dateFrom)
         .lte("class_date", dateTo)
         .order("class_date", { ascending: false });
@@ -131,7 +133,14 @@ export default function AttendanceReports() {
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input className="pl-9" placeholder="Search student..." value={searchName} onChange={e => setSearchName(e.target.value)} />
             </div>
-            <Button variant="outline" onClick={exportCsv}><Download className="h-4 w-4 mr-2" />Export</Button>
+            <div className="flex gap-2">
+              <Button variant="ghost" className="flex-1" onClick={exportCsv}>
+                <Download className="h-4 w-4 mr-2" />Export CSV
+              </Button>
+              <Button className="flex-1" onClick={() => setSendOpen(true)} disabled={!filteredAttendance.length}>
+                <FileText className="h-4 w-4 mr-2" />Send Report
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -202,6 +211,15 @@ export default function AttendanceReports() {
       </Card>
         </>
       )}
+
+      <SendAttendanceReportDialog
+        open={sendOpen}
+        onOpenChange={setSendOpen}
+        attendance={filteredAttendance as any}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        preselectedStudentId={filtered.length === 1 ? filtered[0].id : undefined}
+      />
     </div>
   );
 }
