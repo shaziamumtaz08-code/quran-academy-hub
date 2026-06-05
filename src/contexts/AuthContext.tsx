@@ -109,7 +109,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [activeRole]);
 
   const setActiveRole = (role: AppRole) => {
-    setActiveRoleState(role);
+    // Guard against client-side role escalation: only allow switching to a
+    // role that the user actually holds according to their profile.
+    if (profile?.roles?.includes(role)) {
+      setActiveRoleState(role);
+    } else {
+      console.warn(`[AuthContext] Blocked setActiveRole(${role}) — user does not hold this role.`);
+    }
   };
 
   // Fetch user profile and ALL roles
