@@ -112,6 +112,16 @@ export function TransferAssignmentDialog({
           })
           .eq('id', parentAssign.id);
 
+        await sb
+          .from('schedules')
+          .update({ is_active: false })
+          .eq('assignment_id', assignmentId);
+
+        await sb
+          .from('schedules')
+          .update({ is_active: true })
+          .eq('assignment_id', parentAssign.id);
+
         return { mode: 'restored_original' as const };
       }
 
@@ -281,6 +291,30 @@ export function TransferAssignmentDialog({
 
         // 4. Log history
         if (subAssign) {
+          const { data: parentSchedules } = await sb
+            .from('schedules')
+            .select('day_of_week, student_local_time, teacher_local_time, duration_minutes, division_id')
+            .eq('assignment_id', parentAssignmentId)
+            .eq('is_active', true);
+
+          if (parentSchedules?.length) {
+            await sb
+              .from('schedules')
+              .update({ is_active: false })
+              .eq('assignment_id', parentAssignmentId);
+
+            await sb.from('schedules').insert(
+              parentSchedules.map((schedule: any) => ({
+                assignment_id: subAssign.id,
+                division_id: schedule.division_id ?? oldAssign.division_id ?? null,
+                day_of_week: schedule.day_of_week,
+                student_local_time: schedule.student_local_time,
+                teacher_local_time: schedule.teacher_local_time,
+                duration_minutes: schedule.duration_minutes,
+              }))
+            );
+          }
+
           await sb.from('assignment_history').insert({
             assignment_id: subAssign.id,
             student_id: studentId,
@@ -309,6 +343,7 @@ export function TransferAssignmentDialog({
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
       queryClient.invalidateQueries({ queryKey: ['students'] });
       queryClient.invalidateQueries({ queryKey: ['assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['class-schedules'] });
       queryClient.invalidateQueries({ queryKey: ['salary'] });
       onOpenChange(false);
       resetForm();
