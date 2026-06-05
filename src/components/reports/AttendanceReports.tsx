@@ -5,11 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Download, Search } from "lucide-react";
+import { AlertTriangle, Download, Search, FileText, Send } from "lucide-react";
 import { format, subDays } from "date-fns";
 import { useState } from "react";
 import { useDivision } from "@/contexts/DivisionContext";
 import { useAuth } from "@/contexts/AuthContext";
+import SendAttendanceReportDialog from "./SendAttendanceReportDialog";
 
 export default function AttendanceReports() {
   const { user } = useAuth();
