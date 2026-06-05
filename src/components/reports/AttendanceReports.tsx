@@ -56,7 +56,7 @@ export default function AttendanceReports() {
     queryFn: async () => {
       let query = supabase
         .from("attendance")
-        .select("id, status, class_date, student_id, teacher_id, student:profiles!attendance_student_id_fkey(full_name), teacher:profiles!attendance_teacher_id_fkey(full_name)")
+        .select("id, status, class_date, student_id, teacher_id, lesson_covered, student:profiles!attendance_student_id_fkey(full_name), teacher:profiles!attendance_teacher_id_fkey(full_name)")
         .gte("class_date", dateFrom)
         .lte("class_date", dateTo)
         .order("class_date", { ascending: false });
