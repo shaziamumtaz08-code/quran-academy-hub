@@ -133,7 +133,14 @@ export default function AttendanceReports() {
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input className="pl-9" placeholder="Search student..." value={searchName} onChange={e => setSearchName(e.target.value)} />
             </div>
-            <Button variant="outline" onClick={exportCsv}><Download className="h-4 w-4 mr-2" />Export</Button>
+            <div className="flex gap-2">
+              <Button variant="ghost" className="flex-1" onClick={exportCsv}>
+                <Download className="h-4 w-4 mr-2" />Export CSV
+              </Button>
+              <Button className="flex-1" onClick={() => setSendOpen(true)} disabled={!filteredAttendance.length}>
+                <FileText className="h-4 w-4 mr-2" />Send Report
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
