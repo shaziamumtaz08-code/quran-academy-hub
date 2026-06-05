@@ -240,13 +240,20 @@ export default function Assignments() {
           .update({ ended_at: new Date(sub.substitute_end_date!).toISOString() })
           .eq('assignment_id', sub.id)
           .is('ended_at', null);
+        await sb.from('schedules')
+          .update({ is_active: false })
+          .eq('assignment_id', sub.id);
         // Resume parent
         await sb.from('student_teacher_assignments')
           .update({ status: 'active', status_effective_date: sub.substitute_end_date })
           .eq('id', sub.parent_assignment_id)
           .eq('status', 'on_hold');
+        await sb.from('schedules')
+          .update({ is_active: true })
+          .eq('assignment_id', sub.parent_assignment_id);
       }
       queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['class-schedules'] });
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assignments]);
