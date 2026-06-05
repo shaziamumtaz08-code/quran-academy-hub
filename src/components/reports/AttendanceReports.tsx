@@ -72,16 +72,25 @@ export default function AttendanceReports() {
   // Filter out holiday records
   const filteredAttendance = (attendance || []).filter((r: any) => !holidays?.has(r.class_date));
 
+  // Statuses that should NOT count toward absence
+  const NON_ABSENT = new Set(["present", "late", "holiday", "rescheduled", "reschedule", "make_up", "makeup", "cancelled", "canceled", "student_leave", "teacher_leave", "leave", "excused"]);
+  const PRESENT_LIKE = new Set(["present", "late"]);
+
   // Group by student
   const studentSummary = filteredAttendance.reduce((acc: Record<string, any>, r: any) => {
     const sid = r.student_id;
     if (!acc[sid]) {
       acc[sid] = { name: r.student?.full_name || "Unknown", teacher: r.teacher?.full_name || "Unknown", total: 0, present: 0, absent: 0, dates: [] as string[] };
     }
-    acc[sid].total++;
-    if (r.status === "present" || r.status === "late") acc[sid].present++;
-    else acc[sid].absent++;
-    if (r.status !== "present" && r.status !== "late" && r.status !== "holiday") acc[sid].dates.push(r.class_date);
+    const s = (r.status || "").toLowerCase();
+    // Exclude rescheduled/cancelled/holiday from the denominator so they don't penalize rate
+    const countable = !["holiday", "rescheduled", "reschedule", "cancelled", "canceled"].includes(s);
+    if (countable) acc[sid].total++;
+    if (PRESENT_LIKE.has(s)) acc[sid].present++;
+    else if (countable && !NON_ABSENT.has(s)) {
+      acc[sid].absent++;
+      acc[sid].dates.push(r.class_date);
+    }
     return acc;
   }, {});
 
