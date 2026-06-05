@@ -679,6 +679,7 @@ export default function Assignments() {
 
         const baseAssign = parentAssign ?? currentAssign;
         const parentAssignmentId = parentAssign?.id ?? currentAssign.id;
+        const scheduleSourceAssignmentId = isSubstituteAssignment ? currentAssign.id : parentAssignmentId;
 
         if (isSubstituteAssignment) {
           await sb.from('assignment_history')
@@ -744,13 +745,13 @@ export default function Assignments() {
           const { data: parentSchedules } = await sb
             .from('schedules')
             .select('day_of_week, student_local_time, teacher_local_time, duration_minutes, division_id')
-            .eq('assignment_id', parentAssignmentId)
+            .eq('assignment_id', scheduleSourceAssignmentId)
             .eq('is_active', true);
 
           if (parentSchedules?.length) {
             await sb.from('schedules')
               .update({ is_active: false })
-              .eq('assignment_id', parentAssignmentId);
+              .eq('assignment_id', scheduleSourceAssignmentId);
 
             await sb.from('schedules').insert(
               parentSchedules.map((schedule: any) => ({
