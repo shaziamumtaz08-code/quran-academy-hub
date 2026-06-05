@@ -211,6 +211,15 @@ export default function AttendanceReports() {
       </Card>
         </>
       )}
+
+      <SendAttendanceReportDialog
+        open={sendOpen}
+        onOpenChange={setSendOpen}
+        attendance={filteredAttendance as any}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        preselectedStudentId={filtered.length === 1 ? filtered[0].id : undefined}
+      />
     </div>
   );
 }
