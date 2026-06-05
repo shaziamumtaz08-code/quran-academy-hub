@@ -66,6 +66,54 @@ export function TransferAssignmentDialog({
   const transferMutation = useMutation({
     mutationFn: async () => {
       const sb = supabase as any;
+      const { data: currentAssign, error: currentErr } = await sb
+        .from('student_teacher_assignments')
+        .select('id, student_id, teacher_id, subject_id, branch_id, division_id, duration_minutes, payout_amount, payout_type, fee_package_id, requires_schedule, requires_planning, requires_attendance, transfer_type, parent_assignment_id')
+        .eq('id', assignmentId)
+        .single();
+      if (currentErr) throw currentErr;
+
+      const { data: parentAssign, error: parentErr } = currentAssign?.parent_assignment_id
+        ? await sb
+            .from('student_teacher_assignments')
+            .select('id, student_id, teacher_id, subject_id, branch_id, division_id, duration_minutes, payout_amount, payout_type, fee_package_id, requires_schedule, requires_planning, requires_attendance, transfer_type, parent_assignment_id')
+            .eq('id', currentAssign.parent_assignment_id)
+            .single()
+        : { data: null, error: null };
+      if (parentErr) throw parentErr;
+
+      const isSubstituteAssignment = currentAssign?.transfer_type === 'substitute' && !!currentAssign?.parent_assignment_id;
+      const isReturnToOriginal = isSubstituteAssignment && !!parentAssign && newTeacherId === parentAssign.teacher_id;
+
+      if (isReturnToOriginal && parentAssign) {
+        await sb
+          .from('assignment_history')
+          .update({ ended_at: new Date(effectiveDate).toISOString(), reason: reason || 'Substitute ended, original teacher resumed' })
+          .eq('assignment_id', assignmentId)
+          .is('ended_at', null);
+
+        await sb
+          .from('student_teacher_assignments')
+          .update({
+            status: 'completed',
+            effective_to_date: effectiveDate,
+            status_effective_date: effectiveDate,
+            status_change_reason: reason || 'Returned to original teacher',
+          })
+          .eq('id', assignmentId);
+
+        await sb
+          .from('student_teacher_assignments')
+          .update({
+            status: 'active',
+            effective_to_date: null,
+            status_effective_date: effectiveDate,
+            status_change_reason: reason || 'Resumed after temporary substitute',
+          })
+          .eq('id', parentAssign.id);
+
+        return { mode: 'restored_original' as const };
+      }
 
       if (transferType === 'permanent') {
         // 1. Mark old assignment as completed
@@ -87,6 +135,24 @@ export function TransferAssignmentDialog({
           details: { reason: reason || 'Permanent transfer', transfer_type: 'permanent' },
         });
 
+        if (isSubstituteAssignment && parentAssign) {
+          await sb
+            .from('assignment_history')
+            .update({ ended_at: new Date(effectiveDate).toISOString(), reason: reason || 'Temporary substitute converted to permanent transfer' })
+            .eq('assignment_id', parentAssign.id)
+            .is('ended_at', null);
+
+          await sb
+            .from('student_teacher_assignments')
+            .update({
+              status: 'completed',
+              effective_to_date: effectiveDate,
+              status_effective_date: effectiveDate,
+              status_change_reason: reason || 'Superseded after substitute period',
+            })
+            .eq('id', parentAssign.id);
+        }
+
         // 2. Log to assignment_history
         await sb
           .from('assignment_history')
@@ -96,11 +162,7 @@ export function TransferAssignmentDialog({
           .is('ended_at', null);
 
         // 3. Get old assignment details for the new one
-        const { data: oldAssign } = await sb
-          .from('student_teacher_assignments')
-          .select('subject_id, branch_id, division_id, duration_minutes, payout_amount, payout_type, fee_package_id, requires_schedule, requires_planning, requires_attendance')
-          .eq('id', assignmentId)
-          .single();
+        const oldAssign = currentAssign;
 
         // 4. Create new assignment for new teacher
         const { data: newAssign } = await sb
@@ -136,16 +198,48 @@ export function TransferAssignmentDialog({
             reason: reason || 'Permanent transfer from ' + currentTeacherName,
           });
         }
+        return { mode: 'permanent' as const };
       } else {
         // SUBSTITUTE flow
         // 1. Pause the original assignment
-        await sb
-          .from('student_teacher_assignments')
-          .update({
-            status: 'on_hold',
-            status_effective_date: effectiveDate,
-          })
-          .eq('id', assignmentId);
+        const baseAssign = parentAssign ?? currentAssign;
+        const parentAssignmentId = parentAssign?.id ?? currentAssign.id;
+
+        if (isSubstituteAssignment) {
+          await sb
+            .from('assignment_history')
+            .update({ ended_at: new Date(effectiveDate).toISOString(), reason: reason || 'Temporary substitute replaced' })
+            .eq('assignment_id', assignmentId)
+            .is('ended_at', null);
+
+          await sb
+            .from('student_teacher_assignments')
+            .update({
+              status: 'completed',
+              effective_to_date: effectiveDate,
+              status_effective_date: effectiveDate,
+              status_change_reason: reason || 'Replaced by another substitute',
+            })
+            .eq('id', assignmentId);
+
+          await sb
+            .from('student_teacher_assignments')
+            .update({
+              status: 'on_hold',
+              status_effective_date: effectiveDate,
+              status_change_reason: reason || 'Temporary substitute updated',
+            })
+            .eq('id', parentAssignmentId);
+        } else {
+          await sb
+            .from('student_teacher_assignments')
+            .update({
+              status: 'on_hold',
+              status_effective_date: effectiveDate,
+              status_change_reason: reason || 'Temporary substitute assigned',
+            })
+            .eq('id', assignmentId);
+        }
         trackActivity({
           action: 'assignment_status_changed',
           entityType: 'assignment',
@@ -157,11 +251,7 @@ export function TransferAssignmentDialog({
         });
 
         // 2. Get old assignment details
-        const { data: oldAssign } = await sb
-          .from('student_teacher_assignments')
-          .select('subject_id, branch_id, division_id, duration_minutes, payout_amount, payout_type, fee_package_id, requires_schedule, requires_planning, requires_attendance')
-          .eq('id', assignmentId)
-          .single();
+        const oldAssign = baseAssign;
 
         // 3. Create substitute assignment linked to parent
         const { data: subAssign } = await sb
@@ -180,7 +270,7 @@ export function TransferAssignmentDialog({
             effective_from_date: effectiveDate,
             effective_to_date: substituteEndDate || null,
             transfer_type: 'substitute',
-            parent_assignment_id: assignmentId,
+            parent_assignment_id: parentAssignmentId,
             substitute_end_date: substituteEndDate || null,
             requires_schedule: oldAssign.requires_schedule,
             requires_planning: oldAssign.requires_planning,
@@ -200,14 +290,21 @@ export function TransferAssignmentDialog({
             reason: reason || `Temporary substitute until ${substituteEndDate || 'TBD'}`,
           });
         }
+        return { mode: 'substitute' as const };
       }
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       toast({
-        title: transferType === 'permanent' ? 'Student Transferred' : 'Substitute Assigned',
-        description: transferType === 'permanent'
-          ? `${studentName} has been permanently transferred. Previous teacher's records are preserved.`
-          : `${studentName} has a temporary substitute. Original assignment is on hold and will resume after the substitute period.`,
+        title: result?.mode === 'restored_original'
+          ? 'Original Teacher Restored'
+          : transferType === 'permanent'
+            ? 'Student Transferred'
+            : 'Substitute Assigned',
+        description: result?.mode === 'restored_original'
+          ? `${studentName} is back with ${currentTeacherName}. The original assignment stayed intact, including its schedule and history.`
+          : transferType === 'permanent'
+            ? `${studentName} has been permanently transferred. Previous teacher's records are preserved.`
+            : `${studentName} has a temporary substitute. Original assignment is on hold and will resume after the substitute period.`,
       });
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
       queryClient.invalidateQueries({ queryKey: ['students'] });
