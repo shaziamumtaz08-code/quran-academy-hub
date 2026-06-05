@@ -532,29 +532,71 @@ export default function Assignments() {
       const effDate = effectiveDate || new Date().toISOString().split('T')[0];
 
       if (transferType === 'permanent') {
-        // Close current history
+        // PERMANENT TRANSFER — never overwrite teacher_id on the existing row.
+        // Doing so would orphan all attendance / salary / history records that
+        // reference assignment_id. Instead: close the old assignment and
+        // create a brand-new assignment row for the new teacher.
+
+        // 1. Close out the open history entry for the previous teacher
         await sb.from('assignment_history')
           .update({ ended_at: new Date(effDate).toISOString(), reason: reason || 'Permanent transfer' })
           .eq('assignment_id', id)
           .is('ended_at', null);
 
-        // Update assignment in place: new teacher + optional payout details
-        const updatePayload: any = { teacher_id: newTeacherId, transfer_type: 'permanent' };
-        if (pa !== undefined && pa > 0) updatePayload.payout_amount = pa;
-        if (pt) updatePayload.payout_type = pt;
-        updatePayload.effective_from_date = effDate;
+        // 2. Mark the OLD assignment as completed (preserve teacher_id, attendance, salary)
+        const { error: oldErr } = await sb.from('student_teacher_assignments')
+          .update({
+            status: 'completed',
+            effective_to_date: effDate,
+            status_effective_date: effDate,
+            status_change_reason: reason || 'Permanent transfer',
+          })
+          .eq('id', id);
+        if (oldErr) throw oldErr;
 
-        const { error } = await sb.from('student_teacher_assignments').update(updatePayload).eq('id', id);
-        if (error) throw error;
+        // 3. Pull the full original row to clone into the new assignment
+        const { data: oldAssign, error: fetchErr } = await sb
+          .from('student_teacher_assignments')
+          .select('subject_id, branch_id, division_id, duration_minutes, payout_amount, payout_type, fee_package_id, requires_schedule, requires_planning, requires_attendance')
+          .eq('id', id)
+          .single();
+        if (fetchErr) throw fetchErr;
 
-        await sb.from('assignment_history').insert({
-          assignment_id: id,
-          teacher_id: newTeacherId,
-          student_id: assignment.student_id,
-          subject_id: assignment.subject_id,
-          started_at: new Date(effDate).toISOString(),
-          reason: reason || 'Permanent transfer',
-        });
+        // 4. Create the NEW assignment row for the new teacher
+        const { data: newAssign, error: newErr } = await sb
+          .from('student_teacher_assignments')
+          .insert({
+            student_id: assignment.student_id,
+            teacher_id: newTeacherId,
+            subject_id: oldAssign?.subject_id ?? assignment.subject_id,
+            branch_id: oldAssign?.branch_id ?? activeDivision?.branch_id ?? null,
+            division_id: oldAssign?.division_id ?? activeDivision?.id ?? null,
+            duration_minutes: oldAssign?.duration_minutes ?? null,
+            payout_amount: pa && pa > 0 ? pa : (oldAssign?.payout_amount ?? assignment.payout_amount),
+            payout_type: pt || oldAssign?.payout_type || assignment.payout_type,
+            fee_package_id: oldAssign?.fee_package_id ?? null,
+            status: 'active',
+            effective_from_date: effDate,
+            transfer_type: 'permanent',
+            requires_schedule: oldAssign?.requires_schedule ?? true,
+            requires_planning: oldAssign?.requires_planning ?? true,
+            requires_attendance: oldAssign?.requires_attendance ?? true,
+          })
+          .select('id')
+          .single();
+        if (newErr) throw newErr;
+
+        // 5. Open a fresh history entry for the new teacher on the new assignment
+        if (newAssign) {
+          await sb.from('assignment_history').insert({
+            assignment_id: newAssign.id,
+            teacher_id: newTeacherId,
+            student_id: assignment.student_id,
+            subject_id: oldAssign?.subject_id ?? assignment.subject_id,
+            started_at: new Date(effDate).toISOString(),
+            reason: reason || 'Permanent transfer',
+          });
+        }
       } else {
         // SUBSTITUTE: pause original, create child substitute assignment
         if (!substituteEndDate) throw new Error('Substitute end date is required');
