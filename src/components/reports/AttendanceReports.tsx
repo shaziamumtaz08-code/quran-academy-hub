@@ -9,8 +9,10 @@ import { AlertTriangle, Download, Search } from "lucide-react";
 import { format, subDays } from "date-fns";
 import { useState } from "react";
 import { useDivision } from "@/contexts/DivisionContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function AttendanceReports() {
+  const { user } = useAuth();
   const { activeDivision } = useDivision();
   const divisionId = activeDivision?.id;
   const [dateFrom, setDateFrom] = useState(format(subDays(new Date(), 30), "yyyy-MM-dd"));
@@ -21,10 +23,13 @@ export default function AttendanceReports() {
   // Teachers for filter
   const { data: teachers } = useQuery({
     queryKey: ["report-teachers"],
+    enabled: !!user?.id,
     queryFn: async () => {
-      const { data } = await supabase.from("user_roles").select("user_id").eq("role", "teacher");
+      const { data, error } = await supabase.from("user_roles").select("user_id").eq("role", "teacher");
+      if (error) throw error;
       if (!data?.length) return [];
-      const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", data.map(d => d.user_id));
+      const { data: profiles, error: profilesError } = await supabase.from("profiles").select("id, full_name").in("id", data.map(d => d.user_id));
+      if (profilesError) throw profilesError;
       return profiles || [];
     },
   });
@@ -32,17 +37,20 @@ export default function AttendanceReports() {
   // Holidays in range — to exclude from analysis
   const { data: holidays } = useQuery({
     queryKey: ["report-holidays", dateFrom, dateTo, divisionId],
+    enabled: !!user?.id,
     queryFn: async () => {
       let query = supabase.from("holidays").select("holiday_date").gte("holiday_date", dateFrom).lte("holiday_date", dateTo);
       if (divisionId) query = query.eq("division_id", divisionId);
-      const { data } = await query;
+      const { data, error } = await query;
+      if (error) throw error;
       return new Set((data || []).map((h: any) => h.holiday_date));
     },
   });
 
   // Attendance data
-  const { data: attendance } = useQuery({
+  const { data: attendance, isLoading: attendanceLoading, error: attendanceError } = useQuery({
     queryKey: ["att-report", dateFrom, dateTo, filterTeacher, divisionId],
+    enabled: !!user?.id,
     queryFn: async () => {
       let query = supabase
         .from("attendance")
@@ -53,7 +61,8 @@ export default function AttendanceReports() {
 
       if (divisionId) query = query.or(`division_id.eq.${divisionId},division_id.is.null`);
       if (filterTeacher !== "all") query = query.eq("teacher_id", filterTeacher);
-      const { data } = await query;
+      const { data, error } = await query;
+      if (error) throw error;
       return data || [];
     },
   });
@@ -127,6 +136,22 @@ export default function AttendanceReports() {
         </CardContent>
       </Card>
 
+      {attendanceLoading && (
+        <Card>
+          <CardContent className="p-6 text-sm text-muted-foreground">Loading attendance report...</CardContent>
+        </Card>
+      )}
+
+      {attendanceError && (
+        <Card>
+          <CardContent className="p-6 text-sm text-destructive">
+            Could not load attendance report. {(attendanceError as Error).message}
+          </CardContent>
+        </Card>
+      )}
+
+      {!attendanceLoading && !attendanceError && (
+        <>
       {/* Summary stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card><CardContent className="p-3 text-center"><p className="text-2xl font-bold">{filtered.length}</p><p className="text-xs text-muted-foreground">Students</p></CardContent></Card>
@@ -175,6 +200,8 @@ export default function AttendanceReports() {
           </div>
         </CardContent>
       </Card>
+        </>
+      )}
     </div>
   );
 }
