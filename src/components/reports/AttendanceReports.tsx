@@ -51,7 +51,7 @@ export default function AttendanceReports() {
         .lte("class_date", dateTo)
         .order("class_date", { ascending: false });
 
-      if (divisionId) query = query.eq("division_id", divisionId);
+      if (divisionId) query = query.or(`division_id.eq.${divisionId},division_id.is.null`);
       if (filterTeacher !== "all") query = query.eq("teacher_id", filterTeacher);
       const { data } = await query;
       return data || [];
