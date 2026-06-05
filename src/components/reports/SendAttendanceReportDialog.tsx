@@ -37,11 +37,18 @@ const statusPill = (status: string) => {
   const s = (status || "").toLowerCase();
   if (s === "present" || s === "late")
     return { bg: "#dcfce7", color: "#15803d", label: s === "late" ? "Late" : "Present" };
-  if (s === "leave" || s === "excused")
-    return { bg: "#fef3c7", color: "#b45309", label: "Leave" };
+  if (s === "leave" || s === "excused" || s === "student_leave" || s === "teacher_leave")
+    return { bg: "#fef3c7", color: "#b45309", label: s === "teacher_leave" ? "Teacher Leave" : "Student Leave" };
   if (s === "holiday")
     return { bg: "#e0e7ff", color: "#4338ca", label: "Holiday" };
-  return { bg: "#fee2e2", color: "#b91c1c", label: "Absent" };
+  if (s === "rescheduled" || s === "reschedule" || s === "make_up" || s === "makeup")
+    return { bg: "#dbeafe", color: "#1d4ed8", label: "Rescheduled" };
+  if (s === "cancelled" || s === "canceled")
+    return { bg: "#e5e7eb", color: "#374151", label: "Cancelled" };
+  if (!s || s === "absent")
+    return { bg: "#fee2e2", color: "#b91c1c", label: "Absent" };
+  // Unknown status — show raw label instead of misclassifying as Absent
+  return { bg: "#e5e7eb", color: "#374151", label: status };
 };
 
 export default function SendAttendanceReportDialog({
