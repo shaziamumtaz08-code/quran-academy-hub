@@ -20,6 +20,7 @@ export default function AttendanceReports() {
   const [dateTo, setDateTo] = useState(format(new Date(), "yyyy-MM-dd"));
   const [searchName, setSearchName] = useState("");
   const [filterTeacher, setFilterTeacher] = useState("all");
+  const [sendOpen, setSendOpen] = useState(false);
 
   // Teachers for filter
   const { data: teachers } = useQuery({
