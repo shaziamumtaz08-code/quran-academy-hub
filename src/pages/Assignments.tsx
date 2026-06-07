@@ -907,34 +907,30 @@ export default function Assignments() {
     setEffectiveFromDate('');
     setEffectiveToDate('');
     setEditingAssignment(null);
+    setChangeType('payout');
+    setCloseReason('');
     setIsFormOpen(false);
   };
 
   const handleOpenCreate = () => {
-    setEditingAssignment(null);
-    setSelectedTeacher('');
-    setSelectedStudents([]);
-    setSelectedSubject('');
-    setPayoutAmount('');
-    setPayoutType('monthly');
-    setEffectiveFromDate('');
-    setEffectiveToDate('');
+    resetForm();
     setIsFormOpen(true);
   };
 
   const handleEditAssignment = (assignment: Assignment) => {
     setEditingAssignment(assignment);
+    setChangeType('payout');
     setSelectedTeacher(assignment.teacher_id);
     setSelectedSubject(assignment.subject_id || '');
     setSelectedStudents([assignment.student_id]);
     setPayoutAmount(assignment.payout_amount?.toString() || '');
     setPayoutType(assignment.payout_type || 'monthly');
-    // Default Effective From to first day of NEXT month for any new payout change
+    // Default Effective From to first day of NEXT month
     const now = new Date();
     const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    const nextMonthStr = nextMonth.toISOString().split('T')[0];
-    setEffectiveFromDate(nextMonthStr);
-    setEffectiveToDate(assignment.effective_to_date || '');
+    setEffectiveFromDate(nextMonth.toISOString().split('T')[0]);
+    setEffectiveToDate('');
+    setCloseReason('');
     setIsFormOpen(true);
   };
 
@@ -950,25 +946,73 @@ export default function Assignments() {
     );
   };
 
-  const handleSubmit = () => {
+  const runUpdateSave = () => {
+    if (!editingAssignment) return;
+    updateMutation.mutate({
+      id: editingAssignment.id,
+      teacherId: selectedTeacher,
+      subjectId: selectedSubject || undefined,
+    });
+  };
+
+  const handleSubmit = async () => {
+    if (editingAssignment) {
+      // Validate per change type
+      if (changeType === 'payout') {
+        if (!payoutAmount || !effectiveFromDate) {
+          toast({ title: 'Missing fields', description: 'Payout amount and Effective From are required', variant: 'destructive' });
+          return;
+        }
+      }
+      if (changeType === 'info') {
+        if (!selectedTeacher) {
+          toast({ title: 'Missing teacher', description: 'Select a teacher', variant: 'destructive' });
+          return;
+        }
+      }
+      if (changeType === 'close') {
+        if (!effectiveToDate) {
+          toast({ title: 'Missing end date', description: 'Select an End Date', variant: 'destructive' });
+          return;
+        }
+      }
+
+      // Locked salary guard — only relevant for payout/info changes affecting future computation
+      if (changeType === 'payout' || changeType === 'info') {
+        const effDate = (changeType === 'payout' ? effectiveFromDate : (effectiveFromDate || new Date().toISOString().split('T')[0]));
+        const effMonth = effDate.slice(0, 7); // YYYY-MM
+        const { data: locked } = await supabase
+          .from('salary_payouts')
+          .select('id, salary_month, status')
+          .eq('teacher_id', editingAssignment.teacher_id)
+          .in('status', ['paid', 'locked', 'partially_paid'])
+          .gte('salary_month', effMonth);
+        if ((locked || []).length > 0) {
+          setLockedConfirm({
+            count: locked!.length,
+            effectiveDate: effDate,
+            onConfirm: () => { setLockedConfirm(null); runUpdateSave(); },
+          });
+          return;
+        }
+      }
+
+      runUpdateSave();
+      return;
+    }
+
+    // Create path
     if (!selectedTeacher || selectedStudents.length === 0) {
       toast({ title: 'Error', description: 'Select a teacher and at least one student', variant: 'destructive' });
       return;
     }
-    if (editingAssignment) {
-      updateMutation.mutate({
-        id: editingAssignment.id,
-        teacherId: selectedTeacher,
-        subjectId: selectedSubject || undefined,
-      });
-    } else {
-      createMutation.mutate({
-        teacherId: selectedTeacher,
-        studentIds: selectedStudents,
-        subjectId: selectedSubject || undefined,
-      });
-    }
+    createMutation.mutate({
+      teacherId: selectedTeacher,
+      studentIds: selectedStudents,
+      subjectId: selectedSubject || undefined,
+    });
   };
+
 
   const isPending = createMutation.isPending || updateMutation.isPending;
   const isLoading = loadingTeachers || loadingStudents || loadingAssignments;
