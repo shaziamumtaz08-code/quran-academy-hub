@@ -343,52 +343,28 @@ export default function Assignments() {
   // Payout & effective_from changes write to assignment_history (do not mutate parent's effective_from_date).
   // Past paid/locked salary_payouts are NEVER touched.
   const updateMutation = useMutation({
-    mutationFn: async ({ id, teacherId, subjectId, status }: { id: string; teacherId: string; subjectId?: string; status?: AssignmentStatus }) => {
+    mutationFn: async ({ id, teacherId, subjectId }: { id: string; teacherId: string; subjectId?: string }) => {
       if (!editingAssignment) return;
       const prev = editingAssignment;
-      const newPayout = parseFloat(payoutAmount) || 0;
-      const newPayoutType = payoutType;
-      const newEffectiveFrom = effectiveFromDate || null;
 
-      const payoutChanged =
-        Number(prev.payout_amount || 0) !== newPayout ||
-        (prev.payout_type || 'monthly') !== newPayoutType ||
-        (prev.effective_from_date || null) !== newEffectiveFrom;
+      // ─── Branch A: Update Payout (creates new history segment, future only) ───
+      if (changeType === 'payout') {
+        const newPayout = parseFloat(payoutAmount) || 0;
+        const newPayoutType = payoutType;
+        const newEffectiveFrom = effectiveFromDate || null;
+        if (!newEffectiveFrom) throw new Error('Effective From date is required');
 
-      // Safety check: warn if past paid/locked payouts exist for this teacher/student
-      if (payoutChanged) {
-        const { data: protectedPayouts } = await supabase
-          .from('salary_payouts')
-          .select('salary_month, status')
-          .eq('teacher_id', prev.teacher_id)
-          .in('status', ['paid', 'locked', 'partially_paid']);
-        if ((protectedPayouts || []).length > 0) {
-          toast({
-            title: 'Past paid salaries are protected',
-            description: 'Only future months will reflect this change. Historical records remain intact.',
-          });
-        }
-      }
+        // Update parent row payout fields only — DO NOT touch effective_from_date (history anchor)
+        const { error: upErr } = await supabase
+          .from('student_teacher_assignments')
+          .update({
+            payout_amount: newPayout,
+            payout_type: newPayoutType,
+          })
+          .eq('id', id);
+        if (upErr) throw upErr;
 
-      // 1) Update only safe fields on the parent row (teacher/subject + payout for forward computation).
-      //    We DO NOT touch effective_from_date — that is the original start anchor for history queries.
-      const parentUpdate: any = {
-        teacher_id: teacherId,
-        subject_id: subjectId || null,
-        payout_amount: newPayout,
-        payout_type: newPayoutType,
-        effective_to_date: effectiveToDate || null,
-        ...(status && { status }),
-      };
-      const { error: upErr } = await supabase
-        .from('student_teacher_assignments')
-        .update(parentUpdate)
-        .eq('id', id);
-      if (upErr) throw upErr;
-
-      // 2) If payout/effective_from changed, record a history segment so past months stay attributable.
-      if (payoutChanged && newEffectiveFrom) {
-        // Close previous open history row (ended_at = newEffectiveFrom - 1 day)
+        // Close previous open history row
         const closeDate = new Date(newEffectiveFrom);
         closeDate.setDate(closeDate.getDate() - 1);
         await supabase
@@ -397,27 +373,85 @@ export default function Assignments() {
           .eq('assignment_id', id)
           .is('ended_at', null);
 
-        // Insert new history segment for the new payout window
+        // New segment for the new payout window
+        await supabase.from('assignment_history').insert({
+          assignment_id: id,
+          teacher_id: prev.teacher_id,
+          student_id: prev.student_id,
+          subject_id: prev.subject_id,
+          started_at: new Date(newEffectiveFrom).toISOString(),
+          ended_at: null,
+          reason: 'Payout update',
+        });
+        return;
+      }
+
+      // ─── Branch B: Correct Info (teacher/subject change going forward) ───
+      if (changeType === 'info') {
+        const effFrom = effectiveFromDate || new Date().toISOString().split('T')[0];
+        const { error: upErr } = await supabase
+          .from('student_teacher_assignments')
+          .update({
+            teacher_id: teacherId,
+            subject_id: subjectId || null,
+          })
+          .eq('id', id);
+        if (upErr) throw upErr;
+
+        // Close prior open history row, insert new segment under new teacher/subject
+        const closeDate = new Date(effFrom);
+        closeDate.setDate(closeDate.getDate() - 1);
+        await supabase
+          .from('assignment_history')
+          .update({ ended_at: closeDate.toISOString() })
+          .eq('assignment_id', id)
+          .is('ended_at', null);
+
         await supabase.from('assignment_history').insert({
           assignment_id: id,
           teacher_id: teacherId,
           student_id: prev.student_id,
           subject_id: subjectId || null,
-          started_at: new Date(newEffectiveFrom).toISOString(),
+          started_at: new Date(effFrom).toISOString(),
           ended_at: null,
-          reason: 'Payout update',
+          reason: 'Info correction',
         });
+        return;
+      }
+
+      // ─── Branch C: Close Assignment ───
+      if (changeType === 'close') {
+        const endDate = effectiveToDate;
+        if (!endDate) throw new Error('End Date is required');
+
+        const { error: upErr } = await supabase
+          .from('student_teacher_assignments')
+          .update({
+            status: 'completed',
+            effective_to_date: endDate,
+            ...(closeReason ? { status_change_reason: closeReason } : {}),
+          })
+          .eq('id', id);
+        if (upErr) throw upErr;
+
+        await supabase
+          .from('assignment_history')
+          .update({ ended_at: new Date(endDate).toISOString() })
+          .eq('assignment_id', id)
+          .is('ended_at', null);
+        return;
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
-      toast({ title: 'Updated', description: 'Assignment updated. Past records preserved.' });
+      toast({ title: 'Saved', description: 'Change applied. Past records preserved.' });
       handleCancelEdit();
     },
     onError: (error: any) => {
       handleSupabaseError(error, 'save changes');
     },
   });
+
 
   // Update status mutation
   const updateStatusMutation = useMutation({
