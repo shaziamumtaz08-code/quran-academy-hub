@@ -416,6 +416,7 @@ export default function SalaryEngine() {
           missingCount,
           feeStatus: studentFee?.status || 'no_invoice',
           lastPaymentDate: studentFee?.paid_at || null,
+          invoiceId: studentFee?.id || null,
         };
       }).filter((row): row is StudentPayoutRow => row !== null);
 
