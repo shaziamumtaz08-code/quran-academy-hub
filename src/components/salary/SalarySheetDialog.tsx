@@ -59,6 +59,7 @@ interface StudentPayoutRow {
   missingCount: number;
   feeStatus: string;
   lastPaymentDate: string | null;
+  invoiceId: string | null;
 }
 
 interface TeacherProfile {
