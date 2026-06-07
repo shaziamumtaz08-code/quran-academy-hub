@@ -1200,51 +1200,177 @@ export default function Assignments() {
               </DialogTitle>
               <DialogDescription>
                 {editingAssignment
-                  ? 'Update the teacher, subject, or payout details for this assignment.'
+                  ? 'Pick what you want to change. Each action only touches its own data scope.'
                   : 'Assign a teacher to one or more students with payout configuration.'}
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-2">
-              <div className="space-y-2">
-                <Label>Select Teacher *</Label>
-                <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
-                  <SelectTrigger><SelectValue placeholder="Choose a teacher..." /></SelectTrigger>
-                  <SelectContent>
-                    {teachers.map((teacher) => (
-                      <SelectItem key={teacher.id} value={teacher.id}>{teacher.full_name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
 
-              <div className="space-y-2">
-                <Label>Subject</Label>
-                <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-                  <SelectTrigger><SelectValue placeholder="Choose a subject..." /></SelectTrigger>
-                  <SelectContent>
-                    {subjects.map((subject) => (
-                      <SelectItem key={subject.id} value={subject.id}>{subject.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {editingAssignment ? (
-                <div className="space-y-2">
-                  <Label>Student</Label>
-                  <div className="border border-border rounded-lg p-3 bg-muted/30">
-                    <p className="text-sm font-medium">
-                      {editingAssignment.student_name}
-                      {(students.find(s => s.id === editingAssignment.student_id) as any)?.registration_id && (
-                        <span className="ml-2 text-xs text-muted-foreground font-mono">
-                          ({(students.find(s => s.id === editingAssignment.student_id) as any).registration_id})
-                        </span>
+            {editingAssignment ? (
+              <div className="space-y-4 py-2">
+                {/* Step 1 — Change Type segmented selector */}
+                <div className="grid grid-cols-3 gap-1 p-1 rounded-lg bg-muted">
+                  {([
+                    { key: 'payout', label: 'Update Payout' },
+                    { key: 'info', label: 'Correct Info' },
+                    { key: 'close', label: 'Close Assignment' },
+                  ] as { key: ChangeType; label: string }[]).map(opt => (
+                    <button
+                      key={opt.key}
+                      type="button"
+                      onClick={() => setChangeType(opt.key)}
+                      className={cn(
+                        'text-xs font-medium px-3 py-2 rounded-md transition-colors',
+                        changeType === opt.key
+                          ? 'bg-background text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
                       )}
-                    </p>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Student cannot be changed. Use Reassign to transfer.</p>
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
                 </div>
-              ) : (
+
+                {/* Step 2 — Static, non-editable context */}
+                <div className="rounded-md border border-border bg-muted/30 p-3 space-y-1.5">
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <Badge variant="outline" className="font-normal">Teacher: <span className="font-medium ml-1">{editingAssignment.teacher_name}</span></Badge>
+                    <Badge variant="outline" className="font-normal">
+                      Student: <span className="font-medium ml-1">{editingAssignment.student_name}</span>
+                      {(students.find(s => s.id === editingAssignment.student_id) as any)?.registration_id && (
+                        <span className="ml-1 font-mono text-muted-foreground">({(students.find(s => s.id === editingAssignment.student_id) as any).registration_id})</span>
+                      )}
+                    </Badge>
+                    {editingAssignment.subject_name && (
+                      <Badge variant="outline" className="font-normal">Subject: <span className="font-medium ml-1">{editingAssignment.subject_name}</span></Badge>
+                    )}
+                  </div>
+                </div>
+
+                {/* Step 3 — Dynamic fields */}
+                {changeType === 'payout' && (
+                  <div className="space-y-3">
+                    <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900/50 p-3 text-xs text-amber-800 dark:text-amber-200">
+                      This will create a new payout version from the <strong>Effective From</strong> date. Past salary records remain unchanged.
+                    </div>
+                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                      <Banknote className="h-4 w-4" /> Payout
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Payout Amount *</Label>
+                        <Input type="number" placeholder="0" value={payoutAmount} onChange={(e) => setPayoutAmount(e.target.value)} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Payout Type</Label>
+                        <Select value={payoutType} onValueChange={setPayoutType}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="monthly">Monthly</SelectItem>
+                            <SelectItem value="per_class">Per Class</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Effective From *</Label>
+                      <Input
+                        type="date"
+                        value={effectiveFromDate}
+                        onChange={(e) => setEffectiveFromDate(e.target.value)}
+                        min={new Date().toISOString().split('T')[0]}
+                      />
+                      <p className="text-[10px] text-muted-foreground">Past dates disabled. Default: 1st of next month.</p>
+                    </div>
+                  </div>
+                )}
+
+                {changeType === 'info' && (
+                  <div className="space-y-3">
+                    <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+                      Changing teacher triggers a reassignment. All future attendance must be logged under the new teacher. Past attendance records are preserved.
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Teacher *</Label>
+                      <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
+                        <SelectTrigger><SelectValue placeholder="Choose a teacher..." /></SelectTrigger>
+                        <SelectContent>
+                          {teachers.map((t) => (
+                            <SelectItem key={t.id} value={t.id}>{t.full_name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Subject</Label>
+                      <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+                        <SelectTrigger><SelectValue placeholder="Choose a subject..." /></SelectTrigger>
+                        <SelectContent>
+                          {subjects.map((s) => (
+                            <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Effective From</Label>
+                      <Input
+                        type="date"
+                        value={effectiveFromDate}
+                        onChange={(e) => setEffectiveFromDate(e.target.value)}
+                        min={new Date().toISOString().split('T')[0]}
+                      />
+                      <p className="text-[10px] text-muted-foreground">Defaults to today if blank.</p>
+                    </div>
+                  </div>
+                )}
+
+                {changeType === 'close' && (
+                  <div className="space-y-3">
+                    <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+                      This will mark the assignment as <strong>completed</strong>. Student will no longer appear in the active roster.
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">End Date *</Label>
+                      <Input
+                        type="date"
+                        value={effectiveToDate}
+                        onChange={(e) => setEffectiveToDate(e.target.value)}
+                        min={new Date().toISOString().split('T')[0]}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Reason (optional)</Label>
+                      <Textarea value={closeReason} onChange={(e) => setCloseReason(e.target.value)} rows={2} placeholder="e.g. Course completed, family relocated…" />
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4 py-2">
+                <div className="space-y-2">
+                  <Label>Select Teacher *</Label>
+                  <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
+                    <SelectTrigger><SelectValue placeholder="Choose a teacher..." /></SelectTrigger>
+                    <SelectContent>
+                      {teachers.map((teacher) => (
+                        <SelectItem key={teacher.id} value={teacher.id}>{teacher.full_name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Subject</Label>
+                  <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+                    <SelectTrigger><SelectValue placeholder="Choose a subject..." /></SelectTrigger>
+                    <SelectContent>
+                      {subjects.map((subject) => (
+                        <SelectItem key={subject.id} value={subject.id}>{subject.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="space-y-2">
                   <Label>Select Students *</Label>
                   <div className="border border-border rounded-lg max-h-48 overflow-y-auto">
@@ -1273,71 +1399,77 @@ export default function Assignments() {
                     <p className="text-xs text-muted-foreground">{selectedStudents.length} student(s) selected</p>
                   )}
                 </div>
-              )}
 
-              <Separator />
-              {editingAssignment && (
-                <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900/50 p-3 text-xs text-amber-800 dark:text-amber-200">
-                  Changes to payout will apply from the <strong>Effective From</strong> date forward. Past salary records, attendance, and exam history will not be affected.
-                </div>
-              )}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <Banknote className="h-4 w-4" />
-                  Teacher Payout
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Payout Amount</Label>
-                    <Input type="number" placeholder="0" value={payoutAmount} onChange={(e) => setPayoutAmount(e.target.value)} />
+                <Separator />
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                    <Banknote className="h-4 w-4" />
+                    Teacher Payout
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Payout Type</Label>
-                    <Select value={payoutType} onValueChange={setPayoutType}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="monthly">Monthly</SelectItem>
-                        <SelectItem value="per_class">Per Class</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Payout Amount</Label>
+                      <Input type="number" placeholder="0" value={payoutAmount} onChange={(e) => setPayoutAmount(e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Payout Type</Label>
+                      <Select value={payoutType} onValueChange={setPayoutType}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="monthly">Monthly</SelectItem>
+                          <SelectItem value="per_class">Per Class</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Effective From</Label>
-                    <Input
-                      type="date"
-                      value={effectiveFromDate}
-                      onChange={(e) => setEffectiveFromDate(e.target.value)}
-                      min={editingAssignment ? new Date().toISOString().split('T')[0] : undefined}
-                    />
-                    {editingAssignment && (
-                      <p className="text-[10px] text-muted-foreground">Past dates are disabled to protect history.</p>
-                    )}
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Effective To {editingAssignment?.transfer_type === 'substitute' && <span className="text-amber-600">(substitute end)</span>}</Label>
-                    <Input
-                      type="date"
-                      value={effectiveToDate}
-                      onChange={(e) => setEffectiveToDate(e.target.value)}
-                      min={effectiveFromDate || undefined}
-                    />
-                    <p className="text-[10px] text-muted-foreground">Leave blank for ongoing. Edit to extend or cut the assignment.</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Effective From</Label>
+                      <Input type="date" value={effectiveFromDate} onChange={(e) => setEffectiveFromDate(e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Effective To</Label>
+                      <Input type="date" value={effectiveToDate} onChange={(e) => setEffectiveToDate(e.target.value)} min={effectiveFromDate || undefined} />
+                      <p className="text-[10px] text-muted-foreground">Leave blank for ongoing.</p>
+                    </div>
                   </div>
                 </div>
               </div>
+            )}
 
-            </div>
             <DialogFooter>
               <Button variant="outline" onClick={handleCancelEdit}>Cancel</Button>
-              <Button onClick={handleSubmit} disabled={!selectedTeacher || selectedStudents.length === 0 || isPending}>
+              <Button
+                onClick={handleSubmit}
+                disabled={
+                  isPending ||
+                  (!editingAssignment && (!selectedTeacher || selectedStudents.length === 0))
+                }
+              >
                 {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                {editingAssignment ? 'Update Assignment' : 'Save Assignment'}
+                {editingAssignment ? 'Save Change' : 'Save Assignment'}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Locked salary confirm modal */}
+        <Dialog open={!!lockedConfirm} onOpenChange={(o) => { if (!o) setLockedConfirm(null); }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Past salary records are locked</DialogTitle>
+              <DialogDescription>
+                {lockedConfirm?.count} salary record(s) for this teacher are paid or locked. This change will only apply from{' '}
+                <strong>{lockedConfirm?.effectiveDate}</strong> onward. Historical records will remain untouched.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setLockedConfirm(null)}>Cancel</Button>
+              <Button onClick={() => lockedConfirm?.onConfirm()}>Confirm</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
 
         {/* Assignments Table */}
         <Card>
