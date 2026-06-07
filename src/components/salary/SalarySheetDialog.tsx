@@ -484,7 +484,7 @@ export function SalarySheetDialog({
                         )}
                         {!isTeacherView && (
                           <div className="col-span-1 text-right">
-                            <FeeBadge status={s.feeStatus} />
+                            <FeeBadge status={s.feeStatus} invoiceId={s.invoiceId} />
                           </div>
                         )}
                       </div>
