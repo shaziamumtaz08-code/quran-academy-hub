@@ -334,26 +334,79 @@ export default function Assignments() {
     },
   });
 
-  // Update assignment mutation (academic + payout only)
+  // Update assignment mutation — HISTORY-PRESERVING.
+  // Payout & effective_from changes write to assignment_history (do not mutate parent's effective_from_date).
+  // Past paid/locked salary_payouts are NEVER touched.
   const updateMutation = useMutation({
     mutationFn: async ({ id, teacherId, subjectId, status }: { id: string; teacherId: string; subjectId?: string; status?: AssignmentStatus }) => {
-      const { error } = await supabase
+      if (!editingAssignment) return;
+      const prev = editingAssignment;
+      const newPayout = parseFloat(payoutAmount) || 0;
+      const newPayoutType = payoutType;
+      const newEffectiveFrom = effectiveFromDate || null;
+
+      const payoutChanged =
+        Number(prev.payout_amount || 0) !== newPayout ||
+        (prev.payout_type || 'monthly') !== newPayoutType ||
+        (prev.effective_from_date || null) !== newEffectiveFrom;
+
+      // Safety check: warn if past paid/locked payouts exist for this teacher/student
+      if (payoutChanged) {
+        const { data: protectedPayouts } = await supabase
+          .from('salary_payouts')
+          .select('salary_month, status')
+          .eq('teacher_id', prev.teacher_id)
+          .in('status', ['paid', 'locked', 'partially_paid']);
+        if ((protectedPayouts || []).length > 0) {
+          toast({
+            title: 'Past paid salaries are protected',
+            description: 'Only future months will reflect this change. Historical records remain intact.',
+          });
+        }
+      }
+
+      // 1) Update only safe fields on the parent row (teacher/subject + payout for forward computation).
+      //    We DO NOT touch effective_from_date — that is the original start anchor for history queries.
+      const parentUpdate: any = {
+        teacher_id: teacherId,
+        subject_id: subjectId || null,
+        payout_amount: newPayout,
+        payout_type: newPayoutType,
+        effective_to_date: effectiveToDate || null,
+        ...(status && { status }),
+      };
+      const { error: upErr } = await supabase
         .from('student_teacher_assignments')
-        .update({
-          teacher_id: teacherId,
-          subject_id: subjectId || null,
-          payout_amount: parseFloat(payoutAmount) || 0,
-          payout_type: payoutType,
-          effective_from_date: effectiveFromDate || null,
-          effective_to_date: effectiveToDate || null,
-          ...(status && { status }),
-        })
+        .update(parentUpdate)
         .eq('id', id);
-      if (error) throw error;
+      if (upErr) throw upErr;
+
+      // 2) If payout/effective_from changed, record a history segment so past months stay attributable.
+      if (payoutChanged && newEffectiveFrom) {
+        // Close previous open history row (ended_at = newEffectiveFrom - 1 day)
+        const closeDate = new Date(newEffectiveFrom);
+        closeDate.setDate(closeDate.getDate() - 1);
+        await supabase
+          .from('assignment_history')
+          .update({ ended_at: closeDate.toISOString() })
+          .eq('assignment_id', id)
+          .is('ended_at', null);
+
+        // Insert new history segment for the new payout window
+        await supabase.from('assignment_history').insert({
+          assignment_id: id,
+          teacher_id: teacherId,
+          student_id: prev.student_id,
+          subject_id: subjectId || null,
+          started_at: new Date(newEffectiveFrom).toISOString(),
+          ended_at: null,
+          reason: 'Payout update',
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['student-teacher-assignments'] });
-      toast({ title: 'Updated', description: 'Assignment updated successfully' });
+      toast({ title: 'Updated', description: 'Assignment updated. Past records preserved.' });
       handleCancelEdit();
     },
     onError: (error: any) => {
