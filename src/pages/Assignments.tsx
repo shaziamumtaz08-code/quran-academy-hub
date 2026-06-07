@@ -116,6 +116,11 @@ export default function Assignments() {
   // Billing plan detail dialog
   const [billingDetailAssignmentId, setBillingDetailAssignmentId] = useState<string | null>(null);
   const [detailAssignmentId, setDetailAssignmentId] = useState<string | null>(null);
+  // Edit modal — change type pattern
+  type ChangeType = 'payout' | 'info' | 'close';
+  const [changeType, setChangeType] = useState<ChangeType>('payout');
+  const [closeReason, setCloseReason] = useState('');
+  const [lockedConfirm, setLockedConfirm] = useState<{ count: number; effectiveDate: string; onConfirm: () => void } | null>(null);
 
   // Fetch teachers
   const { data: teachers = [], isLoading: loadingTeachers } = useQuery({
