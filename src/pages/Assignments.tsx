@@ -890,7 +890,11 @@ export default function Assignments() {
     setSelectedStudents([assignment.student_id]);
     setPayoutAmount(assignment.payout_amount?.toString() || '');
     setPayoutType(assignment.payout_type || 'monthly');
-    setEffectiveFromDate(assignment.effective_from_date || '');
+    // Default Effective From to first day of NEXT month for any new payout change
+    const now = new Date();
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const nextMonthStr = nextMonth.toISOString().split('T')[0];
+    setEffectiveFromDate(nextMonthStr);
     setEffectiveToDate(assignment.effective_to_date || '');
     setIsFormOpen(true);
   };
