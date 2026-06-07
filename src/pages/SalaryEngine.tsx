@@ -263,7 +263,7 @@ export default function SalaryEngine() {
     queryFn: async () => {
       const { data } = await supabase
         .from('fee_invoices')
-        .select('student_id, status, paid_at')
+        .select('id, student_id, status, paid_at')
         .eq('billing_month', salaryMonth);
       return data || [];
     },
@@ -416,6 +416,7 @@ export default function SalaryEngine() {
           missingCount,
           feeStatus: studentFee?.status || 'no_invoice',
           lastPaymentDate: studentFee?.paid_at || null,
+          invoiceId: studentFee?.id || null,
         };
       }).filter((row): row is StudentPayoutRow => row !== null);
 

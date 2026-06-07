@@ -59,6 +59,7 @@ interface StudentPayoutRow {
   missingCount: number;
   feeStatus: string;
   lastPaymentDate: string | null;
+  invoiceId: string | null;
 }
 
 interface TeacherProfile {
@@ -483,7 +484,7 @@ export function SalarySheetDialog({
                         )}
                         {!isTeacherView && (
                           <div className="col-span-1 text-right">
-                            <FeeBadge status={s.feeStatus} />
+                            <FeeBadge status={s.feeStatus} invoiceId={s.invoiceId} />
                           </div>
                         )}
                       </div>
@@ -498,7 +499,7 @@ export function SalarySheetDialog({
                               <Badge variant="outline" className="text-[9px] ml-1.5 capitalize">{s.payoutType}</Badge>
                             </p>
                           </div>
-                          {!isTeacherView && <FeeBadge status={s.feeStatus} />}
+                          {!isTeacherView && <FeeBadge status={s.feeStatus} invoiceId={s.invoiceId} />}
                         </div>
                         <div className="grid grid-cols-3 gap-2 text-xs">
                           <div>
@@ -973,9 +974,25 @@ export function SalarySheetDialog({
   );
 }
 
-function FeeBadge({ status }: { status: string }) {
+function FeeBadge({ status, invoiceId }: { status: string; invoiceId?: string | null }) {
+  const canOpen = !!invoiceId && (status === "paid" || status === "partially_paid");
+  const openProof = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (canOpen) window.open(`/finance/print/invoice/${invoiceId}?mode=receipt`, "_blank");
+  };
   if (status === "paid") {
-    return <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]"><CheckCircle className="h-3 w-3 mr-0.5" />PAID</Badge>;
+    return (
+      <Badge
+        onClick={canOpen ? openProof : undefined}
+        title={canOpen ? "View payment proof" : undefined}
+        className={cn(
+          "bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]",
+          canOpen && "cursor-pointer hover:bg-emerald-100 hover:underline print:hidden:bg-emerald-50"
+        )}
+      >
+        <CheckCircle className="h-3 w-3 mr-0.5" />PAID
+      </Badge>
+    );
   }
   if (status === "overdue") {
     return <Badge className="bg-red-50 text-red-700 border-red-200 text-[10px]"><XCircle className="h-3 w-3 mr-0.5" />OVERDUE</Badge>;
