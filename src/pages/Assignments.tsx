@@ -1146,37 +1146,58 @@ export default function Assignments() {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label>Select Students * {editingAssignment && <span className="text-xs text-muted-foreground">(Cannot change student when editing)</span>}</Label>
-                <div className={`border border-border rounded-lg max-h-48 overflow-y-auto ${editingAssignment ? 'opacity-60 pointer-events-none' : ''}`}>
-                  {students.length === 0 ? (
-                    <p className="p-4 text-sm text-muted-foreground text-center">No students found</p>
-                  ) : (
-                    <div className="p-2 space-y-1">
-                      {students.map((student) => (
-                        <label key={student.id} className="flex items-center gap-3 p-2 rounded hover:bg-secondary/50 cursor-pointer">
-                          <Checkbox
-                            checked={selectedStudents.includes(student.id)}
-                            onCheckedChange={() => !editingAssignment && handleStudentToggle(student.id)}
-                            disabled={!!editingAssignment}
-                          />
-                          <span className="text-sm">
-                            {student.full_name}
-                            {(student as any).registration_id && (
-                              <span className="ml-2 text-xs text-muted-foreground font-mono">({(student as any).registration_id})</span>
-                            )}
-                          </span>
-                        </label>
-                      ))}
-                    </div>
+              {editingAssignment ? (
+                <div className="space-y-2">
+                  <Label>Student</Label>
+                  <div className="border border-border rounded-lg p-3 bg-muted/30">
+                    <p className="text-sm font-medium">
+                      {editingAssignment.student_name}
+                      {(students.find(s => s.id === editingAssignment.student_id) as any)?.registration_id && (
+                        <span className="ml-2 text-xs text-muted-foreground font-mono">
+                          ({(students.find(s => s.id === editingAssignment.student_id) as any).registration_id})
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Student cannot be changed. Use Reassign to transfer.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label>Select Students *</Label>
+                  <div className="border border-border rounded-lg max-h-48 overflow-y-auto">
+                    {students.length === 0 ? (
+                      <p className="p-4 text-sm text-muted-foreground text-center">No students found</p>
+                    ) : (
+                      <div className="p-2 space-y-1">
+                        {students.map((student) => (
+                          <label key={student.id} className="flex items-center gap-3 p-2 rounded hover:bg-secondary/50 cursor-pointer">
+                            <Checkbox
+                              checked={selectedStudents.includes(student.id)}
+                              onCheckedChange={() => handleStudentToggle(student.id)}
+                            />
+                            <span className="text-sm">
+                              {student.full_name}
+                              {(student as any).registration_id && (
+                                <span className="ml-2 text-xs text-muted-foreground font-mono">({(student as any).registration_id})</span>
+                              )}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {selectedStudents.length > 0 && (
+                    <p className="text-xs text-muted-foreground">{selectedStudents.length} student(s) selected</p>
                   )}
                 </div>
-                {selectedStudents.length > 0 && (
-                  <p className="text-xs text-muted-foreground">{selectedStudents.length} student(s) selected</p>
-                )}
-              </div>
+              )}
 
               <Separator />
+              {editingAssignment && (
+                <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900/50 p-3 text-xs text-amber-800 dark:text-amber-200">
+                  Changes to payout will apply from the <strong>Effective From</strong> date forward. Past salary records, attendance, and exam history will not be affected.
+                </div>
+              )}
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                   <Banknote className="h-4 w-4" />
@@ -1201,7 +1222,15 @@ export default function Assignments() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs">Effective From</Label>
-                    <Input type="date" value={effectiveFromDate} onChange={(e) => setEffectiveFromDate(e.target.value)} />
+                    <Input
+                      type="date"
+                      value={effectiveFromDate}
+                      onChange={(e) => setEffectiveFromDate(e.target.value)}
+                      min={editingAssignment ? new Date().toISOString().split('T')[0] : undefined}
+                    />
+                    {editingAssignment && (
+                      <p className="text-[10px] text-muted-foreground">Past dates are disabled to protect history.</p>
+                    )}
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Effective To {editingAssignment?.transfer_type === 'substitute' && <span className="text-amber-600">(substitute end)</span>}</Label>
@@ -1215,6 +1244,7 @@ export default function Assignments() {
                   </div>
                 </div>
               </div>
+
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={handleCancelEdit}>Cancel</Button>
