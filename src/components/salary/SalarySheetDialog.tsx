@@ -499,7 +499,7 @@ export function SalarySheetDialog({
                               <Badge variant="outline" className="text-[9px] ml-1.5 capitalize">{s.payoutType}</Badge>
                             </p>
                           </div>
-                          {!isTeacherView && <FeeBadge status={s.feeStatus} />}
+                          {!isTeacherView && <FeeBadge status={s.feeStatus} invoiceId={s.invoiceId} />}
                         </div>
                         <div className="grid grid-cols-3 gap-2 text-xs">
                           <div>
