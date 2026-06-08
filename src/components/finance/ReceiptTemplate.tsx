@@ -131,13 +131,21 @@ export function ReceiptTemplate({
           <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold mb-2">Proof of Payment</p>
           <div className="flex flex-wrap gap-3">
             {transactions.filter(tx => tx.receipt_url).map((tx, idx) => (
-              <div key={idx} className="border border-gray-200 rounded-lg p-2">
+              <a
+                key={idx}
+                href={tx.receipt_url!}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="border border-gray-200 rounded-lg p-2 inline-block hover:border-emerald-400 transition-colors print:pointer-events-none"
+                title="Click to open full-size proof"
+              >
                 {/\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(tx.receipt_url!) ? (
                   <img src={tx.receipt_url!} alt="Receipt proof" className="max-h-32 rounded" />
                 ) : (
                   <AttachmentPreview url={tx.receipt_url} />
                 )}
-              </div>
+                <span className="block text-[10px] text-emerald-600 font-semibold mt-1 text-center print:hidden">Click to view full size →</span>
+              </a>
             ))}
           </div>
         </div>
