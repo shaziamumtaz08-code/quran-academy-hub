@@ -264,7 +264,7 @@ export default function SalaryEngine() {
     queryFn: async () => {
       const { data } = await supabase
         .from('fee_invoices')
-        .select('id, student_id, status, paid_at')
+        .select('id, student_id, assignment_id, status, paid_at')
         .eq('billing_month', salaryMonth);
       return data || [];
     },
