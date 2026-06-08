@@ -394,7 +394,12 @@ export default function SalaryEngine() {
           calculatedAmount = payoutAmount * presentCount;
         }
 
-        const studentFee = feeInvoices.find((f: any) => f.student_id === assign.student_id);
+        // Prefer invoice tied to this assignment; fallback to any paid invoice for the student; else first invoice
+        const studentInvoices = feeInvoices.filter((f: any) => f.student_id === assign.student_id);
+        const studentFee =
+          studentInvoices.find((f: any) => f.assignment_id === assign.id) ||
+          studentInvoices.find((f: any) => f.status === 'paid' || f.status === 'partially_paid') ||
+          studentInvoices[0];
 
         return {
           studentId: assign.student_id,
