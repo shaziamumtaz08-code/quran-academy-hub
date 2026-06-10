@@ -88,10 +88,15 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Verify PIN
-    const pinHash = await hashPin(pin);
+    // Verify PIN. Support legacy unsalted SHA-256 hashes and auto-upgrade
+    // them to a salted hash on the next successful login.
+    const salt = (cred as { pin_salt?: string | null }).pin_salt ?? null;
+    const expectedHash = salt
+      ? await hashPin(pin, salt)
+      : await sha256Hex(pin); // legacy fallback
+    const pinValid = expectedHash === cred.pin_hash;
 
-    if (pinHash !== cred.pin_hash) {
+    if (!pinValid) {
       const newAttempts = (cred.failed_attempts || 0) + 1;
       const updateData: Record<string, unknown> = {
         failed_attempts: newAttempts,
