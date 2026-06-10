@@ -126,10 +126,20 @@ Deno.serve(async (req) => {
       );
     }
 
-    // PIN correct — reset failed attempts
+    // PIN correct — reset failed attempts. If the stored hash is legacy
+    // (no salt), upgrade it transparently to a salted hash now.
+    const resetUpdate: Record<string, unknown> = {
+      failed_attempts: 0,
+      locked_until: null,
+    };
+    if (!salt) {
+      const newSalt = generateSalt();
+      resetUpdate.pin_salt = newSalt;
+      resetUpdate.pin_hash = await hashPin(pin, newSalt);
+    }
     await supabase
       .from("minor_credentials")
-      .update({ failed_attempts: 0, locked_until: null })
+      .update(resetUpdate)
       .eq("id", cred.id);
 
     // Get profile info
