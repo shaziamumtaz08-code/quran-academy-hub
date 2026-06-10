@@ -2092,6 +2092,12 @@ export default function Assignments() {
         </Dialog>
 
         <AssignmentDetailDialog assignmentId={detailAssignmentId} onClose={() => setDetailAssignmentId(null)} />
+
+        <AssignmentHistoryDrawer
+          assignmentId={historyAssignmentId}
+          open={!!historyAssignmentId}
+          onOpenChange={(o) => { if (!o) setHistoryAssignmentId(null); }}
+        />
       </div>
     </DashboardLayout>
   );
