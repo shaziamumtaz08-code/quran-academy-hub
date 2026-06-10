@@ -9,12 +9,22 @@ const corsHeaders = {
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
 
-async function hashPin(pin: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(pin);
+async function sha256Hex(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function generateSalt(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function hashPin(pin: string, salt: string): Promise<string> {
+  return sha256Hex(`${salt}:${pin}`);
 }
 
 Deno.serve(async (req) => {
