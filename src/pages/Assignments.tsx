@@ -1782,17 +1782,45 @@ export default function Assignments() {
                           </Button>
                         </TableCell>
                         <TableCell className="text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setDetailAssignmentId(assignment.id); }} title="View details">
-                              <Eye className="h-4 w-4 text-primary" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleEditAssignment(assignment); }}>
-                              <Pencil className="h-4 w-4 text-muted-foreground" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(assignment.id); }} disabled={deleteMutation.isPending}>
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
+                          {(() => {
+                            const isClosed = assignment.status === 'completed' || assignment.status === 'left';
+                            const lockedMonth = lockedTeacherMonth[assignment.teacher_id];
+                            return (
+                              <div className="flex items-center justify-center gap-1">
+                                {lockedMonth && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Lock className="h-3.5 w-3.5 text-amber-600" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>Salary locked through {lockedMonth}</TooltipContent>
+                                  </Tooltip>
+                                )}
+                                <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setDetailAssignmentId(assignment.id); }} title="View details">
+                                  <Eye className="h-4 w-4 text-primary" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => { e.stopPropagation(); setHistoryAssignmentId(assignment.id); }}
+                                  title="View history"
+                                >
+                                  <HistoryIcon className="h-4 w-4 text-muted-foreground" />
+                                </Button>
+                                {isClosed ? (
+                                  <Badge variant="outline" className="text-[10px] font-normal">
+                                    Closed {assignment.effective_to_date ? `on ${formatDisplayDate(assignment.effective_to_date)}` : ''}
+                                  </Badge>
+                                ) : (
+                                  <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleEditAssignment(assignment); }} title="Edit">
+                                    <Pencil className="h-4 w-4 text-muted-foreground" />
+                                  </Button>
+                                )}
+                                <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(assignment.id); }} disabled={deleteMutation.isPending} title="Delete">
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </div>
+                            );
+                          })()}
                         </TableCell>
                       </TableRow>
                     );
