@@ -1014,16 +1014,9 @@ export default function Assignments() {
 
   const handleSubmit = async () => {
     if (editingAssignment) {
-      // Validate per change type
       if (changeType === 'payout') {
         if (!payoutAmount || !effectiveFromDate) {
           toast({ title: 'Missing fields', description: 'Payout amount and Effective From are required', variant: 'destructive' });
-          return;
-        }
-      }
-      if (changeType === 'info') {
-        if (!selectedTeacher) {
-          toast({ title: 'Missing teacher', description: 'Select a teacher', variant: 'destructive' });
           return;
         }
       }
@@ -1033,27 +1026,6 @@ export default function Assignments() {
           return;
         }
       }
-
-      // Locked salary guard — only relevant for payout/info changes affecting future computation
-      if (changeType === 'payout' || changeType === 'info') {
-        const effDate = (changeType === 'payout' ? effectiveFromDate : (effectiveFromDate || new Date().toISOString().split('T')[0]));
-        const effMonth = effDate.slice(0, 7); // YYYY-MM
-        const { data: locked } = await supabase
-          .from('salary_payouts')
-          .select('id, salary_month, status')
-          .eq('teacher_id', editingAssignment.teacher_id)
-          .in('status', ['paid', 'locked', 'partially_paid'])
-          .gte('salary_month', effMonth);
-        if ((locked || []).length > 0) {
-          setLockedConfirm({
-            count: locked!.length,
-            effectiveDate: effDate,
-            onConfirm: () => { setLockedConfirm(null); runUpdateSave(); },
-          });
-          return;
-        }
-      }
-
       runUpdateSave();
       return;
     }
