@@ -365,12 +365,31 @@ export default function Assignments() {
         const newEffectiveFrom = effectiveFromDate || null;
         if (!newEffectiveFrom) throw new Error('Effective From date is required');
 
-        // Update parent row payout fields only — DO NOT touch effective_from_date (history anchor)
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (newEffectiveFrom < todayStr) {
+          throw new Error('Effective From cannot be in the past — past salary data is locked.');
+        }
+
+        // Hard-block if any paid/locked salary records exist for this teacher from the new month onward
+        const monthKey = newEffectiveFrom.slice(0, 7); // YYYY-MM
+        const { data: blocking } = await supabase
+          .from('salary_payouts')
+          .select('salary_month, status')
+          .eq('teacher_id', prev.teacher_id)
+          .in('status', ['confirmed', 'paid', 'locked', 'partially_paid'])
+          .gte('salary_month', monthKey)
+          .order('salary_month', { ascending: true })
+          .limit(1);
+        if (blocking && blocking.length > 0) {
+          throw new Error(`Cannot backdate — paid salary records exist from ${blocking[0].salary_month}. Choose a later date.`);
+        }
+
         const { error: upErr } = await supabase
           .from('student_teacher_assignments')
           .update({
             payout_amount: newPayout,
             payout_type: newPayoutType,
+            effective_from_date: newEffectiveFrom,
           })
           .eq('id', id);
         if (upErr) throw upErr;
@@ -384,7 +403,6 @@ export default function Assignments() {
           .eq('assignment_id', id)
           .is('ended_at', null);
 
-        // New segment for the new payout window
         await supabase.from('assignment_history').insert({
           assignment_id: id,
           teacher_id: prev.teacher_id,
@@ -392,40 +410,33 @@ export default function Assignments() {
           subject_id: prev.subject_id,
           started_at: new Date(newEffectiveFrom).toISOString(),
           ended_at: null,
-          reason: 'Payout update',
+          reason: 'Payout updated',
         });
         return;
       }
 
-      // ─── Branch B: Correct Info (teacher/subject change going forward) ───
+      // ─── Branch B: Correct Information (subject + flags + notes only, no dates) ───
       if (changeType === 'info') {
-        const effFrom = effectiveFromDate || new Date().toISOString().split('T')[0];
         const { error: upErr } = await supabase
           .from('student_teacher_assignments')
           .update({
-            teacher_id: teacherId,
             subject_id: subjectId || null,
+            requires_schedule: infoRequiresSchedule,
+            requires_planning: infoRequiresPlanning,
+            requires_attendance: infoRequiresAttendance,
+            ...(infoNotes ? { status_change_reason: infoNotes } : {}),
           })
           .eq('id', id);
         if (upErr) throw upErr;
 
-        // Close prior open history row, insert new segment under new teacher/subject
-        const closeDate = new Date(effFrom);
-        closeDate.setDate(closeDate.getDate() - 1);
-        await supabase
-          .from('assignment_history')
-          .update({ ended_at: closeDate.toISOString() })
-          .eq('assignment_id', id)
-          .is('ended_at', null);
-
         await supabase.from('assignment_history').insert({
           assignment_id: id,
-          teacher_id: teacherId,
+          teacher_id: prev.teacher_id,
           student_id: prev.student_id,
           subject_id: subjectId || null,
-          started_at: new Date(effFrom).toISOString(),
+          started_at: new Date().toISOString(),
           ended_at: null,
-          reason: 'Info correction',
+          reason: infoNotes ? `Info corrected — ${infoNotes}` : 'Info corrected',
         });
         return;
       }
@@ -434,22 +445,45 @@ export default function Assignments() {
       if (changeType === 'close') {
         const endDate = effectiveToDate;
         if (!endDate) throw new Error('End Date is required');
+        const todayStr = new Date().toISOString().split('T')[0];
 
         const { error: upErr } = await supabase
           .from('student_teacher_assignments')
           .update({
-            status: 'completed',
+            status: closeStatus,
             effective_to_date: endDate,
+            status_effective_date: todayStr,
             ...(closeReason ? { status_change_reason: closeReason } : {}),
           })
           .eq('id', id);
         if (upErr) throw upErr;
+
+        // Optionally void downstream pending invoices
+        if (voidPendingInvoices) {
+          const endMonth = endDate.slice(0, 7);
+          await supabase
+            .from('fee_invoices')
+            .update({ status: 'voided' })
+            .eq('assignment_id', id)
+            .eq('status', 'pending')
+            .gt('billing_month', endMonth);
+        }
 
         await supabase
           .from('assignment_history')
           .update({ ended_at: new Date(endDate).toISOString() })
           .eq('assignment_id', id)
           .is('ended_at', null);
+
+        await supabase.from('assignment_history').insert({
+          assignment_id: id,
+          teacher_id: prev.teacher_id,
+          student_id: prev.student_id,
+          subject_id: prev.subject_id,
+          started_at: new Date(endDate).toISOString(),
+          ended_at: new Date(endDate).toISOString(),
+          reason: closeReason ? `Assignment closed — ${closeReason}` : 'Assignment closed',
+        });
         return;
       }
     },
