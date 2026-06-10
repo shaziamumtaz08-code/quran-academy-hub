@@ -38,11 +38,28 @@ export function AssignmentHistoryDrawer({ assignmentId, open, onOpenChange }: Pr
     queryFn: async () => {
       const { data, error } = await supabase
         .from('assignment_history')
-        .select('id, started_at, ended_at, reason, teacher_id, subject_id, teacher:profiles!assignment_history_teacher_id_fkey(full_name), subject:subjects(name)')
+        .select('id, started_at, ended_at, reason, teacher_id, subject_id')
         .eq('assignment_id', assignmentId!)
         .order('started_at', { ascending: false });
       if (error) throw error;
-      return (data || []) as unknown as HistoryRow[];
+      const base = (data || []) as HistoryRow[];
+      const teacherIds = Array.from(new Set(base.map(r => r.teacher_id).filter(Boolean)));
+      const subjectIds = Array.from(new Set(base.map(r => r.subject_id).filter(Boolean) as string[]));
+      const [teachersRes, subjectsRes] = await Promise.all([
+        teacherIds.length
+          ? supabase.from('profiles').select('id, full_name').in('id', teacherIds)
+          : Promise.resolve({ data: [] as { id: string; full_name: string }[] }),
+        subjectIds.length
+          ? supabase.from('subjects').select('id, name').in('id', subjectIds)
+          : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+      ]);
+      const tMap = new Map((teachersRes.data || []).map(t => [t.id, t.full_name]));
+      const sMap = new Map((subjectsRes.data || []).map(s => [s.id, s.name]));
+      return base.map(r => ({
+        ...r,
+        teacher: r.teacher_id ? { full_name: tMap.get(r.teacher_id) || '—' } : null,
+        subject: r.subject_id ? { name: sMap.get(r.subject_id) || '—' } : null,
+      }));
     },
   });
 
