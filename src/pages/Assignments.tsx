@@ -11,7 +11,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Users, GraduationCap, Trash2, Loader2, UserPlus, BookOpen, Pencil, Upload, ArrowRightLeft, Banknote, Eye, Download, Plus, ArrowUp, ArrowDown, ArrowUpDown, X } from 'lucide-react';
+import { Users, GraduationCap, Trash2, Loader2, UserPlus, BookOpen, Pencil, Upload, ArrowRightLeft, Banknote, Eye, Download, Plus, ArrowUp, ArrowDown, ArrowUpDown, X, DollarSign, XCircle, History as HistoryIcon, Lock, AlertTriangle } from 'lucide-react';
+import { AssignmentHistoryDrawer } from '@/components/assignments/AssignmentHistoryDrawer';
 import { TableToolbar } from '@/components/ui/table-toolbar';
 import {
   Dialog,
@@ -121,6 +122,16 @@ export default function Assignments() {
   const [changeType, setChangeType] = useState<ChangeType>('payout');
   const [closeReason, setCloseReason] = useState('');
   const [lockedConfirm, setLockedConfirm] = useState<{ count: number; effectiveDate: string; onConfirm: () => void } | null>(null);
+  // Info-correction fields
+  const [infoRequiresSchedule, setInfoRequiresSchedule] = useState(true);
+  const [infoRequiresPlanning, setInfoRequiresPlanning] = useState(true);
+  const [infoRequiresAttendance, setInfoRequiresAttendance] = useState(true);
+  const [infoNotes, setInfoNotes] = useState('');
+  // Close fields
+  const [closeStatus, setCloseStatus] = useState<'completed' | 'left'>('completed');
+  const [voidPendingInvoices, setVoidPendingInvoices] = useState(false);
+  // History drawer
+  const [historyAssignmentId, setHistoryAssignmentId] = useState<string | null>(null);
 
   // Fetch teachers
   const { data: teachers = [], isLoading: loadingTeachers } = useQuery({
@@ -285,6 +296,44 @@ export default function Assignments() {
     return map;
   }, [linkedPlans]);
 
+  // Locked salary months per teacher (drives the lock icon on assignment rows)
+  const { data: lockedSalaryRows = [] } = useQuery({
+    queryKey: ['locked-salary-payouts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('salary_payouts')
+        .select('teacher_id, salary_month')
+        .in('status', ['paid', 'locked']);
+      if (error) throw error;
+      return (data || []) as { teacher_id: string; salary_month: string }[];
+    },
+  });
+  const lockedTeacherMonth = useMemo(() => {
+    const map: Record<string, string> = {};
+    lockedSalaryRows.forEach(r => {
+      const cur = map[r.teacher_id];
+      if (!cur || r.salary_month > cur) map[r.teacher_id] = r.salary_month;
+    });
+    return map;
+  }, [lockedSalaryRows]);
+
+  // Pending invoices that would be affected by the chosen close end date
+  const { data: pendingInvoicesAfterClose = [] } = useQuery({
+    queryKey: ['pending-invoices-after-close', editingAssignment?.id, effectiveToDate],
+    enabled: !!editingAssignment && changeType === 'close' && !!effectiveToDate,
+    queryFn: async () => {
+      const endMonth = effectiveToDate.slice(0, 7);
+      const { data, error } = await supabase
+        .from('fee_invoices')
+        .select('id, billing_month')
+        .eq('assignment_id', editingAssignment!.id)
+        .eq('status', 'pending')
+        .gt('billing_month', endMonth);
+      if (error) throw error;
+      return (data || []) as { id: string; billing_month: string }[];
+    },
+  });
+
   // Create assignments mutation (academic only - no billing)
   const createMutation = useMutation({
     mutationFn: async ({ teacherId, studentIds, subjectId }: { teacherId: string; studentIds: string[]; subjectId?: string }) => {
@@ -354,12 +403,31 @@ export default function Assignments() {
         const newEffectiveFrom = effectiveFromDate || null;
         if (!newEffectiveFrom) throw new Error('Effective From date is required');
 
-        // Update parent row payout fields only — DO NOT touch effective_from_date (history anchor)
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (newEffectiveFrom < todayStr) {
+          throw new Error('Effective From cannot be in the past — past salary data is locked.');
+        }
+
+        // Hard-block if any paid/locked salary records exist for this teacher from the new month onward
+        const monthKey = newEffectiveFrom.slice(0, 7); // YYYY-MM
+        const { data: blocking } = await supabase
+          .from('salary_payouts')
+          .select('salary_month, status')
+          .eq('teacher_id', prev.teacher_id)
+          .in('status', ['confirmed', 'paid', 'locked', 'partially_paid'])
+          .gte('salary_month', monthKey)
+          .order('salary_month', { ascending: true })
+          .limit(1);
+        if (blocking && blocking.length > 0) {
+          throw new Error(`Cannot backdate — paid salary records exist from ${blocking[0].salary_month}. Choose a later date.`);
+        }
+
         const { error: upErr } = await supabase
           .from('student_teacher_assignments')
           .update({
             payout_amount: newPayout,
             payout_type: newPayoutType,
+            effective_from_date: newEffectiveFrom,
           })
           .eq('id', id);
         if (upErr) throw upErr;
@@ -373,7 +441,6 @@ export default function Assignments() {
           .eq('assignment_id', id)
           .is('ended_at', null);
 
-        // New segment for the new payout window
         await supabase.from('assignment_history').insert({
           assignment_id: id,
           teacher_id: prev.teacher_id,
@@ -381,40 +448,33 @@ export default function Assignments() {
           subject_id: prev.subject_id,
           started_at: new Date(newEffectiveFrom).toISOString(),
           ended_at: null,
-          reason: 'Payout update',
+          reason: 'Payout updated',
         });
         return;
       }
 
-      // ─── Branch B: Correct Info (teacher/subject change going forward) ───
+      // ─── Branch B: Correct Information (subject + flags + notes only, no dates) ───
       if (changeType === 'info') {
-        const effFrom = effectiveFromDate || new Date().toISOString().split('T')[0];
         const { error: upErr } = await supabase
           .from('student_teacher_assignments')
           .update({
-            teacher_id: teacherId,
             subject_id: subjectId || null,
+            requires_schedule: infoRequiresSchedule,
+            requires_planning: infoRequiresPlanning,
+            requires_attendance: infoRequiresAttendance,
+            ...(infoNotes ? { status_change_reason: infoNotes } : {}),
           })
           .eq('id', id);
         if (upErr) throw upErr;
 
-        // Close prior open history row, insert new segment under new teacher/subject
-        const closeDate = new Date(effFrom);
-        closeDate.setDate(closeDate.getDate() - 1);
-        await supabase
-          .from('assignment_history')
-          .update({ ended_at: closeDate.toISOString() })
-          .eq('assignment_id', id)
-          .is('ended_at', null);
-
         await supabase.from('assignment_history').insert({
           assignment_id: id,
-          teacher_id: teacherId,
+          teacher_id: prev.teacher_id,
           student_id: prev.student_id,
           subject_id: subjectId || null,
-          started_at: new Date(effFrom).toISOString(),
+          started_at: new Date().toISOString(),
           ended_at: null,
-          reason: 'Info correction',
+          reason: infoNotes ? `Info corrected — ${infoNotes}` : 'Info corrected',
         });
         return;
       }
@@ -423,22 +483,45 @@ export default function Assignments() {
       if (changeType === 'close') {
         const endDate = effectiveToDate;
         if (!endDate) throw new Error('End Date is required');
+        const todayStr = new Date().toISOString().split('T')[0];
 
         const { error: upErr } = await supabase
           .from('student_teacher_assignments')
           .update({
-            status: 'completed',
+            status: closeStatus,
             effective_to_date: endDate,
+            status_effective_date: todayStr,
             ...(closeReason ? { status_change_reason: closeReason } : {}),
           })
           .eq('id', id);
         if (upErr) throw upErr;
+
+        // Optionally void downstream pending invoices
+        if (voidPendingInvoices) {
+          const endMonth = endDate.slice(0, 7);
+          await supabase
+            .from('fee_invoices')
+            .update({ status: 'voided' })
+            .eq('assignment_id', id)
+            .eq('status', 'pending')
+            .gt('billing_month', endMonth);
+        }
 
         await supabase
           .from('assignment_history')
           .update({ ended_at: new Date(endDate).toISOString() })
           .eq('assignment_id', id)
           .is('ended_at', null);
+
+        await supabase.from('assignment_history').insert({
+          assignment_id: id,
+          teacher_id: prev.teacher_id,
+          student_id: prev.student_id,
+          subject_id: prev.subject_id,
+          started_at: new Date(endDate).toISOString(),
+          ended_at: new Date(endDate).toISOString(),
+          reason: closeReason ? `Assignment closed — ${closeReason}` : 'Assignment closed',
+        });
         return;
       }
     },
@@ -909,6 +992,12 @@ export default function Assignments() {
     setEditingAssignment(null);
     setChangeType('payout');
     setCloseReason('');
+    setInfoRequiresSchedule(true);
+    setInfoRequiresPlanning(true);
+    setInfoRequiresAttendance(true);
+    setInfoNotes('');
+    setCloseStatus('completed');
+    setVoidPendingInvoices(false);
     setIsFormOpen(false);
   };
 
@@ -931,6 +1020,12 @@ export default function Assignments() {
     setEffectiveFromDate(nextMonth.toISOString().split('T')[0]);
     setEffectiveToDate('');
     setCloseReason('');
+    setInfoRequiresSchedule(assignment.requires_schedule);
+    setInfoRequiresPlanning(assignment.requires_planning);
+    setInfoRequiresAttendance(assignment.requires_attendance);
+    setInfoNotes('');
+    setCloseStatus('completed');
+    setVoidPendingInvoices(false);
     setIsFormOpen(true);
   };
 
@@ -957,16 +1052,9 @@ export default function Assignments() {
 
   const handleSubmit = async () => {
     if (editingAssignment) {
-      // Validate per change type
       if (changeType === 'payout') {
         if (!payoutAmount || !effectiveFromDate) {
           toast({ title: 'Missing fields', description: 'Payout amount and Effective From are required', variant: 'destructive' });
-          return;
-        }
-      }
-      if (changeType === 'info') {
-        if (!selectedTeacher) {
-          toast({ title: 'Missing teacher', description: 'Select a teacher', variant: 'destructive' });
           return;
         }
       }
@@ -976,27 +1064,6 @@ export default function Assignments() {
           return;
         }
       }
-
-      // Locked salary guard — only relevant for payout/info changes affecting future computation
-      if (changeType === 'payout' || changeType === 'info') {
-        const effDate = (changeType === 'payout' ? effectiveFromDate : (effectiveFromDate || new Date().toISOString().split('T')[0]));
-        const effMonth = effDate.slice(0, 7); // YYYY-MM
-        const { data: locked } = await supabase
-          .from('salary_payouts')
-          .select('id, salary_month, status')
-          .eq('teacher_id', editingAssignment.teacher_id)
-          .in('status', ['paid', 'locked', 'partially_paid'])
-          .gte('salary_month', effMonth);
-        if ((locked || []).length > 0) {
-          setLockedConfirm({
-            count: locked!.length,
-            effectiveDate: effDate,
-            onConfirm: () => { setLockedConfirm(null); runUpdateSave(); },
-          });
-          return;
-        }
-      }
-
       runUpdateSave();
       return;
     }
@@ -1207,27 +1274,32 @@ export default function Assignments() {
 
             {editingAssignment ? (
               <div className="space-y-4 py-2">
-                {/* Step 1 — Change Type segmented selector */}
-                <div className="grid grid-cols-3 gap-1 p-1 rounded-lg bg-muted">
+                {/* Step 1 — Change Type cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {([
-                    { key: 'payout', label: 'Update Payout' },
-                    { key: 'info', label: 'Correct Info' },
-                    { key: 'close', label: 'Close Assignment' },
-                  ] as { key: ChangeType; label: string }[]).map(opt => (
-                    <button
-                      key={opt.key}
-                      type="button"
-                      onClick={() => setChangeType(opt.key)}
-                      className={cn(
-                        'text-xs font-medium px-3 py-2 rounded-md transition-colors',
-                        changeType === opt.key
-                          ? 'bg-background text-foreground shadow-sm'
-                          : 'text-muted-foreground hover:text-foreground'
-                      )}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
+                    { key: 'payout', label: 'Update Payout', desc: 'Change payout amount or type. Takes effect from a new date forward.', Icon: DollarSign },
+                    { key: 'info', label: 'Correct Information', desc: 'Fix subject or admin flags. No financial or date impact.', Icon: Pencil },
+                    { key: 'close', label: 'Close Assignment', desc: 'End this assignment. Sets a closing date and locks the record.', Icon: XCircle },
+                  ] as { key: ChangeType; label: string; desc: string; Icon: typeof Pencil }[]).map(opt => {
+                    const active = changeType === opt.key;
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => setChangeType(opt.key)}
+                        className={cn(
+                          'rounded-lg border-2 p-3 text-left transition-all',
+                          active ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-border hover:border-primary/40'
+                        )}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <opt.Icon className={cn('h-4 w-4', active ? 'text-primary' : 'text-muted-foreground')} />
+                          <p className="text-sm font-bold">{opt.label}</p>
+                        </div>
+                        <p className="text-[11px] leading-snug text-muted-foreground">{opt.desc}</p>
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {/* Step 2 — Static, non-editable context */}
@@ -1250,7 +1322,7 @@ export default function Assignments() {
                 {changeType === 'payout' && (
                   <div className="space-y-3">
                     <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900/50 p-3 text-xs text-amber-800 dark:text-amber-200">
-                      This will create a new payout version from the <strong>Effective From</strong> date. Past salary records remain unchanged.
+                      Creates a new payout version from the <strong>Effective From</strong> date. Past salary records remain unchanged.
                     </div>
                     <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                       <Banknote className="h-4 w-4" /> Payout
@@ -1286,19 +1358,8 @@ export default function Assignments() {
 
                 {changeType === 'info' && (
                   <div className="space-y-3">
-                    <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
-                      Changing teacher triggers a reassignment. All future attendance must be logged under the new teacher. Past attendance records are preserved.
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">Teacher *</Label>
-                      <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
-                        <SelectTrigger><SelectValue placeholder="Choose a teacher..." /></SelectTrigger>
-                        <SelectContent>
-                          {teachers.map((t) => (
-                            <SelectItem key={t.id} value={t.id}>{t.full_name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <div className="rounded-md border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-900/50 p-3 text-xs text-blue-800 dark:text-blue-200">
+                      Cosmetic corrections only. Subject, admin flags, and notes. No financial impact.
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs">Subject</Label>
@@ -1311,15 +1372,24 @@ export default function Assignments() {
                         </SelectContent>
                       </Select>
                     </div>
+                    <div className="rounded-md border border-border p-3 space-y-2">
+                      <p className="text-xs font-semibold">Admin Flags</p>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="req-sched" className="text-xs">Requires Schedule</Label>
+                        <Switch id="req-sched" checked={infoRequiresSchedule} onCheckedChange={setInfoRequiresSchedule} />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="req-plan" className="text-xs">Requires Planning</Label>
+                        <Switch id="req-plan" checked={infoRequiresPlanning} onCheckedChange={setInfoRequiresPlanning} />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="req-att" className="text-xs">Requires Attendance</Label>
+                        <Switch id="req-att" checked={infoRequiresAttendance} onCheckedChange={setInfoRequiresAttendance} />
+                      </div>
+                    </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">Effective From</Label>
-                      <Input
-                        type="date"
-                        value={effectiveFromDate}
-                        onChange={(e) => setEffectiveFromDate(e.target.value)}
-                        min={new Date().toISOString().split('T')[0]}
-                      />
-                      <p className="text-[10px] text-muted-foreground">Defaults to today if blank.</p>
+                      <Label className="text-xs">Notes (optional)</Label>
+                      <Textarea value={infoNotes} onChange={(e) => setInfoNotes(e.target.value)} rows={2} placeholder="What was corrected and why…" />
                     </div>
                   </div>
                 )}
@@ -1327,21 +1397,48 @@ export default function Assignments() {
                 {changeType === 'close' && (
                   <div className="space-y-3">
                     <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
-                      This will mark the assignment as <strong>completed</strong>. Student will no longer appear in the active roster.
+                      Ends the assignment. Student will no longer appear in the active roster.
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">End Date *</Label>
-                      <Input
-                        type="date"
-                        value={effectiveToDate}
-                        onChange={(e) => setEffectiveToDate(e.target.value)}
-                        min={new Date().toISOString().split('T')[0]}
-                      />
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Status *</Label>
+                        <Select value={closeStatus} onValueChange={(v) => setCloseStatus(v as 'completed' | 'left')}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="left">Left</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">End Date *</Label>
+                        <Input
+                          type="date"
+                          value={effectiveToDate}
+                          onChange={(e) => setEffectiveToDate(e.target.value)}
+                          min={new Date().toISOString().split('T')[0]}
+                        />
+                      </div>
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Reason (optional)</Label>
                       <Textarea value={closeReason} onChange={(e) => setCloseReason(e.target.value)} rows={2} placeholder="e.g. Course completed, family relocated…" />
                     </div>
+                    {effectiveToDate && pendingInvoicesAfterClose.length > 0 && (
+                      <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900/50 p-3 space-y-2">
+                        <div className="flex items-start gap-2 text-xs text-amber-900 dark:text-amber-200">
+                          <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                          <p>
+                            <strong>{pendingInvoicesAfterClose.length}</strong> pending invoice
+                            {pendingInvoicesAfterClose.length === 1 ? ' is' : 's are'} scheduled after this end date.
+                          </p>
+                        </div>
+                        <div className="flex items-center justify-between pl-6">
+                          <Label htmlFor="void-toggle" className="text-xs">Void those pending invoices</Label>
+                          <Switch id="void-toggle" checked={voidPendingInvoices} onCheckedChange={setVoidPendingInvoices} />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1685,17 +1782,45 @@ export default function Assignments() {
                           </Button>
                         </TableCell>
                         <TableCell className="text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setDetailAssignmentId(assignment.id); }} title="View details">
-                              <Eye className="h-4 w-4 text-primary" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleEditAssignment(assignment); }}>
-                              <Pencil className="h-4 w-4 text-muted-foreground" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(assignment.id); }} disabled={deleteMutation.isPending}>
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
+                          {(() => {
+                            const isClosed = assignment.status === 'completed' || assignment.status === 'left';
+                            const lockedMonth = lockedTeacherMonth[assignment.teacher_id];
+                            return (
+                              <div className="flex items-center justify-center gap-1">
+                                {lockedMonth && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Lock className="h-3.5 w-3.5 text-amber-600" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>Salary locked through {lockedMonth}</TooltipContent>
+                                  </Tooltip>
+                                )}
+                                <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setDetailAssignmentId(assignment.id); }} title="View details">
+                                  <Eye className="h-4 w-4 text-primary" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => { e.stopPropagation(); setHistoryAssignmentId(assignment.id); }}
+                                  title="View history"
+                                >
+                                  <HistoryIcon className="h-4 w-4 text-muted-foreground" />
+                                </Button>
+                                {isClosed ? (
+                                  <Badge variant="outline" className="text-[10px] font-normal">
+                                    Closed {assignment.effective_to_date ? `on ${formatDisplayDate(assignment.effective_to_date)}` : ''}
+                                  </Badge>
+                                ) : (
+                                  <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleEditAssignment(assignment); }} title="Edit">
+                                    <Pencil className="h-4 w-4 text-muted-foreground" />
+                                  </Button>
+                                )}
+                                <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(assignment.id); }} disabled={deleteMutation.isPending} title="Delete">
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </div>
+                            );
+                          })()}
                         </TableCell>
                       </TableRow>
                     );
@@ -1967,6 +2092,12 @@ export default function Assignments() {
         </Dialog>
 
         <AssignmentDetailDialog assignmentId={detailAssignmentId} onClose={() => setDetailAssignmentId(null)} />
+
+        <AssignmentHistoryDrawer
+          assignmentId={historyAssignmentId}
+          open={!!historyAssignmentId}
+          onOpenChange={(o) => { if (!o) setHistoryAssignmentId(null); }}
+        />
       </div>
     </DashboardLayout>
   );
