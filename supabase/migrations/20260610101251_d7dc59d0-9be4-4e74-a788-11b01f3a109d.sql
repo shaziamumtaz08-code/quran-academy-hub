@@ -1,0 +1,1 @@
+ALTER TABLE public.minor_credentials ADD COLUMN IF NOT EXISTS pin_salt text;

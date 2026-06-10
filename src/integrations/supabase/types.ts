@@ -4414,6 +4414,7 @@ export type Database = {
           id: string
           locked_until: string | null
           pin_hash: string
+          pin_salt: string | null
           profile_id: string
           updated_at: string
           username: string
@@ -4425,6 +4426,7 @@ export type Database = {
           id?: string
           locked_until?: string | null
           pin_hash: string
+          pin_salt?: string | null
           profile_id: string
           updated_at?: string
           username: string
@@ -4436,6 +4438,7 @@ export type Database = {
           id?: string
           locked_until?: string | null
           pin_hash?: string
+          pin_salt?: string | null
           profile_id?: string
           updated_at?: string
           username?: string

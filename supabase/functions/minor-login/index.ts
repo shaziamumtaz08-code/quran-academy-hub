@@ -9,12 +9,22 @@ const corsHeaders = {
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
 
-async function hashPin(pin: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(pin);
+async function sha256Hex(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function generateSalt(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function hashPin(pin: string, salt: string): Promise<string> {
+  return sha256Hex(`${salt}:${pin}`);
 }
 
 Deno.serve(async (req) => {
@@ -52,7 +62,7 @@ Deno.serve(async (req) => {
     // Look up credentials
     const { data: cred, error: credError } = await supabase
       .from("minor_credentials")
-      .select("id, profile_id, pin_hash, failed_attempts, locked_until")
+      .select("id, profile_id, pin_hash, pin_salt, failed_attempts, locked_until")
       .eq("username", username.toLowerCase().trim())
       .single();
 
@@ -78,10 +88,15 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Verify PIN
-    const pinHash = await hashPin(pin);
+    // Verify PIN. Support legacy unsalted SHA-256 hashes and auto-upgrade
+    // them to a salted hash on the next successful login.
+    const salt = (cred as { pin_salt?: string | null }).pin_salt ?? null;
+    const expectedHash = salt
+      ? await hashPin(pin, salt)
+      : await sha256Hex(pin); // legacy fallback
+    const pinValid = expectedHash === cred.pin_hash;
 
-    if (pinHash !== cred.pin_hash) {
+    if (!pinValid) {
       const newAttempts = (cred.failed_attempts || 0) + 1;
       const updateData: Record<string, unknown> = {
         failed_attempts: newAttempts,
@@ -111,10 +126,20 @@ Deno.serve(async (req) => {
       );
     }
 
-    // PIN correct — reset failed attempts
+    // PIN correct — reset failed attempts. If the stored hash is legacy
+    // (no salt), upgrade it transparently to a salted hash now.
+    const resetUpdate: Record<string, unknown> = {
+      failed_attempts: 0,
+      locked_until: null,
+    };
+    if (!salt) {
+      const newSalt = generateSalt();
+      resetUpdate.pin_salt = newSalt;
+      resetUpdate.pin_hash = await hashPin(pin, newSalt);
+    }
     await supabase
       .from("minor_credentials")
-      .update({ failed_attempts: 0, locked_until: null })
+      .update(resetUpdate)
       .eq("id", cred.id);
 
     // Get profile info

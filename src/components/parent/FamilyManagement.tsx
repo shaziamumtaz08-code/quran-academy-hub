@@ -88,16 +88,22 @@ export function FamilyManagement() {
         throw new Error('PIN must be exactly 4 digits');
       }
 
-      // Hash the PIN (SHA-256)
+      // Hash the PIN with a fresh random per-credential salt so stored
+      // hashes cannot be reversed via a 10k-entry rainbow table.
+      const saltBytes = new Uint8Array(16);
+      crypto.getRandomValues(saltBytes);
+      const pinSalt = Array.from(saltBytes)
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
       const encoder = new TextEncoder();
-      const data = encoder.encode(pin);
+      const data = encoder.encode(`${pinSalt}:${pin}`);
       const hashBuffer = await crypto.subtle.digest('SHA-256', data);
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       const pinHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
       const { error } = await supabase
         .from('minor_credentials')
-        .update({ pin_hash: pinHash, failed_attempts: 0, locked_until: null })
+        .update({ pin_hash: pinHash, pin_salt: pinSalt, failed_attempts: 0, locked_until: null })
         .eq('profile_id', studentId);
 
       if (error) throw error;
