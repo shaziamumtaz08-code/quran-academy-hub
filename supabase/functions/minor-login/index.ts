@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
     // Look up credentials
     const { data: cred, error: credError } = await supabase
       .from("minor_credentials")
-      .select("id, profile_id, pin_hash, failed_attempts, locked_until")
+      .select("id, profile_id, pin_hash, pin_salt, failed_attempts, locked_until")
       .eq("username", username.toLowerCase().trim())
       .single();
 
