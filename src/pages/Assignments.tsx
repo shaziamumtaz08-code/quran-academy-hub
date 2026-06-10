@@ -11,7 +11,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Users, GraduationCap, Trash2, Loader2, UserPlus, BookOpen, Pencil, Upload, ArrowRightLeft, Banknote, Eye, Download, Plus, ArrowUp, ArrowDown, ArrowUpDown, X } from 'lucide-react';
+import { Users, GraduationCap, Trash2, Loader2, UserPlus, BookOpen, Pencil, Upload, ArrowRightLeft, Banknote, Eye, Download, Plus, ArrowUp, ArrowDown, ArrowUpDown, X, DollarSign, XCircle, History as HistoryIcon, Lock, AlertTriangle } from 'lucide-react';
+import { AssignmentHistoryDrawer } from '@/components/assignments/AssignmentHistoryDrawer';
 import { TableToolbar } from '@/components/ui/table-toolbar';
 import {
   Dialog,
