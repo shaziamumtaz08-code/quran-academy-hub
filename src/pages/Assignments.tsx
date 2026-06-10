@@ -920,6 +920,12 @@ export default function Assignments() {
     setEditingAssignment(null);
     setChangeType('payout');
     setCloseReason('');
+    setInfoRequiresSchedule(true);
+    setInfoRequiresPlanning(true);
+    setInfoRequiresAttendance(true);
+    setInfoNotes('');
+    setCloseStatus('completed');
+    setVoidPendingInvoices(false);
     setIsFormOpen(false);
   };
 
@@ -942,6 +948,12 @@ export default function Assignments() {
     setEffectiveFromDate(nextMonth.toISOString().split('T')[0]);
     setEffectiveToDate('');
     setCloseReason('');
+    setInfoRequiresSchedule(assignment.requires_schedule);
+    setInfoRequiresPlanning(assignment.requires_planning);
+    setInfoRequiresAttendance(assignment.requires_attendance);
+    setInfoNotes('');
+    setCloseStatus('completed');
+    setVoidPendingInvoices(false);
     setIsFormOpen(true);
   };
 
