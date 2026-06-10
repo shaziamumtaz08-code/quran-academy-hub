@@ -296,6 +296,44 @@ export default function Assignments() {
     return map;
   }, [linkedPlans]);
 
+  // Locked salary months per teacher (drives the lock icon on assignment rows)
+  const { data: lockedSalaryRows = [] } = useQuery({
+    queryKey: ['locked-salary-payouts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('salary_payouts')
+        .select('teacher_id, salary_month')
+        .in('status', ['paid', 'locked']);
+      if (error) throw error;
+      return (data || []) as { teacher_id: string; salary_month: string }[];
+    },
+  });
+  const lockedTeacherMonth = useMemo(() => {
+    const map: Record<string, string> = {};
+    lockedSalaryRows.forEach(r => {
+      const cur = map[r.teacher_id];
+      if (!cur || r.salary_month > cur) map[r.teacher_id] = r.salary_month;
+    });
+    return map;
+  }, [lockedSalaryRows]);
+
+  // Pending invoices that would be affected by the chosen close end date
+  const { data: pendingInvoicesAfterClose = [] } = useQuery({
+    queryKey: ['pending-invoices-after-close', editingAssignment?.id, effectiveToDate],
+    enabled: !!editingAssignment && changeType === 'close' && !!effectiveToDate,
+    queryFn: async () => {
+      const endMonth = effectiveToDate.slice(0, 7);
+      const { data, error } = await supabase
+        .from('fee_invoices')
+        .select('id, billing_month')
+        .eq('assignment_id', editingAssignment!.id)
+        .eq('status', 'pending')
+        .gt('billing_month', endMonth);
+      if (error) throw error;
+      return (data || []) as { id: string; billing_month: string }[];
+    },
+  });
+
   // Create assignments mutation (academic only - no billing)
   const createMutation = useMutation({
     mutationFn: async ({ teacherId, studentIds, subjectId }: { teacherId: string; studentIds: string[]; subjectId?: string }) => {
