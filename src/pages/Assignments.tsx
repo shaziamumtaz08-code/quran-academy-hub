@@ -1274,27 +1274,32 @@ export default function Assignments() {
 
             {editingAssignment ? (
               <div className="space-y-4 py-2">
-                {/* Step 1 — Change Type segmented selector */}
-                <div className="grid grid-cols-3 gap-1 p-1 rounded-lg bg-muted">
+                {/* Step 1 — Change Type cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {([
-                    { key: 'payout', label: 'Update Payout' },
-                    { key: 'info', label: 'Correct Info' },
-                    { key: 'close', label: 'Close Assignment' },
-                  ] as { key: ChangeType; label: string }[]).map(opt => (
-                    <button
-                      key={opt.key}
-                      type="button"
-                      onClick={() => setChangeType(opt.key)}
-                      className={cn(
-                        'text-xs font-medium px-3 py-2 rounded-md transition-colors',
-                        changeType === opt.key
-                          ? 'bg-background text-foreground shadow-sm'
-                          : 'text-muted-foreground hover:text-foreground'
-                      )}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
+                    { key: 'payout', label: 'Update Payout', desc: 'Change payout amount or type. Takes effect from a new date forward.', Icon: DollarSign },
+                    { key: 'info', label: 'Correct Information', desc: 'Fix subject or admin flags. No financial or date impact.', Icon: Pencil },
+                    { key: 'close', label: 'Close Assignment', desc: 'End this assignment. Sets a closing date and locks the record.', Icon: XCircle },
+                  ] as { key: ChangeType; label: string; desc: string; Icon: typeof Pencil }[]).map(opt => {
+                    const active = changeType === opt.key;
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => setChangeType(opt.key)}
+                        className={cn(
+                          'rounded-lg border-2 p-3 text-left transition-all',
+                          active ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-border hover:border-primary/40'
+                        )}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <opt.Icon className={cn('h-4 w-4', active ? 'text-primary' : 'text-muted-foreground')} />
+                          <p className="text-sm font-bold">{opt.label}</p>
+                        </div>
+                        <p className="text-[11px] leading-snug text-muted-foreground">{opt.desc}</p>
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {/* Step 2 — Static, non-editable context */}
@@ -1317,7 +1322,7 @@ export default function Assignments() {
                 {changeType === 'payout' && (
                   <div className="space-y-3">
                     <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900/50 p-3 text-xs text-amber-800 dark:text-amber-200">
-                      This will create a new payout version from the <strong>Effective From</strong> date. Past salary records remain unchanged.
+                      Creates a new payout version from the <strong>Effective From</strong> date. Past salary records remain unchanged.
                     </div>
                     <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                       <Banknote className="h-4 w-4" /> Payout
@@ -1353,19 +1358,8 @@ export default function Assignments() {
 
                 {changeType === 'info' && (
                   <div className="space-y-3">
-                    <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
-                      Changing teacher triggers a reassignment. All future attendance must be logged under the new teacher. Past attendance records are preserved.
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">Teacher *</Label>
-                      <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
-                        <SelectTrigger><SelectValue placeholder="Choose a teacher..." /></SelectTrigger>
-                        <SelectContent>
-                          {teachers.map((t) => (
-                            <SelectItem key={t.id} value={t.id}>{t.full_name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <div className="rounded-md border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-900/50 p-3 text-xs text-blue-800 dark:text-blue-200">
+                      Cosmetic corrections only. Subject, admin flags, and notes. No financial impact.
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs">Subject</Label>
@@ -1378,15 +1372,24 @@ export default function Assignments() {
                         </SelectContent>
                       </Select>
                     </div>
+                    <div className="rounded-md border border-border p-3 space-y-2">
+                      <p className="text-xs font-semibold">Admin Flags</p>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="req-sched" className="text-xs">Requires Schedule</Label>
+                        <Switch id="req-sched" checked={infoRequiresSchedule} onCheckedChange={setInfoRequiresSchedule} />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="req-plan" className="text-xs">Requires Planning</Label>
+                        <Switch id="req-plan" checked={infoRequiresPlanning} onCheckedChange={setInfoRequiresPlanning} />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="req-att" className="text-xs">Requires Attendance</Label>
+                        <Switch id="req-att" checked={infoRequiresAttendance} onCheckedChange={setInfoRequiresAttendance} />
+                      </div>
+                    </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">Effective From</Label>
-                      <Input
-                        type="date"
-                        value={effectiveFromDate}
-                        onChange={(e) => setEffectiveFromDate(e.target.value)}
-                        min={new Date().toISOString().split('T')[0]}
-                      />
-                      <p className="text-[10px] text-muted-foreground">Defaults to today if blank.</p>
+                      <Label className="text-xs">Notes (optional)</Label>
+                      <Textarea value={infoNotes} onChange={(e) => setInfoNotes(e.target.value)} rows={2} placeholder="What was corrected and why…" />
                     </div>
                   </div>
                 )}
@@ -1394,21 +1397,48 @@ export default function Assignments() {
                 {changeType === 'close' && (
                   <div className="space-y-3">
                     <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
-                      This will mark the assignment as <strong>completed</strong>. Student will no longer appear in the active roster.
+                      Ends the assignment. Student will no longer appear in the active roster.
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">End Date *</Label>
-                      <Input
-                        type="date"
-                        value={effectiveToDate}
-                        onChange={(e) => setEffectiveToDate(e.target.value)}
-                        min={new Date().toISOString().split('T')[0]}
-                      />
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Status *</Label>
+                        <Select value={closeStatus} onValueChange={(v) => setCloseStatus(v as 'completed' | 'left')}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="left">Left</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">End Date *</Label>
+                        <Input
+                          type="date"
+                          value={effectiveToDate}
+                          onChange={(e) => setEffectiveToDate(e.target.value)}
+                          min={new Date().toISOString().split('T')[0]}
+                        />
+                      </div>
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Reason (optional)</Label>
                       <Textarea value={closeReason} onChange={(e) => setCloseReason(e.target.value)} rows={2} placeholder="e.g. Course completed, family relocated…" />
                     </div>
+                    {effectiveToDate && pendingInvoicesAfterClose.length > 0 && (
+                      <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900/50 p-3 space-y-2">
+                        <div className="flex items-start gap-2 text-xs text-amber-900 dark:text-amber-200">
+                          <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                          <p>
+                            <strong>{pendingInvoicesAfterClose.length}</strong> pending invoice
+                            {pendingInvoicesAfterClose.length === 1 ? ' is' : 's are'} scheduled after this end date.
+                          </p>
+                        </div>
+                        <div className="flex items-center justify-between pl-6">
+                          <Label htmlFor="void-toggle" className="text-xs">Void those pending invoices</Label>
+                          <Switch id="void-toggle" checked={voidPendingInvoices} onCheckedChange={setVoidPendingInvoices} />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
