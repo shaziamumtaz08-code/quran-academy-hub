@@ -122,6 +122,16 @@ export default function Assignments() {
   const [changeType, setChangeType] = useState<ChangeType>('payout');
   const [closeReason, setCloseReason] = useState('');
   const [lockedConfirm, setLockedConfirm] = useState<{ count: number; effectiveDate: string; onConfirm: () => void } | null>(null);
+  // Info-correction fields
+  const [infoRequiresSchedule, setInfoRequiresSchedule] = useState(true);
+  const [infoRequiresPlanning, setInfoRequiresPlanning] = useState(true);
+  const [infoRequiresAttendance, setInfoRequiresAttendance] = useState(true);
+  const [infoNotes, setInfoNotes] = useState('');
+  // Close fields
+  const [closeStatus, setCloseStatus] = useState<'completed' | 'left'>('completed');
+  const [voidPendingInvoices, setVoidPendingInvoices] = useState(false);
+  // History drawer
+  const [historyAssignmentId, setHistoryAssignmentId] = useState<string | null>(null);
 
   // Fetch teachers
   const { data: teachers = [], isLoading: loadingTeachers } = useQuery({
