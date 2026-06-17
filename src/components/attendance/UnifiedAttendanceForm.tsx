@@ -820,10 +820,11 @@ export function UnifiedAttendanceForm({
               <SelectContent>
                 {STATUS_OPTIONS
                   .filter((opt) => {
-                    // Leave + Holiday are admin-only bulk tools; teachers mark day-by-day attendance only
-                    const adminOnly = opt.value === 'student_leave' || opt.value === 'teacher_leave' || opt.value === 'holiday';
-                    if (!adminOnly) return true;
-                    return profile?.roles?.some((r) => r === 'admin' || r === 'super_admin') ?? false;
+                    // Holiday remains admin-only; Leave is available to everyone so teachers can mark it inline
+                    if (opt.value === 'holiday') {
+                      return profile?.roles?.some((r) => r === 'admin' || r === 'super_admin') ?? false;
+                    }
+                    return true;
                   })
                   .map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>

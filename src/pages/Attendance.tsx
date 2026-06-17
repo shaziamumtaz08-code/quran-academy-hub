@@ -13,7 +13,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar, CheckCircle, XCircle, AlertCircle, User, Plus, Clock, CalendarClock, UserX, Palmtree, Pencil, Trash2, ArrowUpDown, CalendarRange, Search, Ban, AlertTriangle, Users } from 'lucide-react';
+import { Calendar, CheckCircle, XCircle, AlertCircle, User, Plus, Clock, CalendarClock, UserX, Palmtree, Pencil, Trash2, ArrowUpDown, CalendarRange, Search, Ban, AlertTriangle, Users, ChevronDown } from 'lucide-react';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { GroupAttendanceTab } from '@/components/attendance/GroupAttendanceTab';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -1030,44 +1031,26 @@ export default function Attendance() {
                 Missing{missingCount > 0 ? ` (${missingCount})` : ''}
               </Button>
               {isAdmin && (
-                <>
-                  <Button 
-                    variant="outline"
-                    onClick={() => setHolidayDialogOpen(true)}
-                  >
-                    <Palmtree className="h-4 w-4 mr-2" />
-                    Mark Holiday
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setTeacherLeaveDialogOpen(true)}
-                  >
-                    <UserX className="h-4 w-4 mr-2" />
-                    Teacher Leave
-                  </Button>
-                </>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline">
+                      <ChevronDown className="h-4 w-4 mr-2" />
+                      Admin Tools
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setHolidayDialogOpen(true)}>
+                      <Palmtree className="h-4 w-4 mr-2" />
+                      Mark Holiday
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setTeacherLeaveDialogOpen(true)}>
+                      <UserX className="h-4 w-4 mr-2" />
+                      Bulk Teacher Leave (date range)
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
-              <Button 
-                onClick={() => {
-                  setUnifiedInitialStatus('student_leave');
-                  setUnifiedOpen(true);
-                }}
-                variant="outline"
-              >
-                <UserX className="h-4 w-4 mr-2" />
-                Student Leave
-              </Button>
-              <Button 
-                onClick={() => {
-                  setUnifiedInitialStatus('rescheduled');
-                  setUnifiedOpen(true);
-                }}
-                variant="outline"
-              >
-                <CalendarClock className="h-4 w-4 mr-2" />
-                Reschedule
-              </Button>
-              <Button 
+              <Button
                 onClick={() => {
                   setUnifiedInitialStatus('present');
                   setUnifiedOpen(true);
