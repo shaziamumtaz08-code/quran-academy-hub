@@ -1030,44 +1030,26 @@ export default function Attendance() {
                 Missing{missingCount > 0 ? ` (${missingCount})` : ''}
               </Button>
               {isAdmin && (
-                <>
-                  <Button 
-                    variant="outline"
-                    onClick={() => setHolidayDialogOpen(true)}
-                  >
-                    <Palmtree className="h-4 w-4 mr-2" />
-                    Mark Holiday
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setTeacherLeaveDialogOpen(true)}
-                  >
-                    <UserX className="h-4 w-4 mr-2" />
-                    Teacher Leave
-                  </Button>
-                </>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline">
+                      <ChevronDown className="h-4 w-4 mr-2" />
+                      Admin Tools
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setHolidayDialogOpen(true)}>
+                      <Palmtree className="h-4 w-4 mr-2" />
+                      Mark Holiday
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setTeacherLeaveDialogOpen(true)}>
+                      <UserX className="h-4 w-4 mr-2" />
+                      Bulk Teacher Leave (date range)
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
-              <Button 
-                onClick={() => {
-                  setUnifiedInitialStatus('student_leave');
-                  setUnifiedOpen(true);
-                }}
-                variant="outline"
-              >
-                <UserX className="h-4 w-4 mr-2" />
-                Student Leave
-              </Button>
-              <Button 
-                onClick={() => {
-                  setUnifiedInitialStatus('rescheduled');
-                  setUnifiedOpen(true);
-                }}
-                variant="outline"
-              >
-                <CalendarClock className="h-4 w-4 mr-2" />
-                Reschedule
-              </Button>
-              <Button 
+              <Button
                 onClick={() => {
                   setUnifiedInitialStatus('present');
                   setUnifiedOpen(true);
