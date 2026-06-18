@@ -807,10 +807,7 @@ export default function CashAdvances() {
                 </div>
                 <p className="text-[10px] text-muted-foreground mt-1">JPG, PNG, PDF or DOC — max 5 MB</p>
                 {expenseForm.receipt_url && (
-                  <a href={expenseForm.receipt_url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1 mt-1">
-                    {/\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(expenseForm.receipt_url) ? <Image className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
-                    View Attachment <ExternalLink className="h-3 w-3" />
-                  </a>
+                  <ReceiptLink url={expenseForm.receipt_url} />
                 )}
               </div>
             </div>
