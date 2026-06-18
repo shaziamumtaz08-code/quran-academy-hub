@@ -92,10 +92,27 @@ function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
   const [form, setForm] = useState({
     name: '', email: '', phone_whatsapp: '', country: '', city: '',
     for_whom: 'child', child_name: '', child_age: '',
-    preferred_time: '', message: '', gender: '',
+    message: '', gender: '',
     current_level_specimen: '', learning_goals: '',
     guardian_name: '', guardian_relationship: '',
+    other_subject: '',
+    timezone: '',
+    slot1_from: '', slot1_to: '', slot1_note: '',
+    slot2_from: '', slot2_to: '', slot2_note: '',
   });
+
+  const buildPreferredTime = () => {
+    const parts: string[] = [];
+    if (form.timezone) parts.push(`TZ: ${form.timezone}`);
+    if (form.slot1_from && form.slot1_to) parts.push(`Slot 1: ${form.slot1_from}–${form.slot1_to}${form.slot1_note ? ` (${form.slot1_note})` : ''}`);
+    if (form.slot2_from && form.slot2_to) parts.push(`Slot 2: ${form.slot2_from}–${form.slot2_to}${form.slot2_note ? ` (${form.slot2_note})` : ''}`);
+    return parts.join(' | ') || null;
+  };
+
+  const buildSubjects = () => {
+    const labels = selectedSubjects.map(s => s === 'Other' ? (form.other_subject ? `Other: ${form.other_subject}` : 'Other') : s);
+    return labels.join(', ') || null;
+  };
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -108,8 +125,8 @@ function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
         for_whom: form.for_whom,
         child_name: form.for_whom === 'child' ? form.child_name || null : null,
         child_age: form.for_whom === 'child' && form.child_age ? parseInt(form.child_age) : null,
-        subject_interest: selectedSubjects.join(', ') || null,
-        preferred_time: form.preferred_time || null,
+        subject_interest: buildSubjects(),
+        preferred_time: buildPreferredTime(),
         message: form.message || null,
         gender: form.gender || null,
         current_level_specimen: form.current_level_specimen || null,
