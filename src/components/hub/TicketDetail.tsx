@@ -291,10 +291,7 @@ export function TicketDetail({ ticketId, open, onOpenChange }: TicketDetailProps
 
             {/* Ticket Attachment */}
             {ticket.attachment_url && (
-              <a href={ticket.attachment_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-muted/50 rounded-lg p-3 text-xs text-primary hover:underline">
-                <Paperclip className="h-3.5 w-3.5 shrink-0" />
-                View Initial Attachment <ExternalLink className="h-3 w-3 shrink-0" />
-              </a>
+              <TicketAttachmentLink url={ticket.attachment_url} />
             )}
 
             {/* Leave metadata */}
