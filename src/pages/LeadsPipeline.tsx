@@ -1065,6 +1065,7 @@ function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
 export default function LeadsPipeline() {
   const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [view, setView] = useState<'kanban' | 'list'>('kanban');
