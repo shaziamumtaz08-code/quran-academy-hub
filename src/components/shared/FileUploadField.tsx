@@ -63,6 +63,7 @@ export function FileUploadField({
 
   const isImage = value && /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(value);
   const isPdf = value && /\.pdf(\?|$)/i.test(value);
+  const viewHref = useSignedUrl(value || null);
 
   return (
     <div className="space-y-1.5">
