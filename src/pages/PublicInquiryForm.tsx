@@ -429,7 +429,7 @@ export default function PublicInquiryForm() {
         <ContactSection form={form} updateField={updateField} />
         <NotesSection form={form} updateField={updateField} />
 
-        <Button onClick={() => submitMutation.mutate()} disabled={!form.name || selectedSubjects.length === 0 || submitMutation.isPending}
+        <Button onClick={() => submitMutation.mutate()} disabled={!form.name || selectedSubjects.length === 0 || otherInvalid || slotsInvalid || submitMutation.isPending}
           className="w-full h-14 text-base font-semibold shadow-lg hover:shadow-xl transition-all" size="lg">
           {submitMutation.isPending ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Send className="h-5 w-5 mr-2" />}
           Continue to Pre-Demo Screening ↗
