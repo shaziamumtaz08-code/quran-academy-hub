@@ -1062,9 +1062,133 @@ function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
 }
 
 // ── Main Page ──
+// ── Share Links Dialog ──
+function ShareLinksDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const inquiryUrl = `${origin}/inquiry`;
+  const waText = encodeURIComponent(
+    `Assalamu Alaikum! Thank you for your interest in Al Quran Time Academy. Please share your details using this short form so we can schedule your free trial class:\n\n${inquiryUrl}`
+  );
+  const waShare = `https://wa.me/?text=${waText}`;
+
+  const copy = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({ title: 'Copied', description: `${label} copied to clipboard` });
+    } catch {
+      toast({ title: 'Copy failed', description: 'Please copy manually', variant: 'destructive' });
+    }
+  };
+
+  const { data: courses = [] } = useQuery({
+    queryKey: ['courses-with-webhook-secret'],
+    enabled: open,
+    queryFn: async () => {
+      const { data } = await supabase.from('courses').select('id, name, webhook_secret').order('name');
+      return data || [];
+    },
+  });
+
+  const webhookUrl = `https://sienlnxwwdqnybugipdt.supabase.co/functions/v1/applicant-webhook`;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Share & Capture Leads</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-5 mt-2">
+          {/* Public Inquiry Form */}
+          <section className="space-y-2">
+            <h3 className="text-sm font-bold flex items-center gap-2">
+              <FileText className="h-4 w-4" /> Public Inquiry Form
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Share this link anywhere — WhatsApp, social media, your website, email signature. Every submission lands here as a new lead.
+            </p>
+            <div className="flex gap-2">
+              <Input value={inquiryUrl} readOnly className="font-mono text-xs" />
+              <Button size="sm" variant="outline" onClick={() => copy(inquiryUrl, 'Inquiry link')}>Copy</Button>
+              <Button size="sm" variant="outline" onClick={() => window.open(inquiryUrl, '_blank')}>Open</Button>
+            </div>
+          </section>
+
+          {/* WhatsApp Click-to-Chat */}
+          <section className="space-y-2">
+            <h3 className="text-sm font-bold flex items-center gap-2">
+              <MessageSquare className="h-4 w-4" /> WhatsApp Share Message
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Opens WhatsApp with a ready-to-send message containing the inquiry link. Forward to any contact or group.
+            </p>
+            <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => window.open(waShare, '_blank')}>
+              <MessageSquare className="h-4 w-4 mr-1" /> Open in WhatsApp
+            </Button>
+          </section>
+
+          {/* Per-Course Apply Links */}
+          <section className="space-y-2">
+            <h3 className="text-sm font-bold flex items-center gap-2">
+              <UserPlus className="h-4 w-4" /> Per-Course Application Links
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Each course has its own application page. Use these for course-specific marketing.
+            </p>
+            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+              {courses.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic">No courses found</p>
+              ) : courses.map((c: any) => {
+                const url = `${origin}/apply/${c.id}`;
+                return (
+                  <div key={c.id} className="flex items-center gap-2 text-xs">
+                    <span className="font-medium w-40 truncate">{c.name}</span>
+                    <Input value={url} readOnly className="font-mono text-[10px] h-8" />
+                    <Button size="sm" variant="ghost" className="h-8" onClick={() => copy(url, c.name)}>Copy</Button>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Website Webhook */}
+          <section className="space-y-2">
+            <h3 className="text-sm font-bold flex items-center gap-2">
+              <Upload className="h-4 w-4" /> Website / Google Form Webhook
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Give this endpoint to your web developer (or Google Forms Apps Script). Each course has its own <code className="text-[10px] bg-muted px-1 rounded">webhook_secret</code> — find it in the course settings.
+            </p>
+            <div className="flex gap-2">
+              <Input value={webhookUrl} readOnly className="font-mono text-xs" />
+              <Button size="sm" variant="outline" onClick={() => copy(webhookUrl, 'Webhook URL')}>Copy</Button>
+            </div>
+            <details className="text-xs">
+              <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Show sample POST payload</summary>
+              <pre className="mt-2 p-2 bg-muted rounded text-[10px] overflow-x-auto">{`POST ${webhookUrl}
+Content-Type: application/json
+
+{
+  "course_id": "<uuid>",
+  "webhook_secret": "<from course settings>",
+  "full_name": "Aisha Khan",
+  "email": "aisha@example.com",
+  "phone": "+923001234567",
+  "gender": "female",
+  "city": "Lahore",
+  "source": "website_form"
+}`}</pre>
+            </details>
+          </section>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function LeadsPipeline() {
   const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [view, setView] = useState<'kanban' | 'list'>('kanban');
@@ -1122,6 +1246,9 @@ export default function LeadsPipeline() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search leads..." className="pl-9 w-60" />
             </div>
+            <Button variant="outline" onClick={() => setShareOpen(true)}>
+              <Send className="h-4 w-4 mr-1" /> Share Links
+            </Button>
             <Button onClick={() => setCreateOpen(true)}>
               <Plus className="h-4 w-4 mr-1" /> Add Lead
             </Button>
@@ -1182,6 +1309,7 @@ export default function LeadsPipeline() {
 
         <CreateLeadDialog open={createOpen} onOpenChange={setCreateOpen} />
         <LeadDetailDialog lead={selectedLead} open={detailOpen} onOpenChange={setDetailOpen} />
+        <ShareLinksDialog open={shareOpen} onOpenChange={setShareOpen} />
       </div>
     </DashboardLayout>
   );
