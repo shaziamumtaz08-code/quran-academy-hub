@@ -15,6 +15,7 @@ interface ChatMessageBubbleProps {
 }
 
 export function ChatMessageBubble({ msg, isMe, onConvertToTask, onReply, onForward, replyToContent }: ChatMessageBubbleProps) {
+  const attachmentHref = useSignedUrl(msg.attachment_url);
   const isImage = msg.attachment_url && /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(msg.attachment_url);
   const isAudio = msg.attachment_url && /\.(webm|ogg|mp3|wav|m4a)(\?|$)/i.test(msg.attachment_url);
   const isPdf = msg.attachment_url && /\.pdf(\?|$)/i.test(msg.attachment_url);
