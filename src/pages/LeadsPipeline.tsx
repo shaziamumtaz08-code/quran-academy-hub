@@ -74,7 +74,15 @@ interface Lead {
 }
 
 const LEAD_SUBJECTS = [
-  'Quran Recitation', 'Tajweed', 'Quran Memorization', 'Arabic Language', 'Islamic Studies', 'Qaida (Beginners)', 'Other',
+  { value: 'Quran Recitation', label: 'Quran Recitation', emoji: '📖' },
+  { value: 'Tajweed', label: 'Tajweed', emoji: '🎙️' },
+  { value: 'Quran Memorization', label: 'Quran Memorization', emoji: '🕌' },
+  { value: 'Arabic Language', label: 'Arabic Language', emoji: '🌙' },
+  { value: 'Quranic Arabic', label: 'Quranic Arabic', emoji: '🕋' },
+  { value: 'Tafseer', label: 'Tafseer', emoji: '📜' },
+  { value: 'Islamic Studies', label: 'Islamic Studies', emoji: '📚' },
+  { value: 'Qaida (Beginners)', label: 'Qaida (Beginners)', emoji: '🔤' },
+  { value: 'Other', label: 'Other (Specify)', emoji: '✨' },
 ];
 
 const LEAD_TIMEZONES = [
