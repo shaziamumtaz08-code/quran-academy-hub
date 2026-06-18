@@ -74,7 +74,15 @@ interface Lead {
 }
 
 const LEAD_SUBJECTS = [
-  'Quran Recitation', 'Tajweed', 'Quran Memorization', 'Arabic Language', 'Islamic Studies', 'Qaida (Beginners)',
+  'Quran Recitation', 'Tajweed', 'Quran Memorization', 'Arabic Language', 'Islamic Studies', 'Qaida (Beginners)', 'Other',
+];
+
+const LEAD_TIMEZONES = [
+  'Asia/Karachi', 'Asia/Dubai', 'Asia/Riyadh', 'Asia/Kolkata', 'Asia/Dhaka',
+  'Asia/Jakarta', 'Asia/Kuala_Lumpur', 'Asia/Singapore',
+  'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Istanbul',
+  'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
+  'America/Toronto', 'Australia/Sydney', 'Africa/Cairo', 'Africa/Lagos',
 ];
 
 // ── Create Lead Dialog ──
@@ -84,10 +92,27 @@ function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
   const [form, setForm] = useState({
     name: '', email: '', phone_whatsapp: '', country: '', city: '',
     for_whom: 'child', child_name: '', child_age: '',
-    preferred_time: '', message: '', gender: '',
+    message: '', gender: '',
     current_level_specimen: '', learning_goals: '',
     guardian_name: '', guardian_relationship: '',
+    other_subject: '',
+    timezone: '',
+    slot1_from: '', slot1_to: '', slot1_note: '',
+    slot2_from: '', slot2_to: '', slot2_note: '',
   });
+
+  const buildPreferredTime = () => {
+    const parts: string[] = [];
+    if (form.timezone) parts.push(`TZ: ${form.timezone}`);
+    if (form.slot1_from && form.slot1_to) parts.push(`Slot 1: ${form.slot1_from}–${form.slot1_to}${form.slot1_note ? ` (${form.slot1_note})` : ''}`);
+    if (form.slot2_from && form.slot2_to) parts.push(`Slot 2: ${form.slot2_from}–${form.slot2_to}${form.slot2_note ? ` (${form.slot2_note})` : ''}`);
+    return parts.join(' | ') || null;
+  };
+
+  const buildSubjects = () => {
+    const labels = selectedSubjects.map(s => s === 'Other' ? (form.other_subject ? `Other: ${form.other_subject}` : 'Other') : s);
+    return labels.join(', ') || null;
+  };
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -100,8 +125,8 @@ function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
         for_whom: form.for_whom,
         child_name: form.for_whom === 'child' ? form.child_name || null : null,
         child_age: form.for_whom === 'child' && form.child_age ? parseInt(form.child_age) : null,
-        subject_interest: selectedSubjects.join(', ') || null,
-        preferred_time: form.preferred_time || null,
+        subject_interest: buildSubjects(),
+        preferred_time: buildPreferredTime(),
         message: form.message || null,
         gender: form.gender || null,
         current_level_specimen: form.current_level_specimen || null,
@@ -116,7 +141,7 @@ function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
       toast({ title: 'Lead created successfully' });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       onOpenChange(false);
-      setForm({ name: '', email: '', phone_whatsapp: '', country: '', city: '', for_whom: 'child', child_name: '', child_age: '', preferred_time: '', message: '', gender: '', current_level_specimen: '', learning_goals: '', guardian_name: '', guardian_relationship: '' });
+      setForm({ name: '', email: '', phone_whatsapp: '', country: '', city: '', for_whom: 'child', child_name: '', child_age: '', message: '', gender: '', current_level_specimen: '', learning_goals: '', guardian_name: '', guardian_relationship: '', other_subject: '', timezone: '', slot1_from: '', slot1_to: '', slot1_note: '', slot2_from: '', slot2_to: '', slot2_note: '' });
       setSelectedSubjects([]);
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
@@ -196,10 +221,40 @@ function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
               ))}
             </div>
           </div>
+          {selectedSubjects.includes('Other') && (
+            <div><Label className="text-xs">Other Subject *</Label><Input value={form.other_subject} onChange={e => setForm(p => ({ ...p, other_subject: e.target.value }))} placeholder="Specify (e.g. Hadith, Fiqh, Seerah)" /></div>
+          )}
           <div><Label className="text-xs">Current Level / Specimen</Label><Input value={form.current_level_specimen} onChange={e => setForm(p => ({ ...p, current_level_specimen: e.target.value }))} placeholder="e.g. Noorani Qaida page 5" /></div>
           <div><Label className="text-xs">Learning Goals</Label><Textarea value={form.learning_goals} onChange={e => setForm(p => ({ ...p, learning_goals: e.target.value }))} placeholder="What does the student want to achieve?" rows={2} /></div>
 
-          <div><Label className="text-xs">Preferred Time</Label><Input value={form.preferred_time} onChange={e => setForm(p => ({ ...p, preferred_time: e.target.value }))} /></div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-2">Preferred Class Time</p>
+          <p className="text-[11px] text-muted-foreground -mt-1">Add at least 2 specific slots so we can match a teacher.</p>
+          <div>
+            <Label className="text-xs">Timezone</Label>
+            <Select value={form.timezone} onValueChange={v => setForm(p => ({ ...p, timezone: v }))}>
+              <SelectTrigger><SelectValue placeholder="Select timezone..." /></SelectTrigger>
+              <SelectContent className="max-h-72">
+                {LEAD_TIMEZONES.map(tz => <SelectItem key={tz} value={tz}>{tz.replace('_', ' ')}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="p-3 rounded-lg border border-border bg-muted/30 space-y-2">
+            <p className="text-xs font-semibold">🟢 Slot 1 — Most Preferred</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div><Label className="text-[10px]">From</Label><Input type="time" value={form.slot1_from} onChange={e => setForm(p => ({ ...p, slot1_from: e.target.value }))} /></div>
+              <div><Label className="text-[10px]">To</Label><Input type="time" value={form.slot1_to} onChange={e => setForm(p => ({ ...p, slot1_to: e.target.value }))} /></div>
+            </div>
+            <Input value={form.slot1_note} onChange={e => setForm(p => ({ ...p, slot1_note: e.target.value }))} placeholder="Optional note (e.g. weekdays only)" className="h-9 text-xs" />
+          </div>
+          <div className="p-3 rounded-lg border border-border bg-muted/30 space-y-2">
+            <p className="text-xs font-semibold">🟡 Slot 2 — Backup</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div><Label className="text-[10px]">From</Label><Input type="time" value={form.slot2_from} onChange={e => setForm(p => ({ ...p, slot2_from: e.target.value }))} /></div>
+              <div><Label className="text-[10px]">To</Label><Input type="time" value={form.slot2_to} onChange={e => setForm(p => ({ ...p, slot2_to: e.target.value }))} /></div>
+            </div>
+            <Input value={form.slot2_note} onChange={e => setForm(p => ({ ...p, slot2_note: e.target.value }))} placeholder="Optional note" className="h-9 text-xs" />
+          </div>
+
           <div><Label className="text-xs">Notes</Label><Textarea value={form.message} onChange={e => setForm(p => ({ ...p, message: e.target.value }))} rows={2} /></div>
           <Button onClick={() => createMutation.mutate()} disabled={!form.name || selectedSubjects.length === 0 || createMutation.isPending} className="w-full">
             {createMutation.isPending ? 'Creating...' : 'Create Lead'}
