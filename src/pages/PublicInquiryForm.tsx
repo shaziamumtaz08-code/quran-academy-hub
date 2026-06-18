@@ -21,15 +21,16 @@ const SUBJECTS = [
   { value: 'arabic', label: 'Arabic Language', emoji: '🌙', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
   { value: 'islamic_studies', label: 'Islamic Studies', emoji: '📚', color: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' },
   { value: 'qaida', label: 'Qaida (Beginners)', emoji: '🔤', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+  { value: 'other', label: 'Other (Specify)', emoji: '✨', color: 'bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400' },
 ];
 
-const TIME_SLOTS = [
-  'Morning (6 AM – 9 AM)',
-  'Late Morning (9 AM – 12 PM)',
-  'Afternoon (12 PM – 3 PM)',
-  'Evening (3 PM – 6 PM)',
-  'Night (6 PM – 9 PM)',
-  'Late Night (9 PM – 12 AM)',
+// Common IANA timezones for students worldwide
+const TIMEZONES = [
+  'Asia/Karachi', 'Asia/Dubai', 'Asia/Riyadh', 'Asia/Kolkata', 'Asia/Dhaka',
+  'Asia/Jakarta', 'Asia/Kuala_Lumpur', 'Asia/Singapore',
+  'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Istanbul',
+  'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
+  'America/Toronto', 'Australia/Sydney', 'Africa/Cairo', 'Africa/Lagos',
 ];
 
 function SuccessScreen() {
