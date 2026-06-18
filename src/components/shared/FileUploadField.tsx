@@ -95,10 +95,11 @@ export function FileUploadField({
 
 /** Inline preview for viewing attachments in tables/sheets */
 export function AttachmentPreview({ url, className }: { url: string | null; className?: string }) {
+  const href = useSignedUrl(url);
   if (!url) return null;
   const isImage = /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(url);
   return (
-    <a href={url} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-1 text-xs text-primary hover:underline ${className || ''}`}>
+    <a href={href || url} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-1 text-xs text-primary hover:underline ${className || ''}`}>
       {isImage ? <Image className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
       View
       <ExternalLink className="h-3 w-3" />
