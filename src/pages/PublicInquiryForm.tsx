@@ -352,8 +352,34 @@ export default function PublicInquiryForm() {
     for_whom: 'child', gender: '', date_of_birth: '',
     child_age: '', current_level_specimen: '', learning_goals: '',
     guardian_name: '', guardian_relationship: '',
-    preferred_time: '', message: '',
+    other_subject: '',
+    timezone: '',
+    slot1_from: '', slot1_to: '', slot1_note: '',
+    slot2_from: '', slot2_to: '', slot2_note: '',
+    message: '',
   });
+
+  const buildPreferredTime = () => {
+    const parts: string[] = [];
+    if (form.timezone) parts.push(`TZ: ${form.timezone}`);
+    if (form.slot1_from && form.slot1_to) {
+      parts.push(`Slot 1: ${form.slot1_from}–${form.slot1_to}${form.slot1_note ? ` (${form.slot1_note})` : ''}`);
+    }
+    if (form.slot2_from && form.slot2_to) {
+      parts.push(`Slot 2: ${form.slot2_from}–${form.slot2_to}${form.slot2_note ? ` (${form.slot2_note})` : ''}`);
+    }
+    return parts.join(' | ') || null;
+  };
+
+  const buildSubjects = () => {
+    const labels = selectedSubjects
+      .map(s => {
+        if (s === 'other') return form.other_subject ? `Other: ${form.other_subject}` : 'Other';
+        return SUBJECTS.find(x => x.value === s)?.label;
+      })
+      .filter(Boolean);
+    return labels.join(', ') || null;
+  };
 
   const submitMutation = useMutation({
     mutationFn: async () => {
@@ -367,8 +393,8 @@ export default function PublicInquiryForm() {
         child_name: form.for_whom === 'child' ? form.name : null,
         child_age: form.child_age ? parseInt(form.child_age) : null,
         child_gender: form.gender || null,
-        subject_interest: selectedSubjects.map(s => SUBJECTS.find(x => x.value === s)?.label).filter(Boolean).join(', ') || null,
-        preferred_time: form.preferred_time || null,
+        subject_interest: buildSubjects(),
+        preferred_time: buildPreferredTime(),
         message: form.message || null,
         gender: form.gender || null,
         date_of_birth: form.date_of_birth || null,
@@ -389,6 +415,9 @@ export default function PublicInquiryForm() {
   const toggleSubject = (value: string) => {
     setSelectedSubjects(prev => prev.includes(value) ? prev.filter(s => s !== value) : [...prev, value]);
   };
+
+  const otherInvalid = selectedSubjects.includes('other') && !form.other_subject.trim();
+  const slotsInvalid = !form.slot1_from || !form.slot1_to || !form.slot2_from || !form.slot2_to || !form.timezone;
 
   if (submitted) return <SuccessScreen />;
 
