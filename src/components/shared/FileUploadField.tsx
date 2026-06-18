@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { Upload, Loader2, FileText, Image, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useSignedUrl } from '@/lib/signedUrl';
 
 interface FileUploadFieldProps {
   label?: string;
