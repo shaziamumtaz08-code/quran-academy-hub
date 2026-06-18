@@ -2718,8 +2718,63 @@ export type Database = {
           },
         ]
       }
+      demo_feedback: {
+        Row: {
+          audience: string
+          demo_session_id: string
+          id: string
+          interested: string | null
+          lead_id: string
+          notes: string | null
+          rating: number | null
+          recommended_package: string | null
+          student_level: string | null
+          submitted_at: string
+        }
+        Insert: {
+          audience: string
+          demo_session_id: string
+          id?: string
+          interested?: string | null
+          lead_id: string
+          notes?: string | null
+          rating?: number | null
+          recommended_package?: string | null
+          student_level?: string | null
+          submitted_at?: string
+        }
+        Update: {
+          audience?: string
+          demo_session_id?: string
+          id?: string
+          interested?: string | null
+          lead_id?: string
+          notes?: string | null
+          rating?: number | null
+          recommended_package?: string | null
+          student_level?: string | null
+          submitted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demo_feedback_demo_session_id_fkey"
+            columns: ["demo_session_id"]
+            isOneToOne: false
+            referencedRelation: "demo_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demo_feedback_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       demo_sessions: {
         Row: {
+          cancelled_at: string | null
           created_at: string
           duration_min: number
           feedback_comment: string | null
@@ -2733,13 +2788,18 @@ export type Database = {
           platform: string | null
           scheduled_date: string
           scheduled_time: string
+          share_sent_at: string | null
           status: string
+          student_share_token: string | null
           teacher_id: string | null
           teacher_note: string | null
           teacher_notes: string | null
+          teacher_share_token: string | null
+          timezone: string | null
           updated_at: string
         }
         Insert: {
+          cancelled_at?: string | null
           created_at?: string
           duration_min?: number
           feedback_comment?: string | null
@@ -2753,13 +2813,18 @@ export type Database = {
           platform?: string | null
           scheduled_date: string
           scheduled_time: string
+          share_sent_at?: string | null
           status?: string
+          student_share_token?: string | null
           teacher_id?: string | null
           teacher_note?: string | null
           teacher_notes?: string | null
+          teacher_share_token?: string | null
+          timezone?: string | null
           updated_at?: string
         }
         Update: {
+          cancelled_at?: string | null
           created_at?: string
           duration_min?: number
           feedback_comment?: string | null
@@ -2773,10 +2838,14 @@ export type Database = {
           platform?: string | null
           scheduled_date?: string
           scheduled_time?: string
+          share_sent_at?: string | null
           status?: string
+          student_share_token?: string | null
           teacher_id?: string | null
           teacher_note?: string | null
           teacher_notes?: string | null
+          teacher_share_token?: string | null
+          timezone?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -9651,6 +9720,7 @@ export type Database = {
           zoom_email: string
         }[]
       }
+      get_demo_by_share_token: { Args: { _token: string }; Returns: Json }
       get_parent_children_ids: {
         Args: { _parent_id: string }
         Returns: string[]
@@ -9739,6 +9809,17 @@ export type Database = {
       share_a_class: {
         Args: { _user_a: string; _user_b: string }
         Returns: boolean
+      }
+      submit_demo_feedback: {
+        Args: {
+          _interested?: string
+          _notes?: string
+          _rating?: number
+          _recommended_package?: string
+          _student_level?: string
+          _token: string
+        }
+        Returns: Json
       }
     }
     Enums: {
