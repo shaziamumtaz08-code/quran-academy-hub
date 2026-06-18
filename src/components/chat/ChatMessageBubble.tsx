@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { Paperclip, ClipboardList, Copy, Reply, ExternalLink, FileText, Image as ImageIcon, Mic, Forward, ArrowRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ActorBadge } from '@/components/shared/ActingAsBanner';
+import { useSignedUrl } from '@/lib/signedUrl';
 
 interface ChatMessageBubbleProps {
   msg: any;
@@ -14,6 +15,7 @@ interface ChatMessageBubbleProps {
 }
 
 export function ChatMessageBubble({ msg, isMe, onConvertToTask, onReply, onForward, replyToContent }: ChatMessageBubbleProps) {
+  const attachmentHref = useSignedUrl(msg.attachment_url);
   const isImage = msg.attachment_url && /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(msg.attachment_url);
   const isAudio = msg.attachment_url && /\.(webm|ogg|mp3|wav|m4a)(\?|$)/i.test(msg.attachment_url);
   const isPdf = msg.attachment_url && /\.pdf(\?|$)/i.test(msg.attachment_url);
@@ -58,18 +60,20 @@ export function ChatMessageBubble({ msg, isMe, onConvertToTask, onReply, onForwa
           {msg.attachment_url && (
             <div className="mt-1.5">
               {isImage ? (
-                <a href={msg.attachment_url} target="_blank" rel="noopener">
-                  <img src={msg.attachment_url} alt="attachment" className="rounded-lg max-h-48 max-w-full object-cover" />
+                <a href={attachmentHref || msg.attachment_url} target="_blank" rel="noopener">
+                  {attachmentHref && <img src={attachmentHref} alt="attachment" className="rounded-lg max-h-48 max-w-full object-cover" />}
                 </a>
               ) : isAudio ? (
                 <div className="flex items-center gap-2">
                   <Mic className="h-3.5 w-3.5 shrink-0 text-primary" />
-                  <audio controls preload="none" className="h-8 max-w-[200px]">
-                    <source src={msg.attachment_url} type="audio/webm" />
-                  </audio>
+                  {attachmentHref && (
+                    <audio controls preload="none" className="h-8 max-w-[200px]">
+                      <source src={attachmentHref} type="audio/webm" />
+                    </audio>
+                  )}
                 </div>
               ) : (
-                <a href={msg.attachment_url} target="_blank" rel="noopener" className="flex items-center gap-1.5 text-[11px] underline">
+                <a href={attachmentHref || msg.attachment_url} target="_blank" rel="noopener" className="flex items-center gap-1.5 text-[11px] underline">
                   {isPdf ? <FileText className="h-3.5 w-3.5 shrink-0" /> : <Paperclip className="h-3.5 w-3.5 shrink-0" />}
                   Attachment
                   <ExternalLink className="h-3 w-3 shrink-0" />

@@ -20,6 +20,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { useDivision } from '@/contexts/DivisionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDisplayDate } from '@/lib/dateFormat';
+import { useSignedUrl } from '@/lib/signedUrl';
+
+function ReceiptLink({ url }: { url: string }) {
+  const href = useSignedUrl(url);
+  const isImg = /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(url);
+  return (
+    <a href={href || url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1 mt-1">
+      {isImg ? <Image className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
+      View Attachment <ExternalLink className="h-3 w-3" />
+    </a>
+  );
+}
 
 const CURRENCIES = ['USD', 'PKR', 'GBP', 'EUR', 'CAD', 'AUD', 'AED'];
 const DISBURSEMENT_METHODS = [
@@ -795,10 +807,7 @@ export default function CashAdvances() {
                 </div>
                 <p className="text-[10px] text-muted-foreground mt-1">JPG, PNG, PDF or DOC — max 5 MB</p>
                 {expenseForm.receipt_url && (
-                  <a href={expenseForm.receipt_url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1 mt-1">
-                    {/\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(expenseForm.receipt_url) ? <Image className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
-                    View Attachment <ExternalLink className="h-3 w-3" />
-                  </a>
+                  <ReceiptLink url={expenseForm.receipt_url} />
                 )}
               </div>
             </div>

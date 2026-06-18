@@ -16,6 +16,28 @@ import { ParentFeedbackForm } from './ParentFeedbackForm';
 import { supabase as sb } from '@/integrations/supabase/client';
 import { useActorStamp } from '@/contexts/KidContext';
 import { ActorBadge } from '@/components/shared/ActingAsBanner';
+import { useSignedUrl } from '@/lib/signedUrl';
+
+function AttachmentLink({ url, label = 'View Attachment' }: { url: string; label?: string }) {
+  const href = useSignedUrl(url);
+  const isImg = /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(url);
+  return (
+    <a href={href || url} target="_blank" rel="noreferrer" className="mt-1.5 flex items-center gap-1.5 text-xs text-primary hover:underline">
+      {isImg ? <Image className="h-3.5 w-3.5 shrink-0" /> : <FileText className="h-3.5 w-3.5 shrink-0" />}
+      {label} <ExternalLink className="h-3 w-3 shrink-0" />
+    </a>
+  );
+}
+
+function TicketAttachmentLink({ url }: { url: string }) {
+  const href = useSignedUrl(url);
+  return (
+    <a href={href || url} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-muted/50 rounded-lg p-3 text-xs text-primary hover:underline">
+      <Paperclip className="h-3.5 w-3.5 shrink-0" />
+      View Initial Attachment <ExternalLink className="h-3 w-3 shrink-0" />
+    </a>
+  );
+}
 
 interface TicketDetailProps {
   ticketId: string;
@@ -269,10 +291,7 @@ export function TicketDetail({ ticketId, open, onOpenChange }: TicketDetailProps
 
             {/* Ticket Attachment */}
             {ticket.attachment_url && (
-              <a href={ticket.attachment_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-muted/50 rounded-lg p-3 text-xs text-primary hover:underline">
-                <Paperclip className="h-3.5 w-3.5 shrink-0" />
-                View Initial Attachment <ExternalLink className="h-3 w-3 shrink-0" />
-              </a>
+              <TicketAttachmentLink url={ticket.attachment_url} />
             )}
 
             {/* Leave metadata */}
@@ -349,16 +368,9 @@ export function TicketDetail({ ticketId, open, onOpenChange }: TicketDetailProps
                         )}
                         <p className="whitespace-pre-wrap">{comment.message}</p>
                         {/* Attachment */}
-                        {comment.attachment_url && (() => {
-                          const url = comment.attachment_url;
-                          const isImg = /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(url);
-                          return (
-                            <a href={url} target="_blank" rel="noreferrer" className="mt-1.5 flex items-center gap-1.5 text-xs text-primary hover:underline">
-                              {isImg ? <Image className="h-3.5 w-3.5 shrink-0" /> : <FileText className="h-3.5 w-3.5 shrink-0" />}
-                              View Attachment <ExternalLink className="h-3 w-3 shrink-0" />
-                            </a>
-                          );
-                        })()}
+                        {comment.attachment_url && (
+                          <AttachmentLink url={comment.attachment_url} />
+                        )}
                         {/* Feedback ratings */}
                         {comment.metadata && (comment.metadata as any).type === 'parent_feedback' && (
                           <div className="mt-2 bg-background/50 rounded p-2 text-xs space-y-1">
