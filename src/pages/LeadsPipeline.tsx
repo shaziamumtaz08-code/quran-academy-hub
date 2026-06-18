@@ -1064,7 +1064,11 @@ function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
 // ── Main Page ──
 // ── Share Links Dialog ──
 function ShareLinksDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
-  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  // Always use the public published domain for shareable links, not the preview/workspace origin
+  const PUBLIC_ORIGIN = 'https://lms.alqurantimeacademy.com';
+  const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+  const isPreview = /lovableproject\.com|lovable\.app|localhost|127\.0\.0\.1/.test(currentOrigin);
+  const origin = isPreview ? PUBLIC_ORIGIN : (currentOrigin || PUBLIC_ORIGIN);
   const inquiryUrl = `${origin}/inquiry`;
   const waText = encodeURIComponent(
     `Assalamu Alaikum! Thank you for your interest in Al Quran Time Academy. Please share your details using this short form so we can schedule your free trial class:\n\n${inquiryUrl}`
