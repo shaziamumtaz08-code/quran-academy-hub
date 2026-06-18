@@ -264,14 +264,58 @@ function ContactSection({ form, updateField }: any) {
           </div>
         </div>
 
-        <div>
-          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Preferred Class Time</Label>
-          <Select value={form.preferred_time} onValueChange={v => updateField('preferred_time', v)}>
-            <SelectTrigger className="mt-1 h-11"><SelectValue placeholder="Select timezone & preferred slot..." /></SelectTrigger>
-            <SelectContent>
-              {TIME_SLOTS.map(slot => <SelectItem key={slot} value={slot}>{slot}</SelectItem>)}
-            </SelectContent>
-          </Select>
+        <div className="space-y-4 p-4 bg-muted/40 rounded-lg border border-border/50">
+          <div className="flex items-start gap-2">
+            <Clock className="h-4 w-4 text-blue-600 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-foreground">Preferred Class Time</p>
+              <p className="text-xs text-muted-foreground">Share specific availability so we can match a teacher. Add at least 2 slots in case the first one isn't available.</p>
+            </div>
+          </div>
+
+          <div>
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Timezone *</Label>
+            <Select value={form.timezone} onValueChange={v => updateField('timezone', v)}>
+              <SelectTrigger className="mt-1 h-11"><SelectValue placeholder="Select your timezone..." /></SelectTrigger>
+              <SelectContent className="max-h-72">
+                {TIMEZONES.map(tz => <SelectItem key={tz} value={tz}>{tz.replace('_', ' ')}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Slot 1 */}
+          <div className="rounded-lg bg-background p-3 border border-border/60">
+            <p className="text-xs font-semibold text-foreground mb-2">🟢 Slot 1 — Most Preferred *</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">From</Label>
+                <Input type="time" value={form.slot1_from} onChange={e => updateField('slot1_from', e.target.value)} className="mt-1 h-11" />
+              </div>
+              <div>
+                <Label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">To</Label>
+                <Input type="time" value={form.slot1_to} onChange={e => updateField('slot1_to', e.target.value)} className="mt-1 h-11" />
+              </div>
+            </div>
+            <Input value={form.slot1_note} onChange={e => updateField('slot1_note', e.target.value)}
+              placeholder="Optional note (e.g. weekdays only, after Maghrib)" className="mt-2 h-10 text-xs" />
+          </div>
+
+          {/* Slot 2 */}
+          <div className="rounded-lg bg-background p-3 border border-border/60">
+            <p className="text-xs font-semibold text-foreground mb-2">🟡 Slot 2 — Backup *</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">From</Label>
+                <Input type="time" value={form.slot2_from} onChange={e => updateField('slot2_from', e.target.value)} className="mt-1 h-11" />
+              </div>
+              <div>
+                <Label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">To</Label>
+                <Input type="time" value={form.slot2_to} onChange={e => updateField('slot2_to', e.target.value)} className="mt-1 h-11" />
+              </div>
+            </div>
+            <Input value={form.slot2_note} onChange={e => updateField('slot2_note', e.target.value)}
+              placeholder="Optional note" className="mt-2 h-10 text-xs" />
+          </div>
         </div>
       </CardContent>
     </Card>
