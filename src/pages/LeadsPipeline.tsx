@@ -221,10 +221,40 @@ function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
               ))}
             </div>
           </div>
+          {selectedSubjects.includes('Other') && (
+            <div><Label className="text-xs">Other Subject *</Label><Input value={form.other_subject} onChange={e => setForm(p => ({ ...p, other_subject: e.target.value }))} placeholder="Specify (e.g. Hadith, Fiqh, Seerah)" /></div>
+          )}
           <div><Label className="text-xs">Current Level / Specimen</Label><Input value={form.current_level_specimen} onChange={e => setForm(p => ({ ...p, current_level_specimen: e.target.value }))} placeholder="e.g. Noorani Qaida page 5" /></div>
           <div><Label className="text-xs">Learning Goals</Label><Textarea value={form.learning_goals} onChange={e => setForm(p => ({ ...p, learning_goals: e.target.value }))} placeholder="What does the student want to achieve?" rows={2} /></div>
 
-          <div><Label className="text-xs">Preferred Time</Label><Input value={form.preferred_time} onChange={e => setForm(p => ({ ...p, preferred_time: e.target.value }))} /></div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-2">Preferred Class Time</p>
+          <p className="text-[11px] text-muted-foreground -mt-1">Add at least 2 specific slots so we can match a teacher.</p>
+          <div>
+            <Label className="text-xs">Timezone</Label>
+            <Select value={form.timezone} onValueChange={v => setForm(p => ({ ...p, timezone: v }))}>
+              <SelectTrigger><SelectValue placeholder="Select timezone..." /></SelectTrigger>
+              <SelectContent className="max-h-72">
+                {LEAD_TIMEZONES.map(tz => <SelectItem key={tz} value={tz}>{tz.replace('_', ' ')}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="p-3 rounded-lg border border-border bg-muted/30 space-y-2">
+            <p className="text-xs font-semibold">🟢 Slot 1 — Most Preferred</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div><Label className="text-[10px]">From</Label><Input type="time" value={form.slot1_from} onChange={e => setForm(p => ({ ...p, slot1_from: e.target.value }))} /></div>
+              <div><Label className="text-[10px]">To</Label><Input type="time" value={form.slot1_to} onChange={e => setForm(p => ({ ...p, slot1_to: e.target.value }))} /></div>
+            </div>
+            <Input value={form.slot1_note} onChange={e => setForm(p => ({ ...p, slot1_note: e.target.value }))} placeholder="Optional note (e.g. weekdays only)" className="h-9 text-xs" />
+          </div>
+          <div className="p-3 rounded-lg border border-border bg-muted/30 space-y-2">
+            <p className="text-xs font-semibold">🟡 Slot 2 — Backup</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div><Label className="text-[10px]">From</Label><Input type="time" value={form.slot2_from} onChange={e => setForm(p => ({ ...p, slot2_from: e.target.value }))} /></div>
+              <div><Label className="text-[10px]">To</Label><Input type="time" value={form.slot2_to} onChange={e => setForm(p => ({ ...p, slot2_to: e.target.value }))} /></div>
+            </div>
+            <Input value={form.slot2_note} onChange={e => setForm(p => ({ ...p, slot2_note: e.target.value }))} placeholder="Optional note" className="h-9 text-xs" />
+          </div>
+
           <div><Label className="text-xs">Notes</Label><Textarea value={form.message} onChange={e => setForm(p => ({ ...p, message: e.target.value }))} rows={2} /></div>
           <Button onClick={() => createMutation.mutate()} disabled={!form.name || selectedSubjects.length === 0 || createMutation.isPending} className="w-full">
             {createMutation.isPending ? 'Creating...' : 'Create Lead'}
