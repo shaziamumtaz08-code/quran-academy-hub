@@ -21,15 +21,16 @@ const SUBJECTS = [
   { value: 'arabic', label: 'Arabic Language', emoji: '🌙', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
   { value: 'islamic_studies', label: 'Islamic Studies', emoji: '📚', color: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' },
   { value: 'qaida', label: 'Qaida (Beginners)', emoji: '🔤', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+  { value: 'other', label: 'Other (Specify)', emoji: '✨', color: 'bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400' },
 ];
 
-const TIME_SLOTS = [
-  'Morning (6 AM – 9 AM)',
-  'Late Morning (9 AM – 12 PM)',
-  'Afternoon (12 PM – 3 PM)',
-  'Evening (3 PM – 6 PM)',
-  'Night (6 PM – 9 PM)',
-  'Late Night (9 PM – 12 AM)',
+// Common IANA timezones for students worldwide
+const TIMEZONES = [
+  'Asia/Karachi', 'Asia/Dubai', 'Asia/Riyadh', 'Asia/Kolkata', 'Asia/Dhaka',
+  'Asia/Jakarta', 'Asia/Kuala_Lumpur', 'Asia/Singapore',
+  'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Istanbul',
+  'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
+  'America/Toronto', 'Australia/Sydney', 'Africa/Cairo', 'Africa/Lagos',
 ];
 
 function SuccessScreen() {
@@ -182,6 +183,14 @@ function PersonalInfoSection({ form, updateField, selectedSubjects, toggleSubjec
             )}
           </div>
 
+          {selectedSubjects.includes('other') && (
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Other Subject — Please Specify *</Label>
+              <Input value={form.other_subject} onChange={e => updateField('other_subject', e.target.value)}
+                placeholder="e.g. Hadith, Fiqh, Seerah, Urdu translation…" className="mt-1 h-11" />
+            </div>
+          )}
+
           <div>
             <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Current Level / Specimen</Label>
             <Input value={form.current_level_specimen} onChange={e => updateField('current_level_specimen', e.target.value)}
@@ -255,14 +264,58 @@ function ContactSection({ form, updateField }: any) {
           </div>
         </div>
 
-        <div>
-          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Preferred Class Time</Label>
-          <Select value={form.preferred_time} onValueChange={v => updateField('preferred_time', v)}>
-            <SelectTrigger className="mt-1 h-11"><SelectValue placeholder="Select timezone & preferred slot..." /></SelectTrigger>
-            <SelectContent>
-              {TIME_SLOTS.map(slot => <SelectItem key={slot} value={slot}>{slot}</SelectItem>)}
-            </SelectContent>
-          </Select>
+        <div className="space-y-4 p-4 bg-muted/40 rounded-lg border border-border/50">
+          <div className="flex items-start gap-2">
+            <Clock className="h-4 w-4 text-blue-600 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-foreground">Preferred Class Time</p>
+              <p className="text-xs text-muted-foreground">Share specific availability so we can match a teacher. Add at least 2 slots in case the first one isn't available.</p>
+            </div>
+          </div>
+
+          <div>
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Timezone *</Label>
+            <Select value={form.timezone} onValueChange={v => updateField('timezone', v)}>
+              <SelectTrigger className="mt-1 h-11"><SelectValue placeholder="Select your timezone..." /></SelectTrigger>
+              <SelectContent className="max-h-72">
+                {TIMEZONES.map(tz => <SelectItem key={tz} value={tz}>{tz.replace('_', ' ')}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Slot 1 */}
+          <div className="rounded-lg bg-background p-3 border border-border/60">
+            <p className="text-xs font-semibold text-foreground mb-2">🟢 Slot 1 — Most Preferred *</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">From</Label>
+                <Input type="time" value={form.slot1_from} onChange={e => updateField('slot1_from', e.target.value)} className="mt-1 h-11" />
+              </div>
+              <div>
+                <Label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">To</Label>
+                <Input type="time" value={form.slot1_to} onChange={e => updateField('slot1_to', e.target.value)} className="mt-1 h-11" />
+              </div>
+            </div>
+            <Input value={form.slot1_note} onChange={e => updateField('slot1_note', e.target.value)}
+              placeholder="Optional note (e.g. weekdays only, after Maghrib)" className="mt-2 h-10 text-xs" />
+          </div>
+
+          {/* Slot 2 */}
+          <div className="rounded-lg bg-background p-3 border border-border/60">
+            <p className="text-xs font-semibold text-foreground mb-2">🟡 Slot 2 — Backup *</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">From</Label>
+                <Input type="time" value={form.slot2_from} onChange={e => updateField('slot2_from', e.target.value)} className="mt-1 h-11" />
+              </div>
+              <div>
+                <Label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">To</Label>
+                <Input type="time" value={form.slot2_to} onChange={e => updateField('slot2_to', e.target.value)} className="mt-1 h-11" />
+              </div>
+            </div>
+            <Input value={form.slot2_note} onChange={e => updateField('slot2_note', e.target.value)}
+              placeholder="Optional note" className="mt-2 h-10 text-xs" />
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -299,8 +352,34 @@ export default function PublicInquiryForm() {
     for_whom: 'child', gender: '', date_of_birth: '',
     child_age: '', current_level_specimen: '', learning_goals: '',
     guardian_name: '', guardian_relationship: '',
-    preferred_time: '', message: '',
+    other_subject: '',
+    timezone: '',
+    slot1_from: '', slot1_to: '', slot1_note: '',
+    slot2_from: '', slot2_to: '', slot2_note: '',
+    message: '',
   });
+
+  const buildPreferredTime = () => {
+    const parts: string[] = [];
+    if (form.timezone) parts.push(`TZ: ${form.timezone}`);
+    if (form.slot1_from && form.slot1_to) {
+      parts.push(`Slot 1: ${form.slot1_from}–${form.slot1_to}${form.slot1_note ? ` (${form.slot1_note})` : ''}`);
+    }
+    if (form.slot2_from && form.slot2_to) {
+      parts.push(`Slot 2: ${form.slot2_from}–${form.slot2_to}${form.slot2_note ? ` (${form.slot2_note})` : ''}`);
+    }
+    return parts.join(' | ') || null;
+  };
+
+  const buildSubjects = () => {
+    const labels = selectedSubjects
+      .map(s => {
+        if (s === 'other') return form.other_subject ? `Other: ${form.other_subject}` : 'Other';
+        return SUBJECTS.find(x => x.value === s)?.label;
+      })
+      .filter(Boolean);
+    return labels.join(', ') || null;
+  };
 
   const submitMutation = useMutation({
     mutationFn: async () => {
@@ -314,8 +393,8 @@ export default function PublicInquiryForm() {
         child_name: form.for_whom === 'child' ? form.name : null,
         child_age: form.child_age ? parseInt(form.child_age) : null,
         child_gender: form.gender || null,
-        subject_interest: selectedSubjects.map(s => SUBJECTS.find(x => x.value === s)?.label).filter(Boolean).join(', ') || null,
-        preferred_time: form.preferred_time || null,
+        subject_interest: buildSubjects(),
+        preferred_time: buildPreferredTime(),
         message: form.message || null,
         gender: form.gender || null,
         date_of_birth: form.date_of_birth || null,
@@ -337,6 +416,9 @@ export default function PublicInquiryForm() {
     setSelectedSubjects(prev => prev.includes(value) ? prev.filter(s => s !== value) : [...prev, value]);
   };
 
+  const otherInvalid = selectedSubjects.includes('other') && !form.other_subject.trim();
+  const slotsInvalid = !form.slot1_from || !form.slot1_to || !form.slot2_from || !form.slot2_to || !form.timezone;
+
   if (submitted) return <SuccessScreen />;
 
   return (
@@ -347,7 +429,7 @@ export default function PublicInquiryForm() {
         <ContactSection form={form} updateField={updateField} />
         <NotesSection form={form} updateField={updateField} />
 
-        <Button onClick={() => submitMutation.mutate()} disabled={!form.name || selectedSubjects.length === 0 || submitMutation.isPending}
+        <Button onClick={() => submitMutation.mutate()} disabled={!form.name || selectedSubjects.length === 0 || otherInvalid || slotsInvalid || submitMutation.isPending}
           className="w-full h-14 text-base font-semibold shadow-lg hover:shadow-xl transition-all" size="lg">
           {submitMutation.isPending ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Send className="h-5 w-5 mr-2" />}
           Continue to Pre-Demo Screening ↗
