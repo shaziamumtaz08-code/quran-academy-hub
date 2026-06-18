@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { Paperclip, ClipboardList, Copy, Reply, ExternalLink, FileText, Image as ImageIcon, Mic, Forward, ArrowRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ActorBadge } from '@/components/shared/ActingAsBanner';
+import { useSignedUrl } from '@/lib/signedUrl';
 
 interface ChatMessageBubbleProps {
   msg: any;
