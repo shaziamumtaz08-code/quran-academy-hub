@@ -60,18 +60,20 @@ export function ChatMessageBubble({ msg, isMe, onConvertToTask, onReply, onForwa
           {msg.attachment_url && (
             <div className="mt-1.5">
               {isImage ? (
-                <a href={msg.attachment_url} target="_blank" rel="noopener">
-                  <img src={msg.attachment_url} alt="attachment" className="rounded-lg max-h-48 max-w-full object-cover" />
+                <a href={attachmentHref || msg.attachment_url} target="_blank" rel="noopener">
+                  {attachmentHref && <img src={attachmentHref} alt="attachment" className="rounded-lg max-h-48 max-w-full object-cover" />}
                 </a>
               ) : isAudio ? (
                 <div className="flex items-center gap-2">
                   <Mic className="h-3.5 w-3.5 shrink-0 text-primary" />
-                  <audio controls preload="none" className="h-8 max-w-[200px]">
-                    <source src={msg.attachment_url} type="audio/webm" />
-                  </audio>
+                  {attachmentHref && (
+                    <audio controls preload="none" className="h-8 max-w-[200px]">
+                      <source src={attachmentHref} type="audio/webm" />
+                    </audio>
+                  )}
                 </div>
               ) : (
-                <a href={msg.attachment_url} target="_blank" rel="noopener" className="flex items-center gap-1.5 text-[11px] underline">
+                <a href={attachmentHref || msg.attachment_url} target="_blank" rel="noopener" className="flex items-center gap-1.5 text-[11px] underline">
                   {isPdf ? <FileText className="h-3.5 w-3.5 shrink-0" /> : <Paperclip className="h-3.5 w-3.5 shrink-0" />}
                   Attachment
                   <ExternalLink className="h-3 w-3 shrink-0" />
