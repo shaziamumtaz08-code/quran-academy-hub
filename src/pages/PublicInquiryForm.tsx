@@ -183,6 +183,14 @@ function PersonalInfoSection({ form, updateField, selectedSubjects, toggleSubjec
             )}
           </div>
 
+          {selectedSubjects.includes('other') && (
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Other Subject — Please Specify *</Label>
+              <Input value={form.other_subject} onChange={e => updateField('other_subject', e.target.value)}
+                placeholder="e.g. Hadith, Fiqh, Seerah, Urdu translation…" className="mt-1 h-11" />
+            </div>
+          )}
+
           <div>
             <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Current Level / Specimen</Label>
             <Input value={form.current_level_specimen} onChange={e => updateField('current_level_specimen', e.target.value)}
