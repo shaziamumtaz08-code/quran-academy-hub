@@ -84,7 +84,7 @@ export function FileUploadField({
         <div className="flex items-center gap-2 mt-1">
           {isImage && <Image className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
           {isPdf && <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
-          <a href={value} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline truncate max-w-[200px] flex items-center gap-1">
+          <a href={viewHref || value} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline truncate max-w-[200px] flex items-center gap-1">
             View Attachment <ExternalLink className="h-3 w-3 shrink-0" />
           </a>
         </div>
