@@ -1186,6 +1186,7 @@ export default function LeadsPipeline() {
 
         <CreateLeadDialog open={createOpen} onOpenChange={setCreateOpen} />
         <LeadDetailDialog lead={selectedLead} open={detailOpen} onOpenChange={setDetailOpen} />
+        <ShareLinksDialog open={shareOpen} onOpenChange={setShareOpen} />
       </div>
     </DashboardLayout>
   );
