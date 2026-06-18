@@ -220,13 +220,21 @@ function CreateLeadDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-2">Academic Info</p>
           <div>
             <Label className="text-xs">Subject to Study *</Label>
-            <div className="flex flex-wrap gap-1.5 mt-1">
-              {LEAD_SUBJECTS.map(s => (
-                <button key={s} type="button" onClick={() => toggleSubject(s)}
-                  className={`px-2.5 py-1 rounded-full text-xs border transition-all ${
-                    selectedSubjects.includes(s) ? 'bg-primary/10 text-primary border-primary/30 font-medium' : 'bg-muted/50 border-border hover:border-primary/20'
-                  }`}>{selectedSubjects.includes(s) ? s : `+ ${s}`}</button>
-              ))}
+            <p className="text-[11px] text-muted-foreground mb-2">Select one or more subjects</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {LEAD_SUBJECTS.map(s => {
+                const isSelected = selectedSubjects.includes(s.value);
+                return (
+                  <button key={s.value} type="button" onClick={() => toggleSubject(s.value)}
+                    className={`relative p-3 rounded-xl border-2 transition-all text-left ${
+                      isSelected ? 'border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20' : 'border-border hover:border-primary/30'
+                    }`}>
+                    {isSelected && <div className="absolute top-1.5 right-1.5"><Star className="h-3 w-3 text-primary fill-primary" /></div>}
+                    <span className="text-xl block mb-1">{s.emoji}</span>
+                    <span className="text-xs font-medium text-foreground leading-tight">{s.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
           {selectedSubjects.includes('Other') && (
