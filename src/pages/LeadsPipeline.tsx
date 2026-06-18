@@ -1185,7 +1185,7 @@ Content-Type: application/json
   );
 }
 
-
+export default function LeadsPipeline() {
   const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
