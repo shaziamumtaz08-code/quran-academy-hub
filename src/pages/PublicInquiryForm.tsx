@@ -1,26 +1,26 @@
 import React, { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { useMutation } from '@tanstack/react-query';
-import {
-  CheckCircle, Loader2, Send, BookOpen, User, Phone, MapPin,
-  Clock, MessageSquare, GraduationCap, Star, Sparkles
-} from 'lucide-react';
+import { CheckCircle, Loader2, ArrowRight, Star } from 'lucide-react';
+
+// Palette (locked from selected direction)
+const CREAM = '#fcfaf7';
+const CARD_BORDER = '#e5e0d8';
+const EMERALD = '#064e3b';
+const EMERALD_DARK = '#053d2e';
+const GOLD = '#d4af37';
+const INPUT_BG = '#fdfcfb';
+
+const SERIF: React.CSSProperties = { fontFamily: "'Playfair Display', Georgia, serif" };
 
 const SUBJECTS = [
-  { value: 'quran_recitation', label: 'Quran Recitation', emoji: '📖', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
-  { value: 'tajweed', label: 'Tajweed', emoji: '🎙️', color: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' },
-  { value: 'memorization', label: 'Quran Memorization', emoji: '🕌', color: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400' },
-  { value: 'arabic', label: 'Arabic Language', emoji: '🌙', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
-  { value: 'islamic_studies', label: 'Islamic Studies', emoji: '📚', color: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' },
-  { value: 'qaida', label: 'Qaida (Beginners)', emoji: '🔤', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+  { value: 'quran_recitation', label: 'Quran Recitation' },
+  { value: 'tajweed', label: 'Tajweed' },
+  { value: 'memorization', label: 'Quran Memorization' },
+  { value: 'arabic', label: 'Arabic Language' },
+  { value: 'islamic_studies', label: 'Islamic Studies' },
+  { value: 'qaida', label: 'Qaida (Beginners)' },
 ];
 
 const TIME_SLOTS = [
@@ -32,265 +32,117 @@ const TIME_SLOTS = [
   'Late Night (9 PM – 12 AM)',
 ];
 
+// ── Field primitives matching the selected direction ──
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <label
+      className="block text-[11px] font-semibold uppercase tracking-[0.15em] mb-1.5 ml-1"
+      style={{ color: EMERALD }}
+    >
+      {children}
+    </label>
+  );
+}
+
+const inputCls =
+  'w-full px-4 py-3 rounded-xl outline-none transition-all placeholder:text-gray-400 text-gray-800 border';
+
+const inputStyle: React.CSSProperties = {
+  backgroundColor: INPUT_BG,
+  borderColor: CARD_BORDER,
+};
+
+function TextField(props: React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <input
+      {...props}
+      className={`${inputCls} focus:ring-2 focus:ring-[${GOLD}] focus:border-transparent ${props.className || ''}`}
+      style={{ ...inputStyle, ...(props.style || {}) }}
+    />
+  );
+}
+
+function SelectField(props: React.SelectHTMLAttributes<HTMLSelectElement> & { children: React.ReactNode }) {
+  return (
+    <select
+      {...props}
+      className={`${inputCls} appearance-none bg-no-repeat pr-10 focus:ring-2 focus:ring-[${GOLD}] focus:border-transparent ${props.className || ''}`}
+      style={{
+        ...inputStyle,
+        backgroundImage:
+          "url(\"data:image/svg+xml;charset=US-ASCII,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23064e3b' d='M6 8L0 0h12z'/%3E%3C/svg%3E\")",
+        backgroundPosition: 'right 1rem center',
+        backgroundSize: '0.7rem',
+        ...(props.style || {}),
+      }}
+    >
+      {props.children}
+    </select>
+  );
+}
+
+function TextareaField(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <textarea
+      {...props}
+      className={`${inputCls} resize-none focus:ring-2 focus:ring-[${GOLD}] focus:border-transparent ${props.className || ''}`}
+      style={{ ...inputStyle, ...(props.style || {}) }}
+    />
+  );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-3 pt-2">
+      <div className="h-px flex-1" style={{ backgroundColor: CARD_BORDER }} />
+      <h3
+        className="text-xs font-semibold uppercase tracking-[0.25em]"
+        style={{ color: EMERALD }}
+      >
+        {children}
+      </h3>
+      <div className="h-px flex-1" style={{ backgroundColor: CARD_BORDER }} />
+    </div>
+  );
+}
+
+// ── Success Screen ──
 function SuccessScreen() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="max-w-md mx-auto shadow-xl border-0">
-        <CardContent className="pt-10 pb-10 text-center space-y-4">
-          <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mx-auto">
-            <CheckCircle className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+    <div className="min-h-screen flex items-center justify-center p-6" style={{ backgroundColor: CREAM }}>
+      <div
+        className="w-full max-w-lg bg-white rounded-3xl shadow-xl overflow-hidden relative border"
+        style={{ borderColor: CARD_BORDER }}
+      >
+        <div className="relative flex flex-col items-center justify-center text-center px-8 pt-12 pb-16" style={{ backgroundColor: EMERALD }}>
+          <div
+            className="absolute inset-0 opacity-10"
+            style={{ backgroundImage: "url('https://www.transparenttextures.com/patterns/az-subtle.png')" }}
+          />
+          <div className="relative">
+            <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
+              <CheckCircle className="h-8 w-8" style={{ color: GOLD }} />
+            </div>
+            <h1 className="text-3xl mb-2" style={{ ...SERIF, color: GOLD }}>JazakAllah Khair</h1>
+            <p className="text-emerald-50/80 text-sm font-light tracking-wide max-w-xs mx-auto">
+              We've received your inquiry. Our team will reach out within 24 hours via WhatsApp or email.
+            </p>
           </div>
-          <h2 className="text-2xl font-bold text-foreground">JazakAllah Khair!</h2>
-          <p className="text-muted-foreground">We've received your inquiry. Our team will contact you within 24 hours via WhatsApp or email.</p>
-          <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground pt-2">
-            {[1,2,3,4,5].map(n => <Star key={n} className="h-3 w-3 text-amber-500" fill="currentColor" />)}
-            <span className="ml-1">Trusted by 500+ families worldwide</span>
+          <div className="absolute bottom-0 left-0 right-0 h-6 bg-white rounded-t-[100%]" />
+        </div>
+        <div className="px-8 pb-10 pt-6 text-center">
+          <div className="flex items-center justify-center gap-1 mb-2">
+            {[1, 2, 3, 4, 5].map(n => <Star key={n} className="h-4 w-4" style={{ color: GOLD }} fill={GOLD} />)}
           </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-function HeroBanner() {
-  return (
-    <div className="relative bg-primary overflow-hidden">
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-0 left-0 w-full h-full"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.3'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/svg%3E")`,
-          }}
-        />
-      </div>
-      <div className="relative max-w-2xl mx-auto px-4 py-12 sm:py-16 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center mx-auto mb-5">
-          <BookOpen className="h-8 w-8 text-primary-foreground" />
+          <p className="text-xs text-gray-500">Trusted by 500+ families across 30+ countries</p>
         </div>
-        <h1 className="text-3xl sm:text-4xl font-bold text-primary-foreground mb-3 tracking-tight">
-          Begin Your Quran Journey
-        </h1>
-        <p className="text-primary-foreground/80 text-base sm:text-lg max-w-md mx-auto">
-          Expert one-on-one Quran education for all ages. Schedule a free demo class today.
-        </p>
-        <div className="flex items-center justify-center gap-4 mt-6 text-primary-foreground/70 text-xs">
-          <span className="flex items-center gap-1"><CheckCircle className="h-3.5 w-3.5" /> Free Demo</span>
-          <span className="flex items-center gap-1"><CheckCircle className="h-3.5 w-3.5" /> Certified Teachers</span>
-          <span className="flex items-center gap-1"><CheckCircle className="h-3.5 w-3.5" /> Flexible Timing</span>
-        </div>
-      </div>
-      <div className="absolute bottom-0 left-0 right-0">
-        <svg viewBox="0 0 1440 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full">
-          <path d="M0 40V0C240 30 480 40 720 40C960 40 1200 30 1440 0V40H0Z" fill="hsl(var(--background))" />
-        </svg>
+        <div className="h-1.5 w-1/3 mx-auto rounded-t-full" style={{ backgroundColor: GOLD }} />
       </div>
     </div>
   );
 }
 
-function PersonalInfoSection({ form, updateField, selectedSubjects, toggleSubject }: any) {
-  return (
-    <>
-      {/* Personal Info */}
-      <Card className="shadow-lg border-0 overflow-hidden">
-        <div className="h-1 bg-gradient-to-r from-primary via-accent to-primary" />
-        <CardContent className="pt-6 space-y-4">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
-              <User className="h-4 w-4 text-primary" />
-            </div>
-            <h2 className="font-semibold text-foreground">Student Details</h2>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Student Name *</Label>
-              <Input value={form.name} onChange={e => updateField('name', e.target.value)} placeholder="Full name" className="mt-1 h-11" />
-            </div>
-            <div>
-              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Student Age</Label>
-              <Input type="number" value={form.child_age} onChange={e => updateField('child_age', e.target.value)} placeholder="Age" className="mt-1 h-11" min="3" max="99" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Gender</Label>
-              <Select value={form.gender} onValueChange={v => updateField('gender', v)}>
-                <SelectTrigger className="mt-1 h-11"><SelectValue placeholder="Select gender" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="male">Male</SelectItem>
-                  <SelectItem value="female">Female</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Date of Birth</Label>
-              <Input type="date" value={form.date_of_birth} onChange={e => updateField('date_of_birth', e.target.value)} className="mt-1 h-11" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">City</Label>
-              <Input value={form.city} onChange={e => updateField('city', e.target.value)} placeholder="e.g. New York" className="mt-1 h-11" />
-            </div>
-            <div>
-              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Country *</Label>
-              <Input value={form.country} onChange={e => updateField('country', e.target.value)} placeholder="e.g. United States" className="mt-1 h-11" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Academic Info */}
-      <Card className="shadow-lg border-0 overflow-hidden">
-        <div className="h-1 bg-gradient-to-r from-emerald-500 via-violet-500 to-amber-500" />
-        <CardContent className="pt-6 space-y-4">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-              <GraduationCap className="h-4 w-4 text-emerald-600" />
-            </div>
-            <h2 className="font-semibold text-foreground">Academic Info</h2>
-            <Badge variant="secondary" className="text-[10px]">New</Badge>
-          </div>
-
-          <div>
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Subject to Study *</Label>
-            <p className="text-xs text-muted-foreground mb-2">Select one or more subjects</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {SUBJECTS.map(subject => {
-                const isSelected = selectedSubjects.includes(subject.value);
-                return (
-                  <button key={subject.value} type="button" onClick={() => toggleSubject(subject.value)}
-                    className={`relative p-4 rounded-xl border-2 transition-all text-left ${
-                      isSelected ? 'border-primary bg-primary/5 shadow-md ring-1 ring-primary/20' : 'border-border hover:border-primary/30 hover:shadow-sm'
-                    }`}>
-                    {isSelected && <div className="absolute top-2 right-2"><CheckCircle className="h-4 w-4 text-primary" /></div>}
-                    <span className="text-2xl block mb-2">{subject.emoji}</span>
-                    <span className="text-sm font-medium text-foreground">{subject.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-            {selectedSubjects.length > 0 && (
-              <div className="flex flex-wrap gap-2 pt-3">
-                {selectedSubjects.map((s: string) => {
-                  const sub = SUBJECTS.find(x => x.value === s);
-                  return sub ? <Badge key={s} className={`${sub.color} border-0 text-xs px-3 py-1`}>{sub.emoji} {sub.label}</Badge> : null;
-                })}
-              </div>
-            )}
-          </div>
-
-          <div>
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Current Level / Specimen</Label>
-            <Input value={form.current_level_specimen} onChange={e => updateField('current_level_specimen', e.target.value)}
-              placeholder="e.g. Noorani Qaida page 5, Surah Al-Baqarah ayah 10" className="mt-1 h-11" />
-          </div>
-
-          <div>
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Learning Goals</Label>
-            <Textarea value={form.learning_goals} onChange={e => updateField('learning_goals', e.target.value)}
-              placeholder="What does the student want to achieve? (e.g. correct Tajweed, full Quran memorisation)" rows={3} className="mt-1" />
-          </div>
-        </CardContent>
-      </Card>
-    </>
-  );
-}
-
-function ContactSection({ form, updateField }: any) {
-  return (
-    <Card className="shadow-lg border-0 overflow-hidden">
-      <div className="h-1 bg-gradient-to-r from-blue-500 to-cyan-500" />
-      <CardContent className="pt-6 space-y-4">
-        <div className="flex items-center gap-2 mb-1">
-          <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center">
-            <Phone className="h-4 w-4 text-blue-600" />
-          </div>
-          <h2 className="font-semibold text-foreground">Contact & Enrollment</h2>
-        </div>
-
-        <div>
-          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Who is filling this form? *</Label>
-          <Select value={form.for_whom} onValueChange={v => updateField('for_whom', v)}>
-            <SelectTrigger className="mt-1 h-11"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="self"><span className="flex items-center gap-2">👤 Self</span></SelectItem>
-              <SelectItem value="child"><span className="flex items-center gap-2">👶 Parent / Guardian</span></SelectItem>
-              <SelectItem value="other"><span className="flex items-center gap-2">👥 Someone Else</span></SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {(form.for_whom === 'child' || form.for_whom === 'other') && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg border border-border/50">
-            <div>
-              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Parent / Guardian Name</Label>
-              <Input value={form.guardian_name} onChange={e => updateField('guardian_name', e.target.value)} placeholder="Full name" className="mt-1 h-11" />
-            </div>
-            <div>
-              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Relationship</Label>
-              <Select value={form.guardian_relationship} onValueChange={v => updateField('guardian_relationship', v)}>
-                <SelectTrigger className="mt-1 h-11"><SelectValue placeholder="Select..." /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="mother">Mother</SelectItem>
-                  <SelectItem value="father">Father</SelectItem>
-                  <SelectItem value="guardian">Guardian</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">WhatsApp / Phone *</Label>
-            <Input value={form.phone_whatsapp} onChange={e => updateField('phone_whatsapp', e.target.value)} placeholder="+XX XXX XXX XXXX" className="mt-1 h-11" />
-          </div>
-          <div>
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Email Address</Label>
-            <Input type="email" value={form.email} onChange={e => updateField('email', e.target.value)} placeholder="email@example.com" className="mt-1 h-11" />
-          </div>
-        </div>
-
-        <div>
-          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Preferred Class Time</Label>
-          <Select value={form.preferred_time} onValueChange={v => updateField('preferred_time', v)}>
-            <SelectTrigger className="mt-1 h-11"><SelectValue placeholder="Select timezone & preferred slot..." /></SelectTrigger>
-            <SelectContent>
-              {TIME_SLOTS.map(slot => <SelectItem key={slot} value={slot}>{slot}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function NotesSection({ form, updateField }: any) {
-  return (
-    <Card className="shadow-lg border-0 overflow-hidden">
-      <div className="h-1 bg-gradient-to-r from-orange-400 to-rose-400" />
-      <CardContent className="pt-6 space-y-4">
-        <div className="flex items-center gap-2 mb-1">
-          <div className="w-7 h-7 rounded-lg bg-orange-500/10 flex items-center justify-center">
-            <MessageSquare className="h-4 w-4 text-orange-600" />
-          </div>
-          <h2 className="font-semibold text-foreground">Notes & Attachments</h2>
-        </div>
-
-        <div>
-          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Special Note / Admin Remarks</Label>
-          <Textarea value={form.message} onChange={e => updateField('message', e.target.value)}
-            placeholder="Any additional context for the admin or teacher..." rows={3} className="mt-1" />
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
+// ── Main Form ──
 export default function PublicInquiryForm() {
   const [submitted, setSubmitted] = useState(false);
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
@@ -333,32 +185,213 @@ export default function PublicInquiryForm() {
   });
 
   const updateField = (field: string, value: string) => setForm(p => ({ ...p, [field]: value }));
-  const toggleSubject = (value: string) => {
+  const toggleSubject = (value: string) =>
     setSelectedSubjects(prev => prev.includes(value) ? prev.filter(s => s !== value) : [...prev, value]);
-  };
 
   if (submitted) return <SuccessScreen />;
 
+  const showGuardian = form.for_whom === 'child' || form.for_whom === 'other';
+  const canSubmit = form.name && form.country && form.phone_whatsapp && selectedSubjects.length > 0 && !submitMutation.isPending;
+
   return (
-    <div className="min-h-screen bg-background">
-      <HeroBanner />
-      <div className="max-w-2xl mx-auto px-4 -mt-2 pb-12 space-y-5">
-        <PersonalInfoSection form={form} updateField={updateField} selectedSubjects={selectedSubjects} toggleSubject={toggleSubject} />
-        <ContactSection form={form} updateField={updateField} />
-        <NotesSection form={form} updateField={updateField} />
-
-        <Button onClick={() => submitMutation.mutate()} disabled={!form.name || selectedSubjects.length === 0 || submitMutation.isPending}
-          className="w-full h-14 text-base font-semibold shadow-lg hover:shadow-xl transition-all" size="lg">
-          {submitMutation.isPending ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Send className="h-5 w-5 mr-2" />}
-          Continue to Pre-Demo Screening ↗
-        </Button>
-
-        <div className="text-center space-y-2 pt-2">
-          <div className="flex items-center justify-center gap-1">
-            {[1,2,3,4,5].map(n => <Star key={n} className="h-4 w-4 text-amber-500" fill="currentColor" />)}
+    <div className="min-h-screen flex items-start justify-center p-4 sm:p-6 lg:p-10 animate-fade-in" style={{ backgroundColor: CREAM }}>
+      <div
+        className="w-full max-w-2xl bg-white rounded-3xl shadow-xl overflow-hidden relative border"
+        style={{ borderColor: CARD_BORDER }}
+      >
+        {/* Decorative Emerald Header */}
+        <div className="relative flex flex-col items-center justify-center text-center px-8 pt-12 pb-16" style={{ backgroundColor: EMERALD }}>
+          <div
+            className="absolute inset-0 opacity-10"
+            style={{ backgroundImage: "url('https://www.transparenttextures.com/patterns/az-subtle.png')" }}
+          />
+          <div className="relative">
+            <h1 className="text-3xl sm:text-4xl mb-2" style={{ ...SERIF, color: GOLD }}>
+              Al Quran Time Academy
+            </h1>
+            <p className="text-emerald-50/80 text-sm font-light tracking-wide max-w-md mx-auto">
+              Begin your journey of divine understanding — schedule a free demo class
+            </p>
           </div>
-          <p className="text-xs text-muted-foreground">Trusted by 500+ families across 30+ countries</p>
+          <div className="absolute bottom-0 left-0 right-0 h-6 bg-white rounded-t-[100%]" />
         </div>
+
+        {/* Form Body */}
+        <form
+          onSubmit={(e) => { e.preventDefault(); if (canSubmit) submitMutation.mutate(); }}
+          className="px-6 sm:px-10 pb-10 pt-2 space-y-6"
+        >
+          <SectionTitle>Student Details</SectionTitle>
+
+          <div>
+            <FieldLabel>Full Name *</FieldLabel>
+            <TextField value={form.name} onChange={e => updateField('name', e.target.value)} placeholder="Enter your name" required />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div>
+              <FieldLabel>Age</FieldLabel>
+              <TextField type="number" min={3} max={99} value={form.child_age} onChange={e => updateField('child_age', e.target.value)} placeholder="e.g. 12" />
+            </div>
+            <div>
+              <FieldLabel>Gender</FieldLabel>
+              <SelectField value={form.gender} onChange={e => updateField('gender', e.target.value)}>
+                <option value="">Select gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+              </SelectField>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div>
+              <FieldLabel>Date of Birth</FieldLabel>
+              <TextField type="date" value={form.date_of_birth} onChange={e => updateField('date_of_birth', e.target.value)} />
+            </div>
+            <div>
+              <FieldLabel>City</FieldLabel>
+              <TextField value={form.city} onChange={e => updateField('city', e.target.value)} placeholder="e.g. Lahore" />
+            </div>
+          </div>
+
+          <div>
+            <FieldLabel>Country *</FieldLabel>
+            <TextField value={form.country} onChange={e => updateField('country', e.target.value)} placeholder="e.g. United Kingdom" required />
+          </div>
+
+          <SectionTitle>Programs of Interest *</SectionTitle>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            {SUBJECTS.map(s => {
+              const selected = selectedSubjects.includes(s.value);
+              return (
+                <button
+                  key={s.value}
+                  type="button"
+                  onClick={() => toggleSubject(s.value)}
+                  className="relative px-3 py-3 rounded-xl border text-xs font-medium text-left transition-all"
+                  style={{
+                    backgroundColor: selected ? EMERALD : INPUT_BG,
+                    color: selected ? GOLD : '#1f2937',
+                    borderColor: selected ? EMERALD : CARD_BORDER,
+                    boxShadow: selected ? `0 4px 12px ${EMERALD}26` : undefined,
+                  }}
+                >
+                  {selected && <CheckCircle className="absolute top-1.5 right-1.5 h-3.5 w-3.5" style={{ color: GOLD }} />}
+                  <span className="block leading-tight pr-4">{s.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div>
+            <FieldLabel>Current Level / Specimen</FieldLabel>
+            <TextField
+              value={form.current_level_specimen}
+              onChange={e => updateField('current_level_specimen', e.target.value)}
+              placeholder="e.g. Noorani Qaida page 5, Surah Al-Baqarah ayah 10"
+            />
+          </div>
+
+          <div>
+            <FieldLabel>Learning Goals</FieldLabel>
+            <TextareaField
+              rows={3}
+              value={form.learning_goals}
+              onChange={e => updateField('learning_goals', e.target.value)}
+              placeholder="What does the student want to achieve?"
+            />
+          </div>
+
+          <SectionTitle>Contact & Enrollment</SectionTitle>
+
+          <div>
+            <FieldLabel>Who is filling this form? *</FieldLabel>
+            <SelectField value={form.for_whom} onChange={e => updateField('for_whom', e.target.value)}>
+              <option value="self">Self</option>
+              <option value="child">Parent / Guardian</option>
+              <option value="other">Someone Else</option>
+            </SelectField>
+          </div>
+
+          {showGuardian && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 p-4 rounded-xl border" style={{ backgroundColor: CREAM, borderColor: CARD_BORDER }}>
+              <div>
+                <FieldLabel>Guardian Name</FieldLabel>
+                <TextField value={form.guardian_name} onChange={e => updateField('guardian_name', e.target.value)} placeholder="Full name" />
+              </div>
+              <div>
+                <FieldLabel>Relationship</FieldLabel>
+                <SelectField value={form.guardian_relationship} onChange={e => updateField('guardian_relationship', e.target.value)}>
+                  <option value="">Select...</option>
+                  <option value="mother">Mother</option>
+                  <option value="father">Father</option>
+                  <option value="guardian">Guardian</option>
+                  <option value="other">Other</option>
+                </SelectField>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div>
+              <FieldLabel>WhatsApp / Phone *</FieldLabel>
+              <TextField value={form.phone_whatsapp} onChange={e => updateField('phone_whatsapp', e.target.value)} placeholder="+XX XXX XXX XXXX" required />
+            </div>
+            <div>
+              <FieldLabel>Email Address</FieldLabel>
+              <TextField type="email" value={form.email} onChange={e => updateField('email', e.target.value)} placeholder="email@example.com" />
+            </div>
+          </div>
+
+          <div>
+            <FieldLabel>Preferred Class Time</FieldLabel>
+            <SelectField value={form.preferred_time} onChange={e => updateField('preferred_time', e.target.value)}>
+              <option value="">Select preferred slot…</option>
+              {TIME_SLOTS.map(slot => <option key={slot} value={slot}>{slot}</option>)}
+            </SelectField>
+          </div>
+
+          <div>
+            <FieldLabel>Special Notes</FieldLabel>
+            <TextareaField
+              rows={3}
+              value={form.message}
+              onChange={e => updateField('message', e.target.value)}
+              placeholder="Any additional context for our team…"
+            />
+          </div>
+
+          {/* Submit */}
+          <button
+            type="submit"
+            disabled={!canSubmit}
+            className="w-full mt-2 py-4 font-semibold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
+            style={{
+              backgroundColor: EMERALD,
+              color: GOLD,
+              boxShadow: `0 10px 24px -8px ${EMERALD}40`,
+            }}
+            onMouseOver={(e) => { if (canSubmit) (e.currentTarget as HTMLButtonElement).style.backgroundColor = EMERALD_DARK; }}
+            onMouseOut={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = EMERALD; }}
+          >
+            {submitMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <>
+                <span className="tracking-[0.18em] uppercase text-sm">Submit Inquiry</span>
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </>
+            )}
+          </button>
+
+          <p className="text-center text-[11px] text-gray-400">
+            Our team typically responds within 24 hours. May Allah bless your journey.
+          </p>
+        </form>
+
+        {/* Bottom gold accent */}
+        <div className="h-1.5 w-1/3 mx-auto rounded-t-full" style={{ backgroundColor: GOLD }} />
       </div>
     </div>
   );
