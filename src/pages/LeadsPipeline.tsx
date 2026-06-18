@@ -1122,6 +1122,9 @@ export default function LeadsPipeline() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search leads..." className="pl-9 w-60" />
             </div>
+            <Button variant="outline" onClick={() => setShareOpen(true)}>
+              <Send className="h-4 w-4 mr-1" /> Share Links
+            </Button>
             <Button onClick={() => setCreateOpen(true)}>
               <Plus className="h-4 w-4 mr-1" /> Add Lead
             </Button>
