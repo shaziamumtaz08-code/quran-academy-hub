@@ -74,7 +74,15 @@ interface Lead {
 }
 
 const LEAD_SUBJECTS = [
-  'Quran Recitation', 'Tajweed', 'Quran Memorization', 'Arabic Language', 'Islamic Studies', 'Qaida (Beginners)',
+  'Quran Recitation', 'Tajweed', 'Quran Memorization', 'Arabic Language', 'Islamic Studies', 'Qaida (Beginners)', 'Other',
+];
+
+const LEAD_TIMEZONES = [
+  'Asia/Karachi', 'Asia/Dubai', 'Asia/Riyadh', 'Asia/Kolkata', 'Asia/Dhaka',
+  'Asia/Jakarta', 'Asia/Kuala_Lumpur', 'Asia/Singapore',
+  'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Istanbul',
+  'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
+  'America/Toronto', 'Australia/Sydney', 'Africa/Cairo', 'Africa/Lagos',
 ];
 
 // ── Create Lead Dialog ──
