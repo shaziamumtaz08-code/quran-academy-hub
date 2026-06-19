@@ -77,6 +77,7 @@ export const ACCESS_MATRIX: ModuleAccess[] = [
   { id:'integrity_audit',     route:'/integrity-audit',        roles:{super_admin:ADMIN_FULL, admin:ADMIN_FULL, admin_division:ADMIN_FULL}, group:'settings' },
   { id:'activity_log',        route:'/activity-log',           roles:{super_admin:ADMIN_FULL, admin:ADMIN_FULL, admin_division:ADMIN_FULL}, group:'settings' },
   { id:'schema_explorer',     route:'/admin/schema-explorer',  roles:{super_admin:ADMIN_FULL} },
+  { id:'qa_testmate',         route:'/qa-testmate',            roles:{super_admin:ADMIN_FULL}, group:'settings' },
   { id:'parent_portal',       route:'/parent',                 roles:{super_admin:VIEW_ONLY, admin:VIEW_ONLY, admin_division:VIEW_ONLY, parent:VIEW_ONLY}, mobile:['parent'] },
   { id:'connections',         route:'/connections/:type/:id',  roles:{...adminFull, teacher:VIEW_ONLY, student:VIEW_ONLY, parent:VIEW_ONLY} },
   { id:'classroom',           route:'/classroom/:sessionId',   roles:{...adminFull, teacher:VIEW_ONLY, examiner:VIEW_ONLY, student:VIEW_ONLY} },
