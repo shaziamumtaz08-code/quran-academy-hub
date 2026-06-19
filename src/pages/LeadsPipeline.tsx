@@ -362,7 +362,10 @@ function ScheduleDemoSection({ lead, onScheduled }: { lead: Lead; onScheduled: (
           </SelectContent>
         </Select>
       </div>
-      <div><Label className="text-xs">Meeting Link</Label><Input value={form.meeting_link} onChange={e => setForm(p => ({ ...p, meeting_link: e.target.value }))} placeholder="https://..." /></div>
+      <div className="grid grid-cols-2 gap-3">
+        <div><Label className="text-xs">Timezone</Label><Input value={form.timezone} onChange={e => setForm(p => ({ ...p, timezone: e.target.value }))} placeholder="e.g. Asia/Karachi" /></div>
+        <div><Label className="text-xs">Meeting Link</Label><Input value={form.meeting_link} onChange={e => setForm(p => ({ ...p, meeting_link: e.target.value }))} placeholder="https://..." /></div>
+      </div>
       <Button onClick={() => scheduleMutation.mutate()} disabled={!form.scheduled_date || !form.scheduled_time || scheduleMutation.isPending} className="w-full">
         <Calendar className="h-4 w-4 mr-1" /> {scheduleMutation.isPending ? 'Scheduling...' : 'Schedule Demo'}
       </Button>
