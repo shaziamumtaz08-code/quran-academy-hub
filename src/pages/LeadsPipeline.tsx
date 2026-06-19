@@ -287,6 +287,7 @@ function ScheduleDemoSection({ lead, onScheduled }: { lead: Lead; onScheduled: (
   const [form, setForm] = useState({
     scheduled_date: '', scheduled_time: '', duration_min: '30',
     platform: 'zoom', meeting_link: '', teacher_id: '',
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
   });
 
   const { data: teachers = [] } = useQuery({
@@ -301,7 +302,7 @@ function ScheduleDemoSection({ lead, onScheduled }: { lead: Lead; onScheduled: (
 
   const scheduleMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from('demo_sessions').insert({
+      const { data: inserted, error } = await supabase.from('demo_sessions').insert({
         lead_id: lead.id,
         scheduled_date: form.scheduled_date,
         scheduled_time: form.scheduled_time,
@@ -309,17 +310,24 @@ function ScheduleDemoSection({ lead, onScheduled }: { lead: Lead; onScheduled: (
         platform: form.platform,
         meeting_link: form.meeting_link || null,
         teacher_id: form.teacher_id || null,
+        timezone: form.timezone || null,
         status: 'scheduled',
         feedback_token: crypto.randomUUID(),
-      });
+      } as any).select('id').single();
       if (error) throw error;
       // Auto-advance lead to demo_scheduled
       if (lead.status === 'new' || lead.status === 'contacted') {
         await supabase.from('leads').update({ status: 'demo_scheduled' }).eq('id', lead.id);
       }
+      // Fire shareable links to teacher + student (non-blocking errors)
+      if (inserted?.id) {
+        supabase.functions.invoke('send-demo-links', {
+          body: { demo_session_id: inserted.id, publicBase: window.location.origin },
+        }).catch((err) => console.error('send-demo-links failed:', err));
+      }
     },
     onSuccess: () => {
-      toast({ title: 'Demo scheduled!' });
+      toast({ title: 'Demo scheduled', description: 'Shareable links are being sent to teacher and student.' });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['demo-sessions'] });
       onScheduled();
@@ -354,7 +362,10 @@ function ScheduleDemoSection({ lead, onScheduled }: { lead: Lead; onScheduled: (
           </SelectContent>
         </Select>
       </div>
-      <div><Label className="text-xs">Meeting Link</Label><Input value={form.meeting_link} onChange={e => setForm(p => ({ ...p, meeting_link: e.target.value }))} placeholder="https://..." /></div>
+      <div className="grid grid-cols-2 gap-3">
+        <div><Label className="text-xs">Timezone</Label><Input value={form.timezone} onChange={e => setForm(p => ({ ...p, timezone: e.target.value }))} placeholder="e.g. Asia/Karachi" /></div>
+        <div><Label className="text-xs">Meeting Link</Label><Input value={form.meeting_link} onChange={e => setForm(p => ({ ...p, meeting_link: e.target.value }))} placeholder="https://..." /></div>
+      </div>
       <Button onClick={() => scheduleMutation.mutate()} disabled={!form.scheduled_date || !form.scheduled_time || scheduleMutation.isPending} className="w-full">
         <Calendar className="h-4 w-4 mr-1" /> {scheduleMutation.isPending ? 'Scheduling...' : 'Schedule Demo'}
       </Button>
@@ -375,7 +386,7 @@ function RescheduleSection({ session, leadId }: { session: any; leadId: string }
       const { error: updateErr } = await supabase.from('demo_sessions').update({ status: 'rescheduled' }).eq('id', session.id);
       if (updateErr) throw updateErr;
       // Create new session
-      const { error: insertErr } = await supabase.from('demo_sessions').insert({
+      const { data: inserted, error: insertErr } = await supabase.from('demo_sessions').insert({
         lead_id: leadId,
         scheduled_date: newDate,
         scheduled_time: newTime,
@@ -383,15 +394,22 @@ function RescheduleSection({ session, leadId }: { session: any; leadId: string }
         platform: session.platform || 'zoom',
         meeting_link: session.meeting_link || null,
         teacher_id: session.teacher_id || null,
+        timezone: (session as any).timezone || null,
         status: 'scheduled',
         feedback_token: crypto.randomUUID(),
-      });
+      } as any).select('id').single();
       if (insertErr) throw insertErr;
       // Update lead status back to demo_scheduled
       await supabase.from('leads').update({ status: 'demo_scheduled' }).eq('id', leadId);
+      // Notify teacher + student about new time
+      if (inserted?.id) {
+        supabase.functions.invoke('send-demo-links', {
+          body: { demo_session_id: inserted.id, reschedule: true, publicBase: window.location.origin },
+        }).catch((err) => console.error('send-demo-links failed:', err));
+      }
     },
     onSuccess: () => {
-      toast({ title: 'Demo rescheduled!' });
+      toast({ title: 'Demo rescheduled', description: 'Updated links are being sent to teacher and student.' });
       queryClient.invalidateQueries({ queryKey: ['demo-sessions', leadId] });
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       setOpen(false);

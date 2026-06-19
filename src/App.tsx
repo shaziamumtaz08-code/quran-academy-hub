@@ -81,6 +81,7 @@ const NotificationCenter = lazy(() => import("./pages/NotificationCenter"));
 const GroupChat = lazy(() => import("./pages/GroupChat"));
 const WhatsAppInbox = lazy(() => import("./pages/WhatsAppInbox"));
 const PublicApplyForm = lazy(() => import("./pages/PublicApplyForm"));
+const PublicDemoView = lazy(() => import("./pages/PublicDemoView"));
 const TeachingOS = lazy(() => import("./pages/TeachingOS"));
 const TeachingOSOutline = lazy(() => import("./pages/TeachingOSOutline"));
 const TeachingOSPlanner = lazy(() => import("./pages/TeachingOSPlanner"));
@@ -449,6 +450,7 @@ function AppRoutes() {
       <Route path="/course/:slug" element={<PublicCoursePage />} />
       <Route path="/enroll/:token" element={<EnrollmentForm />} />
       <Route path="/inquiry" element={<PublicInquiryForm />} />
+      <Route path="/demo/:token" element={<PublicDemoView />} />
       <Route path="/courses-catalog" element={<CourseCatalog />} />
       <Route path="/recorded-courses" element={<RecordedCourses />} />
       <Route path="/apply/:slug" element={<PublicApplyForm />} />
