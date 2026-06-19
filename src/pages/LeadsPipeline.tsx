@@ -287,6 +287,7 @@ function ScheduleDemoSection({ lead, onScheduled }: { lead: Lead; onScheduled: (
   const [form, setForm] = useState({
     scheduled_date: '', scheduled_time: '', duration_min: '30',
     platform: 'zoom', meeting_link: '', teacher_id: '',
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
   });
 
   const { data: teachers = [] } = useQuery({
