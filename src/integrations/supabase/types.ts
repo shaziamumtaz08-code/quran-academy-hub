@@ -5807,6 +5807,81 @@ export type Database = {
           },
         ]
       }
+      qa_chat_messages: {
+        Row: {
+          author_id: string | null
+          content: string
+          created_at: string
+          id: string
+          parts: Json | null
+          role: string
+        }
+        Insert: {
+          author_id?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          parts?: Json | null
+          role: string
+        }
+        Update: {
+          author_id?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          parts?: Json | null
+          role?: string
+        }
+        Relationships: []
+      }
+      qa_runs: {
+        Row: {
+          created_at: string
+          failed_count: number
+          finished_at: string | null
+          id: string
+          kind: string
+          passed_count: number
+          results: Json
+          started_at: string
+          status: string
+          summary: string | null
+          total_count: number
+          trigger_source: string
+          triggered_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          failed_count?: number
+          finished_at?: string | null
+          id?: string
+          kind: string
+          passed_count?: number
+          results?: Json
+          started_at?: string
+          status?: string
+          summary?: string | null
+          total_count?: number
+          trigger_source?: string
+          triggered_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          failed_count?: number
+          finished_at?: string | null
+          id?: string
+          kind?: string
+          passed_count?: number
+          results?: Json
+          started_at?: string
+          status?: string
+          summary?: string | null
+          total_count?: number
+          trigger_source?: string
+          triggered_by?: string | null
+        }
+        Relationships: []
+      }
       quiz_attempts: {
         Row: {
           answers: Json
