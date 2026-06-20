@@ -187,11 +187,43 @@ export default function Library() {
     return m;
   }, [publishedItems]);
 
+  const typeGroups = useMemo(() => {
+    const m: Record<string, any[]> = {};
+    for (const i of publishedItems) {
+      const k = i.type || "file";
+      (m[k] ||= []).push(i);
+    }
+    return Object.entries(m)
+      .map(([k, v]) => ({ key: k, meta: TYPE_META[k] || TYPE_META.file, items: v }))
+      .sort((a, b) => b.items.length - a.items.length);
+  }, [publishedItems]);
+
+  const dateGroups = useMemo(() => {
+    const now = new Date();
+    const m: Record<string, any[]> = {};
+    for (const i of publishedItems) {
+      const d = new Date(i.created_at);
+      const bucket = DATE_BUCKETS.find((b) => b.test(d, now))!;
+      (m[bucket.key] ||= []).push(i);
+    }
+    return DATE_BUCKETS.map((b) => ({ ...b, items: m[b.key] || [] })).filter((g) => g.items.length > 0);
+  }, [publishedItems]);
+
   const filtered = useMemo(() => {
     let base = publishedItems;
     if (view === "favorites") base = favoriteItems;
     else if (view === "recent") base = recentItems;
     if (activeCategory) base = base.filter((i) => i.category_id === activeCategory);
+    if (activeType) base = base.filter((i) => (i.type || "file") === activeType);
+    if (activeDateBucket) {
+      const now = new Date();
+      const bucket = DATE_BUCKETS.find((b) => b.key === activeDateBucket);
+      if (bucket) base = base.filter((i) => {
+        const d = new Date(i.created_at);
+        const firstMatch = DATE_BUCKETS.find((b) => b.test(d, now));
+        return firstMatch?.key === bucket.key;
+      });
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       base = base.filter((i) =>
@@ -206,14 +238,16 @@ export default function Library() {
     if (sortBy === "popular") sorted.sort((a, b) => (b.downloads_count || 0) - (a.downloads_count || 0));
     else if (sortBy === "title") sorted.sort((a, b) => a.title.localeCompare(b.title));
     return sorted;
-  }, [publishedItems, favoriteItems, recentItems, view, activeCategory, search, sortBy]);
+  }, [publishedItems, favoriteItems, recentItems, view, activeCategory, activeType, activeDateBucket, search, sortBy]);
 
   const totalDownloads = useMemo(
     () => publishedItems.reduce((s, i) => s + (i.downloads_count || 0), 0),
     [publishedItems]
   );
 
-  const isLandingView = view === "browse" && !activeCategory && !search;
+  const hasFilter = !!activeCategory || !!activeType || !!activeDateBucket;
+  const isLandingView = view === "browse" && !hasFilter && !search;
+  const clearFilters = () => { setActiveCategory(null); setActiveType(null); setActiveDateBucket(null); };
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["library-items-v2"] });
     queryClient.invalidateQueries({ queryKey: ["library-recent"] });
