@@ -330,24 +330,32 @@ export default function Library() {
         <div className="relative max-w-7xl mx-auto px-6 lg:px-10 py-10 lg:py-14">
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
             <div className="max-w-2xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur border border-white/15 text-xs font-medium mb-4">
-                <Sparkles className="h-3.5 w-3.5 text-amber-300" />
-                Digital Library
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur border border-white/20 text-xs font-medium mb-4">
+                <Sparkles className="h-3.5 w-3.5" style={{ color: "#fde68a" }} />
+                <span className="bg-gradient-to-r from-fuchsia-200 via-sky-200 to-emerald-200 bg-clip-text text-transparent">
+                  AI-Powered Library
+                </span>
               </div>
               <h1 className="text-3xl lg:text-5xl font-bold leading-tight tracking-tight">
-                Explore the <span className="text-emerald-300">Knowledge Library</span>
+                Explore the{" "}
+                <span className="bg-gradient-to-r from-fuchsia-300 via-violet-300 via-50% to-cyan-300 bg-clip-text text-transparent">
+                  Knowledge Library
+                </span>
               </h1>
-              <p className="mt-3 text-sm lg:text-base text-white/70 leading-relaxed">
-                Curated e-books, research papers, lecture notes and study resources — organized,
-                searchable, and personalized to you.
+              <p className="mt-3 text-sm lg:text-base text-white/75 leading-relaxed">
+                Curated e-books, research papers, lecture notes and study resources — organised,
+                searchable, and intelligently tagged.
               </p>
-              <div className="mt-6 relative max-w-xl">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-white/60" />
-                <Input
-                  value={search} onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search books, papers, authors, tags…"
-                  className="pl-11 h-12 bg-white/10 backdrop-blur border-white/20 text-white placeholder:text-white/50 focus-visible:ring-emerald-400/50"
-                />
+              <div className="mt-6 relative max-w-xl group">
+                <div className="absolute -inset-px rounded-md bg-gradient-to-r from-fuchsia-500/50 via-sky-400/50 to-emerald-400/50 opacity-60 group-focus-within:opacity-100 blur-sm transition" />
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-white/70 z-10" />
+                  <Input
+                    value={search} onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search books, papers, authors, tags…"
+                    className="pl-11 h-12 bg-black/40 backdrop-blur border-white/20 text-white placeholder:text-white/50 focus-visible:ring-fuchsia-400/50"
+                  />
+                </div>
               </div>
             </div>
             <div className="flex gap-3">
