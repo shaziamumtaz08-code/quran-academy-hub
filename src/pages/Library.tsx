@@ -11,7 +11,8 @@ import {
   Library as LibraryIcon, Search, Upload, BookOpen, FileText, Newspaper,
   GraduationCap, ClipboardList, StickyNote, BookMarked, FolderOpen, Music, Video,
   Link as LinkIcon, Sparkles, TrendingUp, Clock, Filter, Trash2, MoreVertical,
-  Star, History, CheckSquare, X, Loader2,
+  Star, History, CheckSquare, X, Loader2, Folder, FolderClosed, Calendar,
+  FileType2, Image as ImageIcon, ChevronRight,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -37,6 +38,30 @@ type Category = {
 };
 
 type View = "browse" | "favorites" | "recent";
+type BrowseMode = "category" | "type" | "date";
+
+const TYPE_META: Record<string, { label: string; icon: any; color: string; tint: string }> = {
+  pdf:      { label: "PDFs",       icon: FileText,     color: "#e11d48", tint: "#fee2e2" },
+  ebook:    { label: "E-Books",    icon: BookOpen,     color: "#059669", tint: "#d1fae5" },
+  paper:    { label: "Papers",     icon: Newspaper,    color: "#2563eb", tint: "#dbeafe" },
+  document: { label: "Documents",  icon: FileText,     color: "#475569", tint: "#e2e8f0" },
+  video:    { label: "Videos",     icon: Video,        color: "#c026d3", tint: "#fae8ff" },
+  audio:    { label: "Audio",      icon: Music,        color: "#7c3aed", tint: "#ede9fe" },
+  link:     { label: "Links",      icon: LinkIcon,     color: "#0891b2", tint: "#cffafe" },
+  image:    { label: "Images",     icon: ImageIcon,    color: "#d97706", tint: "#fef3c7" },
+  file:     { label: "Other Files",icon: FileType2,    color: "#64748b", tint: "#f1f5f9" },
+};
+
+const DATE_BUCKETS: { key: string; label: string; test: (d: Date, now: Date) => boolean; color: string; tint: string }[] = [
+  { key: "week",   label: "This Week",       color: "#059669", tint: "#d1fae5",
+    test: (d, now) => (now.getTime() - d.getTime()) < 7 * 864e5 },
+  { key: "month",  label: "This Month",      color: "#0891b2", tint: "#cffafe",
+    test: (d, now) => d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() },
+  { key: "year",   label: "Earlier This Year", color: "#7c3aed", tint: "#ede9fe",
+    test: (d, now) => d.getFullYear() === now.getFullYear() },
+  { key: "older",  label: "Older",           color: "#64748b", tint: "#e2e8f0",
+    test: () => true },
+];
 
 export default function Library() {
   const { user, isSuperAdmin, profile } = useAuth();
@@ -46,7 +71,10 @@ export default function Library() {
   const canUpload = isAdmin || isTeacher;
 
   const [view, setView] = useState<View>("browse");
+  const [browseMode, setBrowseMode] = useState<BrowseMode>("category");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [activeType, setActiveType] = useState<string | null>(null);
+  const [activeDateBucket, setActiveDateBucket] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"recent" | "popular" | "title">("recent");
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -159,11 +187,43 @@ export default function Library() {
     return m;
   }, [publishedItems]);
 
+  const typeGroups = useMemo(() => {
+    const m: Record<string, any[]> = {};
+    for (const i of publishedItems) {
+      const k = i.type || "file";
+      (m[k] ||= []).push(i);
+    }
+    return Object.entries(m)
+      .map(([k, v]) => ({ key: k, meta: TYPE_META[k] || TYPE_META.file, items: v }))
+      .sort((a, b) => b.items.length - a.items.length);
+  }, [publishedItems]);
+
+  const dateGroups = useMemo(() => {
+    const now = new Date();
+    const m: Record<string, any[]> = {};
+    for (const i of publishedItems) {
+      const d = new Date(i.created_at);
+      const bucket = DATE_BUCKETS.find((b) => b.test(d, now))!;
+      (m[bucket.key] ||= []).push(i);
+    }
+    return DATE_BUCKETS.map((b) => ({ ...b, items: m[b.key] || [] })).filter((g) => g.items.length > 0);
+  }, [publishedItems]);
+
   const filtered = useMemo(() => {
     let base = publishedItems;
     if (view === "favorites") base = favoriteItems;
     else if (view === "recent") base = recentItems;
     if (activeCategory) base = base.filter((i) => i.category_id === activeCategory);
+    if (activeType) base = base.filter((i) => (i.type || "file") === activeType);
+    if (activeDateBucket) {
+      const now = new Date();
+      const bucket = DATE_BUCKETS.find((b) => b.key === activeDateBucket);
+      if (bucket) base = base.filter((i) => {
+        const d = new Date(i.created_at);
+        const firstMatch = DATE_BUCKETS.find((b) => b.test(d, now));
+        return firstMatch?.key === bucket.key;
+      });
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       base = base.filter((i) =>
@@ -178,14 +238,16 @@ export default function Library() {
     if (sortBy === "popular") sorted.sort((a, b) => (b.downloads_count || 0) - (a.downloads_count || 0));
     else if (sortBy === "title") sorted.sort((a, b) => a.title.localeCompare(b.title));
     return sorted;
-  }, [publishedItems, favoriteItems, recentItems, view, activeCategory, search, sortBy]);
+  }, [publishedItems, favoriteItems, recentItems, view, activeCategory, activeType, activeDateBucket, search, sortBy]);
 
   const totalDownloads = useMemo(
     () => publishedItems.reduce((s, i) => s + (i.downloads_count || 0), 0),
     [publishedItems]
   );
 
-  const isLandingView = view === "browse" && !activeCategory && !search;
+  const hasFilter = !!activeCategory || !!activeType || !!activeDateBucket;
+  const isLandingView = view === "browse" && !hasFilter && !search;
+  const clearFilters = () => { setActiveCategory(null); setActiveType(null); setActiveDateBucket(null); };
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["library-items-v2"] });
     queryClient.invalidateQueries({ queryKey: ["library-recent"] });
@@ -285,13 +347,23 @@ export default function Library() {
       <section className="sticky top-0 z-30 border-b border-border/60 bg-card/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 lg:px-10 py-3 space-y-2">
           <div className="flex items-center gap-2 flex-wrap">
-            <Tabs value={view} onValueChange={(v) => { setView(v as View); setActiveCategory(null); }}>
+            <Tabs value={view} onValueChange={(v) => { setView(v as View); clearFilters(); }}>
               <TabsList className="h-9">
                 <TabsTrigger value="browse" className="text-xs gap-1.5"><LibraryIcon className="h-3.5 w-3.5" /> Browse</TabsTrigger>
                 <TabsTrigger value="favorites" className="text-xs gap-1.5"><Star className="h-3.5 w-3.5" /> Favorites ({favoriteItems.length})</TabsTrigger>
                 <TabsTrigger value="recent" className="text-xs gap-1.5"><History className="h-3.5 w-3.5" /> Recently Viewed</TabsTrigger>
               </TabsList>
             </Tabs>
+
+            {view === "browse" && (
+              <Tabs value={browseMode} onValueChange={(v) => { setBrowseMode(v as BrowseMode); clearFilters(); }}>
+                <TabsList className="h-9 bg-muted/60">
+                  <TabsTrigger value="category" className="text-xs gap-1.5"><FolderClosed className="h-3.5 w-3.5" /> Category</TabsTrigger>
+                  <TabsTrigger value="type" className="text-xs gap-1.5"><FileType2 className="h-3.5 w-3.5" /> Type</TabsTrigger>
+                  <TabsTrigger value="date" className="text-xs gap-1.5"><Calendar className="h-3.5 w-3.5" /> Date</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
 
             <div className="ml-auto flex items-center gap-2">
               {isAdmin && (
@@ -316,23 +388,32 @@ export default function Library() {
             </div>
           </div>
 
-          {view === "browse" && (
-            <div className="flex items-center gap-2 overflow-x-auto pb-1">
-              <CategoryPill
-                active={!activeCategory} label="All" count={publishedItems.length}
-                icon={LibraryIcon} onClick={() => setActiveCategory(null)}
-              />
-              {categories.map((c) => {
-                const Icon = ICON_MAP[c.icon || "FolderOpen"] || FolderOpen;
-                return (
-                  <CategoryPill
-                    key={c.id} active={activeCategory === c.id}
-                    label={c.name} count={categoryCounts[c.id] || 0}
-                    icon={Icon} color={c.color || undefined}
-                    onClick={() => setActiveCategory(c.id)}
-                  />
-                );
-              })}
+          {/* Active filter breadcrumb */}
+          {hasFilter && (
+            <div className="flex items-center gap-2 flex-wrap text-xs">
+              <button onClick={clearFilters} className="text-muted-foreground hover:text-foreground">All</button>
+              <ChevronRight className="h-3 w-3 text-muted-foreground" />
+              {activeCategory && (
+                <Badge variant="secondary" className="gap-1 pr-1">
+                  <FolderClosed className="h-3 w-3" />
+                  {categories.find((c) => c.id === activeCategory)?.name}
+                  <button onClick={() => setActiveCategory(null)} className="ml-1 hover:bg-background/40 rounded p-0.5"><X className="h-3 w-3" /></button>
+                </Badge>
+              )}
+              {activeType && (
+                <Badge variant="secondary" className="gap-1 pr-1">
+                  <FileType2 className="h-3 w-3" />
+                  {TYPE_META[activeType]?.label || activeType}
+                  <button onClick={() => setActiveType(null)} className="ml-1 hover:bg-background/40 rounded p-0.5"><X className="h-3 w-3" /></button>
+                </Badge>
+              )}
+              {activeDateBucket && (
+                <Badge variant="secondary" className="gap-1 pr-1">
+                  <Calendar className="h-3 w-3" />
+                  {DATE_BUCKETS.find((b) => b.key === activeDateBucket)?.label}
+                  <button onClick={() => setActiveDateBucket(null)} className="ml-1 hover:bg-background/40 rounded p-0.5"><X className="h-3 w-3" /></button>
+                </Badge>
+              )}
             </div>
           )}
         </div>
@@ -385,29 +466,70 @@ export default function Library() {
             )}
 
             <section>
-              <SectionHeader icon={FolderOpen} title="Browse by Category" subtitle="Find what you need by topic" />
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {categories.map((c) => {
-                  const Icon = ICON_MAP[c.icon || "FolderOpen"] || FolderOpen;
-                  const count = categoryCounts[c.id] || 0;
-                  return (
-                    <Card
-                      key={c.id}
-                      onClick={() => setActiveCategory(c.id)}
-                      className="group cursor-pointer p-4 border-border/60 hover:border-accent/50 hover:shadow-md transition-all"
-                    >
-                      <div
-                        className="h-10 w-10 rounded-lg flex items-center justify-center mb-3 transition-transform group-hover:scale-110"
-                        style={{ backgroundColor: `${c.color || "#64748b"}20`, color: c.color || "#64748b" }}
-                      >
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <h3 className="font-semibold text-sm group-hover:text-accent transition-colors">{c.name}</h3>
-                      <p className="text-xs text-muted-foreground mt-0.5">{count} {count === 1 ? "resource" : "resources"}</p>
-                    </Card>
-                  );
-                })}
+              <div className="flex items-end justify-between mb-4 gap-3 flex-wrap">
+                <div>
+                  <h2 className="text-xl font-bold flex items-center gap-2">
+                    {browseMode === "category" && <><FolderClosed className="h-5 w-5 text-emerald-500" /> Browse by Category</>}
+                    {browseMode === "type" && <><FileType2 className="h-5 w-5 text-emerald-500" /> Browse by Type</>}
+                    {browseMode === "date" && <><Calendar className="h-5 w-5 text-emerald-500" /> Browse by Date</>}
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    {browseMode === "category" && "Folders organised by topic — syllabus, past papers, textbooks…"}
+                    {browseMode === "type" && "Grouped by file format — PDFs, videos, audio and more."}
+                    {browseMode === "date" && "Find resources by when they were added to the library."}
+                  </p>
+                </div>
               </div>
+
+              {browseMode === "category" && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {categories.map((c) => {
+                    const Icon = ICON_MAP[c.icon || "FolderOpen"] || FolderOpen;
+                    return (
+                      <FolderCard
+                        key={c.id}
+                        label={c.name}
+                        count={categoryCounts[c.id] || 0}
+                        icon={Icon}
+                        color={c.color || "#64748b"}
+                        onClick={() => setActiveCategory(c.id)}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+
+              {browseMode === "type" && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {typeGroups.map(({ key, meta, items: it }) => (
+                    <FolderCard
+                      key={key}
+                      label={meta.label}
+                      count={it.length}
+                      icon={meta.icon}
+                      color={meta.color}
+                      tint={meta.tint}
+                      onClick={() => setActiveType(key)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {browseMode === "date" && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {dateGroups.map((g) => (
+                    <FolderCard
+                      key={g.key}
+                      label={g.label}
+                      count={g.items.length}
+                      icon={Calendar}
+                      color={g.color}
+                      tint={g.tint}
+                      onClick={() => setActiveDateBucket(g.key)}
+                    />
+                  ))}
+                </div>
+              )}
             </section>
           </>
         ) : (
@@ -417,7 +539,11 @@ export default function Library() {
                 <h2 className="text-xl font-bold">
                   {view === "favorites" ? "Your Favorites"
                     : view === "recent" ? "Recently Viewed"
-                    : activeCat?.name || (search ? `Results for "${search}"` : "All Resources")}
+                    : activeCategory ? categories.find((c) => c.id === activeCategory)?.name
+                    : activeType ? TYPE_META[activeType]?.label || activeType
+                    : activeDateBucket ? DATE_BUCKETS.find((b) => b.key === activeDateBucket)?.label
+                    : search ? `Results for "${search}"`
+                    : "All Resources"}
                 </h2>
                 <p className="text-sm text-muted-foreground mt-0.5">
                   {filtered.length} {filtered.length === 1 ? "resource" : "resources"}
@@ -525,6 +651,46 @@ function StatChip({ value, label }: { value: number; label: string }) {
       <div className="text-xl font-bold text-white">{value}</div>
       <div className="text-[10px] uppercase tracking-wider text-white/70 mt-0.5">{label}</div>
     </div>
+  );
+}
+
+function FolderCard({
+  label, count, icon: Icon, color, tint, onClick,
+}: { label: string; count: number; icon: any; color: string; tint?: string; onClick: () => void }) {
+  const bg = tint || `${color}1f`;
+  return (
+    <button onClick={onClick} className="group relative text-left">
+      <div
+        className="absolute inset-x-3 -top-1.5 h-3 rounded-t-lg border border-border/60 transition-transform group-hover:-translate-y-0.5"
+        style={{ backgroundColor: bg }}
+      />
+      <div
+        className="absolute inset-x-1.5 -top-0.5 h-2.5 rounded-t-lg border border-border/60 transition-transform group-hover:-translate-y-0.5"
+        style={{ backgroundColor: bg, opacity: 0.7 }}
+      />
+      <div className="relative rounded-xl border border-border/70 bg-card p-4 pt-5 shadow-sm group-hover:shadow-lg group-hover:-translate-y-0.5 transition-all overflow-hidden">
+        <div
+          className="absolute top-0 left-4 h-1 w-12 rounded-b-md"
+          style={{ backgroundColor: color }}
+        />
+        <div className="flex items-start justify-between gap-3">
+          <div
+            className="h-11 w-11 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110"
+            style={{ backgroundColor: bg, color }}
+          >
+            <Icon className="h-5 w-5" />
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
+        </div>
+        <h3 className="mt-3 font-semibold text-sm leading-tight line-clamp-2 group-hover:text-accent transition-colors">
+          {label}
+        </h3>
+        <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Folder className="h-3 w-3" style={{ color }} />
+          <span>{count} {count === 1 ? "item" : "items"}</span>
+        </div>
+      </div>
+    </button>
   );
 }
 
