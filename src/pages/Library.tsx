@@ -306,10 +306,26 @@ export default function Library() {
 
   return (
     <div className="min-h-screen -m-4 lg:-m-6 bg-gradient-to-b from-background via-background to-muted/30 animate-fade-in">
-      {/* HERO */}
-      <section className="relative overflow-hidden border-b border-border/60 bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 text-white">
-        <div className="absolute inset-0 opacity-20" style={{
-          backgroundImage: "radial-gradient(circle at 20% 30%, hsl(160 85% 50% / 0.4), transparent 50%), radial-gradient(circle at 80% 60%, hsl(45 90% 60% / 0.3), transparent 50%)",
+      {/* HERO — AI gradient */}
+      <section className="relative overflow-hidden border-b border-border/60 text-white bg-[#05060f]">
+        {/* layered conic + radial gradients = AI aurora */}
+        <div className="absolute inset-0 opacity-90" style={{
+          background:
+            "radial-gradient(60% 80% at 10% 20%, hsl(280 90% 55% / 0.55), transparent 60%)," +
+            "radial-gradient(55% 70% at 90% 10%, hsl(195 95% 55% / 0.55), transparent 60%)," +
+            "radial-gradient(70% 90% at 70% 100%, hsl(330 95% 60% / 0.55), transparent 60%)," +
+            "radial-gradient(50% 70% at 30% 90%, hsl(155 90% 50% / 0.45), transparent 60%)," +
+            "radial-gradient(40% 60% at 50% 50%, hsl(45 100% 60% / 0.25), transparent 70%)",
+        }} />
+        {/* subtle grid texture */}
+        <div className="absolute inset-0 opacity-[0.07] mix-blend-overlay" style={{
+          backgroundImage:
+            "linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)",
+          backgroundSize: "44px 44px",
+        }} />
+        {/* noise / film grain */}
+        <div className="absolute inset-0 opacity-[0.12] mix-blend-soft-light" style={{
+          backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.6'/></svg>\")",
         }} />
         <div className="relative max-w-7xl mx-auto px-6 lg:px-10 py-10 lg:py-14">
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
