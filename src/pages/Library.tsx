@@ -654,6 +654,46 @@ function StatChip({ value, label }: { value: number; label: string }) {
   );
 }
 
+function FolderCard({
+  label, count, icon: Icon, color, tint, onClick,
+}: { label: string; count: number; icon: any; color: string; tint?: string; onClick: () => void }) {
+  const bg = tint || `${color}1f`;
+  return (
+    <button onClick={onClick} className="group relative text-left">
+      <div
+        className="absolute inset-x-3 -top-1.5 h-3 rounded-t-lg border border-border/60 transition-transform group-hover:-translate-y-0.5"
+        style={{ backgroundColor: bg }}
+      />
+      <div
+        className="absolute inset-x-1.5 -top-0.5 h-2.5 rounded-t-lg border border-border/60 transition-transform group-hover:-translate-y-0.5"
+        style={{ backgroundColor: bg, opacity: 0.7 }}
+      />
+      <div className="relative rounded-xl border border-border/70 bg-card p-4 pt-5 shadow-sm group-hover:shadow-lg group-hover:-translate-y-0.5 transition-all overflow-hidden">
+        <div
+          className="absolute top-0 left-4 h-1 w-12 rounded-b-md"
+          style={{ backgroundColor: color }}
+        />
+        <div className="flex items-start justify-between gap-3">
+          <div
+            className="h-11 w-11 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110"
+            style={{ backgroundColor: bg, color }}
+          >
+            <Icon className="h-5 w-5" />
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
+        </div>
+        <h3 className="mt-3 font-semibold text-sm leading-tight line-clamp-2 group-hover:text-accent transition-colors">
+          {label}
+        </h3>
+        <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Folder className="h-3 w-3" style={{ color }} />
+          <span>{count} {count === 1 ? "item" : "items"}</span>
+        </div>
+      </div>
+    </button>
+  );
+}
+
 function CategoryPill({
   active, label, count, icon: Icon, color, onClick,
 }: { active: boolean; label: string; count: number; icon: any; color?: string; onClick: () => void }) {
