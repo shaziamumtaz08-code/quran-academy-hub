@@ -71,7 +71,10 @@ export default function Library() {
   const canUpload = isAdmin || isTeacher;
 
   const [view, setView] = useState<View>("browse");
+  const [browseMode, setBrowseMode] = useState<BrowseMode>("category");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [activeType, setActiveType] = useState<string | null>(null);
+  const [activeDateBucket, setActiveDateBucket] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"recent" | "popular" | "title">("recent");
   const [uploadOpen, setUploadOpen] = useState(false);
