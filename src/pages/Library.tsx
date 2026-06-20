@@ -493,9 +493,9 @@ export default function Library() {
               <div className="flex items-end justify-between mb-4 gap-3 flex-wrap">
                 <div>
                   <h2 className="text-xl font-bold flex items-center gap-2">
-                    {browseMode === "category" && <><FolderClosed className="h-5 w-5 text-emerald-500" /> Browse by Category</>}
-                    {browseMode === "type" && <><FileType2 className="h-5 w-5 text-emerald-500" /> Browse by Type</>}
-                    {browseMode === "date" && <><Calendar className="h-5 w-5 text-emerald-500" /> Browse by Date</>}
+                    {browseMode === "category" && <><FolderClosed className="h-5 w-5 text-fuchsia-500" /> Browse by Category</>}
+                    {browseMode === "type" && <><FileType2 className="h-5 w-5 text-violet-500" /> Browse by Type</>}
+                    {browseMode === "date" && <><Calendar className="h-5 w-5 text-cyan-500" /> Browse by Date</>}
                   </h2>
                   <p className="text-sm text-muted-foreground mt-0.5">
                     {browseMode === "category" && "Folders organised by topic — syllabus, past papers, textbooks…"}
