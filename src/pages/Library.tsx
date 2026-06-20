@@ -466,29 +466,70 @@ export default function Library() {
             )}
 
             <section>
-              <SectionHeader icon={FolderOpen} title="Browse by Category" subtitle="Find what you need by topic" />
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {categories.map((c) => {
-                  const Icon = ICON_MAP[c.icon || "FolderOpen"] || FolderOpen;
-                  const count = categoryCounts[c.id] || 0;
-                  return (
-                    <Card
-                      key={c.id}
-                      onClick={() => setActiveCategory(c.id)}
-                      className="group cursor-pointer p-4 border-border/60 hover:border-accent/50 hover:shadow-md transition-all"
-                    >
-                      <div
-                        className="h-10 w-10 rounded-lg flex items-center justify-center mb-3 transition-transform group-hover:scale-110"
-                        style={{ backgroundColor: `${c.color || "#64748b"}20`, color: c.color || "#64748b" }}
-                      >
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <h3 className="font-semibold text-sm group-hover:text-accent transition-colors">{c.name}</h3>
-                      <p className="text-xs text-muted-foreground mt-0.5">{count} {count === 1 ? "resource" : "resources"}</p>
-                    </Card>
-                  );
-                })}
+              <div className="flex items-end justify-between mb-4 gap-3 flex-wrap">
+                <div>
+                  <h2 className="text-xl font-bold flex items-center gap-2">
+                    {browseMode === "category" && <><FolderClosed className="h-5 w-5 text-emerald-500" /> Browse by Category</>}
+                    {browseMode === "type" && <><FileType2 className="h-5 w-5 text-emerald-500" /> Browse by Type</>}
+                    {browseMode === "date" && <><Calendar className="h-5 w-5 text-emerald-500" /> Browse by Date</>}
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    {browseMode === "category" && "Folders organised by topic — syllabus, past papers, textbooks…"}
+                    {browseMode === "type" && "Grouped by file format — PDFs, videos, audio and more."}
+                    {browseMode === "date" && "Find resources by when they were added to the library."}
+                  </p>
+                </div>
               </div>
+
+              {browseMode === "category" && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {categories.map((c) => {
+                    const Icon = ICON_MAP[c.icon || "FolderOpen"] || FolderOpen;
+                    return (
+                      <FolderCard
+                        key={c.id}
+                        label={c.name}
+                        count={categoryCounts[c.id] || 0}
+                        icon={Icon}
+                        color={c.color || "#64748b"}
+                        onClick={() => setActiveCategory(c.id)}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+
+              {browseMode === "type" && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {typeGroups.map(({ key, meta, items: it }) => (
+                    <FolderCard
+                      key={key}
+                      label={meta.label}
+                      count={it.length}
+                      icon={meta.icon}
+                      color={meta.color}
+                      tint={meta.tint}
+                      onClick={() => setActiveType(key)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {browseMode === "date" && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {dateGroups.map((g) => (
+                    <FolderCard
+                      key={g.key}
+                      label={g.label}
+                      count={g.items.length}
+                      icon={Calendar}
+                      color={g.color}
+                      tint={g.tint}
+                      onClick={() => setActiveDateBucket(g.key)}
+                    />
+                  ))}
+                </div>
+              )}
             </section>
           </>
         ) : (
