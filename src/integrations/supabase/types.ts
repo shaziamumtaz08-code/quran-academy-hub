@@ -4454,8 +4454,39 @@ export type Database = {
           },
         ]
       }
+      library_favorites: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_favorites_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "library_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       library_items: {
         Row: {
+          ai_summary: string | null
+          ai_tags: string[] | null
           allow_downloads: boolean
           author: string | null
           category_id: string | null
@@ -4475,6 +4506,7 @@ export type Database = {
           pages_count: number | null
           publication_year: number | null
           publisher: string | null
+          share_token: string | null
           status: string
           tags: string[]
           thumbnail: string | null
@@ -4488,6 +4520,8 @@ export type Database = {
           visible_to_roles: string[]
         }
         Insert: {
+          ai_summary?: string | null
+          ai_tags?: string[] | null
           allow_downloads?: boolean
           author?: string | null
           category_id?: string | null
@@ -4507,6 +4541,7 @@ export type Database = {
           pages_count?: number | null
           publication_year?: number | null
           publisher?: string | null
+          share_token?: string | null
           status?: string
           tags?: string[]
           thumbnail?: string | null
@@ -4520,6 +4555,8 @@ export type Database = {
           visible_to_roles?: string[]
         }
         Update: {
+          ai_summary?: string | null
+          ai_tags?: string[] | null
           allow_downloads?: boolean
           author?: string | null
           category_id?: string | null
@@ -4539,6 +4576,7 @@ export type Database = {
           pages_count?: number | null
           publication_year?: number | null
           publisher?: string | null
+          share_token?: string | null
           status?: string
           tags?: string[]
           thumbnail?: string | null
@@ -4557,6 +4595,35 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "library_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      library_view_events: {
+        Row: {
+          id: string
+          item_id: string
+          user_id: string | null
+          viewed_at: string
+        }
+        Insert: {
+          id?: string
+          item_id: string
+          user_id?: string | null
+          viewed_at?: string
+        }
+        Update: {
+          id?: string
+          item_id?: string
+          user_id?: string | null
+          viewed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_view_events_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "library_items"
             referencedColumns: ["id"]
           },
         ]
@@ -10050,6 +10117,10 @@ export type Database = {
       is_ticket_watcher: {
         Args: { _ticket_id: string; _user_id: string }
         Returns: boolean
+      }
+      library_ensure_share_token: {
+        Args: { _item_id: string }
+        Returns: string
       }
       library_increment_view: { Args: { _item_id: string }; Returns: undefined }
       library_log_download: { Args: { _item_id: string }; Returns: undefined }
