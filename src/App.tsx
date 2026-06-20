@@ -43,6 +43,7 @@ const GenerateReportCard = lazy(() => import("./pages/GenerateReportCard"));
 const StudentReports = lazy(() => import("./pages/StudentReports"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
 const Resources = lazy(() => import("./pages/Resources"));
+const Library = lazy(() => import("./pages/Library"));
 const Assignments = lazy(() => import("./pages/Assignments"));
 const MonthlyPlanning = lazy(() => import("./pages/MonthlyPlanning"));
 const AdminCommandCenter = lazy(() => import("./pages/AdminCommandCenter"));
@@ -436,6 +437,7 @@ function AppRoutes() {
       <Route path="/exam-submission" element={<Navigate to="/generate-report-card" replace />} />
       <Route path="/exam-results" element={<Navigate to="/student-reports" replace />} />
       <Route path="/resources" element={<ProtectedRoute><RouteGuard moduleId="resources"><DashboardLayout><Resources /></DashboardLayout></RouteGuard></ProtectedRoute>} />
+      <Route path="/library" element={<ProtectedRoute><RouteGuard moduleId="resources"><DashboardLayout><Library /></DashboardLayout></RouteGuard></ProtectedRoute>} />
       <Route path="/leads" element={<ProtectedRoute><RouteGuard moduleId="leads"><LeadsPipeline /></RouteGuard></ProtectedRoute>} />
       <Route path="/identity" element={<ProtectedRoute><RouteGuard moduleId="identity"><IdentityResolution /></RouteGuard></ProtectedRoute>} />
       <Route path="/notifications" element={<ProtectedRoute><RouteGuard moduleId="notifications"><NotificationCenter /></RouteGuard></ProtectedRoute>} />
