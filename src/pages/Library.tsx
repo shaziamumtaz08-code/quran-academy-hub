@@ -347,13 +347,23 @@ export default function Library() {
       <section className="sticky top-0 z-30 border-b border-border/60 bg-card/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 lg:px-10 py-3 space-y-2">
           <div className="flex items-center gap-2 flex-wrap">
-            <Tabs value={view} onValueChange={(v) => { setView(v as View); setActiveCategory(null); }}>
+            <Tabs value={view} onValueChange={(v) => { setView(v as View); clearFilters(); }}>
               <TabsList className="h-9">
                 <TabsTrigger value="browse" className="text-xs gap-1.5"><LibraryIcon className="h-3.5 w-3.5" /> Browse</TabsTrigger>
                 <TabsTrigger value="favorites" className="text-xs gap-1.5"><Star className="h-3.5 w-3.5" /> Favorites ({favoriteItems.length})</TabsTrigger>
                 <TabsTrigger value="recent" className="text-xs gap-1.5"><History className="h-3.5 w-3.5" /> Recently Viewed</TabsTrigger>
               </TabsList>
             </Tabs>
+
+            {view === "browse" && (
+              <Tabs value={browseMode} onValueChange={(v) => { setBrowseMode(v as BrowseMode); clearFilters(); }}>
+                <TabsList className="h-9 bg-muted/60">
+                  <TabsTrigger value="category" className="text-xs gap-1.5"><FolderClosed className="h-3.5 w-3.5" /> Category</TabsTrigger>
+                  <TabsTrigger value="type" className="text-xs gap-1.5"><FileType2 className="h-3.5 w-3.5" /> Type</TabsTrigger>
+                  <TabsTrigger value="date" className="text-xs gap-1.5"><Calendar className="h-3.5 w-3.5" /> Date</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
 
             <div className="ml-auto flex items-center gap-2">
               {isAdmin && (
@@ -378,23 +388,32 @@ export default function Library() {
             </div>
           </div>
 
-          {view === "browse" && (
-            <div className="flex items-center gap-2 overflow-x-auto pb-1">
-              <CategoryPill
-                active={!activeCategory} label="All" count={publishedItems.length}
-                icon={LibraryIcon} onClick={() => setActiveCategory(null)}
-              />
-              {categories.map((c) => {
-                const Icon = ICON_MAP[c.icon || "FolderOpen"] || FolderOpen;
-                return (
-                  <CategoryPill
-                    key={c.id} active={activeCategory === c.id}
-                    label={c.name} count={categoryCounts[c.id] || 0}
-                    icon={Icon} color={c.color || undefined}
-                    onClick={() => setActiveCategory(c.id)}
-                  />
-                );
-              })}
+          {/* Active filter breadcrumb */}
+          {hasFilter && (
+            <div className="flex items-center gap-2 flex-wrap text-xs">
+              <button onClick={clearFilters} className="text-muted-foreground hover:text-foreground">All</button>
+              <ChevronRight className="h-3 w-3 text-muted-foreground" />
+              {activeCategory && (
+                <Badge variant="secondary" className="gap-1 pr-1">
+                  <FolderClosed className="h-3 w-3" />
+                  {categories.find((c) => c.id === activeCategory)?.name}
+                  <button onClick={() => setActiveCategory(null)} className="ml-1 hover:bg-background/40 rounded p-0.5"><X className="h-3 w-3" /></button>
+                </Badge>
+              )}
+              {activeType && (
+                <Badge variant="secondary" className="gap-1 pr-1">
+                  <FileType2 className="h-3 w-3" />
+                  {TYPE_META[activeType]?.label || activeType}
+                  <button onClick={() => setActiveType(null)} className="ml-1 hover:bg-background/40 rounded p-0.5"><X className="h-3 w-3" /></button>
+                </Badge>
+              )}
+              {activeDateBucket && (
+                <Badge variant="secondary" className="gap-1 pr-1">
+                  <Calendar className="h-3 w-3" />
+                  {DATE_BUCKETS.find((b) => b.key === activeDateBucket)?.label}
+                  <button onClick={() => setActiveDateBucket(null)} className="ml-1 hover:bg-background/40 rounded p-0.5"><X className="h-3 w-3" /></button>
+                </Badge>
+              )}
             </div>
           )}
         </div>
