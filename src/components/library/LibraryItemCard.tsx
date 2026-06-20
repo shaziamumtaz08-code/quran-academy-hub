@@ -2,8 +2,14 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { BookOpen, Eye, Download, FileText, Music, Video, Link2, Image as ImageIcon, FileQuestion, Star, Lock } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  BookOpen, Eye, Download, FileText, Music, Video, Link2, Image as ImageIcon,
+  FileQuestion, Star, Lock,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 type Item = any;
 
@@ -23,7 +29,21 @@ const TYPE_COLOR: Record<string, string> = {
   image: "from-amber-100 to-yellow-50 dark:from-amber-950/40 dark:to-yellow-900/20 text-amber-700 dark:text-amber-300",
 };
 
-export function LibraryItemCard({ item, onClick, dense = false }: { item: Item; onClick: () => void; dense?: boolean }) {
+interface CardProps {
+  item: Item;
+  onClick: () => void;
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
+  selectMode?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
+}
+
+export function LibraryItemCard({
+  item, onClick, isFavorite, onToggleFavorite,
+  selectMode, selected, onToggleSelect,
+}: CardProps) {
+  const { user } = useAuth();
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const Icon = TYPE_ICON[item.type] || FileQuestion;
   const color = TYPE_COLOR[item.type] || TYPE_COLOR.document;
@@ -35,55 +55,77 @@ export function LibraryItemCard({ item, onClick, dense = false }: { item: Item; 
     }
   }, [item.cover_image]);
 
+  const handleFav = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) { toast.error("Sign in to favorite"); return; }
+    onToggleFavorite?.();
+  };
+
+  const handleCardClick = () => {
+    if (selectMode) { onToggleSelect?.(); return; }
+    onClick();
+  };
+
   return (
     <Card
-      onClick={onClick}
+      onClick={handleCardClick}
       className={cn(
-        "group cursor-pointer overflow-hidden border-border/60 bg-card hover:border-accent/50 hover:shadow-lg transition-all duration-200",
-        "flex flex-col"
+        "group cursor-pointer overflow-hidden border-border/60 bg-card hover:border-accent/50 hover:shadow-lg transition-all duration-200 flex flex-col",
+        selected && "ring-2 ring-accent border-accent"
       )}
     >
-      {/* Cover */}
-      <div className={cn(
-        "relative aspect-[3/4] overflow-hidden bg-gradient-to-br flex items-center justify-center",
-        color
-      )}>
+      <div className={cn("relative aspect-[3/4] overflow-hidden bg-gradient-to-br flex items-center justify-center", color)}>
         {coverUrl ? (
-          <img
-            src={coverUrl}
-            alt={item.title}
+          <img src={coverUrl} alt={item.title}
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-            loading="lazy"
-          />
+            loading="lazy" />
         ) : (
           <Icon className="h-12 w-12 opacity-60" strokeWidth={1.5} />
         )}
-        {item.is_featured && (
+
+        {selectMode && (
+          <div className="absolute top-2 left-2 z-10">
+            <div className="rounded-md bg-background/90 backdrop-blur p-1.5 border border-border/60">
+              <Checkbox checked={selected} className="h-4 w-4" />
+            </div>
+          </div>
+        )}
+
+        {!selectMode && item.is_featured && (
           <Badge className="absolute top-2 left-2 bg-amber-500/95 text-white border-0 text-[10px] gap-1 px-1.5">
             <Star className="h-3 w-3 fill-current" /> Featured
           </Badge>
         )}
-        {!item.allow_downloads && (
-          <div className="absolute top-2 right-2 rounded-md bg-background/90 backdrop-blur p-1" title="View only">
+
+        {onToggleFavorite && !selectMode && (
+          <button
+            onClick={handleFav}
+            className={cn(
+              "absolute top-2 right-2 z-10 p-1.5 rounded-md bg-background/90 backdrop-blur border border-border/60 transition-all",
+              isFavorite ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+            )}
+            title={isFavorite ? "Remove favorite" : "Add favorite"}
+          >
+            <Star className={cn("h-3.5 w-3.5", isFavorite ? "fill-amber-400 text-amber-400" : "text-foreground")} />
+          </button>
+        )}
+
+        {!item.allow_downloads && !selectMode && (
+          <div className="absolute bottom-2 right-2 rounded-md bg-background/90 backdrop-blur p-1" title="View only">
             <Lock className="h-3 w-3" />
           </div>
         )}
+
         <Badge variant="secondary" className="absolute bottom-2 left-2 text-[10px] uppercase tracking-wider bg-background/85 backdrop-blur">
           {item.type}
         </Badge>
       </div>
 
-      {/* Info */}
-      <div className={cn("p-3 flex-1 flex flex-col", dense && "p-2.5")}>
-        <h3 className={cn(
-          "font-semibold text-foreground leading-snug line-clamp-2 group-hover:text-accent transition-colors",
-          dense ? "text-sm" : "text-[15px]"
-        )}>
+      <div className="p-3 flex-1 flex flex-col">
+        <h3 className="font-semibold text-foreground leading-snug line-clamp-2 group-hover:text-accent transition-colors text-[15px]">
           {item.title}
         </h3>
-        {item.author && (
-          <p className="text-xs text-muted-foreground mt-1 truncate">{item.author}</p>
-        )}
+        {item.author && <p className="text-xs text-muted-foreground mt-1 truncate">{item.author}</p>}
         <div className="flex items-center gap-3 mt-auto pt-2 text-[11px] text-muted-foreground">
           <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{item.views_count || 0}</span>
           <span className="flex items-center gap-1"><Download className="h-3 w-3" />{item.downloads_count || 0}</span>
