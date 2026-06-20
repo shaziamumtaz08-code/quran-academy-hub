@@ -44,6 +44,7 @@ const StudentReports = lazy(() => import("./pages/StudentReports"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
 const Resources = lazy(() => import("./pages/Resources"));
 const Library = lazy(() => import("./pages/Library"));
+const LibraryShare = lazy(() => import("./pages/LibraryShare"));
 const Assignments = lazy(() => import("./pages/Assignments"));
 const MonthlyPlanning = lazy(() => import("./pages/MonthlyPlanning"));
 const AdminCommandCenter = lazy(() => import("./pages/AdminCommandCenter"));
