@@ -38,6 +38,30 @@ type Category = {
 };
 
 type View = "browse" | "favorites" | "recent";
+type BrowseMode = "category" | "type" | "date";
+
+const TYPE_META: Record<string, { label: string; icon: any; color: string; tint: string }> = {
+  pdf:      { label: "PDFs",       icon: FileText,     color: "#e11d48", tint: "#fee2e2" },
+  ebook:    { label: "E-Books",    icon: BookOpen,     color: "#059669", tint: "#d1fae5" },
+  paper:    { label: "Papers",     icon: Newspaper,    color: "#2563eb", tint: "#dbeafe" },
+  document: { label: "Documents",  icon: FileText,     color: "#475569", tint: "#e2e8f0" },
+  video:    { label: "Videos",     icon: Video,        color: "#c026d3", tint: "#fae8ff" },
+  audio:    { label: "Audio",      icon: Music,        color: "#7c3aed", tint: "#ede9fe" },
+  link:     { label: "Links",      icon: LinkIcon,     color: "#0891b2", tint: "#cffafe" },
+  image:    { label: "Images",     icon: ImageIcon,    color: "#d97706", tint: "#fef3c7" },
+  file:     { label: "Other Files",icon: FileType2,    color: "#64748b", tint: "#f1f5f9" },
+};
+
+const DATE_BUCKETS: { key: string; label: string; test: (d: Date, now: Date) => boolean; color: string; tint: string }[] = [
+  { key: "week",   label: "This Week",       color: "#059669", tint: "#d1fae5",
+    test: (d, now) => (now.getTime() - d.getTime()) < 7 * 864e5 },
+  { key: "month",  label: "This Month",      color: "#0891b2", tint: "#cffafe",
+    test: (d, now) => d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() },
+  { key: "year",   label: "Earlier This Year", color: "#7c3aed", tint: "#ede9fe",
+    test: (d, now) => d.getFullYear() === now.getFullYear() },
+  { key: "older",  label: "Older",           color: "#64748b", tint: "#e2e8f0",
+    test: () => true },
+];
 
 export default function Library() {
   const { user, isSuperAdmin, profile } = useAuth();
