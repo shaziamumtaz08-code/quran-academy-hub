@@ -4419,15 +4419,63 @@ export type Database = {
         }
         Relationships: []
       }
+      library_download_events: {
+        Row: {
+          downloaded_at: string
+          id: string
+          ip_address: string | null
+          item_id: string
+          user_id: string | null
+          user_role: string | null
+        }
+        Insert: {
+          downloaded_at?: string
+          id?: string
+          ip_address?: string | null
+          item_id: string
+          user_id?: string | null
+          user_role?: string | null
+        }
+        Update: {
+          downloaded_at?: string
+          id?: string
+          ip_address?: string | null
+          item_id?: string
+          user_id?: string | null
+          user_role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_download_events_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "library_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       library_items: {
         Row: {
+          allow_downloads: boolean
+          author: string | null
           category_id: string | null
+          cover_image: string | null
           created_at: string
           description: string | null
+          downloads_count: number
+          edition: string | null
           file_path: string | null
+          file_size_bytes: number | null
           id: string
+          is_featured: boolean
           is_pinned: boolean
+          isbn: string | null
+          language: string | null
           metadata: Json
+          pages_count: number | null
+          publication_year: number | null
+          publisher: string | null
+          status: string
           tags: string[]
           thumbnail: string | null
           title: string
@@ -4435,17 +4483,31 @@ export type Database = {
           updated_at: string
           uploaded_by: string | null
           url: string | null
+          views_count: number
           visibility: string
           visible_to_roles: string[]
         }
         Insert: {
+          allow_downloads?: boolean
+          author?: string | null
           category_id?: string | null
+          cover_image?: string | null
           created_at?: string
           description?: string | null
+          downloads_count?: number
+          edition?: string | null
           file_path?: string | null
+          file_size_bytes?: number | null
           id?: string
+          is_featured?: boolean
           is_pinned?: boolean
+          isbn?: string | null
+          language?: string | null
           metadata?: Json
+          pages_count?: number | null
+          publication_year?: number | null
+          publisher?: string | null
+          status?: string
           tags?: string[]
           thumbnail?: string | null
           title: string
@@ -4453,17 +4515,31 @@ export type Database = {
           updated_at?: string
           uploaded_by?: string | null
           url?: string | null
+          views_count?: number
           visibility?: string
           visible_to_roles?: string[]
         }
         Update: {
+          allow_downloads?: boolean
+          author?: string | null
           category_id?: string | null
+          cover_image?: string | null
           created_at?: string
           description?: string | null
+          downloads_count?: number
+          edition?: string | null
           file_path?: string | null
+          file_size_bytes?: number | null
           id?: string
+          is_featured?: boolean
           is_pinned?: boolean
+          isbn?: string | null
+          language?: string | null
           metadata?: Json
+          pages_count?: number | null
+          publication_year?: number | null
+          publisher?: string | null
+          status?: string
           tags?: string[]
           thumbnail?: string | null
           title?: string
@@ -4471,6 +4547,7 @@ export type Database = {
           updated_at?: string
           uploaded_by?: string | null
           url?: string | null
+          views_count?: number
           visibility?: string
           visible_to_roles?: string[]
         }
@@ -9974,6 +10051,8 @@ export type Database = {
         Args: { _ticket_id: string; _user_id: string }
         Returns: boolean
       }
+      library_increment_view: { Args: { _item_id: string }; Returns: undefined }
+      library_log_download: { Args: { _item_id: string }; Returns: undefined }
       normalize_phone: {
         Args: { p_country: string; raw_phone: string }
         Returns: string
