@@ -11,7 +11,8 @@ import {
   Library as LibraryIcon, Search, Upload, BookOpen, FileText, Newspaper,
   GraduationCap, ClipboardList, StickyNote, BookMarked, FolderOpen, Music, Video,
   Link as LinkIcon, Sparkles, TrendingUp, Clock, Filter, Trash2, MoreVertical,
-  Star, History, CheckSquare, X, Loader2,
+  Star, History, CheckSquare, X, Loader2, Folder, FolderClosed, Calendar,
+  FileType2, Image as ImageIcon, ChevronRight,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
