@@ -4383,6 +4383,107 @@ export type Database = {
           },
         ]
       }
+      library_categories: {
+        Row: {
+          color: string | null
+          created_at: string
+          icon: string | null
+          id: string
+          name: string
+          slug: string
+          sort_order: number
+          updated_at: string
+          visibility_default: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name: string
+          slug: string
+          sort_order?: number
+          updated_at?: string
+          visibility_default?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name?: string
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+          visibility_default?: string
+        }
+        Relationships: []
+      }
+      library_items: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          description: string | null
+          file_path: string | null
+          id: string
+          is_pinned: boolean
+          metadata: Json
+          tags: string[]
+          thumbnail: string | null
+          title: string
+          type: string
+          updated_at: string
+          uploaded_by: string | null
+          url: string | null
+          visibility: string
+          visible_to_roles: string[]
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          file_path?: string | null
+          id?: string
+          is_pinned?: boolean
+          metadata?: Json
+          tags?: string[]
+          thumbnail?: string | null
+          title: string
+          type: string
+          updated_at?: string
+          uploaded_by?: string | null
+          url?: string | null
+          visibility?: string
+          visible_to_roles?: string[]
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          file_path?: string | null
+          id?: string
+          is_pinned?: boolean
+          metadata?: Json
+          tags?: string[]
+          thumbnail?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+          uploaded_by?: string | null
+          url?: string | null
+          visibility?: string
+          visible_to_roles?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "library_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       live_sessions: {
         Row: {
           actual_end: string | null
