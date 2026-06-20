@@ -539,7 +539,11 @@ export default function Library() {
                 <h2 className="text-xl font-bold">
                   {view === "favorites" ? "Your Favorites"
                     : view === "recent" ? "Recently Viewed"
-                    : activeCat?.name || (search ? `Results for "${search}"` : "All Resources")}
+                    : activeCategory ? categories.find((c) => c.id === activeCategory)?.name
+                    : activeType ? TYPE_META[activeType]?.label || activeType
+                    : activeDateBucket ? DATE_BUCKETS.find((b) => b.key === activeDateBucket)?.label
+                    : search ? `Results for "${search}"`
+                    : "All Resources"}
                 </h2>
                 <p className="text-sm text-muted-foreground mt-0.5">
                   {filtered.length} {filtered.length === 1 ? "resource" : "resources"}
