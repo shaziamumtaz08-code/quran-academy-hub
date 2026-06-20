@@ -542,6 +542,56 @@ export default function Library() {
               )}
             </div>
           )}
+
+          {/* Quick category nav (like reference: Home / Browse / E-Books / Past Papers / ...) */}
+          {view === "browse" && (
+            <div className="flex items-center gap-1 overflow-x-auto -mx-1 px-1 pt-1 border-t border-border/40">
+              <QuickNavTab
+                active={!activeCategory && !activeType && !activeDateBucket && !search}
+                label="Home"
+                icon={LibraryIcon}
+                onClick={clearFilters}
+              />
+              {[...categories]
+                .sort((a, b) => (categoryCounts[b.id] || 0) - (categoryCounts[a.id] || 0))
+                .slice(0, 5)
+                .map((c) => {
+                  const Icon = ICON_MAP[c.icon || "FolderOpen"] || FolderOpen;
+                  return (
+                    <QuickNavTab
+                      key={c.id}
+                      active={activeCategory === c.id}
+                      label={c.name}
+                      icon={Icon}
+                      onClick={() => { setActiveType(null); setActiveDateBucket(null); setActiveCategory(c.id); }}
+                    />
+                  );
+                })}
+              {categories.length > 5 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md text-[13px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors">
+                      <MoreVertical className="h-3.5 w-3.5" /> More
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="max-h-72 overflow-y-auto">
+                    {[...categories]
+                      .sort((a, b) => (categoryCounts[b.id] || 0) - (categoryCounts[a.id] || 0))
+                      .slice(5)
+                      .map((c) => {
+                        const Icon = ICON_MAP[c.icon || "FolderOpen"] || FolderOpen;
+                        return (
+                          <DropdownMenuItem key={c.id} onClick={() => { setActiveType(null); setActiveDateBucket(null); setActiveCategory(c.id); }}>
+                            <Icon className="h-3.5 w-3.5 mr-2" /> {c.name}
+                            <span className="ml-auto text-xs text-muted-foreground">{categoryCounts[c.id] || 0}</span>
+                          </DropdownMenuItem>
+                        );
+                      })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+          )}
         </div>
       </section>
 
