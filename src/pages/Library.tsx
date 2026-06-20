@@ -405,7 +405,7 @@ export default function Library() {
                 </Button>
               )}
               {canUpload && !selectMode && (
-                <Button onClick={() => setUploadOpen(true)} size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                <Button onClick={() => setUploadOpen(true)} size="sm" className="text-white border-0 shadow-md bg-gradient-to-r from-fuchsia-600 via-violet-600 to-cyan-600 hover:from-fuchsia-500 hover:via-violet-500 hover:to-cyan-500">
                   <Upload className="h-4 w-4 mr-1.5" /> Add Resource
                 </Button>
               )}
