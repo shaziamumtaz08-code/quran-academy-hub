@@ -79,20 +79,26 @@ function FolderCard({
   return (
     <button
       onClick={onClick}
-      className="group flex flex-col items-center justify-center text-center rounded-xl border border-border/60 bg-card p-3 sm:p-4 shadow-sm hover:shadow-md hover:border-accent/40 hover:-translate-y-0.5 transition-all"
+      className="group relative flex flex-col items-center justify-center text-center rounded-2xl p-3 transition-all hover:-translate-y-1"
     >
       <div
-        className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105"
-        style={{ backgroundColor: bg, color }}
+        className="h-14 w-14 sm:h-16 sm:w-16 rounded-2xl flex items-center justify-center transition-all group-hover:scale-110"
+        style={{ backgroundColor: bg, color, boxShadow: `0 8px 20px -10px ${color}88` }}
       >
-        <Icon className="h-6 w-6 sm:h-7 sm:w-7" strokeWidth={2} />
+        <Icon className="h-7 w-7 sm:h-8 sm:w-8" strokeWidth={2.2} />
       </div>
-      <h3 className="mt-2.5 font-semibold text-[13px] leading-tight line-clamp-2 text-foreground group-hover:text-accent transition-colors">
+      <h3 className="mt-3 font-semibold text-[13px] leading-tight line-clamp-2 text-foreground">
         {label}
       </h3>
-      <p className="mt-1 text-[11px] text-muted-foreground">
-        {count} {count === 1 ? "resource" : "resources"}
+      <p className="mt-0.5 text-[11px] text-muted-foreground">
+        {count} {count === 1 ? "item" : "items"}
       </p>
+      <span
+        className="mt-1.5 inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-semibold opacity-0 -translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all"
+        style={{ backgroundColor: bg, color }}
+      >
+        View <ChevronRight className="h-3 w-3" />
+      </span>
     </button>
   );
 }
@@ -600,47 +606,7 @@ export default function Library() {
           <div className="text-center py-20 text-muted-foreground">Loading library…</div>
         ) : isLandingView ? (
           <>
-            {recentItems.length > 0 && (
-              <section>
-                <SectionHeader icon={History} title="Pick up where you left off" subtitle="Recently viewed by you" accent="emerald" />
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {recentItems.slice(0, 4).map(renderCard)}
-                </div>
-              </section>
-            )}
-
-            {favoriteItems.length > 0 && (
-              <section>
-                <SectionHeader icon={Star} title="Your Favorites" subtitle="Starred resources" accent="amber" />
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {favoriteItems.slice(0, 4).map(renderCard)}
-                </div>
-              </section>
-            )}
-
-            {featured.length > 0 && (
-              <section>
-                <SectionHeader icon={Sparkles} title="Featured Resources" subtitle="Hand-picked must-reads" accent="amber" />
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">{featured.map(renderCard)}</div>
-              </section>
-            )}
-
-            <section>
-              <SectionHeader icon={Clock} title="Recently Added" subtitle="Fresh in the library" accent="emerald" />
-              {recent.length === 0 ? (
-                <EmptyState canUpload={canUpload} onUpload={() => setUploadOpen(true)} />
-              ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">{recent.map(renderCard)}</div>
-              )}
-            </section>
-
-            {popular.length > 0 && totalDownloads > 0 && (
-              <section>
-                <SectionHeader icon={TrendingUp} title="Most Downloaded" subtitle="Reader favourites" accent="rose" />
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">{popular.map(renderCard)}</div>
-              </section>
-            )}
-
+            {/* BROWSE FOLDERS — first thing users see */}
             <section>
               <div className="flex items-end justify-between mb-4 gap-3 flex-wrap">
                 <div>
@@ -652,14 +618,14 @@ export default function Library() {
                   <p className="text-sm text-muted-foreground mt-0.5">
                     {browseMode === "category" && "Folders organised by topic — syllabus, past papers, textbooks…"}
                     {browseMode === "type" && "Grouped by file format — PDFs, videos, audio and more."}
-                    {browseMode === "date" && "Find resources by when they were added to the library."}
+                    {browseMode === "date" && "Find resources by when they were added."}
                   </p>
                 </div>
               </div>
 
               {browseMode === "category" && (
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 sm:gap-4">
-                  {categories.map((c) => {
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                  {categories.slice(0, 6).map((c) => {
                     const Icon = ICON_MAP[c.icon || "FolderOpen"] || FolderOpen;
                     return (
                       <FolderCard
@@ -676,8 +642,8 @@ export default function Library() {
               )}
 
               {browseMode === "type" && (
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 sm:gap-4">
-                  {typeGroups.map(({ key, meta, items: it }) => (
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                  {typeGroups.slice(0, 6).map(({ key, meta, items: it }) => (
                     <FolderCard
                       key={key}
                       label={meta.label}
@@ -692,7 +658,7 @@ export default function Library() {
               )}
 
               {browseMode === "date" && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
                   {dateGroups.map((g) => (
                     <FolderCard
                       key={g.key}
@@ -707,7 +673,49 @@ export default function Library() {
                 </div>
               )}
             </section>
+
+            {recentItems.length > 0 && (
+              <section>
+                <SectionHeader icon={History} title="Pick up where you left off" subtitle="Recently viewed by you" accent="emerald" />
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                  {recentItems.slice(0, 6).map(renderCard)}
+                </div>
+              </section>
+            )}
+
+            {favoriteItems.length > 0 && (
+              <section>
+                <SectionHeader icon={Star} title="Your Favorites" subtitle="Starred resources" accent="amber" />
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                  {favoriteItems.slice(0, 6).map(renderCard)}
+                </div>
+              </section>
+            )}
+
+            {featured.length > 0 && (
+              <section>
+                <SectionHeader icon={Sparkles} title="Featured Resources" subtitle="Hand-picked must-reads" accent="amber" />
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">{featured.slice(0, 6).map(renderCard)}</div>
+              </section>
+            )}
+
+            <section>
+              <SectionHeader icon={Clock} title="Recently Added" subtitle="Fresh in the library" accent="emerald" />
+              {recent.length === 0 ? (
+                <EmptyState canUpload={canUpload} onUpload={() => setUploadOpen(true)} />
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">{recent.slice(0, 6).map(renderCard)}</div>
+              )}
+            </section>
+
+            {popular.length > 0 && totalDownloads > 0 && (
+              <section>
+                <SectionHeader icon={TrendingUp} title="Most Downloaded" subtitle="Reader favourites" accent="rose" />
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">{popular.slice(0, 6).map(renderCard)}</div>
+              </section>
+            )}
           </>
+
         ) : (
           <section>
             <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
