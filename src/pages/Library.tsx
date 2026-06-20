@@ -306,32 +306,56 @@ export default function Library() {
 
   return (
     <div className="min-h-screen -m-4 lg:-m-6 bg-gradient-to-b from-background via-background to-muted/30 animate-fade-in">
-      {/* HERO */}
-      <section className="relative overflow-hidden border-b border-border/60 bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-950 text-white">
-        <div className="absolute inset-0 opacity-20" style={{
-          backgroundImage: "radial-gradient(circle at 20% 30%, hsl(160 85% 50% / 0.4), transparent 50%), radial-gradient(circle at 80% 60%, hsl(45 90% 60% / 0.3), transparent 50%)",
+      {/* HERO — AI gradient */}
+      <section className="relative overflow-hidden border-b border-border/60 text-white bg-[#05060f]">
+        {/* layered conic + radial gradients = AI aurora */}
+        <div className="absolute inset-0 opacity-90" style={{
+          background:
+            "radial-gradient(60% 80% at 10% 20%, hsl(280 90% 55% / 0.55), transparent 60%)," +
+            "radial-gradient(55% 70% at 90% 10%, hsl(195 95% 55% / 0.55), transparent 60%)," +
+            "radial-gradient(70% 90% at 70% 100%, hsl(330 95% 60% / 0.55), transparent 60%)," +
+            "radial-gradient(50% 70% at 30% 90%, hsl(155 90% 50% / 0.45), transparent 60%)," +
+            "radial-gradient(40% 60% at 50% 50%, hsl(45 100% 60% / 0.25), transparent 70%)",
+        }} />
+        {/* subtle grid texture */}
+        <div className="absolute inset-0 opacity-[0.07] mix-blend-overlay" style={{
+          backgroundImage:
+            "linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)",
+          backgroundSize: "44px 44px",
+        }} />
+        {/* noise / film grain */}
+        <div className="absolute inset-0 opacity-[0.12] mix-blend-soft-light" style={{
+          backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.6'/></svg>\")",
         }} />
         <div className="relative max-w-7xl mx-auto px-6 lg:px-10 py-10 lg:py-14">
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
             <div className="max-w-2xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur border border-white/15 text-xs font-medium mb-4">
-                <Sparkles className="h-3.5 w-3.5 text-amber-300" />
-                Digital Library
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur border border-white/20 text-xs font-medium mb-4">
+                <Sparkles className="h-3.5 w-3.5" style={{ color: "#fde68a" }} />
+                <span className="bg-gradient-to-r from-fuchsia-200 via-sky-200 to-emerald-200 bg-clip-text text-transparent">
+                  AI-Powered Library
+                </span>
               </div>
               <h1 className="text-3xl lg:text-5xl font-bold leading-tight tracking-tight">
-                Explore the <span className="text-emerald-300">Knowledge Library</span>
+                Explore the{" "}
+                <span className="bg-gradient-to-r from-fuchsia-300 via-violet-300 via-50% to-cyan-300 bg-clip-text text-transparent">
+                  Knowledge Library
+                </span>
               </h1>
-              <p className="mt-3 text-sm lg:text-base text-white/70 leading-relaxed">
-                Curated e-books, research papers, lecture notes and study resources — organized,
-                searchable, and personalized to you.
+              <p className="mt-3 text-sm lg:text-base text-white/75 leading-relaxed">
+                Curated e-books, research papers, lecture notes and study resources — organised,
+                searchable, and intelligently tagged.
               </p>
-              <div className="mt-6 relative max-w-xl">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-white/60" />
-                <Input
-                  value={search} onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search books, papers, authors, tags…"
-                  className="pl-11 h-12 bg-white/10 backdrop-blur border-white/20 text-white placeholder:text-white/50 focus-visible:ring-emerald-400/50"
-                />
+              <div className="mt-6 relative max-w-xl group">
+                <div className="absolute -inset-px rounded-md bg-gradient-to-r from-fuchsia-500/50 via-sky-400/50 to-emerald-400/50 opacity-60 group-focus-within:opacity-100 blur-sm transition" />
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-white/70 z-10" />
+                  <Input
+                    value={search} onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search books, papers, authors, tags…"
+                    className="pl-11 h-12 bg-black/40 backdrop-blur border-white/20 text-white placeholder:text-white/50 focus-visible:ring-fuchsia-400/50"
+                  />
+                </div>
               </div>
             </div>
             <div className="flex gap-3">
@@ -381,7 +405,7 @@ export default function Library() {
                 </Button>
               )}
               {canUpload && !selectMode && (
-                <Button onClick={() => setUploadOpen(true)} size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                <Button onClick={() => setUploadOpen(true)} size="sm" className="text-white border-0 shadow-md bg-gradient-to-r from-fuchsia-600 via-violet-600 to-cyan-600 hover:from-fuchsia-500 hover:via-violet-500 hover:to-cyan-500">
                   <Upload className="h-4 w-4 mr-1.5" /> Add Resource
                 </Button>
               )}
@@ -469,9 +493,9 @@ export default function Library() {
               <div className="flex items-end justify-between mb-4 gap-3 flex-wrap">
                 <div>
                   <h2 className="text-xl font-bold flex items-center gap-2">
-                    {browseMode === "category" && <><FolderClosed className="h-5 w-5 text-emerald-500" /> Browse by Category</>}
-                    {browseMode === "type" && <><FileType2 className="h-5 w-5 text-emerald-500" /> Browse by Type</>}
-                    {browseMode === "date" && <><Calendar className="h-5 w-5 text-emerald-500" /> Browse by Date</>}
+                    {browseMode === "category" && <><FolderClosed className="h-5 w-5 text-fuchsia-500" /> Browse by Category</>}
+                    {browseMode === "type" && <><FileType2 className="h-5 w-5 text-violet-500" /> Browse by Type</>}
+                    {browseMode === "date" && <><Calendar className="h-5 w-5 text-cyan-500" /> Browse by Date</>}
                   </h2>
                   <p className="text-sm text-muted-foreground mt-0.5">
                     {browseMode === "category" && "Folders organised by topic — syllabus, past papers, textbooks…"}
