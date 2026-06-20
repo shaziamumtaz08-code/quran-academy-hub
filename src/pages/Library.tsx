@@ -79,20 +79,26 @@ function FolderCard({
   return (
     <button
       onClick={onClick}
-      className="group flex flex-col items-center justify-center text-center rounded-xl border border-border/60 bg-card p-3 sm:p-4 shadow-sm hover:shadow-md hover:border-accent/40 hover:-translate-y-0.5 transition-all"
+      className="group relative flex flex-col items-center justify-center text-center rounded-2xl p-3 transition-all hover:-translate-y-1"
     >
       <div
-        className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105"
-        style={{ backgroundColor: bg, color }}
+        className="h-14 w-14 sm:h-16 sm:w-16 rounded-2xl flex items-center justify-center transition-all group-hover:scale-110"
+        style={{ backgroundColor: bg, color, boxShadow: `0 8px 20px -10px ${color}88` }}
       >
-        <Icon className="h-6 w-6 sm:h-7 sm:w-7" strokeWidth={2} />
+        <Icon className="h-7 w-7 sm:h-8 sm:w-8" strokeWidth={2.2} />
       </div>
-      <h3 className="mt-2.5 font-semibold text-[13px] leading-tight line-clamp-2 text-foreground group-hover:text-accent transition-colors">
+      <h3 className="mt-3 font-semibold text-[13px] leading-tight line-clamp-2 text-foreground">
         {label}
       </h3>
-      <p className="mt-1 text-[11px] text-muted-foreground">
-        {count} {count === 1 ? "resource" : "resources"}
+      <p className="mt-0.5 text-[11px] text-muted-foreground">
+        {count} {count === 1 ? "item" : "items"}
       </p>
+      <span
+        className="mt-1.5 inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-semibold opacity-0 -translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all"
+        style={{ backgroundColor: bg, color }}
+      >
+        View <ChevronRight className="h-3 w-3" />
+      </span>
     </button>
   );
 }
