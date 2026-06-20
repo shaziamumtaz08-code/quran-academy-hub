@@ -439,6 +439,7 @@ function AppRoutes() {
       <Route path="/exam-results" element={<Navigate to="/student-reports" replace />} />
       <Route path="/resources" element={<ProtectedRoute><RouteGuard moduleId="resources"><DashboardLayout><Resources /></DashboardLayout></RouteGuard></ProtectedRoute>} />
       <Route path="/library" element={<ProtectedRoute><RouteGuard moduleId="resources"><DashboardLayout><Library /></DashboardLayout></RouteGuard></ProtectedRoute>} />
+      <Route path="/library/share/:token" element={<LibraryShare />} />
       <Route path="/leads" element={<ProtectedRoute><RouteGuard moduleId="leads"><LeadsPipeline /></RouteGuard></ProtectedRoute>} />
       <Route path="/identity" element={<ProtectedRoute><RouteGuard moduleId="identity"><IdentityResolution /></RouteGuard></ProtectedRoute>} />
       <Route path="/notifications" element={<ProtectedRoute><RouteGuard moduleId="notifications"><NotificationCenter /></RouteGuard></ProtectedRoute>} />
