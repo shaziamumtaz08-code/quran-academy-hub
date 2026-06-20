@@ -40,7 +40,7 @@ export function buildRailNav(role: AppRole | null): RailItem[] {
       { label: 'Student Reports', href: '/student-reports', icon: BarChart3 },
       { label: 'Performance', href: '/performance', icon: Activity },
       { label: 'Salary', href: '/salary', icon: DollarSign },
-      { label: 'Resources', href: '/resources', icon: FolderOpen },
+      { label: 'Library', href: '/library', icon: FolderOpen },
       { label: 'Communication', href: '/communication', icon: MessageSquare },
     ];
   }
@@ -51,7 +51,7 @@ export function buildRailNav(role: AppRole | null): RailItem[] {
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { label: 'My Courses', href: '/my-courses', icon: BookOpen },
       { label: 'Reports', href: '/student-reports', icon: BarChart3 },
-      { label: 'Resources', href: '/resources', icon: FolderOpen },
+      { label: 'Library', href: '/library', icon: FolderOpen },
       { label: 'Communication', href: '/communication', icon: MessageSquare },
     ];
     if (role === 'parent') {
