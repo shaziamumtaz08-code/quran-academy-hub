@@ -455,7 +455,7 @@ export default function StudentReports() {
     <DashboardLayout>
       <div className="space-y-6">
         {/* Premium Page Header */}
-        <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-navy-900 via-navy-800 to-navy-900 p-6 sm:p-8">
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-navy-dark via-navy to-navy-dark p-6 sm:p-8">
           <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnM1LjM3MyAxMiAxMiAxMiAxMi01LjM3MyAxMi0xMi01LjM3My0xMi0xMi0xMnptMCAyMGMtNC40MTggMC04LTMuNTgyLTgtOHMzLjU4Mi04IDgtOCA4IDMuNTgyIDggOC0zLjU4MiA4LTggOHoiIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iLjAzIi8+PC9nPjwvc3ZnPg==')] opacity-30" />
           <div className="relative flex items-center justify-between">
             <div>
