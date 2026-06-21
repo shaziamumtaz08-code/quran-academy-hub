@@ -41,6 +41,18 @@ interface PersistedMessage {
   created_at: string;
 }
 
+const MODULE_META: Record<string, { label: string; desc: string }> = {
+  identity: { label: "Identity & Users", desc: "Unique emails, role integrity, archived users" },
+  academics: { label: "Academics", desc: "Assignments, schedules, overlaps" },
+  attendance: { label: "Attendance & Zoom", desc: "Logs, licenses, FK integrity" },
+  finance_invoicing: { label: "Invoicing", desc: "Invoice integrity, amounts, immutability" },
+  finance_payroll: { label: "Payroll", desc: "PKR currency, volunteer rules, FKs" },
+  demo_links: { label: "Demo Links", desc: "Share tokens + public RPC" },
+  teaching_os: { label: "Teaching OS", desc: "Syllabus links, speaking audio" },
+  comms: { label: "Communication", desc: "Chat groups, WhatsApp, queue backlog" },
+  rls_isolation: { label: "RLS / Security", desc: "Anon read blocks on 15 tables" },
+};
+
 function statusTone(status: string) {
   if (status === "passed") return "bg-emerald-100 text-emerald-700 border-emerald-200";
   if (status === "failed") return "bg-red-100 text-red-700 border-red-200";
