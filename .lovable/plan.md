@@ -1,95 +1,63 @@
-# Shareable Demo Links — Auto-Send to Teacher & Student
+# Expand QA Test-Mate to cover the entire app
 
-## What we're building
+Today QA Test-Mate runs ~5 checks in 2 areas (demo links, RLS isolation). This plan scales it to **9 modules, ~60 checks**, with module-level run buttons so you can test one area or everything.
 
-When an admin schedules a demo on a lead (assigns a teacher + sets date/time/Zoom link), the system automatically sends a **personalized shareable link** to both the teacher and the student/parent. Each link opens a public page tailored to that audience. After the demo's scheduled end time, the same link automatically swaps to a **feedback form** — unless the admin has rescheduled or cancelled the demo.
+## What will be covered
 
-## User-visible behavior
+| # | Module | Sample checks (each one returns ✅/❌/⚠️) |
+|---|---|---|
+| 1 | **Identity & Users** | every profile has unique email; no orphan `user_roles` rows; no archived users in active lists; phone numbers normalize to E.164; no duplicate URNs |
+| 2 | **Academics / Assignments** | every active assignment has a valid teacher + student + subject; paused assignments have no future schedules; no overlapping schedules for same teacher; substitution chain integrity |
+| 3 | **Attendance & Zoom** | every Zoom session has a license; no attendance rows without a session; >50% duration rule applied correctly; orphan `zoom_attendance_logs`; holidays suppress missed-attendance flags |
+| 4 | **Finance — Invoicing** | every fee invoice has a valid student + plan; paid invoices are immutable (no updates after `paid_at`); ledger balances to zero per student; family bulk-pay links resolve |
+| 5 | **Finance — Payroll** | salary math = `(Base_Rate / Days_In_Month) * Active_Days` for sampled teachers; volunteer staff have zero payouts; PKR currency on all salary rows; partially-paid payouts are `draft` |
+| 6 | **Demo / Leads pipeline** | (existing) + every lead has a valid status transition; rescheduled demo resets status; webhook-created leads have applicant linkage |
+| 7 | **Teaching OS** | every `session_plan` belongs to a syllabus; outline PDFs have valid storage URLs; speaking attempts have audio + transcript; quiz attempts grade correctly |
+| 8 | **Communication** | chat groups have ≥1 member; no orphan DMs; WhatsApp messages have a contact; notification queue isn't backed up >24h |
+| 9 | **Security / RLS** | (existing) + spot-check 15 critical tables refuse anon SELECT; `service_role` grants present on every public table; no policies missing GRANT statements |
 
-1. Admin schedules a demo in **Leads Pipeline** → picks teacher, date/time, timezone, Zoom link.
-2. System generates two unique tokens (one teacher, one student) and persists them on the demo record.
-3. Delivery cascade per recipient:
-   - **WhatsApp first** via existing WhatsChimp integration if the contact has a valid WhatsApp number.
-   - **Email fallback** via Resend if WhatsApp is unavailable or fails.
-   - **In-app notification** is always queued for the teacher (since they're a platform user).
-4. Both messages contain a short shareable URL like `lms.alqurantimeacademy.com/demo/abc123xyz`.
+## How the UI changes
 
-## Public demo page (`/demo/:token`)
+- **Module cards** on the QA Test-Mate page — each shows last run status, pass/fail count, and a "Run this module" button.
+- **"Run all" button** at the top — runs the full suite (~30–60 sec).
+- **Filterable run history** — by module + status.
+- **Chat still works** — you can ask "show me failed checks from yesterday's payroll run" in plain English.
+- **Optional nightly cron** — auto-run the full suite at 3am and write results so you wake up to a green/red dashboard.
 
-The page resolves the token, identifies the audience (teacher vs student), and decides what to show based on current time vs the demo window:
+## Process for the user
 
-```text
-Before demo end time          →  Demo details view
-After demo end time           →  Feedback form view
-Rescheduled                   →  Demo details view (with new time + "Rescheduled" banner)
-Cancelled                     →  "This demo has been cancelled" notice
-```
-
-### Teacher view (details)
-- Student name, age, country, timezone
-- Subject(s) of interest, preferred time slots, notes
-- Date/time in teacher's timezone + student's timezone
-- Big "Join Zoom" button
-- Parent contact (phone/email) for direct outreach
-
-### Student/parent view (details)
-- Teacher name + short bio/photo (if available)
-- Subject
-- Date/time in student's timezone (with a "Add to calendar" .ics link)
-- Big "Join Zoom" button
-- Light reminder of what to expect
-
-### Feedback form (post-demo, both audiences)
-- Teacher feedback: student level assessment, recommended package, notes, recommended next steps.
-- Student/parent feedback: 1–5 star rating, free-text comments, "Interested to enroll?" yes/no/maybe.
-- Submissions are stored against the lead so admin sees both sides in the lead drawer.
-
-## Trigger logic
-
-A single Edge Function `send-demo-links` is invoked from the frontend right after `createDemo`/`updateDemo` saves successfully **and** all of these are true: `teacher_id`, `scheduled_at`, and Zoom link are present and the status is `scheduled` (not cancelled).
-
-It also runs on **reschedule** (re-sends a "📅 Rescheduled — new time" message using the same tokens). It does not re-send on minor edits like a note change.
-
-## Channel setup the user needs
-
-- **WhatsApp**: already wired (WhatsChimp). No new keys needed — we reuse the existing send-message helper.
-- **Email**: requires **Resend connector**. I'll prompt the connect dialog when we get to that step; the user will pick a verified sender domain (or use Resend's test domain initially).
-- **Lovable Emails alternative**: if the user prefers, we can use Lovable's built-in email instead of Resend — same UX, no third-party signup. Worth confirming.
+1. Open Settings → QA Test-Mate.
+2. Click "Run all" once a week (or after a deploy) → see which modules are green/red.
+3. Click any ❌ to expand evidence (the offending row IDs, error messages).
+4. Ask the AI to suggest a fix or run a specific module again.
 
 ## Technical details
 
-### Database
-New table `demo_share_tokens`:
-- `id`, `demo_session_id` (FK), `lead_id` (FK), `token` (unique, 22-char nanoid), `audience` ('teacher' | 'student'), `created_at`, `revoked_at`.
-- Public `anon` SELECT policy on this table is **deliberate** — the token is the access control (unguessable). No PII lives on this table; PII is fetched via a SECURITY DEFINER RPC `get_demo_by_token(_token)` that returns only the fields the audience is allowed to see.
+- One edge function per module: `qa-check-identity`, `qa-check-academics`, `qa-check-attendance`, `qa-check-finance-invoicing`, `qa-check-finance-payroll`, `qa-check-demo`, `qa-check-teaching`, `qa-check-comms`, `qa-check-security`.
+- Existing `qa-run-checks` becomes the orchestrator that fans out to all module functions in parallel and aggregates results into `qa_runs`.
+- New table column `qa_runs.module` (text) to filter by domain.
+- New table `qa_check_results` (one row per individual check per run) for drill-down evidence — replaces the current inline JSON blob.
+- All checks are **read-only** — no data is modified, no test users created.
+- Sample-based on large tables (e.g. 50 most recent invoices) to keep runtime <60s.
 
-New table `demo_feedback`:
-- `id`, `demo_session_id`, `lead_id`, `audience` ('teacher' | 'student'), `rating`, `interested`, `recommended_package`, `notes`, `submitted_at`.
-- Public anon INSERT allowed *only via* RPC `submit_demo_feedback(_token, _payload)` which validates the token and the timing.
+## Limitations to be honest about
 
-### Frontend
-- New route `/demo/:token` → `src/pages/PublicDemoView.tsx` (public, no auth).
-- Hook into `LeadsPipeline.tsx` demo create/update flow → invoke `send-demo-links` Edge Function.
-- "Resend demo link" button per lead in the existing lead drawer (manual safety valve).
+- **Sampling, not exhaustive** — checking every row in `attendance` (millions) would be too slow; we sample recent + random rows. Critical-table checks (users, roles) are exhaustive.
+- **Catches data/RLS regressions, not UI bugs** — won't tell you if a button is broken; will tell you if the data the button depends on is corrupt.
+- **No write-path testing** — won't create a fake invoice to test the create flow. That needs separate end-to-end tests (Playwright) which is a different tool.
+- **AI chat costs credits per message**; the checks themselves are free.
+- **Scoped to current division** by default — admins can toggle "all divisions" if they have global access.
 
-### Edge functions
-- `send-demo-links` — generates tokens (idempotent: reuses if already present), composes WhatsApp + email payloads, dispatches with fallback, logs to `notification_queue`.
-- `get-demo-share` — public, takes a token, returns audience-scoped view.
-- `submit-demo-feedback` — public, takes token + payload, writes to `demo_feedback`.
+## Build order
 
-### Messaging templates (edit-friendly)
-Stored as constants in the edge function for now (can move to `notification_templates` later). Concise and friendly, with student name, teacher name, subject, date/time in recipient's timezone, and the unique link.
+1. Schema migration: add `module` column + new `qa_check_results` table.
+2. Refactor existing checks into the orchestrator pattern.
+3. Add Identity + Academics modules (highest-value, used daily).
+4. Add Finance modules (Invoicing, Payroll).
+5. Add Attendance/Zoom + Demo + Teaching + Comms + Security.
+6. UI: module cards, drill-down, filters.
+7. Optional: nightly cron.
 
-## What we're NOT doing in this scope
+Total scope: ~9 new edge functions, 1 migration, ~600 lines of UI. Estimated build time across the conversation: 4–6 focused turns.
 
-- No SMS channel (would need Twilio).
-- No CRON-based reminder emails ("starts in 1 hour") — happy to add as a follow-up.
-- No multi-language templates yet (English only first; Urdu/Arabic can follow).
-
-## Confirmation needed before I start coding
-
-1. **Email channel**: Resend (recommended, fast to set up via connector) or Lovable Emails (no third-party)?
-2. **Sender display name** for emails — "Al Quran Time Academy"?
-3. **Feedback form swap time** — should it flip exactly at scheduled end time, or after a grace period (e.g. 15 min after end)?
-
-Once you confirm those three, I'll build it end-to-end.
+**Approve this plan to start building, or tell me which modules to drop/add first.**
