@@ -39,7 +39,6 @@ export function ImpersonateButton({
   const label = userLabel || 'this user';
 
   const handleClick = async () => {
-    if (!confirm(`Open ${label}'s dashboard in a new tab? You will stay signed in as admin in this tab.`)) return;
     setLoading(true);
     // Open the tab synchronously (inside the click) so popup blockers allow it,
     // then navigate it once we have the magic link.
