@@ -84,12 +84,24 @@ export function StudentFeePortal({
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
   }, [invoices]);
 
-  const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
+  const { activeKidId, setActiveKidId } = useKidContext();
+  const [selectedChildId, setSelectedChildIdLocal] = useState<string | null>(null);
+  const setSelectedChildId = (id: string) => {
+    setSelectedChildIdLocal(id);
+    if (isParentView && id) setActiveKidId(id);
+  };
   React.useEffect(() => {
-    if (isParentView && !selectedChildId && children.length > 0) {
-      setSelectedChildId(children[0].id);
+    if (!isParentView || children.length === 0) return;
+    // Prefer KidContext's active kid if it's in the list, else fall back to first
+    const preferred = activeKidId && children.some(c => c.id === activeKidId)
+      ? activeKidId
+      : children[0].id;
+    if (preferred !== selectedChildId) {
+      setSelectedChildIdLocal(preferred);
+      if (preferred !== activeKidId) setActiveKidId(preferred);
     }
-  }, [isParentView, children, selectedChildId]);
+  }, [isParentView, children, activeKidId, selectedChildId, setActiveKidId]);
+
 
   const studentInvoices = useMemo(() => {
     if (isParentView && selectedChildId) {
