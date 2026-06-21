@@ -89,6 +89,7 @@ import {
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { BulkUserImportDialog } from '@/components/users/BulkUserImportDialog';
+import { ImpersonateButton } from '@/components/users/ImpersonateButton';
 import { ExportUsersDialog } from '@/components/users/ExportUsersDialog';
 import { HolisticUserProfileDrawer } from '@/components/users/HolisticUserProfileDrawer';
 import { AssignRoleDialog } from '@/components/users/AssignRoleDialog';
