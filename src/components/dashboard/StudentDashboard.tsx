@@ -96,7 +96,7 @@ export function StudentDashboard() {
     queryFn: async () => {
       const { data } = await supabase
         .from('student_teacher_assignments')
-        .select('id, teacher_id, teacher:teacher_id(id, full_name), subject:subject_id(name), schedules(day_of_week, student_local_time, is_active)')
+        .select('id, teacher_id, teacher:profiles!student_teacher_assignments_teacher_id_fkey(id, full_name), subject:subject_id(name), schedules(day_of_week, student_local_time, is_active)')
         .eq('student_id', activeStudentId!)
         .eq('status', 'active')
         .limit(1)
@@ -104,6 +104,17 @@ export function StudentDashboard() {
       return data as any;
     },
   });
+
+  // Fallback teacher/subject via SECURITY DEFINER RPC (covers parent-role RLS gaps).
+  const { data: dashCtx } = useQuery({
+    queryKey: ['sd-ctx', activeStudentId],
+    enabled: !!activeStudentId,
+    queryFn: async () => {
+      const { data } = await (supabase as any).rpc('get_student_dashboard_context', { _student_id: activeStudentId });
+      return (data as any) || null;
+    },
+  });
+
 
   // Live session for the assigned teacher
   const { data: liveSession } = useQuery({
