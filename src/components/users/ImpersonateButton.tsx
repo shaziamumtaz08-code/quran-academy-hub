@@ -39,16 +39,26 @@ export function ImpersonateButton({
   const label = userLabel || 'this user';
 
   const handleClick = async () => {
-    if (!confirm(`Log in as ${label}? You will be signed out of your admin account.`)) return;
+    if (!confirm(`Open ${label}'s dashboard in a new tab? You will stay signed in as admin in this tab.`)) return;
     setLoading(true);
+    // Open the tab synchronously (inside the click) so popup blockers allow it,
+    // then navigate it once we have the magic link.
+    const newTab = window.open('about:blank', '_blank');
     try {
+      const target = redirectTo || `${window.location.origin}/dashboard`;
+      // Append impersonate=1 so the new tab's supabase client uses sessionStorage
+      // and a unique storage key — keeping admin's session intact in this tab.
+      const sep = target.includes('?') ? '&' : '?';
+      const impersonateRedirect = `${target}${sep}impersonate=1`;
+
       const { data, error } = await supabase.functions.invoke('impersonate-user', {
         body: {
           targetUserId: userId,
-          redirectTo: redirectTo || `${window.location.origin}/dashboard`,
+          redirectTo: impersonateRedirect,
         },
       });
       if (error || !data?.actionLink) {
+        if (newTab) newTab.close();
         toast({
           title: 'Impersonation failed',
           description: error?.message || data?.error || 'Unable to generate sign-in link',
@@ -57,9 +67,24 @@ export function ImpersonateButton({
         setLoading(false);
         return;
       }
-      await supabase.auth.signOut();
-      window.location.href = data.actionLink;
+      if (newTab) {
+        newTab.location.href = data.actionLink;
+      } else {
+        // Popup was blocked — fall back to opening in this tab is undesirable;
+        // surface a clear message instead.
+        toast({
+          title: 'Popup blocked',
+          description: 'Allow popups for this site to open the user session in a new tab.',
+          variant: 'destructive',
+        });
+      }
+      toast({
+        title: 'Impersonation started',
+        description: `Opened ${label}'s session in a new tab. Close that tab to end impersonation.`,
+      });
+      setLoading(false);
     } catch (e: any) {
+      if (newTab) newTab.close();
       toast({
         title: 'Impersonation failed',
         description: e?.message || 'Unexpected error',
