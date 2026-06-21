@@ -329,7 +329,7 @@ export function StudentDashboard() {
           <div className="text-xs text-muted-foreground">Teacher</div>
           <div className="font-semibold text-sm truncate">{teacherName}</div>
           <div className="text-sm text-muted-foreground truncate">
-            {assignment?.subject?.name || 'No subject assigned'}
+            {subjectName}
           </div>
         </div>
         <div className="flex flex-col items-end gap-1.5 shrink-0">
