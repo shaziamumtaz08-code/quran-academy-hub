@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLocation } from 'react-router-dom';
 import { useKidContext } from '@/contexts/KidContext';
 import { Info } from 'lucide-react';
 
@@ -9,6 +10,10 @@ import { Info } from 'lucide-react';
  */
 export function ActingAsBanner() {
   const { isParentActor, activeKid, kids, setActiveKidId, activeKidId } = useKidContext();
+  const { pathname } = useLocation();
+  // Hide on the Parent hub itself — no child is "active" there.
+  const onParentHub = pathname === '/parent' || pathname === '/parent/' || pathname === '/dashboard';
+  if (onParentHub) return null;
   if (!isParentActor || !activeKid) return null;
 
   return (
