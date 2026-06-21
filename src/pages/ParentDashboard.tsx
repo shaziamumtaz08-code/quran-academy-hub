@@ -188,7 +188,7 @@ export default function ParentDashboard() {
           .from('fee_invoices')
           .select('student_id, amount, currency, status')
           .in('student_id', ids)
-          .in('status', ['pending', 'partial', 'overdue']),
+          .in('status', ['pending', 'partially_paid', 'overdue']),
       ]);
 
       // Next class via RPC + schedules.
