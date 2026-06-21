@@ -4,13 +4,41 @@ import type { Database } from './types';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
+// Impersonation support:
+// When a tab is opened with ?impersonate=1 (admin "Log in as user" flow),
+// scope its auth session to sessionStorage with a unique storage key so it
+// stays isolated from the admin's tab — closing the tab ends the session,
+// and the admin's localStorage session is never overwritten.
+const IS_IMPERSONATION_TAB = (() => {
+  if (typeof window === 'undefined') return false;
+  try {
+    if (new URLSearchParams(window.location.search).get('impersonate') === '1') {
+      window.sessionStorage.setItem('lovable_impersonation_tab', '1');
+    }
+    return window.sessionStorage.getItem('lovable_impersonation_tab') === '1';
+  } catch {
+    return false;
+  }
+})();
+
+const authStorage =
+  IS_IMPERSONATION_TAB && typeof window !== 'undefined'
+    ? window.sessionStorage
+    : (typeof window !== 'undefined' ? window.localStorage : undefined as any);
+
+const authStorageKey = IS_IMPERSONATION_TAB
+  ? `sb-${SUPABASE_PROJECT_ID || 'project'}-impersonation-token`
+  : undefined;
+
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    storage: localStorage,
+    storage: authStorage,
+    storageKey: authStorageKey,
     persistSession: true,
     autoRefreshToken: true,
   }
