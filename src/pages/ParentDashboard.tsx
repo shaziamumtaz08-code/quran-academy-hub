@@ -225,8 +225,13 @@ export default function ParentDashboard() {
 
       const dueMap = new Map<string, { amount: number; currency: string; count: number }>();
       (invoices || []).forEach((inv: any) => {
+        const remaining = Math.max(
+          0,
+          (Number(inv.amount) || 0) - (Number(inv.amount_paid) || 0) - (Number(inv.forgiven_amount) || 0)
+        );
+        if (remaining <= 0.01) return;
         const cur = dueMap.get(inv.student_id) || { amount: 0, currency: inv.currency || 'PKR', count: 0 };
-        cur.amount += Number(inv.amount) || 0;
+        cur.amount += remaining;
         cur.count += 1;
         cur.currency = inv.currency || cur.currency;
         dueMap.set(inv.student_id, cur);
