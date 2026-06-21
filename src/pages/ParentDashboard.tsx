@@ -182,13 +182,15 @@ export default function ParentDashboard() {
       const ids = (links || []).map((l: any) => l.student_id).filter(Boolean);
       if (!ids.length) return [];
 
+      const cbm = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
       const [{ data: profiles }, { data: invoices }] = await Promise.all([
         supabase.from('profiles').select('id, full_name, registration_id').in('id', ids),
         supabase
           .from('fee_invoices')
-          .select('student_id, amount, currency, status')
+          .select('student_id, amount, amount_paid, forgiven_amount, currency, status, billing_month')
           .in('student_id', ids)
-          .in('status', ['pending', 'partially_paid', 'overdue']),
+          .in('status', ['pending', 'partially_paid', 'overdue'])
+          .lte('billing_month', cbm),
       ]);
 
       // Next class via RPC + schedules.
