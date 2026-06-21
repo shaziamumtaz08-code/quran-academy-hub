@@ -182,13 +182,15 @@ export default function ParentDashboard() {
       const ids = (links || []).map((l: any) => l.student_id).filter(Boolean);
       if (!ids.length) return [];
 
+      const cbm = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
       const [{ data: profiles }, { data: invoices }] = await Promise.all([
         supabase.from('profiles').select('id, full_name, registration_id').in('id', ids),
         supabase
           .from('fee_invoices')
-          .select('student_id, amount, currency, status')
+          .select('student_id, amount, amount_paid, forgiven_amount, currency, status, billing_month')
           .in('student_id', ids)
-          .in('status', ['pending', 'partially_paid', 'overdue']),
+          .in('status', ['pending', 'partially_paid', 'overdue'])
+          .lte('billing_month', cbm),
       ]);
 
       // Next class via RPC + schedules.
@@ -223,8 +225,13 @@ export default function ParentDashboard() {
 
       const dueMap = new Map<string, { amount: number; currency: string; count: number }>();
       (invoices || []).forEach((inv: any) => {
+        const remaining = Math.max(
+          0,
+          (Number(inv.amount) || 0) - (Number(inv.amount_paid) || 0) - (Number(inv.forgiven_amount) || 0)
+        );
+        if (remaining <= 0.01) return;
         const cur = dueMap.get(inv.student_id) || { amount: 0, currency: inv.currency || 'PKR', count: 0 };
-        cur.amount += Number(inv.amount) || 0;
+        cur.amount += remaining;
         cur.count += 1;
         cur.currency = inv.currency || cur.currency;
         dueMap.set(inv.student_id, cur);
