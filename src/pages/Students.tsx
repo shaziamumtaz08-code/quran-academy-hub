@@ -714,6 +714,8 @@ export default function Students() {
                           <Button size="sm" variant="ghost" onClick={() => setAttendanceStudent(student)}>Attendance</Button>
                           <Button size="sm" variant="ghost" onClick={() => setScheduleStudent(student)}>Schedule</Button>
                           <Button size="sm" variant="ghost" onClick={() => setHistoryStudent(student)}>History</Button>
+                          <ImpersonateButton userId={student.id} userLabel={student.full_name} />
+
                         </div>
                       </TableCell>
                     </TableRow>
