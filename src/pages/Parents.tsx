@@ -14,6 +14,7 @@ import {
   AlertTriangle, UserCheck, Phone,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { ImpersonateButton } from '@/components/users/ImpersonateButton';
 
 type GuardianTypeFilter = 'all' | 'parent' | 'guardian' | 'emergency_contact' | 'no_guardian';
 
