@@ -309,6 +309,7 @@ export function StudentDashboard() {
     </div>
   );
 
+  const sched = (assignment?.schedules || []).find((s: any) => s.is_active);
   const ctxTeacher = (dashCtx?.teachers || [])[0] || null;
   const teacherName = assignment?.teacher?.full_name || ctxTeacher?.teacher_name || '—';
   const subjectName = assignment?.subject?.name || ctxTeacher?.subject_name || 'No subject assigned';
