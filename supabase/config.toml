@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.bulk-reset-passwords]
 verify_jwt = false
+
+[functions.impersonate-user]
+verify_jwt = false

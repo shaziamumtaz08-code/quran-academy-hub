@@ -85,6 +85,7 @@ import {
   Heart,
   Briefcase,
   HelpCircle,
+  LogIn,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { BulkUserImportDialog } from '@/components/users/BulkUserImportDialog';
@@ -2373,7 +2374,37 @@ export default function UserManagement() {
                                 >
                                   <Edit className="h-4 w-4" />
                                 </Button>
-                              )}
+                               )}
+
+                               {/* Login as user — super_admin & admin only */}
+                               {(activeRole === 'super_admin' || activeRole === 'admin') &&
+                                 user.id !== currentUser?.id && (
+                                 <Button
+                                   variant="ghost"
+                                   size="sm"
+                                   onClick={async () => {
+                                     if (!confirm(`Log in as ${user.full_name || user.email}? You will be signed out of your admin account.`)) return;
+                                     try {
+                                       const { data, error } = await supabase.functions.invoke('impersonate-user', {
+                                         body: { targetUserId: user.id, redirectTo: `${window.location.origin}/dashboard` },
+                                       });
+                                       if (error || !data?.actionLink) {
+                                         toast({ title: 'Impersonation failed', description: error?.message || data?.error || 'Unable to generate sign-in link', variant: 'destructive' });
+                                         return;
+                                       }
+                                       await supabase.auth.signOut();
+                                       window.location.href = data.actionLink;
+                                     } catch (e: any) {
+                                       toast({ title: 'Impersonation failed', description: e?.message || 'Unexpected error', variant: 'destructive' });
+                                     }
+                                   }}
+                                   title={`Log in as ${user.full_name || user.email}`}
+                                   className="text-violet-600 hover:text-violet-700"
+                                 >
+                                   <LogIn className="h-4 w-4" />
+                                 </Button>
+                               )}
+
 
                               {/* Archive / Restore */}
                               {(activeRole === 'super_admin' || activeRole === 'admin_division' || activeRole === 'admin') && (
