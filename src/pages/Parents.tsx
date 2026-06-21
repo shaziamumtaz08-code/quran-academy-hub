@@ -343,6 +343,7 @@ function GuardianList({
               Create Login
             </Button>
           )}
+          <ImpersonateButton userId={p.id} userLabel={p.full_name} />
         </Card>
       ))}
     </div>
