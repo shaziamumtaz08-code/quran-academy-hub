@@ -179,6 +179,7 @@ function getSettingsSidebar(role?: string | null): { title: string; subtitle: st
       ...(can(r, 'identity', 'view') ? [{ label: 'Identity', href: '/identity' }] : []),
       ...(can(r, 'integrity_audit', 'view') ? [{ label: 'Integrity Audit', href: '/integrity-audit' }] : []),
       ...(can(r, 'activity_log', 'view') ? [{ label: 'Activity Log', href: '/activity-log' }] : []),
+      ...(can(r, 'qa_testmate', 'view') ? [{ label: 'QA Test-Mate', href: '/qa-testmate' }] : []),
     ],
   };
 }
