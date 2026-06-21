@@ -160,37 +160,67 @@ export default function QATestMate() {
     await sendMessage({ text });
   }
 
-  async function handleRunNow() {
+  const [runningModule, setRunningModule] = useState<string | null>(null);
+
+  async function runChecks(kind: string) {
     if (!authToken) return;
-    toast.info("Starting QA run…");
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/qa-run-checks`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${authToken}`,
-        apikey: PUBLISHABLE_KEY,
-      },
-      body: JSON.stringify({ kind: "full", trigger_source: "manual" }),
-    });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      toast.error(body.error || "Run failed");
-      return;
+    setRunningModule(kind);
+    toast.info(`Running ${kind === "full" ? "all modules" : MODULE_META[kind]?.label ?? kind}…`);
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/qa-run-checks`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+          apikey: PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({ kind, trigger_source: "manual" }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) { toast.error(body.error || "Run failed"); return; }
+      toast.success(body.summary || "Run finished");
+      qc.invalidateQueries({ queryKey: ["qa-runs"] });
+    } finally {
+      setRunningModule(null);
     }
-    toast.success(body.summary || "Run finished");
-    qc.invalidateQueries({ queryKey: ["qa-runs"] });
   }
 
   async function handleClearChat() {
     if (!confirm("Clear the QA chat history?")) return;
     const { error } = await supabase.from("qa_chat_messages" as any).delete().neq("id", "00000000-0000-0000-0000-000000000000");
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
+    if (error) { toast.error(error.message); return; }
     setMessages([]);
     qc.invalidateQueries({ queryKey: ["qa-chat-history"] });
   }
+
+  // Aggregate latest-per-module status from most recent runs
+  const moduleStatus = useMemo(() => {
+    const map: Record<string, { passed: number; failed: number; warning: number; total: number; at: string | null }> = {};
+    for (const k of Object.keys(MODULE_META)) map[k] = { passed: 0, failed: 0, warning: 0, total: 0, at: null };
+    const seen = new Set<string>();
+    for (const r of (runs ?? [])) {
+      const results = (r as any).results as any[] | null;
+      if (!results) continue;
+      const byModule = new Map<string, any[]>();
+      for (const x of results) {
+        const mk = x.module ?? x.area ?? "unknown";
+        if (!byModule.has(mk)) byModule.set(mk, []);
+        byModule.get(mk)!.push(x);
+      }
+      for (const [mk, list] of byModule) {
+        if (seen.has(mk) || !MODULE_META[mk]) continue;
+        seen.add(mk);
+        map[mk] = {
+          passed: list.filter((x) => x.status === "passed").length,
+          failed: list.filter((x) => x.status === "failed").length,
+          warning: list.filter((x) => x.status === "warning").length,
+          total: list.length,
+          at: r.finished_at ?? r.started_at,
+        };
+      }
+    }
+    return map;
+  }, [runs]);
 
   return (
     <DashboardLayout>
@@ -199,17 +229,61 @@ export default function QATestMate() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">QA Test-Mate</h1>
             <p className="text-sm text-muted-foreground">
-              v1 scope · Demo Link Flow · RLS Isolation · Super Admin only
+              9 modules · ~40 read-only checks across identity, academics, finance, attendance, comms & RLS
             </p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleClearChat}>
               <RotateCcw className="h-4 w-4 mr-1" /> Clear chat
             </Button>
-            <Button size="sm" onClick={handleRunNow}>
-              <PlayCircle className="h-4 w-4 mr-1" /> Run checks now
+            <Button size="sm" onClick={() => runChecks("full")} disabled={!!runningModule}>
+              {runningModule === "full" ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <PlayCircle className="h-4 w-4 mr-1" />}
+              Run all modules
             </Button>
           </div>
+        </div>
+
+        {/* Module cards */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-2 mb-4">
+          {Object.entries(MODULE_META).map(([key, meta]) => {
+            const s = moduleStatus[key];
+            const tone = s.failed > 0 ? "border-red-200 bg-red-50/40"
+              : s.warning > 0 ? "border-amber-200 bg-amber-50/40"
+              : s.total > 0 ? "border-emerald-200 bg-emerald-50/40"
+              : "border-border bg-card";
+            return (
+              <Card key={key} className={`p-3 ${tone}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold truncate">{meta.label}</div>
+                    <div className="text-[11px] text-muted-foreground truncate">{meta.desc}</div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2"
+                    disabled={!!runningModule}
+                    onClick={() => runChecks(key)}
+                    title="Run this module"
+                  >
+                    {runningModule === key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PlayCircle className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
+                <div className="mt-2 flex items-center gap-2 text-[11px]">
+                  {s.total === 0 ? (
+                    <span className="text-muted-foreground">Not run yet</span>
+                  ) : (
+                    <>
+                      <span className="inline-flex items-center gap-1 text-emerald-700"><CheckCircle2 className="h-3 w-3" /> {s.passed}</span>
+                      {s.warning > 0 && <span className="inline-flex items-center gap-1 text-amber-700"><AlertCircle className="h-3 w-3" /> {s.warning}</span>}
+                      {s.failed > 0 && <span className="inline-flex items-center gap-1 text-red-700"><XCircle className="h-3 w-3" /> {s.failed}</span>}
+                      <span className="text-muted-foreground ml-auto">{s.at ? formatDistanceToNow(new Date(s.at), { addSuffix: true }) : ""}</span>
+                    </>
+                  )}
+                </div>
+              </Card>
+            );
+          })}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
