@@ -31,6 +31,7 @@ import { useSearchParams } from 'react-router-dom';
 import { EntityLink } from '@/components/shared/EntityLink';
 import { TeacherDetailDrawer } from '@/components/teachers/TeacherDetailDrawer';
 import { useToast } from '@/hooks/use-toast';
+import { ImpersonateButton } from '@/components/users/ImpersonateButton';
 
 interface Student {
   id: string;
@@ -714,6 +715,8 @@ export default function Students() {
                           <Button size="sm" variant="ghost" onClick={() => setAttendanceStudent(student)}>Attendance</Button>
                           <Button size="sm" variant="ghost" onClick={() => setScheduleStudent(student)}>Schedule</Button>
                           <Button size="sm" variant="ghost" onClick={() => setHistoryStudent(student)}>History</Button>
+                          <ImpersonateButton userId={student.id} userLabel={student.full_name} />
+
                         </div>
                       </TableCell>
                     </TableRow>
