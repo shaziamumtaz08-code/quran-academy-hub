@@ -595,6 +595,13 @@ export default function Teachers() {
                               <Pencil className="h-4 w-4 mr-2" />
                               Edit
                             </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <ImpersonateButton
+                                userId={teacher.id}
+                                userLabel={teacher.full_name}
+                                variant="menu-item"
+                              />
+                            </DropdownMenuItem>
                             <DropdownMenuItem 
                               className="text-destructive"
                               onClick={() => handleDelete(teacher.id)}
