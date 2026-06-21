@@ -31,6 +31,7 @@ import { useSearchParams } from 'react-router-dom';
 import { EntityLink } from '@/components/shared/EntityLink';
 import { TeacherDetailDrawer } from '@/components/teachers/TeacherDetailDrawer';
 import { useToast } from '@/hooks/use-toast';
+import { ImpersonateButton } from '@/components/users/ImpersonateButton';
 
 interface Student {
   id: string;
