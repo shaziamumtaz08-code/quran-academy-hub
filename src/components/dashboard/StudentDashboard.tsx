@@ -309,9 +309,11 @@ export function StudentDashboard() {
     </div>
   );
 
-  const sched = (assignment?.schedules || []).find((s: any) => s.is_active);
-  const teacherName = assignment?.teacher?.full_name || '—';
-  const teacherInitial = teacherName?.charAt(0)?.toUpperCase() || 'T';
+  const ctxTeacher = (dashCtx?.teachers || [])[0] || null;
+  const teacherName = assignment?.teacher?.full_name || ctxTeacher?.teacher_name || '—';
+  const subjectName = assignment?.subject?.name || ctxTeacher?.subject_name || 'No subject assigned';
+  const teacherInitial = (teacherName && teacherName !== '—' ? teacherName.charAt(0).toUpperCase() : 'T');
+
   const meetingLink = (liveSession as any)?.license?.meeting_link;
 
   const isLive = !!(liveSession && meetingLink);
