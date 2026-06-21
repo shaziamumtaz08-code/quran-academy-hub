@@ -8,6 +8,8 @@ import { format, parseISO, isBefore, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useKidContext } from '@/contexts/KidContext';
+
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const formatBM = (bm: string) => { const [y,m] = bm.split('-'); return `${MONTHS[parseInt(m,10)-1] || m} ${y}`; };
