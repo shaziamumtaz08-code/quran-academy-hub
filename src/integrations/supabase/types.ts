@@ -594,10 +594,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "attendance_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "attendance_teacher_id_fkey"
             columns: ["teacher_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
         ]
@@ -772,6 +786,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "cash_advance_transactions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "cash_advance_transactions_expense_id_fkey"
             columns: ["expense_id"]
             isOneToOne: false
@@ -848,6 +869,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "cash_advances_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "cash_advances_division_id_fkey"
             columns: ["division_id"]
             isOneToOne: false
@@ -859,6 +887,13 @@ export type Database = {
             columns: ["issued_to"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_advances_issued_to_fkey"
+            columns: ["issued_to"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
         ]
@@ -1010,6 +1045,13 @@ export type Database = {
             columns: ["acted_for_student_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_acted_for_student_id_fkey"
+            columns: ["acted_for_student_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
           {
@@ -1357,6 +1399,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "course_certificate_awards_issued_by_fkey"
+            columns: ["issued_by"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
         ]
       }
       course_certificates: {
@@ -1411,6 +1460,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "course_certificates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
         ]
       }
       course_class_staff: {
@@ -1459,6 +1515,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "course_class_staff_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
         ]
       }
       course_class_students: {
@@ -1499,6 +1562,13 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_class_students_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
         ]
@@ -1654,6 +1724,13 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_enrollments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
         ]
@@ -1952,6 +2029,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "course_library_assets_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
         ]
       }
       course_message_sequences: {
@@ -2191,6 +2275,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "course_post_replies_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "course_post_replies_post_id_fkey"
             columns: ["post_id"]
             isOneToOne: false
@@ -2251,6 +2342,13 @@ export type Database = {
             columns: ["author_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_posts_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
           {
@@ -2406,6 +2504,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_quizzes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
         ]
@@ -2716,6 +2821,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "courses_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
         ]
       }
       demo_feedback: {
@@ -2868,6 +2980,13 @@ export type Database = {
             columns: ["teacher_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demo_sessions_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
         ]
@@ -3067,6 +3186,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "enrollment_ref_sequences_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
         ]
       }
       enrollments: {
@@ -3109,6 +3235,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "enrollments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "enrollments_subject_id_fkey"
             columns: ["subject_id"]
             isOneToOne: false
@@ -3120,6 +3253,13 @@ export type Database = {
             columns: ["teacher_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
         ]
@@ -3253,6 +3393,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "exam_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "exam_templates_subject_id_fkey"
             columns: ["subject_id"]
             isOneToOne: false
@@ -3319,10 +3466,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "exams_examiner_id_fkey"
+            columns: ["examiner_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "exams_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exams_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
           {
@@ -3417,6 +3578,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "expenses_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "expenses_branch_id_fkey"
             columns: ["branch_id"]
             isOneToOne: false
@@ -3428,6 +3596,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
           {
@@ -3445,10 +3620,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "expenses_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "expenses_teacher_id_fkey"
             columns: ["teacher_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
         ]
@@ -3490,6 +3679,13 @@ export type Database = {
             columns: ["admin_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "export_audit_logs_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
         ]
@@ -3546,6 +3742,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "extra_classes_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "extra_classes_assignment_id_fkey"
             columns: ["assignment_id"]
             isOneToOne: false
@@ -3560,10 +3763,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "extra_classes_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "extra_classes_teacher_id_fkey"
             columns: ["teacher_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extra_classes_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
         ]
@@ -3675,6 +3892,13 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fee_invoices_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
         ]
@@ -4085,6 +4309,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "lead_attachments_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
         ]
       }
       lead_screenings: {
@@ -4158,10 +4389,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "lead_screenings_screened_by_fkey"
+            columns: ["screened_by"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "lead_screenings_suggested_teacher_id_fkey"
             columns: ["suggested_teacher_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_screenings_suggested_teacher_id_fkey"
+            columns: ["suggested_teacher_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
         ]
@@ -4290,6 +4535,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "leads_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "leads_branch_id_fkey"
             columns: ["branch_id"]
             isOneToOne: false
@@ -4308,6 +4560,13 @@ export type Database = {
             columns: ["matched_person_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_matched_person_id_fkey"
+            columns: ["matched_person_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
           {
@@ -4368,8 +4627,29 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "leave_events_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "leave_events_replacement_teacher_id_fkey"
             columns: ["replacement_teacher_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_events_replacement_teacher_id_fkey"
+            columns: ["replacement_teacher_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_events_teacher_id_fkey"
+            columns: ["teacher_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -4378,7 +4658,7 @@ export type Database = {
             foreignKeyName: "leave_events_teacher_id_fkey"
             columns: ["teacher_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
         ]
@@ -4718,6 +4998,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "live_sessions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
         ]
       }
       minor_credentials: {
@@ -4766,10 +5053,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "minor_credentials_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "minor_credentials_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "minor_credentials_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
         ]
@@ -4832,6 +5133,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "notification_events_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "notification_events_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
@@ -4843,6 +5151,13 @@ export type Database = {
             columns: ["triggered_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_events_triggered_by_fkey"
+            columns: ["triggered_by"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
         ]
@@ -4992,6 +5307,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "org_auth_config_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
         ]
       }
       organization_payment_accounts: {
@@ -5071,6 +5393,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_payment_accounts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
         ]
@@ -5420,10 +5749,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "payment_transactions_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "payment_transactions_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_transactions_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
         ]
@@ -5721,6 +6064,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "profile_payment_account_history_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
         ]
       }
       profile_payment_accounts: {
@@ -5787,10 +6137,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "profile_payment_accounts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "profile_payment_accounts_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_payment_accounts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
         ]
@@ -6610,6 +6974,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "registration_submissions_matched_profile_id_fkey"
+            columns: ["matched_profile_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
         ]
       }
       resource_assignments: {
@@ -6878,6 +7249,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "salary_adjustments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "salary_adjustments_expense_id_fkey"
             columns: ["expense_id"]
             isOneToOne: false
@@ -6892,10 +7270,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "salary_adjustments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "salary_adjustments_teacher_id_fkey"
             columns: ["teacher_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_adjustments_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
         ]
@@ -7009,8 +7401,29 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "salary_payouts_locked_by_fkey"
+            columns: ["locked_by"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "salary_payouts_paid_by_fkey"
             columns: ["paid_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_payouts_paid_by_fkey"
+            columns: ["paid_by"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salary_payouts_teacher_id_fkey"
+            columns: ["teacher_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -7019,7 +7432,7 @@ export type Database = {
             foreignKeyName: "salary_payouts_teacher_id_fkey"
             columns: ["teacher_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
         ]
@@ -7064,6 +7477,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_overrides_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
           {
@@ -7819,6 +8239,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "staff_salaries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
         ]
       }
       student_billing_plans: {
@@ -7919,6 +8346,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "student_billing_plans_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
         ]
       }
       student_fees: {
@@ -7970,6 +8404,13 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_fees_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
         ]
@@ -8089,6 +8530,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "student_monthly_plans_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "student_monthly_plans_assignment_id_fkey"
             columns: ["assignment_id"]
             isOneToOne: false
@@ -8110,6 +8558,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "student_monthly_plans_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "student_monthly_plans_subject_id_fkey"
             columns: ["subject_id"]
             isOneToOne: false
@@ -8121,6 +8576,13 @@ export type Database = {
             columns: ["teacher_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_monthly_plans_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
         ]
@@ -8159,10 +8621,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "student_parent_links_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "student_parent_links_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_parent_links_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
         ]
@@ -8346,6 +8822,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "student_teacher_assignments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "student_teacher_assignments_subject_id_fkey"
             columns: ["subject_id"]
             isOneToOne: false
@@ -8357,6 +8840,13 @@ export type Database = {
             columns: ["teacher_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "student_teacher_assignments_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
         ]
@@ -8576,6 +9066,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "system_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
         ]
@@ -9112,6 +9609,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ticket_comments_acted_for_student_id_fkey"
+            columns: ["acted_for_student_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ticket_comments_ticket_id_fkey"
             columns: ["ticket_id"]
             isOneToOne: false
@@ -9279,6 +9783,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "tickets_acted_for_student_id_fkey"
+            columns: ["acted_for_student_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "tickets_branch_id_fkey"
             columns: ["branch_id"]
             isOneToOne: false
@@ -9422,6 +9933,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "user_context_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
         ]
       }
       user_roles: {
@@ -9458,6 +9976,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
         ]
@@ -9752,6 +10277,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "whatsapp_contacts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
         ]
       }
       whatsapp_messages: {
@@ -9839,10 +10371,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "whatsapp_messages_forwarded_to_user_id_fkey"
+            columns: ["forwarded_to_user_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "whatsapp_messages_sent_by_fkey"
             columns: ["sent_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_messages_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "student_profiles_for_teachers"
             referencedColumns: ["id"]
           },
         ]
@@ -9970,9 +10516,61 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      student_profiles_for_teachers: {
+        Row: {
+          city: string | null
+          country: string | null
+          date_of_birth: string | null
+          email: string | null
+          full_name: string | null
+          gender: string | null
+          id: string | null
+          registration_id: string | null
+          timezone: string | null
+          whatsapp_number: string | null
+        }
+        Insert: {
+          city?: string | null
+          country?: string | null
+          date_of_birth?: string | null
+          email?: string | null
+          full_name?: string | null
+          gender?: string | null
+          id?: string | null
+          registration_id?: string | null
+          timezone?: string | null
+          whatsapp_number?: string | null
+        }
+        Update: {
+          city?: string | null
+          country?: string | null
+          date_of_birth?: string | null
+          email?: string | null
+          full_name?: string | null
+          gender?: string | null
+          id?: string | null
+          registration_id?: string | null
+          timezone?: string | null
+          whatsapp_number?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      admin_get_sensitive_profile: {
+        Args: { _user_id: string }
+        Returns: {
+          bank_account_number: string
+          bank_account_title: string
+          bank_iban: string
+          bank_name: string
+          emergency_contact_name: string
+          emergency_contact_phone: string
+          gov_id_doc_url: string
+          gov_id_number: string
+          gov_id_type: string
+        }[]
+      }
       calculate_attendance_metrics: {
         Args: {
           _join_time: string
@@ -10040,11 +10638,30 @@ export type Database = {
           zoom_email: string
         }[]
       }
+      get_course_webhook_secret: {
+        Args: { _course_id: string }
+        Returns: string
+      }
       get_demo_by_share_token: { Args: { _token: string }; Returns: Json }
+      get_my_sensitive_profile: {
+        Args: never
+        Returns: {
+          bank_account_number: string
+          bank_account_title: string
+          bank_iban: string
+          bank_name: string
+          emergency_contact_name: string
+          emergency_contact_phone: string
+          gov_id_doc_url: string
+          gov_id_number: string
+          gov_id_type: string
+        }[]
+      }
       get_parent_children_ids: {
         Args: { _parent_id: string }
         Returns: string[]
       }
+      get_public_quiz_bank_safe: { Args: { _quiz_id: string }; Returns: Json }
       get_schema_overview: { Args: never; Returns: Json }
       get_student_active_assignment_ids: {
         Args: { _student_id: string }
@@ -10065,6 +10682,21 @@ export type Database = {
       get_student_enrolled_course_ids: {
         Args: { _student_id: string }
         Returns: string[]
+      }
+      get_student_profile_for_teacher: {
+        Args: { _student_id: string }
+        Returns: {
+          city: string
+          country: string
+          date_of_birth: string
+          email: string
+          full_name: string
+          gender: string
+          id: string
+          registration_id: string
+          timezone: string
+          whatsapp_number: string
+        }[]
       }
       get_teacher_student_ids: {
         Args: { _teacher_id: string }
@@ -10124,6 +10756,14 @@ export type Database = {
       }
       library_increment_view: { Args: { _item_id: string }; Returns: undefined }
       library_log_download: { Args: { _item_id: string }; Returns: undefined }
+      list_public_quiz_banks_safe: {
+        Args: never
+        Returns: {
+          description: string
+          id: string
+          name: string
+        }[]
+      }
       normalize_phone: {
         Args: { p_country: string; raw_phone: string }
         Returns: string
