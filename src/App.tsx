@@ -354,6 +354,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<LoginRedirect />} />
       <Route path="/login/:slug" element={<TenantLoginPage />} />
+      <Route path="/trust" element={<Trust />} />
       <Route path="/" element={<Navigate to={getDefaultRoute()} replace />} />
       <Route path="/select-division" element={
         <ProtectedRoute>
