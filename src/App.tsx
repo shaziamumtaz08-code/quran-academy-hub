@@ -29,6 +29,7 @@ function AppShellLoader() {
 
 const Login = lazy(() => import("./pages/Login"));
 const TenantLoginPage = lazy(() => import("./pages/TenantLogin"));
+const Trust = lazy(() => import("./pages/Trust"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Teachers = lazy(() => import("./pages/Teachers"));
 const Students = lazy(() => import("./pages/Students"));
@@ -354,6 +355,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<LoginRedirect />} />
       <Route path="/login/:slug" element={<TenantLoginPage />} />
+      <Route path="/trust" element={<Trust />} />
       <Route path="/" element={<Navigate to={getDefaultRoute()} replace />} />
       <Route path="/select-division" element={
         <ProtectedRoute>
