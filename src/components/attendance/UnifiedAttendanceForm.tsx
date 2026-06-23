@@ -399,6 +399,10 @@ export function UnifiedAttendanceForm({
       setAcademicLessonTopic('');
       setAcademicLessonStatus('');
       setAcademicFollowups([]);
+      setLessonType('');
+      setRepeatReason('');
+      setRepeatReasonNote('');
+      setManzilAnswered(false);
       setPickedStudentId('');
       return;
     }
