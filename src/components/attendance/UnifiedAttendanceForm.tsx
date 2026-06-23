@@ -1181,7 +1181,7 @@ export function UnifiedAttendanceForm({
                   sabqiDone={sabqiDone}
                   onSabqiDoneChange={setSabqiDone}
                   manzilDone={manzilDone}
-                  onManzilDoneChange={setManzilDone}
+                  onManzilDoneChange={(v) => { setManzilDone(v); setManzilAnswered(true); }}
                 />
               )}
 
@@ -1214,7 +1214,7 @@ export function UnifiedAttendanceForm({
                   quarterToNumber={quarterToNumber}
                   onQuarterToNumberChange={setQuarterToNumber}
                   manzilDone={manzilDone}
-                  onManzilDoneChange={setManzilDone}
+                  onManzilDoneChange={(v) => { setManzilDone(v); setManzilAnswered(true); }}
                 />
               )}
 
