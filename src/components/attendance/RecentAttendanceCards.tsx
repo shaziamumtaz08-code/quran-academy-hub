@@ -42,6 +42,8 @@ export function RecentAttendanceCards({ role, limit = 3 }: Props) {
           lesson_covered,
           surah_name,
           ayah_from,
+          lesson_type,
+          repeat_reason,
           teacher_id,
           student_id,
           student:profiles!attendance_student_id_fkey(full_name),
