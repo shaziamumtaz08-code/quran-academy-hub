@@ -608,6 +608,9 @@ export function UnifiedAttendanceForm({
         sabqi_done: currentSubjectType === 'hifz' ? sabqiDone : null,
         manzil_done: isHifzOrNazra ? manzilDone : null,
         voice_note_url: voiceNoteUrl || null,
+        lesson_type: lessonRequired ? (lessonType || null) : null,
+        repeat_reason: lessonRequired && lessonType === 'repeat' ? (repeatReason || null) : null,
+        repeat_reason_note: lessonRequired && lessonType === 'repeat' ? (repeatReasonNote || null) : null,
       };
 
       // Phase A columns — written on both create and edit (no-op when null on legacy rows)
