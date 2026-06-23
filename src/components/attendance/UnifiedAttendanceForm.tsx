@@ -315,6 +315,83 @@ export function UnifiedAttendanceForm({
 
   const hasDuplicateAttendance = !isEdit && existingAttendance && existingAttendance.length > 0;
 
+  // Fetch the student's most recent prior attendance with lesson coverage — used to
+  // (1) display "Last lesson" inside the Lesson Type card and (2) auto-fill Sabaq/topic
+  // when the teacher picks "Same as last class".
+  const { data: previousLesson } = useQuery({
+    queryKey: ['prev-attendance-lesson', student.id, classDate, isEdit ? existingRecord?.id : null],
+    queryFn: async () => {
+      if (!student.id) return null;
+      let q = supabase
+        .from('attendance')
+        .select('id, class_date, lesson_covered, sabaq_marker_type, sabaq_surah_from, sabaq_surah_to, sabaq_ayah_from, sabaq_ayah_to, sabaq_ruku_from_juz, sabaq_ruku_from_number, sabaq_ruku_to_juz, sabaq_ruku_to_number, sabaq_quarter_from_juz, sabaq_quarter_from_number, sabaq_quarter_to_juz, sabaq_quarter_to_number, lesson_number, page_number')
+        .eq('student_id', student.id)
+        .eq('status', 'present')
+        .lt('class_date', classDate || format(new Date(), 'yyyy-MM-dd'))
+        .order('class_date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (isEdit && existingRecord?.id) q = q.neq('id', existingRecord.id);
+      const { data, error } = await q;
+      if (error) throw error;
+      return data?.[0] ?? null;
+    },
+    enabled: open && !!student.id,
+  });
+
+  // When user switches to "repeat", prefill the lesson fields from the previous class.
+  const applyPreviousLesson = () => {
+    if (!previousLesson) return;
+    const p: any = previousLesson;
+    if (currentSubjectType === 'academic') {
+      setAcademicLessonTopic(p.lesson_covered || '');
+    } else if (currentSubjectType === 'qaida') {
+      if (p.lesson_number != null) setLessonNumber(String(p.lesson_number));
+      if (p.page_number != null) setPageNumber(String(p.page_number));
+    } else {
+      if (p.sabaq_marker_type) setMarkerType(p.sabaq_marker_type);
+      setAyahFromSurah(p.sabaq_surah_from || '');
+      setAyahToSurah(p.sabaq_surah_to || '');
+      setAyahFromNumber(p.sabaq_ayah_from != null ? String(p.sabaq_ayah_from) : '');
+      setAyahToNumber(p.sabaq_ayah_to != null ? String(p.sabaq_ayah_to) : '');
+      setRukuFromJuz(p.sabaq_ruku_from_juz != null ? String(p.sabaq_ruku_from_juz) : '');
+      setRukuFromNumber(p.sabaq_ruku_from_number != null ? String(p.sabaq_ruku_from_number) : '');
+      setRukuToJuz(p.sabaq_ruku_to_juz != null ? String(p.sabaq_ruku_to_juz) : '');
+      setRukuToNumber(p.sabaq_ruku_to_number != null ? String(p.sabaq_ruku_to_number) : '');
+      setQuarterFromJuz(p.sabaq_quarter_from_juz != null ? String(p.sabaq_quarter_from_juz) : '');
+      setQuarterFromNumber(p.sabaq_quarter_from_number != null ? String(p.sabaq_quarter_from_number) : '');
+      setQuarterToJuz(p.sabaq_quarter_to_juz != null ? String(p.sabaq_quarter_to_juz) : '');
+      setQuarterToNumber(p.sabaq_quarter_to_number != null ? String(p.sabaq_quarter_to_number) : '');
+    }
+  };
+
+  const handleLessonTypeChange = (v: LessonType) => {
+    setLessonType(v);
+    if (v === 'repeat') applyPreviousLesson();
+  };
+
+  // Auto-detect: if entered Sabaq range matches previous, suggest switching to "repeat"
+  const autoDetectedRepeat = useMemo(() => {
+    if (!previousLesson || lessonType === 'repeat') return false;
+    const p: any = previousLesson;
+    if (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') {
+      return (
+        !!ayahFromSurah && ayahFromSurah === (p.sabaq_surah_from || '') &&
+        ayahFromNumber === (p.sabaq_ayah_from != null ? String(p.sabaq_ayah_from) : '') &&
+        ayahToNumber === (p.sabaq_ayah_to != null ? String(p.sabaq_ayah_to) : '')
+      );
+    }
+    if (currentSubjectType === 'academic') {
+      return !!academicLessonTopic && academicLessonTopic.trim() === (p.lesson_covered || '').trim();
+    }
+    if (currentSubjectType === 'qaida') {
+      return !!lessonNumber && lessonNumber === (p.lesson_number != null ? String(p.lesson_number) : '');
+    }
+    return false;
+  }, [previousLesson, lessonType, currentSubjectType, ayahFromSurah, ayahFromNumber, ayahToNumber, academicLessonTopic, lessonNumber]);
+
+
+
   // Get scheduled days array
   const scheduledDays = useMemo(() => {
     if (!scheduleData) return [];
