@@ -800,8 +800,8 @@ export function UnifiedAttendanceForm({
     if (lessonRequired && !hasLessonDetails) return false;
     // Lesson Today (new vs repeat) is required whenever a lesson was conducted.
     if (lessonRequired && !lessonType) return false;
-    if (lessonRequired && lessonType === 'repeat' && !repeatReason) return false;
-    if (lessonRequired && lessonType === 'repeat' && repeatReason === 'other' && !repeatReasonNote.trim()) return false;
+    // When repeating, a written explanation (reason + what was done) is required.
+    if (lessonRequired && lessonType === 'repeat' && repeatReasonNote.trim().length < 10) return false;
     // Manzil Yes/No must be explicitly answered for Hifz/Nazra
     if (lessonRequired && (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') && !manzilAnswered) return false;
     return true;
