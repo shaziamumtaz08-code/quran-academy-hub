@@ -437,6 +437,7 @@ export function UnifiedAttendanceForm({
       setQuarterToNumber(r.sabaq_quarter_to_number != null ? String(r.sabaq_quarter_to_number) : '');
       setSabqiDone(!!r.sabqi_done);
       setManzilDone(!!r.manzil_done);
+      setManzilAnswered(r.manzil_done !== null && r.manzil_done !== undefined);
       setLessonNumber(r.lesson_number != null ? String(r.lesson_number) : '');
       setPageNumber(r.page_number != null ? String(r.page_number) : '');
       setLinesCompleted(r.lines_completed != null ? String(r.lines_completed) : '');
@@ -444,6 +445,11 @@ export function UnifiedAttendanceForm({
       setInputUnit(r.input_unit ?? '');
       setRawInputAmount(r.raw_input_amount != null ? String(r.raw_input_amount) : '');
       setAcademicLessonTopic(r.lesson_covered ?? '');
+      // Lesson type hydration (read directly off the row — may not be in the typed interface yet)
+      const rAny = r as any;
+      setLessonType((rAny.lesson_type === 'repeat' || rAny.lesson_type === 'new') ? rAny.lesson_type : '');
+      setRepeatReason(rAny.repeat_reason || '');
+      setRepeatReasonNote(rAny.repeat_reason_note || '');
       return;
     }
 
