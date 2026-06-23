@@ -237,7 +237,7 @@ export function UnifiedAttendanceForm({
   const [academicFollowups, setAcademicFollowups] = useState<FollowupSuggestion[]>([]);
 
   // Lesson-type (new vs repeat) + reason — applies to all subject types
-  const [lessonType, setLessonType] = useState<LessonType>('');
+  const [lessonType, setLessonType] = useState<LessonType>('new');
   const [repeatReason, setRepeatReason] = useState<RepeatReason | ''>('');
   const [repeatReasonNote, setRepeatReasonNote] = useState('');
   // Manzil Yes/No must be explicitly answered for Hifz/Nazra
