@@ -1239,6 +1239,14 @@ export function UnifiedAttendanceForm({
                 </p>
               )}
 
+              {/* Manzil must be explicitly answered for Hifz/Nazra */}
+              {lessonRequired && (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') && !manzilAnswered && (
+                <p className="text-xs text-destructive flex items-center gap-1.5 -mt-2">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  Please answer Manzil / Revision (Yes or No) before saving.
+                </p>
+              )}
+
               {/* Homework - if not academic (academic includes it) */}
               {currentSubjectType !== 'academic' && (
                 <div className="space-y-2">
