@@ -1127,6 +1127,20 @@ export function UnifiedAttendanceForm({
           {/* Subject-specific fields — show when class actually happened (present or rescheduled) */}
           {lessonRequired && (
             <div className="space-y-4">
+              {/* Lesson Today: New vs Same as last class + reason */}
+              <LessonTypeSection
+                lessonType={lessonType}
+                onLessonTypeChange={handleLessonTypeChange}
+                repeatReason={repeatReason}
+                onRepeatReasonChange={setRepeatReason}
+                repeatReasonNote={repeatReasonNote}
+                onRepeatReasonNoteChange={setRepeatReasonNote}
+                previousLesson={(previousLesson as any)?.lesson_covered || student.last_lesson}
+                studentGender={studentGender}
+                autoDetectedRepeat={autoDetectedRepeat}
+                onAcceptAutoDetect={() => handleLessonTypeChange('repeat')}
+              />
+
               {currentSubjectType === 'qaida' && (
                 <QaidaProgressInput
                   lessonNumber={lessonNumber}
