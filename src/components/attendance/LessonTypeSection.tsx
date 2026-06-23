@@ -119,45 +119,18 @@ export function LessonTypeSection({
           </Badge>
           <div className="space-y-1.5">
             <Label className="text-xs font-medium text-foreground">
-              Reason <span className="text-destructive">*</span>
+              Reason & what was done today <span className="text-destructive">*</span>
             </Label>
-            <Select value={repeatReason} onValueChange={(v) => onRepeatReasonChange(v as RepeatReason)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Why is the lesson being repeated?" />
-              </SelectTrigger>
-              <SelectContent>
-                {visibleReasons.map((r) => (
-                  <SelectItem key={r.value} value={r.value}>
-                    {r.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Textarea
+              rows={3}
+              value={repeatReasonNote}
+              onChange={(e) => onRepeatReasonNoteChange(e.target.value)}
+              placeholder="e.g. Menstrual period — covered Tarbiyah topic on Salah etiquette. / Student couldn't recall, revised previous Ruku."
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Write briefly why the new lesson wasn't taught and what the student did instead. This replaces the dropdown so you can capture Tarbiyah or revision content.
+            </p>
           </div>
-          {repeatReason === 'other' && (
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-foreground">
-                Specify <span className="text-destructive">*</span>
-              </Label>
-              <Textarea
-                rows={2}
-                value={repeatReasonNote}
-                onChange={(e) => onRepeatReasonNoteChange(e.target.value)}
-                placeholder="Add details..."
-              />
-            </div>
-          )}
-          {repeatReason !== 'other' && (
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-muted-foreground">Notes (optional)</Label>
-              <Textarea
-                rows={2}
-                value={repeatReasonNote}
-                onChange={(e) => onRepeatReasonNoteChange(e.target.value)}
-                placeholder="Any extra context for the parent..."
-              />
-            </div>
-          )}
         </div>
       )}
     </div>
