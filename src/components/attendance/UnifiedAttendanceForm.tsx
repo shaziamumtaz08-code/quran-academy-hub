@@ -793,8 +793,14 @@ export function UnifiedAttendanceForm({
     if (requiresReschedule(selectedStatus) && !rescheduleReason) return false;
     if (requiresReschedule(selectedStatus) && rescheduleReason === 'other' && !reasonText.trim()) return false;
     if (lessonRequired && !hasLessonDetails) return false;
+    // Lesson Today (new vs repeat) is required whenever a lesson was conducted.
+    if (lessonRequired && !lessonType) return false;
+    if (lessonRequired && lessonType === 'repeat' && !repeatReason) return false;
+    if (lessonRequired && lessonType === 'repeat' && repeatReason === 'other' && !repeatReasonNote.trim()) return false;
+    // Manzil Yes/No must be explicitly answered for Hifz/Nazra
+    if (lessonRequired && (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') && !manzilAnswered) return false;
     return true;
-  }, [selectedStatus, isLeaveStatus, canAssignFutureDate, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleReason, hasDuplicateAttendance, isScheduledDay, isFutureDate, lessonRequired, hasLessonDetails, needsStudent, student.id]);
+  }, [selectedStatus, isLeaveStatus, canAssignFutureDate, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleReason, hasDuplicateAttendance, isScheduledDay, isFutureDate, lessonRequired, hasLessonDetails, needsStudent, student.id, lessonType, repeatReason, repeatReasonNote, currentSubjectType, manzilAnswered]);
 
   const studentTzAbbr = getTimezoneAbbr(student.timezone);
   const teacherTzAbbr = getTimezoneAbbr(effectiveTeacherTz);
