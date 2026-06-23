@@ -21,6 +21,7 @@ import { HifzAttendanceFields } from './HifzAttendanceFields';
 import { NazraAttendanceFields } from './NazraAttendanceFields';
 import { AcademicAttendanceFields, type LessonStatus, type FollowupSuggestion } from './AcademicAttendanceFields';
 import { type MarkerType } from './SabaqSection';
+import { LessonTypeSection, type LessonType, type RepeatReason } from './LessonTypeSection';
 import { trackActivity } from '@/lib/activityLogger';
 import { getTimezoneAbbr } from '@/lib/timezones';
 
