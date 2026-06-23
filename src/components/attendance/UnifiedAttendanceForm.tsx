@@ -237,7 +237,7 @@ export function UnifiedAttendanceForm({
   const [academicFollowups, setAcademicFollowups] = useState<FollowupSuggestion[]>([]);
 
   // Lesson-type (new vs repeat) + reason — applies to all subject types
-  const [lessonType, setLessonType] = useState<LessonType>('');
+  const [lessonType, setLessonType] = useState<LessonType>('new');
   const [repeatReason, setRepeatReason] = useState<RepeatReason | ''>('');
   const [repeatReasonNote, setRepeatReasonNote] = useState('');
   // Manzil Yes/No must be explicitly answered for Hifz/Nazra
@@ -609,8 +609,10 @@ export function UnifiedAttendanceForm({
         manzil_done: isHifzOrNazra ? manzilDone : null,
         voice_note_url: voiceNoteUrl || null,
         lesson_type: lessonRequired ? (lessonType || null) : null,
-        repeat_reason: lessonRequired && lessonType === 'repeat' ? (repeatReason || null) : null,
-        repeat_reason_note: lessonRequired && lessonType === 'repeat' ? (repeatReasonNote || null) : null,
+        // Free-text replaces the dropdown — keep `repeat_reason` set to 'other'
+        // for back-compat with existing analytics queries; canonical content lives in `repeat_reason_note`.
+        repeat_reason: lessonRequired && lessonType === 'repeat' ? 'other' : null,
+        repeat_reason_note: lessonRequired && lessonType === 'repeat' ? (repeatReasonNote.trim() || null) : null,
       };
 
       // Phase A columns — written on both create and edit (no-op when null on legacy rows)
@@ -798,8 +800,8 @@ export function UnifiedAttendanceForm({
     if (lessonRequired && !hasLessonDetails) return false;
     // Lesson Today (new vs repeat) is required whenever a lesson was conducted.
     if (lessonRequired && !lessonType) return false;
-    if (lessonRequired && lessonType === 'repeat' && !repeatReason) return false;
-    if (lessonRequired && lessonType === 'repeat' && repeatReason === 'other' && !repeatReasonNote.trim()) return false;
+    // When repeating, a written explanation (reason + what was done) is required.
+    if (lessonRequired && lessonType === 'repeat' && repeatReasonNote.trim().length < 10) return false;
     // Manzil Yes/No must be explicitly answered for Hifz/Nazra
     if (lessonRequired && (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') && !manzilAnswered) return false;
     return true;
