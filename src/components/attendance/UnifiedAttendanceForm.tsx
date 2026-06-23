@@ -609,8 +609,10 @@ export function UnifiedAttendanceForm({
         manzil_done: isHifzOrNazra ? manzilDone : null,
         voice_note_url: voiceNoteUrl || null,
         lesson_type: lessonRequired ? (lessonType || null) : null,
-        repeat_reason: lessonRequired && lessonType === 'repeat' ? (repeatReason || null) : null,
-        repeat_reason_note: lessonRequired && lessonType === 'repeat' ? (repeatReasonNote || null) : null,
+        // Free-text replaces the dropdown — keep `repeat_reason` set to 'other'
+        // for back-compat with existing analytics queries; canonical content lives in `repeat_reason_note`.
+        repeat_reason: lessonRequired && lessonType === 'repeat' ? 'other' : null,
+        repeat_reason_note: lessonRequired && lessonType === 'repeat' ? (repeatReasonNote.trim() || null) : null,
       };
 
       // Phase A columns — written on both create and edit (no-op when null on legacy rows)
