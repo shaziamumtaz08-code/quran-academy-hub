@@ -236,6 +236,13 @@ export function UnifiedAttendanceForm({
   const [academicLessonStatus, setAcademicLessonStatus] = useState<LessonStatus | ''>('');
   const [academicFollowups, setAcademicFollowups] = useState<FollowupSuggestion[]>([]);
 
+  // Lesson-type (new vs repeat) + reason — applies to all subject types
+  const [lessonType, setLessonType] = useState<LessonType>('');
+  const [repeatReason, setRepeatReason] = useState<RepeatReason | ''>('');
+  const [repeatReasonNote, setRepeatReasonNote] = useState('');
+  // Manzil Yes/No must be explicitly answered for Hifz/Nazra
+  const [manzilAnswered, setManzilAnswered] = useState(false);
+
   const currentSubjectType: SubjectType = useMemo(() => {
     return getSubjectType(student.subject_name);
   }, [student.subject_name]);
