@@ -21,6 +21,7 @@ import { HifzAttendanceFields } from './HifzAttendanceFields';
 import { NazraAttendanceFields } from './NazraAttendanceFields';
 import { AcademicAttendanceFields, type LessonStatus, type FollowupSuggestion } from './AcademicAttendanceFields';
 import { type MarkerType } from './SabaqSection';
+import { LessonTypeSection, type LessonType, type RepeatReason } from './LessonTypeSection';
 import { trackActivity } from '@/lib/activityLogger';
 import { getTimezoneAbbr } from '@/lib/timezones';
 
@@ -235,6 +236,13 @@ export function UnifiedAttendanceForm({
   const [academicLessonStatus, setAcademicLessonStatus] = useState<LessonStatus | ''>('');
   const [academicFollowups, setAcademicFollowups] = useState<FollowupSuggestion[]>([]);
 
+  // Lesson-type (new vs repeat) + reason — applies to all subject types
+  const [lessonType, setLessonType] = useState<LessonType>('');
+  const [repeatReason, setRepeatReason] = useState<RepeatReason | ''>('');
+  const [repeatReasonNote, setRepeatReasonNote] = useState('');
+  // Manzil Yes/No must be explicitly answered for Hifz/Nazra
+  const [manzilAnswered, setManzilAnswered] = useState(false);
+
   const currentSubjectType: SubjectType = useMemo(() => {
     return getSubjectType(student.subject_name);
   }, [student.subject_name]);
@@ -306,6 +314,83 @@ export function UnifiedAttendanceForm({
   });
 
   const hasDuplicateAttendance = !isEdit && existingAttendance && existingAttendance.length > 0;
+
+  // Fetch the student's most recent prior attendance with lesson coverage — used to
+  // (1) display "Last lesson" inside the Lesson Type card and (2) auto-fill Sabaq/topic
+  // when the teacher picks "Same as last class".
+  const { data: previousLesson } = useQuery({
+    queryKey: ['prev-attendance-lesson', student.id, classDate, isEdit ? existingRecord?.id : null],
+    queryFn: async () => {
+      if (!student.id) return null;
+      let q = supabase
+        .from('attendance')
+        .select('id, class_date, lesson_covered, sabaq_marker_type, sabaq_surah_from, sabaq_surah_to, sabaq_ayah_from, sabaq_ayah_to, sabaq_ruku_from_juz, sabaq_ruku_from_number, sabaq_ruku_to_juz, sabaq_ruku_to_number, sabaq_quarter_from_juz, sabaq_quarter_from_number, sabaq_quarter_to_juz, sabaq_quarter_to_number, lesson_number, page_number')
+        .eq('student_id', student.id)
+        .eq('status', 'present')
+        .lt('class_date', classDate || format(new Date(), 'yyyy-MM-dd'))
+        .order('class_date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (isEdit && existingRecord?.id) q = q.neq('id', existingRecord.id);
+      const { data, error } = await q;
+      if (error) throw error;
+      return data?.[0] ?? null;
+    },
+    enabled: open && !!student.id,
+  });
+
+  // When user switches to "repeat", prefill the lesson fields from the previous class.
+  const applyPreviousLesson = () => {
+    if (!previousLesson) return;
+    const p: any = previousLesson;
+    if (currentSubjectType === 'academic') {
+      setAcademicLessonTopic(p.lesson_covered || '');
+    } else if (currentSubjectType === 'qaida') {
+      if (p.lesson_number != null) setLessonNumber(String(p.lesson_number));
+      if (p.page_number != null) setPageNumber(String(p.page_number));
+    } else {
+      if (p.sabaq_marker_type) setMarkerType(p.sabaq_marker_type);
+      setAyahFromSurah(p.sabaq_surah_from || '');
+      setAyahToSurah(p.sabaq_surah_to || '');
+      setAyahFromNumber(p.sabaq_ayah_from != null ? String(p.sabaq_ayah_from) : '');
+      setAyahToNumber(p.sabaq_ayah_to != null ? String(p.sabaq_ayah_to) : '');
+      setRukuFromJuz(p.sabaq_ruku_from_juz != null ? String(p.sabaq_ruku_from_juz) : '');
+      setRukuFromNumber(p.sabaq_ruku_from_number != null ? String(p.sabaq_ruku_from_number) : '');
+      setRukuToJuz(p.sabaq_ruku_to_juz != null ? String(p.sabaq_ruku_to_juz) : '');
+      setRukuToNumber(p.sabaq_ruku_to_number != null ? String(p.sabaq_ruku_to_number) : '');
+      setQuarterFromJuz(p.sabaq_quarter_from_juz != null ? String(p.sabaq_quarter_from_juz) : '');
+      setQuarterFromNumber(p.sabaq_quarter_from_number != null ? String(p.sabaq_quarter_from_number) : '');
+      setQuarterToJuz(p.sabaq_quarter_to_juz != null ? String(p.sabaq_quarter_to_juz) : '');
+      setQuarterToNumber(p.sabaq_quarter_to_number != null ? String(p.sabaq_quarter_to_number) : '');
+    }
+  };
+
+  const handleLessonTypeChange = (v: LessonType) => {
+    setLessonType(v);
+    if (v === 'repeat') applyPreviousLesson();
+  };
+
+  // Auto-detect: if entered Sabaq range matches previous, suggest switching to "repeat"
+  const autoDetectedRepeat = useMemo(() => {
+    if (!previousLesson || lessonType === 'repeat') return false;
+    const p: any = previousLesson;
+    if (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') {
+      return (
+        !!ayahFromSurah && ayahFromSurah === (p.sabaq_surah_from || '') &&
+        ayahFromNumber === (p.sabaq_ayah_from != null ? String(p.sabaq_ayah_from) : '') &&
+        ayahToNumber === (p.sabaq_ayah_to != null ? String(p.sabaq_ayah_to) : '')
+      );
+    }
+    if (currentSubjectType === 'academic') {
+      return !!academicLessonTopic && academicLessonTopic.trim() === (p.lesson_covered || '').trim();
+    }
+    if (currentSubjectType === 'qaida') {
+      return !!lessonNumber && lessonNumber === (p.lesson_number != null ? String(p.lesson_number) : '');
+    }
+    return false;
+  }, [previousLesson, lessonType, currentSubjectType, ayahFromSurah, ayahFromNumber, ayahToNumber, academicLessonTopic, lessonNumber]);
+
+
 
   // Get scheduled days array
   const scheduledDays = useMemo(() => {
@@ -391,6 +476,10 @@ export function UnifiedAttendanceForm({
       setAcademicLessonTopic('');
       setAcademicLessonStatus('');
       setAcademicFollowups([]);
+      setLessonType('');
+      setRepeatReason('');
+      setRepeatReasonNote('');
+      setManzilAnswered(false);
       setPickedStudentId('');
       return;
     }
@@ -425,6 +514,7 @@ export function UnifiedAttendanceForm({
       setQuarterToNumber(r.sabaq_quarter_to_number != null ? String(r.sabaq_quarter_to_number) : '');
       setSabqiDone(!!r.sabqi_done);
       setManzilDone(!!r.manzil_done);
+      setManzilAnswered(r.manzil_done !== null && r.manzil_done !== undefined);
       setLessonNumber(r.lesson_number != null ? String(r.lesson_number) : '');
       setPageNumber(r.page_number != null ? String(r.page_number) : '');
       setLinesCompleted(r.lines_completed != null ? String(r.lines_completed) : '');
@@ -432,6 +522,11 @@ export function UnifiedAttendanceForm({
       setInputUnit(r.input_unit ?? '');
       setRawInputAmount(r.raw_input_amount != null ? String(r.raw_input_amount) : '');
       setAcademicLessonTopic(r.lesson_covered ?? '');
+      // Lesson type hydration (read directly off the row — may not be in the typed interface yet)
+      const rAny = r as any;
+      setLessonType((rAny.lesson_type === 'repeat' || rAny.lesson_type === 'new') ? rAny.lesson_type : '');
+      setRepeatReason(rAny.repeat_reason || '');
+      setRepeatReasonNote(rAny.repeat_reason_note || '');
       return;
     }
 
@@ -513,6 +608,9 @@ export function UnifiedAttendanceForm({
         sabqi_done: currentSubjectType === 'hifz' ? sabqiDone : null,
         manzil_done: isHifzOrNazra ? manzilDone : null,
         voice_note_url: voiceNoteUrl || null,
+        lesson_type: lessonRequired ? (lessonType || null) : null,
+        repeat_reason: lessonRequired && lessonType === 'repeat' ? (repeatReason || null) : null,
+        repeat_reason_note: lessonRequired && lessonType === 'repeat' ? (repeatReasonNote || null) : null,
       };
 
       // Phase A columns — written on both create and edit (no-op when null on legacy rows)
@@ -698,8 +796,14 @@ export function UnifiedAttendanceForm({
     if (requiresReschedule(selectedStatus) && !rescheduleReason) return false;
     if (requiresReschedule(selectedStatus) && rescheduleReason === 'other' && !reasonText.trim()) return false;
     if (lessonRequired && !hasLessonDetails) return false;
+    // Lesson Today (new vs repeat) is required whenever a lesson was conducted.
+    if (lessonRequired && !lessonType) return false;
+    if (lessonRequired && lessonType === 'repeat' && !repeatReason) return false;
+    if (lessonRequired && lessonType === 'repeat' && repeatReason === 'other' && !repeatReasonNote.trim()) return false;
+    // Manzil Yes/No must be explicitly answered for Hifz/Nazra
+    if (lessonRequired && (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') && !manzilAnswered) return false;
     return true;
-  }, [selectedStatus, isLeaveStatus, canAssignFutureDate, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleReason, hasDuplicateAttendance, isScheduledDay, isFutureDate, lessonRequired, hasLessonDetails, needsStudent, student.id]);
+  }, [selectedStatus, isLeaveStatus, canAssignFutureDate, classTime, classDate, reasonCategory, reasonText, rescheduleDate, rescheduleReason, hasDuplicateAttendance, isScheduledDay, isFutureDate, lessonRequired, hasLessonDetails, needsStudent, student.id, lessonType, repeatReason, repeatReasonNote, currentSubjectType, manzilAnswered]);
 
   const studentTzAbbr = getTimezoneAbbr(student.timezone);
   const teacherTzAbbr = getTimezoneAbbr(effectiveTeacherTz);
@@ -1023,6 +1127,20 @@ export function UnifiedAttendanceForm({
           {/* Subject-specific fields — show when class actually happened (present or rescheduled) */}
           {lessonRequired && (
             <div className="space-y-4">
+              {/* Lesson Today: New vs Same as last class + reason */}
+              <LessonTypeSection
+                lessonType={lessonType}
+                onLessonTypeChange={handleLessonTypeChange}
+                repeatReason={repeatReason}
+                onRepeatReasonChange={setRepeatReason}
+                repeatReasonNote={repeatReasonNote}
+                onRepeatReasonNoteChange={setRepeatReasonNote}
+                previousLesson={(previousLesson as any)?.lesson_covered || student.last_lesson}
+                studentGender={studentGender}
+                autoDetectedRepeat={autoDetectedRepeat}
+                onAcceptAutoDetect={() => handleLessonTypeChange('repeat')}
+              />
+
               {currentSubjectType === 'qaida' && (
                 <QaidaProgressInput
                   lessonNumber={lessonNumber}
@@ -1063,7 +1181,7 @@ export function UnifiedAttendanceForm({
                   sabqiDone={sabqiDone}
                   onSabqiDoneChange={setSabqiDone}
                   manzilDone={manzilDone}
-                  onManzilDoneChange={setManzilDone}
+                  onManzilDoneChange={(v) => { setManzilDone(v); setManzilAnswered(true); }}
                 />
               )}
 
@@ -1096,7 +1214,7 @@ export function UnifiedAttendanceForm({
                   quarterToNumber={quarterToNumber}
                   onQuarterToNumberChange={setQuarterToNumber}
                   manzilDone={manzilDone}
-                  onManzilDoneChange={setManzilDone}
+                  onManzilDoneChange={(v) => { setManzilDone(v); setManzilAnswered(true); }}
                 />
               )}
 
@@ -1118,6 +1236,14 @@ export function UnifiedAttendanceForm({
                 <p className="text-xs text-destructive flex items-center gap-1.5 -mt-2">
                   <AlertTriangle className="h-3.5 w-3.5" />
                   Lesson details are required when the class was conducted.
+                </p>
+              )}
+
+              {/* Manzil must be explicitly answered for Hifz/Nazra */}
+              {lessonRequired && (currentSubjectType === 'hifz' || currentSubjectType === 'nazra') && !manzilAnswered && (
+                <p className="text-xs text-destructive flex items-center gap-1.5 -mt-2">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  Please answer Manzil / Revision (Yes or No) before saving.
                 </p>
               )}
 

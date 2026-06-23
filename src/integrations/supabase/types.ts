@@ -415,6 +415,8 @@ export type Database = {
           reason: string | null
           reason_category: string | null
           reason_text: string | null
+          repeat_reason: string | null
+          repeat_reason_note: string | null
           reschedule_date: string | null
           reschedule_time: string | null
           revision_done: boolean | null
@@ -474,6 +476,8 @@ export type Database = {
           reason?: string | null
           reason_category?: string | null
           reason_text?: string | null
+          repeat_reason?: string | null
+          repeat_reason_note?: string | null
           reschedule_date?: string | null
           reschedule_time?: string | null
           revision_done?: boolean | null
@@ -533,6 +537,8 @@ export type Database = {
           reason?: string | null
           reason_category?: string | null
           reason_text?: string | null
+          repeat_reason?: string | null
+          repeat_reason_note?: string | null
           reschedule_date?: string | null
           reschedule_time?: string | null
           revision_done?: boolean | null
