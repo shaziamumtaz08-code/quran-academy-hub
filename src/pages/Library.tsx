@@ -172,10 +172,11 @@ function EmptyState({ canUpload, onUpload }: { canUpload: boolean; onUpload: () 
   );
 }
 export default function Library() {
-  const { user, isSuperAdmin, profile } = useAuth();
+  const { user, isSuperAdmin, profile, activeRole } = useAuth();
   const queryClient = useQueryClient();
-  const isAdmin = isSuperAdmin || profile?.role === "admin";
-  const isTeacher = profile?.role === "teacher";
+  const role = (activeRole || profile?.role) as string | undefined;
+  const isAdmin = isSuperAdmin || (role ? ["admin","admin_division","admin_admissions","admin_fees","admin_academic","super_admin"].includes(role) : false);
+  const isTeacher = role === "teacher";
   const canUpload = isAdmin || isTeacher;
 
   const [view, setView] = useState<View>("browse");
@@ -263,8 +264,22 @@ export default function Library() {
   };
 
   const publishedItems = useMemo(
-    () => items.filter((i) => (i.status ?? "published") === "published"),
-    [items]
+    () => items
+      .filter((i) => (i.status ?? "published") === "published")
+      .filter((i) => {
+        if (isAdmin) return true;
+        // Uploader always sees their own items
+        if (user?.id && i.uploaded_by === user.id) return true;
+        const vis = i.visibility ?? "all";
+        if (vis === "all") return true;
+        if (vis === "admin_only") return false;
+        if (vis === "teachers" && isTeacher) return true;
+        if (vis === "students" && (role === "student" || role === "parent")) return true;
+        if (vis === "custom" && Array.isArray(i.visible_to_roles) && role && i.visible_to_roles.includes(role)) return true;
+        // Default: not assigned to a role → hide from non-admins
+        return false;
+      }),
+    [items, isAdmin, isTeacher, role, user?.id]
   );
 
   const itemById = useMemo(() => {
