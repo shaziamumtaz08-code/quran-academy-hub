@@ -722,6 +722,14 @@ export function StudentDashboard() {
       </div>
 
       {MobileQuickLinksBar}
+
+      <DMChatSheet
+        open={dmOpen}
+        onOpenChange={setDmOpen}
+        groupId={dmGroupId}
+        recipientName={dmTeacherName}
+        whatsappProfileId={activeStudentId}
+      />
     </div>
   );
 }
