@@ -33,15 +33,15 @@ function getMobileTabs(role: AppRole | null): MobileTabItem[] {
     return [
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { label: 'My Courses', href: '/my-courses', icon: BookOpen },
+      { label: 'Reports', href: '/student-reports', icon: BarChart3 },
       { label: 'Library', href: '/library', icon: FolderOpen },
-      { label: 'Comms', href: '/communication', icon: MessageSquare },
     ];
   }
   if (role === 'parent') {
     return [
       { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
+      { label: 'Family', href: '/parent', icon: Users },
       { label: 'Reports', href: '/student-reports', icon: BarChart3 },
-      { label: 'Comms', href: '/communication', icon: MessageSquare },
     ];
   }
   return [

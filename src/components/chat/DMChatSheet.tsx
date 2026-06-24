@@ -26,16 +26,18 @@ interface DMChatSheetProps {
   recipientName: string;
   /** If true, flagged messages show yellow highlight (for teachers/moderators) */
   showFlaggedHighlight?: boolean;
+  /** When provided, merge WhatsApp history for this student profile into the timeline */
+  whatsappProfileId?: string | null;
 }
 
-export function DMChatSheet({ open, onOpenChange, groupId, recipientName, showFlaggedHighlight = false }: DMChatSheetProps) {
+export function DMChatSheet({ open, onOpenChange, groupId, recipientName, showFlaggedHighlight = false, whatsappProfileId = null }: DMChatSheetProps) {
   const { user } = useAuth();
   const stamp = useActorStamp();
   const queryClient = useQueryClient();
   const [message, setMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { data: messages = [] } = useQuery({
+  const { data: chatMessages = [] } = useQuery({
     queryKey: ['dm-sheet-messages', groupId],
     queryFn: async () => {
       if (!groupId) return [];
@@ -45,16 +47,52 @@ export function DMChatSheet({ open, onOpenChange, groupId, recipientName, showFl
         .eq('group_id', groupId)
         .eq('is_deleted', false)
         .order('created_at', { ascending: true })
-        .limit(100);
+        .limit(200);
       const senderIds = [...new Set((data || []).map(m => m.sender_id))];
       if (!senderIds.length) return [];
       const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', senderIds);
       const nameMap = Object.fromEntries((profiles || []).map(p => [p.id, p.full_name]));
-      return (data || []).map(m => ({ ...m, senderName: nameMap[m.sender_id] || 'User' }));
+      return (data || []).map(m => ({ ...m, senderName: nameMap[m.sender_id] || 'User', channel: 'dm' as const }));
     },
     enabled: !!groupId && open,
     refetchInterval: open ? 5000 : false,
   });
+
+  const { data: waMessages = [] } = useQuery({
+    queryKey: ['dm-sheet-wa', whatsappProfileId],
+    queryFn: async () => {
+      if (!whatsappProfileId) return [];
+      const { data: contacts } = await supabase
+        .from('whatsapp_contacts')
+        .select('id')
+        .eq('profile_id', whatsappProfileId);
+      const cids = (contacts || []).map((c: any) => c.id);
+      if (!cids.length) return [];
+      const { data } = await supabase
+        .from('whatsapp_messages')
+        .select('id, message_text, direction, created_at, attachment_url')
+        .in('contact_id', cids)
+        .order('created_at', { ascending: true })
+        .limit(200);
+      return (data || []).map((m: any) => ({
+        id: `wa-${m.id}`,
+        content: m.message_text || (m.attachment_url ? '[attachment]' : ''),
+        sender_id: m.direction === 'inbound' ? whatsappProfileId : null,
+        created_at: m.created_at,
+        is_flagged: false,
+        senderName: m.direction === 'inbound' ? 'Student (WhatsApp)' : 'Academy (WhatsApp)',
+        channel: 'whatsapp' as const,
+      }));
+    },
+    enabled: !!whatsappProfileId && open,
+  });
+
+  const messages = React.useMemo(() => {
+    return [...chatMessages, ...waMessages].sort(
+      (a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+  }, [chatMessages, waMessages]);
+
 
   // Realtime
   useEffect(() => {
@@ -127,29 +165,35 @@ export function DMChatSheet({ open, onOpenChange, groupId, recipientName, showFl
             </div>
           ) : (
             messages.map((msg: any) => {
-              const isMe = msg.sender_id === user?.id;
+              const isWa = msg.channel === 'whatsapp';
+              const isMe = !isWa && msg.sender_id === user?.id;
               const isFlagged = showFlaggedHighlight && msg.is_flagged;
               return (
                 <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                   <div className={cn(
                     'max-w-[80%] rounded-lg px-3 py-2',
                     isFlagged ? 'bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700' :
+                      isWa ? 'bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800' :
                       isMe ? 'bg-primary text-primary-foreground' : 'bg-muted',
                   )}>
-                    {!isMe && <p className="text-[10px] font-medium mb-0.5 opacity-70">{msg.senderName}</p>}
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      {!isMe && <p className="text-[10px] font-medium opacity-70">{msg.senderName}</p>}
+                      {isWa && <span className="text-[9px] font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">WhatsApp</span>}
+                    </div>
                     {isFlagged && (
                       <div className="flex items-center gap-1 mb-1">
                         <AlertTriangle className="h-3 w-3 text-amber-600" />
                         <span className="text-[9px] font-medium text-amber-600">Flagged</span>
                       </div>
                     )}
-                    <p className={cn('text-sm', isFlagged && !isMe && 'text-foreground')}>{msg.content}</p>
+                    <p className={cn('text-sm', (isFlagged || isWa) && !isMe && 'text-foreground')}>{msg.content}</p>
                     <p className={cn(
                       'text-[10px] mt-0.5',
                       isFlagged ? 'text-amber-600/60' :
+                        isWa ? 'text-emerald-700/70 dark:text-emerald-400/70' :
                         isMe ? 'text-primary-foreground/60' : 'text-muted-foreground'
                     )}>
-                      {format(new Date(msg.created_at), 'h:mm a')}
+                      {format(new Date(msg.created_at), 'd MMM, h:mm a')}
                     </p>
                   </div>
                 </div>

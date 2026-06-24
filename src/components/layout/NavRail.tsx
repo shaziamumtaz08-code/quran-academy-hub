@@ -52,7 +52,6 @@ export function buildRailNav(role: AppRole | null): RailItem[] {
       { label: 'My Courses', href: '/my-courses', icon: BookOpen },
       { label: 'Reports', href: '/student-reports', icon: BarChart3 },
       { label: 'Library', href: '/library', icon: FolderOpen },
-      { label: 'Communication', href: '/communication', icon: MessageSquare },
     ];
     if (role === 'parent') {
       items.push({ label: 'Family', href: '/parent', icon: Users });

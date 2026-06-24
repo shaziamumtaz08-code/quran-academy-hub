@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO, differenceInDays } from 'date-fns';
@@ -16,6 +16,10 @@ import { fetchIslamicDate } from '@/lib/islamicDate';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DMChatSheet } from '@/components/chat/DMChatSheet';
+import { findOrCreateAssignmentDM } from '@/lib/messaging';
+import { toast } from 'sonner';
+
 
 const PRAYERS = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'] as const;
 
@@ -52,6 +56,57 @@ export function StudentDashboard() {
 
   // Active student id: if parent acting on a kid, use the kid; else self.
   const activeStudentId = activeKidId || user?.id || null;
+
+  const [dmOpen, setDmOpen] = useState(false);
+  const [dmGroupId, setDmGroupId] = useState<string | null>(null);
+  const [dmTeacherName, setDmTeacherName] = useState<string>('Teacher');
+  const [openingDm, setOpeningDm] = useState(false);
+
+  // Assigned teacher for "Message Teacher" quick action
+  const { data: assignedTeacher } = useQuery({
+    queryKey: ['sd-assigned-teacher', activeStudentId],
+    enabled: !!activeStudentId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('student_teacher_assignments')
+        .select('teacher_id, teacher:profiles!student_teacher_assignments_teacher_id_fkey(id, full_name)')
+        .eq('student_id', activeStudentId!)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const t: any = (data as any)?.teacher;
+      return t ? { id: t.id, name: t.full_name || 'Teacher' } : null;
+    },
+  });
+
+  const handleMessageTeacher = async () => {
+    if (!activeStudentId) return;
+    if (!assignedTeacher) {
+      toast.error('No assigned teacher found yet.');
+      return;
+    }
+    setOpeningDm(true);
+    try {
+      const studentName = (studentProfile?.full_name as string) || 'Student';
+      const groupId = await findOrCreateAssignmentDM(
+        activeStudentId,
+        assignedTeacher.id,
+        studentName,
+        assignedTeacher.name,
+      );
+      if (!groupId) {
+        toast.error('Could not open conversation');
+        return;
+      }
+      setDmGroupId(groupId);
+      setDmTeacherName(assignedTeacher.name);
+      setDmOpen(true);
+    } finally {
+      setOpeningDm(false);
+    }
+  };
+
 
   // Profile of the active student (for header name + tz)
   const { data: studentProfile } = useQuery({
@@ -382,8 +437,8 @@ export function StudentDashboard() {
     </div>
   );
 
-  const quickLinks = [
-    { icon: MessageCircle, label: 'Message Teacher', bg: 'bg-blue-50 hover:bg-blue-100', icCol: 'text-blue-500', txCol: 'text-blue-600', to: '/chat' },
+  const quickLinks: Array<{ icon: any; label: string; bg: string; icCol: string; txCol: string; to?: string; onClick?: () => void; disabled?: boolean }> = [
+    { icon: MessageCircle, label: 'Message Teacher', bg: 'bg-blue-50 hover:bg-blue-100', icCol: 'text-blue-500', txCol: 'text-blue-600', onClick: handleMessageTeacher, disabled: openingDm },
     { icon: Send, label: 'Leave Request', bg: 'bg-amber-50 hover:bg-amber-100', icCol: 'text-amber-500', txCol: 'text-amber-600', to: '/hub' },
     { icon: FolderOpen, label: 'My Files', bg: 'bg-violet-50 hover:bg-violet-100', icCol: 'text-violet-500', txCol: 'text-violet-600', to: '/resources' },
     { icon: Network, label: 'My Network', bg: 'bg-emerald-50 hover:bg-emerald-100', icCol: 'text-emerald-500', txCol: 'text-emerald-600', to: '/connections' },
@@ -400,8 +455,9 @@ export function StudentDashboard() {
           return (
             <button
               key={q.label}
-              onClick={() => navigate(q.to)}
-              className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-md cursor-pointer transition-all hover:scale-105 ${q.bg}`}
+              disabled={q.disabled}
+              onClick={() => (q.onClick ? q.onClick() : q.to && navigate(q.to))}
+              className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-md cursor-pointer transition-all hover:scale-105 disabled:opacity-60 disabled:cursor-wait ${q.bg}`}
             >
               <Icon size={18} className={q.icCol} />
               <span className={`text-[11px] font-medium ${q.txCol} text-center leading-tight`}>{q.label}</span>
@@ -411,6 +467,7 @@ export function StudentDashboard() {
       </div>
     </div>
   );
+
 
   // (Recent Lessons rendered inside LessonsAndResultsCard)
 
@@ -665,6 +722,14 @@ export function StudentDashboard() {
       </div>
 
       {MobileQuickLinksBar}
+
+      <DMChatSheet
+        open={dmOpen}
+        onOpenChange={setDmOpen}
+        groupId={dmGroupId}
+        recipientName={dmTeacherName}
+        whatsappProfileId={activeStudentId}
+      />
     </div>
   );
 }
